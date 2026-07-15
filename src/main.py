@@ -23,6 +23,7 @@ nada — não faz sentido mandar uma mensagem vazia.
 
 from __future__ import annotations
 
+import html
 from datetime import datetime, timedelta, timezone
 
 from dateutil import parser as date_parser
@@ -47,19 +48,40 @@ def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dic
     Para cada jogo, busca a info do torneio (cache-first) e só mantém os
     que pertencem a um tier permitido. Anexa 'tournament_name' e 'surface'
     diretamente no dict do jogo.
+
+    Importante: processamos os tournamentId por ordem decrescente de
+    frequência (quantos jogos desse torneio aparecem hoje/amanhã) antes de
+    gastar pedidos de info. Um ATP 250 como Umag tem uma dezena de jogos
+    no mesmo dia; um Futures disperso tem 1-2. Isto garante que, se a
+    quota diária (50/dia no plano free) se esgotar a meio, já resolvemos
+    os torneios que realmente interessam antes dos Futures aleatórios.
     """
+    from collections import Counter
+
+    tournament_ids_in_order = [
+        tid for tid, _ in Counter(m.get("tournamentId") for m in raw_matches if m.get("tournamentId")).most_common()
+    ]
+
+    tour_by_tournament_id = {}
+    for match in raw_matches:
+        tid = match.get("tournamentId")
+        if tid is not None and tid not in tour_by_tournament_id:
+            tour_by_tournament_id[tid] = match["_tour"]
+
+    resolved_info = {}
+    for tournament_id in tournament_ids_in_order:
+        info = fetch_data.get_tournament_info(tournament_id, tour_by_tournament_id[tournament_id])
+        if info is not None:
+            resolved_info[tournament_id] = info
+
     eligible = []
     for match in raw_matches:
-        tour = match["_tour"]
         tournament_id = match.get("tournamentId")
-        if tournament_id is None:
-            continue
-
-        info = fetch_data.get_tournament_info(tournament_id, tour)
+        info = resolved_info.get(tournament_id)
         if info is None:
-            # sem info de torneio disponível (falha da API e sem cache) —
-            # não arriscamos incluir um Challenger/ITF por engano.
-            print(f"[aviso] sem info do torneio {tournament_id}, jogo ignorado.")
+            # sem info disponível (falha da API, sem cache, ou quota
+            # esgotada antes de chegar a este torneio) — não arriscamos
+            # incluir um Challenger/ITF por engano.
             continue
 
         tier = info.get("tier")
@@ -161,10 +183,15 @@ def run() -> None:
     telegraph_url = publish_report(f"Ténis Pré-Live — {today_str}", full_report_md)
 
     # --- Resumo curto (Telegram) ---
+    # A frase de cada jogo vem do Claude em texto livre — tem de ser
+    # escapada antes de entrar numa mensagem com parse_mode=HTML, senão
+    # um "<" ou "&" na frase parte a mensagem toda (erro 400 silencioso).
     summary_lines = [f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"]
     for payload, result in analyses:
-        summary_lines.append(f"{result['flag']} {result['summary_line']}")
-    summary_lines.append(f"\n📄 Relatório completo: {telegraph_url}")
+        flag = html.escape(result.get("flag", ""))
+        line = html.escape(result.get("summary_line", ""))
+        summary_lines.append(f"{flag} {line}")
+    summary_lines.append(f"\n📄 Relatório completo: {html.escape(telegraph_url)}")
 
     send_message("\n".join(summary_lines))
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s). Relatório: {telegraph_url}")
