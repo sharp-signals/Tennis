@@ -19,7 +19,7 @@ RAPIDAPI_BASE = f"https://{RAPIDAPI_HOST}/tennis/v2"
 # ser "Masters 1000" em vez de "ATP 1000" — não adivinhes, confirma).
 ALLOWED_TOURNAMENT_TIERS = {
     "Grand Slam",
-    "ATP 1000",
+    "ATP Masters 1000",
     "ATP 500",
     "ATP 250",
     "WTA 1000",
