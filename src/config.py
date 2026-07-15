@@ -21,11 +21,16 @@ ALLOWED_TOURNAMENT_TIERS = {
     "Grand Slam",
     "ATP Masters 1000",
     "ATP 500",
-    "ATP 250",
     "WTA 1000",
     "WTA 500",
-    "WTA 250",
 }
+# Nível 250 (ATP/WTA) ficou de fora por decisão explícita: a Odds API não
+# tem cobertura fiável de mercado para este nível (confirmado na prática
+# com Umag, Gstaad, Bastad, Athens, Iasi — nenhum apareceu em 3 fornecedores
+# de odds diferentes testados). Como as odds de mercado são o propósito
+# central do bot, preferimos garantir odds em todos os jogos analisados a
+# cobrir mais torneios sem essa peça. Se no futuro aparecer uma fonte de
+# odds fiável para o nível 250, é só acrescentar "ATP 250"/"WTA 250" aqui.
 # Tiers conhecidos que ficam sempre de fora (ITF/Challenger — dados mais
 # esparsos, conforme decidido na fase de planeamento).
 EXCLUDED_TOURNAMENT_TIERS = {"Future", "Challenger"}
@@ -66,10 +71,6 @@ ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_wta_bad_homburg_open", "tennis_wta_strasbourg",
 ]
 
-# Ranking mínimo (de qualquer um dos dois jogadores) para um jogo de
-# nível 250 ainda assim entrar no resumo. Em Slams/Masters/500 entra
-# sempre. Ainda por implementar em main.py — precisa de fonte de ranking.
-MIN_RANK_TO_INCLUDE_IF_TIER_250 = 120
 
 # Janela de antecedência: só considera jogos que arrancam dentro
 # destas horas a partir do momento em que o workflow corre.
