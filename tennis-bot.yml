@@ -1,0 +1,34 @@
+name: Tennis Pre-Live Bot
+
+on:
+  schedule:
+    # Corre duas vezes por dia (horas em UTC).
+    # 07:00 UTC ~= manhã na Europa -> apanha jogos "hoje" que arrancam à tarde/noite
+    # 18:00 UTC ~= fim da tarde na Europa -> apanha véspera de jogos de amanhã de manhã
+    - cron: "0 7 * * *"
+    - cron: "0 18 * * *"
+  workflow_dispatch: {}   # permite correr manualmente a partir do GitHub UI
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Correr o bot
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
+        run: python -m src.main
