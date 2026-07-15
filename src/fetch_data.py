@@ -285,8 +285,16 @@ def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime, lo
         return None
 
     played["tourney_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
-    window_start = match_date - pd.Timedelta(days=lookback_days)
-    recent = played[(played["tourney_date"] >= window_start) & (played["tourney_date"] < match_date)]
+
+    # O histórico (tourney_date) é tz-naive; a data do jogo (match_date)
+    # vem tz-aware (UTC) do matchstat. Normalizamos para tz-naive antes de
+    # comparar, senão o pandas recusa a comparação.
+    match_date_naive = pd.Timestamp(match_date)
+    if match_date_naive.tzinfo is not None:
+        match_date_naive = match_date_naive.tz_localize(None)
+
+    window_start = match_date_naive - pd.Timedelta(days=lookback_days)
+    recent = played[(played["tourney_date"] >= window_start) & (played["tourney_date"] < match_date_naive)]
 
     return {"matches_last_n_days": len(recent), "lookback_days": lookback_days}
 
