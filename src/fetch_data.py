@@ -14,11 +14,12 @@ não-oficial tipo Sofascore):
 2. The Odds API      -> fonte SECUNDÁRIA/opcional, só para odds de mercado
    quando o jogo também aparecer lá (por nomes dos jogadores). Nunca decide
    que jogos existem — isso sub-representava torneios menores (ex: Umag).
-3. TennisMyLife       -> histórico de resultados/rankings (MIT license,
-                          dataset "vivo", inclui torneio da semana atual)
-4. Jeff Sackmann GitHub -> histórico de resultados/rankings (CC BY-NC-SA,
-                          usado como fonte de verificação cruzada / backup
-                          se a TennisMyLife estiver em baixo)
+3. TennisMyLife       -> histórico ATP apenas (MIT license, dataset "vivo",
+                          inclui torneio da semana atual). Confirmado
+                          (15/07/2026): é uma base de dados só de ATP, não
+                          tem WTA — por isso o WTA vai direto ao Sackmann.
+4. Jeff Sackmann GitHub -> histórico ATP (fallback) e WTA (fonte principal
+                          para este tour). Licença CC BY-NC-SA.
 5. tennis-data.co.uk  -> CSV semanal com resultados + odds + piso,
                           terceira fonte de cruzamento para stats por piso
 """
@@ -192,8 +193,16 @@ def get_history(tour: str) -> pd.DataFrame:
 
     year = datetime.now(timezone.utc).year
 
-    df = _load_tennismylife(tour)
-    source = "tennismylife"
+    if tour == "atp":
+        df = _load_tennismylife(tour)
+        source = "tennismylife"
+    else:
+        # Confirmado (15/07/2026): a TennisMyLife é uma base de dados só
+        # de ATP (mesmo nome do repositório: "ATP tournaments matches").
+        # Nunca teve WTA — não vale a pena gastar um pedido a tentar.
+        df = None
+        source = None
+
     if df is None or df.empty:
         df = _load_sackmann(tour, year)
         source = "sackmann"
