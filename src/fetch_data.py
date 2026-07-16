@@ -39,6 +39,7 @@ from .config import (
     RAPIDAPI_BASE,
     RAPIDAPI_HOST,
     TOURNAMENT_CACHE_PATH,
+    TOURS_TO_FOLLOW,
 )
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
@@ -575,12 +576,12 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
 
 
 def fetch_all_upcoming_fixtures(lookahead_days: int) -> list[dict]:
-    """Junta fixtures de ATP e WTA para os próximos `lookahead_days` dias (incl. hoje)."""
+    """Junta fixtures dos tours configurados (TOURS_TO_FOLLOW) para os próximos `lookahead_days` dias (incl. hoje)."""
     all_matches = []
     today = datetime.now(timezone.utc)
     for offset in range(lookahead_days):
         day = today + timedelta(days=offset)
-        for tour in ("atp", "wta"):
+        for tour in TOURS_TO_FOLLOW:
             all_matches.extend(fetch_date_fixtures(day, tour))
     return all_matches
 
