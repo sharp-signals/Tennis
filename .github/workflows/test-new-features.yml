@@ -1,0 +1,22 @@
+name: Test New Features (sem RapidAPI)
+
+on:
+  workflow_dispatch: {}   # só corre manualmente, nunca por agendamento
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Testar novas funções (histórico, lesão, serviço/resposta, ranking, meteorologia)
+        run: python -m src.test_new_features
