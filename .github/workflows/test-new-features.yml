@@ -18,13 +18,20 @@ jobs:
       - name: Instalar dependências
         run: pip install -r requirements.txt
 
-      - name: DIAGNÓSTICO — curl verboso ao atp_players.csv (raw.githubusercontent e jsDelivr)
+      - name: DIAGNÓSTICO — código HTTP e corpo da resposta (raw.githubusercontent e jsDelivr)
         run: |
           echo "=== raw.githubusercontent.com ==="
-          curl -v "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master/atp_players.csv" 2>&1 | head -40
+          curl -s -o /tmp/raw_body.txt -w "HTTP_STATUS: %{http_code}\n" \
+            "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master/atp_players.csv"
+          echo "--- corpo da resposta (primeiras linhas) ---"
+          head -c 1000 /tmp/raw_body.txt
+          echo ""
           echo ""
           echo "=== jsDelivr ==="
-          curl -v "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_atp@master/atp_players.csv" 2>&1 | head -40
+          curl -s -o /tmp/jsdelivr_body.txt -w "HTTP_STATUS: %{http_code}\n" \
+            "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_atp@master/atp_players.csv"
+          echo "--- corpo da resposta (primeiras linhas) ---"
+          head -c 1000 /tmp/jsdelivr_body.txt
         continue-on-error: true
 
       - name: Testar novas funções (histórico, lesão, serviço/resposta, ranking, meteorologia)
