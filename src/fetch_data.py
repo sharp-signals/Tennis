@@ -50,6 +50,16 @@ _RAPIDAPI_HEADERS = {
     "X-RapidAPI-Host": RAPIDAPI_HOST,
 }
 
+# Alguns servidores (raw.githubusercontent.com incluído, aparentemente)
+# bloqueiam/disfarçam como 404 pedidos com o User-Agent genérico da lib
+# requests. Um UA de browser normal resolve isto sem custo nenhum.
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
+}
+
 TENNISMYLIFE_FILES_ENDPOINT = "https://stats.tennismylife.org/api/data-files"
 SACKMANN_RAW_BASE = "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master"
 SACKMANN_RAW_BASE_WTA = "https://raw.githubusercontent.com/JeffSackmann/tennis_wta/master"
@@ -135,7 +145,7 @@ _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
     """tour: 'atp' ou 'wta'. Descarrega o CSV mais recente disponível."""
     try:
-        resp = requests.get(TENNISMYLIFE_FILES_ENDPOINT, timeout=REQUEST_TIMEOUT)
+        resp = requests.get(TENNISMYLIFE_FILES_ENDPOINT, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         files = resp.json().get("files", [])
         candidates = [
@@ -147,7 +157,7 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
         # assume o mais recente por nome (normalmente inclui o ano)
         candidates.sort(key=lambda f: f["name"])
         latest = candidates[-1]
-        csv_resp = requests.get(latest["url"], timeout=REQUEST_TIMEOUT)
+        csv_resp = requests.get(latest["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         csv_resp.raise_for_status()
         return pd.read_csv(io.StringIO(csv_resp.text))
     except Exception as exc:
@@ -165,7 +175,7 @@ def _load_sackmann(tour: str, year: int) -> Optional[pd.DataFrame]:
     for candidate_year in (year, year - 1):
         url = f"{base}/{tour}_matches_{candidate_year}.csv"
         try:
-            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+            resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
             print(f"[info] Sackmann {tour} carregado do ano {candidate_year}.")
             return pd.read_csv(io.StringIO(resp.text))
@@ -180,7 +190,7 @@ def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
     filename = "atp.csv" if tour == "atp" else "wta.csv"
     url = TENNISDATA_COUK_URL_TEMPLATE.format(year=year, filename=filename)
     try:
-        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+        resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         return pd.read_csv(io.StringIO(resp.text), encoding="latin1")
     except Exception as exc:
@@ -424,7 +434,7 @@ def _load_players(tour: str) -> Optional[pd.DataFrame]:
     url = f"{base}/{tour}_players.csv"
     for attempt in (1, 2):
         try:
-            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+            resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
             df = pd.read_csv(io.StringIO(resp.text))
             df["full_name"] = (df["name_first"].fillna("") + " " + df["name_last"].fillna("")).str.strip()
@@ -442,7 +452,7 @@ def _load_rankings(tour: str) -> Optional[pd.DataFrame]:
     url = f"{base}/{tour}_rankings_current.csv"
     for attempt in (1, 2):
         try:
-            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+            resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
             df = pd.read_csv(io.StringIO(resp.text))
             _RANKINGS_CACHE[tour] = df
