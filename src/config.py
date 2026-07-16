@@ -81,6 +81,13 @@ SURFACES = ["Hard", "Clay", "Grass"]
 
 RECENT_FORM_MATCHES = 10
 FATIGUE_LOOKBACK_DAYS = 4
+SERVE_RETURN_STATS_MATCHES = 10
+INJURY_SIGNAL_LOOKBACK_MATCHES = 5
+
+# Pedir meteorologia só para jogos ao ar livre. O matchstat usa prefixo
+# "I." no nome do piso para indoor (ex: "I.hard") — qualquer piso que
+# comece por "I." é tratado como indoor e não pede meteorologia.
+INDOOR_SURFACE_PREFIX = "I."
 
 FLAG_HIGH_SIGNAL = "🔴"
 FLAG_UNCERTAIN = "🟡"
