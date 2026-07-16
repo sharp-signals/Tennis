@@ -61,8 +61,14 @@ _BROWSER_HEADERS = {
 }
 
 TENNISMYLIFE_FILES_ENDPOINT = "https://stats.tennismylife.org/api/data-files"
-SACKMANN_RAW_BASE = "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master"
-SACKMANN_RAW_BASE_WTA = "https://raw.githubusercontent.com/JeffSackmann/tennis_wta/master"
+# Usamos o jsDelivr (espelho gratuito de repositórios GitHub) em vez de
+# raw.githubusercontent.com diretamente — descobrimos na prática (16/07/2026)
+# que os runners do GitHub Actions apanhavam 404 consistente no raw.githubusercontent
+# para estes repositórios específicos, mesmo com User-Agent de browser, o
+# que sugere algum bloqueio a nível de IP/rede da própria GitHub. O jsDelivr
+# serve o mesmo conteúdo sem esse problema.
+SACKMANN_RAW_BASE = "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_atp@master"
+SACKMANN_RAW_BASE_WTA = "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_wta@master"
 
 TENNISDATA_COUK_URL_TEMPLATE = "http://www.tennis-data.co.uk/{year}/{filename}"
 
