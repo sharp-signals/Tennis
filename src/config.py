@@ -21,8 +21,6 @@ ALLOWED_TOURNAMENT_TIERS = {
     "Grand Slam",
     "ATP Masters 1000",
     "ATP 500",
-    "WTA 1000",
-    "WTA 500",
 }
 # Nível 250 (ATP/WTA) ficou de fora por decisão explícita: a Odds API não
 # tem cobertura fiável de mercado para este nível (confirmado na prática
@@ -43,32 +41,31 @@ FIXTURES_LOOKAHEAD_DAYS = 2
 # ficheiro no próprio repositório, escrito de volta pelo workflow.
 TOURNAMENT_CACHE_PATH = "data/tournament_cache.json"
 
+# Tours a seguir. Reduzido a ATP apenas (16/07/2026): os repositórios
+# tennis_atp/tennis_wta do Jeff Sackmann desapareceram do GitHub, e não
+# há outra fonte gratuita fiável de histórico WTA (a TennisMyLife nunca
+# cobriu WTA). Em vez de teres um bot inconsistente que às vezes fala de
+# WTA sem H2H/forma/piso nenhum, reduzimos o âmbito. Se aparecer uma fonte
+# WTA fiável no futuro, é só voltar a acrescentar "wta" aqui.
+TOURS_TO_FOLLOW = ("atp",)
+
 # --- Odds de mercado: fonte secundária/opcional (The Odds API) ----------
 # Já não decide "que jogos existem" — só tenta enriquecer com odds quando
 # o jogo (por nomes dos jogadores) também aparecer aqui. Se não aparecer,
 # o campo de odds fica None, tal como qualquer outro dado em falta.
+# Só chaves ATP, dado TOURS_TO_FOLLOW acima.
 ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_aus_open_singles", "tennis_atp_french_open",
     "tennis_atp_wimbledon", "tennis_atp_us_open",
-    "tennis_wta_aus_open_singles", "tennis_wta_french_open",
-    "tennis_wta_wimbledon", "tennis_wta_us_open",
     "tennis_atp_indian_wells", "tennis_atp_miami_open",
     "tennis_atp_monte_carlo_masters", "tennis_atp_madrid_open",
     "tennis_atp_italian_open", "tennis_atp_canadian_open",
     "tennis_atp_cincinnati_open", "tennis_atp_shanghai_masters",
     "tennis_atp_paris_masters",
-    "tennis_wta_indian_wells", "tennis_wta_miami_open",
-    "tennis_wta_madrid_open", "tennis_wta_italian_open",
-    "tennis_wta_canadian_open", "tennis_wta_cincinnati_open",
-    "tennis_wta_china_open", "tennis_wta_wuhan_open",
     "tennis_atp_barcelona_open", "tennis_atp_dubai",
     "tennis_atp_qatar_open", "tennis_atp_queens_club_champ",
     "tennis_atp_halle_open", "tennis_atp_hamburg_open",
     "tennis_atp_munich", "tennis_atp_china_open",
-    "tennis_wta_dubai", "tennis_wta_qatar_open",
-    "tennis_wta_queens_club_champ", "tennis_wta_stuttgart_open",
-    "tennis_wta_charleston_open", "tennis_wta_german_open",
-    "tennis_wta_bad_homburg_open", "tennis_wta_strasbourg",
 ]
 
 
