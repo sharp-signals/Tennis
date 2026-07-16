@@ -156,16 +156,23 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
 
 
 def _load_sackmann(tour: str, year: int) -> Optional[pd.DataFrame]:
-    """Fallback: ficheiro anual do repositório de Jeff Sackmann."""
+    """
+    Fallback: ficheiro anual do repositório de Jeff Sackmann. Tenta o ano
+    pedido e, se ainda não existir (ex: o ficheiro do ano corrente só é
+    publicado a meio da época), tenta o ano anterior automaticamente.
+    """
     base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
-    url = f"{base}/{tour}_matches_{year}.csv"
-    try:
-        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        return pd.read_csv(io.StringIO(resp.text))
-    except Exception as exc:
-        print(f"[aviso] Sackmann indisponível para {tour} {year}: {exc}")
-        return None
+    for candidate_year in (year, year - 1):
+        url = f"{base}/{tour}_matches_{candidate_year}.csv"
+        try:
+            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            print(f"[info] Sackmann {tour} carregado do ano {candidate_year}.")
+            return pd.read_csv(io.StringIO(resp.text))
+        except requests.RequestException as exc:
+            print(f"[aviso] Sackmann indisponível para {tour} {candidate_year}: {exc}")
+            continue
+    return None
 
 
 def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
@@ -415,16 +422,17 @@ def _load_players(tour: str) -> Optional[pd.DataFrame]:
         return _PLAYERS_CACHE[tour]
     base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
     url = f"{base}/{tour}_players.csv"
-    try:
-        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        df = pd.read_csv(io.StringIO(resp.text))
-        df["full_name"] = (df["name_first"].fillna("") + " " + df["name_last"].fillna("")).str.strip()
-        _PLAYERS_CACHE[tour] = df
-        return df
-    except Exception as exc:
-        print(f"[aviso] falha a obter lista de jogadores ({tour}): {exc}")
-        return None
+    for attempt in (1, 2):
+        try:
+            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            df = pd.read_csv(io.StringIO(resp.text))
+            df["full_name"] = (df["name_first"].fillna("") + " " + df["name_last"].fillna("")).str.strip()
+            _PLAYERS_CACHE[tour] = df
+            return df
+        except Exception as exc:
+            print(f"[aviso] falha a obter lista de jogadores ({tour}), tentativa {attempt}: {exc}")
+    return None
 
 
 def _load_rankings(tour: str) -> Optional[pd.DataFrame]:
@@ -432,15 +440,16 @@ def _load_rankings(tour: str) -> Optional[pd.DataFrame]:
         return _RANKINGS_CACHE[tour]
     base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
     url = f"{base}/{tour}_rankings_current.csv"
-    try:
-        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        df = pd.read_csv(io.StringIO(resp.text))
-        _RANKINGS_CACHE[tour] = df
-        return df
-    except Exception as exc:
-        print(f"[aviso] falha a obter rankings ({tour}): {exc}")
-        return None
+    for attempt in (1, 2):
+        try:
+            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            df = pd.read_csv(io.StringIO(resp.text))
+            _RANKINGS_CACHE[tour] = df
+            return df
+        except Exception as exc:
+            print(f"[aviso] falha a obter rankings ({tour}), tentativa {attempt}: {exc}")
+    return None
 
 
 def get_player_ranking(tour: str, player_name: str) -> Optional[dict]:
