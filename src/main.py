@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import html
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from dateutil import parser as date_parser
 
@@ -32,10 +33,13 @@ from .config import (
     ALLOWED_TOURNAMENT_TIERS,
     FATIGUE_LOOKBACK_DAYS,
     FIXTURES_LOOKAHEAD_DAYS,
+    INDOOR_SURFACE_PREFIX,
+    INJURY_SIGNAL_LOOKBACK_MATCHES,
     LOOKAHEAD_HOURS_MAX,
     LOOKAHEAD_HOURS_MIN,
     ODDS_API_TENNIS_SPORT_KEYS,
     RECENT_FORM_MATCHES,
+    SERVE_RETURN_STATS_MATCHES,
 )
 from . import fetch_data
 from .analyze import analyze_match
@@ -91,6 +95,7 @@ def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dic
         match["tournament_name"] = info.get("name") or f"Torneio {tournament_id}"
         match["surface"] = info.get("surface") or "Desconhecido"
         match["tier"] = tier
+        match["country"] = info.get("country")
         eligible.append(match)
 
     return eligible
@@ -112,6 +117,27 @@ def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
     return eligible
 
 
+def _get_weather_for_match(match: dict, start: datetime) -> Optional[dict]:
+    """
+    Só pede meteorologia para jogos ao ar livre. Geocodifica a partir do
+    nome do torneio (a parte depois do último ' - ', que costuma ser a
+    cidade) + país. Devolve None em qualquer falha — nunca inventa.
+    """
+    surface = match.get("surface", "")
+    if surface.startswith(INDOOR_SURFACE_PREFIX):
+        return None
+
+    tournament_name = match.get("tournament_name", "")
+    city = tournament_name.rsplit(" - ", 1)[-1] if " - " in tournament_name else tournament_name
+    country = match.get("country") or ""
+    place_query = f"{city}, {country}".strip(", ")
+
+    coords = fetch_data.geocode_location(place_query)
+    if coords is None:
+        return None
+    return fetch_data.get_weather_forecast(coords["lat"], coords["lon"], start)
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -131,6 +157,13 @@ def _build_match_payload(match: dict) -> dict:
     surface_b = fetch_data.compute_surface_stats(history, player_b, surface)
     fatigue_a = fetch_data.compute_fatigue(history, player_a, start, FATIGUE_LOOKBACK_DAYS)
     fatigue_b = fetch_data.compute_fatigue(history, player_b, start, FATIGUE_LOOKBACK_DAYS)
+    injury_a = fetch_data.compute_injury_signal(history, player_a, INJURY_SIGNAL_LOOKBACK_MATCHES)
+    injury_b = fetch_data.compute_injury_signal(history, player_b, INJURY_SIGNAL_LOOKBACK_MATCHES)
+    serve_a = fetch_data.compute_serve_return_stats(history, player_a, SERVE_RETURN_STATS_MATCHES)
+    serve_b = fetch_data.compute_serve_return_stats(history, player_b, SERVE_RETURN_STATS_MATCHES)
+    rank_a = fetch_data.get_player_ranking(tour, player_a)
+    rank_b = fetch_data.get_player_ranking(tour, player_b)
+    weather = _get_weather_for_match(match, start)
 
     return {
         "player_a": player_a,
@@ -147,7 +180,13 @@ def _build_match_payload(match: dict) -> dict:
         "surface_stats_b": surface_b,
         "fatigue_signal_a": fatigue_a,
         "fatigue_signal_b": fatigue_b,
-        "injury_data": None,  # nenhuma fonte gratuita fiável disponível — ver README
+        "injury_signal_a": injury_a,  # baseado em RET/W-O reais, não é relatório médico
+        "injury_signal_b": injury_b,
+        "serve_return_stats_a": serve_a,
+        "serve_return_stats_b": serve_b,
+        "ranking_a": rank_a,
+        "ranking_b": rank_b,
+        "weather": weather,  # None para indoor ou se a geocodificação/previsão falhar
     }
 
 
