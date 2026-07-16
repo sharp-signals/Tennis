@@ -308,6 +308,220 @@ def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime, lo
     return {"matches_last_n_days": len(recent), "lookback_days": lookback_days}
 
 
+def compute_injury_signal(history: pd.DataFrame, player: str, lookback_matches: int = 5) -> Optional[dict]:
+    """
+    Sinal aproximado de lesão a partir de desistências/walkovers reais nos
+    últimos jogos do histórico (coluna 'score' costuma conter 'RET',
+    'W/O' ou 'DEF' quando um jogo termina assim). Não é um relatório
+    médico — é um facto verificável extraído dos próprios resultados.
+    None se não houver dados suficientes para avaliar.
+    """
+    if history.empty or "score" not in history.columns or "tourney_date" not in history.columns:
+        return None
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    played["tourney_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    played = played.sort_values("tourney_date").tail(lookback_matches)
+
+    markers = ("RET", "W/O", "WO", "DEF")
+    retirements = []
+    for _, row in played.iterrows():
+        score = str(row.get("score", ""))
+        if any(marker in score.upper() for marker in markers):
+            # só conta como sinal de lesão do próprio jogador se ele foi
+            # quem desistiu (perdeu esse jogo) — se ganhou por W/O do
+            # adversário, o sinal de lesão é do outro jogador, não deste.
+            if row.get("loser_name") == player:
+                retirements.append({
+                    "date": str(row.get("tourney_date")),
+                    "opponent": row.get("winner_name"),
+                    "score": score,
+                })
+
+    return {
+        "matches_checked": len(played),
+        "recent_retirements": retirements,  # lista vazia = nenhuma desistência encontrada
+    }
+
+
+def compute_serve_return_stats(history: pd.DataFrame, player: str, n_matches: int) -> Optional[dict]:
+    """
+    Médias de serviço/resposta nos últimos n_matches, agregadas a partir
+    das colunas w_/l_ (que dependem de o jogador ter sido vencedor ou
+    vencido em cada jogo). None se as colunas não existirem na fonte
+    (ex: tennis-data.co.uk não tem estes detalhes) ou não houver jogos.
+    """
+    required_cols = {"w_ace", "w_df", "w_svpt", "w_1stIn", "w_1stWon", "w_2ndWon", "w_bpSaved", "w_bpFaced"}
+    if history.empty or not required_cols.issubset(history.columns):
+        return None
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    if "tourney_date" in played.columns:
+        played["tourney_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+        played = played.sort_values("tourney_date")
+    played = played.tail(n_matches)
+
+    rows = []
+    for _, row in played.iterrows():
+        prefix = "w_" if row.get("winner_name") == player else "l_"
+        try:
+            svpt = float(row[f"{prefix}svpt"])
+            if svpt <= 0:
+                continue
+            rows.append({
+                "ace_pct": float(row[f"{prefix}ace"]) / svpt,
+                "df_pct": float(row[f"{prefix}df"]) / svpt,
+                "first_in_pct": float(row[f"{prefix}1stIn"]) / svpt,
+                "first_won_pct": (float(row[f"{prefix}1stWon"]) / float(row[f"{prefix}1stIn"])
+                                  if float(row.get(f"{prefix}1stIn", 0)) > 0 else None),
+                "bp_saved_pct": (float(row[f"{prefix}bpSaved"]) / float(row[f"{prefix}bpFaced"])
+                                 if float(row.get(f"{prefix}bpFaced", 0)) > 0 else None),
+            })
+        except (ValueError, TypeError, KeyError):
+            continue
+
+    if not rows:
+        return None
+
+    def _avg(key):
+        values = [r[key] for r in rows if r[key] is not None]
+        return round(sum(values) / len(values), 3) if values else None
+
+    return {
+        "matches_used": len(rows),
+        "avg_ace_pct": _avg("ace_pct"),
+        "avg_double_fault_pct": _avg("df_pct"),
+        "avg_first_serve_in_pct": _avg("first_in_pct"),
+        "avg_first_serve_won_pct": _avg("first_won_pct"),
+        "avg_break_points_saved_pct": _avg("bp_saved_pct"),
+    }
+
+
+# --------------------------------------------------------------------- #
+# 5. Rankings (Jeff Sackmann GitHub — ficheiros de ranking + players)
+# --------------------------------------------------------------------- #
+_PLAYERS_CACHE: dict[str, pd.DataFrame] = {}
+_RANKINGS_CACHE: dict[str, pd.DataFrame] = {}
+
+
+def _load_players(tour: str) -> Optional[pd.DataFrame]:
+    if tour in _PLAYERS_CACHE:
+        return _PLAYERS_CACHE[tour]
+    base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
+    url = f"{base}/{tour}_players.csv"
+    try:
+        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        df = pd.read_csv(io.StringIO(resp.text))
+        df["full_name"] = (df["name_first"].fillna("") + " " + df["name_last"].fillna("")).str.strip()
+        _PLAYERS_CACHE[tour] = df
+        return df
+    except Exception as exc:
+        print(f"[aviso] falha a obter lista de jogadores ({tour}): {exc}")
+        return None
+
+
+def _load_rankings(tour: str) -> Optional[pd.DataFrame]:
+    if tour in _RANKINGS_CACHE:
+        return _RANKINGS_CACHE[tour]
+    base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
+    url = f"{base}/{tour}_rankings_current.csv"
+    try:
+        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        df = pd.read_csv(io.StringIO(resp.text))
+        _RANKINGS_CACHE[tour] = df
+        return df
+    except Exception as exc:
+        print(f"[aviso] falha a obter rankings ({tour}): {exc}")
+        return None
+
+
+def get_player_ranking(tour: str, player_name: str) -> Optional[dict]:
+    """
+    Devolve {'rank', 'points', 'as_of'} com o ranking mais recente
+    disponível para o jogador, ou None se não conseguirmos encontrar o
+    jogador (nome não bate certo com a base de jogadores) ou os ficheiros
+    falharem.
+    """
+    players = _load_players(tour)
+    rankings = _load_rankings(tour)
+    if players is None or rankings is None:
+        return None
+
+    match = players[players["full_name"].str.lower() == player_name.lower()]
+    if match.empty:
+        return None
+    player_id = match.iloc[0]["player_id"]
+
+    player_rankings = rankings[rankings["player"] == player_id]
+    if player_rankings.empty:
+        return None
+
+    latest = player_rankings.sort_values("ranking_date").iloc[-1]
+    return {
+        "rank": int(latest["rank"]),
+        "points": int(latest["points"]) if not pd.isna(latest.get("points")) else None,
+        "as_of": str(latest["ranking_date"]),
+    }
+
+
+# --------------------------------------------------------------------- #
+# 6. Meteorologia (Open-Meteo — gratuita, documentada, sem key)
+# --------------------------------------------------------------------- #
+def geocode_location(place_name: str) -> Optional[dict]:
+    """Devolve {'lat', 'lon'} para um nome de cidade/torneio, ou None."""
+    url = "https://geocoding-api.open-meteo.com/v1/search"
+    try:
+        resp = requests.get(url, params={"name": place_name, "count": 1}, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        results = resp.json().get("results")
+        if not results:
+            return None
+        return {"lat": results[0]["latitude"], "lon": results[0]["longitude"]}
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a geocodificar '{place_name}': {exc}")
+        return None
+
+
+def get_weather_forecast(lat: float, lon: float, match_date: "datetime") -> Optional[dict]:
+    """
+    Previsão para o dia do jogo (temperatura máx/mín, vento, precipitação).
+    Só faz sentido para jogos ao ar livre — quem chama decide se pede isto
+    consoante o piso ('I.hard' = indoor, não vale a pena pedir).
+    """
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max",
+        "timezone": "UTC",
+        "start_date": match_date.strftime("%Y-%m-%d"),
+        "end_date": match_date.strftime("%Y-%m-%d"),
+    }
+    try:
+        resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        daily = resp.json().get("daily")
+        if not daily or not daily.get("time"):
+            return None
+        return {
+            "temp_max_c": daily["temperature_2m_max"][0],
+            "temp_min_c": daily["temperature_2m_min"][0],
+            "precipitation_mm": daily["precipitation_sum"][0],
+            "wind_max_kmh": daily["windspeed_10m_max"][0],
+        }
+    except (requests.RequestException, KeyError, IndexError) as exc:
+        print(f"[aviso] falha a obter meteorologia: {exc}")
+        return None
+
+
 # --------------------------------------------------------------------- #
 # 4. Fixtures (fonte primária): RapidAPI / matchstat
 # --------------------------------------------------------------------- #
@@ -390,6 +604,7 @@ def get_tournament_info(tournament_id: int, tour: str) -> Optional[dict]:
             "name": data.get("name"),
             "tier": data.get("tier"),
             "surface": (data.get("court") or {}).get("name"),
+            "country": (data.get("country") or {}).get("name"),
         }
         _tournament_cache[key] = info
         _tournament_cache_dirty = True
