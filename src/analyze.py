@@ -70,19 +70,34 @@ def analyze_match(match_data: dict) -> dict:
 
     response = _client.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=1500,
+        # 4000 em vez de 1500: com dados ricos (H2H, stats de piso,
+        # serviço/resposta, lesão) o relatório completo pode facilmente
+        # passar de 1500 tokens, cortando o JSON a meio e partindo o parse.
+        max_tokens=4000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
 
-    raw_text = "".join(block.text for block in response.content if block.type == "text")
+    raw_text = "".join(block.text for block in response.content if block.type == "text").strip()
+
+    # Blindagem: se o modelo, apesar da instrução, envolver a resposta em
+    # blocos de código markdown (```json ... ```), removemos antes de tentar
+    # o parse — mais barato do que gastar uma chamada extra à API.
+    if raw_text.startswith("```"):
+        raw_text = raw_text.split("\n", 1)[1] if "\n" in raw_text else raw_text
+        if raw_text.endswith("```"):
+            raw_text = raw_text.rsplit("```", 1)[0]
+        raw_text = raw_text.strip()
 
     try:
         return json.loads(raw_text)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
         # Fallback defensivo: nunca deixar o pipeline abaixo sem estrutura,
         # mas sinalizamos claramente que houve um problema de formato —
-        # não inventamos uma análise.
+        # não inventamos uma análise. Inclui o motivo exato no log (não na
+        # mensagem enviada) para facilitar diagnóstico.
+        print(f"[aviso] resposta do Claude não era JSON válido: {exc}")
+        print(f"[aviso] resposta bruta (primeiros 500 chars): {raw_text[:500]}")
         return {
             "flag": FLAG_UNCERTAIN,
             "summary_line": (
