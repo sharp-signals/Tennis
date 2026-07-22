@@ -33,6 +33,14 @@ análise em vez de ignorares a lacuna ou preenchê-la com um palpite. O campo
 não se aplica) — só trata como "dado em falta" se o jogo for ao ar livre e
 mesmo assim vier vazio.
 
+O campo `h2h` tem sempre dois níveis, quando há dados: `overall` (H2H de
+carreira completa) e `on_surface` (H2H só neste piso — pode vir `null`
+mesmo quando `overall` existe, se nunca se defrontaram neste piso
+específico). Comenta sempre os dois quando disponíveis, e destaca
+especialmente quando divergem (ex: equilibrados na carreira toda, mas um
+domina claramente neste piso, ou vice-versa) — essa divergência é
+frequentemente o sinal mais interessante do H2H.
+
 O sinal de lesão (`injury_signal_*`) é baseado em desistências/walkovers
 reais nos últimos jogos do próprio histórico consultado — trata isso como
 um facto verificável ("desistiu do último jogo, motivo desconhecido"), não
@@ -62,6 +70,13 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
      as maiores incertezas, se aplicável.
   Nunca inventes números — todas as regras acima sobre dados em falta
   continuam a aplicar-se dentro deste formato.
+
+Os campos `surface_stats_a`/`surface_stats_b` trazem o perfil do jogador
+nos TRÊS pisos (Hard/Clay/Grass), não só no piso deste jogo — usa isto
+para comentar especialização (ex: muito mais forte em terra do que em
+relva) e não só o desempenho no piso da partida atual. Cada piso pode
+vir `null` individualmente se o jogador não tiver jogos registados nesse
+piso especificamente.
 
 Responde APENAS com o JSON, sem texto antes ou depois, sem blocos de código.
 """
