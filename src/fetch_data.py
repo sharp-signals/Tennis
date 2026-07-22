@@ -154,7 +154,7 @@ _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 
 
 def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
-    """tour: 'atp' ou 'wta'. Descarrega o CSV mais recente disponível."""
+    """tour: 'atp' ou 'wta'. Descarrega o CSV de JOGOS mais recente disponível."""
     try:
         resp = requests.get(TENNISMYLIFE_FILES_ENDPOINT, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
@@ -165,9 +165,19 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
         ]
         if not candidates:
             return None
-        # assume o mais recente por nome (normalmente inclui o ano)
-        candidates.sort(key=lambda f: f["name"])
-        latest = candidates[-1]
+
+        print(f"[info] ficheiros candidatos da TennisMyLife para '{tour}': {[f['name'] for f in candidates]}")
+
+        # Preferir explicitamente ficheiros de JOGOS ("match"/"matches" no
+        # nome) — a ordenação alfabética simples podia escolher por engano
+        # um ficheiro de jogadores/rankings que também comece por "atp"/"wta"
+        # e fique depois na ordem alfabética (ex: "atp_players.csv" > "atp_matches.csv").
+        match_candidates = [f for f in candidates if "match" in f["name"].lower()]
+        pool = match_candidates if match_candidates else candidates
+        pool.sort(key=lambda f: f["name"])
+        latest = pool[-1]
+        print(f"[info] ficheiro escolhido da TennisMyLife para '{tour}': {latest['name']}")
+
         csv_resp = requests.get(latest["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         csv_resp.raise_for_status()
         return pd.read_csv(io.StringIO(csv_resp.text))
@@ -243,6 +253,8 @@ def get_history(tour: str) -> pd.DataFrame:
         source = "nenhuma"
 
     print(f"[info] histórico {tour} carregado de: {source} ({len(df)} linhas)")
+    if not df.empty:
+        print(f"[info] colunas disponíveis: {list(df.columns)}")
     _HISTORY_CACHE[tour] = df
     return df
 
