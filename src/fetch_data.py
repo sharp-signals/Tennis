@@ -514,24 +514,33 @@ def compute_serve_return_stats(history: pd.DataFrame, player: str, n_matches: in
         played = played.sort_values("tourney_date")
     played = played.tail(n_matches)
 
+    def _safe_float(value) -> Optional[float]:
+        try:
+            f = float(value)
+            return None if pd.isna(f) else f
+        except (ValueError, TypeError):
+            return None
+
+    def _safe_ratio(numerator_key: str, denominator_key: str, row) -> Optional[float]:
+        num = _safe_float(row.get(numerator_key))
+        den = _safe_float(row.get(denominator_key))
+        if num is None or den is None or den <= 0:
+            return None
+        return num / den
+
     rows = []
     for _, row in played.iterrows():
         prefix = "w_" if row.get("winner_name") == player else "l_"
-        try:
-            svpt = float(row[f"{prefix}svpt"])
-            if svpt <= 0:
-                continue
-            rows.append({
-                "ace_pct": float(row[f"{prefix}ace"]) / svpt,
-                "df_pct": float(row[f"{prefix}df"]) / svpt,
-                "first_in_pct": float(row[f"{prefix}1stIn"]) / svpt,
-                "first_won_pct": (float(row[f"{prefix}1stWon"]) / float(row[f"{prefix}1stIn"])
-                                  if float(row.get(f"{prefix}1stIn", 0)) > 0 else None),
-                "bp_saved_pct": (float(row[f"{prefix}bpSaved"]) / float(row[f"{prefix}bpFaced"])
-                                 if float(row.get(f"{prefix}bpFaced", 0)) > 0 else None),
-            })
-        except (ValueError, TypeError, KeyError):
+        svpt = _safe_float(row.get(f"{prefix}svpt"))
+        if svpt is None or svpt <= 0:
             continue
+        rows.append({
+            "ace_pct": _safe_ratio(f"{prefix}ace", f"{prefix}svpt", row),
+            "df_pct": _safe_ratio(f"{prefix}df", f"{prefix}svpt", row),
+            "first_in_pct": _safe_ratio(f"{prefix}1stIn", f"{prefix}svpt", row),
+            "first_won_pct": _safe_ratio(f"{prefix}1stWon", f"{prefix}1stIn", row),
+            "bp_saved_pct": _safe_ratio(f"{prefix}bpSaved", f"{prefix}bpFaced", row),
+        })
 
     if not rows:
         return None
