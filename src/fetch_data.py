@@ -43,6 +43,7 @@ from .config import (
     HISTORY_YEARS_TO_LOAD,
     RAPIDAPI_BASE,
     RAPIDAPI_HOST,
+    SURFACES,
     TOURNAMENT_CACHE_PATH,
     TOURS_TO_FOLLOW,
 )
@@ -339,7 +340,13 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
 # 3. Features derivadas do histórico (H2H, forma, piso, fadiga)
 # --------------------------------------------------------------------- #
 def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Optional[str] = None) -> Optional[dict]:
-    """Devolve {'a_wins': int, 'b_wins': int, 'surface_filtered': bool} ou None se não há dados."""
+    """
+    Devolve {'overall': {...} ou None, 'on_surface': {...} ou None,
+    'surface': str} — SEMPRE os dois números separados (carreira toda e
+    específico do piso), nunca só um a substituir o outro, para o Claude
+    poder comentar a diferença (ex: equilibrados na carreira, mas um
+    domina claramente neste piso). None se não houver H2H nenhum.
+    """
     if history.empty or "winner_name" not in history.columns:
         return None
 
@@ -354,19 +361,25 @@ def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Op
         | ((history["winner_name"] == player_b) & (history["loser_name"] == player_a))
     )
     subset = history[mask]
-    surface_filtered = False
-    if surface and "surface" in history.columns:
-        subset_surface = subset[subset["surface"].str.lower() == surface.lower()]
-        if not subset_surface.empty:
-            subset = subset_surface
-            surface_filtered = True
-
     if subset.empty:
         return None
 
-    a_wins = int((subset["winner_name"] == player_a).sum())
-    b_wins = int((subset["winner_name"] == player_b).sum())
-    return {"a_wins": a_wins, "b_wins": b_wins, "surface_filtered": surface_filtered}
+    def _tally(df: pd.DataFrame) -> dict:
+        return {
+            "a_wins": int((df["winner_name"] == player_a).sum()),
+            "b_wins": int((df["winner_name"] == player_b).sum()),
+            "total_matches": len(df),
+        }
+
+    overall = _tally(subset)
+
+    on_surface = None
+    if surface and "surface" in history.columns:
+        subset_surface = subset[subset["surface"].str.lower() == surface.lower()]
+        if not subset_surface.empty:
+            on_surface = _tally(subset_surface)
+
+    return {"overall": overall, "on_surface": on_surface, "surface": surface}
 
 
 def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int) -> Optional[dict]:
@@ -391,7 +404,14 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int) -> O
     return {"matches": len(played), "wins": wins, "losses": len(played) - wins}
 
 
-def compute_surface_stats(history: pd.DataFrame, player: str, surface: str) -> Optional[dict]:
+def compute_surface_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    Devolve o perfil completo do jogador em CADA piso (Hard/Clay/Grass),
+    não só no piso do jogo que está a ser analisado — para o Claude poder
+    comparar especialização por piso (ex: muito forte em terra, fraco em
+    relva). Cada piso vem com {'matches','wins','losses'} ou None se não
+    houver jogos nesse piso.
+    """
     if history.empty or "surface" not in history.columns:
         return None
 
@@ -400,15 +420,20 @@ def compute_surface_stats(history: pd.DataFrame, player: str, surface: str) -> O
         return None
     player = resolved
 
-    played = history[
-        ((history["winner_name"] == player) | (history["loser_name"] == player))
-        & (history["surface"].str.lower() == surface.lower())
-    ]
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
     if played.empty:
         return None
 
-    wins = int((played["winner_name"] == player).sum())
-    return {"matches": len(played), "wins": wins, "losses": len(played) - wins}
+    result: dict = {}
+    for surface_name in SURFACES:
+        subset = played[played["surface"].str.lower() == surface_name.lower()]
+        if subset.empty:
+            result[surface_name] = None
+        else:
+            wins = int((subset["winner_name"] == player).sum())
+            result[surface_name] = {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
+
+    return result
 
 
 def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime, lookback_days: int) -> Optional[dict]:
