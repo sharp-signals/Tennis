@@ -40,6 +40,7 @@ import requests
 from .config import (
     FIXTURES_CACHE_MAX_AGE_HOURS,
     FIXTURES_CACHE_PATH,
+    HISTORY_YEARS_TO_LOAD,
     RAPIDAPI_BASE,
     RAPIDAPI_HOST,
     TOURNAMENT_CACHE_PATH,
@@ -156,13 +157,13 @@ _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
     """
     A TennisMyLife é confirmadamente só ATP. Os jogos do QUADRO PRINCIPAL
-    (o que nos interessa — é onde estão os jogadores top do ranking) vêm
-    em ficheiros simples por ano, ex: "2026.csv", SEM qualquer prefixo
-    "atp" no nome. Descoberto na prática (16/07/2026): o filtro anterior
-    (por substring "atp" no nome) nunca apanhava estes ficheiros e caía
-    sempre em "atp_quali/*.csv" (só qualifying — por isso jogadores como
-    Sinner/Alcaraz, que entram direto no quadro principal, nunca
-    apareciam em H2H/forma nenhuma).
+    vêm em ficheiros simples por ano, ex: "2026.csv", SEM qualquer prefixo
+    "atp" no nome (descoberto na prática — ver histórico do projeto).
+
+    Carrega os últimos HISTORY_YEARS_TO_LOAD anos e junta tudo num único
+    DataFrame, para o H2H cobrir a carreira inteira de um jogador, não só
+    o ano corrente. Cada ano em falta é ignorado com aviso — não impede
+    os restantes de carregar.
 
     Ficheiros a evitar mesmo que existam: "*_challenger.csv" (nível
     Challenger, não é o que seguimos), "atp_quali/*" (qualifying),
@@ -177,21 +178,32 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
         resp.raise_for_status()
         files = resp.json().get("files", [])
         by_name = {f.get("name"): f for f in files}
-
-        year = datetime.now(timezone.utc).year
-        for candidate_year in (year, year - 1):
-            name = f"{candidate_year}.csv"
-            if name in by_name:
-                print(f"[info] ficheiro escolhido da TennisMyLife: {name}")
-                csv_resp = requests.get(by_name[name]["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
-                csv_resp.raise_for_status()
-                return pd.read_csv(io.StringIO(csv_resp.text))
-
-        print(f"[aviso] não encontrei ficheiro de quadro principal (ex: {year}.csv) na TennisMyLife.")
-        return None
     except Exception as exc:
-        print(f"[aviso] TennisMyLife indisponível para {tour}: {exc}")
+        print(f"[aviso] TennisMyLife (listagem de ficheiros) indisponível: {exc}")
         return None
+
+    current_year = datetime.now(timezone.utc).year
+    frames = []
+    for offset in range(HISTORY_YEARS_TO_LOAD):
+        year = current_year - offset
+        name = f"{year}.csv"
+        if name not in by_name:
+            print(f"[aviso] TennisMyLife não tem ficheiro para o ano {year} — a saltar.")
+            continue
+        try:
+            csv_resp = requests.get(by_name[name]["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
+            csv_resp.raise_for_status()
+            df_year = pd.read_csv(io.StringIO(csv_resp.text))
+            frames.append(df_year)
+        except Exception as exc:
+            print(f"[aviso] falha a carregar TennisMyLife {name}: {exc}")
+
+    if not frames:
+        return None
+
+    combined = pd.concat(frames, ignore_index=True)
+    print(f"[info] TennisMyLife: {len(frames)}/{HISTORY_YEARS_TO_LOAD} anos carregados, {len(combined)} jogos no total.")
+    return combined
 
 
 def _load_sackmann(tour: str, year: int) -> Optional[pd.DataFrame]:
