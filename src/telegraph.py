@@ -38,24 +38,81 @@ def _get_or_create_access_token() -> str:
     return result["access_token"]
 
 
+import re
+
+
+def _parse_inline(text: str) -> list:
+    """Converte **negrito** e *itálico* dentro de uma linha em nós do Telegra.ph."""
+    pattern = re.compile(r"\*\*(.+?)\*\*|\*(.+?)\*")
+    children: list = []
+    pos = 0
+    for m in pattern.finditer(text):
+        if m.start() > pos:
+            children.append(text[pos:m.start()])
+        if m.group(1) is not None:
+            children.append({"tag": "b", "children": [m.group(1)]})
+        else:
+            children.append({"tag": "i", "children": [m.group(2)]})
+        pos = m.end()
+    if pos < len(text):
+        children.append(text[pos:])
+    return children if children else [text]
+
+
 def _markdown_to_telegraph_nodes(markdown_text: str) -> list[dict]:
     """
-    Conversor minimalista: Telegra.ph usa uma lista de nós (Node) em vez de
-    Markdown puro. Isto trata só o essencial (parágrafos e cabeçalhos ##);
-    para formatação mais rica, considera trocar por uma lib como
-    `telegraph` (pip) que já faz Markdown -> nós.
+    Conversor de Markdown para os nós (Node) que o Telegra.ph espera.
+    Suporta: cabeçalhos (#/##/###/####  -> h3/h4, o Telegra.ph só tem
+    esses dois níveis), listas com "- "/"* ", **negrito**, *itálico*,
+    separadores (---), e parágrafos normais.
     """
-    nodes = []
-    for block in markdown_text.split("\n\n"):
-        block = block.strip()
-        if not block:
+    nodes: list[dict] = []
+    list_buffer: list[str] = []
+    paragraph_buffer: list[str] = []
+
+    def flush_list() -> None:
+        if list_buffer:
+            nodes.append({
+                "tag": "ul",
+                "children": [{"tag": "li", "children": _parse_inline(item)} for item in list_buffer],
+            })
+            list_buffer.clear()
+
+    def flush_paragraph() -> None:
+        if paragraph_buffer:
+            text = " ".join(paragraph_buffer).strip()
+            if text:
+                nodes.append({"tag": "p", "children": _parse_inline(text)})
+            paragraph_buffer.clear()
+
+    for raw_line in markdown_text.split("\n"):
+        line = raw_line.strip()
+
+        if not line:
+            flush_list()
+            flush_paragraph()
             continue
-        if block.startswith("## "):
-            nodes.append({"tag": "h4", "children": [block[3:]]})
-        elif block.startswith("# "):
-            nodes.append({"tag": "h3", "children": [block[2:]]})
+
+        if line.startswith("#### ") or line.startswith("### "):
+            flush_list(); flush_paragraph()
+            text = line.split(" ", 1)[1]
+            nodes.append({"tag": "h4", "children": _parse_inline(text)})
+        elif line.startswith("## ") or line.startswith("# "):
+            flush_list(); flush_paragraph()
+            text = line.split(" ", 1)[1]
+            nodes.append({"tag": "h3", "children": _parse_inline(text)})
+        elif line in ("---", "***", "___"):
+            flush_list(); flush_paragraph()
+            nodes.append({"tag": "hr"})
+        elif line.startswith("- ") or line.startswith("* "):
+            flush_paragraph()
+            list_buffer.append(line[2:])
         else:
-            nodes.append({"tag": "p", "children": [block]})
+            flush_list()
+            paragraph_buffer.append(line)
+
+    flush_list()
+    flush_paragraph()
     return nodes
 
 
