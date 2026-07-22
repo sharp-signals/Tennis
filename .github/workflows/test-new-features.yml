@@ -1,0 +1,47 @@
+name: Test New Features (sem RapidAPI)
+
+on:
+  workflow_dispatch: {}   # só corre manualmente, nunca por agendamento
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: DIAGNÓSTICO — código HTTP e corpo da resposta (raw.githubusercontent e jsDelivr)
+        run: |
+          echo "=== raw.githubusercontent.com ==="
+          curl -s -o /tmp/raw_body.txt -w "HTTP_STATUS: %{http_code}\n" \
+            "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master/atp_players.csv"
+          echo "--- corpo da resposta (primeiras linhas) ---"
+          head -c 1000 /tmp/raw_body.txt
+          echo ""
+          echo ""
+          echo "=== jsDelivr ==="
+          curl -s -o /tmp/jsdelivr_body.txt -w "HTTP_STATUS: %{http_code}\n" \
+            "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_atp@master/atp_players.csv"
+          echo "--- corpo da resposta (primeiras linhas) ---"
+          head -c 1000 /tmp/jsdelivr_body.txt
+        continue-on-error: true
+
+      - name: Testar novas funções (histórico, lesão, serviço/resposta, ranking, meteorologia)
+        run: python -m src.test_new_features
+
+      - name: Teste de ponta a ponta (jogo fictício → Claude → Telegraph → Telegram)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
+        run: python -m src.test_dry_run
