@@ -154,36 +154,41 @@ _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 
 
 def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
-    """tour: 'atp' ou 'wta'. Descarrega o CSV de JOGOS mais recente disponível."""
+    """
+    A TennisMyLife é confirmadamente só ATP. Os jogos do QUADRO PRINCIPAL
+    (o que nos interessa — é onde estão os jogadores top do ranking) vêm
+    em ficheiros simples por ano, ex: "2026.csv", SEM qualquer prefixo
+    "atp" no nome. Descoberto na prática (16/07/2026): o filtro anterior
+    (por substring "atp" no nome) nunca apanhava estes ficheiros e caía
+    sempre em "atp_quali/*.csv" (só qualifying — por isso jogadores como
+    Sinner/Alcaraz, que entram direto no quadro principal, nunca
+    apareciam em H2H/forma nenhuma).
+
+    Ficheiros a evitar mesmo que existam: "*_challenger.csv" (nível
+    Challenger, não é o que seguimos), "atp_quali/*" (qualifying),
+    "ATP_Database.csv" (não é histórico de jogos), "ongoing_tourneys.csv"
+    / "challenger_ongoing_tourneys.csv" (formato diferente, não jogos).
+    """
+    if tour != "atp":
+        return None  # confirmado: sem WTA nesta fonte
+
     try:
         resp = requests.get(TENNISMYLIFE_FILES_ENDPOINT, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         files = resp.json().get("files", [])
-        print(f"[info] TennisMyLife devolveu {len(files)} ficheiros no total (todos os tours).")
-        print(f"[info] TODOS os nomes: {[f.get('name') for f in files]}")
+        by_name = {f.get("name"): f for f in files}
 
-        candidates = [
-            f for f in files
-            if tour in f.get("name", "").lower() and f.get("name", "").endswith(".csv")
-        ]
-        if not candidates:
-            return None
+        year = datetime.now(timezone.utc).year
+        for candidate_year in (year, year - 1):
+            name = f"{candidate_year}.csv"
+            if name in by_name:
+                print(f"[info] ficheiro escolhido da TennisMyLife: {name}")
+                csv_resp = requests.get(by_name[name]["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
+                csv_resp.raise_for_status()
+                return pd.read_csv(io.StringIO(csv_resp.text))
 
-        print(f"[info] ficheiros candidatos da TennisMyLife para '{tour}': {[f['name'] for f in candidates]}")
-
-        # Preferir explicitamente ficheiros de JOGOS ("match"/"matches" no
-        # nome) — a ordenação alfabética simples podia escolher por engano
-        # um ficheiro de jogadores/rankings que também comece por "atp"/"wta"
-        # e fique depois na ordem alfabética (ex: "atp_players.csv" > "atp_matches.csv").
-        match_candidates = [f for f in candidates if "match" in f["name"].lower()]
-        pool = match_candidates if match_candidates else candidates
-        pool.sort(key=lambda f: f["name"])
-        latest = pool[-1]
-        print(f"[info] ficheiro escolhido da TennisMyLife para '{tour}': {latest['name']}")
-
-        csv_resp = requests.get(latest["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
-        csv_resp.raise_for_status()
-        return pd.read_csv(io.StringIO(csv_resp.text))
+        print(f"[aviso] não encontrei ficheiro de quadro principal (ex: {year}.csv) na TennisMyLife.")
+        return None
     except Exception as exc:
         print(f"[aviso] TennisMyLife indisponível para {tour}: {exc}")
         return None
