@@ -87,6 +87,13 @@ FATIGUE_LOOKBACK_DAYS = 4
 SERVE_RETURN_STATS_MATCHES = 10
 INJURY_SIGNAL_LOOKBACK_MATCHES = 5
 
+# Quantos anos de histórico carregar da TennisMyLife, para o H2H cobrir a
+# carreira inteira de um jogador ativo, não só o ano corrente. 20 anos
+# cobre com folga a carreira mais longa de qualquer jogador ainda ativo
+# no circuito (16/07/2026: corrigido depois de notar que só carregávamos
+# o ano corrente, o que dava H2H incompletos).
+HISTORY_YEARS_TO_LOAD = 20
+
 # Pedir meteorologia só para jogos ao ar livre. O matchstat usa prefixo
 # "I." no nome do piso para indoor (ex: "I.hard") — qualquer piso que
 # comece por "I." é tratado como indoor e não pede meteorologia.
