@@ -47,9 +47,21 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
    para concluir; {FLAG_ROUTINE} = sem sinais especiais)
 - "summary_line": uma frase curta (máx. ~140 caracteres) para o resumo do
   Telegram, em português
-- "full_report_markdown": análise completa em Markdown (H2H, forma, piso,
-  fadiga, leitura do mercado, e nota explícita de que dados faltaram, se for
-  o caso) — este texto vai para uma página pública no Telegra.ph
+- "full_report_markdown": análise completa em Markdown, otimizada para
+  leitura rápida (não um texto corrido). Estrutura obrigatória:
+  1. Começa SEMPRE com "## 🔑 Pontos-chave" seguido de 3-5 bullets curtos
+     (uma linha cada) com os sinais mais importantes deste jogo — é a
+     parte que a maioria das pessoas vai mesmo ler.
+  2. Depois, uma secção por tipo de dado (H2H, Forma Recente, Piso,
+     Serviço/Resposta, Fadiga, Lesão, Meteorologia, Mercado), cada uma
+     com "### " como cabeçalho.
+  3. Dentro de cada secção, usa bullets (não parágrafos densos) e põe em
+     **negrito** os números/factos mais importantes (ex: "Alcaraz lidera
+     **7-3** em piso duro").
+  4. Termina com "### 📝 Nota Final" com 1-2 frases sobre o que falta ou
+     as maiores incertezas, se aplicável.
+  Nunca inventes números — todas as regras acima sobre dados em falta
+  continuam a aplicar-se dentro deste formato.
 
 Responde APENAS com o JSON, sem texto antes ou depois, sem blocos de código.
 """
