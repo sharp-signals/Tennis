@@ -159,6 +159,9 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
         resp = requests.get(TENNISMYLIFE_FILES_ENDPOINT, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         files = resp.json().get("files", [])
+        print(f"[info] TennisMyLife devolveu {len(files)} ficheiros no total (todos os tours).")
+        print(f"[info] TODOS os nomes: {[f.get('name') for f in files]}")
+
         candidates = [
             f for f in files
             if tour in f.get("name", "").lower() and f.get("name", "").endswith(".csv")
