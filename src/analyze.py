@@ -88,36 +88,41 @@ piso especificamente.
 Os campos `set1_comeback_stats_a`/`set1_comeback_stats_b` mostram, separado
 por melhor-de-3 e melhor-de-5, em quantos jogos (de entre os que o
 jogador perdeu o 1º set) ele ainda assim ganhou o jogo — é um dado real,
-não uma previsão. A pessoa que lê este relatório é ex-tenista e vai usar
-isto durante o jogo AO VIVO (não é para apostar automaticamente): quando
-o resultado do 1º set sair, ela decide por si própria se a situação
-parece uma reviravolta de mercado que vale a pena. Por isso, inclui
-SEMPRE no relatório uma secção final "### 🎾 Para aplicares em live" com:
-- A taxa de recuperação histórica de cada jogador (se disponível),
-  no formato de jogo correto (melhor-de-3 ou melhor-de-5, conforme o tier).
-- Um lembrete curto de que o número sozinho não chega — como perdeu o
-  set (competitivo vs. blowout), estado de serviço, e o que a pessoa
-  souber sobre o jogador (mentalidade, lesões recentes) pesam mais do
-  que a taxa histórica isolada.
-Nunca inventes uma recomendação de "aposta" — só contexto para a pessoa
-decidir.
+não uma previsão.
 
-Quatro campos adicionais dão contexto extra para quem lê aplicar o seu
-próprio julgamento:
+Quatro campos adicionais dão contexto extra:
 - `handedness_matchup_*`: taxa de vitória contra canhotos vs destros
-  especificamente — menciona se houver uma diferença notável (ex: muito
-  mais fraco contra canhotos), sobretudo se o adversário deste jogo for
-  canhoto.
+  especificamente.
 - `layoff_return_stats_*`: como o jogador se sai historicamente no
-  primeiro jogo depois de uma paragem de 60+ dias — relevante sobretudo
-  se o `fatigue_signal_*` mostrar um hiato longo.
+  primeiro jogo depois de uma paragem de 60+ dias.
 - `deciding_set_stats_*`: taxa de vitória quando o jogo vai até ao set
-  decisivo (3º em Bo3, 5º em Bo5) — sinal de quem é forte "na hora da
-  verdade".
-- `round_stage_stats_*`: rondas iniciais vs finais — sinal de quem é
-  inconsistente cedo mas forte mais tarde, ou o inverso.
-Inclui os que forem relevantes (não `null`) na secção final "Para
-aplicares em live" já pedida acima, junto com o `set1_comeback_stats_*`.
+  decisivo (3º em Bo3, 5º em Bo5).
+- `round_stage_stats_*`: rondas iniciais vs finais.
+
+A pessoa que lê isto é ex-tenista e vai aplicar isto AO VIVO, com o
+próprio julgamento — nunca decidas por ela nem uses a palavra "aposta"
+ou "recomendo entrar". Por isso, a secção final do relatório tem de ser
+"### 🎾 Cenários para live", estruturada como uma lista de CENÁRIOS
+CONDICIONAIS específicos a este jogo (não uma lista plana de números).
+Cada cenário relevante segue este formato:
+
+**Se [condição concreta, ex: "Alcaraz perder o 1º set"]:** [o dado
+histórico relevante desse jogador para essa situação, com a amostra
+(ex: "38.5% em 78 jogos") e um lembrete de que o número sozinho não
+chega — como perdeu o set, estado do serviço em tempo real, e o que a
+pessoa souber do jogador pesam mais do que a taxa isolada].
+
+Só inclui cenários para os quais existam dados relevantes deste jogo
+(não inventes cenários genéricos sem suporte nos dados fornecidos —
+ex: não menciones handedness se ambos forem destros). Cenários possíveis,
+conforme os dados disponíveis: perder o 1º set, o jogo chegar ao set
+decisivo, o jogador regressar de uma paragem longa, e — se `market_odds_decimal`
+existir e divergir claramente da leitura dos outros dados — um cenário
+pré-jogo assinalando essa divergência (sem nunca recomendar apostar,
+só "vale a pena confirmar antes do início"). **Se genuinamente não
+houver nenhum cenário com dados de suporte suficientes, escreve
+explicitamente "Sem cenários com dados suficientes para assinalar
+neste jogo" em vez de forçar algo fraco.**
 
 Responde APENAS com o JSON, sem texto antes ou depois, sem blocos de código.
 """
