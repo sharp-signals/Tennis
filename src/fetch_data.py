@@ -85,7 +85,7 @@ TENNISMYLIFE_FILES_ENDPOINT = "https://stats.tennismylife.org/api/data-files"
 SACKMANN_RAW_BASE = "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_atp@master"
 SACKMANN_RAW_BASE_WTA = "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_wta@master"
 
-TENNISDATA_COUK_URL_TEMPLATE = "http://www.tennis-data.co.uk/{year}/{filename}"
+
 
 REQUEST_TIMEOUT = 20
 
@@ -236,13 +236,18 @@ def _load_sackmann(tour: str, year: int) -> Optional[pd.DataFrame]:
 
 
 def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
-    """Terceira fonte de cruzamento: CSV semanal com odds + piso."""
-    filename = "atp.csv" if tour == "atp" else "wta.csv"
-    url = TENNISDATA_COUK_URL_TEMPLATE.format(year=year, filename=filename)
+    """
+    Terceira fonte de cruzamento: ficheiro Excel (não CSV!) anual com
+    resultados + odds + piso. Formato real confirmado (27/07/2026): o
+    ATP fica em "{year}/{year}.xlsx" e o WTA em "{year}w/{year}.xlsx" —
+    nada de "atp.csv"/"wta.csv" (isso era um palpite errado anterior).
+    """
+    folder = str(year) if tour == "atp" else f"{year}w"
+    url = f"http://www.tennis-data.co.uk/{folder}/{year}.xlsx"
     try:
         resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
-        return pd.read_csv(io.StringIO(resp.text), encoding="latin1")
+        return pd.read_excel(io.BytesIO(resp.content))
     except Exception as exc:
         print(f"[aviso] tennis-data.co.uk indisponível para {tour} {year}: {exc}")
         return None
