@@ -14,10 +14,17 @@ não-oficial tipo Sofascore):
 2. The Odds API      -> fonte SECUNDÁRIA/opcional, só para odds de mercado
    quando o jogo também aparecer lá (por nomes dos jogadores). Nunca decide
    que jogos existem — isso sub-representava torneios menores (ex: Umag).
-3. TennisMyLife       -> histórico ATP apenas (MIT license, dataset "vivo",
-                          inclui torneio da semana atual). Confirmado
+3. TennisMyLife       -> histórico ATP apenas (dataset "vivo", inclui
+                          torneio da semana atual). Confirmado
                           (15/07/2026): é uma base de dados só de ATP, não
                           tem WTA — por isso o WTA vai direto ao Sackmann.
+                          NOTA sobre licença: a documentação deles refere-se
+                          como inspirada no tennis_atp do Sackmann (CC
+                          BY-NC-SA — não comercial). Não confirmámos os
+                          termos exatos de uso da própria TennisMyLife; para
+                          uso pessoal como este projeto não é preocupação,
+                          mas antes de qualquer uso comercial, ler os termos
+                          deles diretamente em stats.tennismylife.org.
 4. Jeff Sackmann GitHub -> histórico ATP (fallback) e WTA (fonte principal
                           para este tour). Licença CC BY-NC-SA.
 5. tennis-data.co.uk  -> CSV semanal com resultados + odds + piso,
