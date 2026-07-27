@@ -7,6 +7,8 @@ jobs:
   backtest:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write   # necessário para gravar o resultado no repo
     steps:
       - uses: actions/checkout@v4
 
@@ -20,3 +22,11 @@ jobs:
 
       - name: Correr o backtest
         run: python -m src.backtest
+
+      - name: Gravar resultado do backtest no repositório
+        run: |
+          git config user.name "tennis-bot"
+          git config user.email "actions@github.com"
+          git add data/backtest_results/
+          git commit -m "chore: resultado do backtest [skip ci]" || echo "Sem alterações a gravar."
+          git push
