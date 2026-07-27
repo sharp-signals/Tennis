@@ -265,6 +265,7 @@ def run() -> None:
             "market_correct": 0, "market_total": 0,
             "agrees": 0, "disagrees": 0,
             "signal_correct_disagree": 0, "market_correct_disagree": 0,
+            "sum_implied_prob_our_pick_disagree": 0.0,
         }
         for name in signal_names
     }
@@ -328,6 +329,10 @@ def run() -> None:
                 s["agrees"] += 1
             else:
                 s["disagrees"] += 1
+                # Probabilidade implícita do NOSSO pick (não do mercado) —
+                # é o número certo para comparar, não um "50%" genérico.
+                our_pick_implied_prob = implied_prob_winner if our_signal_favors_winner else (1 - implied_prob_winner)
+                s["sum_implied_prob_our_pick_disagree"] += our_pick_implied_prob
                 if our_signal_favors_winner:
                     s["signal_correct_disagree"] += 1
                 else:
@@ -370,22 +375,34 @@ def run() -> None:
         if s["disagrees"] > 0:
             pct_signal = 100 * s["signal_correct_disagree"] / s["disagrees"]
             pct_market = 100 * s["market_correct_disagree"] / s["disagrees"]
+            avg_implied_prob_our_pick = 100 * s["sum_implied_prob_our_pick_disagree"] / s["disagrees"]
             log(f"  Nos casos de DIVERGÊNCIA — o nosso sinal teve razão: "
                 f"{s['signal_correct_disagree']}/{s['disagrees']} ({pct_signal:.1f}%)")
             log(f"  Nos casos de DIVERGÊNCIA — o mercado teve razão:      "
                 f"{s['market_correct_disagree']}/{s['disagrees']} ({pct_market:.1f}%)")
+            log(f"  Probabilidade IMPLÍCITA média do nosso pick (segundo as odds): {avg_implied_prob_our_pick:.1f}%")
+            edge_vs_market = pct_signal - avg_implied_prob_our_pick
+            if edge_vs_market > 0:
+                log(f"  >>> O nosso pick ganhou MAIS vezes ({pct_signal:.1f}%) do que a odd implicava "
+                    f"({avg_implied_prob_our_pick:.1f}%) — diferença de +{edge_vs_market:.1f} p.p. "
+                    "Isto É o teste certo de vantagem, não a comparação com 50%.")
+            else:
+                log(f"  >>> O nosso pick ganhou MENOS vezes ({pct_signal:.1f}%) do que a odd implicava "
+                    f"({avg_implied_prob_our_pick:.1f}%) — diferença de {edge_vs_market:.1f} p.p. Sem vantagem.")
         else:
             log("  Sem casos de divergência suficientes para este sinal.")
 
     log(f"\n{'=' * 60}")
     log(
-        "\nInterpretação: para cada sinal, ~50% nos casos de divergência é o que esperaríamos "
-        "por puro acaso. Valores consistentemente acima de 50%, em amostra grande, seriam o "
-        "primeiro indício real de vantagem nesse sinal especificamente — mas não prova lucro "
-        "(isso exigiria também simular custos, margem das casas, e validar fora desta amostra). "
-        "Testar os 4 sinais ao mesmo tempo (em vez de só o combinado) aumenta ligeiramente o "
-        "risco de encontrar uma divergência positiva por acaso (múltiplos testes) — um resultado "
-        "isolado acima de 50% num só sinal, sem repetir em dados novos, não é prova suficiente."
+        "\nInterpretação CORRIGIDA: o teste certo não é 'acima de 50%?' — os casos de "
+        "divergência tendem a ser jogos mais equilibrados (repara que a % de acerto do "
+        "mercado cai face à média geral), por isso o 'azarão' já tem probabilidade implícita "
+        "abaixo de 50% à partida. O teste correto é comparar a taxa de acerto real do nosso "
+        "pick com a PRÓPRIA probabilidade implícita das odds para esse pick — ver linha "
+        "'>>> ' em cada sinal acima. Vantagem real = ganhar mais vezes do que a odd do nosso "
+        "próprio pick implicava, não ultrapassar 50%. Mesmo assim, isto continua a não provar "
+        "lucro (falta simular custos/margem e validar fora desta amostra), e testar 4 sinais "
+        "em vez de 1 aumenta o risco de um deles parecer positivo por acaso."
     )
 
     log("\nTeste concluído.")
