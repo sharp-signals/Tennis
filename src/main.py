@@ -109,19 +109,27 @@ def _deduplicate_matches(matches: list[dict]) -> list[dict]:
     real ao longo das várias páginas da paginação. Deduplicamos pelo
     campo 'id' do próprio matchstat (identificador único do jogo).
     """
-    seen_ids = set()
+    seen_ids: dict = {}
     deduplicated = []
+    duplicate_examples = []
+
     for m in matches:
         match_id = m.get("id")
         if match_id is not None and match_id in seen_ids:
+            duplicate_examples.append(
+                f"id={match_id}, date_original={seen_ids[match_id]}, date_repetido={m.get('date')}"
+            )
             continue
         if match_id is not None:
-            seen_ids.add(match_id)
+            seen_ids[match_id] = m.get("date")
         deduplicated.append(m)
 
     removed = len(matches) - len(deduplicated)
     if removed > 0:
         print(f"[aviso] {removed} jogo(s) duplicado(s) removido(s) (mesmo id do matchstat repetido).")
+        print("[diagnóstico] primeiros 5 exemplos de duplicados (para perceber se vêm da mesma data ou de datas diferentes):")
+        for example in duplicate_examples[:5]:
+            print(f"  - {example}")
     return deduplicated
 
 
