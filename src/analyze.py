@@ -71,6 +71,13 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
   Nunca inventes números — todas as regras acima sobre dados em falta
   continuam a aplicar-se dentro deste formato.
 
+O campo `fatigue_signal_*` agora tem vários indicadores: `days_since_last_match`,
+`matches_last_3d`/`_7d`/`_14d`, `minutes_played_last_7d`, `sets_played_last_7d`.
+Usa o conjunto para avaliar fadiga (ex: poucos dias de descanso + muitos
+sets/minutos recentes = sinal de fadiga real; campos individuais podem
+vir `null` se a fonte não tiver essa coluna, mas os outros continuam
+válidos).
+
 Os campos `surface_stats_a`/`surface_stats_b` trazem o perfil do jogador
 nos TRÊS pisos (Hard/Clay/Grass), não só no piso deste jogo — usa isto
 para comentar especialização (ex: muito mais forte em terra do que em
