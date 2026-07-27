@@ -204,8 +204,8 @@ def _build_match_payload(match: dict) -> dict:
     injury_b = fetch_data.compute_injury_signal(history, player_b, INJURY_SIGNAL_LOOKBACK_MATCHES)
     serve_a = fetch_data.compute_serve_return_stats(history, player_a, SERVE_RETURN_STATS_MATCHES)
     serve_b = fetch_data.compute_serve_return_stats(history, player_b, SERVE_RETURN_STATS_MATCHES)
-    rank_a = fetch_data.get_player_ranking(tour, player_a)
-    rank_b = fetch_data.get_player_ranking(tour, player_b)
+    rank_a = fetch_data.get_player_ranking(history, player_a)
+    rank_b = fetch_data.get_player_ranking(history, player_b)
     weather = _get_weather_for_match(match, start)
 
     return {
