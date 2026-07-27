@@ -521,6 +521,83 @@ def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime) ->
     return result
 
 
+def _first_set_winner_is_match_winner(score) -> Optional[bool]:
+    """
+    Lê o primeiro set da coluna 'score' (ex: '6-4 3-6 6-2', sempre escrito
+    da perspetiva de quem GANHOU o jogo). Devolve True se quem ganhou o
+    jogo também ganhou o 1º set, False se perdeu o 1º set mas recuperou,
+    None se não for possível interpretar (ex: 'W/O', formato inesperado).
+    """
+    if not isinstance(score, str) or not score.strip():
+        return None
+    first_set = score.strip().split()[0]
+    first_set_clean = first_set.split("(")[0]  # remove tiebreak, ex: "7-6(4)" -> "7-6"
+    parts = first_set_clean.split("-")
+    if len(parts) != 2:
+        return None
+    try:
+        winner_games, loser_games = int(parts[0]), int(parts[1])
+    except ValueError:
+        return None
+    if winner_games == loser_games:
+        return None
+    return winner_games > loser_games
+
+
+def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    Entre os jogos em que o jogador PERDEU o 1º set, em quantos ainda
+    assim ganhou o jogo? Separado por melhor-de-3 (Masters/500) e
+    melhor-de-5 (Slams), porque a taxa de recuperação é estruturalmente
+    diferente nos dois formatos. None se não houver dados suficientes.
+    """
+    required_cols = {"score", "best_of"}
+    if history.empty or not required_cols.issubset(history.columns):
+        return None
+
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    if played.empty:
+        return None
+
+    result: dict = {}
+    for best_of, label in ((3, "bo3"), (5, "bo5")):
+        subset = played[played["best_of"] == best_of]
+        lost_set1 = 0
+        lost_set1_won_match = 0
+
+        for _, row in subset.iterrows():
+            set1_winner_is_match_winner = _first_set_winner_is_match_winner(row.get("score"))
+            if set1_winner_is_match_winner is None:
+                continue
+            is_match_winner = row.get("winner_name") == player
+            player_lost_set1 = (
+                (is_match_winner and not set1_winner_is_match_winner)
+                or (not is_match_winner and set1_winner_is_match_winner)
+            )
+            if player_lost_set1:
+                lost_set1 += 1
+                if is_match_winner:
+                    lost_set1_won_match += 1
+
+        if lost_set1 > 0:
+            result[label] = {
+                "matches_lost_set1": lost_set1,
+                "matches_lost_set1_won_overall": lost_set1_won_match,
+                "comeback_rate_pct": round(100 * lost_set1_won_match / lost_set1, 1),
+            }
+        else:
+            result[label] = None
+
+    if result.get("bo3") is None and result.get("bo5") is None:
+        return None
+    return result
+
+
 def compute_injury_signal(history: pd.DataFrame, player: str, lookback_matches: int = 5) -> Optional[dict]:
     """
     Sinal aproximado de lesão a partir de desistências/walkovers reais nos
@@ -682,19 +759,34 @@ def get_player_ranking(history: pd.DataFrame, player: str) -> Optional[dict]:
 # --------------------------------------------------------------------- #
 # 6. Meteorologia (Open-Meteo — gratuita, documentada, sem key)
 # --------------------------------------------------------------------- #
+_GEOCODE_CACHE: dict = {}
+
+
 def geocode_location(place_name: str) -> Optional[dict]:
-    """Devolve {'lat', 'lon'} para um nome de cidade/torneio, ou None."""
+    """
+    Devolve {'lat', 'lon'} para um nome de cidade/torneio, ou None.
+    Cacheado em memória durante a execução — vários jogos do mesmo
+    torneio partilham a mesma cidade, não vale a pena repetir o pedido
+    (e reduz o risco de timeout/rate-limit por pedidos repetidos seguidos).
+    """
+    if place_name in _GEOCODE_CACHE:
+        return _GEOCODE_CACHE[place_name]
+
     url = "https://geocoding-api.open-meteo.com/v1/search"
     try:
         resp = requests.get(url, params={"name": place_name, "count": 1}, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         results = resp.json().get("results")
-        if not results:
-            return None
-        return {"lat": results[0]["latitude"], "lon": results[0]["longitude"]}
+        coords = {"lat": results[0]["latitude"], "lon": results[0]["longitude"]} if results else None
+        _GEOCODE_CACHE[place_name] = coords
+        return coords
     except requests.RequestException as exc:
         print(f"[aviso] falha a geocodificar '{place_name}': {exc}")
+        # não cacheamos falhas — pode ser um timeout pontual, vale a pena tentar outra vez no próximo jogo
         return None
+
+
+_WEATHER_CACHE: dict = {}
 
 
 def get_weather_forecast(lat: float, lon: float, match_date: "datetime") -> Optional[dict]:
@@ -702,31 +794,41 @@ def get_weather_forecast(lat: float, lon: float, match_date: "datetime") -> Opti
     Previsão para o dia do jogo (temperatura máx/mín, vento, precipitação).
     Só faz sentido para jogos ao ar livre — quem chama decide se pede isto
     consoante o piso ('I.hard' = indoor, não vale a pena pedir).
+    Cacheado por (lat, lon, dia) — vários jogos no mesmo torneio/dia
+    partilham a mesma previsão, não vale a pena repetir o pedido.
     """
+    date_str = match_date.strftime("%Y-%m-%d")
+    cache_key = (round(lat, 2), round(lon, 2), date_str)
+    if cache_key in _WEATHER_CACHE:
+        return _WEATHER_CACHE[cache_key]
+
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
         "longitude": lon,
         "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max",
         "timezone": "UTC",
-        "start_date": match_date.strftime("%Y-%m-%d"),
-        "end_date": match_date.strftime("%Y-%m-%d"),
+        "start_date": date_str,
+        "end_date": date_str,
     }
-    try:
-        resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        daily = resp.json().get("daily")
-        if not daily or not daily.get("time"):
-            return None
-        return {
-            "temp_max_c": daily["temperature_2m_max"][0],
-            "temp_min_c": daily["temperature_2m_min"][0],
-            "precipitation_mm": daily["precipitation_sum"][0],
-            "wind_max_kmh": daily["windspeed_10m_max"][0],
-        }
-    except (requests.RequestException, KeyError, IndexError) as exc:
-        print(f"[aviso] falha a obter meteorologia: {exc}")
-        return None
+    for attempt in (1, 2):
+        try:
+            resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            daily = resp.json().get("daily")
+            if not daily or not daily.get("time"):
+                return None
+            result = {
+                "temp_max_c": daily["temperature_2m_max"][0],
+                "temp_min_c": daily["temperature_2m_min"][0],
+                "precipitation_mm": daily["precipitation_sum"][0],
+                "wind_max_kmh": daily["windspeed_10m_max"][0],
+            }
+            _WEATHER_CACHE[cache_key] = result
+            return result
+        except (requests.RequestException, KeyError, IndexError) as exc:
+            print(f"[aviso] falha a obter meteorologia, tentativa {attempt}: {exc}")
+    return None
 
 
 # --------------------------------------------------------------------- #
