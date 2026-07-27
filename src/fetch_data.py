@@ -41,6 +41,7 @@ from .config import (
     FIXTURES_CACHE_MAX_AGE_HOURS,
     FIXTURES_CACHE_PATH,
     HISTORY_YEARS_TO_LOAD,
+    MAX_FIXTURE_PAGES,
     RAPIDAPI_BASE,
     RAPIDAPI_HOST,
     SURFACES,
@@ -436,12 +437,17 @@ def compute_surface_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
     return result
 
 
-def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime, lookback_days: int) -> Optional[dict]:
+def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime) -> Optional[dict]:
     """
-    Sinal aproximado de fadiga: quantos jogos o jogador disputou nos
-    últimos `lookback_days` antes da data do jogo. Não é uma métrica
-    oficial de "dias consecutivos" (isso exigiria o calendário completo
-    do torneio) — é uma aproximação honesta a partir do que temos.
+    Sinal de fadiga mais rico do que só "jogos nos últimos N dias":
+    - dias desde o último jogo
+    - jogos nos últimos 3, 7 e 14 dias
+    - minutos jogados nos últimos 7 dias (quando a fonte tiver a coluna)
+    - sets jogados nos últimos 7 dias (estimado a partir da coluna 'score')
+
+    Continua a ser uma aproximação (não é o calendário exato do torneio),
+    mas mais informativo do que a versão anterior. Campos individuais
+    podem ficar None se a fonte não tiver a coluna correspondente.
     """
     if history.empty or "tourney_date" not in history.columns:
         return None
@@ -464,10 +470,43 @@ def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime, lo
     if match_date_naive.tzinfo is not None:
         match_date_naive = match_date_naive.tz_localize(None)
 
-    window_start = match_date_naive - pd.Timedelta(days=lookback_days)
-    recent = played[(played["tourney_date"] >= window_start) & (played["tourney_date"] < match_date_naive)]
+    past_matches = played[played["tourney_date"] < match_date_naive]
 
-    return {"matches_last_n_days": len(recent), "lookback_days": lookback_days}
+    days_since_last_match = None
+    if not past_matches.empty:
+        last_date = past_matches["tourney_date"].max()
+        if pd.notna(last_date):
+            days_since_last_match = int((match_date_naive - last_date).days)
+
+    result: dict = {"days_since_last_match": days_since_last_match}
+
+    for window_days in (3, 7, 14):
+        window_start = match_date_naive - pd.Timedelta(days=window_days)
+        subset = played[(played["tourney_date"] >= window_start) & (played["tourney_date"] < match_date_naive)]
+        result[f"matches_last_{window_days}d"] = len(subset)
+
+    # Minutos e sets jogados nos últimos 7 dias (só se a fonte tiver as colunas)
+    window_7d_start = match_date_naive - pd.Timedelta(days=7)
+    subset_7d = played[(played["tourney_date"] >= window_7d_start) & (played["tourney_date"] < match_date_naive)]
+
+    minutes_played_7d = None
+    if "minutes" in subset_7d.columns and not subset_7d.empty:
+        valid_minutes = pd.to_numeric(subset_7d["minutes"], errors="coerce").dropna()
+        if not valid_minutes.empty:
+            minutes_played_7d = int(valid_minutes.sum())
+    result["minutes_played_last_7d"] = minutes_played_7d
+
+    def _count_sets(score) -> int:
+        if not isinstance(score, str) or not score.strip():
+            return 0
+        return len([tok for tok in score.split() if "-" in tok and any(ch.isdigit() for ch in tok)])
+
+    sets_played_7d = None
+    if "score" in subset_7d.columns and not subset_7d.empty:
+        sets_played_7d = int(subset_7d["score"].apply(_count_sets).sum())
+    result["sets_played_last_7d"] = sets_played_7d
+
+    return result
 
 
 def compute_injury_signal(history: pd.DataFrame, player: str, lookback_matches: int = 5) -> Optional[dict]:
@@ -756,19 +795,38 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
         return []
 
     url = f"{RAPIDAPI_BASE}/{tour}/fixtures/{date_str}"
+    all_data: list[dict] = []
     try:
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json().get("data", [])
-        for match in data:
+        page = 1
+        while True:
+            params = {"page": page} if page > 1 else None
+            resp = requests.get(url, headers=_RAPIDAPI_HEADERS, params=params, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            payload = resp.json()
+            page_data = payload.get("data", [])
+            all_data.extend(page_data)
+
+            if not payload.get("hasNextPage"):
+                break
+            page += 1
+            if page > MAX_FIXTURE_PAGES:
+                print(
+                    f"[aviso] fixtures {cache_key}: atingido o limite de {MAX_FIXTURE_PAGES} páginas "
+                    "(hasNextPage ainda true) — pode haver jogos por buscar, mas paramos para poupar quota."
+                )
+                break
+
+        for match in all_data:
             match["_tour"] = tour
 
         _fixtures_cache[cache_key] = {
             "fetched_at": datetime.now(timezone.utc).isoformat(),
-            "data": data,
+            "data": all_data,
         }
         _fixtures_cache_dirty = True
-        return data
+        if len(all_data) > 0:
+            print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) em {page} página(s).")
+        return all_data
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter fixtures ({tour}, {date_str}): {exc}")
         return []
