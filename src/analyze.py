@@ -104,15 +104,22 @@ def analyze_match(match_data: dict) -> dict:
 
     response = _client.messages.create(
         model=CLAUDE_MODEL,
-        # 4000 em vez de 1500: com dados ricos (H2H, stats de piso,
-        # serviço/resposta, lesão) o relatório completo pode facilmente
-        # passar de 1500 tokens, cortando o JSON a meio e partindo o parse.
-        max_tokens=4000,
+        # 6000 (era 4000, era 1500 antes disso): cada vez que acrescentamos
+        # mais dados (ex: fadiga rica), o relatório completo fica mais
+        # longo. Margem generosa para não voltarmos a cortar o JSON a meio.
+        max_tokens=6000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
 
     raw_text = "".join(block.text for block in response.content if block.type == "text").strip()
+
+    if response.stop_reason == "max_tokens":
+        print(
+            "[aviso] a resposta do Claude foi CORTADA por limite de tokens "
+            f"(stop_reason=max_tokens) — considera aumentar max_tokens ainda mais, "
+            f"ou pedir um relatório mais conciso no prompt."
+        )
 
     # Blindagem: se o modelo, apesar da instrução, envolver a resposta em
     # blocos de código markdown (```json ... ```), removemos antes de tentar
