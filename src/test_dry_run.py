@@ -54,8 +54,8 @@ def build_fake_match_payload() -> dict:
         "injury_signal_b": fetch_data.compute_injury_signal(history, TEST_PLAYER_B),
         "serve_return_stats_a": fetch_data.compute_serve_return_stats(history, TEST_PLAYER_A, 10),
         "serve_return_stats_b": fetch_data.compute_serve_return_stats(history, TEST_PLAYER_B, 10),
-        "ranking_a": fetch_data.get_player_ranking(tour, TEST_PLAYER_A),
-        "ranking_b": fetch_data.get_player_ranking(tour, TEST_PLAYER_B),
+        "ranking_a": fetch_data.get_player_ranking(history, TEST_PLAYER_A),
+        "ranking_b": fetch_data.get_player_ranking(history, TEST_PLAYER_B),
         "weather": None,  # não aplicável a um torneio fictício
     }
 
