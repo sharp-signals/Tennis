@@ -69,11 +69,15 @@ MIN_EDGE_TO_COUNT = 5.0
 
 
 def _fetch_tennisdata_year(year: int):
-    url = f"http://www.tennis-data.co.uk/{year}/atp.csv"
+    """
+    Formato real confirmado (27/07/2026): ficheiro Excel, não CSV —
+    "{year}/{year}.xlsx" para o ATP.
+    """
+    url = f"http://www.tennis-data.co.uk/{year}/{year}.xlsx"
     try:
         resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
-        df = pd.read_csv(io.StringIO(resp.text), encoding="latin1")
+        df = pd.read_excel(io.BytesIO(resp.content))
         return df
     except Exception as exc:
         print(f"[aviso] tennis-data.co.uk indisponível para {year}: {exc}")
@@ -116,6 +120,9 @@ def _implied_prob_winner(odd_winner: float, odd_loser: float) -> float:
 
 
 def _parse_date(value):
+    if isinstance(value, (pd.Timestamp, datetime)):
+        dt = value if isinstance(value, datetime) else value.to_pydatetime()
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
     for fmt in ("%d/%m/%Y", "%d/%m/%y", "%Y-%m-%d"):
         try:
             return datetime.strptime(str(value).strip(), fmt).replace(tzinfo=timezone.utc)
