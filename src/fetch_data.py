@@ -235,6 +235,36 @@ def _load_sackmann(tour: str, year: int) -> Optional[pd.DataFrame]:
     return None
 
 
+def _normalize_tennisdata_couk(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    O tennis-data.co.uk usa nomes de colunas diferentes da TennisMyLife/
+    Sackmann (ex: 'Winner' em vez de 'winner_name', 'Date' como datetime
+    em vez de 'tourney_date' no formato YYYYMMDD). Sem esta normalização,
+    todas as funções de compute_* (que procuram 'winner_name' etc.)
+    devolvem None silenciosamente, mesmo com dados válidos carregados —
+    confirmado na prática (27/07/2026) com o fallback WTA.
+
+    Nota: colunas que o tennis-data.co.uk não tem (score combinado,
+    w_ace/w_df/etc.) continuam None depois desta normalização — isso é
+    uma limitação real da fonte, não um bug (compute_serve_return_stats,
+    compute_injury_signal e compute_set1_comeback_stats precisam dessas
+    colunas e vão continuar a devolver None para dados desta fonte).
+    """
+    df = df.rename(columns={
+        "Winner": "winner_name",
+        "Loser": "loser_name",
+        "Surface": "surface",
+        "WRank": "winner_rank",
+        "LRank": "loser_rank",
+        "WPts": "winner_rank_points",
+        "LPts": "loser_rank_points",
+        "Best of": "best_of",
+    })
+    if "Date" in df.columns:
+        df["tourney_date"] = pd.to_datetime(df["Date"], errors="coerce").dt.strftime("%Y%m%d")
+    return df
+
+
 def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
     """
     Terceira fonte de cruzamento: ficheiro Excel (não CSV!) anual com
@@ -247,7 +277,8 @@ def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
     try:
         resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
-        return pd.read_excel(io.BytesIO(resp.content))
+        df = pd.read_excel(io.BytesIO(resp.content))
+        return _normalize_tennisdata_couk(df)
     except Exception as exc:
         print(f"[aviso] tennis-data.co.uk indisponível para {tour} {year}: {exc}")
         return None
