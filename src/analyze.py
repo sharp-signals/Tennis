@@ -102,6 +102,23 @@ SEMPRE no relatório uma secção final "### 🎾 Para aplicares em live" com:
 Nunca inventes uma recomendação de "aposta" — só contexto para a pessoa
 decidir.
 
+Quatro campos adicionais dão contexto extra para quem lê aplicar o seu
+próprio julgamento:
+- `handedness_matchup_*`: taxa de vitória contra canhotos vs destros
+  especificamente — menciona se houver uma diferença notável (ex: muito
+  mais fraco contra canhotos), sobretudo se o adversário deste jogo for
+  canhoto.
+- `layoff_return_stats_*`: como o jogador se sai historicamente no
+  primeiro jogo depois de uma paragem de 60+ dias — relevante sobretudo
+  se o `fatigue_signal_*` mostrar um hiato longo.
+- `deciding_set_stats_*`: taxa de vitória quando o jogo vai até ao set
+  decisivo (3º em Bo3, 5º em Bo5) — sinal de quem é forte "na hora da
+  verdade".
+- `round_stage_stats_*`: rondas iniciais vs finais — sinal de quem é
+  inconsistente cedo mas forte mais tarde, ou o inverso.
+Inclui os que forem relevantes (não `null`) na secção final "Para
+aplicares em live" já pedida acima, junto com o `set1_comeback_stats_*`.
+
 Responde APENAS com o JSON, sem texto antes ou depois, sem blocos de código.
 """
 
