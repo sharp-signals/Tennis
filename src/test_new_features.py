@@ -31,7 +31,7 @@ def test_tour(tour: str, players: list[str]) -> None:
     for player in players:
         _print_section(f"{player} ({tour.upper()})")
 
-        ranking = fetch_data.get_player_ranking(tour, player)
+        ranking = fetch_data.get_player_ranking(history, player)
         print(f"Ranking: {ranking}")
 
         injury = fetch_data.compute_injury_signal(history, player)
