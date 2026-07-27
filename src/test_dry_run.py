@@ -58,6 +58,14 @@ def build_fake_match_payload() -> dict:
         "ranking_b": fetch_data.get_player_ranking(history, TEST_PLAYER_B),
         "set1_comeback_stats_a": fetch_data.compute_set1_comeback_stats(history, TEST_PLAYER_A),
         "set1_comeback_stats_b": fetch_data.compute_set1_comeback_stats(history, TEST_PLAYER_B),
+        "handedness_matchup_a": fetch_data.compute_handedness_matchup_stats(history, TEST_PLAYER_A),
+        "handedness_matchup_b": fetch_data.compute_handedness_matchup_stats(history, TEST_PLAYER_B),
+        "layoff_return_stats_a": fetch_data.compute_return_from_layoff_stats(history, TEST_PLAYER_A),
+        "layoff_return_stats_b": fetch_data.compute_return_from_layoff_stats(history, TEST_PLAYER_B),
+        "deciding_set_stats_a": fetch_data.compute_deciding_set_stats(history, TEST_PLAYER_A),
+        "deciding_set_stats_b": fetch_data.compute_deciding_set_stats(history, TEST_PLAYER_B),
+        "round_stage_stats_a": fetch_data.compute_round_stage_stats(history, TEST_PLAYER_A),
+        "round_stage_stats_b": fetch_data.compute_round_stage_stats(history, TEST_PLAYER_B),
         "weather": None,  # não aplicável a um torneio fictício
     }
 
