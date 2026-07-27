@@ -102,6 +102,29 @@ def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dic
     return eligible
 
 
+def _deduplicate_matches(matches: list[dict]) -> list[dict]:
+    """
+    O matchstat pode devolver o mesmo jogo mais do que uma vez — confirmado
+    na prática (27/07/2026) durante um torneio com dados a mudar em tempo
+    real ao longo das várias páginas da paginação. Deduplicamos pelo
+    campo 'id' do próprio matchstat (identificador único do jogo).
+    """
+    seen_ids = set()
+    deduplicated = []
+    for m in matches:
+        match_id = m.get("id")
+        if match_id is not None and match_id in seen_ids:
+            continue
+        if match_id is not None:
+            seen_ids.add(match_id)
+        deduplicated.append(m)
+
+    removed = len(matches) - len(deduplicated)
+    if removed > 0:
+        print(f"[aviso] {removed} jogo(s) duplicado(s) removido(s) (mesmo id do matchstat repetido).")
+    return deduplicated
+
+
 def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
     now = datetime.now(timezone.utc)
     window_start = now + timedelta(hours=LOOKAHEAD_HOURS_MIN)
@@ -212,7 +235,9 @@ def _build_match_payload(match: dict) -> dict:
 
 def run() -> None:
     raw_matches = fetch_data.fetch_all_upcoming_fixtures(FIXTURES_LOOKAHEAD_DAYS)
-    print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelo matchstat antes de qualquer filtro.")
+    print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelo matchstat antes da deduplicação.")
+    raw_matches = _deduplicate_matches(raw_matches)
+    print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
 
     windowed = _filter_matches_in_window(raw_matches)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
