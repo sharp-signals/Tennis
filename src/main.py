@@ -208,6 +208,14 @@ def _build_match_payload(match: dict) -> dict:
     rank_b = fetch_data.get_player_ranking(history, player_b)
     set1_comeback_a = fetch_data.compute_set1_comeback_stats(history, player_a)
     set1_comeback_b = fetch_data.compute_set1_comeback_stats(history, player_b)
+    handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a)
+    handedness_b = fetch_data.compute_handedness_matchup_stats(history, player_b)
+    layoff_return_a = fetch_data.compute_return_from_layoff_stats(history, player_a)
+    layoff_return_b = fetch_data.compute_return_from_layoff_stats(history, player_b)
+    deciding_set_a = fetch_data.compute_deciding_set_stats(history, player_a)
+    deciding_set_b = fetch_data.compute_deciding_set_stats(history, player_b)
+    round_stage_a = fetch_data.compute_round_stage_stats(history, player_a)
+    round_stage_b = fetch_data.compute_round_stage_stats(history, player_b)
     weather = _get_weather_for_match(match, start)
 
     return {
@@ -233,6 +241,14 @@ def _build_match_payload(match: dict) -> dict:
         "ranking_b": rank_b,
         "set1_comeback_stats_a": set1_comeback_a,  # para aplicares em live: taxa histórica de reviravolta após perder o 1º set
         "set1_comeback_stats_b": set1_comeback_b,
+        "handedness_matchup_a": handedness_a,  # taxa vs canhotos/destros
+        "handedness_matchup_b": handedness_b,
+        "layoff_return_stats_a": layoff_return_a,  # desempenho no 1º jogo após paragem longa (60+ dias)
+        "layoff_return_stats_b": layoff_return_b,
+        "deciding_set_stats_a": deciding_set_a,  # taxa de vitória quando o jogo vai até ao set decisivo
+        "deciding_set_stats_b": deciding_set_b,
+        "round_stage_stats_a": round_stage_a,  # rondas iniciais vs finais
+        "round_stage_stats_b": round_stage_b,
         "weather": weather,  # None para indoor ou se a geocodificação/previsão falhar
     }
 
