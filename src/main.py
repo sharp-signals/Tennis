@@ -31,8 +31,9 @@ from dateutil import parser as date_parser
 
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
-    FATIGUE_LOOKBACK_DAYS,
     FIXTURES_LOOKAHEAD_DAYS,
+    FLAG_ROUTINE,
+    FLAG_UNCERTAIN,
     INDOOR_SURFACE_PREFIX,
     INJURY_SIGNAL_LOOKBACK_MATCHES,
     LOOKAHEAD_HOURS_MAX,
@@ -138,6 +139,25 @@ def _get_weather_for_match(match: dict, start: datetime) -> Optional[dict]:
     return fetch_data.get_weather_forecast(coords["lat"], coords["lon"], start)
 
 
+def _enforce_minimum_flag(payload: dict, result: dict) -> dict:
+    """
+    Regra determinística, não deixada ao critério do Claude: se faltarem
+    peças centrais (odds de mercado E H2H de carreira), o jogo nunca pode
+    sair como 🟢 (sem sinais especiais) — no mínimo 🟡 (incerteza/dados
+    incompletos). O Claude continua a decidir o texto e pode escolher 🔴
+    por conta própria; isto só sobe o mínimo, nunca desce o que o modelo
+    já tinha decidido.
+    """
+    missing_odds = payload.get("market_odds_decimal") is None
+    missing_h2h = payload.get("h2h") is None
+
+    if missing_odds and missing_h2h and result.get("flag") == FLAG_ROUTINE:
+        result["flag"] = FLAG_UNCERTAIN
+        result["summary_line"] = f"{result.get('summary_line', '')} (sem odds nem H2H — dados insuficientes para 🟢)"
+
+    return result
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -155,8 +175,8 @@ def _build_match_payload(match: dict) -> dict:
     form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES)
     surface_a = fetch_data.compute_surface_stats(history, player_a)
     surface_b = fetch_data.compute_surface_stats(history, player_b)
-    fatigue_a = fetch_data.compute_fatigue(history, player_a, start, FATIGUE_LOOKBACK_DAYS)
-    fatigue_b = fetch_data.compute_fatigue(history, player_b, start, FATIGUE_LOOKBACK_DAYS)
+    fatigue_a = fetch_data.compute_fatigue(history, player_a, start)
+    fatigue_b = fetch_data.compute_fatigue(history, player_b, start)
     injury_a = fetch_data.compute_injury_signal(history, player_a, INJURY_SIGNAL_LOOKBACK_MATCHES)
     injury_b = fetch_data.compute_injury_signal(history, player_b, INJURY_SIGNAL_LOOKBACK_MATCHES)
     serve_a = fetch_data.compute_serve_return_stats(history, player_a, SERVE_RETURN_STATS_MATCHES)
@@ -207,6 +227,7 @@ def run() -> None:
     for match in eligible:
         payload = _build_match_payload(match)
         result = analyze_match(payload)
+        result = _enforce_minimum_flag(payload, result)
         analyses.append((payload, result))
 
     # --- Relatório completo (Telegra.ph) ---
