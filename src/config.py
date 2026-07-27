@@ -47,6 +47,11 @@ TOURNAMENT_CACHE_PATH = "data/tournament_cache.json"
 FIXTURES_CACHE_PATH = "data/fixtures_cache.json"
 FIXTURES_CACHE_MAX_AGE_HOURS = 8
 
+# O getDateFixtures do matchstat é paginado (confirmado: resposta real já
+# trouxe "hasNextPage": true). Limite de páginas por dia/tour, para não
+# esgotar a quota diária (50 pedidos) num único dia com muitos jogos.
+MAX_FIXTURE_PAGES = 5
+
 # Tours a seguir. Reduzido a ATP apenas (16/07/2026): os repositórios
 # tennis_atp/tennis_wta do Jeff Sackmann desapareceram do GitHub, e não
 # há outra fonte gratuita fiável de histórico WTA (a TennisMyLife nunca
@@ -83,7 +88,6 @@ LOOKAHEAD_HOURS_MAX = 30
 SURFACES = ["Hard", "Clay", "Grass"]
 
 RECENT_FORM_MATCHES = 10
-FATIGUE_LOOKBACK_DAYS = 4
 SERVE_RETURN_STATS_MATCHES = 10
 INJURY_SIGNAL_LOOKBACK_MATCHES = 5
 
