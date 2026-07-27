@@ -636,73 +636,46 @@ def compute_serve_return_stats(history: pd.DataFrame, player: str, n_matches: in
 
 
 # --------------------------------------------------------------------- #
-# 5. Rankings (Jeff Sackmann GitHub — ficheiros de ranking + players)
+# 5. Rankings (derivado do próprio histórico de jogos, ver função abaixo)
 # --------------------------------------------------------------------- #
-_PLAYERS_CACHE: dict[str, pd.DataFrame] = {}
-_RANKINGS_CACHE: dict[str, pd.DataFrame] = {}
-
-
-def _load_players(tour: str) -> Optional[pd.DataFrame]:
-    if tour in _PLAYERS_CACHE:
-        return _PLAYERS_CACHE[tour]
-    base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
-    url = f"{base}/{tour}_players.csv"
-    for attempt in (1, 2):
-        try:
-            resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
-            resp.raise_for_status()
-            df = pd.read_csv(io.StringIO(resp.text))
-            df["full_name"] = (df["name_first"].fillna("") + " " + df["name_last"].fillna("")).str.strip()
-            _PLAYERS_CACHE[tour] = df
-            return df
-        except Exception as exc:
-            print(f"[aviso] falha a obter lista de jogadores ({tour}), tentativa {attempt}: {exc}")
-    return None
-
-
-def _load_rankings(tour: str) -> Optional[pd.DataFrame]:
-    if tour in _RANKINGS_CACHE:
-        return _RANKINGS_CACHE[tour]
-    base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
-    url = f"{base}/{tour}_rankings_current.csv"
-    for attempt in (1, 2):
-        try:
-            resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
-            resp.raise_for_status()
-            df = pd.read_csv(io.StringIO(resp.text))
-            _RANKINGS_CACHE[tour] = df
-            return df
-        except Exception as exc:
-            print(f"[aviso] falha a obter rankings ({tour}), tentativa {attempt}: {exc}")
-    return None
-
-
-def get_player_ranking(tour: str, player_name: str) -> Optional[dict]:
+def get_player_ranking(history: pd.DataFrame, player: str) -> Optional[dict]:
     """
-    Devolve {'rank', 'points', 'as_of'} com o ranking mais recente
-    disponível para o jogador, ou None se não conseguirmos encontrar o
-    jogador (nome não bate certo com a base de jogadores) ou os ficheiros
-    falharem.
+    Devolve {'rank', 'points', 'as_of'} com o ranking do jogador no seu
+    jogo mais recente do histórico (as colunas 'winner_rank'/'loser_rank'
+    e '..._rank_points' já vêm em cada jogo da TennisMyLife — não depende
+    do Sackmann, que está indisponível). None se não houver dados de
+    ranking válidos no jogo mais recente encontrado.
     """
-    players = _load_players(tour)
-    rankings = _load_rankings(tour)
-    if players is None or rankings is None:
+    required_cols = {"winner_rank", "loser_rank", "tourney_date"}
+    if history.empty or not required_cols.issubset(history.columns):
         return None
 
-    match = players[players["full_name"].str.lower() == player_name.lower()]
-    if match.empty:
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
         return None
-    player_id = match.iloc[0]["player_id"]
+    player = resolved
 
-    player_rankings = rankings[rankings["player"] == player_id]
-    if player_rankings.empty:
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
         return None
 
-    latest = player_rankings.sort_values("ranking_date").iloc[-1]
+    played["tourney_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    played = played.sort_values("tourney_date")
+    latest = played.iloc[-1]
+
+    is_winner = latest.get("winner_name") == player
+    rank_col = "winner_rank" if is_winner else "loser_rank"
+    points_col = "winner_rank_points" if is_winner else "loser_rank_points"
+
+    rank_value = latest.get(rank_col)
+    if pd.isna(rank_value):
+        return None
+
+    points_value = latest.get(points_col)
     return {
-        "rank": int(latest["rank"]),
-        "points": int(latest["points"]) if not pd.isna(latest.get("points")) else None,
-        "as_of": str(latest["ranking_date"]),
+        "rank": int(rank_value),
+        "points": int(points_value) if not pd.isna(points_value) else None,
+        "as_of": str(latest.get("tourney_date")),
     }
 
 
