@@ -85,6 +85,23 @@ relva) e não só o desempenho no piso da partida atual. Cada piso pode
 vir `null` individualmente se o jogador não tiver jogos registados nesse
 piso especificamente.
 
+Os campos `set1_comeback_stats_a`/`set1_comeback_stats_b` mostram, separado
+por melhor-de-3 e melhor-de-5, em quantos jogos (de entre os que o
+jogador perdeu o 1º set) ele ainda assim ganhou o jogo — é um dado real,
+não uma previsão. A pessoa que lê este relatório é ex-tenista e vai usar
+isto durante o jogo AO VIVO (não é para apostar automaticamente): quando
+o resultado do 1º set sair, ela decide por si própria se a situação
+parece uma reviravolta de mercado que vale a pena. Por isso, inclui
+SEMPRE no relatório uma secção final "### 🎾 Para aplicares em live" com:
+- A taxa de recuperação histórica de cada jogador (se disponível),
+  no formato de jogo correto (melhor-de-3 ou melhor-de-5, conforme o tier).
+- Um lembrete curto de que o número sozinho não chega — como perdeu o
+  set (competitivo vs. blowout), estado de serviço, e o que a pessoa
+  souber sobre o jogador (mentalidade, lesões recentes) pesam mais do
+  que a taxa histórica isolada.
+Nunca inventes uma recomendação de "aposta" — só contexto para a pessoa
+decidir.
+
 Responde APENAS com o JSON, sem texto antes ou depois, sem blocos de código.
 """
 
