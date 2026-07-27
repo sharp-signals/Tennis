@@ -206,6 +206,8 @@ def _build_match_payload(match: dict) -> dict:
     serve_b = fetch_data.compute_serve_return_stats(history, player_b, SERVE_RETURN_STATS_MATCHES)
     rank_a = fetch_data.get_player_ranking(history, player_a)
     rank_b = fetch_data.get_player_ranking(history, player_b)
+    set1_comeback_a = fetch_data.compute_set1_comeback_stats(history, player_a)
+    set1_comeback_b = fetch_data.compute_set1_comeback_stats(history, player_b)
     weather = _get_weather_for_match(match, start)
 
     return {
@@ -229,6 +231,8 @@ def _build_match_payload(match: dict) -> dict:
         "serve_return_stats_b": serve_b,
         "ranking_a": rank_a,
         "ranking_b": rank_b,
+        "set1_comeback_stats_a": set1_comeback_a,  # para aplicares em live: taxa histórica de reviravolta após perder o 1º set
+        "set1_comeback_stats_b": set1_comeback_b,
         "weather": weather,  # None para indoor ou se a geocodificação/previsão falhar
     }
 
