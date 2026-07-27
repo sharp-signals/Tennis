@@ -75,6 +75,7 @@ ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_paris_masters",
     "tennis_atp_barcelona_open", "tennis_atp_dubai",
     "tennis_atp_qatar_open", "tennis_atp_queens_club_champ",
+    "tennis_atp_washington_open",
     "tennis_atp_halle_open", "tennis_atp_hamburg_open",
     "tennis_atp_munich", "tennis_atp_china_open",
 ]
