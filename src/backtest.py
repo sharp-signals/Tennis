@@ -67,6 +67,16 @@ ODDS_COLUMN_PREFERENCE = [("PSW", "PSL"), ("AvgW", "AvgL"), ("B365W", "B365L"), 
 # divergência com o mercado.
 MIN_EDGE_TO_COUNT = 5.0
 
+# IMPORTANTE: a TennisMyLife regista 'tourney_date' como a data de INÍCIO
+# do torneio, não a data exata de cada jogo. Para rondas avançadas (semis,
+# final), um filtro simples de "< match_date" pode deixar passar jogos do
+# MESMO torneio — incluindo, no limite, informação próxima ou sobreposta
+# ao próprio jogo que estamos a tentar prever. Esta margem de segurança
+# (dias) garante que só usamos histórico de torneios claramente anteriores,
+# nunca o próprio torneio em avaliação. 21 dias cobre com folga a duração
+# de qualquer torneio ATP (a maioria dura 1-2 semanas).
+LEAKAGE_SAFETY_BUFFER_DAYS = 21
+
 
 def _build_surname_index(history: pd.DataFrame) -> dict:
     """
@@ -271,8 +281,12 @@ def run() -> None:
             continue
         winner, loser = resolved_winner, resolved_loser
 
-        # Ponto central do método: só jogos ANTERIORES a esta data.
-        history_before = full_history[full_history["tourney_date"] < pd.Timestamp(match_date).tz_localize(None)]
+        # Ponto central do método: só jogos de torneios claramente
+        # anteriores — com margem de segurança, para nunca deixar passar
+        # informação do próprio torneio em avaliação (ver nota sobre
+        # LEAKAGE_SAFETY_BUFFER_DAYS acima).
+        cutoff = pd.Timestamp(match_date).tz_localize(None) - pd.Timedelta(days=LEAKAGE_SAFETY_BUFFER_DAYS)
+        history_before = full_history[full_history["tourney_date"] < cutoff]
         if history_before.empty:
             continue
 
