@@ -35,6 +35,7 @@ Corre via: python -m src.backtest
 from __future__ import annotations
 
 import io
+import os
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -224,24 +225,30 @@ def _combined_edge(history_before: pd.DataFrame, player_a: str, player_b: str, s
 
 
 def run() -> None:
-    print("=== BACKTEST: sinais do bot vs mercado histórico ===\n")
+    output_lines: list[str] = []
 
-    print("--- A carregar histórico completo (TennisMyLife) ---")
+    def log(text: str = "") -> None:
+        print(text)
+        output_lines.append(text)
+
+    log("=== BACKTEST: sinais do bot vs mercado histórico ===\n")
+
+    log("--- A carregar histórico completo (TennisMyLife) ---")
     full_history = fetch_data.get_history("atp")
     if full_history.empty:
-        print("[erro] sem histórico disponível — impossível continuar o backtest.")
+        log("[erro] sem histórico disponível — impossível continuar o backtest.")
         return
     full_history["tourney_date"] = pd.to_datetime(full_history["tourney_date"], format="%Y%m%d", errors="coerce")
 
-    print("\n--- A carregar odds históricas (tennis-data.co.uk) ---")
+    log("\n--- A carregar odds históricas (tennis-data.co.uk) ---")
     odds_data = _load_all_backtest_years()
     if odds_data.empty:
-        print("[erro] sem dados de odds — impossível continuar o backtest.")
+        log("[erro] sem dados de odds — impossível continuar o backtest.")
         return
 
-    print("\n--- A construir índice de nomes (apelido + inicial) ---")
+    log("\n--- A construir índice de nomes (apelido + inicial) ---")
     surname_index = _build_surname_index(full_history)
-    print(f"[info] índice construído com {len(surname_index)} combinações apelido+inicial.")
+    log(f"[info] índice construído com {len(surname_index)} combinações apelido+inicial.")
 
     total_rows = len(odds_data)
     usable = 0
@@ -320,28 +327,28 @@ def run() -> None:
             else:
                 market_correct_when_disagrees += 1
 
-    print("\n=== RESULTADOS ===")
-    print(f"Jogos totais na fonte de odds: {total_rows}")
-    print(f"  Sem odds utilizáveis: {skipped_no_odds}")
-    print(f"  Sem data válida: {skipped_no_date}")
-    print(f"  Sem correspondência de nome entre as duas fontes: {skipped_no_name_match}")
-    print(f"  Sem edge suficiente (< {MIN_EDGE_TO_COUNT} p.p.) para contar: {skipped_no_edge}")
-    print(f"  Jogos usados na análise: {usable}")
+    log("\n=== RESULTADOS ===")
+    log(f"Jogos totais na fonte de odds: {total_rows}")
+    log(f"  Sem odds utilizáveis: {skipped_no_odds}")
+    log(f"  Sem data válida: {skipped_no_date}")
+    log(f"  Sem correspondência de nome entre as duas fontes: {skipped_no_name_match}")
+    log(f"  Sem edge suficiente (< {MIN_EDGE_TO_COUNT} p.p.) para contar: {skipped_no_edge}")
+    log(f"  Jogos usados na análise: {usable}")
 
     if market_total > 0:
-        print(f"\nMercado (favorito por odds) acertou o vencedor em {market_correct}/{market_total} "
+        log(f"\nMercado (favorito por odds) acertou o vencedor em {market_correct}/{market_total} "
               f"({100 * market_correct / market_total:.1f}%)")
 
-    print(f"\nJogos em que o nosso sinal CONCORDA com o mercado: {agrees_total}")
-    print(f"Jogos em que o nosso sinal DISCORDA do mercado: {disagrees_total}")
+    log(f"\nJogos em que o nosso sinal CONCORDA com o mercado: {agrees_total}")
+    log(f"Jogos em que o nosso sinal DISCORDA do mercado: {disagrees_total}")
 
     if disagrees_total > 0:
-        print("\n--- Nos casos de DIVERGÊNCIA (é aqui que está a pergunta real) ---")
-        print(f"  O nosso sinal teve razão: {our_signal_correct_when_disagrees}/{disagrees_total} "
+        log("\n--- Nos casos de DIVERGÊNCIA (é aqui que está a pergunta real) ---")
+        log(f"  O nosso sinal teve razão: {our_signal_correct_when_disagrees}/{disagrees_total} "
               f"({100 * our_signal_correct_when_disagrees / disagrees_total:.1f}%)")
-        print(f"  O mercado teve razão:      {market_correct_when_disagrees}/{disagrees_total} "
+        log(f"  O mercado teve razão:      {market_correct_when_disagrees}/{disagrees_total} "
               f"({100 * market_correct_when_disagrees / disagrees_total:.1f}%)")
-        print(
+        log(
             "\nInterpretação: se o nosso sinal acertasse por acaso, esperaríamos ~50% nestes casos "
             "de divergência (por definição, são os jogos onde discordamos do mercado). Um valor "
             "consistentemente acima de 50%, em amostra suficientemente grande, seria o primeiro "
@@ -349,9 +356,22 @@ def run() -> None:
             "margem das casas, e validar fora desta amostra)."
         )
     else:
-        print("\n[aviso] Sem casos de divergência suficientes para conclusão nenhuma.")
+        log("\n[aviso] Sem casos de divergência suficientes para conclusão nenhuma.")
 
-    print("\nTeste concluído.")
+    log("\nTeste concluído.")
+
+    _save_results_file(output_lines)
+
+
+def _save_results_file(output_lines: list[str]) -> None:
+    os.makedirs("data/backtest_results", exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
+    path = f"data/backtest_results/{timestamp}.md"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"# Backtest — {timestamp} UTC\n\n```\n")
+        f.write("\n".join(output_lines))
+        f.write("\n```\n")
+    print(f"\n[info] Resultado gravado em {path}")
 
 
 if __name__ == "__main__":
