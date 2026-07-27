@@ -45,7 +45,11 @@ TOURNAMENT_CACHE_PATH = "data/tournament_cache.json"
 # repetir o mesmo pedido de fixtures nas duas execuções diárias quando a
 # data já foi consultada há poucas horas. Poupa quota (plano free = 50/dia).
 FIXTURES_CACHE_PATH = "data/fixtures_cache.json"
-FIXTURES_CACHE_MAX_AGE_HOURS = 8
+# 4h (era 8h): durante um torneio ativo, o calendário do dia seguinte
+# publica-se progressivamente — uma cache demasiado longa pode "prender"
+# o bot numa fotografia desatualizada, perdendo jogos novos entretanto
+# publicados (confirmado na prática, 27/07/2026, Washington Open).
+FIXTURES_CACHE_MAX_AGE_HOURS = 4
 
 # O getDateFixtures do matchstat é paginado (confirmado: resposta real já
 # trouxe "hasNextPage": true). Limite de páginas por dia/tour, para não
