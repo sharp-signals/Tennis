@@ -56,6 +56,8 @@ def build_fake_match_payload() -> dict:
         "serve_return_stats_b": fetch_data.compute_serve_return_stats(history, TEST_PLAYER_B, 10),
         "ranking_a": fetch_data.get_player_ranking(history, TEST_PLAYER_A),
         "ranking_b": fetch_data.get_player_ranking(history, TEST_PLAYER_B),
+        "set1_comeback_stats_a": fetch_data.compute_set1_comeback_stats(history, TEST_PLAYER_A),
+        "set1_comeback_stats_b": fetch_data.compute_set1_comeback_stats(history, TEST_PLAYER_B),
         "weather": None,  # não aplicável a um torneio fictício
     }
 
