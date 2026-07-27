@@ -189,26 +189,28 @@ def _parse_date(value):
     return None
 
 
-def _combined_edge(history_before: pd.DataFrame, player_a: str, player_b: str, surface: str):
+def _all_edges(history_before: pd.DataFrame, player_a: str, player_b: str, surface: str) -> dict:
     """
-    Soma simples (não um modelo treinado) de três edges de win-rate
-    (H2H de carreira, forma recente, piso), em pontos percentuais,
-    positivo = favorece player_a. None se não houver dados suficientes
-    para calcular nenhum dos três.
+    Devolve um dict com cada edge de win-rate calculado SEPARADAMENTE
+    (h2h, form, surface), em pontos percentuais, positivo = favorece
+    player_a, mais o 'combined' (média simples dos disponíveis, igual ao
+    que já tínhamos). Cada campo é None se não houver dados suficientes
+    para esse sinal em concreto — permite testar cada sinal sozinho,
+    não só a combinação.
     """
-    edges = []
+    result: dict = {"h2h": None, "form": None, "surface": None}
 
     h2h = fetch_data.compute_h2h(history_before, player_a, player_b, surface)
     if h2h and h2h["overall"]["total_matches"] >= 3:
         total = h2h["overall"]["total_matches"]
-        edges.append(100 * (h2h["overall"]["a_wins"] - h2h["overall"]["b_wins"]) / total)
+        result["h2h"] = 100 * (h2h["overall"]["a_wins"] - h2h["overall"]["b_wins"]) / total
 
     form_a = fetch_data.compute_recent_form(history_before, player_a, 10)
     form_b = fetch_data.compute_recent_form(history_before, player_b, 10)
     if form_a and form_b and form_a["matches"] >= 5 and form_b["matches"] >= 5:
         rate_a = 100 * form_a["wins"] / form_a["matches"]
         rate_b = 100 * form_b["wins"] / form_b["matches"]
-        edges.append(rate_a - rate_b)
+        result["form"] = rate_a - rate_b
 
     surf_a = fetch_data.compute_surface_stats(history_before, player_a)
     surf_b = fetch_data.compute_surface_stats(history_before, player_b)
@@ -217,11 +219,11 @@ def _combined_edge(history_before: pd.DataFrame, player_a: str, player_b: str, s
         if stat_a and stat_b and stat_a["matches"] >= 5 and stat_b["matches"] >= 5:
             rate_a = 100 * stat_a["wins"] / stat_a["matches"]
             rate_b = 100 * stat_b["wins"] / stat_b["matches"]
-            edges.append(rate_a - rate_b)
+            result["surface"] = rate_a - rate_b
 
-    if not edges:
-        return None
-    return sum(edges) / len(edges)
+    available = [v for v in result.values() if v is not None]
+    result["combined"] = sum(available) / len(available) if available else None
+    return result
 
 
 def run() -> None:
@@ -257,12 +259,15 @@ def run() -> None:
     skipped_no_name_match = 0
     skipped_no_edge = 0
 
-    market_correct = 0
-    market_total = 0
-    agrees_total = 0
-    our_signal_correct_when_disagrees = 0
-    market_correct_when_disagrees = 0
-    disagrees_total = 0
+    signal_names = ["h2h", "form", "surface", "combined"]
+    stats = {
+        name: {
+            "market_correct": 0, "market_total": 0,
+            "agrees": 0, "disagrees": 0,
+            "signal_correct_disagree": 0, "market_correct_disagree": 0,
+        }
+        for name in signal_names
+    }
 
     for _, row in odds_data.iterrows():
         odds = _get_odds(row)
@@ -299,64 +304,89 @@ def run() -> None:
 
         odd_winner, odd_loser = odds
         implied_prob_winner = _implied_prob_winner(odd_winner, odd_loser)
+        market_favors_winner = implied_prob_winner > 0.5
 
         # Convenção: player_a = "winner" da fonte histórica, só para
-        # calcular o edge com sinal consistente — não sabemos o
-        # resultado à partida no mundo real, isto é só para comparar
-        # depois quem tinha razão.
-        edge = _combined_edge(history_before, winner, loser, surface)
-        if edge is None or abs(edge) < MIN_EDGE_TO_COUNT:
-            skipped_no_edge += 1
-            continue
+        # calcular os edges com sinal consistente — isto é só para
+        # comparar depois quem tinha razão, não implica conhecimento
+        # do resultado no cálculo em si (esse usa só history_before).
+        edges = _all_edges(history_before, winner, loser, surface)
 
-        usable += 1
+        any_signal_used = False
+        for name in signal_names:
+            edge = edges[name]
+            if edge is None or abs(edge) < MIN_EDGE_TO_COUNT:
+                continue
+            any_signal_used = True
+            s = stats[name]
+            s["market_total"] += 1
+            if market_favors_winner:
+                s["market_correct"] += 1
 
-        market_favors_winner = implied_prob_winner > 0.5
-        market_total += 1
-        if market_favors_winner:
-            market_correct += 1  # o "winner" da fonte ganhou mesmo; se o mercado o favorecia, acertou
-
-        our_signal_favors_winner = edge > 0
-
-        if our_signal_favors_winner == market_favors_winner:
-            agrees_total += 1
-        else:
-            disagrees_total += 1
-            if our_signal_favors_winner:
-                our_signal_correct_when_disagrees += 1
+            our_signal_favors_winner = edge > 0
+            if our_signal_favors_winner == market_favors_winner:
+                s["agrees"] += 1
             else:
-                market_correct_when_disagrees += 1
+                s["disagrees"] += 1
+                if our_signal_favors_winner:
+                    s["signal_correct_disagree"] += 1
+                else:
+                    s["market_correct_disagree"] += 1
+
+        if any_signal_used:
+            usable += 1
+        else:
+            skipped_no_edge += 1
 
     log("\n=== RESULTADOS ===")
     log(f"Jogos totais na fonte de odds: {total_rows}")
     log(f"  Sem odds utilizáveis: {skipped_no_odds}")
     log(f"  Sem data válida: {skipped_no_date}")
     log(f"  Sem correspondência de nome entre as duas fontes: {skipped_no_name_match}")
-    log(f"  Sem edge suficiente (< {MIN_EDGE_TO_COUNT} p.p.) para contar: {skipped_no_edge}")
-    log(f"  Jogos usados na análise: {usable}")
+    log(f"  Sem NENHUM dos 4 sinais com edge suficiente (< {MIN_EDGE_TO_COUNT} p.p.): {skipped_no_edge}")
+    log(f"  Jogos usados em pelo menos um sinal: {usable}")
 
-    if market_total > 0:
-        log(f"\nMercado (favorito por odds) acertou o vencedor em {market_correct}/{market_total} "
-              f"({100 * market_correct / market_total:.1f}%)")
+    signal_labels = {
+        "h2h": "H2H de carreira (sozinho)",
+        "form": "Forma recente (sozinho)",
+        "surface": "Stats de piso (sozinho)",
+        "combined": "Combinado (média dos 3, como antes)",
+    }
 
-    log(f"\nJogos em que o nosso sinal CONCORDA com o mercado: {agrees_total}")
-    log(f"Jogos em que o nosso sinal DISCORDA do mercado: {disagrees_total}")
+    for name in signal_names:
+        s = stats[name]
+        log(f"\n{'=' * 60}")
+        log(f"SINAL: {signal_labels[name]}")
+        log(f"{'=' * 60}")
+        log(f"Jogos com este sinal disponível (edge >= {MIN_EDGE_TO_COUNT} p.p.): {s['market_total']}")
+        if s["market_total"] == 0:
+            log("  Sem jogos suficientes para este sinal.")
+            continue
 
-    if disagrees_total > 0:
-        log("\n--- Nos casos de DIVERGÊNCIA (é aqui que está a pergunta real) ---")
-        log(f"  O nosso sinal teve razão: {our_signal_correct_when_disagrees}/{disagrees_total} "
-              f"({100 * our_signal_correct_when_disagrees / disagrees_total:.1f}%)")
-        log(f"  O mercado teve razão:      {market_correct_when_disagrees}/{disagrees_total} "
-              f"({100 * market_correct_when_disagrees / disagrees_total:.1f}%)")
-        log(
-            "\nInterpretação: se o nosso sinal acertasse por acaso, esperaríamos ~50% nestes casos "
-            "de divergência (por definição, são os jogos onde discordamos do mercado). Um valor "
-            "consistentemente acima de 50%, em amostra suficientemente grande, seria o primeiro "
-            "indício real de vantagem — mas não prova lucro (isso exigiria também simular custos, "
-            "margem das casas, e validar fora desta amostra)."
-        )
-    else:
-        log("\n[aviso] Sem casos de divergência suficientes para conclusão nenhuma.")
+        log(f"Mercado acertou o vencedor: {s['market_correct']}/{s['market_total']} "
+            f"({100 * s['market_correct'] / s['market_total']:.1f}%)")
+        log(f"Concorda com o mercado: {s['agrees']}  |  Discorda: {s['disagrees']}")
+
+        if s["disagrees"] > 0:
+            pct_signal = 100 * s["signal_correct_disagree"] / s["disagrees"]
+            pct_market = 100 * s["market_correct_disagree"] / s["disagrees"]
+            log(f"  Nos casos de DIVERGÊNCIA — o nosso sinal teve razão: "
+                f"{s['signal_correct_disagree']}/{s['disagrees']} ({pct_signal:.1f}%)")
+            log(f"  Nos casos de DIVERGÊNCIA — o mercado teve razão:      "
+                f"{s['market_correct_disagree']}/{s['disagrees']} ({pct_market:.1f}%)")
+        else:
+            log("  Sem casos de divergência suficientes para este sinal.")
+
+    log(f"\n{'=' * 60}")
+    log(
+        "\nInterpretação: para cada sinal, ~50% nos casos de divergência é o que esperaríamos "
+        "por puro acaso. Valores consistentemente acima de 50%, em amostra grande, seriam o "
+        "primeiro indício real de vantagem nesse sinal especificamente — mas não prova lucro "
+        "(isso exigiria também simular custos, margem das casas, e validar fora desta amostra). "
+        "Testar os 4 sinais ao mesmo tempo (em vez de só o combinado) aumenta ligeiramente o "
+        "risco de encontrar uma divergência positiva por acaso (múltiplos testes) — um resultado "
+        "isolado acima de 50% num só sinal, sem repetir em dados novos, não é prova suficiente."
+    )
 
     log("\nTeste concluído.")
 
