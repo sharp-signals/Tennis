@@ -629,6 +629,179 @@ def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[
     return result
 
 
+def compute_handedness_matchup_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    Taxa de vitória do jogador especificamente contra adversários canhotos
+    vs destros — alguns jogadores têm dificuldade estilística real contra
+    canhotos, independentemente do nível geral. Usa as colunas
+    'winner_hand'/'loser_hand' já presentes no histórico ('L'/'R'/'U').
+    """
+    required_cols = {"winner_hand", "loser_hand"}
+    if history.empty or not required_cols.issubset(history.columns):
+        return None
+
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    played["_opponent_hand"] = played.apply(
+        lambda row: row["loser_hand"] if row["winner_name"] == player else row["winner_hand"], axis=1
+    )
+
+    result: dict = {}
+    for hand_code, label in (("L", "vs_left_handed"), ("R", "vs_right_handed")):
+        subset = played[played["_opponent_hand"] == hand_code]
+        if subset.empty:
+            result[label] = None
+            continue
+        wins = int((subset["winner_name"] == player).sum())
+        result[label] = {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
+
+    if result.get("vs_left_handed") is None and result.get("vs_right_handed") is None:
+        return None
+    return result
+
+
+def compute_return_from_layoff_stats(history: pd.DataFrame, player: str, threshold_days: int = 60) -> Optional[dict]:
+    """
+    Como o jogador se sai historicamente no PRIMEIRO jogo depois de uma
+    paragem longa (>= threshold_days). Alguns jogadores voltam fortes,
+    outros precisam de 1-2 jogos para "aquecer". Diretamente relevante
+    quando vemos um jogador a regressar de um hiato (ex: Alcaraz hoje).
+    """
+    if history.empty or "tourney_date" not in history.columns:
+        return None
+
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    played["tourney_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    played = played.dropna(subset=["tourney_date"]).sort_values("tourney_date").reset_index(drop=True)
+    if len(played) < 2:
+        return None
+
+    return_matches = 0
+    return_wins = 0
+    for i in range(1, len(played)):
+        gap_days = (played.loc[i, "tourney_date"] - played.loc[i - 1, "tourney_date"]).days
+        if gap_days >= threshold_days:
+            return_matches += 1
+            if played.loc[i, "winner_name"] == player:
+                return_wins += 1
+
+    if return_matches == 0:
+        return None
+    return {
+        "threshold_days": threshold_days,
+        "matches_after_layoff": return_matches,
+        "wins_after_layoff": return_wins,
+        "win_rate_pct": round(100 * return_wins / return_matches, 1),
+    }
+
+
+def _count_completed_sets(score) -> int:
+    """Conta quantos sets têm resultado válido na coluna 'score' (ignora RET/W-O)."""
+    if not isinstance(score, str) or not score.strip():
+        return 0
+    count = 0
+    for token in score.strip().split():
+        clean = token.split("(")[0]
+        parts = clean.split("-")
+        if len(parts) == 2 and all(p.strip().isdigit() for p in parts):
+            count += 1
+    return count
+
+
+def compute_deciding_set_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    De entre os jogos que foram até ao set decisivo (3º em melhor-de-3,
+    5º em melhor-de-5), em quantos o jogador venceu? Identifica quem é
+    forte "na hora da verdade" vs quem tende a desmoronar em sets longos.
+    """
+    required_cols = {"score", "best_of"}
+    if history.empty or not required_cols.issubset(history.columns):
+        return None
+
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    if played.empty:
+        return None
+
+    result: dict = {}
+    for best_of, label in ((3, "bo3"), (5, "bo5")):
+        subset = played[played["best_of"] == best_of]
+        deciding_matches = 0
+        deciding_wins = 0
+        for _, row in subset.iterrows():
+            if _count_completed_sets(row.get("score")) == best_of:
+                deciding_matches += 1
+                if row.get("winner_name") == player:
+                    deciding_wins += 1
+
+        if deciding_matches > 0:
+            result[label] = {
+                "matches_went_the_distance": deciding_matches,
+                "wins": deciding_wins,
+                "win_rate_pct": round(100 * deciding_wins / deciding_matches, 1),
+            }
+        else:
+            result[label] = None
+
+    if result.get("bo3") is None and result.get("bo5") is None:
+        return None
+    return result
+
+
+def compute_round_stage_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    Compara a taxa de vitória em rondas iniciais (R128/R64/R32/R16) vs
+    rondas finais (QF/SF/F) — identifica jogadores inconsistentes cedo
+    mas fortes "quando é a sério", ou o inverso.
+    """
+    if history.empty or "round" not in history.columns:
+        return None
+
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    if played.empty:
+        return None
+
+    early_rounds = {"R128", "R64", "R32", "R16"}
+    late_rounds = {"QF", "SF", "F"}
+
+    result: dict = {}
+    for round_set, label in ((early_rounds, "early_rounds"), (late_rounds, "late_rounds")):
+        subset = played[played["round"].isin(round_set)]
+        if subset.empty:
+            result[label] = None
+            continue
+        wins = int((subset["winner_name"] == player).sum())
+        result[label] = {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
+
+    if result.get("early_rounds") is None and result.get("late_rounds") is None:
+        return None
+    return result
+
+
 def compute_injury_signal(history: pd.DataFrame, player: str, lookback_matches: int = 5) -> Optional[dict]:
     """
     Sinal aproximado de lesão a partir de desistências/walkovers reais nos
