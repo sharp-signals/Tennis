@@ -131,7 +131,11 @@ def analyze_match(match_data: dict) -> dict:
         raw_text = raw_text.strip()
 
     try:
-        return json.loads(raw_text)
+        # strict=False: tolera caracteres de controlo literais (ex: quebras
+        # de linha não escapadas) dentro de strings do JSON — já vimos o
+        # Claude fazer isto ocasionalmente num relatório longo, apesar da
+        # instrução para não o fazer. Mais barato do que rejeitar a resposta.
+        return json.loads(raw_text, strict=False)
     except json.JSONDecodeError as exc:
         # Fallback defensivo: nunca deixar o pipeline abaixo sem estrutura,
         # mas sinalizamos claramente que houve um problema de formato —
