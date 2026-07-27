@@ -1,0 +1,22 @@
+name: Backtest (sinais vs mercado histórico)
+
+on:
+  workflow_dispatch: {}   # só corre manualmente — é pesado, não faz sentido agendar
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Correr o backtest
+        run: python -m src.backtest
