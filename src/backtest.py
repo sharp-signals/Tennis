@@ -68,6 +68,53 @@ ODDS_COLUMN_PREFERENCE = [("PSW", "PSL"), ("AvgW", "AvgL"), ("B365W", "B365L"), 
 MIN_EDGE_TO_COUNT = 5.0
 
 
+def _build_surname_index(history: pd.DataFrame) -> dict:
+    """
+    Índice (inicial_do_primeiro_nome, apelido_normalizado) -> lista de
+    nomes completos que correspondem, a partir do histórico da
+    TennisMyLife ('Primeiro [Nomes do meio] Apelido'). Usado para ligar
+    ao formato do tennis-data.co.uk ('Apelido Inicial.').
+    """
+    names = set()
+    if "winner_name" in history.columns:
+        names.update(history["winner_name"].dropna().unique())
+    if "loser_name" in history.columns:
+        names.update(history["loser_name"].dropna().unique())
+
+    index: dict = {}
+    for full_name in names:
+        tokens = str(full_name).split()
+        if len(tokens) < 2:
+            continue
+        first_initial = fetch_data._normalize_name(tokens[0])[:1]
+        surname_norm = fetch_data._normalize_name(" ".join(tokens[1:]))
+        key = (first_initial, surname_norm)
+        index.setdefault(key, []).append(full_name)
+    return index
+
+
+def _resolve_tennisdata_name(name: str, surname_index: dict):
+    """
+    Converte um nome no formato 'Apelido Inicial.' (tennis-data.co.uk)
+    para o nome completo tal como aparece na TennisMyLife, usando o
+    índice de apelido+inicial. None se não encontrar exatamente UMA
+    correspondência (ambiguidade == preferimos não arriscar).
+    """
+    name = str(name).strip()
+    parts = name.rsplit(" ", 1)
+    if len(parts) != 2:
+        return None
+    surname_part, initial_part = parts
+    initial = initial_part.rstrip(".").strip().lower()[:1]
+    if not initial:
+        return None
+    surname_norm = fetch_data._normalize_name(surname_part)
+    candidates = surname_index.get((initial, surname_norm))
+    if candidates and len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
 def _fetch_tennisdata_year(year: int):
     """
     Formato real confirmado (27/07/2026): ficheiro Excel, não CSV —
@@ -182,10 +229,15 @@ def run() -> None:
         print("[erro] sem dados de odds — impossível continuar o backtest.")
         return
 
+    print("\n--- A construir índice de nomes (apelido + inicial) ---")
+    surname_index = _build_surname_index(full_history)
+    print(f"[info] índice construído com {len(surname_index)} combinações apelido+inicial.")
+
     total_rows = len(odds_data)
     usable = 0
     skipped_no_odds = 0
     skipped_no_date = 0
+    skipped_no_name_match = 0
     skipped_no_edge = 0
 
     market_correct = 0
@@ -211,6 +263,13 @@ def run() -> None:
         surface = str(row.get("Surface", "")).strip()
         if not winner or not loser:
             continue
+
+        resolved_winner = _resolve_tennisdata_name(winner, surname_index)
+        resolved_loser = _resolve_tennisdata_name(loser, surname_index)
+        if resolved_winner is None or resolved_loser is None:
+            skipped_no_name_match += 1
+            continue
+        winner, loser = resolved_winner, resolved_loser
 
         # Ponto central do método: só jogos ANTERIORES a esta data.
         history_before = full_history[full_history["tourney_date"] < pd.Timestamp(match_date).tz_localize(None)]
@@ -251,6 +310,7 @@ def run() -> None:
     print(f"Jogos totais na fonte de odds: {total_rows}")
     print(f"  Sem odds utilizáveis: {skipped_no_odds}")
     print(f"  Sem data válida: {skipped_no_date}")
+    print(f"  Sem correspondência de nome entre as duas fontes: {skipped_no_name_match}")
     print(f"  Sem edge suficiente (< {MIN_EDGE_TO_COUNT} p.p.) para contar: {skipped_no_edge}")
     print(f"  Jogos usados na análise: {usable}")
 
