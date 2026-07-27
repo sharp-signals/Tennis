@@ -808,12 +808,14 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
 
     url = f"{RAPIDAPI_BASE}/{tour}/fixtures/{date_str}"
     all_data: list[dict] = []
+    pages_fetched = 0
     try:
         page = 1
         while True:
             params = {"page": page} if page > 1 else None
             resp = requests.get(url, headers=_RAPIDAPI_HEADERS, params=params, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
+            pages_fetched += 1
             payload = resp.json()
             page_data = payload.get("data", [])
             all_data.extend(page_data)
@@ -837,7 +839,7 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
         }
         _fixtures_cache_dirty = True
         if len(all_data) > 0:
-            print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) em {page} página(s).")
+            print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) em {pages_fetched} pedido(s).")
         return all_data
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter fixtures ({tour}, {date_str}): {exc}")
