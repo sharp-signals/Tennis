@@ -1139,7 +1139,9 @@ def fetch_all_upcoming_fixtures(lookahead_days: int) -> list[dict]:
     for offset in range(lookahead_days):
         day = today + timedelta(days=offset)
         for tour in TOURS_TO_FOLLOW:
-            all_matches.extend(fetch_date_fixtures(day, tour))
+            day_matches = fetch_date_fixtures(day, tour)
+            print(f"[diagnóstico] pedido para {day.strftime('%Y-%m-%d')} ({tour}) devolveu {len(day_matches)} jogo(s).")
+            all_matches.extend(day_matches)
     return all_matches
 
 
