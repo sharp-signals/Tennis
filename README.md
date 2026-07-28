@@ -108,28 +108,27 @@ com fontes gratuitas/documentadas:
   do nome do torneio + país; se a geocodificação falhar (nome de cidade
   ambíguo ou não reconhecido), fica `None`.
 
-## Âmbito: ATP apenas (decisão explícita, 16/07/2026)
+## Âmbito: ATP + WTA (revisto 28/07/2026)
 
-O bot cobre **só ATP** — Grand Slam, ATP Masters 1000, ATP 500. O WTA foi
-retirado por completo.
+O bot cobre **ATP e WTA** — Grand Slam, ATP Masters 1000/500, WTA
+1000/500. Nível 250 continua excluído (ver decisão de tiers abaixo).
 
-Motivo: os repositórios `tennis_atp`/`tennis_wta` de Jeff Sackmann no
-GitHub desapareceram durante o desenvolvimento deste projeto (confirmado
-com 404 real, ao vivo, tanto via `raw.githubusercontent.com` como via
-jsDelivr, e o perfil dele no GitHub passou a mostrar só 1 repositório).
-A TennisMyLife (fonte primária de histórico) nunca cobriu WTA — é uma
-base de dados só de ATP. Sem nenhuma fonte gratuita fiável de histórico
-WTA, ficaríamos com um bot inconsistente (às vezes fala de jogos WTA sem
-H2H/forma/piso nenhum). Preferiu-se reduzir o âmbito a manter essa
-inconsistência.
+**Histórico da decisão:** entre 16/07 e 28/07 o âmbito foi só ATP,
+porque os repositórios do Sackmann (única fonte profunda de histórico
+WTA) desapareceram do GitHub com 404 real confirmado. Em 28/07
+confirmámos ao vivo que o `tennis_wta` voltou a estar disponível
+(via `raw.githubusercontent.com` — atenção: o jsDelivr manteve cache
+antiga do 404 durante mais tempo, por isso trocámos para o raw direto),
+e o WTA foi reativado de ponta a ponta: fixtures (id 16738 no
+`TRACKED_TOURNAMENT_IDS`), tiers, odds (`tennis_wta_washington_open`),
+histórico multi-ano do Sackmann, e H2H rico via matchstat (ver secção
+própria acima).
 
-`TOURS_TO_FOLLOW = ("atp",)` em `config.py` ainda existe, mas note-se
-que a partir de 28/07/2026 a fixtures já não passa por aqui — vai
-diretamente por `TRACKED_TOURNAMENT_IDS` (ver secção "Arquitetura de
-fixtures" abaixo). `TOURS_TO_FOLLOW` só é usado pela função antiga
-`fetch_all_upcoming_fixtures` (não chamada atualmente, mantida como
-referência/fallback). Adicionar `"wta"` aqui não tem efeito enquanto
-essa função não voltar a ser chamada.
+`TOURS_TO_FOLLOW = ("atp",)` em `config.py` é atualmente **código morto
+funcional**: as fixtures vão diretamente por `TRACKED_TOURNAMENT_IDS`
+(que decide o tour por torneio), e essa constante só é usada pela função
+antiga `fetch_all_upcoming_fixtures` (não chamada; mantida como
+referência). Alterá-la não tem efeito no pipeline atual.
 
 Nota histórica anterior (já não se aplica, mantida para contexto): a
 decisão original de tiers (mais abaixo) também excluía ATP/WTA 250 por
@@ -167,12 +166,10 @@ TennisMyLife/Sackmann, e isto usa a mesma quota de 50/dia da RapidAPI).
 Cache própria (`H2H_CACHE_MAX_AGE_HOURS = 24`), já que H2H muda pouco de
 um dia para o outro.
 
-**Falta um passo para isto funcionar a sério em produção:**
-`TRACKED_TOURNAMENT_IDS` só tem o Washington Open **ATP** (21344) — para
-o WTA aparecer no pipeline, é preciso encontrar o `tournamentId` WTA do
-mesmo torneio (ou de outro WTA 500/1000/Slam) e acrescentá-lo com
-`"wta"` como valor. Sem isso, `fetch_h2h_stats` está pronto no código
-mas nunca é chamado, porque não há jogos WTA a passar pelo filtro.
+**Estado (28/07/2026): ativo em produção.** O `TRACKED_TOURNAMENT_IDS`
+inclui o Washington WTA (16738, "Mubadala DC Open", confirmado via
+getTournamentInfo), pelo que os jogos WTA passam no pipeline e o
+`fetch_h2h_stats` é chamado para cada um.
 
 ## Arquitetura de fixtures (revista, 28/07/2026)
 
@@ -309,16 +306,11 @@ bloqueia pedidos não-oficiais (o problema que já tiveste com o Sofascore).
 
 ## Extensibilidade
 
-- **WTA (decisão pendente, 28/07/2026):** avaliado e adiado — a
-  TennisMyLife é só ATP, e o fallback (tennis-data.co.uk) só tem 1 ano
-  de histórico WTA, sem colunas de serviço/mão dominante/score detalhado.
-  Isso deixaria o WTA com H2H de carreira fraco, e sem serviço/resposta,
-  sinal de lesão, recuperação após 1º set, ou canhotos/destros. Vale a
-  pena reconsiderar se aparecer uma fonte melhor de histórico WTA (20
-  anos, com as colunas certas) — nesse caso, a mudança de código é
-  pequena: acrescentar `"wta"` a `TOURS_TO_FOLLOW`, encontrar o
-  `tournamentId` WTA do torneio combinado (ex: Washington também tem
-  edição WTA 500) e acrescentar a `TRACKED_TOURNAMENT_IDS`.
+- **WTA: reativado em 28/07/2026** (ver secção "Âmbito" acima) — a nota
+  anterior de "decisão pendente" deixou de se aplicar quando o
+  repositório do Sackmann voltou a estar disponível. O histórico WTA vem
+  do Sackmann multi-ano; o fallback continua a ser o tennis-data.co.uk
+  (1 ano, colunas limitadas) se o Sackmann voltar a falhar.
 - Mais fontes gratuitas: qualquer fonte nova só precisa de uma função
   `_load_<fonte>()` em `fetch_data.py` que devolva um DataFrame com pelo
   menos as colunas `winner_name`, `loser_name`, `surface`, `tourney_date`
