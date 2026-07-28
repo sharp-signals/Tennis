@@ -93,6 +93,18 @@ sets/minutos recentes = sinal de fadiga real; campos individuais podem
 vir `null` se a fonte não tiver essa coluna, mas os outros continuam
 válidos).
 
+LIMITAÇÃO IMPORTANTE a ter em conta no `days_since_last_match` e no
+`layoff_return_stats_*`: a fonte de histórico só regista jogos do
+circuito ATP principal, NÃO Challenger nem ITF. Um jogador com ranking
+baixo (ex: fora do top 150-200, ver `ranking_*`) pode jogar regularmente
+a esses níveis mais baixos sem isso aparecer nos dados — nesse caso, um
+"hiato" de muitos meses reflete só a raridade de ele subir ao nível
+principal, não uma pausa real na carreira. Quando `ranking_*` mostrar um
+número alto (jogador pouco cotado) e o hiato for muito longo (a partir
+de uns 4-5 meses), assinala esta possibilidade explicitamente em vez de
+apresentar o hiato como facto de inatividade — não é diagnóstico, é
+transparência sobre o que os dados cobrem.
+
 Os campos `surface_stats_a`/`surface_stats_b` trazem o perfil do jogador
 nos TRÊS pisos (Hard/Clay/Grass), não só no piso deste jogo — usa isto
 para comentar especialização (ex: muito mais forte em terra do que em
