@@ -31,10 +31,9 @@ def _get_or_create_access_token() -> str:
     resp.raise_for_status()
     result = resp.json()["result"]
     print(
-        "[info] Conta Telegra.ph criada sem token guardado. "
-        f"Para reutilizar entre execuções, guarda isto como secret "
-        f"TELEGRAPH_ACCESS_TOKEN: {result['access_token']}"
-    )
+    "[warning] TELEGRAPH_ACCESS_TOKEN não configurado; "
+    "foi criada uma conta Telegra.ph temporária."
+)
     return result["access_token"]
 
 
