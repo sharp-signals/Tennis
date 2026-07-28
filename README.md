@@ -229,9 +229,16 @@ bloqueia pedidos não-oficiais (o problema que já tiveste com o Sofascore).
 
 ## Extensibilidade
 
-- Fase 2 (ATP/WTA 500): adiciona os `sport_key` correspondentes em
-  `config.py` e ajusta `MIN_RANK_TO_INCLUDE_IF_LOWER_TIER` se quiseres
-  filtrar por ranking nesses torneios menores.
+- **WTA (decisão pendente, 28/07/2026):** avaliado e adiado — a
+  TennisMyLife é só ATP, e o fallback (tennis-data.co.uk) só tem 1 ano
+  de histórico WTA, sem colunas de serviço/mão dominante/score detalhado.
+  Isso deixaria o WTA com H2H de carreira fraco, e sem serviço/resposta,
+  sinal de lesão, recuperação após 1º set, ou canhotos/destros. Vale a
+  pena reconsiderar se aparecer uma fonte melhor de histórico WTA (20
+  anos, com as colunas certas) — nesse caso, a mudança de código é
+  pequena: acrescentar `"wta"` a `TOURS_TO_FOLLOW`, encontrar o
+  `tournamentId` WTA do torneio combinado (ex: Washington também tem
+  edição WTA 500) e acrescentar a `TRACKED_TOURNAMENT_IDS`.
 - Mais fontes gratuitas: qualquer fonte nova só precisa de uma função
   `_load_<fonte>()` em `fetch_data.py` que devolva um DataFrame com pelo
   menos as colunas `winner_name`, `loser_name`, `surface`, `tourney_date`
