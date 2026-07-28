@@ -53,7 +53,9 @@ from .config import (
     RAPIDAPI_HOST,
     SURFACES,
     TOURNAMENT_CACHE_PATH,
+    TOURNAMENT_FIXTURES_PAGE_SIZE,
     TOURS_TO_FOLLOW,
+    TRACKED_TOURNAMENT_IDS,
 )
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
@@ -1132,6 +1134,87 @@ def flush_fixtures_cache() -> None:
     if _fixtures_cache_dirty:
         _save_fixtures_cache(_fixtures_cache)
         print(f"[info] cache de fixtures atualizada ({len(_fixtures_cache)} entradas).")
+
+
+def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
+    """
+    Busca TODOS os jogos de um torneio específico diretamente pelo
+    tournamentId (endpoint getTournamentFixtures) — muito mais eficiente
+    do que o feed global por dia, que traz ruído de torneios do mundo
+    inteiro. Filtra automaticamente jogos de pares (nomes com "/") e
+    jogos ainda sem data marcada (date: null).
+
+    Usa a mesma cache de fixtures (por chave "torneio:{id}"), com o
+    mesmo tempo de vida configurado (FIXTURES_CACHE_MAX_AGE_HOURS).
+    """
+    global _fixtures_cache_dirty
+    cache_key = f"torneio:{tournament_id}"
+
+    cached = _fixtures_cache.get(cache_key)
+    if cached is not None:
+        fetched_at = datetime.fromisoformat(cached["fetched_at"])
+        age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
+        if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
+            print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
+            return cached["data"]
+
+    if not RAPIDAPI_KEY:
+        print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
+        return []
+
+    url = f"{RAPIDAPI_BASE}/{tour}/fixtures/tournament/{tournament_id}"
+    all_data: list[dict] = []
+    page = 1
+    try:
+        while True:
+            params = {
+                "pageSize": TOURNAMENT_FIXTURES_PAGE_SIZE,
+                "pageNo": page,
+                "filter": "PlayerGroup:both;",
+            }
+            resp = requests.get(url, headers=_RAPIDAPI_HEADERS, params=params, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            payload = resp.json()
+            page_data = payload.get("data", [])
+
+            # Filtrar pares (nomes com "/") e jogos ainda sem data marcada —
+            # não fazem parte da análise (só singles) nem são "elegíveis"
+            # sem data para verificar a janela de antecedência.
+            for match in page_data:
+                p1_name = (match.get("player1") or {}).get("name", "")
+                p2_name = (match.get("player2") or {}).get("name", "")
+                if "/" in p1_name or "/" in p2_name:
+                    continue
+                if not match.get("date"):
+                    continue
+                match["_tour"] = tour
+                all_data.append(match)
+
+            if not payload.get("hasNextPage"):
+                break
+            page += 1
+            if page > MAX_FIXTURE_PAGES:
+                print(f"[aviso] fixtures {cache_key}: atingido o limite de {MAX_FIXTURE_PAGES} páginas.")
+                break
+
+        _fixtures_cache[cache_key] = {
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "data": all_data,
+        }
+        _fixtures_cache_dirty = True
+        print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) de singles com data marcada.")
+        return all_data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter fixtures do torneio {tournament_id}: {exc}")
+        return []
+
+
+def fetch_tracked_tournament_fixtures() -> list[dict]:
+    """Junta fixtures de todos os torneios em TRACKED_TOURNAMENT_IDS."""
+    all_matches = []
+    for tournament_id, tour in TRACKED_TOURNAMENT_IDS.items():
+        all_matches.extend(fetch_tournament_fixtures(tournament_id, tour))
+    return all_matches
 
 
 def fetch_all_upcoming_fixtures(lookahead_days: int) -> list[dict]:
