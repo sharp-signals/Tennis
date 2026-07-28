@@ -203,6 +203,14 @@ bloqueia pedidos não-oficiais (o problema que já tiveste com o Sofascore).
   esse dado — nunca a especular.
 - **Fadiga**: é uma aproximação (nº de jogos nos últimos N dias a partir do
   histórico), não o calendário exato dia-a-dia do torneio em curso.
+- **Fadiga/hiato pode ser enganador para jogadores de Challenger/ITF**
+  (confirmado na prática, 28/07/2026: Andres Martin apareceu com "736
+  dias sem jogar", quando na realidade joga regularmente a nível
+  Challenger/ITF — só não aparece na TennisMyLife, que só cobre o
+  circuito principal). O prompt já instrui o Claude a assinalar esta
+  possibilidade quando o ranking for baixo e o hiato longo, mas não há
+  forma de confirmar a atividade real nesses níveis sem uma fonte de
+  dados de Challenger/ITF, que não temos.
 - **Dados desatualizados de terceiros**: tal como o caso do treinador
   errado no futebol, isto pode acontecer aqui também (ex: ranking
   desatualizado numa fonte). Não vale a pena complicar com correções
