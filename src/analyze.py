@@ -10,6 +10,8 @@ em silêncio — isso evita que o modelo assuma e "invente" com naturalidade.
 from __future__ import annotations
 
 import json
+
+from json_repair import repair_json
 import os
 
 import anthropic
@@ -176,11 +178,20 @@ def analyze_match(match_data: dict) -> dict:
         # instrução para não o fazer. Mais barato do que rejeitar a resposta.
         return json.loads(raw_text, strict=False)
     except json.JSONDecodeError as exc:
+        print(f"[aviso] resposta do Claude não era JSON válido: {exc}")
+        print("[info] a tentar reparar automaticamente com json_repair...")
+        try:
+            repaired = repair_json(raw_text)
+            result = json.loads(repaired, strict=False)
+            print("[info] reparação de JSON bem-sucedida — a análise não foi perdida.")
+            return result
+        except Exception as repair_exc:
+            print(f"[aviso] reparação de JSON também falhou: {repair_exc}")
+
         # Fallback defensivo: nunca deixar o pipeline abaixo sem estrutura,
         # mas sinalizamos claramente que houve um problema de formato —
         # não inventamos uma análise. Inclui o motivo exato no log (não na
         # mensagem enviada) para facilitar diagnóstico.
-        print(f"[aviso] resposta do Claude não era JSON válido: {exc}")
         print(f"[aviso] resposta bruta (primeiros 500 chars): {raw_text[:500]}")
         return {
             "flag": FLAG_UNCERTAIN,
