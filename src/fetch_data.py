@@ -78,14 +78,14 @@ _BROWSER_HEADERS = {
 }
 
 TENNISMYLIFE_FILES_ENDPOINT = "https://stats.tennismylife.org/api/data-files"
-# Usamos o jsDelivr (espelho gratuito de repositórios GitHub) em vez de
-# raw.githubusercontent.com diretamente — descobrimos na prática (16/07/2026)
-# que os runners do GitHub Actions apanhavam 404 consistente no raw.githubusercontent
-# para estes repositórios específicos, mesmo com User-Agent de browser, o
-# que sugere algum bloqueio a nível de IP/rede da própria GitHub. O jsDelivr
-# serve o mesmo conteúdo sem esse problema.
-SACKMANN_RAW_BASE = "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_atp@master"
-SACKMANN_RAW_BASE_WTA = "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_wta@master"
+# Usamos raw.githubusercontent.com direto (28/07/2026: voltámos atrás do
+# jsDelivr). Confirmámos ao vivo que o repositório do Sackmann voltou a
+# estar disponível, mas o jsDelivr continuava a devolver 404 nos
+# ficheiros de jogos — provavelmente cache antiga de quando o
+# repositório esteve mesmo fora do ar. raw.githubusercontent.com direto
+# não tem esse problema de cache.
+SACKMANN_RAW_BASE = "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master"
+SACKMANN_RAW_BASE_WTA = "https://raw.githubusercontent.com/JeffSackmann/tennis_wta/master"
 
 
 
@@ -955,6 +955,72 @@ def compute_serve_return_stats(history: pd.DataFrame, player: str, n_matches: in
 # --------------------------------------------------------------------- #
 # 5. Rankings (derivado do próprio histórico de jogos, ver função abaixo)
 # --------------------------------------------------------------------- #
+# --------------------------------------------------------------------- #
+# 6. H2H rico via RapidAPI/matchstat (independente do Sackmann) — usado
+#    para WTA, onde não temos histórico de carreira fiável por outra via.
+# --------------------------------------------------------------------- #
+_H2H_CACHE: dict = {}
+H2H_CACHE_MAX_AGE_HOURS = 24  # H2H muda pouco de um dia para o outro
+
+
+def _h2h_cache_key(tour: str, player1_id: int, player2_id: int) -> str:
+    # ordem consistente independentemente de quem é "player1"/"player2"
+    ids = sorted([int(player1_id), int(player2_id)])
+    return f"{tour}:{ids[0]}:{ids[1]}"
+
+
+def fetch_h2h_matches(tour: str, player1_id: int, player2_id: int) -> Optional[list]:
+    """Lista de confrontos diretos passados entre dois jogadores, por ID matchstat."""
+    cache_key = f"matches:{_h2h_cache_key(tour, player1_id, player2_id)}"
+    cached = _H2H_CACHE.get(cache_key)
+    if cached is not None:
+        age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age_hours < H2H_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+
+    if not RAPIDAPI_KEY:
+        return None
+
+    url = f"{RAPIDAPI_BASE}/{tour}/h2h/matches/{player1_id}/{player2_id}/"
+    try:
+        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+        _H2H_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter h2h/matches ({tour}, {player1_id} vs {player2_id}): {exc}")
+        return None
+
+
+def fetch_h2h_stats(tour: str, player1_id: int, player2_id: int) -> Optional[dict]:
+    """
+    Stats agregadas do confronto direto (serviço, resposta, break points,
+    sets decisivos, tiebreaks, por piso/tier) — específicas a este par de
+    jogadores, via matchstat. Independente do Sackmann.
+    """
+    cache_key = f"stats:{_h2h_cache_key(tour, player1_id, player2_id)}"
+    cached = _H2H_CACHE.get(cache_key)
+    if cached is not None:
+        age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age_hours < H2H_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+
+    if not RAPIDAPI_KEY:
+        return None
+
+    url = f"{RAPIDAPI_BASE}/{tour}/h2h/stats/{player1_id}/{player2_id}/"
+    try:
+        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json().get("data")
+        _H2H_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter h2h/stats ({tour}, {player1_id} vs {player2_id}): {exc}")
+        return None
+
+
 def get_player_ranking(history: pd.DataFrame, player: str) -> Optional[dict]:
     """
     Devolve {'rank', 'points', 'as_of'} com o ranking do jogador no seu
