@@ -199,13 +199,15 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
         if name not in by_name:
             print(f"[aviso] TennisMyLife não tem ficheiro para o ano {year} — a saltar.")
             continue
-        try:
-            csv_resp = requests.get(by_name[name]["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
-            csv_resp.raise_for_status()
-            df_year = pd.read_csv(io.StringIO(csv_resp.text))
-            frames.append(df_year)
-        except Exception as exc:
-            print(f"[aviso] falha a carregar TennisMyLife {name}: {exc}")
+        for attempt in (1, 2):
+            try:
+                csv_resp = requests.get(by_name[name]["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
+                csv_resp.raise_for_status()
+                df_year = pd.read_csv(io.StringIO(csv_resp.text))
+                frames.append(df_year)
+                break
+            except Exception as exc:
+                print(f"[aviso] falha a carregar TennisMyLife {name}, tentativa {attempt}: {exc}")
 
     if not frames:
         return None
