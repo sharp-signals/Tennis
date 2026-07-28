@@ -56,6 +56,21 @@ FIXTURES_CACHE_MAX_AGE_HOURS = 4
 # esgotar a quota diária (50 pedidos) num único dia com muitos jogos.
 MAX_FIXTURE_PAGES = 5
 
+# Torneios seguidos DIRETAMENTE por tournamentId (confirmado 28/07/2026:
+# muito mais eficiente do que o feed global de fixtures por dia, que
+# devolve TODOS os jogos ATP do mundo — Challengers/Futures incluídos —
+# gastando quota a filtrar ruído em vez de ir direto ao que interessa).
+# Atualiza manualmente quando um novo Slam/Masters 1000/500 começar —
+# descobre o tournamentId testando getTournamentInfo/getTournamentFixtures
+# na Playground do RapidAPI, tal como fizemos para o Washington Open.
+TRACKED_TOURNAMENT_IDS = {
+    21344: "atp",  # Citi Open - Washington (ATP 500), 27/07 a 02/08/2026
+}
+
+# Quantos jogos pedir por página do getTournamentFixtures (o default da
+# API é 10; pedimos mais para reduzir o número de páginas/pedidos).
+TOURNAMENT_FIXTURES_PAGE_SIZE = 50
+
 # Tours a seguir. Reduzido a ATP apenas (16/07/2026): os repositórios
 # tennis_atp/tennis_wta do Jeff Sackmann desapareceram do GitHub, e não
 # há outra fonte gratuita fiável de histórico WTA (a TennisMyLife nunca
