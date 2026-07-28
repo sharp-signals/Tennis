@@ -40,6 +40,48 @@ completo no Telegra.ph.
   uma previsão — o Claude é instruído a nunca o transformar numa
   recomendação de aposta, só contexto para decidires tu, no momento,
   o que souberes do jogador por cima disso.
+- **Desempenho vs canhotos/destros** (`compute_handedness_matchup_stats`)
+  — taxa de vitória específica contra cada estilo, usando as colunas
+  `winner_hand`/`loser_hand` já presentes no histórico.
+- **Regresso após paragem longa** (`compute_return_from_layoff_stats`) —
+  como o jogador se sai historicamente no primeiro jogo depois de uma
+  pausa de 60+ dias. Ver limitação abaixo sobre jogadores de
+  Challenger/ITF, onde este número pode enganar.
+- **Set decisivo** (`compute_deciding_set_stats`) — taxa de vitória
+  quando o jogo vai até ao set decisivo (3º em Bo3, 5º em Bo5).
+- **Fase do torneio** (`compute_round_stage_stats`) — rondas iniciais vs
+  finais, para identificar quem é inconsistente cedo mas forte "quando é
+  a sério", ou o inverso.
+
+Todas estas juntam-se numa secção final do relatório, **"🎾 Cenários para
+live"**, estruturada como condicionais ("Se X acontecer: [dado +
+lembrete curto]") — nunca como recomendação de aposta.
+
+## Validação estatística (backtest) — resultado já obtido
+
+Existe um script separado, `src/backtest.py` (workflow manual
+`.github/workflows/backtest.yml`, não corre no agendamento normal), que
+testa se os sinais do bot (H2H, forma, piso — sozinhos e combinados) têm
+alguma vantagem real contra odds históricas (2015-2025, tennis-data.co.uk),
+com metodologia cuidada para evitar fuga de informação temporal (ver
+`LEAKAGE_SAFETY_BUFFER_DAYS` no próprio ficheiro).
+
+**Resultado obtido (27/07/2026, gravado em `data/backtest_results/`):**
+nos casos em que o sinal do bot diverge do favorito do mercado, o nosso
+pick ganhou **menos** vezes do que a própria probabilidade implícita das
+odds sugeria (H2H sozinho +1.7 p.p., forma +0.2, piso -0.1, combinado
++0.8 — todos dentro da margem de erro estatística, ou seja, sem
+vantagem distinguível de ruído). **Conclusão:** estes três sinais
+simples, tal como calculados hoje, não batem o mercado. Isto não invalida
+o bot como ferramenta informativa — só confirma que não há "dinheiro
+fácil" a encontrar com esta abordagem simples, e evita a falsa sensação
+de vantagem que a análise textual, por si só, poderia sugerir.
+
+## Calendário de torneios a seguir
+
+Ver `CALENDARIO-2026.md` na raiz do repositório — lista os próximos
+Grand Slam/Masters 1000/ATP 500 do ano, para saberes quando voltar e
+adicionar o `tournamentId` seguinte a `TRACKED_TOURNAMENT_IDS`.
 
 ## Capacidades adicionais (16/07/2026)
 
@@ -81,9 +123,13 @@ WTA, ficaríamos com um bot inconsistente (às vezes fala de jogos WTA sem
 H2H/forma/piso nenhum). Preferiu-se reduzir o âmbito a manter essa
 inconsistência.
 
-`TOURS_TO_FOLLOW = ("atp",)` em `config.py` controla isto — se aparecer
-uma fonte WTA fiável no futuro, basta acrescentar `"wta"` aí (o resto do
-pipeline já lida com qualquer tour sem alterações).
+`TOURS_TO_FOLLOW = ("atp",)` em `config.py` ainda existe, mas note-se
+que a partir de 28/07/2026 a fixtures já não passa por aqui — vai
+diretamente por `TRACKED_TOURNAMENT_IDS` (ver secção "Arquitetura de
+fixtures" abaixo). `TOURS_TO_FOLLOW` só é usado pela função antiga
+`fetch_all_upcoming_fixtures` (não chamada atualmente, mantida como
+referência/fallback). Adicionar `"wta"` aqui não tem efeito enquanto
+essa função não voltar a ser chamada.
 
 Nota histórica anterior (já não se aplica, mantida para contexto): a
 decisão original de tiers (mais abaixo) também excluía ATP/WTA 250 por
@@ -185,6 +231,31 @@ gastam pedido nenhum.
 Todas são APIs/downloads documentados — nenhuma é scraping de um site que
 bloqueia pedidos não-oficiais (o problema que já tiveste com o Sofascore).
 
+## Robustez (correções acumuladas, 27-28/07/2026)
+
+- **Flag mínima garantida por regra** (`_enforce_minimum_flag` em
+  `main.py`): se faltarem odds de mercado E H2H ao mesmo tempo, o jogo
+  nunca pode sair 🟢 — sobe automaticamente para 🟡, independentemente do
+  que o Claude decida sozinho. É uma regra determinística, não um
+  critério do modelo.
+- **Reparação automática de JSON** (`json_repair`, em `analyze.py`): o
+  Claude ocasionalmente gera JSON malformado (aspas não escapadas,
+  vírgulas em falta) apesar da instrução — antes de desistir e cair no
+  relatório de erro, tentamos reparar automaticamente.
+- **Relatório completo: uma página do Telegra.ph POR JOGO**, não uma
+  página única com todos os jogos do dia — evita o erro `CONTENT_TOO_BIG`
+  quando há muitos jogos (confirmado na prática: um torneio inteiro com
+  12 jogos excedia o limite de tamanho de uma única página).
+- **Deduplicação de jogos por `id`**: o matchstat pode devolver o mesmo
+  jogo mais do que uma vez entre pedidos.
+- **Nomes com tolerância a acentos/variações** (`resolve_player_name`):
+  compara por normalização + correspondência aproximada antes de
+  desistir com "sem dados".
+- **Cache de fixtures e de torneios** grava no próprio repositório
+  (commit automático do workflow), com tempo de vida de 4h — equilíbrio
+  entre poupar quota (50 pedidos/dia no plano free) e não ficar preso a
+  dados desatualizados durante um torneio ativo.
+
 ## Limitações conhecidas (aceites por design, tal como no bot de futebol)
 
 - **Tiers de Grand Slam/Masters ainda por confirmar**: só testámos
@@ -215,17 +286,6 @@ bloqueia pedidos não-oficiais (o problema que já tiveste com o Sofascore).
   errado no futebol, isto pode acontecer aqui também (ex: ranking
   desatualizado numa fonte). Não vale a pena complicar com correções
   manuais — se acontecer com frequência lidamos nessa altura.
-- **Cobertura pode perder jogos em dias de muitos torneios simultâneos**
-  (27/07/2026, observado na prática): o `getDateFixtures` devolve TODOS
-  os jogos ATP do mundo nesse dia (Challengers/Futures incluídos), não só
-  os torneios que seguimos. Com a quota limitada (`MAX_FIXTURE_PAGES=5`,
-  50 pedidos/dia no plano free), em dias com muito ruído global o limite
-  de páginas pode ser atingido antes de cobrir todos os jogos do torneio
-  que realmente importa (ex: só 1 de vários jogos do Washington Open
-  chegou a ser elegível numa execução). Decisão aceite por agora: não
-  vale a pena a complexidade de pedir fixtures por torneio específico
-  (`getTournamentFixtures`) só para isto — se se tornar um problema
-  frequente, essa é a correção estrutural a considerar.
 
 ## Extensibilidade
 
