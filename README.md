@@ -154,6 +154,26 @@ acrescentar `"ATP 250"` / `"WTA 250"` a `ALLOWED_TOURNAMENT_TIERS` em
 `config.py` — o resto do pipeline (fixtures, histórico, cache de torneio)
 já lida com qualquer tier sem alterações.
 
+## H2H rico via matchstat para WTA (28/07/2026)
+
+Descoberto ao explorar a mesma API que já usamos para fixtures: os
+endpoints `getH2HMatches`/`getH2HStats` (secção "H2h" na Playground)
+dão H2H detalhado — serviço, resposta, break points, sets decisivos,
+tiebreaks, por piso/tier — **específico ao confronto entre dois
+jogadores**, por ID matchstat, independente do Sackmann. Implementado
+só para WTA (decisão explícita: o ATP já funciona bem com a
+TennisMyLife/Sackmann, e isto usa a mesma quota de 50/dia da RapidAPI).
+
+Cache própria (`H2H_CACHE_MAX_AGE_HOURS = 24`), já que H2H muda pouco de
+um dia para o outro.
+
+**Falta um passo para isto funcionar a sério em produção:**
+`TRACKED_TOURNAMENT_IDS` só tem o Washington Open **ATP** (21344) — para
+o WTA aparecer no pipeline, é preciso encontrar o `tournamentId` WTA do
+mesmo torneio (ou de outro WTA 500/1000/Slam) e acrescentá-lo com
+`"wta"` como valor. Sem isso, `fetch_h2h_stats` está pronto no código
+mas nunca é chamado, porque não há jogos WTA a passar pelo filtro.
+
 ## Arquitetura de fixtures (revista, 28/07/2026)
 
 **Já não usamos o feed global "todos os jogos ATP do mundo, por dia".**
