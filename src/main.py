@@ -282,32 +282,44 @@ def run() -> None:
         result = _enforce_minimum_flag(payload, result)
         analyses.append((payload, result))
 
-    # --- Relatório completo (Telegra.ph) ---
+    # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
+    # (Antes era uma única página com todos os jogos — com muitos jogos
+    # de uma vez (torneio inteiro), isso excede o limite de tamanho do
+    # Telegra.ph e falha tudo com CONTENT_TOO_BIG. Páginas separadas por
+    # jogo são sempre pequenas o suficiente, e nunca deixam um erro de
+    # publicação de UM jogo impedir os restantes de serem entregues.)
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    report_parts = [f"# Relatório Pré-Live de Ténis — {today_str}\n"]
+    match_reports = []  # (payload, result, telegraph_url_ou_None)
     for payload, result in analyses:
-        report_parts.append(
-            f"## {payload['player_a']} vs {payload['player_b']} "
-            f"({payload['tournament']}, {payload['tier']}, {payload['surface']})\n\n"
+        title = f"{payload['player_a']} vs {payload['player_b']} — {today_str}"
+        report_md = (
+            f"# {payload['player_a']} vs {payload['player_b']}\n\n"
+            f"**{payload['tournament']} ({payload['tier']}, {payload['surface']})**\n\n"
             f"{result['full_report_markdown']}\n"
         )
-    full_report_md = "\n".join(report_parts)
+        try:
+            url = publish_report(title, report_md)
+        except Exception as exc:
+            print(f"[aviso] falha a publicar no Telegra.ph para {payload['player_a']} vs {payload['player_b']}: {exc}")
+            url = None
+        match_reports.append((payload, result, url))
 
-    telegraph_url = publish_report(f"Ténis Pré-Live — {today_str}", full_report_md)
-
-    # --- Resumo curto (Telegram) ---
+    # --- Resumo curto (Telegram) — um link por jogo ---
     # A frase de cada jogo vem do Claude em texto livre — tem de ser
     # escapada antes de entrar numa mensagem com parse_mode=HTML, senão
     # um "<" ou "&" na frase parte a mensagem toda (erro 400 silencioso).
     summary_lines = [f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"]
-    for payload, result in analyses:
+    for payload, result, url in match_reports:
         flag = html.escape(result.get("flag", ""))
         line = html.escape(result.get("summary_line", ""))
         summary_lines.append(f"{flag} {line}")
-    summary_lines.append(f"\n📄 Relatório completo: {html.escape(telegraph_url)}")
+        if url:
+            summary_lines.append(f"📄 {html.escape(url)}\n")
+        else:
+            summary_lines.append("⚠️ Relatório completo indisponível para este jogo.\n")
 
     send_message("\n".join(summary_lines))
-    print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s). Relatório: {telegraph_url}")
+    print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
 
 
 if __name__ == "__main__":
