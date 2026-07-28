@@ -200,6 +200,17 @@ def _build_match_payload(match: dict) -> dict:
 
     odds = fetch_data.find_market_odds(ODDS_API_TENNIS_SPORT_KEYS, player_a, player_b)
 
+    # H2H rico via matchstat (independente do Sackmann) — só para WTA por
+    # agora, decisão explícita (28/07/2026): o ATP já funciona bem com o
+    # histórico da TennisMyLife/Sackmann, e isto usa a mesma quota
+    # limitada (50/dia) da RapidAPI que já usamos para fixtures.
+    h2h_rich_stats = None
+    if tour == "wta":
+        player1_id = match.get("player1Id")
+        player2_id = match.get("player2Id")
+        if player1_id is not None and player2_id is not None:
+            h2h_rich_stats = fetch_data.fetch_h2h_stats(tour, player1_id, player2_id)
+
     h2h = fetch_data.compute_h2h(history, player_a, player_b, surface)
     form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES)
     form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES)
@@ -234,6 +245,7 @@ def _build_match_payload(match: dict) -> dict:
         "commence_time_utc": start.isoformat(),
         "market_odds_decimal": odds,  # None é normal para torneios que a Odds API não cobre
         "h2h": h2h,
+        "h2h_rich_stats": h2h_rich_stats,  # só WTA: stats de serviço/resposta/sets decisivos específicas deste confronto, via matchstat
         "recent_form_a": form_a,
         "recent_form_b": form_b,
         "surface_stats_a": surface_a,
