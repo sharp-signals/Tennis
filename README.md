@@ -108,6 +108,34 @@ acrescentar `"ATP 250"` / `"WTA 250"` a `ALLOWED_TOURNAMENT_TIERS` em
 `config.py` — o resto do pipeline (fixtures, histórico, cache de torneio)
 já lida com qualquer tier sem alterações.
 
+## Arquitetura de fixtures (revista, 28/07/2026)
+
+**Já não usamos o feed global "todos os jogos ATP do mundo, por dia".**
+Esse feed (`getDateFixtures`) devolvia todos os Challengers/Futures do
+mundo inteiro junto com os torneios que seguimos, obrigando a gastar
+várias páginas de quota só a filtrar ruído — confirmado na prática
+(28/07/2026): um único dia esgotou a quota inteira antes de cobrir todos
+os jogos do Washington Open.
+
+**Agora seguimos torneios diretamente por `tournamentId`**
+(`getTournamentFixtures`), configurados em `TRACKED_TOURNAMENT_IDS` no
+`config.py`. Muito mais eficiente (sem ruído global), mas exige um passo
+manual: **quando um novo Slam/Masters 1000/500 começar, tens de
+adicionar o `tournamentId` a essa lista**. Para descobrir o ID:
+
+1. Na Playground do RapidAPI, endpoint `getTournamentInfo` ou
+   `getTournamentFixtures`, tenta um ID próximo dos que já conheces
+   (os IDs sobem ao longo do tempo/época) ou pesquisa pelo nome do
+   torneio no `data/tournament_cache.json` já acumulado.
+2. Confirma o `tier` (deve ser um dos permitidos em
+   `ALLOWED_TOURNAMENT_TIERS`).
+3. Acrescenta `{tournamentId}: "atp"` ao dicionário
+   `TRACKED_TOURNAMENT_IDS`.
+
+Filtragem automática incluída: jogos de pares (nomes com "/") e jogos
+ainda sem data marcada são descartados antes de chegarem ao resto do
+pipeline.
+
 ## Arquitetura das fontes de dados (importante — leia isto)
 
 **Fixtures (que jogos existem) vêm da RapidAPI/matchstat, não da Odds API.**
