@@ -44,6 +44,7 @@ def build_fake_match_payload() -> dict:
             ODDS_API_TENNIS_SPORT_KEYS, TEST_PLAYER_A, TEST_PLAYER_B
         ),
         "h2h": fetch_data.compute_h2h(history, TEST_PLAYER_A, TEST_PLAYER_B, TEST_SURFACE),
+        "h2h_rich_stats": None,  # só disponível para WTA — este teste é ATP
         "recent_form_a": fetch_data.compute_recent_form(history, TEST_PLAYER_A, 10),
         "recent_form_b": fetch_data.compute_recent_form(history, TEST_PLAYER_B, 10),
         "surface_stats_a": fetch_data.compute_surface_stats(history, TEST_PLAYER_A),
