@@ -99,7 +99,11 @@ O campo `fatigue_signal_*` agora tem vários indicadores: `days_since_last_match
 Usa o conjunto para avaliar fadiga (ex: poucos dias de descanso + muitos
 sets/minutos recentes = sinal de fadiga real; campos individuais podem
 vir `null` se a fonte não tiver essa coluna, mas os outros continuam
-válidos).
+válidos). ATENÇÃO: estas métricas usam a data de INÍCIO do torneio de
+cada jogo, não a data exata do encontro — num torneio de 2 semanas, um
+jogo da final aparece com a data do 1º dia. Trata os valores como
+aproximações (sobretudo `matches_last_3d`/`_7d`) e não como calendário
+exato; assinala isto se a fadiga for um fator central da tua análise.
 
 LIMITAÇÃO IMPORTANTE a ter em conta no `days_since_last_match` e no
 `layoff_return_stats_*`: a fonte de histórico só regista jogos do
