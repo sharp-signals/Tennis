@@ -6,6 +6,74 @@ gratuitas/documentadas, pede ao Claude uma análise que nunca inventa
 informação, e envia um resumo curto no Telegram com link para o relatório
 completo no Telegra.ph.
 
+## Fichas de jogador (base de conhecimento leve, 29/07/2026)
+
+`src/player_profile.py` + `src/generate_profile.py` geram uma ficha
+markdown por jogador (guardada em `knowledge/players/`), juntando num só
+sítio tudo o que o bot já calcula disperso: forma (janelas de 5/10/20),
+piso, serviço/resposta, recuperação após 1º set, set decisivo,
+canhotos/destros, regresso de pausa, fase do torneio.
+
+Princípio central: **cada número traz a amostra e um rótulo de
+fiabilidade ao lado** ("amostra sólida" vs "⚠️ amostra muito pequena").
+Não há modelo, pesos, nem previsão — é uma vista organizada dos factos,
+para o utilizador (ex-tenista) cruzar com o que sabe.
+
+Uso:
+```
+python -m src.generate_profile "Jannik Sinner" atp
+python -m src.generate_profile "Aryna Sabalenka" wta
+```
+
+**Porque é a versão "leve" e não o sistema completo:** o parceiro do
+projeto propôs (via ChatGPT) uma base de conhecimento quantitativa
+completa — SQLite com 14 tabelas, modelos hierárquicos bayesianos,
+partial pooling, efeitos por jogador, validação temporal, 6 fases.
+Ficou decidido NÃO avançar com isso por agora, por duas razões: (1) é um
+projeto de meses de engenharia; (2) o backtest (ver secção própria) já
+mostrou que os sinais simples não batem o mercado — construir um modelo
+sofisticado para afinar o peso de sinais sem vantagem comprovada seria
+elegante mas provavelmente inútil. A versão leve dá o valor real
+(perfil organizado por jogador) sem essa aposta. O caminho para o
+sistema completo fica em aberto se algum dia for uma decisão consciente
+de investir meses.
+
+## Registo de decisões (para não repetir discussões)
+
+- **Âmbito:** ATP + WTA, tiers Grand Slam / Masters 1000 / ATP-WTA 500 /
+  WTA 1000. 250 excluído (sem odds fiáveis). ATP-only entre 16-28/07 por
+  o Sackmann ter caído; revertido quando voltou.
+- **O bot NÃO recomenda apostas** — sinaliza divergências (🔴/🟡/🟢) e dá
+  contexto; a decisão é humana. Recusadas várias propostas de o
+  transformar em sistema de apostas automático (Kelly, paper trading
+  automático, execução). O relatório termina numa secção "🎯 Discrepâncias
+  e mercados a observar" (29/07/2026): quando a leitura dos dados diverge
+  do mercado, o bot usa julgamento para apontar QUE mercados vale a pena
+  observar nesse caso concreto (handicap de games, total de sets, "ganha
+  1 set", momentos de live como favorito a perder set/break) — sempre
+  ligado a um número com amostra, sempre como sugestão de OBSERVAÇÃO e
+  nunca de aposta. É a distinção-chave que o utilizador quis: o bot não
+  prevê o vencedor melhor que o mercado (o backtest mostrou que não
+  consegue), mas traduz a sua leitura em onde apontar os olhos.
+- **Vantagem estatística:** testada a sério (backtest), não encontrada
+  nos sinais simples. O bot é assumidamente uma ferramenta de research,
+  não uma máquina de lucro.
+- **Track record:** a fazer manualmente pelo utilizador ao longo do
+  tempo (entradas fictícias de 1 unidade, provavelmente em Excel), não
+  automatizado — decisão do utilizador, adiado para quando quiser.
+- **Auditoria externa (ChatGPT, 28/07):** útil, apanhou bugs reais que
+  foram corrigidos (ver secção Robustez: A3 falha silenciosa, B1 datas
+  sem timezone, B2 token Telegraph, B3 limite Telegram, B4 RET em set
+  decisivo, B5 ranking recuado, A6 fadiga aproximada, A7 docs
+  contraditórias, .gitignore). Recusadas as recomendações que
+  implicavam o sistema quantitativo completo (SQLite obrigatório, tirar
+  a flag ao LLM, Elo, modelo residual) — mesmo motivo das fichas.
+- **Planos RapidAPI:** decidido ficar no free por agora. PRO ($29) dá
+  quota + stats avançadas mas não dá movimento de odds; ULTRA ($59) dá
+  movimento de odds mas decidiu-se que provavelmente não aporta valor
+  suficiente para justificar. Reavaliar se a quota free se tornar
+  limitante na prática.
+
 ## Como correr (setup)
 
 1. Faz fork/push deste repositório para o teu GitHub.
