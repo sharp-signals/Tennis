@@ -86,6 +86,14 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
   linguagem de cobertura ("pode", "possivelmente", "talvez") quando o
   dado é claro — usa-a só quando a incerteza é real.
 
+O campo `h2h_rich_stats` (só aparece para jogos WTA) vem de uma fonte
+diferente (matchstat, não a TennisMyLife/Sackmann) — dá stats de
+serviço/resposta, break points, sets decisivos e tiebreaks ESPECÍFICOS
+deste confronto direto (não da carreira geral), com `player1Stats`/
+`player2Stats` (o `id` de cada bloco corresponde ao jogador, cruza com
+`ranking_a`/`ranking_b` se precisares de saber qual é qual). Usa isto
+como informação de H2H detalhada quando disponível — é null para ATP.
+
 O campo `fatigue_signal_*` agora tem vários indicadores: `days_since_last_match`,
 `matches_last_3d`/`_7d`/`_14d`, `minutes_played_last_7d`, `sets_played_last_7d`.
 Usa o conjunto para avaliar fadiga (ex: poucos dias de descanso + muitos
