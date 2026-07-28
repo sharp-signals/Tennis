@@ -31,7 +31,6 @@ from dateutil import parser as date_parser
 
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
-    FIXTURES_LOOKAHEAD_DAYS,
     FLAG_ROUTINE,
     FLAG_UNCERTAIN,
     INDOOR_SURFACE_PREFIX,
@@ -262,8 +261,8 @@ def _build_match_payload(match: dict) -> dict:
 
 
 def run() -> None:
-    raw_matches = fetch_data.fetch_all_upcoming_fixtures(FIXTURES_LOOKAHEAD_DAYS)
-    print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelo matchstat antes da deduplicação.")
+    raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
+    print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
     raw_matches = _deduplicate_matches(raw_matches)
     print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
 
