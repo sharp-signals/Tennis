@@ -1062,6 +1062,16 @@ _fixtures_cache = _load_fixtures_cache()
 _fixtures_cache_dirty = False
 
 
+# --------------------------------------------------------------------- #
+# CÓDIGO NÃO USADO ATUALMENTE (28/07/2026): esta função e
+# fetch_all_upcoming_fixtures() eram a arquitetura antiga — feed global
+# "todos os jogos ATP do dia" via getDateFixtures. Substituída por
+# fetch_tournament_fixtures()/fetch_tracked_tournament_fixtures() (mais
+# abaixo), que pede diretamente por tournamentId e evita o ruído global.
+# Mantida por se um dia for útil como mecanismo de DESCOBERTA de novos
+# torneios (a nova arquitetura exige adicionar tournamentId manualmente
+# a TRACKED_TOURNAMENT_IDS — ver README). Não é chamada por main.py.
+# --------------------------------------------------------------------- #
 def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
     """
     Devolve os jogos agendados para um dia específico, para um tour
