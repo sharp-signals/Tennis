@@ -288,6 +288,38 @@ def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
         return None
 
 
+def _load_sackmann_multi_year(tour: str, years_to_load: int) -> Optional[pd.DataFrame]:
+    """
+    Carrega os últimos `years_to_load` anos de jogos do Sackmann e junta
+    tudo — mesmo mecanismo usado para a TennisMyLife no ATP (ver acima).
+    Reativado (28/07/2026) depois de confirmarmos que o repositório
+    tennis_wta voltou a ficar disponível no GitHub. É a fonte PRINCIPAL
+    para WTA — a TennisMyLife nunca teve WTA.
+    """
+    base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
+    current_year = datetime.now(timezone.utc).year
+    frames = []
+    for offset in range(years_to_load):
+        year = current_year - offset
+        url = f"{base}/{tour}_matches_{year}.csv"
+        for attempt in (1, 2):
+            try:
+                resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
+                resp.raise_for_status()
+                df_year = pd.read_csv(io.StringIO(resp.text))
+                frames.append(df_year)
+                break
+            except Exception as exc:
+                print(f"[aviso] falha a carregar Sackmann {tour}_matches_{year}.csv, tentativa {attempt}: {exc}")
+
+    if not frames:
+        return None
+
+    combined = pd.concat(frames, ignore_index=True)
+    print(f"[info] Sackmann {tour}: {len(frames)}/{years_to_load} anos carregados, {len(combined)} jogos no total.")
+    return combined
+
+
 def get_history(tour: str) -> pd.DataFrame:
     """
     Devolve o histórico de jogos disponível para o tour ('atp'/'wta'),
@@ -304,11 +336,11 @@ def get_history(tour: str) -> pd.DataFrame:
         df = _load_tennismylife(tour)
         source = "tennismylife"
     else:
-        # Confirmado (15/07/2026): a TennisMyLife é uma base de dados só
-        # de ATP (mesmo nome do repositório: "ATP tournaments matches").
-        # Nunca teve WTA — não vale a pena gastar um pedido a tentar.
-        df = None
-        source = None
+        # Reativado (28/07/2026): o repositório tennis_wta do Sackmann
+        # voltou a ficar disponível — confirmado ao vivo. Passa a ser a
+        # fonte principal para WTA (a TennisMyLife nunca teve WTA).
+        df = _load_sackmann_multi_year(tour, HISTORY_YEARS_TO_LOAD)
+        source = "sackmann (multi-ano)"
 
     if df is None or df.empty:
         df = _load_sackmann(tour, year)
