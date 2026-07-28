@@ -139,29 +139,38 @@ Quatro campos adicionais dão contexto extra:
 - `round_stage_stats_*`: rondas iniciais vs finais.
 
 A pessoa que lê isto é ex-tenista e vai aplicar isto AO VIVO, com o
-próprio julgamento — nunca decidas por ela nem uses a palavra "aposta"
-ou "recomendo entrar". Por isso, a secção final do relatório tem de ser
-"### 🎾 Cenários para live", estruturada como uma lista de CENÁRIOS
-CONDICIONAIS específicos a este jogo (não uma lista plana de números).
-Cada cenário relevante segue este formato:
+próprio julgamento — nunca decidas por ela, nunca uses a palavra
+"aposta", "recomendo entrar", "aposta em" ou equivalente. O que fazes é
+diferente e mais subtil: quando a tua leitura dos dados DIVERGE do que o
+mercado (`market_odds_decimal`) parece assumir, apontas QUE MERCADOS
+valeria a pena a pessoa observar por causa dessa divergência — é
+sugestão de OBSERVAÇÃO, não de aposta. A decisão é sempre dela.
 
-**Se [condição concreta, ex: "Alcaraz perder o 1º set"]:** [número
-primeiro, com amostra — ex: "38.5% em 78 jogos" — seguido de UM lembrete
-curto, não um parágrafo, de que o número sozinho não chega]. Máximo
-2 frases por cenário. Nada de introduções tipo "é importante notar que"
-ou "vale a pena considerar" — vai direto ao número e ao lembrete.
+A secção final chama-se "### 🎯 Discrepâncias e mercados a observar" e
+segue estas regras:
 
-Só inclui cenários para os quais existam dados relevantes deste jogo
-(não inventes cenários genéricos sem suporte nos dados fornecidos —
-ex: não menciones handedness se ambos forem destros). Cenários possíveis,
-conforme os dados disponíveis: perder o 1º set, o jogo chegar ao set
-decisivo, o jogador regressar de uma paragem longa, e — se `market_odds_decimal`
-existir e divergir claramente da leitura dos outros dados — um cenário
-pré-jogo assinalando essa divergência (sem nunca recomendar apostar,
-só "vale a pena confirmar antes do início"). **Se genuinamente não
-houver nenhum cenário com dados de suporte suficientes, escreve
-explicitamente "Sem cenários com dados suficientes para assinalar
-neste jogo" em vez de forçar algo fraco.**
+1. Usa JULGAMENTO, não uma lista fixa. Analisa este jogo concreto e,
+   se detetares uma divergência entre os dados e o mercado, liga-a ao(s)
+   mercado(s) que fazem sentido observar NESSE caso. Exemplos do TIPO de
+   raciocínio (não uses cegamente, adapta ao jogo):
+   - underdog com perfil melhor do que a odd sugere → sugerir observar o
+     handicap de games dele (ex: +X.5) ou o mercado "ganha pelo menos 1 set"
+   - super favorito mas adversário que historicamente recupera bem de um
+     set/break abaixo → sugerir observar, ao vivo, se o favorito perder o
+     1º set ou um break (possível sobrerreação do mercado)
+   - jogador muito forte em set decisivo → observar mercados de "jogo vai
+     a set decisivo" / total de sets
+   - qualquer outra discrepância que os dados deste jogo revelem
+2. Liga SEMPRE a sugestão a um número com amostra (ex: "recupera 38.5%
+   em 78 jogos"). Sem dado de suporte, não sugiras o mercado.
+3. Cada ponto: no máximo 2 frases, número primeiro, sem introduções tipo
+   "é importante notar". 
+4. Deixa claro, uma vez, que são pontos de observação para ela decidir —
+   não recomendações de entrada.
+5. **Se não houver nenhuma discrepância real com suporte nos dados,
+   escreve "Sem discrepâncias assinaláveis — mercado alinhado com os
+   dados" em vez de inventar.** Um jogo onde tudo aponta para o favorito
+   e a odd reflete isso não tem discrepância — e está tudo bem em dizê-lo.
 
 Responde APENAS com o JSON, sem texto antes ou depois, sem blocos de código.
 """
