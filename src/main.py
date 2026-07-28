@@ -132,6 +132,18 @@ def _deduplicate_matches(matches: list[dict]) -> list[dict]:
     return deduplicated
 
 
+def _parse_utc(date_str: str) -> datetime:
+    """
+    B1 da auditoria (28/07/2026): se a API devolver uma data sem timezone,
+    comparações com datetimes timezone-aware rebentam com TypeError.
+    Assumimos UTC quando falta (as datas do matchstat vêm em UTC).
+    """
+    parsed = date_parser.isoparse(date_str)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
 def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
     now = datetime.now(timezone.utc)
     window_start = now + timedelta(hours=LOOKAHEAD_HOURS_MIN)
@@ -140,8 +152,8 @@ def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
     eligible = []
     for m in matches:
         try:
-            start = date_parser.isoparse(m["date"])
-        except (KeyError, ValueError):
+            start = _parse_utc(m["date"])
+        except (KeyError, ValueError, TypeError):
             continue
         if window_start <= start <= window_end:
             eligible.append(m)
@@ -196,7 +208,7 @@ def _build_match_payload(match: dict) -> dict:
     player_b = (match.get("player2") or {}).get("name", "?")
     tournament = match["tournament_name"]
     surface = match["surface"]
-    start = date_parser.isoparse(match["date"])
+    start = _parse_utc(match["date"])
 
     odds = fetch_data.find_market_odds(ODDS_API_TENNIS_SPORT_KEYS, player_a, player_b)
 
@@ -304,8 +316,21 @@ def run() -> None:
             print(f"[aviso] falha ao analisar {p1} vs {p2}: {exc}")
 
     if not analyses:
-        print("[aviso] Nenhuma análise concluída com sucesso — nada a enviar.")
-        return
+        # A3 da auditoria (28/07/2026): terminar "verde" sem qualquer
+        # análise concluída esconderia uma falha total (ex: API da
+        # Anthropic sem créditos). Alertamos e saímos com erro para o
+        # GitHub Actions ficar vermelho e o alerta de falha disparar.
+        error_msg = (
+            f"⚠️ Tennis Bot: {len(eligible)} jogo(s) elegível(is), mas NENHUMA "
+            "análise foi concluída — provável falha da API (créditos? rede?). "
+            "Verifica os logs do GitHub Actions."
+        )
+        print(f"[erro] {error_msg}")
+        try:
+            send_message(error_msg)
+        except Exception as exc:
+            print(f"[aviso] também falhou o envio do alerta ao Telegram: {exc}")
+        raise SystemExit(1)
 
     # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
     # (Antes era uma única página com todos os jogos — com muitos jogos
@@ -343,7 +368,27 @@ def run() -> None:
         else:
             summary_lines.append("⚠️ Relatório completo indisponível para este jogo.\n")
 
-    send_message("\n".join(summary_lines))
+    # B3 da auditoria (28/07/2026): o Telegram limita mensagens a 4096
+    # caracteres — com um torneio inteiro (20+ jogos com links), uma
+    # mensagem única excede o limite e falha por completo. Dividimos em
+    # blocos, quebrando apenas em fronteiras de linha.
+    TELEGRAM_SAFE_LIMIT = 3900  # margem sob os 4096 oficiais
+    chunks: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for line in summary_lines:
+        line_len = len(line) + 1  # +1 pelo \n
+        if current and current_len + line_len > TELEGRAM_SAFE_LIMIT:
+            chunks.append("\n".join(current))
+            current, current_len = [], 0
+        current.append(line)
+        current_len += line_len
+    if current:
+        chunks.append("\n".join(current))
+
+    for i, chunk in enumerate(chunks):
+        prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
+        send_message(prefix + chunk)
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
 
 
