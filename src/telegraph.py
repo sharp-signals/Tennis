@@ -18,9 +18,19 @@ TELEGRAPH_API = "https://api.telegra.ph"
 REQUEST_TIMEOUT = 20
 
 
+# Cache em memória do token durante a execução (B2 da auditoria de
+# 28/07/2026): com uma página do Telegra.ph POR JOGO, sem esta cache
+# criava-se uma conta nova por cada jogo (10 jogos = 10 contas).
+_TOKEN_CACHE: dict = {}
+
+
 def _get_or_create_access_token() -> str:
+    if "token" in _TOKEN_CACHE:
+        return _TOKEN_CACHE["token"]
+
     token = os.environ.get("TELEGRAPH_ACCESS_TOKEN", "")
     if token:
+        _TOKEN_CACHE["token"] = token
         return token
 
     resp = requests.post(
@@ -31,9 +41,11 @@ def _get_or_create_access_token() -> str:
     resp.raise_for_status()
     result = resp.json()["result"]
     print(
-    "[warning] TELEGRAPH_ACCESS_TOKEN não configurado; "
-    "foi criada uma conta Telegra.ph temporária."
-)
+        "[info] Conta Telegra.ph criada sem token guardado. "
+        "Para reutilizar entre execuções, guarda o access_token desta conta "
+        "como secret TELEGRAPH_ACCESS_TOKEN (não é impresso no log por segurança)."
+    )
+    _TOKEN_CACHE["token"] = result["access_token"]
     return result["access_token"]
 
 
