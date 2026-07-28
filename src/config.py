@@ -21,6 +21,8 @@ ALLOWED_TOURNAMENT_TIERS = {
     "Grand Slam",
     "ATP Masters 1000",
     "ATP 500",
+    "WTA 1000",   # reativado 28/07/2026 (H2H rico via matchstat + Sackmann de volta)
+    "WTA 500",    # valor exato confirmado via getTournamentInfo no id 16738
 }
 # Nível 250 (ATP/WTA) ficou de fora por decisão explícita: a Odds API não
 # tem cobertura fiável de mercado para este nível (confirmado na prática
@@ -65,6 +67,7 @@ MAX_FIXTURE_PAGES = 5
 # na Playground do RapidAPI, tal como fizemos para o Washington Open.
 TRACKED_TOURNAMENT_IDS = {
     21344: "atp",  # Citi Open - Washington (ATP 500), 27/07 a 02/08/2026
+    16738: "wta",  # Mubadala DC Open - Washington (WTA 500), 27/07 a 02/08/2026 — confirmado via getTournamentInfo
 }
 
 # Quantos jogos pedir por página do getTournamentFixtures (o default da
@@ -95,6 +98,7 @@ ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_barcelona_open", "tennis_atp_dubai",
     "tennis_atp_qatar_open", "tennis_atp_queens_club_champ",
     "tennis_atp_washington_open",
+    "tennis_wta_washington_open",
     "tennis_atp_halle_open", "tennis_atp_hamburg_open",
     "tennis_atp_munich", "tennis_atp_china_open",
 ]
