@@ -289,10 +289,23 @@ def run() -> None:
 
     analyses = []
     for match in eligible:
-        payload = _build_match_payload(match)
-        result = analyze_match(payload)
-        result = _enforce_minimum_flag(payload, result)
-        analyses.append((payload, result))
+        try:
+            payload = _build_match_payload(match)
+            result = analyze_match(payload)
+            result = _enforce_minimum_flag(payload, result)
+            analyses.append((payload, result))
+        except Exception as exc:
+            # Uma falha num jogo (ex: API da Anthropic sem créditos, erro
+            # transitório de rede) não deve matar a execução inteira — os
+            # jogos já analisados continuam a ser entregues, e este fica
+            # registado no log para diagnóstico.
+            p1 = (match.get("player1") or {}).get("name", "?")
+            p2 = (match.get("player2") or {}).get("name", "?")
+            print(f"[aviso] falha ao analisar {p1} vs {p2}: {exc}")
+
+    if not analyses:
+        print("[aviso] Nenhuma análise concluída com sucesso — nada a enviar.")
+        return
 
     # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
     # (Antes era uma única página com todos os jogos — com muitos jogos
