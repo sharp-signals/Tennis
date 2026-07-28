@@ -747,8 +747,16 @@ def compute_return_from_layoff_stats(history: pd.DataFrame, player: str, thresho
 
 
 def _count_completed_sets(score) -> int:
-    """Conta quantos sets têm resultado válido na coluna 'score' (ignora RET/W-O)."""
+    """
+    Conta quantos sets têm resultado válido na coluna 'score'.
+    B4 da auditoria (28/07/2026): jogos terminados em RET/W-O/DEF contam
+    como 0 — "6-4 3-6 2-1 RET" NÃO é um encontro que completou 3 sets, e
+    contá-lo distorcia a estatística de set decisivo.
+    """
     if not isinstance(score, str) or not score.strip():
+        return 0
+    upper = score.upper()
+    if "RET" in upper or "W/O" in upper or "DEF" in upper or "WO" == upper.strip():
         return 0
     count = 0
     for token in score.strip().split():
@@ -1044,22 +1052,26 @@ def get_player_ranking(history: pd.DataFrame, player: str) -> Optional[dict]:
 
     played["tourney_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
     played = played.sort_values("tourney_date")
-    latest = played.iloc[-1]
 
-    is_winner = latest.get("winner_name") == player
-    rank_col = "winner_rank" if is_winner else "loser_rank"
-    points_col = "winner_rank_points" if is_winner else "loser_rank_points"
+    # B5 da auditoria (28/07/2026): se o jogo mais recente não tiver
+    # ranking registado, recuamos até ao último jogo COM ranking válido
+    # (até 10 jogos para trás), em vez de devolver None imediatamente.
+    for _, row in played.iloc[::-1].head(10).iterrows():
+        is_winner = row.get("winner_name") == player
+        rank_col = "winner_rank" if is_winner else "loser_rank"
+        points_col = "winner_rank_points" if is_winner else "loser_rank_points"
 
-    rank_value = latest.get(rank_col)
-    if pd.isna(rank_value):
-        return None
+        rank_value = row.get(rank_col)
+        if pd.isna(rank_value):
+            continue
 
-    points_value = latest.get(points_col)
-    return {
-        "rank": int(rank_value),
-        "points": int(points_value) if not pd.isna(points_value) else None,
-        "as_of": str(latest.get("tourney_date")),
-    }
+        points_value = row.get(points_col)
+        return {
+            "rank": int(rank_value),
+            "points": int(points_value) if not pd.isna(points_value) else None,
+            "as_of": str(row.get("tourney_date")),
+        }
+    return None
 
 
 # --------------------------------------------------------------------- #
