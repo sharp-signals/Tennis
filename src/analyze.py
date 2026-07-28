@@ -56,7 +56,10 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
    fadiga clara; {FLAG_UNCERTAIN} = jogo equilibrado ou dados insuficientes
    para concluir; {FLAG_ROUTINE} = sem sinais especiais)
 - "summary_line": uma frase curta (máx. ~140 caracteres) para o resumo do
-  Telegram, em português
+  Telegram, em português — direta, sem rodeios, o sinal mais importante
+  primeiro (ex: "Sinner favorito claro em serviço, mas Alcaraz domina o
+  H2H em hard — sem odds para confirmar", não "É interessante notar que
+  parece haver alguns sinais que sugerem que Sinner...")
 - "full_report_markdown": análise completa em Markdown, otimizada para
   leitura rápida (não um texto corrido). Estrutura obrigatória:
   1. Começa SEMPRE com "## 🔑 Pontos-chave" seguido de 3-5 bullets curtos
@@ -72,6 +75,16 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
      as maiores incertezas, se aplicável.
   Nunca inventes números — todas as regras acima sobre dados em falta
   continuam a aplicar-se dentro deste formato.
+
+  REGRA DE DIRETISMO (importante): cada bullet tem, no máximo, uma frase
+  curta. Número primeiro, contexto depois — nunca ao contrário (ex:
+  "**7-3** em piso duro (Alcaraz)", não "Alcaraz, que joga bem em piso
+  duro historicamente, lidera o confronto direto por 7 vitórias a 3").
+  Diz a ressalva sobre dados em falta/amostra pequena UMA VEZ por campo,
+  não a repitas em cada secção — se já a disseste nos Pontos-chave, nas
+  secções seguintes vai direto ao dado, sem repetir o aviso. Evita
+  linguagem de cobertura ("pode", "possivelmente", "talvez") quando o
+  dado é claro — usa-a só quando a incerteza é real.
 
 O campo `fatigue_signal_*` agora tem vários indicadores: `days_since_last_match`,
 `matches_last_3d`/`_7d`/`_14d`, `minutes_played_last_7d`, `sets_played_last_7d`.
@@ -108,11 +121,11 @@ ou "recomendo entrar". Por isso, a secção final do relatório tem de ser
 CONDICIONAIS específicos a este jogo (não uma lista plana de números).
 Cada cenário relevante segue este formato:
 
-**Se [condição concreta, ex: "Alcaraz perder o 1º set"]:** [o dado
-histórico relevante desse jogador para essa situação, com a amostra
-(ex: "38.5% em 78 jogos") e um lembrete de que o número sozinho não
-chega — como perdeu o set, estado do serviço em tempo real, e o que a
-pessoa souber do jogador pesam mais do que a taxa isolada].
+**Se [condição concreta, ex: "Alcaraz perder o 1º set"]:** [número
+primeiro, com amostra — ex: "38.5% em 78 jogos" — seguido de UM lembrete
+curto, não um parágrafo, de que o número sozinho não chega]. Máximo
+2 frases por cenário. Nada de introduções tipo "é importante notar que"
+ou "vale a pena considerar" — vai direto ao número e ao lembrete.
 
 Só inclui cenários para os quais existam dados relevantes deste jogo
 (não inventes cenários genéricos sem suporte nos dados fornecidos —
