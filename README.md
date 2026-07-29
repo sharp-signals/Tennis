@@ -12,7 +12,14 @@ completo no Telegra.ph.
 markdown por jogador (guardada em `knowledge/players/`), juntando num só
 sítio tudo o que o bot já calcula disperso: forma (janelas de 5/10/20),
 piso, serviço/resposta, recuperação após 1º set, set decisivo,
-canhotos/destros, regresso de pausa, fase do torneio.
+canhotos/destros, regresso de pausa, fase do torneio. **Quando o jogador
+está no ranking oficial, a ficha é enriquecida com stats de carreira
+ricas do matchstat** (`getH2HVsAllOppStats`): serviço/resposta completo,
+1º set→resultado, set decisivo, tiebreaks, duração média de jogo — para
+ATP e WTA por igual. Custo: ~2 pedidos RapidAPI por ficha (ranking já
+cacheado + career stats), por isso as fichas geram-se SOB DEMANDA, não no
+fluxo diário. Se o jogador não estiver no ranking ou a API falhar, a
+ficha gera na mesma só com o histórico (degradação suave).
 
 Princípio central: **cada número traz a amostra e um rótulo de
 fiabilidade ao lado** ("amostra sólida" vs "⚠️ amostra muito pequena").
@@ -117,6 +124,27 @@ Y". Regras de leitura já aplicadas desta forma:
    correr 2x/dia. Podes também disparar manualmente em **Actions → Tennis
    Pre-Live Bot → Run workflow**.
 
+## Capacidades adicionais (29/07/2026)
+
+- **Ranking oficial ao vivo** (`fetch_official_ranking`, via matchstat
+  `ranking/singles`): substitui o ranking derivado do histórico, que
+  ficava desatualizado para quem não joga há semanas (caso Alcaraz "as
+  of abril"). 1 pedido traz a lista inteira; cache SEMANAL (rankings só
+  mudam à segunda). O `main.py` usa o oficial com prioridade e cai para
+  o derivado do histórico se o jogador não estiver na lista.
+- **Registo da época atual** (`compute_current_season_record`): nº de
+  jogos e vitórias no ano corrente. É a chave para distinguir um jogador
+  em atividade de um ex-campeão que mal joga — cruza-se com as stats de
+  carreira para evitar leituras enganadas (ver "Método de refinamento").
+- **Três princípios de leitura no prompt** (validados contra uma resposta
+  do ChatGPT, versão sem a maquinaria estatística pesada):
+  1. amostra pequena = ausência de sinal, não sinal fraco;
+  2. recência manda (presente > carreira quando divergem);
+  3. "sem dados" ≠ "dados que indicam equilíbrio" — lacuna diz-se como
+     lacuna.
+- **Stats de carreira ricas** (`fetch_player_career_stats`, matchstat):
+  usadas nas fichas (ver secção das fichas). Cache 7 dias.
+
 ## Capacidades adicionais (27/07/2026)
 
 - **Recuperação após perder o 1º set** — para aplicares em live, sem o
@@ -202,14 +230,22 @@ O bot cobre **ATP e WTA** — Grand Slam, ATP Masters 1000/500, WTA
 
 **Histórico da decisão:** entre 16/07 e 28/07 o âmbito foi só ATP,
 porque os repositórios do Sackmann (única fonte profunda de histórico
-WTA) desapareceram do GitHub com 404 real confirmado. Em 28/07
-confirmámos ao vivo que o `tennis_wta` voltou a estar disponível
-(via `raw.githubusercontent.com` — atenção: o jsDelivr manteve cache
-antiga do 404 durante mais tempo, por isso trocámos para o raw direto),
-e o WTA foi reativado de ponta a ponta: fixtures (id 16738 no
+WTA) desapareceram do GitHub com 404 real confirmado. Em 28-29/07 o WTA
+foi reativado de ponta a ponta: fixtures (id 16738 no
 `TRACKED_TOURNAMENT_IDS`), tiers, odds (`tennis_wta_washington_open`),
-histórico multi-ano do Sackmann, e H2H rico via matchstat (ver secção
-própria acima).
+histórico multi-ano do Sackmann, e H2H rico via matchstat.
+
+Sobre o acesso ao Sackmann (lição aprendida): o `raw.githubusercontent.com`
+e o jsDelivr falham de formas diferentes em momentos diferentes (o raw
+às vezes dá 404/bloqueio nos runners; o jsDelivr guarda cache antiga de
+404). Em vez de perseguir qual funciona hoje, o carregamento multi-ano
+agora **tenta as duas fontes por ordem, para cada ano, e usa a primeira
+que responder** (`SACKMANN_SOURCES_ATP`/`_WTA` em `fetch_data.py`).
+Confirmado em produção (29/07): 35.424 jogos WTA carregados via
+raw.githubusercontent no GitHub Actions. NOTA: o ambiente de
+desenvolvimento do assistente não acede de forma fiável ao raw, por isso
+testes de acesso a estas fontes só são conclusivos no GitHub Actions
+real, não localmente.
 
 `TOURS_TO_FOLLOW = ("atp",)` em `config.py` é atualmente **código morto
 funcional**: as fixtures vão diretamente por `TRACKED_TOURNAMENT_IDS`
@@ -349,7 +385,11 @@ bloqueia pedidos não-oficiais (o problema que já tiveste com o Sofascore).
 - **Relatório completo: uma página do Telegra.ph POR JOGO**, não uma
   página única com todos os jogos do dia — evita o erro `CONTENT_TOO_BIG`
   quando há muitos jogos (confirmado na prática: um torneio inteiro com
-  12 jogos excedia o limite de tamanho de uma única página).
+  12 jogos excedia o limite de tamanho de uma única página). A publicação
+  de cada jogo está protegida (29/07): erro num jogo não impede os
+  outros, e `publish_report` trata conteúdo vazio, título >256 chars, e
+  erros da API do Telegra.ph com a mensagem real (em vez de um KeyError
+  opaco `'content'`).
 - **Deduplicação de jogos por `id`**: o matchstat pode devolver o mesmo
   jogo mais do que uma vez entre pedidos.
 - **Nomes com tolerância a acentos/variações** (`resolve_player_name`):
