@@ -46,11 +46,50 @@ def _pct(wins: int, total: int) -> str:
     return f"{100 * wins / total:.1f}%"
 
 
-def build_player_profile_markdown(history: pd.DataFrame, player: str, tour: str) -> Optional[str]:
+def _format_career_stats_section(career: dict) -> list[str]:
+    """Formata a secção de stats de carreira (matchstat / getH2HVsAllOppStats)."""
+    lines = ["## Stats de carreira (fonte: matchstat)", ""]
+    stats = career.get("playerStats") or career.get("player1Stats") or career
+    if not isinstance(stats, dict):
+        return []
+
+    def g(key):
+        return stats.get(key)
+
+    played = g("statMatchesPlayed") or g("matchesPlayed")
+    if played:
+        lines.append(f"- Jogos de carreira na base: **{played}**")
+    if g("avgTime"):
+        lines.append(f"- Duração média de jogo: **{g('avgTime')}**")
+    if g("firstServePercentage") is not None:
+        lines.append(f"- 1º serviço dentro: **{g('firstServePercentage')}%** · "
+                     f"ganho no 1º: **{g('winningOnFirstServePercentage')}%** · "
+                     f"ganho no 2º: **{g('winningOnSecondServePercentage')}%**")
+    if g("returnPtsWinPercentage") is not None:
+        lines.append(f"- Pontos de resposta ganhos: **{g('returnPtsWinPercentage')}%** · "
+                     f"break points convertidos: **{g('breakpointsWonPercentage')}%**")
+    if g("firstSetWinMatchWinPercentage") is not None:
+        lines.append(f"- Quando ganha o 1º set, fecha o jogo: **{g('firstSetWinMatchWinPercentage')}%** "
+                     f"(quando perde o 1º, recupera: **{g('firstSetLoseMatchWinPercentage')}%**)")
+    if g("decidingSetWinPercentage") is not None:
+        lines.append(f"- Set decisivo: **{g('decidingSetWinPercentage')}%** · "
+                     f"tiebreaks: **{g('totalTBWinPercentage')}%**")
+    lines.append("")
+    lines.append("*Nota: stats de carreira acumulada — para um jogador em fim de "
+                 "carreira podem descrever o auge, não o presente. Cruza com a forma "
+                 "recente e o registo da época atual.*")
+    lines.append("")
+    return lines
+
+
+def build_player_profile_markdown(history: pd.DataFrame, player: str, tour: str,
+                                  career_stats: dict | None = None) -> Optional[str]:
     """
     Devolve a ficha do jogador em markdown, ou None se o jogador não for
     encontrado no histórico. Reutiliza as funções compute_* existentes —
-    não recalcula nada de forma diferente do resto do bot.
+    não recalcula nada de forma diferente do resto do bot. Se `career_stats`
+    for fornecido (do getH2HVsAllOppStats via matchstat), acrescenta uma
+    secção rica de carreira.
     """
     resolved = fetch_data.resolve_player_name(history, player)
     if resolved is None:
@@ -67,6 +106,9 @@ def build_player_profile_markdown(history: pd.DataFrame, player: str, tour: str)
         f"leitura, não uma previsão.*"
     )
     lines.append("")
+
+    if career_stats:
+        lines.extend(_format_career_stats_section(career_stats))
 
     # --- Ranking ---
     ranking = fetch_data.get_player_ranking(history, player)
