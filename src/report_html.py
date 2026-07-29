@@ -204,6 +204,27 @@ def build_report_html(payload: dict, result: dict) -> str:
     flag = _esc(result.get("flag", ""))
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
 
+    # Grau de confiança global (0-100) com cor por faixa
+    conf = result.get("confidence_score")
+    conf_reason = _esc(result.get("confidence_reason", ""))
+    conf_html = ""
+    if conf is not None:
+        try:
+            conf = int(conf)
+            conf_color = COLORS["mint"] if conf >= 67 else (COLORS["amber"] if conf >= 34 else COLORS["red"])
+            conf_label = "alta" if conf >= 67 else ("média" if conf >= 34 else "baixa")
+            conf_html = f"""
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:{conf_color}">{conf}/100 · {conf_label}</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:{conf}%;background:{conf_color}"></div></div>
+      {f'<div class="conf-reason">{conf_reason}</div>' if conf_reason else ''}
+    </div>"""
+        except (ValueError, TypeError):
+            pass
+
     odds = payload.get("market_odds_decimal") or {}
     odd_a = odds.get("player_a") if isinstance(odds, dict) else None
     odd_b = odds.get("player_b") if isinstance(odds, dict) else None
@@ -249,6 +270,15 @@ body {{
 .sb-odd {{ font-size:22px; font-weight:700; color:var(--steel); }}
 .sb-vs {{ font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }}
 .sb-flag {{ display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }}
+
+/* Confiança da leitura */
+.confidence {{ margin-top:16px; max-width:420px; }}
+.conf-head {{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }}
+.conf-title {{ font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }}
+.conf-num {{ font-size:15px; font-weight:700; }}
+.conf-track {{ height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }}
+.conf-fill {{ height:100%; border-radius:5px; }}
+.conf-reason {{ font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }}
 
 /* Gráficos */
 .charts {{ margin:26px 0; }}
@@ -298,6 +328,7 @@ strong {{ color:#fff; font-weight:700; }}
       <div class="sb-name right">{b}</div>
     </div>
     <div class="sb-flag">{flag} sinal</div>
+    {conf_html}
   </div>
 </header>
 <div class="wrap">
