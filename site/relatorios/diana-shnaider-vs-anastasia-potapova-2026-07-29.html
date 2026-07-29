@@ -99,7 +99,7 @@ strong { color:#fff; font-weight:700; }
         <span class="conf-num" style="color:#e06c5b">18/100 · baixa</span>
       </div>
       <div class="conf-track"><div class="conf-fill" style="width:18%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Faltam forma recente, época atual, stats de piso, serviço/resposta, fadiga e lesão para ambas — só há ranking, odds e um H2H de 2 jogos.</div>
+      <div class="conf-reason">Quase todos os campos vêm null (forma, época atual, piso, serviço/resposta, fadiga, lesão); só há ranking oficial e H2H de 2 jogos.</div>
     </div>
   </div>
 </header>
@@ -107,53 +107,57 @@ strong { color:#fff; font-weight:700; }
   
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">H2H direto está <strong>1-1</strong> em apenas <strong>2 jogos</strong> - amostra irrisória, sem valor preditivo.</div>
-<div class="item">Shnaider é <strong>nº18</strong> do ranking oficial ao vivo, à frente de Potapova (<strong>nº27</strong>) - único diferencial sólido disponível.</div>
-<div class="item">Faltam forma recente, época atual, stats de piso, serviço/resposta gerais, fadiga, lesão, set1 comeback, handedness, layoff e deciding set para <strong>ambas</strong> as jogadoras - lacuna quase total.</div>
-<div class="item">Jogo ao ar livre com calor (<strong>29.8°C</strong> máx.), sem chuva e vento moderado (<strong>20.1 km/h</strong>) - condições normais, sem sinal de risco.</div>
+<div class="item">Ranking oficial favorece <strong>Shnaider (#18)</strong> sobre <strong>Potapova (#27)</strong>, alinhado com as odds de mercado.</div>
+<div class="item">H2H direto está <strong>1-1 em 2 jogos</strong> — amostra claramente insuficiente para qualquer leitura.</div>
+<div class="item">Faltam dados de forma recente, época atual, piso, serviço/resposta, fadiga e lesão para ambas — lacuna generalizada nesta análise.</div>
+<div class="item">Meteorologia: sem chuva, calor moderado-alto (~<strong>29.8°C</strong>) e vento até <strong>20.1 km/h</strong> — condições normais para hard outdoor, sem sinal de risco.</div>
 </div>
 <h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
 <div class="items">
-<div class="item w-white">H2H 1-1 em apenas <strong>2 jogos</strong> - sinal puramente contextual, não sustenta qualquer leitura contra o favoritismo de mercado de Shnaider (nem a favor).</div>
-<div class="item">Sem discrepâncias assinaláveis com suporte de dados - o mercado (Shnaider <strong>1.81</strong> vs Potapova <strong>2.12</strong>) parece alinhado com a diferença de ranking (18 vs 27); não há dados suficientes para identificar divergências reais a observar. Estes pontos são apenas para observação, a decisão é sempre tua.</div>
+<div class="item w-white">H2H está <strong>1-1 em apenas 2 jogos</strong> — amostra demasiado pequena para sustentar qualquer viés de mercado, não há aqui base para observar handicaps ou linhas específicas.</div>
+<div class="item w-white">Shnaider ganha mais pontos ao serviço/resposta no confronto direto (<strong>46% vs 40%</strong> em pontos de resposta), mas isto assenta em só 2 jogos — dado apenas contextual, não acionável.</div>
 </div>
+<p>São pontos de observação para decisão própria, não recomendações de entrada.</p>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Direto: <strong>1-1</strong> em 2 confrontos - amostra demasiado pequena para conclusões.</div>
-<div class="item"><code>h2h_rich_stats</code> mostra diferenças de 1º serviço (68% vs 57%) e pontos ganhos ao serviço/resposta entre as duas jogadoras nesses 2 jogos, mas com n=2 estes números não têm valor estatístico.</div>
-<div class="item">A atribuição exata de cada bloco de stats (player1/player2) a Shnaider/Potapova assume a ordem A/B, sem crosswalk de ID confirmado - trata com alguma cautela.</div>
-<div class="item">Não há H2H &quot;overall&quot; separado nem indicação de piso específico dos 2 jogos anteriores.</div>
+<div class="item"><strong>Overall</strong>: não há dados de H2H de carreira completa (campo <code>h2h</code> null).</div>
+<div class="item"><strong>On surface</strong>: não aplicável separadamente — só existe o <code>h2h_rich_stats</code> com <strong>2 jogos no total</strong> (1 vitória cada), amostra insuficiente para concluir seja o que for.</div>
+<div class="item">Detalhe de serviço nesses 2 jogos: Shnaider com 1ª serviço a <strong>68%</strong> e Potapova a <strong>57%</strong>, mas de novo, apenas 2 jogos de referência.</div>
 </div>
-<h3 class="sec">Forma Recente / Época Atual</h3>
+<h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item"><code>recent_form</code> e <code>current_season</code> nulos para ambas - lacuna total, sem informação sobre o momento atual de nenhuma das jogadoras.</div>
+<div class="item">Sem dados (<code>recent_form_a</code> e <code>recent_form_b</code> null) — lacuna total, não presumir equilíbrio.</div>
+</div>
+<h3 class="sec">Época Atual</h3>
+<div class="items">
+<div class="item">Sem dados (<code>current_season_a</code> e <code>current_season_b</code> null) — impossível avaliar se alguma das duas está em alta ou baixa de momento.</div>
 </div>
 <h3 class="sec">Piso</h3>
 <div class="items">
-<div class="item"><code>surface_stats</code> nulo para ambas - sem dados de desempenho por piso (Hard/Clay/Grass).</div>
+<div class="item">Sem stats de piso para nenhuma das duas (<code>surface_stats_a/b</code> null) — não há informação sobre especialização em hard.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item"><code>serve_return_stats</code> nulo para ambas fora do H2H reduzido já mencionado.</div>
+<div class="item">Sem stats gerais de serviço/resposta (<code>serve_return_stats_a/b</code> null); só existem os números específicos do confronto direto já referidos no H2H, com amostra mínima.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item"><code>fatigue_signal</code> nulo para ambas - sem indicação de dias de descanso, jogos ou minutos recentes.</div>
+<div class="item">Sem sinal de fadiga para nenhuma das duas (<code>fatigue_signal_a/b</code> null) — não é possível avaliar desgaste recente.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item"><code>injury_signal</code> nulo para ambas - sem sinal de desistências recentes, o que não significa saúde confirmada, apenas ausência de dado.</div>
+<div class="item">Sem sinal de lesão/retirement para nenhuma das duas (<code>injury_signal_a/b</code> null) — não presumir saúde, apenas ausência de dado.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre: máx. <strong>29.8°C</strong>, mín. <strong>19.2°C</strong>, <strong>0mm</strong> de chuva prevista, vento até <strong>20.1 km/h</strong> - calor moderado mas sem sinal de condição extrema.</div>
+<div class="item">Jogo ao ar livre em Washington: <strong>sem chuva</strong>, temperatura entre <strong>19.2°C e 29.8°C</strong>, vento até <strong>20.1 km/h</strong> — condições estáveis, sem impacto assinalável esperado.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Shnaider favorita a <strong>1.81</strong> (implícito ~55%), Potapova a <strong>2.12</strong> (~47%) - consistente com a diferença de ranking oficial (18 vs 27).</div>
+<div class="item">Odds ligeiramente a favor de Shnaider (<strong>1.87</strong> vs <strong>2.06</strong> de Potapova), consistente com a diferença de ranking oficial (#18 vs #27).</div>
 </div>
 <h3 class="sec">📝 Nota Final</h3>
-<p>Esta é uma das análises mais limitadas possíveis: praticamente todos os campos além de ranking, odds e um H2H de 2 jogos vêm nulos. A leitura assenta quase inteiramente na diferença de ranking, que por si só já está refletida nas odds.</p>
+<p>A maioria dos campos de dados está em falta (forma, época, piso, serviço/resposta, fadiga, lesão) — esta análise assenta quase só em ranking oficial e odds, com H2H praticamente sem valor estatístico (2 jogos).</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>
