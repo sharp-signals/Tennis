@@ -24,6 +24,9 @@ nada — não faz sentido mandar uma mensagem vazia.
 from __future__ import annotations
 
 import html
+import os
+import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -43,8 +46,9 @@ from .config import (
 )
 from . import fetch_data
 from .analyze import analyze_match
-from .telegraph import publish_report
+from .report_html import build_report_html
 from .telegram_bot import send_message
+from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
 
 
 def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dict]:
@@ -303,6 +307,64 @@ def _build_match_payload(match: dict) -> dict:
     }
 
 
+def _slugify(text: str) -> str:
+    """Nome de ficheiro seguro: sem acentos, minúsculas, só letras/números/hífen."""
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    return text.strip("-")
+
+
+def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> None:
+    """Página-índice simples (mesma estética escura) que lista os jogos do dia."""
+    from .report_html import COLORS
+
+    cards = []
+    for payload, result, url in match_reports:
+        if not url:
+            continue
+        flag = html.escape(result.get("flag", ""))
+        a = html.escape(payload.get("player_a", "?"))
+        b = html.escape(payload.get("player_b", "?"))
+        tour = html.escape(payload.get("tournament", ""))
+        line = html.escape(result.get("summary_line", ""))
+        href = html.escape(url)
+        cards.append(
+            f'<a class="idx-card" href="{href}">'
+            f'<div class="idx-flag">{flag}</div>'
+            f'<div class="idx-body"><div class="idx-players">{a} <span>vs</span> {b}</div>'
+            f'<div class="idx-tour">{tour}</div>'
+            f'<div class="idx-line">{line}</div></div></a>'
+        )
+
+    index_html = f"""<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Relatórios Pré-Live — {today_str}</title>
+<style>
+body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',system-ui,sans-serif;margin:0;padding:0 16px 50px;}}
+.head{{max-width:760px;margin:0 auto;padding:28px 0 10px;border-bottom:2px solid {COLORS['steel']};}}
+.head h1{{font-size:22px;margin:0;}} .head p{{color:{COLORS['text_dim']};margin:6px 0 0;font-size:14px;}}
+.list{{max-width:760px;margin:20px auto;display:flex;flex-direction:column;gap:10px;}}
+.idx-card{{display:flex;gap:12px;align-items:center;background:{COLORS['surface']};border:1px solid {COLORS['line']};border-radius:10px;padding:14px;text-decoration:none;color:inherit;transition:border-color .15s;}}
+.idx-card:hover{{border-color:{COLORS['steel']};}}
+.idx-flag{{font-size:20px;}}
+.idx-players{{font-weight:700;font-size:16px;}} .idx-players span{{color:{COLORS['text_dim']};font-weight:400;font-size:13px;}}
+.idx-tour{{color:{COLORS['text_dim']};font-size:12px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.05em;}}
+.idx-line{{font-size:14px;color:{COLORS['text']};}}
+</style></head>
+<body>
+<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p></div>
+<div class="list">{"".join(cards) if cards else "<p style='max-width:760px;margin:20px auto;color:#9aa3b2'>Sem jogos hoje.</p>"}</div>
+</body></html>"""
+
+    # o índice do dia e o índice-raiz (index.html na raiz do site)
+    with open(os.path.join(reports_dir, f"index-{today_str}.html"), "w", encoding="utf-8") as f:
+        f.write(index_html)
+    with open(os.path.join(SITE_OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
+        f.write(index_html)
+
+
 def run() -> None:
     raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
     print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
@@ -358,20 +420,32 @@ def run() -> None:
     # jogo são sempre pequenas o suficiente, e nunca deixam um erro de
     # publicação de UM jogo impedir os restantes de serem entregues.)
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    match_reports = []  # (payload, result, telegraph_url_ou_None)
+    reports_dir = os.path.join(SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR)
+    os.makedirs(reports_dir, exist_ok=True)
+
+    match_reports = []  # (payload, result, url_ou_None)
+    generated_slugs = []
     for payload, result in analyses:
-        title = f"{payload['player_a']} vs {payload['player_b']} — {today_str}"
-        report_md = (
-            f"# {payload['player_a']} vs {payload['player_b']}\n\n"
-            f"**{payload['tournament']} ({payload['tier']}, {payload['surface']})**\n\n"
-            f"{result['full_report_markdown']}\n"
-        )
+        # nome de ficheiro único e estável por jogo+dia
+        slug = _slugify(f"{payload['player_a']}-vs-{payload['player_b']}-{today_str}")
+        filename = f"{slug}.html"
         try:
-            url = publish_report(title, report_md)
+            html_page = build_report_html(payload, result)
+            with open(os.path.join(reports_dir, filename), "w", encoding="utf-8") as f:
+                f.write(html_page)
+            url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/{filename}"
+            generated_slugs.append((payload, result, slug))
         except Exception as exc:
-            print(f"[aviso] falha a publicar no Telegra.ph para {payload['player_a']} vs {payload['player_b']}: {exc}")
+            print(f"[aviso] falha a gerar HTML para {payload['player_a']} vs {payload['player_b']}: {exc}")
             url = None
         match_reports.append((payload, result, url))
+
+    # Índice do dia: uma página que lista todos os jogos, para o Netlify
+    # ter uma raiz navegável (e evitar o "Page not found").
+    try:
+        _write_site_index(match_reports, today_str, reports_dir)
+    except Exception as exc:
+        print(f"[aviso] falha a gerar índice do site: {exc}")
 
     # --- Resumo curto (Telegram) — um link por jogo ---
     # A frase de cada jogo vem do Claude em texto livre — tem de ser
