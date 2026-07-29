@@ -32,10 +32,31 @@ De Minaur=39309, Zverev=24008, Djokovic=5992, Shelton=87562.
 - MAS: o getPlayerPerformanceBreakdown já traz o mesmo `court` por ano.
   Não vale a pena gastar 2 pedidos — usar o breakdown para ambos.
 
-## Ainda por testar (quando houver quota/vontade)
-- getH2HVsAllOppStats — stats de carreira vs todos, com "average opponent
-  ranking". Ver se acrescenta ao que o breakdown já dá.
-- getPlayerPastMatches — últimos jogos com detalhe (fadiga real / minutos?).
+## ⭐ getH2HVsAllOppStats — O MAIS RICO (testado 28/07) — INTEGRAR NAS FICHAS
+- Stats de carreira COMPLETAS já calculadas (694 jogos do De Minaur no
+  teste), num só pedido por jogador. Traz, entre muito mais:
+  - Serviço/resposta completo + velocidade média de serviço (184 km/h) —
+    que não tínhamos.
+  - **avgTime "1:45:57"** — duração MÉDIA de jogo (a fadiga/desgaste que
+    procurávamos; não é por jogo, mas dá a noção do jogador).
+  - **firstSetLoseMatchWin 27%** (sobre 267 jogos) — recuperação após
+    perder o 1º set, amostra maior que o nosso cálculo.
+  - **firstSetWinMatchWin 88%** — quando ganha o 1º set, fecha 88%. OURO
+    para cenários de mercado (o quão seguro é um favorito 1 set acima).
+  - decidingSet 58%, tiebreaks 57%, Bo3/Bo5, winners, unforcedErrors,
+    netApproaches (estilo de jogo).
+- Devolve `playerStats` E `opponentStats` (o que os adversários fizeram
+  contra ele) — permite ver se ganha "bem" ou "por erro do outro".
+- Custo: 1 pedido por jogador → fichas, não fluxo diário.
+- CONCLUSÃO: substitui com vantagem vários dos nossos cálculos manuais,
+  e cobre WTA por igual.
+
+## getPlayerPastMatches — odds históricas por ID (testado 28/07)
+- Últimos jogos com data, ronda, resultado e ODDS históricas (odd1/odd2)
+  ligadas por ID — melhor que o tennis-data.co.uk (sem problema de nomes)
+  para um futuro backtest mais limpo.
+- NÃO traz minutos/duração por jogo (a fadiga real fica pela avgTime do
+  getH2HVsAllOppStats).
 
 ## Decisão de arquitetura sugerida
 - **Fluxo diário (por jogo):** manter leve. Só acrescentar o ranking
