@@ -36,16 +36,16 @@ jobs:
           TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
         run: python -m src.main
 
-      - name: Gravar caches (torneios + fixtures), se mudaram
+      - name: Gravar caches + relatórios do site, se mudaram
         run: |
-          if [ -n "$(git status --porcelain data/tournament_cache.json data/fixtures_cache.json 2>/dev/null)" ]; then
-            git config user.name "tennis-bot"
-            git config user.email "actions@github.com"
-            git add data/tournament_cache.json data/fixtures_cache.json
-            git commit -m "chore: atualizar caches (torneios/fixtures) [skip ci]"
+          git config user.name "tennis-bot"
+          git config user.email "actions@github.com"
+          git add data/tournament_cache.json data/fixtures_cache.json site/ 2>/dev/null || true
+          if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+            git commit -m "chore: atualizar caches e relatórios [skip ci]"
             git push
           else
-            echo "Sem alterações nas caches."
+            echo "Sem alterações a gravar."
           fi
 
       - name: Alertar no Telegram se alguma coisa falhou
