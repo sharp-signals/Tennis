@@ -124,6 +124,37 @@ relva) e não só o desempenho no piso da partida atual. Cada piso pode
 vir `null` individualmente se o jogador não tiver jogos registados nesse
 piso especificamente.
 
+AVISO CRÍTICO sobre stats de carreira (surface_stats, deciding_set,
+set1_comeback, serve_return) — estas são acumuladas ao longo de TODA a
+carreira e podem descrever um jogador que já não existe:
+- Um jogador em FIM DE CARREIRA (ex-top que agora tem ranking oficial
+  muito mais baixo, forma recente fraca, hiato longo, poucos jogos na
+  época atual) pode ter um "registo em hard de 66% em 457 jogos" que
+  reflete os seus anos de auge, NÃO o nível atual. Uma amostra grande
+  aqui é um sinal de ENGANO, não de fiabilidade — quanto maior a
+  carreira, mais os números refletem o passado.
+- O inverso: um jovem em ASCENSÃO com amostra pequena num piso ("50% em
+  14 jogos") pode ter um nível real muito superior ao que a amostra
+  mostra — ainda não teve tempo de acumular jogos.
+- Por isso, quando a forma recente, o ranking oficial atual e a idade/
+  hiato contradizem o registo de carreira, dá MUITO mais peso ao
+  presente (forma recente, ranking oficial ao vivo, atividade na época)
+  e trata o registo de carreira com ceticismo explícito. Se o mercado
+  favorecer claramente o jogador com pior registo de carreira mas melhor
+  momento atual, isso NÃO é necessariamente uma divergência — o mercado
+  pode estar a ler corretamente o presente que as stats de carreira
+  escondem. Não sinalizes como discrepância a favor do jogador em
+  declínio só porque a carreira dele parece melhor no papel.
+
+Os campos `current_season_a`/`current_season_b` dão o nº de jogos e
+vitórias do jogador na ÉPOCA ATUAL — é a chave para aplicar o aviso
+acima sobre stats de carreira. Um jogador com registo de carreira
+brilhante mas com pouquíssimos jogos esta época (ex: 1-2 jogos, ou
+muitas derrotas) está provavelmente em declínio ou a regressar de lesão,
+e as suas stats de carreira NÃO descrevem o nível atual. Cruza sempre o
+registo de carreira com este campo antes de tratar a carreira como
+indicador do presente.
+
 Os campos `set1_comeback_stats_a`/`set1_comeback_stats_b` mostram, separado
 por melhor-de-3 e melhor-de-5, em quantos jogos (de entre os que o
 jogador perdeu o 1º set) ele ainda assim ganhou o jogo — é um dado real,
