@@ -225,6 +225,8 @@ def _build_match_payload(match: dict) -> dict:
 
     h2h = fetch_data.compute_h2h(history, player_a, player_b, surface)
     form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES)
+    season_a = fetch_data.compute_current_season_record(history, player_a)
+    season_b = fetch_data.compute_current_season_record(history, player_b)
     form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES)
     surface_a = fetch_data.compute_surface_stats(history, player_a)
     surface_b = fetch_data.compute_surface_stats(history, player_b)
@@ -274,6 +276,8 @@ def _build_match_payload(match: dict) -> dict:
         "h2h": h2h,
         "h2h_rich_stats": h2h_rich_stats,  # só WTA: stats de serviço/resposta/sets decisivos específicas deste confronto, via matchstat
         "recent_form_a": form_a,
+        "current_season_a": season_a,  # jogos/vitórias esta época — distingue ativo de ex-campeão parado
+        "current_season_b": season_b,
         "recent_form_b": form_b,
         "surface_stats_a": surface_a,
         "surface_stats_b": surface_b,
