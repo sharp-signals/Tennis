@@ -1054,6 +1054,57 @@ def fetch_h2h_stats(tour: str, player1_id: int, player2_id: int) -> Optional[dic
         return None
 
 
+# --------------------------------------------------------------------- #
+# 7. Ranking oficial ao vivo via matchstat (cache semanal — os rankings
+#    ATP/WTA só mudam à segunda-feira, não vale buscar mais vezes).
+# --------------------------------------------------------------------- #
+_OFFICIAL_RANKING_CACHE: dict = {}
+OFFICIAL_RANKING_CACHE_MAX_AGE_HOURS = 24 * 7  # 7 dias
+
+
+def fetch_official_ranking(tour: str) -> Optional[dict]:
+    """
+    Devolve um dict {nome_normalizado: {'rank', 'points', 'player_id'}}
+    com o ranking oficial atual do tour, ou None se falhar. Um só pedido
+    traz a lista inteira. Cacheado 7 dias (rankings mudam à segunda).
+
+    O nome é normalizado (minúsculas, sem acentos) para poder cruzar com
+    os nomes que vêm das fixtures/histórico.
+    """
+    cached = _OFFICIAL_RANKING_CACHE.get(tour)
+    if cached is not None:
+        age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age_hours < OFFICIAL_RANKING_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+
+    if not RAPIDAPI_KEY:
+        return None
+
+    url = f"{RAPIDAPI_BASE}/{tour}/ranking/singles/"
+    try:
+        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        rows = resp.json().get("data", [])
+        ranking_map: dict = {}
+        for row in rows:
+            player = row.get("player") or {}
+            name = player.get("name")
+            if not name:
+                continue
+            key = _normalize_name(name)
+            ranking_map[key] = {
+                "rank": row.get("position"),
+                "points": row.get("point") or row.get("rankingPoints"),
+                "player_id": player.get("id"),
+            }
+        _OFFICIAL_RANKING_CACHE[tour] = {"fetched_at": datetime.now(timezone.utc), "data": ranking_map}
+        print(f"[info] ranking oficial {tour}: {len(ranking_map)} jogadores carregados.")
+        return ranking_map
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter ranking oficial {tour}: {exc}")
+        return None
+
+
 def get_player_ranking(history: pd.DataFrame, player: str) -> Optional[dict]:
     """
     Devolve {'rank', 'points', 'as_of'} com o ranking do jogador no seu
