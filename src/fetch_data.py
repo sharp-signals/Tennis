@@ -1133,6 +1133,53 @@ def fetch_official_ranking(tour: str) -> Optional[dict]:
         return None
 
 
+_CAREER_STATS_CACHE: dict = {}
+CAREER_STATS_CACHE_MAX_AGE_HOURS = 24 * 7  # 7 dias — stats de carreira mudam devagar
+
+
+def fetch_player_career_stats(tour: str, player_id: int) -> Optional[dict]:
+    """
+    Stats de carreira do jogador contra TODOS os adversários (endpoint
+    getH2HVsAllOppStats), por ID matchstat. Rico: serviço, resposta,
+    break points, 1º set (ganho/perdido → resultado), set decisivo,
+    tiebreaks, duração média, por piso e por nível de torneio. Cobre ATP
+    e WTA por igual. Cache 7 dias. None se falhar.
+    """
+    cache_key = f"{tour}:{player_id}"
+    cached = _CAREER_STATS_CACHE.get(cache_key)
+    if cached is not None:
+        age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age_hours < CAREER_STATS_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+
+    if not RAPIDAPI_KEY:
+        return None
+
+    url = f"{RAPIDAPI_BASE}/{tour}/h2h/vs-all-stats/{player_id}/"
+    try:
+        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json().get("data")
+        _CAREER_STATS_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter career stats ({tour}, id {player_id}): {exc}")
+        return None
+
+
+def get_player_id_from_ranking(tour: str, player_name: str) -> Optional[int]:
+    """
+    Resolve o ID matchstat de um jogador a partir do ranking oficial (que
+    já traz o player_id de cada um). Necessário para chamar endpoints que
+    funcionam por ID (career stats, h2h). None se não encontrar.
+    """
+    official = fetch_official_ranking(tour)
+    if not official:
+        return None
+    entry = official.get(_normalize_name(player_name))
+    return entry.get("player_id") if entry else None
+
+
 def get_player_ranking(history: pd.DataFrame, player: str) -> Optional[dict]:
     """
     Devolve {'rank', 'points', 'as_of'} com o ranking do jogador no seu
