@@ -96,10 +96,10 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#e06c5b">18/100 · baixa</span>
+        <span class="conf-num" style="color:#e06c5b">22/100 · baixa</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:18%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Quase todos os campos vêm null (forma, época atual, piso, serviço/resposta, fadiga, lesão); só há ranking oficial e H2H de 2 jogos.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:22%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Faltam forma recente, fadiga, lesão, stats de piso e de serviço/resposta para ambas — só há ranking, odds, meteorologia e um H2H de apenas 2 jogos.</div>
     </div>
   </div>
 </header>
@@ -107,57 +107,54 @@ strong { color:#fff; font-weight:700; }
   
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Ranking oficial favorece <strong>Shnaider (#18)</strong> sobre <strong>Potapova (#27)</strong>, alinhado com as odds de mercado.</div>
-<div class="item">H2H direto está <strong>1-1 em 2 jogos</strong> — amostra claramente insuficiente para qualquer leitura.</div>
-<div class="item">Faltam dados de forma recente, época atual, piso, serviço/resposta, fadiga e lesão para ambas — lacuna generalizada nesta análise.</div>
-<div class="item">Meteorologia: sem chuva, calor moderado-alto (~<strong>29.8°C</strong>) e vento até <strong>20.1 km/h</strong> — condições normais para hard outdoor, sem sinal de risco.</div>
+<div class="item">Shnaider é favorita no mercado (<strong>1.87</strong> vs <strong>2.08</strong>), alinhado com o ranking oficial (<strong>nº18</strong> vs <strong>nº27</strong>).</div>
+<div class="item">H2H rico existe mas é de apenas <strong>2 jogos</strong> (1-1) — amostra insuficiente para qualquer conclusão.</div>
+<div class="item">Faltam por completo: forma recente, época atual, stats de piso, fadiga, lesão e serve/return gerais de ambas.</div>
+<div class="item">Jogo ao ar livre sem chuva prevista, vento moderado (<strong>20.1 km/h</strong>) e calor (<strong>29.8ºC</strong> máx).</div>
 </div>
 <h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
 <div class="items">
-<div class="item w-white">H2H está <strong>1-1 em apenas 2 jogos</strong> — amostra demasiado pequena para sustentar qualquer viés de mercado, não há aqui base para observar handicaps ou linhas específicas.</div>
-<div class="item w-white">Shnaider ganha mais pontos ao serviço/resposta no confronto direto (<strong>46% vs 40%</strong> em pontos de resposta), mas isto assenta em só 2 jogos — dado apenas contextual, não acionável.</div>
+<div class="item w-white">Shnaider teve <strong>72%</strong> de pontos ganhos ao 1º serviço nos 2 confrontos diretos, vs <strong>65%</strong> de Potapova — amostra de apenas 2 jogos, sem valor preditivo real.</div>
+<div class="item w-white">Break points convertidos quase iguais (<strong>36%</strong> Shnaider vs <strong>38%</strong> Potapova, ambos em amostras mínimas) — sem sinal claro a explorar.</div>
 </div>
-<p>São pontos de observação para decisão própria, não recomendações de entrada.</p>
+<p>Estes são pontos de observação, não recomendações — a decisão é sempre tua.</p>
+<p>Sem discrepâncias assinaláveis com suporte de dados robusto — o mercado parece alinhado com a única informação sólida disponível (ranking oficial).</p>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item"><strong>Overall</strong>: não há dados de H2H de carreira completa (campo <code>h2h</code> null).</div>
-<div class="item"><strong>On surface</strong>: não aplicável separadamente — só existe o <code>h2h_rich_stats</code> com <strong>2 jogos no total</strong> (1 vitória cada), amostra insuficiente para concluir seja o que for.</div>
-<div class="item">Detalhe de serviço nesses 2 jogos: Shnaider com 1ª serviço a <strong>68%</strong> e Potapova a <strong>57%</strong>, mas de novo, apenas 2 jogos de referência.</div>
+<div class="item">H2H de carreira geral (<code>overall</code>) não disponível.</div>
+<div class="item">H2H detalhado (matchstat) mostra <strong>2 jogos</strong>, resultado <strong>1-1</strong> — amostra demasiado pequena para tirar conclusões.</div>
+<div class="item">Não há registo de H2H específico em hard (on_surface não fornecido separadamente).</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item">Sem dados (<code>recent_form_a</code> e <code>recent_form_b</code> null) — lacuna total, não presumir equilíbrio.</div>
-</div>
-<h3 class="sec">Época Atual</h3>
-<div class="items">
-<div class="item">Sem dados (<code>current_season_a</code> e <code>current_season_b</code> null) — impossível avaliar se alguma das duas está em alta ou baixa de momento.</div>
+<div class="item">Não há dados de forma recente nem de época atual para nenhuma das jogadoras — lacuna total.</div>
 </div>
 <h3 class="sec">Piso</h3>
 <div class="items">
-<div class="item">Sem stats de piso para nenhuma das duas (<code>surface_stats_a/b</code> null) — não há informação sobre especialização em hard.</div>
+<div class="item">Não há stats de piso (<code>surface_stats</code>) para nenhuma — impossível avaliar especialização em hard.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item">Sem stats gerais de serviço/resposta (<code>serve_return_stats_a/b</code> null); só existem os números específicos do confronto direto já referidos no H2H, com amostra mínima.</div>
+<div class="item">Stats gerais de serviço/resposta não disponíveis; só existem os números do H2H direto (2 jogos), já referidos acima.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Sem sinal de fadiga para nenhuma das duas (<code>fatigue_signal_a/b</code> null) — não é possível avaliar desgaste recente.</div>
+<div class="item">Sem dados de fadiga (dias de descanso, jogos/minutos recentes) para nenhuma jogadora.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Sem sinal de lesão/retirement para nenhuma das duas (<code>injury_signal_a/b</code> null) — não presumir saúde, apenas ausência de dado.</div>
+<div class="item">Sem sinal de lesão ou retirements recentes disponível para nenhuma.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre em Washington: <strong>sem chuva</strong>, temperatura entre <strong>19.2°C e 29.8°C</strong>, vento até <strong>20.1 km/h</strong> — condições estáveis, sem impacto assinalável esperado.</div>
+<div class="item">Jogo ao ar livre: <strong>29.8ºC</strong> máx, <strong>19.5ºC</strong> mín, sem chuva prevista (<strong>0.0mm</strong>), vento até <strong>20.1 km/h</strong> — condições normais, sem fator extremo a assinalar.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Odds ligeiramente a favor de Shnaider (<strong>1.87</strong> vs <strong>2.06</strong> de Potapova), consistente com a diferença de ranking oficial (#18 vs #27).</div>
+<div class="item">Shnaider favorita (<strong>1.87</strong>) vs Potapova (<strong>2.08</strong>), coerente com a diferença de ranking (<strong>18 vs 27</strong>).</div>
 </div>
 <h3 class="sec">📝 Nota Final</h3>
-<p>A maioria dos campos de dados está em falta (forma, época, piso, serviço/resposta, fadiga, lesão) — esta análise assenta quase só em ranking oficial e odds, com H2H praticamente sem valor estatístico (2 jogos).</p>
+<p>Esta é uma análise com base muito limitada — praticamente só ranking, odds e um H2H de 2 jogos. Não há forma recente, fadiga, lesão nem stats de piso para validar ou contestar o favoritismo do mercado.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

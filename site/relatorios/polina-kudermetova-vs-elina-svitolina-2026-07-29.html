@@ -99,7 +99,7 @@ strong { color:#fff; font-weight:700; }
         <span class="conf-num" style="color:#e06c5b">15/100 · baixa</span>
       </div>
       <div class="conf-track"><div class="conf-fill" style="width:15%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Faltam quase todos os dados (forma, piso, serviço, fadiga, ranking de Kudermetova) — só há odds, ranking de Svitolina e meteorologia.</div>
+      <div class="conf-reason">Quase todos os dados de Kudermetova estão em falta (forma, ranking, piso, serviço, fadiga, lesão) e não há histórico de confronto direto — leitura muito limitada.</div>
     </div>
   </div>
 </header>
@@ -107,48 +107,55 @@ strong { color:#fff; font-weight:700; }
   
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item"><strong>Ranking</strong>: Svitolina é Top <strong>10</strong> (oficial, ao vivo); ranking de Kudermetova não disponível.</div>
-<div class="item"><strong>H2H</strong>: sem confrontos diretos registados (<strong>0 jogos</strong>) — primeiro encontro entre as duas.</div>
-<div class="item"><strong>Forma recente, piso, serviço/resposta, fadiga e lesão</strong>: todos os campos vêm <code>null</code> para ambas — lacuna generalizada.</div>
-<div class="item"><strong>Mercado</strong>: odds fortemente inclinadas para Svitolina (<strong>1.21</strong> vs <strong>5.5</strong>).</div>
-<div class="item"><strong>Meteorologia</strong>: jogo ao ar livre, tempo estável — sem chuva, vento moderado.</div>
+<div class="item"><strong>Nunca se defrontaram</strong>: h2h_rich_stats confirma <strong>0 jogos</strong> entre as duas.</div>
+<div class="item">Dados de Kudermetova <strong>praticamente todos em falta</strong>: forma, ranking, piso, serviço/resposta, fadiga, lesão — nada disponível.</div>
+<div class="item">Svitolina é <strong>nº10 WTA</strong> (ranking oficial ao vivo); ranking de Kudermetova desconhecido.</div>
+<div class="item">Mercado dá Svitolina como forte favorita (<strong>1.21</strong> vs <strong>5.5</strong>), mas sem dados próprios para confirmar essa leitura.</div>
+<div class="item">Jogo ao ar livre com <strong>29.8°C</strong> máx., sem chuva e vento moderado (<strong>20.1 km/h</strong> máx.) — nada de extremo a assinalar.</div>
 </div>
 <h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados disponíveis (favoritismo de Svitolina consistente com o seu ranking Top 10, único dado sólido que temos). Não há dados suficientes sobre Kudermetova para identificar qualquer divergência.</p>
+<p>Sem discrepâncias assinaláveis — faltam dados de Kudermetova (forma, ranking, piso, serviço) para confirmar ou contestar a leitura do mercado. Qualquer sugestão de mercado aqui seria especulação sem suporte de dados.</p>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item"><strong>0 confrontos diretos</strong> registados entre as jogadoras — não há histórico de carreira nem de piso para comentar.</div>
+<div class="item"><code>h2h</code> geral não fornecido, mas <code>h2h_rich_stats</code> mostra <strong>0 jogos</strong> disputados entre as duas — sem histórico de confronto direto.</div>
+<div class="item">Sem dados de H2H em piso específico (não aplicável, já que nunca jogaram).</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item">Não há dados de forma recente nem de época atual para nenhuma das duas jogadoras — lacuna total.</div>
+<div class="item"><strong>Sem dados</strong> para nenhuma das duas jogadoras (<code>recent_form_a</code> e <code>recent_form_b</code> ambos null).</div>
+</div>
+<h3 class="sec">Época Atual</h3>
+<div class="items">
+<div class="item"><code>current_season_a</code> e <code>current_season_b</code> ambos null — sem indicação do volume/resultado de jogos nesta época para nenhuma das duas.</div>
 </div>
 <h3 class="sec">Piso</h3>
 <div class="items">
-<div class="item">Sem stats por piso disponíveis para nenhuma das jogadoras (jogo em Hard).</div>
+<div class="item"><strong>Sem dados</strong> de perfil por piso para nenhuma das jogadoras.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item">Não há dados de serviço/resposta para nenhuma das duas.</div>
+<div class="item"><strong>Sem dados</strong> de serviço/resposta para nenhuma das jogadoras.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Sem sinal de fadiga disponível (dias de descanso, jogos recentes, minutos/sets) para nenhuma das jogadoras.</div>
+<div class="item"><strong>Sem dados</strong> de fadiga para nenhuma das jogadoras.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Sem sinal de lesão/retirement disponível para nenhuma das jogadoras — não indica saúde nem problema, apenas ausência de dado.</div>
+<div class="item"><strong>Sem dados</strong> de sinal de lesão para nenhuma das jogadoras — não indica saúde, apenas ausência de informação.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre: <strong>29.8°C</strong> máx / <strong>19.2°C</strong> mín, sem chuva prevista (<strong>0.0mm</strong>), vento até <strong>20.1 km/h</strong> — condições estáveis, sem sinal de impacto relevante no jogo.</div>
+<div class="item">Jogo ao ar livre: <strong>29.8°C</strong> máx. / <strong>19.5°C</strong> mín., <strong>0 mm</strong> de chuva prevista, vento até <strong>20.1 km/h</strong>.</div>
+<div class="item">Condições estáveis, sem sinais de impacto relevante no jogo.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Svitolina fortemente favorita: <strong>1.21</strong> vs <strong>5.5</strong> para Kudermetova — coerente com o único dado forte que temos (ranking Top 10 de Svitolina), mas sem forma/piso/serviço para confirmar ou contestar essa leitura.</div>
+<div class="item">Svitolina fortemente favorita: <strong>1.21</strong> vs <strong>5.5</strong> para Kudermetova.</div>
+<div class="item">Sem dados próprios para avaliar se esta diferença está bem calibrada — a odd reflete provavelmente o ranking oficial de Svitolina (nº10), mas isso não pode ser cruzado com mais nada do lado de Kudermetova.</div>
 </div>
 <h3 class="sec">📝 Nota Final</h3>
-<p>A análise fica muito limitada: falta ranking de Kudermetova, forma recente de ambas, stats de piso e de serviço/resposta, fadiga e histórico H2H. A leitura assenta quase exclusivamente no ranking oficial de Svitolina e nas odds de mercado.</p>
+<p>A quase totalidade dos campos de análise para Kudermetova está em falta, o que impede qualquer leitura sólida além do que o mercado e o ranking de Svitolina já sugerem por si só.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>
