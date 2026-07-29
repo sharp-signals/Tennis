@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Alex De Minaur vs Stefanos Tsitsipas</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">Citi Open - Washington · ATP 500 · Hard · 29/07/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Alex De Minaur</div>
+      <div class="sb-odds">
+        <div class="sb-odd">—</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">—</div>
+      </div>
+      <div class="sb-name right">Stefanos Tsitsipas</div>
+    </div>
+    <div class="sb-flag">🟡 sinal</div>
+  </div>
+</header>
+<div class="wrap">
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
+    <div class="cmp">
+      <div class="cmp-label">1º serviço ganho</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">71.6%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:35.8%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:39.2%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">78.5%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points salvos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">58.7%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:29.4%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:23.8%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">47.6%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Aces</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">4.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:2.4%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:5.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">9.9%</div>
+      </div>
+    </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 89.4 19.5" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">70%</text>
+      </svg>
+      <div class="gauge-label">Alex De Minaur (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div>
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 89.4 19.5" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">70%</text>
+      </svg>
+      <div class="gauge-label">Stefanos Tsitsipas (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div></div></div></section>
+  <h2 class="sec-main">🔑 Pontos-chave</h2>
+<div class="items">
+<div class="item"><strong>H2H 1-12</strong> geral e <strong>1-9</strong> em hard a favor de Tsitsipas, mas amostra de <strong>13 jogos</strong> é pequena — não trates como sinal definitivo.</div>
+<div class="item">Ranking oficial atual muito díspar: De Minaur <strong>#6</strong> vs Tsitsipas <strong>#51</strong>, mercado alinhado com isso.</div>
+<div class="item">Forma recente <strong>idêntica</strong>: ambos <strong>7-3</strong> nos últimos 10 jogos.</div>
+<div class="item">Época atual: De Minaur <strong>28-14</strong> (66.7%) vs Tsitsipas <strong>22-15</strong> (59.5%) — ligeira vantagem De Minaur no presente.</div>
+<div class="item">Meteorologia sem impacto relevante: calor moderado (<strong>30.2°C</strong>), sem chuva, vento <strong>23.2 km/h</strong>.</div>
+</div>
+<h3 class="sec">H2H</h3>
+<div class="items">
+<div class="item">Geral: Tsitsipas domina <strong>12-1</strong> em 13 confrontos.</div>
+<div class="item">Em hard (piso deste jogo): Tsitsipas <strong>9-1</strong> em 10 jogos.</div>
+<div class="item">Amostra pequena em ambos os casos (abaixo de ~15-20) — sinal notável pela unilateralidade, mas insuficiente para ser tratado como certeza estatística.</div>
+<div class="item"><code>h2h_rich_stats</code> não disponível (é exclusivo WTA).</div>
+</div>
+<h3 class="sec">Forma Recente</h3>
+<div class="items">
+<div class="item">Ambos <strong>7-3</strong> nos últimos 10 jogos — sem vantagem aqui.</div>
+<div class="item">Época 2026 completa: De Minaur <strong>28-14</strong> (42 jogos), Tsitsipas <strong>22-15</strong> (37 jogos) — De Minaur com % de vitórias superior no ano.</div>
+</div>
+<h3 class="sec">Piso</h3>
+<div class="items">
+<div class="item">Hard (carreira completa): De Minaur <strong>65.9%</strong> (247/375), Tsitsipas <strong>64.4%</strong> (235/365) — muito próximos.</div>
+<div class="item">Clay: Tsitsipas claramente superior, <strong>74.0%</strong> (134/181) vs <strong>52.7%</strong> (48/91) de De Minaur — não relevante para este jogo em hard, mas mostra perfil de piso distinto.</div>
+<div class="item">Grass: De Minaur <strong>65.7%</strong> (44/67) vs Tsitsipas <strong>53.3%</strong> (24/45).</div>
+<div class="item">No piso do jogo (hard), o nível de carreira é equivalente entre os dois.</div>
+</div>
+<h3 class="sec">Serviço/Resposta</h3>
+<div class="items">
+<div class="item">Tsitsipas mais agressivo ao serviço: <strong>9.9%</strong> aces vs <strong>4.8%</strong> de De Minaur, <strong>63.9%</strong> primeiro serviço in vs <strong>58.7%</strong>, <strong>78.5%</strong> pontos ganhos no 1º serviço vs <strong>71.6%</strong>.</div>
+<div class="item">De Minaur salva mais break points: <strong>58.7%</strong> vs <strong>47.6%</strong> de Tsitsipas — apesar do serviço mais fraco em geral, é mais resiliente sob pressão.</div>
+<div class="item">Ambos com amostra de 10 jogos (forma recente) — moderada, não é registo de carreira completo.</div>
+</div>
+<h3 class="sec">Fadiga</h3>
+<div class="items">
+<div class="item">De Minaur: <strong>23 dias</strong> sem jogar, 0 jogos nos últimos 14 dias — descansado.</div>
+<div class="item">Tsitsipas: <strong>10 dias</strong> desde o último jogo, <strong>4 jogos</strong> nos últimos 14 dias — mais rodado, mas potencialmente mais desgastado.</div>
+<div class="item">Nota: estas métricas usam a data de início do torneio, não a data exata do jogo — tratar como aproximação, não calendário exato.</div>
+<div class="item"><code>minutes_played_last_7d</code> e <code>sets_played_last_7d</code> vêm <code>null</code> para ambos — não há dado de carga física detalhada.</div>
+</div>
+<h3 class="sec">Lesão</h3>
+<div class="items">
+<div class="item">Sem desistências recentes registadas para nenhum dos dois (<code>recent_retirements</code> vazio em ambos, 5 jogos verificados) — não implica certeza de saúde total, apenas ausência de sinal encontrado.</div>
+</div>
+<h3 class="sec">Meteorologia</h3>
+<div class="items">
+<div class="item">Jogo ao ar livre com dados presentes: <strong>30.2°C</strong> máxima, <strong>20.1°C</strong> mínima, <strong>0mm</strong> de chuva,</div>
+</div>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>

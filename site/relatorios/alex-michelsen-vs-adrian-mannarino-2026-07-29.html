@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Alex Michelsen vs Adrian Mannarino</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">Citi Open - Washington · ATP 500 · Hard · 29/07/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Alex Michelsen</div>
+      <div class="sb-odds">
+        <div class="sb-odd">—</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">—</div>
+      </div>
+      <div class="sb-name right">Adrian Mannarino</div>
+    </div>
+    <div class="sb-flag">🟢 sinal</div>
+  </div>
+</header>
+<div class="wrap">
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
+    <div class="cmp">
+      <div class="cmp-label">1º serviço ganho</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">70.5%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:35.2%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:33.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">66.9%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points salvos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">50.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:25.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:31.8%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">63.5%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Aces</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">6.7%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:3.4%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:2.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">4.8%</div>
+      </div>
+    </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 60.0 10.0" fill="none" stroke="#e0a34a" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">50%</text>
+      </svg>
+      <div class="gauge-label">Alex Michelsen (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div>
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 60.0 10.0" fill="none" stroke="#e0a34a" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">50%</text>
+      </svg>
+      <div class="gauge-label">Adrian Mannarino (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div></div></div></section>
+  <h2 class="sec-main">🔑 Pontos-chave</h2>
+<div class="items">
+<div class="item">Mercado dá Michelsen como forte favorito (<strong>1.36</strong> vs <strong>3.75</strong>), e a época atual sustenta isso: <strong>18-14</strong> vs <strong>11-19</strong>.</div>
+<div class="item">Mannarino (canhoto) tem histórico de carreira pior contra destros (<strong>45%</strong> em <strong>615 jogos</strong>) do que contra canhotos (<strong>56%</strong> em 91) — reforça o favoritismo, não o contraria.</div>
+<div class="item">Ambos totalmente descansados: <strong>0 jogos</strong> nos últimos 14 dias e ~28-30 dias de paragem para os dois — sem vantagem de fadiga.</div>
+<div class="item">H2H <strong>2-1</strong> para Michelsen, mas amostra de apenas <strong>3 jogos</strong> — não é conclusivo.</div>
+<div class="item">Break points saved: Mannarino melhor (<strong>63.5%</strong>) do que Michelsen (<strong>50%</strong>), mas ambos assentes em apenas <strong>10 jogos</strong> — sinal fraco.</div>
+</div>
+<h3 class="sec">H2H</h3>
+<div class="items">
+<div class="item">Carreira geral: <strong>2-1</strong> para Michelsen em <strong>3 confrontos</strong> — amostra demasiado pequena para tirar conclusões sólidas.</div>
+<div class="item">H2H específico neste piso (<code>on_surface</code>) vem <strong>null</strong> — não há dados de confrontos anteriores em hard entre os dois, é uma lacuna, não um sinal de equilíbrio.</div>
+</div>
+<h3 class="sec">Forma Recente</h3>
+<div class="items">
+<div class="item">Ambos <strong>5-5</strong> nos últimos 10 jogos — idênticos no curto prazo.</div>
+<div class="item">Mas a época completa diverge bastante: Michelsen <strong>18-14</strong> (32 jogos) vs Mannarino <strong>11-19</strong> (30 jogos) — o presente manda mais do que os últimos 10 jogos isolados.</div>
+</div>
+<h3 class="sec">Piso (Hard)</h3>
+<div class="items">
+<div class="item">Michelsen: <strong>59-50</strong> em Hard (109 jogos, <strong>54.1%</strong>) — amostra ainda moderada, jogador jovem em construção de carreira.</div>
+<div class="item">Mannarino: <strong>233-253</strong> em Hard (486 jogos, <strong>47.9%</strong>) — amostra enorme, mas reflete uma carreira longa; a época atual (36.7% de vitórias) sugere um nível bem abaixo desta média histórica.</div>
+<div class="item">Aviso: o registo de carreira de Mannarino não deve ser lido como indicador do seu nível atual dado o declínio visível na época 2026.</div>
+</div>
+<h3 class="sec">Serviço/Resposta</h3>
+<div class="items">
+<div class="item">Michelsen: <strong>70.5%</strong> de pontos ganhos no 1º serviço, <strong>6.7%</strong> de aces — perfil ligeiramente mais agressivo.</div>
+<div class="item">Mannarino: <strong>66.9%</strong> no 1º serviço, mas salva mais break points (<strong>63.5%</strong> vs <strong>50%</strong> de Michelsen) — ambos com amostra de apenas 10 jogos, tratar com reserva.</div>
+</div>
+<h3 class="sec">Fadiga</h3>
+<div class="items">
+<div class="item">Michelsen: <strong>30 dias</strong> desde o último jogo, <strong>0</strong> jogos nos últimos 3/7/14 dias.</div>
+<div class="item">Mannarino: <strong>28 dias</strong>, também <strong>0</strong> jogos recentes — nenhum dos dois chega cansado, condições equivalentes.</div>
+</div>
+<h3 class="sec">Lesão</h3>
+<div class="items">
+<div class="item">Sem desistências recentes para nenhum dos dois jogadores (<strong>0 em 5</strong> jogos verificados cada) — amostra pequena, não garante ausência de problemas físicos, apenas que não há sinal recente.</div>
+</div>
+<h3 class="sec">Contexto Adicional</h3>
+<div class="items">
+<div class="item">Handedness: Michelsen tem <strong>58.3%</strong> de vitórias vs canhotos (24 jogos, amostra pequena) — pode favorecer ligeiramente o confronto com Mannarino, mas com reserva pela amostra.</div>
+<div class="item">Set1 comeback (Bo3): Michelsen <strong>25.4%</strong> (67 jogos) vs Mannarino <strong>20.7%</strong> (329 jogos) — ambos moderados/baixos, sem vantagem clara de reviravolta.</div>
+<div class="item">Deciding set (Bo3): Michelsen <strong>55.3%</strong> (47 jogos) vs Mannarino <strong>47.8%</strong> (205 jogos) — leve vantagem para Michelsen se o jogo for a 3 sets.</div>
+<div class="item">Layoff return (60+ dias): Mannarino tem apenas <strong>17.4%</strong> em 23 jogos, mas o hiato atual dele é de 28 dias — abaixo do threshold de 60, portanto este dado não se aplica diretamente a este jogo.</div>
+<div class="item">Round stage: Michelsen cai para <strong>36.7%</strong> em rondas finais (30 jogos) vs <strong>55.2%</strong> em rondas iniciais (125 jogos) — relevante só se ele avançar no torneio, não para este jogo de ronda inicial.</div>
+</div>
+<h3 class="sec">Meteorologia</h3>
+<div class="items">
+<div class="item">Jogo ao ar livre com dados disponíveis: <strong>29.8°C</strong> máx, sem chuva, vento até <strong>20.1 km/h</strong> — condições normais de verão, sem fator de perturbação evidente.</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<p>(Pontos de observação para decisão própria, não recomendações de entrada.)</p>
+<div class="items">
+<div class="item w-white">Break points saved de Mannarino (<strong>63.5%</strong> em 10 jogos) supera o de Michelsen (<strong>50%</strong>) — amostra pequena demais para ser decisivo, mas pode justificar observar o mercado &quot;Mannarino ganha pelo menos 1 set&quot; dado o seu perfil de resistência histórica.</div>
+<div class="item w-white">Handedness favorece ligeiramente Michelsen vs canhotos (<strong>58.3%</strong> em 24 jogos) — amostra pequena, apenas contexto informativo.</div>
+<div class="item">Sem discrepâncias assinaláveis fortes — o mercado (1.36/3.75) parece bem alinhado com a época atual e o declínio claro de Mannarino.</div>
+</div>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>

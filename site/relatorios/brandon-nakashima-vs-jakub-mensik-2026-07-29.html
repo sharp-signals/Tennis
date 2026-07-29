@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Brandon Nakashima vs Jakub Mensik</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">Citi Open - Washington · ATP 500 · Hard · 29/07/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Brandon Nakashima</div>
+      <div class="sb-odds">
+        <div class="sb-odd">—</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">—</div>
+      </div>
+      <div class="sb-name right">Jakub Mensik</div>
+    </div>
+    <div class="sb-flag">🟡 sinal</div>
+  </div>
+</header>
+<div class="wrap">
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
+    <div class="cmp">
+      <div class="cmp-label">1º serviço ganho</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">77.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:38.9%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:36.7%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">73.4%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points salvos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">63.6%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:31.8%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:26.1%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">52.1%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Aces</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">10.3%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:5.2%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:4.8%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">9.5%</div>
+      </div>
+    </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 75.5 12.4" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">60%</text>
+      </svg>
+      <div class="gauge-label">Brandon Nakashima (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div>
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 75.5 12.4" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">60%</text>
+      </svg>
+      <div class="gauge-label">Jakub Mensik (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div></div></div></section>
+  <h2 class="sec-main">🔑 Pontos-chave</h2>
+<div class="items">
+<div class="item">Mensik favorito no mercado (<strong>1.66</strong> vs <strong>2.10</strong>) e lidera no ranking oficial (<strong>#17</strong> vs <strong>#33</strong>).</div>
+<div class="item">Sem dados de H2H, nem geral nem por piso.</div>
+<div class="item">Nos últimos 10 jogos, Nakashima tem melhores números de serviço: primeiro serviço ganho <strong>77.8%</strong> vs <strong>73.4%</strong>, BP salvos <strong>63.6%</strong> vs <strong>52.1%</strong>.</div>
+<div class="item">Ambos regressam de <strong>28 dias</strong> sem jogar - fadiga equilibrada, não é fator diferenciador.</div>
+<div class="item">Mensik mais sólido em set decisivo (<strong>55.8%</strong> em 43 jogos) vs Nakashima (<strong>45.5%</strong> em 66 jogos).</div>
+</div>
+<h3 class="sec">H2H</h3>
+<div class="items">
+<div class="item">Sem dados de confronto direto (nem geral nem por piso) - lacuna, não indício de equilíbrio.</div>
+</div>
+<h3 class="sec">Forma Recente</h3>
+<div class="items">
+<div class="item">Ambos <strong>6-4</strong> nos últimos 10 jogos - forma recente idêntica.</div>
+<div class="item">Época 2026: Mensik <strong>24-13</strong> (64.9%), Nakashima <strong>19-14</strong> (57.6%) - ligeira vantagem para Mensik.</div>
+</div>
+<h3 class="sec">Piso (Hard)</h3>
+<div class="items">
+<div class="item">Nakashima: <strong>102-82</strong> em Hard (55.4%, 184 jogos).</div>
+<div class="item">Mensik: <strong>59-34</strong> em Hard (63.4%, 93 jogos) - taxa superior, amostra menor mas ainda relevante.</div>
+<div class="item">Fora do Hard: Nakashima mais forte em Grass (<strong>58.5%</strong> em 41 jogos) do que em Clay (<strong>47.8%</strong> em 46); Mensik sólido em Clay (<strong>62.5%</strong> em 32) mas fraco em Grass (<strong>43.75%</strong> em apenas 16 jogos, amostra pequena).</div>
+</div>
+<h3 class="sec">Serviço/Resposta (últimos 10 jogos)</h3>
+<div class="items">
+<div class="item">Nakashima: 1º serviço dentro <strong>69.2%</strong>, ganho <strong>77.8%</strong>, duplas faltas <strong>1.2%</strong>, BP salvos <strong>63.6%</strong>.</div>
+<div class="item">Mensik: 1º serviço dentro <strong>62.0%</strong>, ganho <strong>73.4%</strong>, duplas faltas <strong>4.4%</strong>, BP salvos <strong>52.1%</strong>.</div>
+<div class="item">Nakashima mostra serviço mais sólido nesta amostra, contrastando com a posição do mercado.</div>
+</div>
+<h3 class="sec">Fadiga</h3>
+<div class="items">
+<div class="item">Ambos <strong>28 dias</strong> sem jogar e <strong>0 jogos</strong> nos últimos 14 dias - situação equivalente.</div>
+<div class="item">Nota: estas métricas usam a data de início do torneio, tratar como aproximação.</div>
+</div>
+<h3 class="sec">Lesão</h3>
+<div class="items">
+<div class="item">Sem desistências recentes registadas para nenhum (5 jogos verificados cada) - ausência de sinal, não garantia de saúde.</div>
+</div>
+<h3 class="sec">Regresso de Paragem / Set Decisivo</h3>
+<div class="items">
+<div class="item">Layoff 60+ dias: Nakashima <strong>1-7</strong> (14.3%), Mensik <strong>0-1</strong> - amostras demasiado pequenas para conclusão.</div>
+<div class="item">Set decisivo Bo3: Mensik <strong>55.8%</strong> (43 jogos) vs Nakashima <strong>45.5%</strong> (66 jogos) - vantagem moderada para Mensik, amostra razoável.</div>
+</div>
+<h3 class="sec">Rondas Finais</h3>
+<div class="items">
+<div class="item">Late rounds: Nakashima <strong>43.2%</strong> (44 jogos), Mensik <strong>44.0%</strong> (25 jogos) - praticamente equivalentes.</div>
+</div>
+<h3 class="sec">Meteorologia</h3>
+<div class="items">
+<div class="item">Ar livre: <strong>29.8°C</strong> máx, sem chuva, vento moderado <strong>~20 km/h</strong> - condições normais, sem fator extremo.</div>
+</div>
+<h3 class="sec">Mercado</h3>
+<div class="items">
+<div class="item">Mensik favorito (<strong>1.66</strong> vs <strong>2.10</strong>), alinhado com ranking e época atual, mas destoante face ao serviço recente de Nakashima.</div>
+</div>
+<h3 class="sec">📝 Nota Final</h3>
+<p>Falta H2H para perceber se há padrão histórico entre os dois; a divergência serviço-mercado assenta em apenas 10 jogos por lado, deve ser lida com cautela.</p>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-amber">Nakashima com melhores BP salvos (<strong>63.6%</strong> vs <strong>52.1%</strong>, 10 jogos cada) apesar de não ser favorito - pode valer observar handicap de games ou &quot;ganha pelo menos 1 set&quot; para ele, com reservas pela amostra.</div>
+<div class="item w-amber">Mensik mais consistente em set decisivo (<strong>55.8%</strong> em 43 jogos) vs Nakashima (<strong>45.5%</strong> em 66 jogos) - pode valer observar mercado de total de sets/vai a 3 sets.</div>
+<div class="item w-white">Layoff return de ambos assenta em amostras ínfimas (7 e 1 jogos) - não deve pesar na leitura.</div>
+</div>
+<p>Estes são pontos de observação para decisão própria, não recomendações de entrada.</p>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>
