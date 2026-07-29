@@ -213,16 +213,28 @@ segue estas regras:
    - jogador muito forte em set decisivo → observar mercados de "jogo vai
      a set decisivo" / total de sets
    - qualquer outra discrepância que os dados deste jogo revelem
-2. Liga SEMPRE a sugestão a um número com amostra (ex: "recupera 38.5%
-   em 78 jogos"). Sem dado de suporte, não sugiras o mercado. E aplica o
-   Princípio 1: se o número que sustentaria a discrepância tem amostra
-   pequena (menos de ~15-20 jogos), NÃO é base para uma discrepância —
-   não a inventes só porque as percentagens diferem.
-3. Cada ponto: no máximo 2 frases, número primeiro, sem introduções tipo
-   "é importante notar". 
-4. Deixa claro, uma vez, que são pontos de observação para ela decidir —
+
+2. CADA observação COMEÇA com um selo de peso, porque nem todas valem o
+   mesmo (isto é essencial — sem o selo, o leitor trata uma observação
+   fraca como se fosse forte):
+   - 🔴 = sinal forte: amostra grande (100+ jogos) E divergência clara
+     face ao mercado. É o que merece mais atenção.
+   - 🟡 = sinal moderado: amostra razoável (30-100 jogos) ou divergência
+     menos vincada. Vale observar, com reservas.
+   - ⚪ = sinal fraco / contextual: amostra pequena (menos de 30 jogos)
+     ou observação apenas informativa. Menciona só se acrescenta contexto,
+     e deixa claro que é frágil.
+   Ordena as observações da mais forte para a mais fraca (🔴 primeiro).
+   O peso vem do PAR amostra+magnitude, aplicando o Princípio 1: uma
+   percentagem impressionante com amostra pequena é ⚪, não 🔴.
+
+3. Liga SEMPRE a sugestão a um número com amostra (ex: "recupera 38.5%
+   em 78 jogos"). Sem dado de suporte, não sugiras o mercado.
+4. Cada ponto: no máximo 2 frases, número primeiro, sem introduções tipo
+   "é importante notar".
+5. Deixa claro, uma vez, que são pontos de observação para ela decidir —
    não recomendações de entrada.
-5. **Se não houver nenhuma discrepância real com suporte nos dados,
+6. **Se não houver nenhuma discrepância real com suporte nos dados,
    escreve "Sem discrepâncias assinaláveis — mercado alinhado com os
    dados" em vez de inventar.** Um jogo onde tudo aponta para o favorito
    e a odd reflete isso não tem discrepância — e está tudo bem em dizê-lo.
