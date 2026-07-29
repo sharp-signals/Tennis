@@ -234,8 +234,23 @@ def _build_match_payload(match: dict) -> dict:
     injury_b = fetch_data.compute_injury_signal(history, player_b, INJURY_SIGNAL_LOOKBACK_MATCHES)
     serve_a = fetch_data.compute_serve_return_stats(history, player_a, SERVE_RETURN_STATS_MATCHES)
     serve_b = fetch_data.compute_serve_return_stats(history, player_b, SERVE_RETURN_STATS_MATCHES)
-    rank_a = fetch_data.get_player_ranking(history, player_a)
-    rank_b = fetch_data.get_player_ranking(history, player_b)
+    # Ranking: preferir o oficial ao vivo (via matchstat, cache semanal),
+    # que está sempre atualizado; cair para o derivado do histórico se o
+    # jogador não estiver na lista oficial (ex: fora do ranking, ou nome
+    # que não cruza). O oficial resolve o problema do ranking "as of"
+    # desatualizado para quem não joga há semanas.
+    official = fetch_data.fetch_official_ranking(tour)
+
+    def _resolve_ranking(player_name: str):
+        if official:
+            key = fetch_data._normalize_name(player_name)
+            if key in official:
+                r = official[key]
+                return {"rank": r["rank"], "points": r["points"], "as_of": "oficial (ao vivo)"}
+        return fetch_data.get_player_ranking(history, player_name)
+
+    rank_a = _resolve_ranking(player_a)
+    rank_b = _resolve_ranking(player_b)
     set1_comeback_a = fetch_data.compute_set1_comeback_stats(history, player_a)
     set1_comeback_b = fetch_data.compute_set1_comeback_stats(history, player_b)
     handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a)
