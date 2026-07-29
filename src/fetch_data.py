@@ -487,6 +487,34 @@ def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Op
     return {"overall": overall, "on_surface": on_surface, "surface": surface}
 
 
+def compute_current_season_record(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    Jogos e vitórias do jogador na ÉPOCA ATUAL (ano corrente) — o dado que
+    distingue um jogador em atividade de um ex-campeão que mal joga. Um
+    "registo de carreira em hard de 66%" quer dizer pouco se o jogador só
+    tem 1-2 jogos esta época. None se não houver dados de data.
+    """
+    if history.empty or "tourney_date" not in history.columns:
+        return None
+
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    current_year = datetime.now(timezone.utc).year
+    this_season = played[played["_date"].dt.year == current_year]
+
+    matches = len(this_season)
+    wins = int((this_season["winner_name"] == player).sum()) if matches else 0
+    return {"season": current_year, "matches": matches, "wins": wins, "losses": matches - wins}
+
+
 def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int) -> Optional[dict]:
     """Últimos n_matches jogos do jogador (qualquer piso). None se não há dados."""
     if history.empty or "winner_name" not in history.columns:
