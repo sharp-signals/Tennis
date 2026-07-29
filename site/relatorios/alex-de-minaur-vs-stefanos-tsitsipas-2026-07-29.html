@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -82,7 +91,16 @@ strong { color:#fff; font-weight:700; }
       </div>
       <div class="sb-name right">Stefanos Tsitsipas</div>
     </div>
-    <div class="sb-flag">🟡 sinal</div>
+    <div class="sb-flag">🔴 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e0a34a">63/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:63%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Amostras grandes em ranking, época atual e stats de superfície, mas falta a data dos confrontos H2H, o que limita a leitura do sinal mais forte do jogo.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
@@ -138,52 +156,64 @@ strong { color:#fff; font-weight:700; }
     </div></div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item"><strong>H2H 1-12</strong> geral e <strong>1-9</strong> em hard a favor de Tsitsipas, mas amostra de <strong>13 jogos</strong> é pequena — não trates como sinal definitivo.</div>
-<div class="item">Ranking oficial atual muito díspar: De Minaur <strong>#6</strong> vs Tsitsipas <strong>#51</strong>, mercado alinhado com isso.</div>
-<div class="item">Forma recente <strong>idêntica</strong>: ambos <strong>7-3</strong> nos últimos 10 jogos.</div>
-<div class="item">Época atual: De Minaur <strong>28-14</strong> (66.7%) vs Tsitsipas <strong>22-15</strong> (59.5%) — ligeira vantagem De Minaur no presente.</div>
-<div class="item">Meteorologia sem impacto relevante: calor moderado (<strong>30.2°C</strong>), sem chuva, vento <strong>23.2 km/h</strong>.</div>
+<div class="item">H2H <strong>12-1</strong> geral e <strong>9-1</strong> em hard a favor de Tsitsipas — sem datas disponíveis para confirmar recência.</div>
+<div class="item">Ranking oficial muito díspar: De Minaur <strong>#6</strong> vs Tsitsipas <strong>#51</strong>.</div>
+<div class="item">Forma recente idêntica (<strong>7-3</strong> em 10 jogos, ambos), mas época 2026 favorece De Minaur (<strong>66.7%</strong> vs <strong>59.5%</strong>).</div>
+<div class="item">Serviço de Tsitsipas mais forte nas últimas 10 partidas (ace e 1º serviço ganho maiores), De Minaur salva mais break points.</div>
+<div class="item">Sem sinais de lesão em nenhum; De Minaur com 23 dias de descanso (não é layoff longo, threshold é 60 dias).</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-amber">H2H <strong>12-1</strong> geral (13 jogos) e <strong>9-1</strong> em hard (10 jogos) fortemente a favor de Tsitsipas, mas não há datas destes confrontos — pode refletir o Tsitsipas do pico de carreira (quando estava bem mais alto no ranking), não o jogador atual (#51). Vale observar ao vivo se Tsitsipas ganhar o 1º set ou um break cedo — o padrão histórico pode gerar reação exagerada do mercado in-play, mesmo estando desatualizado.</div>
+<div class="item w-white">Serviço de Tsitsipas nas últimas 10 partidas é nitidamente mais forte (ace <strong>9.9%</strong> vs <strong>4.8%</strong>, 1º serviço ganho <strong>78.5%</strong> vs <strong>71.6%</strong>) — amostra pequena (10 jogos), mas pode justificar atenção a mercados de total de games ou tiebreak caso o encontro seja mais equilibrado no serviço do que a odd sugere.</div>
+<div class="item w-white">Registo de De Minaur após pausas de 60+ dias é <strong>0% em apenas 4 jogos</strong> — amostra mínima e, de qualquer forma, não se aplica diretamente aqui, já que ele só esteve parado 23 dias (abaixo do threshold). Mencionado apenas como contexto, sem peso real.</div>
+<div class="item">Sem mais discrepâncias assinaláveis relevantes — no set decisivo (bo3: De Minaur <strong>55.7%</strong> em 140 jogos vs Tsitsipas <strong>58.8%</strong> em 165) e no comeback pós-1º set perdido (<strong>27.6%</strong> vs <strong>27.9%</strong>) os números são muito próximos, alinhados com o que o mercado reflete.</div>
+<div class="item">Estes são pontos de observação para avaliação própria, não recomendações de entrada.</div>
 </div>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Geral: Tsitsipas domina <strong>12-1</strong> em 13 confrontos.</div>
-<div class="item">Em hard (piso deste jogo): Tsitsipas <strong>9-1</strong> em 10 jogos.</div>
-<div class="item">Amostra pequena em ambos os casos (abaixo de ~15-20) — sinal notável pela unilateralidade, mas insuficiente para ser tratado como certeza estatística.</div>
-<div class="item"><code>h2h_rich_stats</code> não disponível (é exclusivo WTA).</div>
+<div class="item">Geral: Tsitsipas lidera <strong>12-1</strong> em 13 jogos.</div>
+<div class="item">Em hard: Tsitsipas lidera <strong>9-1</strong> em 10 jogos.</div>
+<div class="item">Sem data dos confrontos — não é possível confirmar se refletem o Tsitsipas atual ou o de anos anteriores, quando estava mais alto no ranking.</div>
 </div>
-<h3 class="sec">Forma Recente</h3>
+<h3 class="sec">Forma Recente e Época Atual</h3>
 <div class="items">
-<div class="item">Ambos <strong>7-3</strong> nos últimos 10 jogos — sem vantagem aqui.</div>
-<div class="item">Época 2026 completa: De Minaur <strong>28-14</strong> (42 jogos), Tsitsipas <strong>22-15</strong> (37 jogos) — De Minaur com % de vitórias superior no ano.</div>
+<div class="item">Últimos 10 jogos: <strong>7-3</strong> para ambos — empatados, sem vantagem clara aqui.</div>
+<div class="item">Época 2026: De Minaur <strong>28-14 (66.7%)</strong> em 42 jogos vs Tsitsipas <strong>22-15 (59.5%)</strong> em 37 — vantagem a De Minaur no presente.</div>
+<div class="item">Ranking oficial atual: De Minaur <strong>#6</strong>, Tsitsipas <strong>#51</strong> — diferença acentuada e mais recente que o H2H.</div>
 </div>
-<h3 class="sec">Piso</h3>
+<h3 class="sec">Piso (Hard)</h3>
 <div class="items">
-<div class="item">Hard (carreira completa): De Minaur <strong>65.9%</strong> (247/375), Tsitsipas <strong>64.4%</strong> (235/365) — muito próximos.</div>
-<div class="item">Clay: Tsitsipas claramente superior, <strong>74.0%</strong> (134/181) vs <strong>52.7%</strong> (48/91) de De Minaur — não relevante para este jogo em hard, mas mostra perfil de piso distinto.</div>
-<div class="item">Grass: De Minaur <strong>65.7%</strong> (44/67) vs Tsitsipas <strong>53.3%</strong> (24/45).</div>
-<div class="item">No piso do jogo (hard), o nível de carreira é equivalente entre os dois.</div>
+<div class="item">De Minaur: <strong>65.9%</strong> em 375 jogos.</div>
+<div class="item">Tsitsipas: <strong>64.4%</strong> em 365 jogos.</div>
+<div class="item">Muito próximos em hard; Tsitsipas é claramente mais forte em clay (<strong>74%</strong>) do que De Minaur (<strong>52.7%</strong>), mas isso é irrelevante para este jogo.</div>
 </div>
-<h3 class="sec">Serviço/Resposta</h3>
+<h3 class="sec">Serviço/Resposta (últimos 10 jogos)</h3>
 <div class="items">
-<div class="item">Tsitsipas mais agressivo ao serviço: <strong>9.9%</strong> aces vs <strong>4.8%</strong> de De Minaur, <strong>63.9%</strong> primeiro serviço in vs <strong>58.7%</strong>, <strong>78.5%</strong> pontos ganhos no 1º serviço vs <strong>71.6%</strong>.</div>
-<div class="item">De Minaur salva mais break points: <strong>58.7%</strong> vs <strong>47.6%</strong> de Tsitsipas — apesar do serviço mais fraco em geral, é mais resiliente sob pressão.</div>
-<div class="item">Ambos com amostra de 10 jogos (forma recente) — moderada, não é registo de carreira completo.</div>
+<div class="item">Ace%: Tsitsipas <strong>9.9%</strong> vs De Minaur <strong>4.8%</strong>.</div>
+<div class="item">1º serviço ganho: Tsitsipas <strong>78.5%</strong> vs De Minaur <strong>71.6%</strong>.</div>
+<div class="item">Break points salvos: De Minaur <strong>58.7%</strong> vs Tsitsipas <strong>47.6%</strong> — De Minaur mais sólido a defender o próprio serviço sob pressão.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">De Minaur: <strong>23 dias</strong> sem jogar, 0 jogos nos últimos 14 dias — descansado.</div>
-<div class="item">Tsitsipas: <strong>10 dias</strong> desde o último jogo, <strong>4 jogos</strong> nos últimos 14 dias — mais rodado, mas potencialmente mais desgastado.</div>
-<div class="item">Nota: estas métricas usam a data de início do torneio, não a data exata do jogo — tratar como aproximação, não calendário exato.</div>
-<div class="item"><code>minutes_played_last_7d</code> e <code>sets_played_last_7d</code> vêm <code>null</code> para ambos — não há dado de carga física detalhada.</div>
+<div class="item">De Minaur: <strong>23 dias</strong> sem jogar, 0 jogos nas últimas 2 semanas — bem descansado, sem sinal de fadiga.</div>
+<div class="item">Tsitsipas: <strong>10 dias</strong> desde o último jogo, <strong>4 jogos</strong> nas últimas 2 semanas — mais rodado, sem sinal de fadiga aguda.</div>
+<div class="item">Nota: estas métricas usam a data de início do torneio, não o dia exato do jogo — tratar como aproximação.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Sem desistências recentes registadas para nenhum dos dois (<code>recent_retirements</code> vazio em ambos, 5 jogos verificados) — não implica certeza de saúde total, apenas ausência de sinal encontrado.</div>
+<div class="item">Nenhum dos dois tem retirements recentes registados (5 jogos verificados cada) — não há sinal de lesão, mas isso não garante saúde total.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre com dados presentes: <strong>30.2°C</strong> máxima, <strong>20.1°C</strong> mínima, <strong>0mm</strong> de chuva,</div>
+<div class="item">Jogo ao ar livre: <strong>30.2°C</strong> máx, sem chuva, vento moderado <strong>22.6 km/h</strong> — calor pode pesar ao longo do jogo, sem outros fatores de destaque.</div>
 </div>
+<h3 class="sec">Mercado</h3>
+<div class="items">
+<div class="item">De Minaur favorito a <strong>1.74</strong>, Tsitsipas a <strong>2.20</strong> — alinhado com o ranking e a forma da época atual, mesmo contrariando o H2H histórico.</div>
+</div>
+<h3 class="sec">📝 Nota Final</h3>
+<p>Falta a data dos confrontos H2H, o que impede confirmar se o domínio de Tsitsipas ainda é válido face à queda dele no ranking (#51). <code>h2h_rich_stats</code> não se aplica (é exclusivo de WTA).</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

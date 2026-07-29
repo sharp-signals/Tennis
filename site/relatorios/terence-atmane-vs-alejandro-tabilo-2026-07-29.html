@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -83,6 +92,15 @@ strong { color:#fff; font-weight:700; }
       <div class="sb-name right">Alejandro Tabilo</div>
     </div>
     <div class="sb-flag">🔴 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e0a34a">64/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:64%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Dados de forma, ranking e piso são consistentes e com boas amostras para Tabilo, mas falta H2H e as stats de serviço assentam em amostras pequenas (~10 jogos).</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
@@ -138,50 +156,60 @@ strong { color:#fff; font-weight:700; }
     </div></div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Mercado favorece ligeiramente Atmane (<strong>1.84</strong> vs <strong>2.00</strong>), mas a maioria dos indicadores recentes aponta para Tabilo.</div>
-<div class="item">Ranking oficial: Tabilo <strong>nº30</strong> vs Atmane <strong>nº56</strong>.</div>
-<div class="item">Forma recente (últimos 10): Tabilo <strong>4-6</strong> vs Atmane <strong>2-8</strong>.</div>
-<div class="item">Época 2026: Tabilo <strong>53.8%</strong> (21-18) vs Atmane <strong>39.3%</strong> (11-17).</div>
-<div class="item">Atmane está <strong>29 dias</strong> sem jogar, sem partidas nas últimas 2 semanas — sinal de fadiga incerto (pode ser descanso ou algo não reportado).</div>
-<div class="item">Não há dados de H2H entre os dois.</div>
+<div class="item">Mercado favorece Atmane (<strong>1.84</strong>) apesar de estar pior em quase todos os indicadores de momento.</div>
+<div class="item">Atmane: forma <strong>2-8</strong>, época atual <strong>11-17</strong> (28 jogos), ranking <strong>56</strong>; Tabilo: forma <strong>4-6</strong>, época <strong>21-18</strong> (39 jogos), ranking <strong>30</strong>.</div>
+<div class="item">Tabilo recupera de 1 set abaixo em <strong>23.5%</strong> dos Bo3 (68 jogos) vs apenas <strong>4.0%</strong> de Atmane (25 jogos).</div>
+<div class="item">Atmane vem de <strong>29 dias</strong> sem jogar e tem <strong>0%</strong> de vitórias após layoff (5 jogos) - sinal de risco.</div>
+<div class="item">Não há dados de H2H entre os dois jogadores.</div>
 </div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<p>1. 🔴 Tabilo recupera de 1 set abaixo em <strong>23.5%</strong> dos Bo3 (68 jogos) vs <strong>4.0%</strong> de Atmane (25 jogos) - amostra grande de ambos os lados, divergência clara. Vale observar, ao vivo, o mercado de handicap de sets ou &quot;vence após perder o 1º set&quot; se Tabilo ficar em desvantagem inicial.</p>
+<p>2. 🔴 Mercado favorece Atmane (1.84) apesar de ranking pior (<strong>56 vs 30</strong>), forma recente pior (<strong>2-8 vs 4-6</strong>) e época atual pior (<strong>11-17 vs 21-18</strong>) - divergência forte entre preço e momento atual. Vale observar handicap de games/sets a favor de Tabilo.</p>
+<p>3. 🟡 Tabilo tem melhor taxa em set decisivo, <strong>42.4%</strong> (59 jogos) vs <strong>35.0%</strong> de Atmane (20 jogos) - amostra razoável, vale observar mercados de total de sets/&quot;vai a decisivo&quot;.</p>
+<p>4. ⚪ Layoff return: Atmane <strong>0%</strong> em 5 jogos vs Tabilo <strong>30%</strong> em 10 jogos - amostras pequenas, mas alinhado com a tendência geral; contexto frágil, não decisivo isoladamente.</p>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Sem dados de H2H, nem geral nem por piso — jogo sem histórico direto conhecido.</div>
+<div class="item">Não há dados de H2H (nem overall nem por piso) entre Atmane e Tabilo - lacuna total.</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item">Atmane: <strong>2 vitórias em 10</strong> (20%).</div>
-<div class="item">Tabilo: <strong>4 vitórias em 10</strong> (40%).</div>
-<div class="item">Época atual: Atmane <strong>11-17</strong> (39.3%), Tabilo <strong>21-18</strong> (53.8%) — divergência relevante face ao favoritismo de mercado em Atmane.</div>
+<div class="item">Atmane: <strong>2-8</strong> nos últimos 10 jogos - forma muito fraca.</div>
+<div class="item">Tabilo: <strong>4-6</strong> nos últimos 10 - também abaixo do ideal, mas melhor que Atmane.</div>
+<div class="item">Época 2026: Atmane <strong>11-17</strong> (28 jogos); Tabilo <strong>21-18</strong> (39 jogos) - Tabilo mais ativo e com mais vitórias absolutas.</div>
 </div>
 <h3 class="sec">Piso (Hard)</h3>
 <div class="items">
-<div class="item">Atmane: <strong>38.9%</strong> em hard (14-22 de 36 jogos).</div>
-<div class="item">Tabilo: <strong>45.8%</strong> em hard (38-45 de 83 jogos, amostra maior).</div>
-<div class="item">Tabilo também domina em clay (<strong>55.6%</strong>, 81 jogos); Atmane é mais fraco em todos os pisos, com grass praticamente sem amostra (5 jogos).</div>
+<div class="item">Atmane: <strong>14-22</strong> em hard (38.9%, 36 jogos).</div>
+<div class="item">Tabilo: <strong>38-45</strong> em hard (45.8%, 83 jogos) - mais consistente e amostra maior.</div>
+<div class="item">Em clay, Tabilo sobe para <strong>55.6%</strong> (81 jogos) vs <strong>38.9%</strong> de Atmane (18 jogos) - especialização clara de Tabilo fora do hard.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item">Atmane à frente em quase tudo: <strong>ace 9.1%</strong> vs 6.7%, <strong>1º serviço ganho 75.5%</strong> vs 72%, <strong>BP salvos 62.7%</strong> vs 55.4%.</div>
-<div class="item">Amostras pequenas dos dois lados (10 e 9 jogos) — sinal recente, não conclusivo.</div>
+<div class="item">Atmane: 1º serviço ganho <strong>75.5%</strong>, ace <strong>9.1%</strong>, BP salvos <strong>62.7%</strong> (10 jogos).</div>
+<div class="item">Tabilo: 1º serviço ganho <strong>72.0%</strong>, ace <strong>6.7%</strong>, BP salvos <strong>55.4%</strong> (9 jogos).</div>
+<div class="item">Números favorecem Atmane no serviço, mas amostras de ~10 jogos são insuficientes para conclusão sólida.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Atmane: <strong>29 dias</strong> sem jogar, <strong>0 jogos</strong> nos últimos 14 dias.</div>
-<div class="item">Tabilo: <strong>8 dias</strong> de descanso, <strong>3 jogos</strong> nos últimos 14 dias — mais rodado.</div>
-<div class="item">As métricas usam a data de início do torneio, não a data exata do jogo — tratar como aproximação.</div>
+<div class="item">Atmane: <strong>29 dias</strong> sem jogar, 0 jogos nas últimas 2 semanas - descansado mas possivelmente fora de ritmo.</div>
+<div class="item">Tabilo: <strong>8 dias</strong> desde o último jogo, 3 jogos nos últimos 14 dias - mais rodado competitivamente.</div>
+<div class="item">Nota: estas métricas usam a data de início do torneio, não a data exata do jogo, são aproximações.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Sem desistências recentes registadas para nenhum (5 jogos verificados cada) — ausência de sinal, não garantia de saúde.</div>
+<div class="item">Nenhum dos dois tem desistências recentes (5 jogos verificados cada) - ausência de sinal, não garantia de saúde total.</div>
 </div>
-<h3 class="sec">Contexto adicional</h3>
+<h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Set decisivo (Bo3): Atmane <strong>35%</strong> (20 jogos) vs Tabilo <strong>42.4%</strong> (59 jogos, amostra maior).</div>
-<div class="item">Recuperação após perder o 1º set (Bo3): Atmane <strong>4%</strong> (1 de 25) vs Tabilo <strong>23.5%</strong> (16 de 68) — diferença grande, ambas amostras sólidas.</div>
-<div class="item">Rondas finais: Tabilo <strong>63.3%</strong> (19-30) vs Atmane <strong>33.3%</strong> (1-3, amostra insuficiente para concluir).</div>
-<div class="item">Regresso após layoff 60+ dias:</div>
+<div class="item">Jogo ao ar livre: <strong>29.8°C</strong> máxima, sem chuva, vento até <strong>20.1 km/h</strong> - condições normais, sem fator de risco relevante.</div>
+</div>
+<h3 class="sec">Mercado</h3>
+<div class="items">
+<div class="item">Odds próximas (Atmane <strong>1.84</strong>, Tabilo <strong>2.00</strong>) - ligeira preferência por Atmane, que contrasta com a maioria dos indicadores de forma/momento a favor de Tabilo.</div>
+</div>
+<h3 class="sec">📝 Nota Final</h3>
+<div class="items">
+<div class="item">Falta H2H entre os dois jogadores, e as stats de serviço assentam em amostras pequenas. A divergência entre o preço de mercado e o conjunto de indicadores de momento é o ponto central a acompanhar.</div>
 </div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>

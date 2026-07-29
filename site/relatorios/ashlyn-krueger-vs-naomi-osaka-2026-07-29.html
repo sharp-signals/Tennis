@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -83,62 +92,71 @@ strong { color:#fff; font-weight:700; }
       <div class="sb-name right">Naomi Osaka</div>
     </div>
     <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e06c5b">22/100 · baixa</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:22%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Quase todos os campos vêm null; só há ranking oficial, odds e um H2H de apenas 1 jogo, amostra irrelevante.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
   
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Único confronto direto (<strong>n=1</strong>) foi vencido por Krueger em 3 sets — amostra insuficiente para tirar qualquer conclusão.</div>
-<div class="item">Ranking oficial favorece claramente Osaka (<strong>#13</strong> vs <strong>#67</strong>), alinhado com as odds (<strong>1.33</strong> vs <strong>3.64</strong>).</div>
-<div class="item">Faltam quase todos os outros dados: forma recente, época atual, stats por piso, fadiga, lesão, serviço/resposta — lacuna generalizada em ambas as jogadoras.</div>
-<div class="item">Meteorologia sem fator de destaque: calor moderado, sem chuva, vento moderado.</div>
+<div class="item">Ranking oficial ao vivo: Osaka <strong>#13</strong> vs Krueger <strong>#67</strong> — diferença grande, alinhada com as odds.</div>
+<div class="item">H2H: apenas <strong>1 confronto direto</strong> (vencido por Krueger em 3 sets) — amostra insuficiente para qualquer conclusão.</div>
+<div class="item">Forma recente, época atual, stats de piso, serviço/resposta, fadiga e lesão: <strong>todos null</strong> para ambas — lacuna extensa.</div>
+<div class="item">Meteorologia: jogo ao ar livre, sem chuva prevista, calor moderado (~<strong>29.8°C</strong>) e vento moderado (~<strong>20 km/h</strong>) — não parece fator decisivo.</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-white">Krueger venceu o único confronto direto (<strong>2-1 sets</strong>, incluindo o set decisivo), mas com apenas <strong>1 jogo</strong> disputado isto é anedótico, não estatístico — não sustenta observar handicap ou qualquer mercado alternativo com confiança.</div>
+<div class="item">Sem discrepâncias assinaláveis com suporte robusto — o ranking oficial (Osaka #13 vs Krueger #67) está alinhado com as odds de mercado (1.33 vs 3.64), e não há dados de forma, fadiga ou piso que contradigam essa leitura. Pontos de observação para decisão própria, não recomendações.</div>
 </div>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">H2H de carreira geral (<code>overall</code>): <strong>não há dados</strong>.</div>
-<div class="item">H2H detalhado (<code>h2h_rich_stats</code>) existe mas cobre apenas <strong>1 jogo</strong> — trata-se de ausência de sinal, não de sinal fraco.</div>
-<div class="item">Nesse único encontro, Krueger venceu <strong>2-1</strong> em sets, incluindo o set decisivo.</div>
-<div class="item">Estatísticas desse jogo (apenas informativas, não preditivas): Krueger com <strong>65%</strong> de 1º serviço vs <strong>46%</strong> de Osaka; Krueger com <strong>81</strong> pontos totais ganhos vs <strong>73</strong> de Osaka; conversão de break points <strong>31%</strong> (Krueger) vs <strong>38%</strong> (Osaka).</div>
-<div class="item">Jogo disputado em hard (mesmo piso desta partida), mas uma única amostra não permite generalizar para o confronto atual.</div>
+<div class="item">Overall: <strong>null</strong> (sem histórico de carreira completo disponível).</div>
+<div class="item">On surface: não fornecido separadamente.</div>
+<div class="item">H2H rich stats (matchstat): apenas <strong>1 jogo</strong> disputado, vencido por Krueger 2-1 em sets, foi a set decisivo (<strong>100%</strong> decisivo para ela, mas base=1). Osaka teve mais aces (<strong>7 vs 3</strong>) e Krueger converteu mais pontos de resposta (<strong>39% vs 30%</strong>) — tudo com amostra de 1 jogo, sem valor estatístico.</div>
 </div>
-<h3 class="sec">Forma Recente\- <strong>Não há dados</strong> de forma recente para nenhuma das duas jogadoras.</h3>
+<h3 class="sec">Forma Recente</h3>
+<div class="items">
+<div class="item">Recent form A e B: <strong>null</strong> — não há dados de forma recente para nenhuma das jogadoras.</div>
+</div>
 <h3 class="sec">Época Atual</h3>
 <div class="items">
-<div class="item"><strong>Não há dados</strong> de jogos/vitórias na época atual para nenhuma das duas — impossível aplicar o cruzamento recomendado entre carreira e presente.</div>
+<div class="item">Current season A e B: <strong>null</strong> — impossível avaliar atividade ou declínio/ascensão na época atual.</div>
 </div>
 <h3 class="sec">Piso</h3>
 <div class="items">
-<div class="item"><strong>Não há dados</strong> de perfil por piso (Hard/Clay/Grass) para nenhuma das duas jogadoras.</div>
-<div class="item">Sabe-se apenas que o único H2H registado foi em hard, mesmo piso deste jogo, mas isso não substitui um perfil de piso completo.</div>
+<div class="item">Surface stats A e B: <strong>null</strong> — sem perfil de desempenho em Hard, Clay ou Grass para nenhuma jogadora.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item"><strong>Não há dados</strong> gerais de serviço/resposta (<code>serve_return_stats</code>) para nenhuma das duas.</div>
-<div class="item">Os únicos números disponíveis vêm do confronto único já mencionado no H2H, e não devem ser extrapolados.</div>
+<div class="item">Serve/return stats A e B (fonte carreira): <strong>null</strong>. Os únicos números de serviço disponíveis vêm do H2H rich stats (1 jogo), já referidos acima, e não devem ser generalizados.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item"><strong>Não há dados</strong> de fadiga (dias de descanso, jogos/minutos recentes) para nenhuma das duas jogadoras.</div>
+<div class="item">Fatigue signal A e B: <strong>null</strong> — sem indicadores de dias de descanso, jogos ou minutos recentes.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item"><strong>Não há sinal</strong> de lesão ou retirement disponível para nenhuma das duas — não é indicação de saúde, apenas ausência de dado.</div>
+<div class="item">Injury signal A e B: <strong>null</strong> — sem sinais de desistências recentes registados.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre com dados presentes: <strong>29.8°C</strong> máx / <strong>19.2°C</strong> mín, sem chuva (<strong>0.0mm</strong>), vento até <strong>20.1 km/h</strong>.</div>
-<div class="item">Condições moderadas, sem indício de impacto significativo no jogo.</div>
+<div class="item">Jogo ao ar livre com dados presentes: <strong>29.8°C</strong> máx, <strong>19.2°C</strong> mín, <strong>0mm</strong> de chuva, vento até <strong>20.1 km/h</strong> — condições estáveis, sem indício de impacto relevante no jogo.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Osaka como forte favorita: <strong>1.33</strong> vs <strong>3.64</strong> para Krueger.</div>
-<div class="item">Esta diferença está alinhada com o gap de ranking oficial (<strong>#13</strong> vs <strong>#67</strong>), sem contradição aparente nos poucos dados disponíveis.</div>
+<div class="item">Odds: Osaka <strong>1.33</strong> vs Krueger <strong>3.64</strong> — mercado claramente a favor de Osaka, coerente com a diferença de ranking oficial.</div>
 </div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados disponíveis (ranking oficial e odds apontam na mesma direção). O único H2H (n=1) favorece Krueger, mas é amostra demasiado pequena para sustentar qualquer sugestão de mercado; é apenas contexto, não sinal. Estes pontos são para observação e ponderação própria, não recomendações de entrada.</p>
 <h3 class="sec">📝 Nota Final</h3>
-<p>A análise deste jogo está fortemente limitada pela ausência de dados de forma recente, época atual, piso, fadiga, lesão e serviço/resposta para ambas as jogadoras — a leitura assenta quase inteiramente no ranking oficial e nas odds de mercado.</p>
+<p>Falta praticamente toda a base de dados habitual (forma, época atual, piso, serviço, fadiga, lesão) para ambas as jogadoras; a leitura assenta quase só no ranking oficial e nas odds, com o H2H a servir apenas como nota de contexto fraca devido à amostra de 1 jogo.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

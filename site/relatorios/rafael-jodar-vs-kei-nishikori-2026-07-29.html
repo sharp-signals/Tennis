@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -82,7 +91,16 @@ strong { color:#fff; font-weight:700; }
       </div>
       <div class="sb-name right">Kei Nishikori</div>
     </div>
-    <div class="sb-flag">🟢 sinal</div>
+    <div class="sb-flag">🔴 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e0a34a">55/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:55%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Dados amplos para Nishikori mas de carreira antiga e desatualizados (ranking não é ao vivo, 0 jogos em 2026); H2H inexistente.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
@@ -138,69 +156,62 @@ strong { color:#fff; font-weight:700; }
     </div></div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Mercado dá <strong>1.21</strong> a Jodar vs <strong>5.6</strong> a Nishikori — alinhado com a disparidade de atividade atual.</div>
-<div class="item">Nishikori tem <strong>0 jogos em 2026</strong> e <strong>357 dias</strong> sem competir; ranking_b está desatualizado (<code>as_of</code> 2025-08-07, quase 1 ano antes deste jogo).</div>
-<div class="item">Nishikori desistiu (RET) do último jogo verificado, vs Khachanov, motivo desconhecido.</div>
-<div class="item">Registo de carreira de Nishikori em hard (<strong>66% em 457 jogos</strong>) reflete o seu auge passado, não o estado atual — tratar com ceticismo.</div>
-<div class="item">Sem dados de H2H entre os dois.</div>
+<div class="item">Nishikori está <strong>357 dias</strong> sem disputar um jogo registado e tem <strong>0 jogos</strong> na época 2026 — sinal forte de inatividade prolongada.</div>
+<div class="item">Retirement recente (<strong>RET</strong> vs Khachanov, 2025-05-19), motivo desconhecido — não é diagnóstico, mas é facto verificável.</div>
+<div class="item">Jodar em excelente momento: <strong>26-11</strong> em 2026 e <strong>7-3</strong> nos últimos 10, com ranking <strong>#24 oficial ao vivo</strong>.</div>
+<div class="item">O ranking de Nishikori (<strong>#67</strong>) está desatualizado — <code>as_of</code> é <strong>2025-08-07</strong>, quase um ano antes do jogo, portanto não reflete necessariamente o nível atual.</div>
+<div class="item">Não há dados de H2H (nem overall nem por piso) entre os dois jogadores.</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-white">Layoff return de Nishikori: <strong>50%</strong> de vitórias em <strong>16 jogos</strong> após pausas de 60+ dias — amostra pequena e, além disso, a pausa atual (357 dias) é muito mais longa do que o típico dessa amostra, o que reduz ainda mais a fiabilidade do número. Pode valer observar o mercado &quot;Jodar vence sem perder set&quot; vs &quot;pelo menos 1 set para Nishikori&quot;, mas com pouca base de suporte.</div>
+<div class="item w-white">Nishikori tem <strong>32.5%</strong> de comeback em Bo3 (228 jogos) e <strong>71.3%</strong> de vitórias em set decisivo Bo3 (181 jogos) — amostras grandes, mas são registos de carreira acumulados ao longo de anos de auge, não descrevem o jogador que está há quase um ano sem competir; tratar com ceticismo.</div>
+<div class="item">Não há discrepância forte que aponte contra o favoritismo de Jodar — o mercado (1.21 vs 5.5) já parece alinhado com o quadro atual (Jodar em forma e ranking a subir; Nishikori inativo há muito tempo). Sem discrepâncias assinaláveis fortes a favor do underdog.</div>
 </div>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Não há dados de H2H (nem geral nem por piso) — lacuna, não sinal de equilíbrio.</div>
+<div class="item">Sem dados de confronto direto (overall e por piso ambos ausentes) — não é possível comentar histórico entre os dois.</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item">Jodar: <strong>7-3</strong> nos últimos 10 jogos.</div>
-<div class="item">Nishikori: <strong>4-6</strong> nos últimos 10 — mas dado o hiato de 357 dias, esta amostra é provavelmente anterior à pausa, não representa o momento atual dele.</div>
-<div class="item">Época 2026: Jodar <strong>26-11 em 37 jogos</strong>, Nishikori <strong>0 jogos</strong> — contraste total de atividade.</div>
+<div class="item">Jodar: <strong>7-3</strong> nos últimos 10 jogos, consistente com a temporada forte (26-11 em 37).</div>
+<div class="item">Nishikori: <strong>4-6</strong> nos últimos 10, mas note-se que &quot;últimos 10&quot; pode incluir jogos de há bastante tempo dado o hiato de 357 dias.</div>
 </div>
 <h3 class="sec">Piso (Hard)</h3>
 <div class="items">
-<div class="item">Jodar: <strong>50% em 14 jogos</strong> em hard — amostra pequena, claramente mais forte em terra (<strong>83% em 23</strong>).</div>
-<div class="item">Nishikori: <strong>66% em 457 jogos</strong> em hard — amostra grande mas de carreira inteira, incluindo anos de auge; não descreve o jogador de hoje.</div>
+<div class="item">Jodar: <strong>7-7</strong> (50%) em hard, amostra pequena (14 jogos) — muito mais forte em terra batida (<strong>19-7</strong>, 83% em 23 jogos), o que sugere que hard pode não ser o piso onde brilha mais.</div>
+<div class="item">Nishikori: <strong>302-155</strong> (66%) em hard ao longo de <strong>457 jogos</strong> — amostra enorme, mas reflete sobretudo o auge da carreira, não a atividade recente (0 jogos em 2026).</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item">Muito semelhantes nos últimos 10 jogos de cada: 1º serviço ganho <strong>68.3%</strong> (Jodar) vs <strong>67.8%</strong> (Nishikori), break points salvos <strong>56.2%</strong> vs <strong>52.5%</strong>.</div>
-<div class="item">Para Nishikori esta amostra de 10 jogos também é provavelmente pré-hiato, não recente de facto.</div>
+<div class="item">Primeiro serviço ganho: Jodar <strong>68.3%</strong> vs Nishikori <strong>67.8%</strong> — muito próximos, amostras iguais (10 jogos cada, mas recentes).</div>
+<div class="item">Break points salvos: Jodar <strong>56.2%</strong> vs Nishikori <strong>52.5%</strong> — ligeira vantagem para Jodar.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Jodar: <strong>27 dias</strong> desde o último jogo, <strong>0</strong> partidas nos últimos 14 dias — descansado.</div>
-<div class="item">Nishikori: <strong>357 dias</strong> sem jogar — hiato muito longo (nota: esta métrica usa a data de início do torneio, é aproximada, mas a ordem de grandeza é clara).</div>
-<div class="item">Ranking_b <strong>67</strong> não é suficientemente baixo para o hiato ser tipicamente explicado por jogos Challenger não registados; parece mesmo uma pausa longa.</div>
+<div class="item">Jodar: <strong>27 dias</strong> desde o último jogo, sem jogos nos últimos 3/7/14 dias — descansado.</div>
+<div class="item">Nishikori: <strong>357 dias</strong> desde o último jogo — não é fadiga por excesso de jogo, mas o oposto: falta de ritmo competitivo recente. Lembrar que estas datas usam o início do torneio, não o dia exato do jogo.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Jodar: sem desistências recentes nos 5 jogos verificados.</div>
-<div class="item">Nishikori: <strong>RET</strong> contra Khachanov (7-5 2-5 RET, 2025-05-19) — motivo desconhecido, mas é um facto verificável de desistência.</div>
+<div class="item">Jodar: sem retirements nos últimos 5 jogos verificados.</div>
+<div class="item">Nishikori: <strong>1 retirement</strong> nos últimos 5 jogos verificados (vs Khachanov, 7-5 2-5 RET) — motivo desconhecido, não é relatório médico.</div>
 </div>
-<h3 class="sec">Volta de Layoff (Nishikori)</h3>
+<h3 class="sec">Ranking</h3>
 <div class="items">
-<div class="item"><strong>50% em 16 jogos</strong> após paragens de 60+ dias — amostra moderada, mas o hiato atual (357 dias) é bem mais longo do que a maioria testada nesse registo.</div>
-</div>
-<h3 class="sec">Set Decisivo / Comeback</h3>
-<div class="items">
-<div class="item">Jodar: <strong>100% em 5</strong> (bo5) e <strong>62.5% em 8</strong> (bo3) — amostras muito pequenas, não conclusivas.</div>
-<div class="item">Nishikori: <strong>71.3% em 181</strong> (bo3) e <strong>77.8% em 36</strong> (bo5) — amostra grande mas de carreira antiga.</div>
-<div class="item">Comeback após perder 1º set: Nishikori <strong>32.5% em 228</strong> (bo3, grande amostra mas antiga); Jodar amostras demasiado pequenas para concluir.</div>
+<div class="item">Jodar: <strong>#24</strong>, dado oficial ao vivo.</div>
+<div class="item">Nishikori: <strong>#67</strong>, mas com data de referência de <strong>2025-08-07</strong> — desatualizado face à data do jogo (2026-07-30), o que é uma lacuna relevante para avaliar o nível atual.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre, dados presentes: <strong>29.8°C</strong> máx, sem chuva, vento até <strong>20.1 km/h</strong> — condições normais, sem sinal de impacto relevante.</div>
+<div class="item">Jogo ao ar livre: <strong>29.8°C</strong> máx, <strong>19.2°C</strong> mín, sem chuva prevista, vento até <strong>20.1 km/h</strong> — condições normais de verão, sem impacto claro a assinalar.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Odds implicam favoritismo muito claro para Jodar (~83%), consistente com a diferença de atividade e forma atual entre os dois jogadores.</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>Pontos de observação para decisão própria, não recomendações de entrada:</p>
-<div class="items">
-<div class="item w-white">Nishikori vence <strong>50% em 16 jogos</strong> após layoffs de 60+ dias — amostra pequena e o hiato atual é maior que o testado; pode valer observar se ele consegue levar pelo menos um set, mas o sinal é frágil.</div>
-<div class="item">Sem discrepâncias assinaláveis de maior peso — o mercado parece alinhado com os dados: Jodar ativo e em forma vs Nishikori parado há quase um ano e sem jogos em 2026.</div>
+<div class="item">Odds fortemente inclinadas para Jodar (<strong>1.21</strong> vs <strong>5.5</strong>), alinhadas com o quadro de forma atual e inatividade de Nishikori.</div>
 </div>
 <h3 class="sec">📝 Nota Final</h3>
-<p>Falta H2H completamente, e o ranking oficial de Nishikori está desatualizado em quase um ano — a real posição competitiva dele hoje é incerta para além do que a inatividade sugere.</p>
+<p>Falta H2H entre os jogadores e o ranking de Nishikori não está atualizado à data do jogo; o hiato de 357 dias, dado o baixo ranking atual, pode também refletir jogos em nível Challenger/ITF não cobertos pela fonte, não necessariamente uma pausa total — tratar como incerteza, não como facto de inatividade absoluta.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

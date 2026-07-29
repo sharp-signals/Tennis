@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -83,6 +92,15 @@ strong { color:#fff; font-weight:700; }
       <div class="sb-name right">Ben Shelton</div>
     </div>
     <div class="sb-flag">🟢 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#4ecdc4">70/100 · alta</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:70%;background:#4ecdc4"></div></div>
+      <div class="conf-reason">Ranking, época atual e stats de piso com amostras grandes convergem todos para Shelton; H2H é praticamente inexistente (1 jogo).</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
@@ -138,64 +156,60 @@ strong { color:#fff; font-weight:700; }
     </div></div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Shelton favorito no mercado (<strong>1.50</strong> vs <strong>2.55</strong>), alinhado com o ranking (<strong>#8</strong> vs <strong>#29</strong>).</div>
-<div class="item">H2H tem apenas <strong>1 jogo</strong> (vitória de Shelton, em hard) — amostra insuficiente para tirar conclusões.</div>
-<div class="item">Época atual: Shelton <strong>69%</strong> de vitórias (25-11 em 36) vs Humbert <strong>57%</strong> (24-18 em 42) — vantagem clara e recente para Shelton.</div>
-<div class="item">Sem sinais de fadiga ou lesão diferenciadores: ambos <strong>30 dias</strong> de descanso, <strong>0 jogos</strong> nas últimas 2 semanas, sem retirements recentes.</div>
-<div class="item">Shelton mais forte no set decisivo em Bo3: <strong>55.3%</strong> (76 jogos) vs <strong>46.7%</strong> de Humbert (122 jogos).</div>
+<div class="item">Shelton lidera o ranking oficial <strong>#8 vs #29</strong> e a época atual <strong>69% vs 57%</strong> de vitórias.</div>
+<div class="item">H2H entre eles tem apenas <strong>1 jogo</strong> (Shelton venceu, em hard) — amostra insuficiente para tirar qualquer conclusão.</div>
+<div class="item">Em hard, Shelton tem <strong>63.3%</strong> (147 jogos) contra <strong>57.8%</strong> de Humbert (232 jogos) — vantagem consistente e com amostra grande.</div>
+<div class="item">Humbert historicamente rende menos contra canhotos (<strong>48.7%</strong> em 39 jogos) do que contra destros (<strong>54.1%</strong> em 318) — relevante porque Shelton é canhoto.</div>
+<div class="item">Fadiga sem diferencial: ambos <strong>30 dias</strong> sem jogar e <strong>0 jogos</strong> nas últimas 2 semanas.</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-white">Humbert salva <strong>79.2%</strong> dos break points nos últimos 10 jogos, vs <strong>71.6%</strong> de Shelton — amostra pequena (10 jogos cada), mas pode valer observar se Humbert segura o serviço melhor do que a odd (2.55) sugere, especialmente para mercados como &quot;Humbert ganha pelo menos 1 set&quot;.</div>
+<div class="item w-white">Set decisivo em Bo3: Shelton vence <strong>55.3%</strong> (76 jogos) vs <strong>46.7%</strong> de Humbert (122 jogos) — amostras moderadas, reforça o favorito, não é discrepância contra o mercado.</div>
+<div class="item">Sem discrepâncias fortes a favor do underdog: os dados com maior amostra (ranking, época atual, piso, handedness) alinham-se todos com o mercado, que já reflete Shelton como favorito claro. Estas observações são apenas pontos a monitorizar ao vivo, a decisão fica sempre contigo.</div>
 </div>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Overall: <strong>0-1</strong> para Shelton (1 único encontro).</div>
-<div class="item">Em hard: <strong>0-1</strong> também, o mesmo jogo — não há divergência entre overall e on-surface porque é a mesma amostra.</div>
-<div class="item">Amostra de 1 jogo é insuficiente para servir de base a qualquer leitura.</div>
+<div class="item"><strong>Overall</strong>: 1 jogo, vitória de Shelton — amostra demasiado pequena para qualquer leitura.</div>
+<div class="item"><strong>Em hard</strong>: o mesmo único jogo, também para Shelton — não há divergência a comentar por falta de dados.</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item">Ambos com <strong>7-3</strong> nos últimos 10 jogos — idênticos neste recorte.</div>
-<div class="item">Na época atual completa, Shelton distancia-se: <strong>69%</strong> vs <strong>57%</strong> de Humbert (ver secção Pontos-chave).</div>
+<div class="item">Ambos <strong>7-3</strong> nos últimos 10 jogos — empatados neste indicador isoladamente.</div>
+<div class="item">Época atual 2026 desempata: Shelton <strong>25-11</strong> (69%) vs Humbert <strong>24-18</strong> (57%).</div>
 </div>
 <h3 class="sec">Piso (Hard)</h3>
 <div class="items">
-<div class="item">Shelton: <strong>63.3%</strong> em hard (93/147, carreira).</div>
-<div class="item">Humbert: <strong>57.8%</strong> em hard (134/232, carreira).</div>
-<div class="item">Nos outros pisos, Shelton também lidera em clay (<strong>55.3%</strong> vs <strong>34.4%</strong> de Humbert) e é ligeiramente melhor em grass (<strong>58.1%</strong> vs <strong>56.9%</strong>) — perfil mais consistente entre pisos.</div>
+<div class="item">Shelton: <strong>93-54</strong> (63.3%, 147 jogos).</div>
+<div class="item">Humbert: <strong>134-98</strong> (57.8%, 232 jogos).</div>
+<div class="item">Ambos com amostras grandes e fiáveis neste piso.</div>
 </div>
-<h3 class="sec">Serviço/Resposta (últimos 10 jogos)</h3>
+<h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item">1º serviço dentro: Shelton <strong>70.1%</strong> vs Humbert <strong>62.6%</strong>.</div>
-<div class="item">1º serviço ganho: Shelton <strong>77.8%</strong> vs Humbert <strong>75.9%</strong> — ligeira vantagem de Shelton.</div>
-<div class="item">Break points salvos: Humbert <strong>79.2%</strong> vs Shelton <strong>71.6%</strong> — aqui Humbert é melhor, único indicador a seu favor nesta secção.</div>
+<div class="item">Shelton: 1º serviço dentro <strong>70.1%</strong>, ganho no 1º serviço <strong>77.8%</strong>, duplas faltas <strong>4.6%</strong>.</div>
+<div class="item">Humbert: 1º serviço dentro <strong>62.6%</strong>, ganho no 1º serviço <strong>75.9%</strong>, duplas faltas <strong>3.5%</strong>, mas salva mais break points (<strong>79.2%</strong> vs <strong>71.6%</strong>).</div>
+<div class="item">Ambos com amostra de apenas 10 jogos — leitura moderada, não conclusiva.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Ambos com <strong>30 dias</strong> desde o último jogo e <strong>0 jogos</strong> nos últimos 14 dias — situação simétrica, sem vantagem de frescura para nenhum.</div>
-<div class="item">Nota: estas métricas usam a data de início do torneio anterior, não a data exata do jogo, mas como os valores são idênticos para ambos não altera a leitura comparativa.</div>
+<div class="item">Ambos <strong>30 dias</strong> sem jogar e <strong>0 jogos</strong> nos últimos 3/7/14 dias — sem diferencial.</div>
+<div class="item">Nota: esta métrica usa a data de início do torneio, não a data exata do jogo, por isso é uma aproximação.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Sem retirements recentes para nenhum dos dois (<strong>0 em 5 jogos verificados</strong> cada) — amostra pequena em ambos os casos, não é garantia de saúde, apenas ausência de sinal.</div>
+<div class="item">Sem desistências recentes registadas para nenhum dos dois (5 jogos verificados cada) — não é garantia de saúde total, apenas ausência de sinal.</div>
 </div>
-<h3 class="sec">Set Decisivo / Comeback / Handedness (contexto extra)</h3>
+<h3 class="sec">Handedness</h3>
 <div class="items">
-<div class="item">Set decisivo Bo3: Shelton <strong>55.3%</strong> (76 jogos) vs Humbert <strong>46.7%</strong> (122 jogos) — vantagem de Shelton com amostra razoável em ambos.</div>
-<div class="item">Comeback após perder 1º set (Bo3): Shelton <strong>33.3%</strong> (84 jogos) vs Humbert <strong>25.0%</strong> (120 jogos) — Shelton recupera melhor.</div>
-<div class="item">Handedness: Shelton é canhoto; Humbert tem <strong>48.7%</strong> contra canhotos (apenas 39 jogos, amostra pequena) vs <strong>54.1%</strong> contra destros (318 jogos) — ligeira fragilidade de Humbert contra canhotos, mas amostra pequena para o recorte relevante.</div>
-<div class="item">Layoff (60+ dias): não se aplica diretamente aqui, pois o hiato atual de ambos é de 30 dias, abaixo do limiar de 60 usado nesta stat.</div>
+<div class="item">Humbert vs canhotos: <strong>48.7%</strong> (39 jogos) — pior do que vs destros (<strong>54.1%</strong>, 318 jogos); relevante porque Shelton é canhoto.</div>
+<div class="item">Shelton vs canhotos: <strong>58.3%</strong> (24 jogos, amostra pequena) vs destros <strong>61.2%</strong> (201) — pouco diferencial, e Humbert é destro, logo pouco aplicável a este confronto específico.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre: <strong>29.8°C</strong> máx, <strong>19.2°C</strong> mín, sem chuva prevista (<strong>0.0mm</strong>), vento moderado (<strong>20.1 km/h</strong>).</div>
-<div class="item">Nada que sugira condições extremas ou fator diferenciador entre os jogadores.</div>
+<div class="item">Jogo ao ar livre com dados presentes: <strong>29.8°C</strong> máx, sem chuva, vento até <strong>20.1 km/h</strong> — condições normais, sem impacto assinalável.</div>
 </div>
-<h3 class="sec">Mercado</h3>
-<div class="items">
-<div class="item">Odds refletem claramente a diferença de ranking e de momento atual: Shelton <strong>1.50</strong>, Humbert <strong>2.55</strong>.</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados. Quase todos os indicadores relevantes (ranking, forma da época, piso, set decisivo, comeback pós set1) apontam consistentemente para Shelton, e a odd reflete essa realidade sem sinais de desalinhamento. O único ponto a favor de Humbert (break points salvos, <strong>79.2%</strong> em 10 jogos) é uma amostra pequena e isolada, insuficiente para sugerir observação de mercado específica.</p>
 <h3 class="sec">📝 Nota Final</h3>
-<p>O H2H (1 jogo) e algumas amostras de contexto (handedness vs canhotos, layoff) são demasiado pequenas para pesar na análise — a leitura assenta sobretudo na forma atual e nos indicadores de maior amostra, todos convergentes.</p>
+<p>A maior limitação é o H2H praticamente inexistente (1 jogo) — não sustenta qualquer leitura própria. <code>h2h_rich_stats</code> não está disponível (jogo ATP, campo exclusivo WTA).</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -82,7 +91,16 @@ strong { color:#fff; font-weight:700; }
       </div>
       <div class="sb-name right">Lorenzo Musetti</div>
     </div>
-    <div class="sb-flag">🟢 sinal</div>
+    <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e0a34a">65/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:65%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Ranking, forma e stats de serviço são consistentes e favorecem claramente Musetti, mas H2H é quase inexistente e o hiato de 78 dias dele é uma incógnita.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
@@ -138,65 +156,54 @@ strong { color:#fff; font-weight:700; }
     </div></div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item"><strong>Rank 15 (Musetti) vs 104 (Vukic)</strong> — diferença grande e consistente com a odd (1.37 vs 3.05).</div>
-<div class="item">Época atual: Musetti <strong>13-7</strong>, Vukic <strong>3-9</strong> — forma recente confirma o gap de ranking.</div>
-<div class="item">Serviço/resposta de Musetti superior em quase todos os indicadores (1º serviço, break points salvos).</div>
-<div class="item">H2H existe mas é <strong>apenas 1 jogo</strong> (vitória de Musetti em hard) — amostra insuficiente para peso real.</div>
-<div class="item">Musetti tem um hiato de <strong>78 dias</strong> sem jogo registado, mas mantém 20 jogos na época atual — hiato pode ser artefacto de datas de torneio, não inatividade real.</div>
+<div class="item">Musetti (rank <strong>15</strong>) é favorito claro (1.37) e os dados apoiam: forma <strong>6-4</strong>, época <strong>13-7</strong> vs Vukic <strong>3-9</strong> e <strong>2-8</strong>.</div>
+<div class="item">H2H tem apenas <strong>1 jogo</strong> (vitória de Musetti, também em hard) — amostra insuficiente para conclusões.</div>
+<div class="item">Musetti está <strong>78 dias</strong> sem jogar (vs 30 de Vukic) — hiato notável para um top 15, sem sinal de desistência recente em ambos.</div>
+<div class="item">Musetti domina serviço/resposta e sets decisivos com amostras grandes.</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-amber">Musetti recupera de 1-set-abaixo em <strong>23.4% (128 jogos)</strong> dos casos em Bo3, contra <strong>13.5% (74 jogos)</strong> de Vukic — se Vukic conseguir o 1º set, vale observar o mercado de sets/handicap, já que o favorito tem histórico sólido de reviravolta. Amostra grande, mas a divergência é moderada.</div>
+<div class="item w-amber">Musetti ganha <strong>62.9% (89 jogos)</strong> dos sets decisivos em Bo3, muito acima dos <strong>44.2% (52 jogos)</strong> de Vukic — reforça que, se o jogo chegar ao 3º set, o mercado de &quot;vencedor do set decisivo&quot; tende a favorecer ainda mais Musetti do que a odd geral sugere.</div>
+<div class="item w-white">Retorno de layoff de Musetti (<strong>50% em 2 jogos</strong>) e de Vukic (<strong>25% em 12 jogos</strong>) — amostras demasiado pequenas para qualquer leitura fiável, apenas contexto.</div>
+<div class="item">Sem discrepâncias fortes que contrariem o favorito — os dados no geral confirmam a leitura do mercado.</div>
 </div>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item"><strong>Overall:</strong> 1 jogo, vitória de Musetti (<strong>0-1</strong>) — amostra demasiado pequena para tirar conclusões.</div>
-<div class="item"><strong>Em hard:</strong> mesmo único confronto, também vencido por Musetti — não há divergência a assinalar por falta de dados suficientes.</div>
+<div class="item">Confronto direto: <strong>1 jogo, 0-1</strong> para Musetti, incluindo o único encontro em hard (também 0-1). Amostra mínima, não permite tirar padrão.</div>
 </div>
-<h3 class="sec">Forma Recente</h3>
+<h3 class="sec">Forma Recente e Época Atual</h3>
 <div class="items">
-<div class="item">Vukic: <strong>2-8</strong> nos últimos 10 jogos — forma fraca.</div>
-<div class="item">Musetti: <strong>6-4</strong> nos últimos 10 — forma sólida.</div>
-<div class="item">Época 2026: Vukic <strong>3-9</strong> (12 jogos), Musetti <strong>13-7</strong> (20 jogos) — confirma o quadro de forma recente, não é discrepância com o ranking.</div>
+<div class="item">Musetti: <strong>6-4</strong> nos últimos 10, <strong>13-7</strong> na época 2026 — nível sólido e consistente.</div>
+<div class="item">Vukic: <strong>2-8</strong> nos últimos 10, <strong>3-9</strong> na época — queda de forma clara, alinhada com o ranking baixo (<strong>104</strong>).</div>
 </div>
 <h3 class="sec">Piso (Hard)</h3>
 <div class="items">
-<div class="item">Vukic em hard: <strong>42-61</strong> (103 jogos, ~40.8%).</div>
-<div class="item">Musetti em hard: <strong>90-85</strong> (175 jogos, ~51.4%).</div>
-<div class="item">Musetti também domina em clay (<strong>65%</strong>, 129 jogos) — perfil mais versátil e sólido em geral, não é um caso de especialização estreita.</div>
+<div class="item">Musetti: <strong>90-85 (51.4%)</strong> em hard na carreira; Vukic: <strong>42-61 (40.8%)</strong>. Musetti também muito mais forte em clay (65%), mas irrelevante aqui.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item">1º serviço dentro: Musetti <strong>67.5%</strong> vs Vukic <strong>53.7%</strong>.</div>
-<div class="item">1º serviço ganho: Musetti <strong>67.8%</strong> vs Vukic <strong>64.4%</strong>.</div>
-<div class="item">Break points salvos: Musetti <strong>65.1%</strong> vs Vukic <strong>46.4%</strong> — vantagem clara de Musetti em todos os indicadores, amostra de 10 jogos cada (moderada).</div>
+<div class="item">Musetti supera Vukic em quase todos os indicadores: 1º serviço dentro <strong>67.5% vs 53.7%</strong>, pontos ganhos no 1º serviço <strong>67.8% vs 64.4%</strong>, break points salvos <strong>65.1% vs 46.4%</strong>.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Vukic: <strong>30 dias</strong> desde o último jogo, 0 jogos nos últimos 14 dias.</div>
-<div class="item">Musetti: <strong>78 dias</strong> desde o último jogo, 0 jogos nos últimos 14 dias — nenhum dos dois chega cansado, mas o valor de Musetti é alto; lembrar que estas métricas usam a data de início do torneio, não o dia exato, por isso o hiato real pode ser menor.</div>
-<div class="item">A atividade de 20 jogos na época atual de Musetti sugere que não está parado, apesar do número bruto de dias.</div>
+<div class="item">Vukic: <strong>30 dias</strong> sem jogar, 0 jogos nas últimas 2 semanas.</div>
+<div class="item">Musetti: <strong>78 dias</strong> sem jogar — hiato relevante para um top 15 (ranking elevado, pelo que não parece ser lacuna de cobertura challenger, mas sim pausa real). Vale monitorizar o nível físico em quadra.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Vukic: sem desistências nos últimos <strong>5 jogos verificados</strong>.</div>
-<div class="item">Musetti: sem desistências nos últimos <strong>5 jogos verificados</strong> — sem sinal de risco físico para nenhum dos dois.</div>
-</div>
-<h3 class="sec">Outros Indicadores</h3>
-<div class="items">
-<div class="item"><strong>Set decisivo (Bo3):</strong> Musetti <strong>62.9%</strong> (89 jogos) vs Vukic <strong>44.2%</strong> (52 jogos) — vantagem consistente de Musetti.</div>
-<div class="item"><strong>Recuperação após perder o 1º set (Bo3):</strong> Musetti <strong>23.4%</strong> (128 jogos) vs Vukic <strong>13.5%</strong> (74 jogos).</div>
-<div class="item"><strong>Regresso após paragem 60+ dias:</strong> Musetti <strong>50%</strong> (apenas 2 jogos, amostra irrelevante) vs Vukic <strong>25%</strong> (12 jogos, também amostra pequena) — nenhum dos dois valores é fiável.</div>
-<div class="item"><strong>Rondas finais:</strong> Musetti <strong>46.25%</strong> (80 jogos) vs Vukic <strong>28.6%</strong> (apenas 14 jogos, amostra insuficiente).</div>
+<div class="item">Nenhum dos dois regista desistências recentes (<strong>0 em 5 jogos verificados</strong> cada) — sem sinal de lesão ativa, mas isso não confirma saúde total, sobretudo dado o hiato de Musetti.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Ao ar livre, sem chuva (<strong>0.0mm</strong>), calor (<strong>30.2°C</strong> máx), vento moderado (<strong>23.2 km/h</strong>) — condições normais de verão, sem fator disruptivo assinalável.</div>
+<div class="item">Jogo ao ar livre: <strong>30.2°C máx</strong>, sem chuva, vento moderado (<strong>22.6 km/h</strong>). Calor pode pesar mais fisicamente após tanto tempo sem competir, mas não há dado que distinga o impacto entre os dois.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Odds <strong>3.05 (Vukic) / 1.37 (Musetti)</strong> refletem bem o gap de ranking, forma e stats de serviço observado nos dados.</div>
+<div class="item">Odds (<strong>3.05 / 1.37</strong>) refletem bem a diferença de ranking, forma e stats de serviço — alinhamento forte entre dados e mercado.</div>
 </div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados. Todos os indicadores (ranking, forma recente, época atual, serviço/resposta, set decisivo) apontam na mesma direção que a odd, sem sinal de underdog subvalorizado. Isto são pontos de observação para leitura própria, não recomendações de entrada.</p>
 <h3 class="sec">📝 Nota Final</h3>
-<p>O H2H tem apenas 1 confronto e não deve pesar na leitura. O hiato de 78 dias de Musetti é uma aproximação de calendário, não uma pausa confirmada — vale a pena confirmar o estado físico dele antes do jogo, já que os dados de lesão não cobrem isso além das desistências recentes.</p>
+<p>A maior incerteza é o hiato de 78 dias de Musetti sem histórico recente que permita avaliar o seu estado físico atual; o H2H também é demasiado curto para pesar na análise.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

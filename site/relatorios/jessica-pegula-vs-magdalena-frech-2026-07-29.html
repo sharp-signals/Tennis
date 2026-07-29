@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -82,62 +91,70 @@ strong { color:#fff; font-weight:700; }
       </div>
       <div class="sb-name right">Magdalena Frech</div>
     </div>
-    <div class="sb-flag">🟢 sinal</div>
+    <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e0a34a">38/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:38%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Ranking, odds e H2H direto apontam todos para Pegula, mas faltam forma recente, fadiga, lesão e stats de serviço/resposta de ambas.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
   
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item"><strong>Pegula venceu os 3 confrontos diretos</strong> (100%), mas amostra de apenas 3 jogos — pouca evidência estatística, ainda que consistente.</div>
-<div class="item"><strong>Diferença de ranking enorme</strong>: #3 vs #48, alinhada com odds de <strong>1.14 vs 7.60</strong>.</div>
-<div class="item">Nos jogos anteriores, Pegula dominou pontos de resposta (<strong>54% vs 33%</strong>) e break points (<strong>63% vs 31%</strong>).</div>
-<div class="item">Faltam dados de forma recente, época atual, fadiga, lesão, piso e serviço/resposta geral para ambas — grande lacuna de contexto.</div>
-<div class="item">Meteorologia sem chuva e vento moderado (<strong>20.1 km/h</strong>), sem impacto relevante esperado.</div>
+<div class="item">Pegula (<strong>#3</strong>) é favorita esmagadora no mercado (<strong>1.11</strong>) sobre Frech (<strong>#48</strong>, <strong>8.20</strong>).</div>
+<div class="item">H2H direto é <strong>3-0</strong> para Pegula, com domínio quase total em pontos e serviço — mas amostra de apenas <strong>3 jogos</strong>.</div>
+<div class="item">Faltam dados de forma recente, época atual, fadiga, lesão e serviço/resposta gerais de ambas — lacunas grandes.</div>
+<div class="item">Meteorologia sem chuva, calor moderado (<strong>29.8°C</strong> máx) e vento ligeiro (<strong>20.1 km/h</strong>) — sem impacto relevante esperado.</div>
 </div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados disponíveis (ranking, odds e H2H direto apontam todos na mesma direção). ⚪ O H2H direto (3-0, domínio claro em pontos e break points) reforça essa leitura, mas com apenas 3 jogos é amostra insuficiente para ser um sinal forte por si só — serve como contexto informativo, não como base de discrepância.</p>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item"><code>h2h</code> geral e por piso vêm <strong>null</strong> — sem histórico de carreira completa disponível.</div>
-<div class="item"><code>h2h_rich_stats</code> (fonte separada, específica WTA) mostra <strong>3 jogos, 3-0 para Pegula</strong> — amostra muito pequena, tratar como indicativo e não conclusivo.</div>
-<div class="item">Nesses 3 jogos: Pegula converteu <strong>63% dos break points (15/24)</strong> vs <strong>31% de Frech (4/13)</strong>.</div>
-<div class="item">Pontos de resposta ganhos: Pegula <strong>54% (89/166)</strong> vs Frech <strong>33% (51/153)</strong> — domínio claro, mas ainda sobre amostra reduzida.</div>
-<div class="item">Frech nunca venceu um set nestes confrontos (<strong>0 sets ganhos em 6</strong>) e perdeu o 1º set nas 3 vezes sem recuperar.</div>
-<div class="item">Distribuição de piso destes 3 jogos: 1 em hard, 2 em terra — não é específico do piso desta partida (hard), o que dilui um pouco a relevância direta.</div>
+<div class="item"><strong>Overall</strong>: dado em falta (<code>h2h</code> geral não disponível).</div>
+<div class="item"><strong>Rich stats (direto)</strong>: Pegula <strong>3-0</strong>, ganhou <strong>100%</strong> dos sets e dos jogos de melhor-de-3 disputados neste confronto.</div>
+<div class="item">Pegula venceu <strong>72%</strong> dos pontos no 1º serviço e <strong>54%</strong> dos pontos de resposta; Frech apenas <strong>33%</strong> na resposta.</div>
+<div class="item">Amostra pequena (3 jogos) — indicativo, não conclusivo.</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item"><code>recent_form_a</code> e <code>recent_form_b</code> vêm <strong>null</strong> — sem dados sobre o momento atual de nenhuma das duas.</div>
+<div class="item">Dado em falta para ambas as jogadoras (<code>recent_form_a</code>/<code>b</code> null).</div>
+</div>
+<h3 class="sec">Época Atual</h3>
+<div class="items">
+<div class="item">Dado em falta para ambas (<code>current_season_a</code>/<code>b</code> null) — impossível verificar se o registo de carreira reflete o momento atual.</div>
 </div>
 <h3 class="sec">Piso</h3>
 <div class="items">
-<div class="item"><code>surface_stats_a</code> e <code>surface_stats_b</code> vêm <strong>null</strong> — sem perfil de desempenho em hard/clay/grass disponível.</div>
+<div class="item">Dado em falta para ambas (<code>surface_stats_a</code>/<code>b</code> null).</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item"><code>serve_return_stats_a</code> e <code>serve_return_stats_b</code> (carreira geral) vêm <strong>null</strong>.</div>
-<div class="item">Únicos dados de serviço/resposta disponíveis são os do H2H específico (ver secção acima).</div>
+<div class="item">Dados gerais de serviço/resposta em falta para ambas; só existem os números específicos do H2H direto (ver acima).</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item"><code>fatigue_signal_a</code> e <code>fatigue_signal_b</code> vêm <strong>null</strong> — sem indicação de dias de descanso, jogos ou minutos recentes.</div>
+<div class="item">Dado em falta para ambas (<code>fatigue_signal_a</code>/<code>b</code> null).</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item"><code>injury_signal_a</code> e <code>injury_signal_b</code> vêm <strong>null</strong> — sem sinal de desistências recentes para nenhuma das duas.</div>
+<div class="item">Dado em falta para ambas (<code>injury_signal_a</code>/<code>b</code> null) — não há indicação de desistências recentes, mas também não há confirmação de ausência delas.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre com dados presentes: <strong>29.8°C máx / 19.2°C mín</strong>, sem chuva prevista (<strong>0.0mm</strong>).</div>
-<div class="item">Vento moderado (<strong>20.1 km/h</strong>) — não parece um fator extremo a assinalar.</div>
+<div class="item">Jogo ao ar livre com previsão disponível: <strong>29.8°C</strong> máx, <strong>19.2°C</strong> mín, <strong>0mm</strong> de chuva, vento até <strong>20.1 km/h</strong> — condições estáveis, sem sinal de impacto no jogo.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Odds <strong>1.14 (Pegula) vs 7.60 (Frech)</strong> refletem um favoritismo muito forte, coerente com a diferença de ranking (#3 vs #48) e com o histórico direto disponível.</div>
+<div class="item">Odds fortemente inclinadas para Pegula (<strong>1.11</strong> vs <strong>8.20</strong>), consistentes com a diferença de ranking (<strong>#3</strong> vs <strong>#48</strong>) e com o H2H direto.</div>
 </div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados. Ranking, odds e H2H (ainda que de amostra pequena) apontam todos na mesma direção, e não há dados de forma, fadiga ou lesão que sugiram risco oculto para Pegula. Estes pontos são apenas para observação, a decisão final é sempre da leitora.</p>
 <h3 class="sec">📝 Nota Final</h3>
-<p>Falta uma quantidade significativa de dados (forma recente, época atual, piso, fadiga, lesão, serviço/resposta geral) para ambas as jogadoras — a análise assenta essencialmente em ranking, odds e um H2H de apenas 3 jogos, que deve ser lido com cautela apesar de ser 100% consistente.</p>
+<p>Faltam praticamente todos os indicadores de contexto atual (forma, fadiga, lesão, época em curso) — a leitura assenta quase só em ranking, odds e um H2H direto de amostra muito pequena, pelo que a confiança global é moderada-baixa apesar do consenso entre os poucos dados existentes.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

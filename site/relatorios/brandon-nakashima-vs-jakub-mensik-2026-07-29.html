@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -83,6 +92,15 @@ strong { color:#fff; font-weight:700; }
       <div class="sb-name right">Jakub Mensik</div>
     </div>
     <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e0a34a">62/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:62%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Dados de carreira e época atual ricos e coerentes, mas falta H2H e as stats de serviço recentes assentam em apenas 10 jogos.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
@@ -138,68 +156,57 @@ strong { color:#fff; font-weight:700; }
     </div></div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Mensik favorito no mercado (<strong>1.66</strong> vs <strong>2.10</strong>) e lidera no ranking oficial (<strong>#17</strong> vs <strong>#33</strong>).</div>
-<div class="item">Sem dados de H2H, nem geral nem por piso.</div>
-<div class="item">Nos últimos 10 jogos, Nakashima tem melhores números de serviço: primeiro serviço ganho <strong>77.8%</strong> vs <strong>73.4%</strong>, BP salvos <strong>63.6%</strong> vs <strong>52.1%</strong>.</div>
-<div class="item">Ambos regressam de <strong>28 dias</strong> sem jogar - fadiga equilibrada, não é fator diferenciador.</div>
-<div class="item">Mensik mais sólido em set decisivo (<strong>55.8%</strong> em 43 jogos) vs Nakashima (<strong>45.5%</strong> em 66 jogos).</div>
+<div class="item">Mensik (nº<strong>17</strong>) favorito do mercado (<strong>1.72</strong>) e com melhor ranking que Nakashima (nº<strong>33</strong>).</div>
+<div class="item">Mensik também lidera em hard de carreira (<strong>63.4%</strong> em 93 jogos) e na época atual (<strong>24-13</strong>) vs Nakashima (<strong>55.4%</strong> em 184 jogos; <strong>19-14</strong>).</div>
+<div class="item">Não há dados de H2H (nem overall nem por piso) — lacuna total, não indício de equilíbrio.</div>
+<div class="item">Fadiga simétrica: ambos <strong>28 dias</strong> sem jogo e 0 jogos nos últimos 3/7/14 dias — sem vantagem de descanso.</div>
+<div class="item">Sem sinais de lesão recente em nenhum dos dois (0 retirements em 5 jogos verificados, amostra pequena).</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-white">Nas últimas <strong>10 jogos</strong> de cada, Nakashima mostra números de serviço melhores que Mensik (BP salvos <strong>63.6% vs 52.1%</strong>, 1º serviço ganho <strong>77.8% vs 73.4%</strong>, duplas faltas <strong>1.2% vs 4.4%</strong>) — contraria a odd, mas amostra de 10 jogos é insuficiente para tirar conclusões sólidas, tratar como contexto e não como sinal forte.</div>
+<div class="item w-white">Set decisivo Bo3: Mensik <strong>55.8%</strong> (43 jogos) vs Nakashima <strong>45.5%</strong> (66 jogos) — reforça o favoritismo do mercado, não é uma discrepância.</div>
+<div class="item">Sem discrepâncias fortes (amostra grande + divergência clara) identificadas — os dados de fundo (ranking, época, piso) alinham maioritariamente com a odd de mercado. Estes pontos são para observação, a decisão é sempre tua.</div>
 </div>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Sem dados de confronto direto (nem geral nem por piso) - lacuna, não indício de equilíbrio.</div>
+<div class="item"><strong>Sem dados de H2H</strong> (overall e por piso) — não há histórico de confrontos disponível para esta dupla.</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item">Ambos <strong>6-4</strong> nos últimos 10 jogos - forma recente idêntica.</div>
-<div class="item">Época 2026: Mensik <strong>24-13</strong> (64.9%), Nakashima <strong>19-14</strong> (57.6%) - ligeira vantagem para Mensik.</div>
+<div class="item">Ambos <strong>6-4</strong> nos últimos 10 jogos — empatados, amostra pequena (10) para tirar grandes conclusões.</div>
+<div class="item">Época atual 2026 favorece Mensik: <strong>24-13</strong> (64.9%) vs Nakashima <strong>19-14</strong> (57.6%), ambos com volume de jogos saudável.</div>
 </div>
 <h3 class="sec">Piso (Hard)</h3>
 <div class="items">
-<div class="item">Nakashima: <strong>102-82</strong> em Hard (55.4%, 184 jogos).</div>
-<div class="item">Mensik: <strong>59-34</strong> em Hard (63.4%, 93 jogos) - taxa superior, amostra menor mas ainda relevante.</div>
-<div class="item">Fora do Hard: Nakashima mais forte em Grass (<strong>58.5%</strong> em 41 jogos) do que em Clay (<strong>47.8%</strong> em 46); Mensik sólido em Clay (<strong>62.5%</strong> em 32) mas fraco em Grass (<strong>43.75%</strong> em apenas 16 jogos, amostra pequena).</div>
+<div class="item">Nakashima: <strong>102-82</strong> em hard (55.4%, 184 jogos) — perfil equilibrado nos três pisos (Clay 47.8%, Grass 58.5%).</div>
+<div class="item">Mensik: <strong>59-34</strong> em hard (63.4%, 93 jogos) — mais forte em hard e clay (62.5%) do que em grass (43.8%, amostra pequena de 16).</div>
+<div class="item">Nenhum dos dois mostra sinal de fim de carreira (época atual ativa e sólida para ambos), pelo que estas amostras de carreira são fiáveis.</div>
 </div>
 <h3 class="sec">Serviço/Resposta (últimos 10 jogos)</h3>
 <div class="items">
-<div class="item">Nakashima: 1º serviço dentro <strong>69.2%</strong>, ganho <strong>77.8%</strong>, duplas faltas <strong>1.2%</strong>, BP salvos <strong>63.6%</strong>.</div>
-<div class="item">Mensik: 1º serviço dentro <strong>62.0%</strong>, ganho <strong>73.4%</strong>, duplas faltas <strong>4.4%</strong>, BP salvos <strong>52.1%</strong>.</div>
-<div class="item">Nakashima mostra serviço mais sólido nesta amostra, contrastando com a posição do mercado.</div>
+<div class="item">Nakashima: 1º serviço ganho <strong>77.8%</strong>, BP salvos <strong>63.6%</strong>, duplas faltas <strong>1.2%</strong> — números fortes.</div>
+<div class="item">Mensik: 1º serviço ganho <strong>73.4%</strong>, BP salvos <strong>52.1%</strong>, duplas faltas <strong>4.4%</strong> — inferior a Nakashima nesta amostra recente e pequena (10 jogos cada).</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Ambos <strong>28 dias</strong> sem jogar e <strong>0 jogos</strong> nos últimos 14 dias - situação equivalente.</div>
-<div class="item">Nota: estas métricas usam a data de início do torneio, tratar como aproximação.</div>
+<div class="item">Ambos com <strong>28 dias</strong> de descanso e 0 jogos nas últimas 3/7/14 dias — situação simétrica, sem vantagem de nenhum lado.</div>
+<div class="item">Nota: estes valores usam a data de início do torneio anterior, não o dia exato do jogo, mas como são iguais para ambos o impacto comparativo é neutro.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Sem desistências recentes registadas para nenhum (5 jogos verificados cada) - ausência de sinal, não garantia de saúde.</div>
-</div>
-<h3 class="sec">Regresso de Paragem / Set Decisivo</h3>
-<div class="items">
-<div class="item">Layoff 60+ dias: Nakashima <strong>1-7</strong> (14.3%), Mensik <strong>0-1</strong> - amostras demasiado pequenas para conclusão.</div>
-<div class="item">Set decisivo Bo3: Mensik <strong>55.8%</strong> (43 jogos) vs Nakashima <strong>45.5%</strong> (66 jogos) - vantagem moderada para Mensik, amostra razoável.</div>
-</div>
-<h3 class="sec">Rondas Finais</h3>
-<div class="items">
-<div class="item">Late rounds: Nakashima <strong>43.2%</strong> (44 jogos), Mensik <strong>44.0%</strong> (25 jogos) - praticamente equivalentes.</div>
+<div class="item">Sem retirements recentes registados para nenhum dos dois (5 jogos verificados cada) — amostra pequena, não garante ausência de problemas físicos.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Ar livre: <strong>29.8°C</strong> máx, sem chuva, vento moderado <strong>~20 km/h</strong> - condições normais, sem fator extremo.</div>
+<div class="item">Jogo ao ar livre: <strong>29.8°C</strong> máx, sem chuva prevista, vento moderado (<strong>20.1 km/h</strong>) — condições de calor mas sem fator extremo assinalável.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Mensik favorito (<strong>1.66</strong> vs <strong>2.10</strong>), alinhado com ranking e época atual, mas destoante face ao serviço recente de Nakashima.</div>
+<div class="item">Mensik <strong>1.72</strong> vs Nakashima <strong>2.28</strong> — favoritismo moderado, coerente com ranking, época atual e perfil em hard.</div>
 </div>
 <h3 class="sec">📝 Nota Final</h3>
-<p>Falta H2H para perceber se há padrão histórico entre os dois; a divergência serviço-mercado assenta em apenas 10 jogos por lado, deve ser lida com cautela.</p>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<div class="items">
-<div class="item w-amber">Nakashima com melhores BP salvos (<strong>63.6%</strong> vs <strong>52.1%</strong>, 10 jogos cada) apesar de não ser favorito - pode valer observar handicap de games ou &quot;ganha pelo menos 1 set&quot; para ele, com reservas pela amostra.</div>
-<div class="item w-amber">Mensik mais consistente em set decisivo (<strong>55.8%</strong> em 43 jogos) vs Nakashima (<strong>45.5%</strong> em 66 jogos) - pode valer observar mercado de total de sets/vai a 3 sets.</div>
-<div class="item w-white">Layoff return de ambos assenta em amostras ínfimas (7 e 1 jogos) - não deve pesar na leitura.</div>
-</div>
-<p>Estes são pontos de observação para decisão própria, não recomendações de entrada.</p>
+<p>Falta H2H completamente, o que limita a leitura de padrões diretos entre os dois; as stats de serviço recentes (10 jogos) são a única nota fora do alinhamento geral com o mercado, mas a amostra é curta demais para lhes dar grande peso.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

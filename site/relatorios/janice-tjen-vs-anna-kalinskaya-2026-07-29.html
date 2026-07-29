@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -83,57 +92,62 @@ strong { color:#fff; font-weight:700; }
       <div class="sb-name right">Anna Kalinskaya</div>
     </div>
     <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e06c5b">20/100 · baixa</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:20%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Faltam forma recente, stats de piso, serviço/resposta, fadiga e lesão para ambas — só há ranking, odds e meteorologia.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
   
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Mercado favorece claramente <strong>Kalinskaya (1.36)</strong> face a <strong>Tjen (3.15)</strong>.</div>
-<div class="item">Ranking oficial ao vivo confirma a diferença: <strong>#20</strong> (Kalinskaya) vs <strong>#37</strong> (Tjen).</div>
-<div class="item">H2H: <strong>nunca se defrontaram</strong> — 0 jogos registados em h2h_rich_stats.</div>
-<div class="item">Forma recente, época atual, stats de piso, serviço/resposta, fadiga e lesão: <strong>todos em falta</strong> para ambas as jogadoras.</div>
-<div class="item">Jogo ao ar livre com tempo estável, sem chuva prevista.</div>
+<div class="item">Kalinskaya (<strong>#20</strong>) é favorita clara sobre Tjen (<strong>#37</strong>) tanto no ranking como nas odds (<strong>1.38</strong> vs <strong>3.4</strong>).</div>
+<div class="item">H2H: <strong>0 jogos</strong> disputados entre as duas — sem histórico de confronto direto.</div>
+<div class="item">Sem dados de forma recente, temporada atual, piso, serviço/resposta, fadiga ou lesão para nenhuma das jogadoras — lacuna generalizada.</div>
+<div class="item">Jogo ao ar livre com meteorologia estável: <strong>29.8°C</strong> máx, sem chuva, vento moderado (<strong>20.1 km/h</strong>).</div>
 </div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados disponíveis (diferença de ranking justifica a odd). Não há dados suficientes (forma, piso, H2H) para sustentar qualquer sugestão de observação além do que o mercado já reflete. Pontos de observação ficam ao critério de quem lê, não são recomendação de entrada.</p>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Campo <code>h2h</code> (overall/on_surface) veio <strong>null</strong> — sem histórico de confrontos entre as duas.</div>
-<div class="item"><code>h2h_rich_stats</code> confirma: <strong>matchesCount = 0</strong>, ou seja, é a primeira vez que se encontram (fonte matchstat, exclusiva WTA).</div>
+<div class="item"><strong>0 jogos</strong> disputados — nunca se defrontaram, nem overall nem neste piso. Sem sinal de confronto direto.</div>
 </div>
 <h3 class="sec">Forma Recente</h3>
 <div class="items">
-<div class="item"><code>recent_form_a</code> e <code>recent_form_b</code>: <strong>ambos null</strong> — não há dados para avaliar momento atual de nenhuma das duas.</div>
-<div class="item"><code>current_season_a</code> e <code>current_season_b</code>: <strong>também null</strong> — não é possível cruzar com o registo de carreira nem avaliar atividade na época atual.</div>
+<div class="item">Não há dados de forma recente nem de temporada atual para nenhuma das duas — impossível avaliar momento presente.</div>
 </div>
 <h3 class="sec">Piso</h3>
 <div class="items">
-<div class="item"><code>surface_stats_a</code> e <code>surface_stats_b</code>: <strong>null</strong> — sem perfil de desempenho em hard (nem nos outros pisos) para nenhuma jogadora.</div>
+<div class="item">Sem stats de piso (Hard/Clay/Grass) para nenhuma das jogadoras.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item"><code>serve_return_stats_a</code> e <code>serve_return_stats_b</code>: <strong>null</strong> — sem dados para avaliar padrões de serviço ou resposta.</div>
+<div class="item">Dados não disponíveis para ambas.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item"><code>fatigue_signal_a</code> e <code>fatigue_signal_b</code>: <strong>null</strong> — sem indicadores de dias de descanso, jogos ou minutos recentes.</div>
+<div class="item">Sem sinal de fadiga (dias de descanso, jogos/minutos recentes) para nenhuma das duas.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item"><code>injury_signal_a</code> e <code>injury_signal_b</code>: <strong>null</strong> — sem sinais de desistências recentes disponíveis (não significa saúde confirmada, apenas ausência de dado).</div>
+<div class="item">Sem sinal de lesão/retirement para nenhuma das jogadoras — não significa saudável, apenas ausência de dado.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre com dados disponíveis: <strong>29.8°C máx / 19.2°C mín</strong>, <strong>0.0 mm</strong> de precipitação prevista, vento até <strong>20.1 km/h</strong>.</div>
-<div class="item">Condições estáveis e sem chuva — sem sinal de impacto relevante no jogo.</div>
+<div class="item"><strong>29.8°C</strong> máx / <strong>19.2°C</strong> mín, <strong>0 mm</strong> de chuva prevista, vento até <strong>20.1 km/h</strong> — condições estáveis, sem indícios de impacto relevante no jogo.</div>
 </div>
 <h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item">Odds: <strong>Kalinskaya 1.36</strong> vs <strong>Tjen 3.15</strong>, favoritismo claro e alinhado com a diferença de ranking (<strong>#20 vs #37</strong>).</div>
+<div class="item">Kalinskaya <strong>1.38</strong> vs Tjen <strong>3.4</strong> — mercado atribui clara vantagem à jogadora mais bem ranqueada, consistente com a diferença de ranking oficial.</div>
 </div>
 <h3 class="sec">📝 Nota Final</h3>
-<p>A esmagadora maioria dos campos de contexto (forma, época atual, piso, serviço/resposta, fadiga, lesão) está em falta — esta análise assenta quase exclusivamente em ranking e odds, sem forma como validar ou contestar esse favoritismo com dados adicionais.</p>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados disponíveis (ranking confirma o favoritismo das odds). Não há dados de forma, H2H direto ou stats de piso que sugiram um desvio face a essa leitura; qualquer observação ao vivo teria de assentar apenas no jogo em curso, dada a ausência quase total de contexto histórico.</p>
+<p>A análise assenta quase só em ranking e odds; forma, piso, serviço e fadiga estão totalmente em falta para ambas, o que limita fortemente a fiabilidade desta leitura.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

@@ -35,6 +35,15 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
 /* Gráficos */
 .charts { margin:26px 0; }
 .chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
@@ -83,6 +92,15 @@ strong { color:#fff; font-weight:700; }
       <div class="sb-name right">Adrian Mannarino</div>
     </div>
     <div class="sb-flag">🟢 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#4ecdc4">68/100 · alta</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:68%;background:#4ecdc4"></div></div>
+      <div class="conf-reason">Sinais convergentes (época atual, ranking, regresso de hiato) mas H2H e serve stats assentam em amostras pequenas.</div>
+    </div>
   </div>
 </header>
 <div class="wrap">
@@ -138,61 +156,58 @@ strong { color:#fff; font-weight:700; }
     </div></div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Mercado dá Michelsen como forte favorito (<strong>1.36</strong> vs <strong>3.75</strong>), e a época atual sustenta isso: <strong>18-14</strong> vs <strong>11-19</strong>.</div>
-<div class="item">Mannarino (canhoto) tem histórico de carreira pior contra destros (<strong>45%</strong> em <strong>615 jogos</strong>) do que contra canhotos (<strong>56%</strong> em 91) — reforça o favoritismo, não o contraria.</div>
-<div class="item">Ambos totalmente descansados: <strong>0 jogos</strong> nos últimos 14 dias e ~28-30 dias de paragem para os dois — sem vantagem de fadiga.</div>
-<div class="item">H2H <strong>2-1</strong> para Michelsen, mas amostra de apenas <strong>3 jogos</strong> — não é conclusivo.</div>
-<div class="item">Break points saved: Mannarino melhor (<strong>63.5%</strong>) do que Michelsen (<strong>50%</strong>), mas ambos assentes em apenas <strong>10 jogos</strong> — sinal fraco.</div>
+<div class="item">Michelsen <strong>18-14</strong> (56%) na época 2026 vs Mannarino <strong>11-19</strong> (37%) — divergência clara de momento atual.</div>
+<div class="item">H2H geral <strong>2-1</strong> para Michelsen, mas só <strong>3 jogos</strong> — amostra insuficiente para conclusão; sem dado on_surface.</div>
+<div class="item">Mannarino apenas <strong>17.4%</strong> de vitórias após hiatos de 60+ dias (23 jogos) — reforça o favoritismo, não o contraria.</div>
+<div class="item">Forma recente empatada <strong>5-5</strong> para ambos em 10 jogos — sinal fraco/neutro dado o tamanho da amostra.</div>
+<div class="item">Career em hard de Mannarino (<strong>47.9% em 486 jogos</strong>) não reflete o nível atual, dado o declínio visível na época 2026.</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<div class="items">
+<div class="item w-white">Michelsen tem <strong>58.3%</strong> de vitórias vs canhotos (14/24) — Mannarino é canhoto, mas amostra pequena (24), contexto apenas.</div>
+<div class="item w-white">H2H de 2-1 a favor de Michelsen assenta em só <strong>3 jogos</strong> — insuficiente para sustentar qualquer mercado de handicap/sets a favor de Mannarino.</div>
+<div class="item">Sem discrepâncias assinaláveis com suporte robusto — os dados convergem com o mercado, que já reflete corretamente o momento superior de Michelsen. Pontos acima são só de contexto, não indicações de aposta.</div>
 </div>
 <h3 class="sec">H2H</h3>
 <div class="items">
-<div class="item">Carreira geral: <strong>2-1</strong> para Michelsen em <strong>3 confrontos</strong> — amostra demasiado pequena para tirar conclusões sólidas.</div>
-<div class="item">H2H específico neste piso (<code>on_surface</code>) vem <strong>null</strong> — não há dados de confrontos anteriores em hard entre os dois, é uma lacuna, não um sinal de equilíbrio.</div>
+<div class="item">Geral: <strong>2-1</strong> para Michelsen em <strong>3 jogos</strong> — amostra muito pequena, sem valor conclusivo.</div>
+<div class="item">On-surface (hard): <strong>sem dados</strong> — nunca se defrontaram neste piso segundo a fonte, ou não há registo.</div>
 </div>
-<h3 class="sec">Forma Recente</h3>
+<h3 class="sec">Forma Recente / Época Atual</h3>
 <div class="items">
-<div class="item">Ambos <strong>5-5</strong> nos últimos 10 jogos — idênticos no curto prazo.</div>
-<div class="item">Mas a época completa diverge bastante: Michelsen <strong>18-14</strong> (32 jogos) vs Mannarino <strong>11-19</strong> (30 jogos) — o presente manda mais do que os últimos 10 jogos isolados.</div>
+<div class="item">Últimos 10 jogos: <strong>5-5</strong> para ambos — empatado, mas pouco informativo isoladamente.</div>
+<div class="item">Época 2026: Michelsen <strong>56%</strong> (18-14) vs Mannarino <strong>37%</strong> (11-19) — divergência relevante, o presente favorece claramente Michelsen.</div>
 </div>
 <h3 class="sec">Piso (Hard)</h3>
 <div class="items">
-<div class="item">Michelsen: <strong>59-50</strong> em Hard (109 jogos, <strong>54.1%</strong>) — amostra ainda moderada, jogador jovem em construção de carreira.</div>
-<div class="item">Mannarino: <strong>233-253</strong> em Hard (486 jogos, <strong>47.9%</strong>) — amostra enorme, mas reflete uma carreira longa; a época atual (36.7% de vitórias) sugere um nível bem abaixo desta média histórica.</div>
-<div class="item">Aviso: o registo de carreira de Mannarino não deve ser lido como indicador do seu nível atual dado o declínio visível na época 2026.</div>
+<div class="item">Michelsen: <strong>54.1%</strong> em 109 jogos.</div>
+<div class="item">Mannarino: <strong>47.9%</strong> em 486 jogos — amostra grande mas de carreira longa; dado o declínio na época atual, tratar com ceticismo como indicador do nível presente.</div>
 </div>
 <h3 class="sec">Serviço/Resposta</h3>
 <div class="items">
-<div class="item">Michelsen: <strong>70.5%</strong> de pontos ganhos no 1º serviço, <strong>6.7%</strong> de aces — perfil ligeiramente mais agressivo.</div>
-<div class="item">Mannarino: <strong>66.9%</strong> no 1º serviço, mas salva mais break points (<strong>63.5%</strong> vs <strong>50%</strong> de Michelsen) — ambos com amostra de apenas 10 jogos, tratar com reserva.</div>
+<div class="item">Michelsen: <strong>70.5%</strong> pontos ganhos no 1º serviço, <strong>50%</strong> BP salvos (10 jogos).</div>
+<div class="item">Mannarino: <strong>66.9%</strong> pontos ganhos no 1º serviço, <strong>63.5%</strong> BP salvos (10 jogos).</div>
+<div class="item">Amostras pequenas (10 jogos cada) — leitura indicativa, não conclusiva.</div>
 </div>
 <h3 class="sec">Fadiga</h3>
 <div class="items">
-<div class="item">Michelsen: <strong>30 dias</strong> desde o último jogo, <strong>0</strong> jogos nos últimos 3/7/14 dias.</div>
-<div class="item">Mannarino: <strong>28 dias</strong>, também <strong>0</strong> jogos recentes — nenhum dos dois chega cansado, condições equivalentes.</div>
+<div class="item">Ambos com <strong>28-30 dias</strong> sem jogar e 0 jogos nas últimas 2 semanas — situação equivalente, sem vantagem de descanso para nenhum.</div>
+<div class="item">Rankings de ambos (40 e 47) indicam presença regular no circuito principal, pelo que o hiato reflete calendário normal, não inatividade forçada.</div>
 </div>
 <h3 class="sec">Lesão</h3>
 <div class="items">
-<div class="item">Sem desistências recentes para nenhum dos dois jogadores (<strong>0 em 5</strong> jogos verificados cada) — amostra pequena, não garante ausência de problemas físicos, apenas que não há sinal recente.</div>
-</div>
-<h3 class="sec">Contexto Adicional</h3>
-<div class="items">
-<div class="item">Handedness: Michelsen tem <strong>58.3%</strong> de vitórias vs canhotos (24 jogos, amostra pequena) — pode favorecer ligeiramente o confronto com Mannarino, mas com reserva pela amostra.</div>
-<div class="item">Set1 comeback (Bo3): Michelsen <strong>25.4%</strong> (67 jogos) vs Mannarino <strong>20.7%</strong> (329 jogos) — ambos moderados/baixos, sem vantagem clara de reviravolta.</div>
-<div class="item">Deciding set (Bo3): Michelsen <strong>55.3%</strong> (47 jogos) vs Mannarino <strong>47.8%</strong> (205 jogos) — leve vantagem para Michelsen se o jogo for a 3 sets.</div>
-<div class="item">Layoff return (60+ dias): Mannarino tem apenas <strong>17.4%</strong> em 23 jogos, mas o hiato atual dele é de 28 dias — abaixo do threshold de 60, portanto este dado não se aplica diretamente a este jogo.</div>
-<div class="item">Round stage: Michelsen cai para <strong>36.7%</strong> em rondas finais (30 jogos) vs <strong>55.2%</strong> em rondas iniciais (125 jogos) — relevante só se ele avançar no torneio, não para este jogo de ronda inicial.</div>
+<div class="item">Sem desistências recentes registadas para nenhum dos dois (5 jogos verificados cada) — não implica ausência de problemas, só que não há registo.</div>
 </div>
 <h3 class="sec">Meteorologia</h3>
 <div class="items">
-<div class="item">Jogo ao ar livre com dados disponíveis: <strong>29.8°C</strong> máx, sem chuva, vento até <strong>20.1 km/h</strong> — condições normais de verão, sem fator de perturbação evidente.</div>
+<div class="item">Jogo ao ar livre: <strong>29.8°C</strong> máx, vento até <strong>20.1 km/h</strong>, sem chuva prevista — condições normais de verão, sem sinal de impacto especial.</div>
 </div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<p>(Pontos de observação para decisão própria, não recomendações de entrada.)</p>
+<h3 class="sec">Mercado</h3>
 <div class="items">
-<div class="item w-white">Break points saved de Mannarino (<strong>63.5%</strong> em 10 jogos) supera o de Michelsen (<strong>50%</strong>) — amostra pequena demais para ser decisivo, mas pode justificar observar o mercado &quot;Mannarino ganha pelo menos 1 set&quot; dado o seu perfil de resistência histórica.</div>
-<div class="item w-white">Handedness favorece ligeiramente Michelsen vs canhotos (<strong>58.3%</strong> em 24 jogos) — amostra pequena, apenas contexto informativo.</div>
-<div class="item">Sem discrepâncias assinaláveis fortes — o mercado (1.36/3.75) parece bem alinhado com a época atual e o declínio claro de Mannarino.</div>
+<div class="item">Michelsen <strong>1.36</strong> vs Mannarino <strong>3.75</strong> — reflete adequadamente a diferença de momento atual entre os dois.</div>
 </div>
+<h3 class="sec">📝 Nota Final</h3>
+<p>Faltam dados de H2H on-surface e a amostra de confrontos diretos é mínima (3 jogos); a leitura assenta sobretudo na época atual e no regresso pós-hiato, ambos consistentes a favor de Michelsen.</p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>
