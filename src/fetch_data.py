@@ -84,8 +84,22 @@ TENNISMYLIFE_FILES_ENDPOINT = "https://stats.tennismylife.org/api/data-files"
 # ficheiros de jogos — provavelmente cache antiga de quando o
 # repositório esteve mesmo fora do ar. raw.githubusercontent.com direto
 # não tem esse problema de cache.
-SACKMANN_RAW_BASE = "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master"
-SACKMANN_RAW_BASE_WTA = "https://raw.githubusercontent.com/JeffSackmann/tennis_wta/master"
+# Fontes do histórico Sackmann, por ordem de tentativa. Cada dia, uma
+# ou outra pode falhar (raw.githubusercontent às vezes é bloqueado nos
+# runners do Actions; o jsDelivr às vezes tem cache de 404 antiga). Em
+# vez de depender de uma só, tentamos as duas por ordem e usamos a
+# primeira que responder — robustez em vez de adivinhar qual funciona hoje.
+SACKMANN_SOURCES_ATP = [
+    "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master",
+    "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_atp@master",
+]
+SACKMANN_SOURCES_WTA = [
+    "https://raw.githubusercontent.com/JeffSackmann/tennis_wta/master",
+    "https://cdn.jsdelivr.net/gh/JeffSackmann/tennis_wta@master",
+]
+# Compatibilidade com o resto do código que ainda refere a base única
+SACKMANN_RAW_BASE = SACKMANN_SOURCES_ATP[0]
+SACKMANN_RAW_BASE_WTA = SACKMANN_SOURCES_WTA[0]
 
 
 
@@ -291,32 +305,43 @@ def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
 def _load_sackmann_multi_year(tour: str, years_to_load: int) -> Optional[pd.DataFrame]:
     """
     Carrega os últimos `years_to_load` anos de jogos do Sackmann e junta
-    tudo — mesmo mecanismo usado para a TennisMyLife no ATP (ver acima).
-    Reativado (28/07/2026) depois de confirmarmos que o repositório
-    tennis_wta voltou a ficar disponível no GitHub. É a fonte PRINCIPAL
-    para WTA — a TennisMyLife nunca teve WTA.
+    tudo. Para cada ano, tenta as várias fontes por ordem (raw.github,
+    jsDelivr) e usa a primeira que responder — assim não dependemos de
+    saber qual espelho está a funcionar hoje. Reativado (28/07/2026)
+    depois de o repositório tennis_wta voltar; tornado multi-fonte
+    (29/07/2026) depois de o raw dar 404 intermitente nos runners.
     """
-    base = SACKMANN_RAW_BASE if tour == "atp" else SACKMANN_RAW_BASE_WTA
+    sources = SACKMANN_SOURCES_ATP if tour == "atp" else SACKMANN_SOURCES_WTA
     current_year = datetime.now(timezone.utc).year
     frames = []
+    source_hits = {src: 0 for src in sources}
+
     for offset in range(years_to_load):
         year = current_year - offset
-        url = f"{base}/{tour}_matches_{year}.csv"
-        for attempt in (1, 2):
+        loaded = False
+        for base in sources:
+            if loaded:
+                break
+            url = f"{base}/{tour}_matches_{year}.csv"
             try:
                 resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
                 resp.raise_for_status()
                 df_year = pd.read_csv(io.StringIO(resp.text))
                 frames.append(df_year)
-                break
-            except Exception as exc:
-                print(f"[aviso] falha a carregar Sackmann {tour}_matches_{year}.csv, tentativa {attempt}: {exc}")
+                source_hits[base] += 1
+                loaded = True
+            except Exception:
+                continue  # tenta a próxima fonte para este ano
+        if not loaded:
+            print(f"[aviso] Sackmann {tour}_matches_{year}.csv: falhou em todas as fontes.")
 
     if not frames:
         return None
 
     combined = pd.concat(frames, ignore_index=True)
-    print(f"[info] Sackmann {tour}: {len(frames)}/{years_to_load} anos carregados, {len(combined)} jogos no total.")
+    fontes_usadas = ", ".join(f"{src.split('//')[1].split('/')[0]}={n}" for src, n in source_hits.items() if n > 0)
+    print(f"[info] Sackmann {tour}: {len(frames)}/{years_to_load} anos carregados, "
+          f"{len(combined)} jogos ({fontes_usadas}).")
     return combined
 
 
