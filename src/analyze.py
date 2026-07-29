@@ -76,26 +76,48 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
   ({FLAG_HIGH_SIGNAL} = algo digno de nota / divergência forte vs mercado /
    fadiga clara; {FLAG_UNCERTAIN} = jogo equilibrado ou dados insuficientes
    para concluir; {FLAG_ROUTINE} = sem sinais especiais)
+- "confidence_score": um inteiro de 0 a 100 que traduz a FORÇA E
+  FIABILIDADE GLOBAL da leitura deste jogo — não é a probabilidade de
+  alguém ganhar, é o quão sólida é a análise. Guia:
+   * 0-33 (baixo): dados escassos ou contraditórios, pouca base para
+     conclusões (ex: faltam H2H, forma e ranking; ou amostras pequenas).
+   * 34-66 (médio): há dados razoáveis mas com lacunas ou sinais mistos.
+   * 67-100 (alto): dados ricos, consistentes e com amostras grandes que
+     sustentam uma leitura clara.
+  O score deve refletir os TRÊS PRINCÍPIOS (amostra pequena baixa o
+  score; dados em falta baixam o score; presente sólido sobe-o).
+- "confidence_reason": UMA frase curta a justificar o score (ex: "Dados
+  ricos e consistentes para ambos, com amostras grandes" ou "Faltam H2H,
+  forma e ranking do lado da WTA — leitura muito limitada").
 - "summary_line": uma frase curta (máx. ~140 caracteres) para o resumo do
   Telegram, em português — direta, sem rodeios, o sinal mais importante
   primeiro (ex: "Sinner favorito claro em serviço, mas Alcaraz domina o
   H2H em hard — sem odds para confirmar", não "É interessante notar que
   parece haver alguns sinais que sugerem que Sinner...")
 - "full_report_markdown": análise completa em Markdown, otimizada para
-  leitura rápida (não um texto corrido). Estrutura obrigatória:
+  leitura rápida (não um texto corrido). Estrutura obrigatória, POR ESTA
+  ORDEM (a ordem importa: o mais acionável primeiro, para nunca se perder
+  se o texto for cortado):
   1. Começa SEMPRE com "## 🔑 Pontos-chave" seguido de 3-5 bullets curtos
      (uma linha cada) com os sinais mais importantes deste jogo — é a
      parte que a maioria das pessoas vai mesmo ler.
-  2. Depois, uma secção por tipo de dado (H2H, Forma Recente, Piso,
+  2. LOGO A SEGUIR, "### 🎯 Discrepâncias e mercados a observar" (as regras
+     detalhadas desta secção estão mais abaixo). É a secção MAIS
+     IMPORTANTE do relatório — vem cedo de propósito, nunca a deixes para
+     o fim nem a omitas.
+  3. Depois, uma secção por tipo de dado (H2H, Forma Recente, Piso,
      Serviço/Resposta, Fadiga, Lesão, Meteorologia, Mercado), cada uma
      com "### " como cabeçalho.
-  3. Dentro de cada secção, usa bullets (não parágrafos densos) e põe em
+  4. Dentro de cada secção, usa bullets (não parágrafos densos) e põe em
      **negrito** os números/factos mais importantes (ex: "Alcaraz lidera
      **7-3** em piso duro").
-  4. Termina com "### 📝 Nota Final" com 1-2 frases sobre o que falta ou
+  5. Termina com "### 📝 Nota Final" com 1-2 frases sobre o que falta ou
      as maiores incertezas, se aplicável.
   Nunca inventes números — todas as regras acima sobre dados em falta
-  continuam a aplicar-se dentro deste formato.
+  continuam a aplicar-se dentro deste formato. Sê CONCISO nas secções de
+  dados (3. acima) para deixar espaço à secção de discrepâncias — se
+  tiveres de encurtar algo, encurta o detalhe dos dados, nunca as
+  discrepâncias.
 
   REGRA DE DIRETISMO (importante): cada bullet tem, no máximo, uma frase
   curta. Número primeiro, contexto depois — nunca ao contrário (ex:
@@ -261,7 +283,7 @@ def analyze_match(match_data: dict) -> dict:
         # 6000 (era 4000, era 1500 antes disso): cada vez que acrescentamos
         # mais dados (ex: fadiga rica), o relatório completo fica mais
         # longo. Margem generosa para não voltarmos a cortar o JSON a meio.
-        max_tokens=6000,
+        max_tokens=8000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
@@ -308,6 +330,8 @@ def analyze_match(match_data: dict) -> dict:
         print(f"[aviso] resposta bruta (primeiros 500 chars): {raw_text[:500]}")
         return {
             "flag": FLAG_UNCERTAIN,
+            "confidence_score": 0,
+            "confidence_reason": "Erro ao gerar a análise — sem base para avaliar.",
             "summary_line": (
                 f"{match_data.get('player_a', '?')} vs {match_data.get('player_b', '?')}: "
                 "erro ao gerar análise (resposta do modelo não era JSON válido)."
