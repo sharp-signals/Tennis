@@ -1,0 +1,7 @@
+# Configuração do Netlify para o Tennis Pre-Live Bot.
+# O bot gera os relatórios HTML na pasta "site/"; é essa que o Netlify
+# publica. Sem isto, o Netlify tenta publicar da raiz do repositório
+# (onde não há index.html) e devolve 404.
+[build]
+  publish = "site"
+  command = ""
