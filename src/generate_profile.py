@@ -36,7 +36,17 @@ def _slug(name: str) -> str:
 
 def generate_one(player: str, tour: str) -> str | None:
     history = fetch_data.get_history(tour)
-    md = build_player_profile_markdown(history, player, tour)
+
+    # Tenta enriquecer com stats de carreira ricas (matchstat) — precisa
+    # do ID do jogador, que vem do ranking oficial. Se não encontrar o ID
+    # (jogador fora do ranking) ou a API falhar, a ficha gera na mesma só
+    # com os dados do histórico.
+    career_stats = None
+    player_id = fetch_data.get_player_id_from_ranking(tour, player)
+    if player_id:
+        career_stats = fetch_data.fetch_player_career_stats(tour, player_id)
+
+    md = build_player_profile_markdown(history, player, tour, career_stats=career_stats)
     if md is None:
         print(f"[aviso] '{player}' não encontrado no histórico {tour.upper()} — ficha não gerada.")
         return None
@@ -45,7 +55,8 @@ def generate_one(player: str, tour: str) -> str | None:
     path = os.path.join(OUTPUT_DIR, f"{_slug(player)}.md")
     with open(path, "w", encoding="utf-8") as f:
         f.write(md)
-    print(f"[info] Ficha gerada: {path}")
+    career_note = " (com stats de carreira matchstat)" if career_stats else " (só histórico)"
+    print(f"[info] Ficha gerada: {path}{career_note}")
     return path
 
 
