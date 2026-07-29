@@ -132,11 +132,17 @@ def publish_report(title: str, markdown_text: str) -> str:
     access_token = _get_or_create_access_token()
     content = _markdown_to_telegraph_nodes(markdown_text)
 
+    # O Telegra.ph rejeita conteúdo vazio (devolve um erro cuja estrutura
+    # não tem 'result', o que rebentava com KeyError mais abaixo). Se a
+    # conversão não produziu nós, metemos um parágrafo mínimo.
+    if not content:
+        content = [{"tag": "p", "children": [title]}]
+
     resp = requests.post(
         f"{TELEGRAPH_API}/createPage",
         json={
             "access_token": access_token,
-            "title": title,
+            "title": title[:256],  # o Telegra.ph limita o título a 256 chars
             "content": content,
             "author_name": "Tennis Pre-Live Bot",
             "return_content": False,
@@ -146,5 +152,10 @@ def publish_report(title: str, markdown_text: str) -> str:
     resp.raise_for_status()
     data = resp.json()
     if not data.get("ok"):
-        raise RuntimeError(f"Falha ao publicar no Telegra.ph: {data}")
-    return data["result"]["url"]
+        # Erro da API (ex: CONTENT_TEXT_REQUIRED, TITLE_TOO_LONG). Damos a
+        # mensagem real do Telegra.ph, em vez de deixar um KeyError opaco.
+        raise RuntimeError(f"Telegra.ph recusou a página: {data.get('error', data)}")
+    result = data.get("result")
+    if not result or "url" not in result:
+        raise RuntimeError(f"Telegra.ph respondeu sem URL: {data}")
+    return result["url"]
