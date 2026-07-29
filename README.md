@@ -38,6 +38,25 @@ elegante mas provavelmente inútil. A versão leve dá o valor real
 sistema completo fica em aberto se algum dia for uma decisão consciente
 de investir meses.
 
+## Método de refinamento (experiência humana → regras no código)
+
+O bot organiza os dados; o utilizador (ex-tenista) apanha os casos em
+que os números enganam e cada um vira uma regra permanente no prompt do
+Claude (`analyze.py`) ou num novo dado (`fetch_data.py`). Formato útil
+para propor uma regra nova: "quando acontece X, o bot devia ter em conta
+Y". Regras de leitura já aplicadas desta forma:
+
+- **Fim de carreira (29/07):** stats de carreira (piso, set decisivo,
+  etc.) de um ex-top que agora mal joga descrevem um jogador que já não
+  existe. Amostra grande aqui = desconfiança, não fiabilidade. Cruzar
+  sempre com `current_season_*` (jogos esta época) e ranking oficial ao
+  vivo. Não sinalizar divergência a favor do jogador em declínio só
+  porque a carreira dele parece melhor no papel.
+- **Jovem em ascensão (29/07):** amostra pequena num piso não é fraqueza,
+  é falta de tempo para acumular — o nível real pode ser bem superior.
+- **Challenger/ITF (28/07):** hiato longo + ranking baixo pode ser só
+  falta de cobertura do circuito principal, não inatividade real.
+
 ## Registo de decisões (para não repetir discussões)
 
 - **Âmbito:** ATP + WTA, tiers Grand Slam / Masters 1000 / ATP-WTA 500 /
