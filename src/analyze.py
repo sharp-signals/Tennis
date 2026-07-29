@@ -236,19 +236,25 @@ segue estas regras:
      a set decisivo" / total de sets
    - qualquer outra discrepância que os dados deste jogo revelem
 
-2. CADA observação COMEÇA com um selo de peso, porque nem todas valem o
-   mesmo (isto é essencial — sem o selo, o leitor trata uma observação
-   fraca como se fosse forte):
-   - 🔴 = sinal forte: amostra grande (100+ jogos) E divergência clara
-     face ao mercado. É o que merece mais atenção.
-   - 🟡 = sinal moderado: amostra razoável (30-100 jogos) ou divergência
-     menos vincada. Vale observar, com reservas.
-   - ⚪ = sinal fraco / contextual: amostra pequena (menos de 30 jogos)
-     ou observação apenas informativa. Menciona só se acrescenta contexto,
-     e deixa claro que é frágil.
-   Ordena as observações da mais forte para a mais fraca (🔴 primeiro).
-   O peso vem do PAR amostra+magnitude, aplicando o Princípio 1: uma
-   percentagem impressionante com amostra pequena é ⚪, não 🔴.
+2. REGRA DE FORMATO OBRIGATÓRIA: cada observação é um bullet markdown
+   que COMEÇA literalmente com o emoji do selo, logo a seguir ao "- ".
+   O formato exato de cada linha é:
+     - 🔴 [observação com número e mercado a observar]
+     - 🟡 [observação...]
+     - ⚪ [observação...]
+   Exemplo real do aspeto que deves produzir (adapta ao jogo, não copies):
+     - 🔴 Tsitsipas lidera o H2H **12-1** (9-1 em hard, 13 jogos) — observar o handicap de games de Tsitsipas ou "Tsitsipas vence 2-0".
+     - 🟡 De Minaur recupera **32%** após perder o 1º set (Bo3, 78 jogos) — se ceder o 1º set, observar o mercado ao vivo antes de assumir o jogo fechado.
+     - ⚪ Michelsen salva só **50%** dos break points (10 jogos) — amostra pequena, contexto frágil.
+   NUNCA escrevas uma observação sem o emoji no início. Se não puseres
+   o selo, a observação está ERRADA.
+   Critério de cor (o peso vem do PAR amostra+magnitude):
+   - 🔴 forte: amostra grande (100+ jogos) E divergência clara vs mercado.
+   - 🟡 moderado: amostra razoável (30-100 jogos) ou divergência menos vincada.
+   - ⚪ fraco/contextual: amostra pequena (<30 jogos) ou só informativo.
+   Ordena da mais forte para a mais fraca (🔴 primeiro). Aplica o
+   Princípio 1: uma percentagem impressionante com amostra pequena é ⚪,
+   nunca 🔴.
 
 3. Liga SEMPRE a sugestão a um número com amostra (ex: "recupera 38.5%
    em 78 jogos"). Sem dado de suporte, não sugiras o mercado.
