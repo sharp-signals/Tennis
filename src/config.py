@@ -132,3 +132,10 @@ FLAG_UNCERTAIN = "🟡"
 FLAG_ROUTINE = "🟢"
 
 CLAUDE_MODEL = "claude-sonnet-5"
+
+# --- Publicação dos relatórios (Netlify) ---------------------------------
+# As páginas HTML são geradas para a pasta SITE_OUTPUT_DIR e publicadas
+# pelo Netlify, que serve o URL SITE_BASE_URL. Ver report_html.py.
+SITE_BASE_URL = "https://fenzo-tennis.netlify.app"
+SITE_OUTPUT_DIR = "site"
+SITE_REPORTS_SUBDIR = "relatorios"
