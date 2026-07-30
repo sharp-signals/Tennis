@@ -96,28 +96,25 @@ Para cada jogo, devolve um objeto JSON com exatamente estes campos:
   parece haver alguns sinais que sugerem que Sinner...")
 - "full_report_markdown": análise completa em Markdown, otimizada para
   leitura rápida (não um texto corrido). Estrutura obrigatória, POR ESTA
-  ORDEM (a ordem importa: o mais acionável primeiro, para nunca se perder
-  se o texto for cortado):
+  ORDEM:
   1. Começa SEMPRE com "## 🔑 Pontos-chave" seguido de 3-5 bullets curtos
-     (uma linha cada) com os sinais mais importantes deste jogo — é a
-     parte que a maioria das pessoas vai mesmo ler.
-  2. LOGO A SEGUIR, "### 🎯 Discrepâncias e mercados a observar" (as regras
-     detalhadas desta secção estão mais abaixo). É a secção MAIS
-     IMPORTANTE do relatório — vem cedo de propósito, nunca a deixes para
-     o fim nem a omitas.
-  3. Depois, uma secção por tipo de dado (H2H, Forma Recente, Piso,
+     (uma linha cada) com os sinais mais importantes deste jogo.
+  2. Depois, uma secção por tipo de dado (H2H, Forma Recente, Piso,
      Serviço/Resposta, Fadiga, Lesão, Meteorologia, Mercado), cada uma
-     com "### " como cabeçalho.
-  4. Dentro de cada secção, usa bullets (não parágrafos densos) e põe em
-     **negrito** os números/factos mais importantes (ex: "Alcaraz lidera
-     **7-3** em piso duro").
-  5. Termina com "### 📝 Nota Final" com 1-2 frases sobre o que falta ou
-     as maiores incertezas, se aplicável.
-  Nunca inventes números — todas as regras acima sobre dados em falta
-  continuam a aplicar-se dentro deste formato. Sê CONCISO nas secções de
-  dados (3. acima) para deixar espaço à secção de discrepâncias — se
-  tiveres de encurtar algo, encurta o detalhe dos dados, nunca as
-  discrepâncias.
+     com "### " como cabeçalho. Usa bullets, **negrito** nos números
+     importantes. Sê conciso aqui.
+  3. A SEGUIR AOS DADOS, "### 🎯 Discrepâncias e mercados a observar" — a
+     secção mais acionável, colocada no fim para o leitor chegar a ela
+     depois de ver os dados que a sustentam (regras detalhadas abaixo).
+  4. Termina SEMPRE com "### ✅ Veredicto" — uma caixa de leitura
+     conclusiva, 1-2 frases no MÁXIMO, que resume em linguagem simples e
+     direta a leitura global do jogo para quem só quer o essencial num
+     relance. Ex: "Mercado alinhado com os dados — favoritismo de Sinner
+     justificado, sem discrepâncias fortes." ou "Divergência a favor de
+     Tabilo: dados apontam mais forte do que a odd sugere; principal
+     ponto a observar é o handicap de games." NÃO repitas a lista de
+     discrepâncias aqui — é uma conclusão de uma frase, não um resumo.
+  Nunca inventes números — todas as regras sobre dados em falta aplicam-se.
 
   REGRA DE DIRETISMO (importante): cada bullet tem, no máximo, uma frase
   curta. Número primeiro, contexto depois — nunca ao contrário (ex:
@@ -147,6 +144,19 @@ cada jogo, não a data exata do encontro — num torneio de 2 semanas, um
 jogo da final aparece com a data do 1º dia. Trata os valores como
 aproximações (sobretudo `matches_last_3d`/`_7d`) e não como calendário
 exato; assinala isto se a fadiga for um fator central da tua análise.
+
+AVISO CRÍTICO — dado de fadiga possivelmente desatualizado: quando
+`fatigue_signal_*` tem `fatigue_data_maybe_stale: true` (último jogo
+conhecido há mais de 20 dias), é MUITO provável que o histórico ainda
+não tenha os jogos recentes do jogador — incluindo jogos da 1ª/2ª ronda
+DESTE torneio, que já foram disputados mas ainda não entraram na base de
+dados (a fonte tem atraso de dias). Nesse caso NÃO afirmes que o jogador
+"está há X dias sem jogar" nem que "não tem ritmo recente" — seria quase
+de certeza FALSO (o jogador pode ter jogado há 1-2 dias e até vencido).
+Em vez disso, diz explicitamente que o histórico pode não refletir os
+jogos mais recentes do torneio, e NÃO uses a fadiga como fator negativo
+contra esse jogador. Um jogador que está numa ronda avançada obviamente
+já jogou nesta semana, por definição.
 
 LIMITAÇÃO IMPORTANTE a ter em conta no `days_since_last_match` e no
 `layoff_return_stats_*`: a fonte de histórico só regista jogos do
