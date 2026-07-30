@@ -497,6 +497,14 @@ def run() -> None:
     reports_dir = os.path.join(SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR)
     os.makedirs(reports_dir, exist_ok=True)
 
+    # O GitHub Pages usa Jekyll por omissão, que ignora ficheiros/pastas
+    # com certos nomes. Um .nojekyll vazio desativa isso e garante que
+    # todas as páginas HTML são servidas tal como estão.
+    try:
+        open(os.path.join(SITE_OUTPUT_DIR, ".nojekyll"), "w").close()
+    except Exception:
+        pass
+
     match_reports = []  # (payload, result, url_ou_None)
     generated_slugs = []
     for payload, result in analyses:
