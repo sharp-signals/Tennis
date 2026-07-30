@@ -130,6 +130,16 @@ def _render_markdown_body(markdown_text: str) -> str:
             close_list()
             title = line.split(" ", 1)[1]
             out.append(f'<h3 class="sec">{_markdown_inline(title)}</h3>')
+            # Legenda dos selos, logo a seguir ao cabeçalho das discrepâncias
+            if "Discrep" in title or "mercados a observar" in title:
+                out.append(
+                    '<div class="selos-legenda">'
+                    '<span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span>'
+                    '<span><b class="w-dot amber"></b> moderado</span>'
+                    '<span><b class="w-dot white"></b> fraco / contextual</span>'
+                    '<div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div>'
+                    '</div>'
+                )
         elif line.startswith("## "):
             close_list()
             title = line.split(" ", 1)[1]
@@ -165,7 +175,7 @@ def _build_charts(payload: dict) -> str:
     b = _esc(payload.get("player_b", "B"))
     charts: list[str] = []
 
-    # Serviço/resposta — barras de confronto
+    # Serviço (e resposta, se disponível via rich_stats) — barras de confronto
     sa = payload.get("serve_return_stats_a") or {}
     sb = payload.get("serve_return_stats_b") or {}
     if sa and sb:
@@ -178,8 +188,23 @@ def _build_charts(payload: dict) -> str:
         for label, key in pairs:
             if sa.get(key) is not None and sb.get(key) is not None:
                 rows.append(_bar_comparison(label, a, round(sa[key]*100, 1), b, round(sb[key]*100, 1)))
+
+        # Resposta (Onda 2): vem em percentagem inteira já (ex: 41), não fração
+        resp_a = (payload.get("rich_stats_a") or {}).get("response_stats") or {}
+        resp_b = (payload.get("rich_stats_b") or {}).get("response_stats") or {}
+        has_response = False
+        resp_pairs = [
+            ("Pontos de resposta ganhos", "return_pts_won_pct"),
+            ("Break points convertidos", "break_points_converted_pct"),
+        ]
+        for label, key in resp_pairs:
+            if resp_a.get(key) is not None and resp_b.get(key) is not None:
+                rows.append(_bar_comparison(label, a, round(float(resp_a[key]), 1), b, round(float(resp_b[key]), 1)))
+                has_response = True
+
         if rows:
-            charts.append(f'<div class="chart-block"><div class="chart-title">Serviço / Resposta</div>{"".join(rows)}</div>')
+            titulo = "Serviço / Resposta" if has_response else "Serviço"
+            charts.append(f'<div class="chart-block"><div class="chart-title">{titulo}</div>{"".join(rows)}</div>')
 
     # Forma recente — medidores lado a lado
     fa = payload.get("recent_form_a") or {}
@@ -188,6 +213,22 @@ def _build_charts(payload: dict) -> str:
         g1 = _gauge(f"{a} (forma)", 100*fa["wins"]/fa["matches"], fa["matches"])
         g2 = _gauge(f"{b} (forma)", 100*fb["wins"]/fb["matches"], fb["matches"])
         charts.append(f'<div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">{g1}{g2}</div></div>')
+
+    # Desempenho por nível de adversário (Onda 2, ponto 7) — barras de
+    # confronto por patamar de ranking, quando ambos têm o dado.
+    ra = (payload.get("rich_stats_a") or {}).get("vs_rank_level") or {}
+    rb = (payload.get("rich_stats_b") or {}).get("vs_rank_level") or {}
+    if ra and rb:
+        level_labels = [("top10", "vs Top 10"), ("top50", "vs Top 50"), ("top100", "vs Top 100")]
+        rows = []
+        for key, label in level_labels:
+            ca, cb = ra.get(key), rb.get(key)
+            if ca and cb:
+                rows.append(_bar_comparison(
+                    f"{label} ({ca['matches']}/{cb['matches']} jogos)",
+                    a, ca["win_pct"], b, cb["win_pct"]))
+        if rows:
+            charts.append(f'<div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>{"".join(rows)}</div>')
 
     if not charts:
         return ""
@@ -225,9 +266,46 @@ def build_report_html(payload: dict, result: dict) -> str:
         except (ValueError, TypeError):
             pass
 
+    # As odds vêm de find_market_odds como {nome_jogador: preço}, não com
+    # chaves player_a/player_b — daí o cabeçalho aparecer vazio antes desta
+    # correção. Procuramos pelo nome, com vários fallbacks tolerantes.
     odds = payload.get("market_odds_decimal") or {}
-    odd_a = odds.get("player_a") if isinstance(odds, dict) else None
-    odd_b = odds.get("player_b") if isinstance(odds, dict) else None
+    name_a = payload.get("player_a", "")
+    name_b = payload.get("player_b", "")
+
+    def _find_odd(target_name):
+        if not isinstance(odds, dict):
+            return None
+        # 1) chave direta player_a/player_b (formato antigo, por segurança)
+        # 2) nome exato; 3) correspondência aproximada (apelido)
+        for key in ("player_a", "player_b"):
+            if key in odds and (key == "player_a") == (target_name == name_a):
+                return odds[key]
+        for k, v in odds.items():
+            if k.lower() == target_name.lower():
+                return v
+        # apelido: última palavra do nome
+        surname = target_name.split()[-1].lower() if target_name else ""
+        for k, v in odds.items():
+            if surname and surname in k.lower():
+                return v
+        return None
+
+    odd_a = _find_odd(name_a)
+    odd_b = _find_odd(name_b)
+
+    # Probabilidade implícita sem margem (a "vig"), quando há as duas odds.
+    # É só a leitura do que o mercado diz — não é um modelo próprio.
+    prob_a_txt = prob_b_txt = ""
+    try:
+        if odd_a and odd_b:
+            inv_a, inv_b = 1.0 / float(odd_a), 1.0 / float(odd_b)
+            total = inv_a + inv_b
+            prob_a_txt = f"{100 * inv_a / total:.0f}%"
+            prob_b_txt = f"{100 * inv_b / total:.0f}%"
+    except (ValueError, TypeError, ZeroDivisionError):
+        pass
+
     odd_a_txt = f"{odd_a}" if odd_a else "—"
     odd_b_txt = f"{odd_b}" if odd_b else "—"
 
@@ -268,6 +346,13 @@ body {{
 .sb-name.right {{ text-align:right; }}
 .sb-odds {{ text-align:center; padding:0 8px; }}
 .sb-odd {{ font-size:22px; font-weight:700; color:var(--steel); }}
+.sb-prob {{ font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }}
+.selos-legenda {{ display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }}
+.w-dot {{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }}
+.w-dot.red {{ background:var(--red); }}
+.w-dot.amber {{ background:var(--amber); }}
+.w-dot.white {{ background:var(--dim); }}
+.selos-nota {{ width:100%; font-style:italic; opacity:.8; margin-top:2px; }}
 .sb-vs {{ font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }}
 .sb-flag {{ display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }}
 
@@ -319,13 +404,13 @@ strong {{ color:#fff; font-weight:700; }}
   <div class="sb-inner">
     <div class="sb-meta">{tournament} · {tier} · {surface} · {date_str}</div>
     <div class="sb-players">
-      <div class="sb-name">{a}</div>
+      <div class="sb-name">{a}<div class="sb-prob">{prob_a_txt}{' s/ margem' if prob_a_txt else ''}</div></div>
       <div class="sb-odds">
         <div class="sb-odd">{odd_a_txt}</div>
         <div class="sb-vs">VS</div>
         <div class="sb-odd">{odd_b_txt}</div>
       </div>
-      <div class="sb-name right">{b}</div>
+      <div class="sb-name right">{b}<div class="sb-prob">{prob_b_txt}{' s/ margem' if prob_b_txt else ''}</div></div>
     </div>
     <div class="sb-flag">{flag} sinal</div>
     {conf_html}
