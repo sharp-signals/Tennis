@@ -637,6 +637,17 @@ def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime) ->
     if "score" in subset_7d.columns and not subset_7d.empty:
         sets_played_7d = int(subset_7d["score"].apply(_count_sets).sum())
     result["sets_played_last_7d"] = sets_played_7d
+    # PARTE B (defensiva): o histórico (TennisMyLife/Sackmann) tem atraso
+    # de dias — pode não incluir os jogos da 1ª/2ª ronda do próprio torneio
+    # em curso. Se o "último jogo conhecido" for anterior ao início do
+    # torneio deste jogo mas o jogo atual não for de 1ª ronda, é quase
+    # certo que o jogador JÁ jogou nesta semana e o histórico não o tem.
+    # Marcamos isso para o Claude não afirmar fadiga com base num dado
+    # provavelmente errado. (A correção definitiva do valor vem da parte A,
+    # via RapidAPI, quando disponível.)
+    result["fatigue_data_maybe_stale"] = (
+        days_since_last_match is not None and days_since_last_match > 20
+    )
 
     return result
 
