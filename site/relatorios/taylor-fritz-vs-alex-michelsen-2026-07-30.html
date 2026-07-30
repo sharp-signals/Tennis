@@ -32,6 +32,13 @@ body {
 .sb-name.right { text-align:right; }
 .sb-odds { text-align:center; padding:0 8px; }
 .sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-prob { font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }
+.selos-legenda { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }
+.w-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.w-dot.red { background:var(--red); }
+.w-dot.amber { background:var(--amber); }
+.w-dot.white { background:var(--dim); }
+.selos-nota { width:100%; font-style:italic; opacity:.8; margin-top:2px; }
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
@@ -83,13 +90,13 @@ strong { color:#fff; font-weight:700; }
   <div class="sb-inner">
     <div class="sb-meta">Citi Open - Washington · ATP 500 · Hard · 30/07/2026</div>
     <div class="sb-players">
-      <div class="sb-name">Taylor Fritz</div>
+      <div class="sb-name">Taylor Fritz<div class="sb-prob">67% s/ margem</div></div>
       <div class="sb-odds">
-        <div class="sb-odd">—</div>
+        <div class="sb-odd">1.42</div>
         <div class="sb-vs">VS</div>
-        <div class="sb-odd">—</div>
+        <div class="sb-odd">2.85</div>
       </div>
-      <div class="sb-name right">Alex Michelsen</div>
+      <div class="sb-name right">Alex Michelsen<div class="sb-prob">33% s/ margem</div></div>
     </div>
     <div class="sb-flag">🟡 sinal</div>
     
@@ -137,6 +144,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">6.7%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">36.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:18.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">38.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:19.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:21.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">42.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -153,7 +182,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">50%</text>
       </svg>
       <div class="gauge-label">Alex Michelsen (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (90/11 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">40.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:13.7%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">27.3%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (312/69 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">53.2%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:26.6%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:18.1%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">36.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (501/124 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">58.3%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:29.1%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:23.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">46.8%</div>
+      </div>
+    </div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
 <div class="item">Fritz é favorito claro (odds <strong>1.42</strong>), suportado por ranking (<strong>#10</strong> vs <strong>#40</strong>), forma recente (<strong>8-2</strong> vs <strong>5-5</strong>) e época 2026 (<strong>23-13</strong> vs <strong>18-14</strong>).</div>

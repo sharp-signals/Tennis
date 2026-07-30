@@ -32,6 +32,13 @@ body {
 .sb-name.right { text-align:right; }
 .sb-odds { text-align:center; padding:0 8px; }
 .sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-prob { font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }
+.selos-legenda { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }
+.w-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.w-dot.red { background:var(--red); }
+.w-dot.amber { background:var(--amber); }
+.w-dot.white { background:var(--dim); }
+.selos-nota { width:100%; font-style:italic; opacity:.8; margin-top:2px; }
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
@@ -83,13 +90,13 @@ strong { color:#fff; font-weight:700; }
   <div class="sb-inner">
     <div class="sb-meta">Citi Open - Washington · ATP 500 · Hard · 30/07/2026</div>
     <div class="sb-players">
-      <div class="sb-name">Rafael Jodar</div>
+      <div class="sb-name">Rafael Jodar<div class="sb-prob">63% s/ margem</div></div>
       <div class="sb-odds">
-        <div class="sb-odd">—</div>
+        <div class="sb-odd">1.5</div>
         <div class="sb-vs">VS</div>
-        <div class="sb-odd">—</div>
+        <div class="sb-odd">2.6</div>
       </div>
-      <div class="sb-name right">Lorenzo Musetti</div>
+      <div class="sb-name right">Lorenzo Musetti<div class="sb-prob">37% s/ margem</div></div>
     </div>
     <div class="sb-flag">🟡 sinal</div>
     
@@ -137,6 +144,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">3.6%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">42.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">44.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:22.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:21.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">42.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -153,7 +182,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">60%</text>
       </svg>
       <div class="gauge-label">Lorenzo Musetti (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (4/50 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">25.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:12.5%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:15.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">30.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (18/168 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">50.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:25.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:24.1%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">48.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (32/279 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">68.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:34.4%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:27.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">54.8%</div>
+      </div>
+    </div></div></section>
   <p>Não foi possível gerar a análise completa devido a um erro de formato na resposta do modelo. Dados brutos recolhidos:</p>
 <p><code>`</code>json</p>
 <p>{</p>
@@ -266,6 +328,94 @@ strong { color:#fff; font-weight:700; }
 <p>    &quot;avg_first_serve_in_pct&quot;: 0.675,</p>
 <p>    &quot;avg_first_serve_won_pct&quot;: 0.678,</p>
 <p>    &quot;avg_break_points_saved_pct&quot;: 0.651</p>
+<p>  },</p>
+<p>  &quot;rich_stats_a&quot;: {</p>
+<p>    &quot;response_stats&quot;: {</p>
+<p>      &quot;return_pts_won_pct&quot;: 42,</p>
+<p>      &quot;break_points_converted_pct&quot;: 44</p>
+<p>    },</p>
+<p>    &quot;vs_rank_level&quot;: {</p>
+<p>      &quot;top1&quot;: {</p>
+<p>        &quot;wins&quot;: 0,</p>
+<p>        &quot;losses&quot;: 1,</p>
+<p>        &quot;matches&quot;: 1,</p>
+<p>        &quot;win_pct&quot;: 0.0</p>
+<p>      },</p>
+<p>      &quot;top5&quot;: {</p>
+<p>        &quot;wins&quot;: 0,</p>
+<p>        &quot;losses&quot;: 2,</p>
+<p>        &quot;matches&quot;: 2,</p>
+<p>        &quot;win_pct&quot;: 0.0</p>
+<p>      },</p>
+<p>      &quot;top10&quot;: {</p>
+<p>        &quot;wins&quot;: 1,</p>
+<p>        &quot;losses&quot;: 3,</p>
+<p>        &quot;matches&quot;: 4,</p>
+<p>        &quot;win_pct&quot;: 25.0</p>
+<p>      },</p>
+<p>      &quot;top20&quot;: {</p>
+<p>        &quot;wins&quot;: 1,</p>
+<p>        &quot;losses&quot;: 5,</p>
+<p>        &quot;matches&quot;: 6,</p>
+<p>        &quot;win_pct&quot;: 16.7</p>
+<p>      },</p>
+<p>      &quot;top50&quot;: {</p>
+<p>        &quot;wins&quot;: 9,</p>
+<p>        &quot;losses&quot;: 9,</p>
+<p>        &quot;matches&quot;: 18,</p>
+<p>        &quot;win_pct&quot;: 50.0</p>
+<p>      },</p>
+<p>      &quot;top100&quot;: {</p>
+<p>        &quot;wins&quot;: 22,</p>
+<p>        &quot;losses&quot;: 10,</p>
+<p>        &quot;matches&quot;: 32,</p>
+<p>        &quot;win_pct&quot;: 68.8</p>
+<p>      }</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;rich_stats_b&quot;: {</p>
+<p>    &quot;response_stats&quot;: {</p>
+<p>      &quot;return_pts_won_pct&quot;: 39,</p>
+<p>      &quot;break_points_converted_pct&quot;: 42</p>
+<p>    },</p>
+<p>    &quot;vs_rank_level&quot;: {</p>
+<p>      &quot;top1&quot;: {</p>
+<p>        &quot;wins&quot;: 1,</p>
+<p>        &quot;losses&quot;: 7,</p>
+<p>        &quot;matches&quot;: 8,</p>
+<p>        &quot;win_pct&quot;: 12.5</p>
+<p>      },</p>
+<p>      &quot;top5&quot;: {</p>
+<p>        &quot;wins&quot;: 5,</p>
+<p>        &quot;losses&quot;: 27,</p>
+<p>        &quot;matches&quot;: 32,</p>
+<p>        &quot;win_pct&quot;: 15.6</p>
+<p>      },</p>
+<p>      &quot;top10&quot;: {</p>
+<p>        &quot;wins&quot;: 15,</p>
+<p>        &quot;losses&quot;: 35,</p>
+<p>        &quot;matches&quot;: 50,</p>
+<p>        &quot;win_pct&quot;: 30.0</p>
+<p>      },</p>
+<p>      &quot;top20&quot;: {</p>
+<p>        &quot;wins&quot;: 38,</p>
+<p>        &quot;losses&quot;: 55,</p>
+<p>        &quot;matches&quot;: 93,</p>
+<p>        &quot;win_pct&quot;: 40.9</p>
+<p>      },</p>
+<p>      &quot;top50&quot;: {</p>
+<p>        &quot;wins&quot;: 81,</p>
+<p>        &quot;losses&quot;: 87,</p>
+<p>        &quot;matches&quot;: 168,</p>
+<p>        &quot;win_pct&quot;: 48.2</p>
+<p>      },</p>
+<p>      &quot;top100&quot;: {</p>
+<p>        &quot;wins&quot;: 153,</p>
+<p>        &quot;losses&quot;: 126,</p>
+<p>        &quot;matches&quot;: 279,</p>
+<p>        &quot;win_pct&quot;: 54.8</p>
+<p>      }</p>
+<p>    }</p>
 <p>  },</p>
 <p>  &quot;ranking_a&quot;: {</p>
 <p>    &quot;rank&quot;: 24,</p>
@@ -381,10 +531,10 @@ strong { color:#fff; font-weight:700; }
 <p>    }</p>
 <p>  },</p>
 <p>  &quot;weather&quot;: {</p>
-<p>    &quot;temp_max_c&quot;: 32.7,</p>
-<p>    &quot;temp_min_c&quot;: 20.4,</p>
+<p>    &quot;temp_max_c&quot;: 32.4,</p>
+<p>    &quot;temp_min_c&quot;: 19.7,</p>
 <p>    &quot;precipitation_mm&quot;: 0.0,</p>
-<p>    &quot;wind_max_kmh&quot;: 8.5</p>
+<p>    &quot;wind_max_kmh&quot;: 9.3</p>
 <p>  }</p>
 <p>}</p>
 <p><code>`</code></p>

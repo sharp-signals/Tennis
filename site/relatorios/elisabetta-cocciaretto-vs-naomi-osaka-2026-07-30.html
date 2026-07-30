@@ -32,6 +32,13 @@ body {
 .sb-name.right { text-align:right; }
 .sb-odds { text-align:center; padding:0 8px; }
 .sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-prob { font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }
+.selos-legenda { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }
+.w-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.w-dot.red { background:var(--red); }
+.w-dot.amber { background:var(--amber); }
+.w-dot.white { background:var(--dim); }
+.selos-nota { width:100%; font-style:italic; opacity:.8; margin-top:2px; }
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
@@ -83,53 +90,67 @@ strong { color:#fff; font-weight:700; }
   <div class="sb-inner">
     <div class="sb-meta">Mubadala DC Open - Washington · WTA 500 · Hard · 30/07/2026</div>
     <div class="sb-players">
-      <div class="sb-name">Elisabetta Cocciaretto</div>
+      <div class="sb-name">Elisabetta Cocciaretto<div class="sb-prob">15% s/ margem</div></div>
       <div class="sb-odds">
-        <div class="sb-odd">—</div>
+        <div class="sb-odd">6.4</div>
         <div class="sb-vs">VS</div>
-        <div class="sb-odd">—</div>
+        <div class="sb-odd">1.17</div>
       </div>
-      <div class="sb-name right">Naomi Osaka</div>
+      <div class="sb-name right">Naomi Osaka<div class="sb-prob">85% s/ margem</div></div>
     </div>
     <div class="sb-flag">🟡 sinal</div>
     
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#e06c5b">20/100 · baixa</span>
+        <span class="conf-num" style="color:#e0a34a">45/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:20%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Quase todos os campos estão null (forma, fadiga, lesão, piso, época atual) e o único H2H é de apenas 1 jogo, insuficiente para qualquer leitura sólida.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:45%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Ranking e único H2H apontam claramente para Osaka, mas faltam forma, fadiga, lesão e piso para ambas — leitura assenta em poucos pilares.</div>
     </div>
   </div>
 </header>
 <div class="wrap">
-  
+  <section class="charts"><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (13/48 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">23.1%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:11.6%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:14.6%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">29.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (75/215 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">32.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:16.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:27.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">54.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (146/335 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">41.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.9%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:30.6%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">61.2%</div>
+      </div>
+    </div></div></section>
   <h2 class="sec-main">🔑 Pontos-chave</h2>
 <div class="items">
-<div class="item">Osaka nº<strong>13</strong> vs Cocciaretto nº<strong>71</strong> — diferença clara de ranking, alinhada com odds (<strong>1.16</strong> vs <strong>6.2</strong>).</div>
-<div class="item">H2H apenas <strong>1 jogo</strong> (Osaka venceu 2-0, 12-7 games) — amostra insuficiente para qualquer leitura.</div>
-<div class="item">Sem dados de forma recente, fadiga, lesão ou stats de piso para nenhuma jogadora — grandes lacunas.</div>
-<div class="item">Meteorologia sem chuva, calor (<strong>32.7°C</strong> máx), vento fraco — condições normais para exterior.</div>
+<div class="item">Diferença de ranking acentuada: Osaka <strong>#13</strong> vs Cocciaretto <strong>#71</strong>.</div>
+<div class="item">Odds fortemente inclinadas para Osaka (<strong>1.17</strong> vs <strong>6.4</strong>), coerente com o ranking.</div>
+<div class="item">Único confronto direto (<strong>1 jogo</strong>) foi vencido por Osaka 2-0 sets, com domínio claro no serviço</div>
 </div>
-<h3 class="sec">H2H</h3>
-<p>Apenas 1 confronto direto, vencido por Osaka em 2 sets (<strong>12-7</strong> games). Amostra demasiado pequena para sustentar qualquer leitura de vantagem estilística. <code>h2h.overall/on_surface</code> não disponíveis (null) — lacuna adicional.</p>
-<h3 class="sec">Forma</h3>
-<p><code>recent_form_a</code> e <code>recent_form_b</code> ambos null — sem informação sobre o estado de forma atual de nenhuma jogadora. Lacuna relevante, já que a forma recente pesa mais do que o histórico de carreira.</p>
-<h3 class="sec">Época atual</h3>
-<p><code>current_season_a</code> e <code>current_season_b</code> null — sem dados de jogos/vitórias na época atual. Impossível confirmar se o ranking atual reflete boa ou má fase.</p>
-<h3 class="sec">Piso</h3>
-<p><code>surface_stats_a</code> e <code>surface_stats_b</code> null — sem perfil em hard court para nenhuma das duas, apesar de o jogo ser em hard.</p>
-<h3 class="sec">Serviço/Resposta</h3>
-<p><code>serve_return_stats_a/b</code> null. No único confronto direto, Osaka teve percentagem de vitória no 1º serviço muito superior (<strong>85%</strong> vs <strong>64%</strong>) e mais eficaz na resposta (<strong>42%</strong> vs <strong>18%</strong>) — mas amostra de 1 jogo, sem valor preditivo forte.</p>
-<h3 class="sec">Fadiga</h3>
-<p><code>fatigue_signal_a/b</code> null — sem dados de dias desde último jogo, jogos recentes ou minutos jogados. Impossível avaliar frescura física de qualquer das jogadoras.</p>
-<h3 class="sec">Lesão</h3>
-<p><code>injury_signal_a/b</code> null — não encontrámos sinal de desistência/walkover recente para nenhuma jogadora (ausência de dado, não confirmação de saúde).</p>
-<h3 class="sec">Meteorologia</h3>
-<p>Calor moderado (<strong>32.7°C</strong> máx, <strong>20.4°C</strong> mín), sem chuva (<strong>0mm</strong>), vento fraco (<strong>8.5 km/h</strong>) — condições normais, sem impacto assinalável esperado.</p>
-<h3 class="sec">Mercado</h3>
-<p>Odds (<strong>1.16</strong> Osaka / <strong>6.2</strong></p>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>
