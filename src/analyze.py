@@ -10,15 +10,45 @@ em silêncio — isso evita que o modelo assuma e "invente" com naturalidade.
 from __future__ import annotations
 
 import json
+import hashlib
+import os
 
 from json_repair import repair_json
-import os
 
 import anthropic
 
 from .config import CLAUDE_MODEL, FLAG_HIGH_SIGNAL, FLAG_UNCERTAIN, FLAG_ROUTINE
 
 _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+# Cache de análises por hash (medida de poupança, 30/07): evita repagar a
+# análise de um jogo cujos dados não mudaram (o workflow corre 2x/dia e há
+# jogos que aparecem nas duas janelas). Guardada no repositório em
+# data/analysis_cache/ para persistir entre execuções.
+_ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
+# Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
+# de forma relevante, para invalidar a cache e forçar reanálise.
+PROMPT_VERSION = "2026-07-30"
+
+
+def _payload_hash(match_data: dict) -> str:
+    """Hash estável do que, se mudar, justifica reanalisar. Ignora campos
+    voláteis irrelevantes; foca-se nos dados materiais."""
+    material = {
+        "players": [match_data.get("player_a"), match_data.get("player_b")],
+        "odds": match_data.get("market_odds_decimal"),
+        "h2h": match_data.get("h2h"),
+        "form_a": match_data.get("recent_form_a"),
+        "form_b": match_data.get("recent_form_b"),
+        "rank_a": match_data.get("ranking_a"),
+        "rank_b": match_data.get("ranking_b"),
+        "surface": match_data.get("surface"),
+        "round": match_data.get("round"),
+        "model": CLAUDE_MODEL,
+        "prompt_version": PROMPT_VERSION,
+    }
+    blob = json.dumps(material, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 SYSTEM_PROMPT = f"""\
 És um analista de ténis pré-jogo. Recebes SÓ dados reais recolhidos de fontes
@@ -294,15 +324,51 @@ def analyze_match(match_data: dict) -> dict:
         + json.dumps(match_data, ensure_ascii=False, indent=2, default=str)
     )
 
+    # Cache por hash: se já analisámos este jogo com estes mesmos dados
+    # materiais (e o mesmo prompt/modelo), reutilizamos — não repagamos.
+    cache_key = _payload_hash(match_data)
+    cache_path = os.path.join(_ANALYSIS_CACHE_DIR, f"{cache_key}.json")
+    try:
+        if os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                cached = json.load(f)
+            print(f"[cache_hit] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} — análise reutilizada (sem custo).")
+            return cached
+    except Exception:
+        pass  # se a cache falhar, segue para a chamada normal
+
     response = _client.messages.create(
         model=CLAUDE_MODEL,
-        # 6000 (era 4000, era 1500 antes disso): cada vez que acrescentamos
-        # mais dados (ex: fadiga rica), o relatório completo fica mais
-        # longo. Margem generosa para não voltarmos a cortar o JSON a meio.
         max_tokens=8000,
-        system=SYSTEM_PROMPT,
+        # Cache do prompt de sistema (medida de poupança, 30/07): o
+        # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
+        # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
+        # análise da mesma execução, o input do prompt custe ~10% do preço
+        # (as análises correm em sequência, dentro da janela de cache).
+        system=[
+            {
+                "type": "text",
+                "text": SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         messages=[{"role": "user", "content": user_prompt}],
     )
+
+    # Logging de custo real (medida de poupança, 30/07): regista o consumo
+    # de tokens de cada chamada, para sabermos exatamente onde vai o custo
+    # (input grande? output? cache a funcionar?) em vez de adivinhar.
+    try:
+        u = response.usage
+        cache_read = getattr(u, "cache_read_input_tokens", 0) or 0
+        cache_creation = getattr(u, "cache_creation_input_tokens", 0) or 0
+        print(
+            f"[anthropic_usage] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} | "
+            f"input={u.input_tokens} output={u.output_tokens} "
+            f"cache_read={cache_read} cache_creation={cache_creation}"
+        )
+    except Exception:
+        pass
 
     raw_text = "".join(block.text for block in response.content if block.type == "text").strip()
 
@@ -322,12 +388,22 @@ def analyze_match(match_data: dict) -> dict:
             raw_text = raw_text.rsplit("```", 1)[0]
         raw_text = raw_text.strip()
 
+    def _save_and_return(res: dict) -> dict:
+        """Grava o resultado na cache (só sucessos) e devolve-o."""
+        try:
+            os.makedirs(_ANALYSIS_CACHE_DIR, exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(res, f, ensure_ascii=False)
+        except Exception:
+            pass
+        return res
+
     try:
         # strict=False: tolera caracteres de controlo literais (ex: quebras
         # de linha não escapadas) dentro de strings do JSON — já vimos o
         # Claude fazer isto ocasionalmente num relatório longo, apesar da
         # instrução para não o fazer. Mais barato do que rejeitar a resposta.
-        return json.loads(raw_text, strict=False)
+        return _save_and_return(json.loads(raw_text, strict=False))
     except json.JSONDecodeError as exc:
         print(f"[aviso] resposta do Claude não era JSON válido: {exc}")
         print("[info] a tentar reparar automaticamente com json_repair...")
@@ -335,7 +411,7 @@ def analyze_match(match_data: dict) -> dict:
             repaired = repair_json(raw_text)
             result = json.loads(repaired, strict=False)
             print("[info] reparação de JSON bem-sucedida — a análise não foi perdida.")
-            return result
+            return _save_and_return(result)
         except Exception as repair_exc:
             print(f"[aviso] reparação de JSON também falhou: {repair_exc}")
 
