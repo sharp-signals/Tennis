@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Janice Tjen vs Anna Kalinskaya</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">Mubadala DC Open - Washington · WTA 500 · Hard · 30/07/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Janice Tjen</div>
+      <div class="sb-odds">
+        <div class="sb-odd">—</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">—</div>
+      </div>
+      <div class="sb-name right">Anna Kalinskaya</div>
+    </div>
+    <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e06c5b">15/100 · baixa</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:15%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Praticamente só há ranking e odds — faltam H2H, forma, piso, serviço, fadiga e lesão de ambas.</div>
+    </div>
+  </div>
+</header>
+<div class="wrap">
+  
+  <h2 class="sec-main">🔑 Pontos-chave</h2>
+<div class="items">
+<div class="item"><strong>Kalinskaya</strong> (nº20) favorita nas odds (<strong>1.41</strong>) vs Tjen (nº37, <strong>3.3</strong>), alinhado com o ranking.</div>
+<div class="item"><strong>Sem H2H</strong>: nunca se defrontaram (matchesCount <strong>0</strong>).</div>
+<div class="item">Faltam dados de forma recente, época atual, piso, serviço/resposta, fadiga e lesão para ambas — lacunas totais, não sinais de equilíbrio.</div>
+<div class="item">Jogo ao ar livre com calor (<strong>30.9°C</strong> máx) e vento moderado (<strong>21.6 km/h</strong>), sem chuva prevista.</div>
+</div>
+<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
+<p>Sem discrepâncias assinaláveis — mercado alinhado com os dados (ranking favorece Kalinskaya, tal como as odds). São apenas pontos de observação, a decisão é sempre da leitora.</p>
+<h3 class="sec">H2H</h3>
+<div class="items">
+<div class="item">Sem confrontos anteriores registados (<strong>0 jogos</strong>) — não há histórico de carreira nem de piso a comentar.</div>
+</div>
+<h3 class="sec">Forma Recente</h3>
+<div class="items">
+<div class="item">Dado em falta para <strong>ambas</strong> as jogadoras (recent_form_a e recent_form_b não disponíveis).</div>
+</div>
+<h3 class="sec">Época Atual</h3>
+<div class="items">
+<div class="item">Dado em falta para <strong>ambas</strong> — sem forma como cruzar o ranking oficial com o presente.</div>
+</div>
+<h3 class="sec">Piso</h3>
+<div class="items">
+<div class="item">Sem stats de piso disponíveis para nenhuma das duas jogadoras.</div>
+</div>
+<h3 class="sec">Serviço/Resposta</h3>
+<div class="items">
+<div class="item">Dado em falta para ambas.</div>
+</div>
+<h3 class="sec">Fadiga</h3>
+<div class="items">
+<div class="item">Dado em falta para ambas.</div>
+</div>
+<h3 class="sec">Lesão</h3>
+<div class="items">
+<div class="item">Dado em falta para ambas — não há sinal de desistências recentes registado nem ausência confirmada.</div>
+</div>
+<h3 class="sec">Meteorologia</h3>
+<div class="items">
+<div class="item"><strong>30.9°C</strong> máx / <strong>21.2°C</strong> mín, sem precipitação, vento até <strong>21.6 km/h</strong> — calor moderado a ter em conta, sem impacto de chuva.</div>
+</div>
+<h3 class="sec">Mercado</h3>
+<div class="items">
+<div class="item">Kalinskaya <strong>1.41</strong> vs Tjen <strong>3.3</strong> — mercado claramente a favor da jogadora melhor ranqueada (nº20 vs nº37).</div>
+</div>
+<h3 class="sec">📝 Nota Final</h3>
+<p>Análise muito limitada: fora do ranking, odds e meteorologia, quase todos os campos de dados vieram vazios — não há base para avaliar forma, fadiga, lesão ou especialização de piso.</p>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>
