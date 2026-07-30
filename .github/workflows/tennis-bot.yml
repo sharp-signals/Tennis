@@ -40,7 +40,7 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/tournament_cache.json data/fixtures_cache.json site/ 2>/dev/null || true
+          git add data/ site/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar caches e relatórios [skip ci]"
             git push
