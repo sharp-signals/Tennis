@@ -12,12 +12,12 @@ Corre via: python -m src.test_dry_run
 from __future__ import annotations
 
 import html
+import os
 from datetime import datetime, timedelta, timezone
 
 from . import fetch_data
 from .analyze import analyze_match
-from .config import ODDS_API_TENNIS_SPORT_KEYS
-from .telegraph import publish_report
+from .config import ODDS_API_TENNIS_SPORT_KEYS, FLAG_UNCERTAIN
 from .telegram_bot import send_message
 
 # Dois jogadores ATP conhecidos, para testar H2H/forma/piso com dados reais
@@ -73,6 +73,24 @@ def build_fake_match_payload() -> dict:
     }
 
 
+def _mock_result(payload: dict) -> dict:
+    """Resultado fictício para testar o pipeline SEM chamar a API (sem custo)."""
+    return {
+        "flag": FLAG_UNCERTAIN,
+        "confidence_score": 50,
+        "confidence_reason": "Resultado MOCK de teste — não foi chamada a API.",
+        "summary_line": f"[MOCK] {payload['player_a']} vs {payload['player_b']} — teste sem API.",
+        "full_report_markdown": (
+            "## 🔑 Pontos-chave\n"
+            "- **Este é um resultado MOCK** — nenhuma chamada à API da Anthropic foi feita.\n"
+            "- Serve para testar o pipeline (geração de HTML, publicação) sem gastar créditos.\n\n"
+            "### 🎯 Discrepâncias e mercados a observar\n"
+            "- ⚪ Exemplo de observação de teste (amostra fictícia).\n\n"
+            "### ✅ Veredicto\nTeste de pipeline sem custo — dados fictícios."
+        ),
+    }
+
+
 def run() -> None:
     print("=== TESTE DE PONTA A PONTA (jogo fictício) ===")
     payload = build_fake_match_payload()
@@ -80,23 +98,21 @@ def run() -> None:
     for key, value in payload.items():
         print(f"  {key}: {value}")
 
-    print("\n--- A chamar o Claude (analyze_match) ---")
-    result = analyze_match(payload)
+    # Medida 8 (poupança): por omissão NÃO chama a API real — usa um mock.
+    # Para testar com a API a sério, correr com a variável USE_REAL_LLM=1.
+    use_real = os.environ.get("USE_REAL_LLM", "") == "1"
+    if use_real:
+        print("\n--- A chamar o Claude (analyze_match) [API REAL, gasta créditos] ---")
+        result = analyze_match(payload)
+    else:
+        print("\n--- A usar resultado MOCK (sem chamar a API, sem custo) ---")
+        print("    (para testar com a API real, define USE_REAL_LLM=1)")
+        result = _mock_result(payload)
     print(f"Flag: {result['flag']}")
     print(f"Summary line: {result['summary_line']}")
     print(f"Full report (primeiros 300 chars): {result['full_report_markdown'][:300]}...")
-
-    print("\n--- A publicar no Telegra.ph ---")
-    title = "🧪 TESTE — Relatório Pré-Live de Ténis"
-    report_md = (
-        f"# {title}\n\n"
-        "**Este é um relatório de TESTE, gerado com um jogo fictício, não um jogo real.**\n\n"
-        f"## {payload['player_a']} vs {payload['player_b']} "
-        f"({payload['tournament']}, {payload['tier']}, {payload['surface']})\n\n"
-        f"{result['full_report_markdown']}\n"
-    )
-    telegraph_url = publish_report(title, report_md)
-    print(f"Publicado em: {telegraph_url}")
+    print("\n[teste concluído — a publicação foi omitida nesta versão de teste]")
+    return
 
     print("\n--- A enviar para o Telegram ---")
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
