@@ -24,6 +24,7 @@ nada — não faz sentido mandar uma mensagem vazia.
 from __future__ import annotations
 
 import html
+import json
 import os
 import re
 import unicodedata
@@ -164,6 +165,67 @@ def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
     return eligible
 
 
+def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict]) -> Optional[dict]:
+    """
+    Devolve os dados ricos de um jogador (métricas de resposta de carreira
+    + desempenho por nível de ranking do adversário), com estratégia
+    HÍBRIDA para poupar quota:
+      1. Se existir um JSON de dados guardado em knowledge/players/<slug>.json
+         (gerado pelo construtor de fichas), lê de lá — sem custo de API.
+      2. Senão, busca à RapidAPI (career stats + perf-breakdown) e grava o
+         JSON para reutilização futura.
+    Devolve None se não houver ID (jogador fora do ranking) nem dados.
+    """
+    slug = _slugify(player_name)
+    json_path = os.path.join("knowledge", "players", f"{slug}.json")
+
+    # 1) tentar a ficha guardada
+    try:
+        if os.path.exists(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+
+    # 2) resolver ID e buscar à API
+    player_id = fetch_data.get_player_id_from_ranking(tour, player_name)
+    if not player_id:
+        return None
+
+    career = fetch_data.fetch_player_career_stats(tour, player_id)
+    perf = fetch_data.fetch_player_perf_breakdown(tour, player_id)
+    if not career and not perf:
+        return None
+
+    # extrair só o essencial das career stats (métricas de resposta)
+    resp = {}
+    stats = (career or {}).get("playerStats") or (career or {}).get("player1Stats") or (career or {})
+    if isinstance(stats, dict):
+        for src_key, dst_key in (
+            ("returnPtsWinPercentage", "return_pts_won_pct"),
+            ("breakpointsWonPercentage", "break_points_converted_pct"),
+            ("firstServeReturnPtsWonPercentage", "return_1st_won_pct"),
+            ("secondServeReturnPtsWonPercentage", "return_2nd_won_pct"),
+        ):
+            if stats.get(src_key) is not None:
+                resp[dst_key] = stats[src_key]
+
+    rich = {
+        "response_stats": resp or None,
+        "vs_rank_level": (perf or {}).get("vs_rank_level"),
+    }
+
+    # gravar para reutilização (best-effort)
+    try:
+        os.makedirs(os.path.join("knowledge", "players"), exist_ok=True)
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(rich, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+    return rich
+
+
 def _get_weather_for_match(match: dict, start: datetime) -> Optional[dict]:
     """
     Só pede meteorologia para jogos ao ar livre. Geocodifica a partir do
@@ -257,6 +319,16 @@ def _build_match_payload(match: dict) -> dict:
 
     rank_a = _resolve_ranking(player_a)
     rank_b = _resolve_ranking(player_b)
+
+    # Onda 2 (dados ricos por jogador): desempenho vs qualidade do
+    # adversário (perf-breakdown) + métricas de resposta de carreira
+    # (h2h-vs-all). Estratégia HÍBRIDA: primeiro tenta ler da ficha
+    # guardada em knowledge/players/ (grátis); só se não existir é que
+    # busca à RapidAPI (gasta quota). À medida que as fichas do top 100
+    # forem construídas, o custo tende a zero.
+    rich_a = _get_rich_player_data(tour, player_a, official)
+    rich_b = _get_rich_player_data(tour, player_b, official)
+
     set1_comeback_a = fetch_data.compute_set1_comeback_stats(history, player_a)
     set1_comeback_b = fetch_data.compute_set1_comeback_stats(history, player_b)
     handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a)
@@ -291,6 +363,8 @@ def _build_match_payload(match: dict) -> dict:
         "injury_signal_b": injury_b,
         "serve_return_stats_a": serve_a,
         "serve_return_stats_b": serve_b,
+        "rich_stats_a": rich_a,  # Onda 2: resposta de carreira + desempenho vs nível do adversário (ficha ou API)
+        "rich_stats_b": rich_b,
         "ranking_a": rank_a,
         "ranking_b": rank_b,
         "set1_comeback_stats_a": set1_comeback_a,  # para aplicares em live: taxa histórica de reviravolta após perder o 1º set
