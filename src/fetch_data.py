@@ -1178,6 +1178,62 @@ def fetch_player_career_stats(tour: str, player_id: int) -> Optional[dict]:
         return None
 
 
+_PERF_BREAKDOWN_CACHE: dict = {}
+PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS = 24 * 7  # 7 dias
+
+
+def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
+    """
+    Desempenho do jogador SEPARADO POR NÍVEL DE RANKING do adversário
+    (top1/5/10/20/50/100), por ano e por piso — endpoint perf-breakdown.
+    É o que permite distinguir "ganha muito contra fracos" de "ganha
+    contra os melhores". Devolve um resumo AGREGADO (soma de todos os anos)
+    do desempenho por patamar de ranking, ou None. Cache 7 dias.
+    """
+    cache_key = f"{tour}:{player_id}"
+    cached = _PERF_BREAKDOWN_CACHE.get(cache_key)
+    if cached is not None:
+        age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age_hours < PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+
+    if not RAPIDAPI_KEY:
+        return None
+
+    url = f"{RAPIDAPI_BASE}/{tour}/player/perf-breakdown/{player_id}"
+    try:
+        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        raw = resp.json().get("data", {})
+
+        # Agregar 'rank' (vs top1/5/10/20/50/100) somando todos os anos.
+        # Formato por ano: {ano: {"rank": {"top10": {"aw":X,"al":Y}, ...}}}
+        levels = ("top1", "top5", "top10", "top20", "top50", "top100")
+        agg = {lv: {"wins": 0, "losses": 0} for lv in levels}
+        for year_data in (raw.values() if isinstance(raw, dict) else []):
+            rank_block = (year_data or {}).get("rank", {})
+            for lv in levels:
+                cell = rank_block.get(lv) or {}
+                agg[lv]["wins"] += cell.get("aw", 0) or 0
+                agg[lv]["losses"] += cell.get("al", 0) or 0
+
+        # Só devolve patamares com jogos, com a percentagem calculada
+        summary = {}
+        for lv in levels:
+            w, l = agg[lv]["wins"], agg[lv]["losses"]
+            total = w + l
+            if total > 0:
+                summary[lv] = {"wins": w, "losses": l, "matches": total,
+                               "win_pct": round(100 * w / total, 1)}
+
+        data = {"vs_rank_level": summary} if summary else None
+        _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter perf-breakdown ({tour}, id {player_id}): {exc}")
+        return None
+
+
 def get_player_id_from_ranking(tour: str, player_name: str) -> Optional[int]:
     """
     Resolve o ID matchstat de um jogador a partir do ranking oficial (que
