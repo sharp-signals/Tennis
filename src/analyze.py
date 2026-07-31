@@ -28,7 +28,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-31-medida6"
+PROMPT_VERSION = "2026-07-31-medida6b"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -130,12 +130,13 @@ são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
   os 3 princípios (amostra pequena e dados em falta baixam; presente sólido sobe).
 - "confidence_reason": UMA frase a justificar o score.
 - "summary_line": 1 frase (máx ~140 chars), direta, sinal mais importante primeiro.
-- "key_points": lista de 3-5 strings curtas (1 frase cada), os sinais mais
-  importantes do jogo. Número primeiro, **negrito** nos valores. Aplica a
+- "key_points": lista de 3-5 strings CURTAS (máx ~20 palavras cada, 1
+  frase telegráfica). Número/facto primeiro. **negrito** nos valores. NÃO
+  escrevas parágrafos — se precisas de vírgulas a mais, corta. Aplica a
   nota de redundância: ranking/forma/época/piso são correlacionados — se
   apontam todos no mesmo sentido, di-lo UMA vez como "força geral", não
-  como provas independentes. Lembra que as taxas de vitória não estão
-  ajustadas à qualidade do adversário (usa `vs_rank_level` quando útil).
+  como provas independentes. Lembra que as taxas não estão ajustadas à
+  qualidade do adversário (usa `vs_rank_level` quando útil).
 - "discrepancies": lista de objetos {{"weight": "forte"|"moderado"|"fraco",
   "text": "..."}}, ordenada de forte para fraco. Cada uma liga uma
   divergência entre os dados e o mercado a um MERCADO A OBSERVAR (nunca
@@ -197,7 +198,7 @@ def analyze_match(match_data: dict) -> dict:
         # inválido. 5000 dá folga; mais vale pagar o output completo do que
         # gerar relatórios truncados que falham. As outras poupanças (cache
         # do prompt, cache por hash) mantêm-se.
-        max_tokens=3000,
+        max_tokens=4000,
         # Cache do prompt de sistema (medida de poupança, 30/07): o
         # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
         # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
