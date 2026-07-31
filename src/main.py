@@ -453,6 +453,7 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
 
 
 def run() -> None:
+    fetch_data.reset_rapidapi_call_count()  # zerar o contador de chamadas desta execução
     raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
     print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
     raw_matches = _deduplicate_matches(raw_matches)
@@ -578,6 +579,41 @@ def run() -> None:
         prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
         send_message(prefix + chunk)
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
+
+    # Registo do consumo da RapidAPI nesta execução (medição de quota).
+    # Imprime o total no log e guarda o histórico dia a dia num ficheiro,
+    # para se poder decidir com dados reais qual o plano necessário.
+    try:
+        n_calls = fetch_data.get_rapidapi_call_count()
+        print(f"[rapidapi_usage] Total desta execução: {n_calls} chamadas ({len(analyses)} jogo(s)).")
+
+        usage_path = os.path.join("data", "rapidapi_usage_log.json")
+        history = []
+        try:
+            if os.path.exists(usage_path):
+                with open(usage_path, "r", encoding="utf-8") as f:
+                    history = json.load(f)
+        except Exception:
+            history = []
+
+        history.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "calls": n_calls,
+            "matches": len(analyses),
+        })
+        # média das últimas execuções do mesmo dia (informativo)
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today_calls = sum(e["calls"] for e in history if e["timestamp"].startswith(today))
+        print(f"[rapidapi_usage] Acumulado hoje ({today}): {today_calls} chamadas.")
+
+        try:
+            os.makedirs("data", exist_ok=True)
+            with open(usage_path, "w", encoding="utf-8") as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+    except Exception as exc:
+        print(f"[aviso] falha ao registar uso da RapidAPI: {exc}")
 
 
 if __name__ == "__main__":
