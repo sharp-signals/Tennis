@@ -74,20 +74,21 @@ def build_fake_match_payload() -> dict:
 
 
 def _mock_result(payload: dict) -> dict:
-    """Resultado fictício para testar o pipeline SEM chamar a API (sem custo)."""
+    """Resultado fictício para testar o pipeline SEM chamar a API (sem custo).
+    Usa o formato estruturado da Medida 6 (key_points/discrepancies/verdict)."""
     return {
         "flag": FLAG_UNCERTAIN,
         "confidence_score": 50,
         "confidence_reason": "Resultado MOCK de teste — não foi chamada a API.",
         "summary_line": f"[MOCK] {payload['player_a']} vs {payload['player_b']} — teste sem API.",
-        "full_report_markdown": (
-            "## 🔑 Pontos-chave\n"
-            "- **Este é um resultado MOCK** — nenhuma chamada à API da Anthropic foi feita.\n"
-            "- Serve para testar o pipeline (geração de HTML, publicação) sem gastar créditos.\n\n"
-            "### 🎯 Discrepâncias e mercados a observar\n"
-            "- ⚪ Exemplo de observação de teste (amostra fictícia).\n\n"
-            "### ✅ Veredicto\nTeste de pipeline sem custo — dados fictícios."
-        ),
+        "key_points": [
+            "**Este é um resultado MOCK** — nenhuma chamada à API da Anthropic foi feita.",
+            "Serve para testar o pipeline (geração de HTML, publicação) sem gastar créditos.",
+        ],
+        "discrepancies": [
+            {"weight": "fraco", "text": "Exemplo de observação de teste (amostra fictícia)."},
+        ],
+        "verdict": "Teste de pipeline sem custo — dados fictícios.",
     }
 
 
@@ -110,7 +111,9 @@ def run() -> None:
         result = _mock_result(payload)
     print(f"Flag: {result['flag']}")
     print(f"Summary line: {result['summary_line']}")
-    print(f"Full report (primeiros 300 chars): {result['full_report_markdown'][:300]}...")
+    print(f"Pontos-chave: {len(result.get('key_points', []))} | "
+          f"Discrepâncias: {len(result.get('discrepancies', []))} | "
+          f"Veredicto: {'sim' if result.get('verdict') else 'não'}")
     print("\n[teste concluído — a publicação foi omitida nesta versão de teste]")
     return
 
