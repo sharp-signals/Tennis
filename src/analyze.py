@@ -197,7 +197,7 @@ def analyze_match(match_data: dict) -> dict:
         # inválido. 5000 dá folga; mais vale pagar o output completo do que
         # gerar relatórios truncados que falham. As outras poupanças (cache
         # do prompt, cache por hash) mantêm-se.
-        max_tokens=2000,
+        max_tokens=3000,
         # Cache do prompt de sistema (medida de poupança, 30/07): o
         # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
         # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
