@@ -28,7 +28,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-30b"
+PROMPT_VERSION = "2026-07-30c"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -154,7 +154,11 @@ FORMATO DE SAÍDA — objeto JSON com EXATAMENTE estes campos:
      games."). NÃO repitas a lista de discrepâncias.
   Diretismo: bullet = 1 frase curta, número primeiro. Ressalva de amostra
   pequena UMA vez por campo, não repetida. Evita "pode/talvez" quando o
-  dado é claro.
+  dado é claro. IMPORTANTE — SÊ CONCISO: o relatório inteiro deve caber em
+  ~2500 palavras. Nas secções de dados, no máximo 3-4 bullets curtos cada.
+  Não repitas informação entre secções. Prioriza os Pontos-chave, as
+  Discrepâncias e o Veredicto (o essencial); as secções de dados são
+  suporte, mantém-nas enxutas.
 
 REGRAS DA SECÇÃO DISCREPÂNCIAS (a pessoa é ex-tenista e decide sozinha;
 NUNCA uses "aposta"/"recomendo entrar" — só sugeres MERCADOS A OBSERVAR
@@ -212,7 +216,13 @@ def analyze_match(match_data: dict) -> dict:
         # 3000 (30/07, medida de poupança): os relatórios reais rondam
         # 1500-2500 tokens de output; 3000 dá margem confortável sem
         # deixar espaço a excessos. Era 8000, uma rede larga demais.
-        max_tokens=3000,
+        # 5000: 3000 revelou-se curto demais para os relatórios ricos
+        # (Onda 2 com dados de resposta + qualidade do adversário) — estavam
+        # a ser cortados a meio (stop_reason=max_tokens), gerando JSON
+        # inválido. 5000 dá folga; mais vale pagar o output completo do que
+        # gerar relatórios truncados que falham. As outras poupanças (cache
+        # do prompt, cache por hash) mantêm-se.
+        max_tokens=5000,
         # Cache do prompt de sistema (medida de poupança, 30/07): o
         # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
         # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
