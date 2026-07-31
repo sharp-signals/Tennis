@@ -167,6 +167,139 @@ def _render_markdown_body(markdown_text: str) -> str:
     return "\n".join(out)
 
 
+def _fmt_pct(v, of=1.0):
+    """Formata um valor como percentagem. of=1.0 se já é fração (0.68→68%),
+    of=100 se já é percentagem inteira (68→68%)."""
+    if v is None:
+        return None
+    try:
+        return f"{float(v) * (100 if of == 1.0 else 1):.0f}%"
+    except (ValueError, TypeError):
+        return None
+
+
+def _data_card(title, rows):
+    """Monta um cartão de secção de dados. rows = lista de strings (linhas em
+    HTML já escapadas). Devolve '' se não houver linhas."""
+    rows = [r for r in rows if r]
+    if not rows:
+        return ""
+    inner = "".join(f'<div class="d-row">{r}</div>' for r in rows)
+    return f'<div class="d-card"><div class="d-title">{_esc(title)}</div>{inner}</div>'
+
+
+def _build_data_sections(payload: dict) -> str:
+    """
+    MEDIDA 6: monta as secções de DADOS factuais (H2H, forma, época, piso,
+    fadiga, desistências, ranking, meteorologia, mercado) diretamente do
+    payload, em Python — sem passar pelo Claude. Assim o Claude só escreve
+    a análise (pontos-chave, discrepâncias, veredicto), o que reduz muito o
+    output (custo) e garante que os números estão sempre certos.
+    Cada secção só aparece se tiver dados. Devolve HTML.
+    """
+    a = _esc(payload.get("player_a", "A"))
+    b = _esc(payload.get("player_b", "B"))
+    cards = []
+
+    # H2H
+    h2h = payload.get("h2h") or {}
+    if h2h:
+        rows = []
+        ov = h2h.get("overall")
+        if ov and isinstance(ov, dict):
+            wa, wb = ov.get("player_a_wins"), ov.get("player_b_wins")
+            if wa is not None and wb is not None:
+                rows.append(f"<b>Geral:</b> {a} {wa}–{wb} {b}")
+        surf = h2h.get("on_surface")
+        if surf and isinstance(surf, dict):
+            wa, wb = surf.get("player_a_wins"), surf.get("player_b_wins")
+            if wa is not None and wb is not None:
+                rows.append(f"<b>Neste piso:</b> {a} {wa}–{wb} {b}")
+        cards.append(_data_card("Confronto direto (H2H)", rows))
+
+    # Forma recente + época atual
+    fa, fb = payload.get("recent_form_a") or {}, payload.get("recent_form_b") or {}
+    sa, sb = payload.get("current_season_a") or {}, payload.get("current_season_b") or {}
+    rows = []
+    if fa.get("matches") and fb.get("matches"):
+        rows.append(f"<b>Últimos jogos:</b> {a} {fa['wins']}-{fa['losses']} · {b} {fb['wins']}-{fb['losses']}")
+    if sa.get("matches") and sb.get("matches"):
+        pa = _fmt_pct(sa['wins']/sa['matches']) if sa.get('matches') else "?"
+        pb = _fmt_pct(sb['wins']/sb['matches']) if sb.get('matches') else "?"
+        rows.append(f"<b>Época atual:</b> {a} {sa['wins']}-{sa['losses']} ({pa}) · {b} {sb['wins']}-{sb['losses']} ({pb})")
+    cards.append(_data_card("Forma recente e época atual", rows))
+
+    # Ranking
+    ra, rb = payload.get("ranking_a"), payload.get("ranking_b")
+    if ra or rb:
+        rows = [f"<b>Ranking oficial:</b> {a} #{ra if ra else '?'} · {b} #{rb if rb else '?'}"]
+        cards.append(_data_card("Ranking", rows))
+
+    # Piso
+    supa = payload.get("surface_stats_a") or {}
+    supb = payload.get("surface_stats_b") or {}
+    surface = (payload.get("surface") or "").lower()
+    if supa and supb:
+        key = "hard" if "hard" in surface else ("clay" if "clay" in surface else ("grass" if "grass" in surface else None))
+        rows = []
+        if key and supa.get(key) and supb.get(key):
+            ca, cb = supa[key], supb[key]
+            pa = _fmt_pct(ca.get("win_pct"), of=100) if ca.get("win_pct") is not None else None
+            pb = _fmt_pct(cb.get("win_pct"), of=100) if cb.get("win_pct") is not None else None
+            if pa and pb:
+                rows.append(f"<b>Neste piso ({key}):</b> {a} {pa} ({ca.get('matches','?')} jogos) · {b} {pb} ({cb.get('matches','?')} jogos)")
+        cards.append(_data_card("Desempenho por piso", rows))
+
+    # Fadiga
+    fga, fgb = payload.get("fatigue_signal_a") or {}, payload.get("fatigue_signal_b") or {}
+    rows = []
+    for nome, fg in ((a, fga), (b, fgb)):
+        if fg.get("days_since_last_match") is not None:
+            stale = " (dado pode estar desatualizado)" if fg.get("fatigue_data_maybe_stale") else ""
+            rows.append(f"<b>{nome}:</b> {fg['days_since_last_match']} dias desde o último jogo{stale}")
+    cards.append(_data_card("Fadiga / descanso", rows))
+
+    # Desistências recentes (antes "Lesão")
+    ija, ijb = payload.get("injury_signal_a") or {}, payload.get("injury_signal_b") or {}
+    rows = []
+    for nome, ij in ((a, ija), (b, ijb)):
+        rets = ij.get("recent_retirements") if isinstance(ij, dict) else None
+        if rets:
+            rows.append(f"<b>{nome}:</b> {len(rets)} desistência(s) recente(s) registada(s)")
+        elif isinstance(ij, dict):
+            rows.append(f"<b>{nome}:</b> sem desistências recentes registadas")
+    cards.append(_data_card("Desistências recentes", rows))
+
+    # Meteorologia
+    w = payload.get("weather")
+    if w and isinstance(w, dict):
+        parts = []
+        if w.get("temp_max_c") is not None:
+            parts.append(f"máx {w['temp_max_c']}°C")
+        if w.get("wind_kmh") is not None:
+            parts.append(f"vento {w['wind_kmh']} km/h")
+        if w.get("precipitation_mm") is not None:
+            parts.append(f"precipitação {w['precipitation_mm']} mm")
+        if parts:
+            cards.append(_data_card("Meteorologia (ao ar livre)", ["; ".join(parts)]))
+
+    # Mercado
+    odds = payload.get("market_odds_decimal") or {}
+    if isinstance(odds, dict) and odds:
+        rows = []
+        for nome in (payload.get("player_a"), payload.get("player_b")):
+            for k, v in odds.items():
+                if nome and (k.lower() == nome.lower() or (nome.split()[-1].lower() in k.lower())):
+                    rows.append(f"<b>{_esc(nome)}:</b> {v}")
+                    break
+        cards.append(_data_card("Mercado (odds)", rows))
+
+    if not cards:
+        return ""
+    cards = [c for c in cards if c]
+    return f'<section class="data-sections">{"".join(cards)}</section>'
+
+
 def _build_charts(payload: dict) -> str:
     """Constrói os gráficos SVG a partir dos dados do payload, quando
     disponíveis. Escolhe barras (comparação A-vs-B) ou medidores conforme
@@ -233,6 +366,48 @@ def _build_charts(payload: dict) -> str:
     if not charts:
         return ""
     return f'<section class="charts">{"".join(charts)}</section>'
+
+
+def _build_analysis_body(result: dict) -> str:
+    """
+    MEDIDA 6: renderiza a parte ANALÍTICA que o Claude devolve — em campos
+    estruturados (key_points, discrepancies, verdict), não um markdown
+    gigante. Dá destaque visual forte aos alertas 🔴 (topo e fundo), como
+    pedido: leitura objetiva e alertas bem visíveis.
+    """
+    out = []
+
+    # Pontos-chave
+    kps = result.get("key_points") or []
+    if kps:
+        items = "".join(f'<li>{_markdown_inline(_esc(k))}</li>' for k in kps)
+        out.append(f'<h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list">{items}</ul>')
+
+    # Discrepâncias (com selos) + legenda
+    discs = result.get("discrepancies") or []
+    if discs:
+        out.append('<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>')
+        out.append(
+            '<div class="selos-legenda">'
+            '<span><b class="w-dot red"></b> forte</span>'
+            '<span><b class="w-dot amber"></b> moderado</span>'
+            '<span><b class="w-dot white"></b> fraco / contextual</span>'
+            '<div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div>'
+            '</div>'
+        )
+        for d in discs:
+            weight = (d.get("weight") or "").lower() if isinstance(d, dict) else ""
+            text = d.get("text", "") if isinstance(d, dict) else str(d)
+            cls = {"forte": "disc-strong", "moderado": "disc-mid", "fraco": "disc-weak"}.get(weight, "disc-weak")
+            emoji = {"forte": "🔴", "moderado": "🟡", "fraco": "⚪"}.get(weight, "⚪")
+            out.append(f'<div class="disc-item {cls}"><span class="disc-emoji">{emoji}</span> {_markdown_inline(_esc(text))}</div>')
+
+    # Veredicto — caixa destacada
+    verdict = result.get("verdict")
+    if verdict:
+        out.append(f'<div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">{_markdown_inline(_esc(verdict))}</div></div>')
+
+    return "".join(out)
 
 
 def build_report_html(payload: dict, result: dict) -> str:
@@ -310,7 +485,29 @@ def build_report_html(payload: dict, result: dict) -> str:
     odd_b_txt = f"{odd_b}" if odd_b else "—"
 
     charts = _build_charts(payload)
-    body = _render_markdown_body(result.get("full_report_markdown", ""))
+    data_sections = _build_data_sections(payload)
+
+    # Alerta de topo: se houver discrepância(s) FORTE(s), destaca logo no
+    # cabeçalho (bem visível, como pedido). Conta as fortes.
+    strong = [d for d in (result.get("discrepancies") or [])
+              if isinstance(d, dict) and (d.get("weight") or "").lower() == "forte"]
+    top_alert = ""
+    if strong:
+        n = len(strong)
+        top_alert = (
+            f'<div class="top-alert">🔴 {n} sinal{"is" if n>1 else ""} forte{"s" if n>1 else ""} '
+            f'de discrepância — ver "Discrepâncias" abaixo</div>'
+        )
+
+    # MEDIDA 6: o Claude devolve só a análise (pontos-chave, discrepâncias,
+    # veredicto), em vez do relatório inteiro. Se vier o formato antigo
+    # (full_report_markdown), usamo-lo por retrocompatibilidade.
+    if result.get("full_report_markdown"):
+        analysis_body = _render_markdown_body(result["full_report_markdown"])
+    else:
+        analysis_body = _build_analysis_body(result)
+
+    body = charts + data_sections + analysis_body
 
     return f"""<!DOCTYPE html>
 <html lang="pt">
@@ -355,6 +552,32 @@ body {{
 .selos-nota {{ width:100%; font-style:italic; opacity:.8; margin-top:2px; }}
 .sb-vs {{ font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }}
 .sb-flag {{ display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }}
+
+/* Alerta de topo (discrepância forte) */
+.top-alert {{ margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }}
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }}
+@media (max-width:600px) {{ .data-sections {{ grid-template-columns:1fr; }} }}
+.d-card {{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }}
+.d-title {{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }}
+.d-row {{ font-size:14px; margin:3px 0; }}
+
+/* Pontos-chave */
+.kp-list {{ list-style:none; padding:0; margin:8px 0 20px; }}
+.kp-list li {{ padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }}
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item {{ padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }}
+.disc-emoji {{ flex-shrink:0; }}
+.disc-strong {{ border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }}
+.disc-mid {{ border-left:4px solid var(--amber); }}
+.disc-weak {{ border-left:4px solid var(--dim); opacity:.9; }}
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box {{ margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }}
+.verdict-label {{ font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }}
+.verdict-text {{ font-size:16px; line-height:1.5; }}
 
 /* Confiança da leitura */
 .confidence {{ margin-top:16px; max-width:420px; }}
@@ -414,10 +637,10 @@ strong {{ color:#fff; font-weight:700; }}
     </div>
     <div class="sb-flag">{flag} sinal</div>
     {conf_html}
+    {top_alert}
   </div>
 </header>
 <div class="wrap">
-  {charts}
   {body}
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
