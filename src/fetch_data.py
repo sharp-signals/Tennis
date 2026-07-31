@@ -302,6 +302,54 @@ def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
         return None
 
 
+def _load_tennisdata_couk_multi_year(tour: str, years_to_load: int) -> Optional[pd.DataFrame]:
+    """
+    Carrega vários anos do tennis-data.co.uk e junta-os. É a rede FIÁVEL
+    para o WTA quando o Sackmann está indisponível (30/07/2026): o
+    tennis-data.co.uk é estável e tem histórico de vários anos, ao
+    contrário do repositório do Sackmann que anda com 404 intermitente.
+    Grava também uma cópia local de cada ano em data/history_cache/ para
+    reduzir dependência de rede em execuções futuras.
+    """
+    current_year = datetime.now(timezone.utc).year
+    frames = []
+    cache_dir = os.path.join("data", "history_cache")
+    loaded_years = 0
+
+    for offset in range(years_to_load):
+        year = current_year - offset
+        local_path = os.path.join(cache_dir, f"{tour}_tdcouk_{year}.csv")
+        df_year = None
+
+        # 1) tentar online
+        df_year = _load_tennisdata_couk(tour, year)
+        if df_year is not None and not df_year.empty:
+            loaded_years += 1
+            # gravar cópia local (best-effort)
+            try:
+                os.makedirs(cache_dir, exist_ok=True)
+                df_year.to_csv(local_path, index=False)
+            except Exception:
+                pass
+        # 2) se online falhou, tentar cópia local
+        elif os.path.exists(local_path):
+            try:
+                df_year = pd.read_csv(local_path)
+                loaded_years += 1
+            except Exception:
+                df_year = None
+
+        if df_year is not None and not df_year.empty:
+            frames.append(df_year)
+
+    if not frames:
+        return None
+
+    combined = pd.concat(frames, ignore_index=True)
+    print(f"[info] tennis-data.co.uk {tour}: {loaded_years}/{years_to_load} anos, {len(combined)} jogos.")
+    return combined
+
+
 def _load_sackmann_multi_year(tour: str, years_to_load: int) -> Optional[pd.DataFrame]:
     """
     Carrega os últimos `years_to_load` anos de jogos do Sackmann e junta
@@ -371,8 +419,8 @@ def get_history(tour: str) -> pd.DataFrame:
         df = _load_sackmann(tour, year)
         source = "sackmann"
     if df is None or df.empty:
-        df = _load_tennisdata_couk(tour, year)
-        source = "tennisdata.co.uk"
+        df = _load_tennisdata_couk_multi_year(tour, HISTORY_YEARS_TO_LOAD)
+        source = "tennisdata.co.uk (multi-ano)"
     if df is None:
         print(f"[aviso] nenhuma fonte histórica disponível para {tour}.")
         df = pd.DataFrame()
