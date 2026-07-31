@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rafael Jodar vs Lorenzo Musetti</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-prob { font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }
+.selos-legenda { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }
+.w-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.w-dot.red { background:var(--red); }
+.w-dot.amber { background:var(--amber); }
+.w-dot.white { background:var(--dim); }
+.selos-nota { width:100%; font-style:italic; opacity:.8; margin-top:2px; }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">Citi Open - Washington · ATP 500 · Hard · 31/07/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Rafael Jodar<div class="sb-prob">63% s/ margem</div></div>
+      <div class="sb-odds">
+        <div class="sb-odd">1.5</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">2.6</div>
+      </div>
+      <div class="sb-name right">Lorenzo Musetti<div class="sb-prob">37% s/ margem</div></div>
+    </div>
+    <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e06c5b">0/100 · baixa</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:0%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Erro ao gerar a análise — sem base para avaliar.</div>
+    </div>
+  </div>
+</header>
+<div class="wrap">
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
+    <div class="cmp">
+      <div class="cmp-label">1º serviço ganho</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">68.3%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:34.1%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:33.9%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">67.8%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points salvos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">56.2%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:28.1%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:32.5%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">65.1%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Aces</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">4.7%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:2.4%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:1.8%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">3.6%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">42.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">44.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:22.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:21.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">42.0%</div>
+      </div>
+    </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 89.4 19.5" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">70%</text>
+      </svg>
+      <div class="gauge-label">Rafael Jodar (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div>
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 75.5 12.4" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">60%</text>
+      </svg>
+      <div class="gauge-label">Lorenzo Musetti (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (4/50 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">25.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:12.5%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:15.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">30.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (18/168 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">50.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:25.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:24.1%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">48.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (32/279 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">68.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:34.4%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:27.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">54.8%</div>
+      </div>
+    </div></div></section>
+  <p>Não foi possível gerar a análise completa devido a um erro de formato na resposta do modelo. Dados brutos recolhidos:</p>
+<p><code>`</code>json</p>
+<p>{</p>
+<p>  &quot;player_a&quot;: &quot;Rafael Jodar&quot;,</p>
+<p>  &quot;player_b&quot;: &quot;Lorenzo Musetti&quot;,</p>
+<p>  &quot;tournament&quot;: &quot;Citi Open - Washington&quot;,</p>
+<p>  &quot;tier&quot;: &quot;ATP 500&quot;,</p>
+<p>  &quot;surface&quot;: &quot;Hard&quot;,</p>
+<p>  &quot;commence_time_utc&quot;: &quot;2026-07-31T17:00:00+00:00&quot;,</p>
+<p>  &quot;market_odds_decimal&quot;: {</p>
+<p>    &quot;Lorenzo Musetti&quot;: 2.6,</p>
+<p>    &quot;Rafael Jodar&quot;: 1.5</p>
+<p>  },</p>
+<p>  &quot;h2h&quot;: null,</p>
+<p>  &quot;h2h_rich_stats&quot;: null,</p>
+<p>  &quot;recent_form_a&quot;: {</p>
+<p>    &quot;matches&quot;: 10,</p>
+<p>    &quot;wins&quot;: 7,</p>
+<p>    &quot;losses&quot;: 3</p>
+<p>  },</p>
+<p>  &quot;current_season_a&quot;: {</p>
+<p>    &quot;season&quot;: 2026,</p>
+<p>    &quot;matches&quot;: 37,</p>
+<p>    &quot;wins&quot;: 26,</p>
+<p>    &quot;losses&quot;: 11</p>
+<p>  },</p>
+<p>  &quot;current_season_b&quot;: {</p>
+<p>    &quot;season&quot;: 2026,</p>
+<p>    &quot;matches&quot;: 20,</p>
+<p>    &quot;wins&quot;: 13,</p>
+<p>    &quot;losses&quot;: 7</p>
+<p>  },</p>
+<p>  &quot;recent_form_b&quot;: {</p>
+<p>    &quot;matches&quot;: 10,</p>
+<p>    &quot;wins&quot;: 6,</p>
+<p>    &quot;losses&quot;: 4</p>
+<p>  },</p>
+<p>  &quot;surface_stats_a&quot;: {</p>
+<p>    &quot;Hard&quot;: {</p>
+<p>      &quot;matches&quot;: 14,</p>
+<p>      &quot;wins&quot;: 7,</p>
+<p>      &quot;losses&quot;: 7</p>
+<p>    },</p>
+<p>    &quot;Clay&quot;: {</p>
+<p>      &quot;matches&quot;: 23,</p>
+<p>      &quot;wins&quot;: 19,</p>
+<p>      &quot;losses&quot;: 4</p>
+<p>    },</p>
+<p>    &quot;Grass&quot;: {</p>
+<p>      &quot;matches&quot;: 3,</p>
+<p>      &quot;wins&quot;: 2,</p>
+<p>      &quot;losses&quot;: 1</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;surface_stats_b&quot;: {</p>
+<p>    &quot;Hard&quot;: {</p>
+<p>      &quot;matches&quot;: 175,</p>
+<p>      &quot;wins&quot;: 90,</p>
+<p>      &quot;losses&quot;: 85</p>
+<p>    },</p>
+<p>    &quot;Clay&quot;: {</p>
+<p>      &quot;matches&quot;: 129,</p>
+<p>      &quot;wins&quot;: 84,</p>
+<p>      &quot;losses&quot;: 45</p>
+<p>    },</p>
+<p>    &quot;Grass&quot;: {</p>
+<p>      &quot;matches&quot;: 29,</p>
+<p>      &quot;wins&quot;: 18,</p>
+<p>      &quot;losses&quot;: 11</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;fatigue_signal_a&quot;: {</p>
+<p>    &quot;days_since_last_match&quot;: 28,</p>
+<p>    &quot;matches_last_3d&quot;: 0,</p>
+<p>    &quot;matches_last_7d&quot;: 0,</p>
+<p>    &quot;matches_last_14d&quot;: 0,</p>
+<p>    &quot;minutes_played_last_7d&quot;: null,</p>
+<p>    &quot;sets_played_last_7d&quot;: null,</p>
+<p>    &quot;fatigue_data_maybe_stale&quot;: true</p>
+<p>  },</p>
+<p>  &quot;fatigue_signal_b&quot;: {</p>
+<p>    &quot;days_since_last_match&quot;: 80,</p>
+<p>    &quot;matches_last_3d&quot;: 0,</p>
+<p>    &quot;matches_last_7d&quot;: 0,</p>
+<p>    &quot;matches_last_14d&quot;: 0,</p>
+<p>    &quot;minutes_played_last_7d&quot;: null,</p>
+<p>    &quot;sets_played_last_7d&quot;: null,</p>
+<p>    &quot;fatigue_data_maybe_stale&quot;: true</p>
+<p>  },</p>
+<p>  &quot;injury_signal_a&quot;: {</p>
+<p>    &quot;matches_checked&quot;: 5,</p>
+<p>    &quot;recent_retirements&quot;: []</p>
+<p>  },</p>
+<p>  &quot;injury_signal_b&quot;: {</p>
+<p>    &quot;matches_checked&quot;: 5,</p>
+<p>    &quot;recent_retirements&quot;: []</p>
+<p>  },</p>
+<p>  &quot;serve_return_stats_a&quot;: {</p>
+<p>    &quot;matches_used&quot;: 10,</p>
+<p>    &quot;avg_ace_pct&quot;: 0.047,</p>
+<p>    &quot;avg_double_fault_pct&quot;: 0.028,</p>
+<p>    &quot;avg_first_serve_in_pct&quot;: 0.678,</p>
+<p>    &quot;avg_first_serve_won_pct&quot;: 0.683,</p>
+<p>    &quot;avg_break_points_saved_pct&quot;: 0.562</p>
+<p>  },</p>
+<p>  &quot;serve_return_stats_b&quot;: {</p>
+<p>    &quot;matches_used&quot;: 10,</p>
+<p>    &quot;avg_ace_pct&quot;: 0.036,</p>
+<p>    &quot;avg_double_fault_pct&quot;: 0.026,</p>
+<p>    &quot;avg_first_serve_in_pct&quot;: 0.675,</p>
+<p>    &quot;avg_first_serve_won_pct&quot;: 0.678,</p>
+<p>    &quot;avg_break_points_saved_pct&quot;: 0.651</p>
+<p>  },</p>
+<p>  &quot;rich_stats_a&quot;: {</p>
+<p>    &quot;response_stats&quot;: {</p>
+<p>      &quot;return_pts_won_pct&quot;: 42,</p>
+<p>      &quot;break_points_converted_pct&quot;: 44</p>
+<p>    },</p>
+<p>    &quot;vs_rank_level&quot;: {</p>
+<p>      &quot;top1&quot;: {</p>
+<p>        &quot;wins&quot;: 0,</p>
+<p>        &quot;losses&quot;: 1,</p>
+<p>        &quot;matches&quot;: 1,</p>
+<p>        &quot;win_pct&quot;: 0.0</p>
+<p>      },</p>
+<p>      &quot;top5&quot;: {</p>
+<p>        &quot;wins&quot;: 0,</p>
+<p>        &quot;losses&quot;: 2,</p>
+<p>        &quot;matches&quot;: 2,</p>
+<p>        &quot;win_pct&quot;: 0.0</p>
+<p>      },</p>
+<p>      &quot;top10&quot;: {</p>
+<p>        &quot;wins&quot;: 1,</p>
+<p>        &quot;losses&quot;: 3,</p>
+<p>        &quot;matches&quot;: 4,</p>
+<p>        &quot;win_pct&quot;: 25.0</p>
+<p>      },</p>
+<p>      &quot;top20&quot;: {</p>
+<p>        &quot;wins&quot;: 1,</p>
+<p>        &quot;losses&quot;: 5,</p>
+<p>        &quot;matches&quot;: 6,</p>
+<p>        &quot;win_pct&quot;: 16.7</p>
+<p>      },</p>
+<p>      &quot;top50&quot;: {</p>
+<p>        &quot;wins&quot;: 9,</p>
+<p>        &quot;losses&quot;: 9,</p>
+<p>        &quot;matches&quot;: 18,</p>
+<p>        &quot;win_pct&quot;: 50.0</p>
+<p>      },</p>
+<p>      &quot;top100&quot;: {</p>
+<p>        &quot;wins&quot;: 22,</p>
+<p>        &quot;losses&quot;: 10,</p>
+<p>        &quot;matches&quot;: 32,</p>
+<p>        &quot;win_pct&quot;: 68.8</p>
+<p>      }</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;rich_stats_b&quot;: {</p>
+<p>    &quot;response_stats&quot;: {</p>
+<p>      &quot;return_pts_won_pct&quot;: 39,</p>
+<p>      &quot;break_points_converted_pct&quot;: 42</p>
+<p>    },</p>
+<p>    &quot;vs_rank_level&quot;: {</p>
+<p>      &quot;top1&quot;: {</p>
+<p>        &quot;wins&quot;: 1,</p>
+<p>        &quot;losses&quot;: 7,</p>
+<p>        &quot;matches&quot;: 8,</p>
+<p>        &quot;win_pct&quot;: 12.5</p>
+<p>      },</p>
+<p>      &quot;top5&quot;: {</p>
+<p>        &quot;wins&quot;: 5,</p>
+<p>        &quot;losses&quot;: 27,</p>
+<p>        &quot;matches&quot;: 32,</p>
+<p>        &quot;win_pct&quot;: 15.6</p>
+<p>      },</p>
+<p>      &quot;top10&quot;: {</p>
+<p>        &quot;wins&quot;: 15,</p>
+<p>        &quot;losses&quot;: 35,</p>
+<p>        &quot;matches&quot;: 50,</p>
+<p>        &quot;win_pct&quot;: 30.0</p>
+<p>      },</p>
+<p>      &quot;top20&quot;: {</p>
+<p>        &quot;wins&quot;: 38,</p>
+<p>        &quot;losses&quot;: 55,</p>
+<p>        &quot;matches&quot;: 93,</p>
+<p>        &quot;win_pct&quot;: 40.9</p>
+<p>      },</p>
+<p>      &quot;top50&quot;: {</p>
+<p>        &quot;wins&quot;: 81,</p>
+<p>        &quot;losses&quot;: 87,</p>
+<p>        &quot;matches&quot;: 168,</p>
+<p>        &quot;win_pct&quot;: 48.2</p>
+<p>      },</p>
+<p>      &quot;top100&quot;: {</p>
+<p>        &quot;wins&quot;: 153,</p>
+<p>        &quot;losses&quot;: 126,</p>
+<p>        &quot;matches&quot;: 279,</p>
+<p>        &quot;win_pct&quot;: 54.8</p>
+<p>      }</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;ranking_a&quot;: {</p>
+<p>    &quot;rank&quot;: 24,</p>
+<p>    &quot;points&quot;: 1927,</p>
+<p>    &quot;as_of&quot;: &quot;oficial (ao vivo)&quot;</p>
+<p>  },</p>
+<p>  &quot;ranking_b&quot;: {</p>
+<p>    &quot;rank&quot;: 15,</p>
+<p>    &quot;points&quot;: 2315,</p>
+<p>    &quot;as_of&quot;: &quot;oficial (ao vivo)&quot;</p>
+<p>  },</p>
+<p>  &quot;set1_comeback_stats_a&quot;: {</p>
+<p>    &quot;bo3&quot;: {</p>
+<p>      &quot;matches_lost_set1&quot;: 8,</p>
+<p>      &quot;matches_lost_set1_won_overall&quot;: 1,</p>
+<p>      &quot;comeback_rate_pct&quot;: 12.5</p>
+<p>    },</p>
+<p>    &quot;bo5&quot;: {</p>
+<p>      &quot;matches_lost_set1&quot;: 6,</p>
+<p>      &quot;matches_lost_set1_won_overall&quot;: 3,</p>
+<p>      &quot;comeback_rate_pct&quot;: 50.0</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;set1_comeback_stats_b&quot;: {</p>
+<p>    &quot;bo3&quot;: {</p>
+<p>      &quot;matches_lost_set1&quot;: 128,</p>
+<p>      &quot;matches_lost_set1_won_overall&quot;: 30,</p>
+<p>      &quot;comeback_rate_pct&quot;: 23.4</p>
+<p>    },</p>
+<p>    &quot;bo5&quot;: {</p>
+<p>      &quot;matches_lost_set1&quot;: 29,</p>
+<p>      &quot;matches_lost_set1_won_overall&quot;: 12,</p>
+<p>      &quot;comeback_rate_pct&quot;: 41.4</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;handedness_matchup_a&quot;: {</p>
+<p>    &quot;vs_left_handed&quot;: {</p>
+<p>      &quot;matches&quot;: 8,</p>
+<p>      &quot;wins&quot;: 5,</p>
+<p>      &quot;losses&quot;: 3</p>
+<p>    },</p>
+<p>    &quot;vs_right_handed&quot;: {</p>
+<p>      &quot;matches&quot;: 32,</p>
+<p>      &quot;wins&quot;: 23,</p>
+<p>      &quot;losses&quot;: 9</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;handedness_matchup_b&quot;: {</p>
+<p>    &quot;vs_left_handed&quot;: {</p>
+<p>      &quot;matches&quot;: 37,</p>
+<p>      &quot;wins&quot;: 20,</p>
+<p>      &quot;losses&quot;: 17</p>
+<p>    },</p>
+<p>    &quot;vs_right_handed&quot;: {</p>
+<p>      &quot;matches&quot;: 296,</p>
+<p>      &quot;wins&quot;: 172,</p>
+<p>      &quot;losses&quot;: 124</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;layoff_return_stats_a&quot;: null,</p>
+<p>  &quot;layoff_return_stats_b&quot;: {</p>
+<p>    &quot;threshold_days&quot;: 60,</p>
+<p>    &quot;matches_after_layoff&quot;: 2,</p>
+<p>    &quot;wins_after_layoff&quot;: 1,</p>
+<p>    &quot;win_rate_pct&quot;: 50.0</p>
+<p>  },</p>
+<p>  &quot;deciding_set_stats_a&quot;: {</p>
+<p>    &quot;bo3&quot;: {</p>
+<p>      &quot;matches_went_the_distance&quot;: 8,</p>
+<p>      &quot;wins&quot;: 5,</p>
+<p>      &quot;win_rate_pct&quot;: 62.5</p>
+<p>    },</p>
+<p>    &quot;bo5&quot;: {</p>
+<p>      &quot;matches_went_the_distance&quot;: 5,</p>
+<p>      &quot;wins&quot;: 5,</p>
+<p>      &quot;win_rate_pct&quot;: 100.0</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;deciding_set_stats_b&quot;: {</p>
+<p>    &quot;bo3&quot;: {</p>
+<p>      &quot;matches_went_the_distance&quot;: 89,</p>
+<p>      &quot;wins&quot;: 56,</p>
+<p>      &quot;win_rate_pct&quot;: 62.9</p>
+<p>    },</p>
+<p>    &quot;bo5&quot;: {</p>
+<p>      &quot;matches_went_the_distance&quot;: 12,</p>
+<p>      &quot;wins&quot;: 6,</p>
+<p>      &quot;win_rate_pct&quot;: 50.0</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;round_stage_stats_a&quot;: {</p>
+<p>    &quot;early_rounds&quot;: {</p>
+<p>      &quot;matches&quot;: 29,</p>
+<p>      &quot;wins&quot;: 22,</p>
+<p>      &quot;losses&quot;: 7</p>
+<p>    },</p>
+<p>    &quot;late_rounds&quot;: {</p>
+<p>      &quot;matches&quot;: 8,</p>
+<p>      &quot;wins&quot;: 4,</p>
+<p>      &quot;losses&quot;: 4</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;round_stage_stats_b&quot;: {</p>
+<p>    &quot;early_rounds&quot;: {</p>
+<p>      &quot;matches&quot;: 233,</p>
+<p>      &quot;wins&quot;: 146,</p>
+<p>      &quot;losses&quot;: 87</p>
+<p>    },</p>
+<p>    &quot;late_rounds&quot;: {</p>
+<p>      &quot;matches&quot;: 80,</p>
+<p>      &quot;wins&quot;: 37,</p>
+<p>      &quot;losses&quot;: 43</p>
+<p>    }</p>
+<p>  },</p>
+<p>  &quot;weather&quot;: {</p>
+<p>    &quot;temp_max_c&quot;: 32.4,</p>
+<p>    &quot;temp_min_c&quot;: 19.7,</p>
+<p>    &quot;precipitation_mm&quot;: 0.0,</p>
+<p>    &quot;wind_max_kmh&quot;: 11.8</p>
+<p>  }</p>
+<p>}</p>
+<p><code>`</code></p>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>
