@@ -10,6 +10,62 @@ em silêncio — isso evita que o modelo assuma e "invente" com naturalidade.
 from __future__ import annotations
 
 import json
+import re
+
+
+def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
+    """
+    Recuperação parcial de uma resposta JSON cortada/inválida. Extrai os
+    campos que vieram completos antes do corte, por regex tolerante. Só
+    devolve algo se conseguir pelo menos flag+summary ou key_points úteis;
+    caso contrário None (cai no fallback total). Nunca inventa conteúdo —
+    só recupera o que o modelo escreveu.
+    """
+    if not raw_text or not raw_text.strip():
+        return None
+
+    def _find_str(field):
+        m = re.search(rf'"{field}"\s*:\s*"((?:[^"\\]|\\.)*)"', raw_text)
+        return m.group(1).replace('\\"', '"').replace('\\n', ' ') if m else None
+
+    def _find_int(field):
+        m = re.search(rf'"{field}"\s*:\s*(\d+)', raw_text)
+        return int(m.group(1)) if m else None
+
+    def _find_str_list(field):
+        # captura o array [...] do campo e extrai as strings de topo
+        m = re.search(rf'"{field}"\s*:\s*\[(.*?)(?:\]|$)', raw_text, re.DOTALL)
+        if not m:
+            return []
+        return [s.replace('\\"', '"').replace('\\n', ' ')
+                for s in re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))]
+
+    flag = _find_str("flag")
+    summary = _find_str("summary_line")
+    key_points = _find_str_list("key_points")
+    verdict = _find_str("verdict")
+    conf = _find_int("confidence_score")
+
+    # discrepâncias: extrair objetos {weight, text} que estejam completos
+    discrepancies = []
+    disc_block = re.search(r'"discrepancies"\s*:\s*\[(.*?)(?:\]|$)', raw_text, re.DOTALL)
+    if disc_block:
+        for obj in re.finditer(r'\{\s*"weight"\s*:\s*"([^"]*)"\s*,\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}', disc_block.group(1)):
+            discrepancies.append({"weight": obj.group(1), "text": obj.group(2).replace('\\"', '"')})
+
+    # só vale a pena se recuperámos conteúdo analítico real
+    if not (key_points or discrepancies or verdict):
+        return None
+
+    return {
+        "flag": flag or FLAG_UNCERTAIN,
+        "confidence_score": conf if conf is not None else 40,
+        "confidence_reason": "Análise recuperada parcialmente (resposta cortada).",
+        "summary_line": summary or f"{match_data.get('player_a','?')} vs {match_data.get('player_b','?')}",
+        "key_points": key_points or ["Análise parcialmente recuperada — alguns pontos podem faltar."],
+        "discrepancies": discrepancies,
+        "verdict": verdict or "Veredicto não disponível (resposta cortada) — consultar pontos-chave e dados.",
+    }
 import hashlib
 import os
 
@@ -28,7 +84,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-31-dados-ricos"
+PROMPT_VERSION = "2026-07-31-dados-ricos-b"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -209,7 +265,7 @@ def analyze_match(match_data: dict) -> dict:
         # inválido. 5000 dá folga; mais vale pagar o output completo do que
         # gerar relatórios truncados que falham. As outras poupanças (cache
         # do prompt, cache por hash) mantêm-se.
-        max_tokens=4000,
+        max_tokens=5000,
         # Cache do prompt de sistema (medida de poupança, 30/07): o
         # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
         # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
@@ -285,10 +341,16 @@ def analyze_match(match_data: dict) -> dict:
         except Exception as repair_exc:
             print(f"[aviso] reparação de JSON também falhou: {repair_exc}")
 
-        # Fallback defensivo: nunca deixar o pipeline abaixo sem estrutura,
-        # mas sinalizamos claramente que houve um problema de formato —
-        # não inventamos uma análise. Inclui o motivo exato no log (não na
-        # mensagem enviada) para facilitar diagnóstico.
+        # Recuperação PARCIAL: mesmo com JSON partido (resposta cortada),
+        # tentar extrair os campos que vieram completos antes do corte.
+        # Assim, se key_points/discrepancies vieram inteiros mas o verdict
+        # cortou, aproveitamos o que há em vez de perder tudo.
+        partial = _extract_partial_fields(raw_text, match_data)
+        if partial:
+            print("[info] recuperação parcial: aproveitados campos que vieram completos antes do corte.")
+            return _save_and_return(partial)
+
+        # Fallback defensivo total: só quando nem sequer há campos parciais.
         print(f"[aviso] resposta bruta (primeiros 500 chars): {raw_text[:500]}")
         return {
             "flag": FLAG_UNCERTAIN,
