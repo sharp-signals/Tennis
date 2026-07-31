@@ -210,22 +210,54 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
     if not career and not perf:
         return None
 
-    # extrair só o essencial das career stats (métricas de resposta)
-    resp = {}
+    # extrair os dados ricos das career stats (getH2HVsAllOppStats).
+    # Nomes de campo confirmados contra a resposta real da API (31/07).
     stats = (career or {}).get("playerStats") or (career or {}).get("player1Stats") or (career or {})
+    scenarios = {}      # cenários de jogo (1º set, decisivo, tiebreaks, Bo3/Bo5)
+    response = {}       # métricas de resposta
+    style = {}          # estilo de jogo (aces, winners, erros, rede, duração)
     if isinstance(stats, dict):
-        for src_key, dst_key in (
+        # cenários (percentagens já calculadas pela API)
+        for src, dst in (
+            ("firstSetWinMatchWinPercentage", "first_set_win_then_win_pct"),
+            ("firstSetLoseMatchWinPercentage", "first_set_lose_then_win_pct"),
+            ("decidingSetWinPercentage", "deciding_set_win_pct"),
+            ("totalTBWinPercentage", "tiebreak_win_pct"),
+            ("bestOfThreeWonPercentage", "bo3_win_pct"),
+            ("bestOfFiveWonPercentage", "bo5_win_pct"),
+        ):
+            if stats.get(src) is not None:
+                scenarios[dst] = stats[src]
+        # amostras (para o Claude saber a fiabilidade)
+        scenarios["first_set_win_count"] = stats.get("firstSetWinCount")
+        scenarios["first_set_lose_count"] = stats.get("firstSetLoseCount")
+        scenarios["deciding_set_count"] = stats.get("decidingSetCount")
+        scenarios["tiebreak_count"] = stats.get("tiebreakCount")
+
+        # resposta
+        for src, dst in (
             ("returnPtsWinPercentage", "return_pts_won_pct"),
             ("breakpointsWonPercentage", "break_points_converted_pct"),
-            ("firstServeReturnPtsWonPercentage", "return_1st_won_pct"),
-            ("secondServeReturnPtsWonPercentage", "return_2nd_won_pct"),
         ):
-            if stats.get(src_key) is not None:
-                resp[dst_key] = stats[src_key]
+            if stats.get(src) is not None:
+                response[dst] = stats[src]
+
+        # estilo de jogo
+        style["aces"] = stats.get("aces")
+        style["double_faults"] = stats.get("doubleFaults")
+        style["winners"] = stats.get("winners")
+        style["unforced_errors"] = stats.get("unforcedErrors")
+        style["avg_time"] = stats.get("avgTime")
+        na, nao = stats.get("netApproaches"), stats.get("netApproachesOf")
+        if na is not None and nao:
+            style["net_success_pct"] = round(100 * na / nao)
+        style["matches_played"] = stats.get("statMatchesPlayed")
 
     rich = {
-        "response_stats": resp or None,
+        "response_stats": response or None,
         "vs_rank_level": (perf or {}).get("vs_rank_level"),
+        "scenarios": {k: v for k, v in scenarios.items() if v is not None} or None,
+        "style": {k: v for k, v in style.items() if v is not None} or None,
     }
 
     # gravar para reutilização (best-effort)
