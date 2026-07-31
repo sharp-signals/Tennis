@@ -28,7 +28,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-31-medida6b"
+PROMPT_VERSION = "2026-07-31-dados-ricos"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -85,15 +85,26 @@ CAMPOS E COMO USÁ-LOS:
 - `fatigue_signal_*`: `days_since_last_match`, `matches_last_3/7/14d`,
   `minutes/sets_played_last_7d`. Usa o conjunto. Métricas usam a data de
   INÍCIO do torneio (não a exata) — trata como aproximação.
-- `rich_stats_*` (pode ser null): dados ricos da matchstat. `response_stats`
-  = métricas de RESPOSTA de carreira (pontos de resposta ganhos, break
-  points convertidos) — usa-as na secção Serviço/Resposta para
-  complementar o serviço. `vs_rank_level` = desempenho SEPARADO por nível
-  de ranking do adversário (top5/10/50/100), com vitórias e %. Isto é
-  importante para o ponto da QUALIDADE DO ADVERSÁRIO: um jogador pode ter
-  boa taxa geral mas fraca contra o top-10 (ex: 66% vs top-100 mas 20% vs
-  top-5 = enche estatísticas com adversários fracos). Usa isto para
-  qualificar as taxas de vitória e nas discrepâncias quando relevante.
+- `rich_stats_*` (pode ser null): dados ricos da matchstat (carreira).
+  * `response_stats`: resposta (pontos de resposta ganhos %, break points
+    convertidos %).
+  * `vs_rank_level`: desempenho por nível de ranking do adversário
+    (top5/10/50/100). CHAVE para a qualidade do adversário: boa taxa geral
+    mas fraca vs top-10 = enche stats com adversários fracos.
+  * `scenarios`: cenários de jogo em % de carreira — `first_set_win_then_win_pct`
+    (ganha 1º set→fecha o jogo), `first_set_lose_then_win_pct` (recupera de
+    1º set perdido), `deciding_set_win_pct`, `tiebreak_win_pct` (+ contagens
+    `_count` para a amostra). OURO para mercados: ex. quem fecha 88% após
+    ganhar 1º set → observar "vence 2-0"/handicap se ganhar 1º set ao vivo;
+    quem recupera pouco (baixo `first_set_lose_then_win_pct`) → se perde 1º
+    set, o jogo pode estar mais fechado do que a odd ao vivo sugere.
+  * `style`: `net_success_pct` (sucesso na rede), `avg_time` (duração média),
+    `winners`/`unforced_errors` (agressividade), `aces`/`double_faults`.
+    Usa para caracterizar ESTILO (agressivo vs consistente) e ligar a
+    mercados (ex. jogo longo/curto, total de games).
+  Usa TODOS estes nos pontos-chave e discrepâncias quando forem relevantes
+  e tiverem amostra suficiente (aplica o Princípio 1 — amostra pequena não
+  sustenta leitura).
 
 AVISO FADIGA DESATUALIZADA: se `fatigue_data_maybe_stale: true` (último
 jogo conhecido há +20 dias), o histórico provavelmente NÃO tem os jogos
