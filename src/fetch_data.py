@@ -67,6 +67,31 @@ _RAPIDAPI_HEADERS = {
     "X-RapidAPI-Host": RAPIDAPI_HOST,
 }
 
+# Contador de chamadas à RapidAPI por execução (medição de consumo, 30/07).
+# Serve para registar quantos pedidos um torneio/dia realmente gasta, e
+# assim decidir com dados reais se o plano gratuito (50/dia) chega ou se
+# vale a pena um plano pago. Só conta chamadas à RapidAPI (não TennisMyLife,
+# tennis-data.co.uk, geocoding, etc.).
+_RAPIDAPI_CALL_COUNT = {"n": 0}
+
+
+def _rapidapi_get(url, **kwargs):
+    """Wrapper único para TODAS as chamadas GET à RapidAPI: conta a chamada
+    e delega em requests.get com os headers da RapidAPI. Centralizar aqui
+    garante que a contagem nunca falha uma chamada. Aceita **kwargs
+    (params, etc.) tal como requests.get."""
+    _RAPIDAPI_CALL_COUNT["n"] += 1
+    return requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
+
+
+def get_rapidapi_call_count() -> int:
+    """Nº de chamadas à RapidAPI feitas nesta execução."""
+    return _RAPIDAPI_CALL_COUNT["n"]
+
+
+def reset_rapidapi_call_count() -> None:
+    _RAPIDAPI_CALL_COUNT["n"] = 0
+
 # Alguns servidores (raw.githubusercontent.com incluído, aparentemente)
 # bloqueiam/disfarçam como 404 pedidos com o User-Agent genérico da lib
 # requests. Um UA de browser normal resolve isto sem custo nenhum.
@@ -1103,7 +1128,7 @@ def fetch_h2h_matches(tour: str, player1_id: int, player2_id: int) -> Optional[l
 
     url = f"{RAPIDAPI_BASE}/{tour}/h2h/matches/{player1_id}/{player2_id}/"
     try:
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp = _rapidapi_get(url)
         resp.raise_for_status()
         data = resp.json().get("data", [])
         _H2H_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
@@ -1131,7 +1156,7 @@ def fetch_h2h_stats(tour: str, player1_id: int, player2_id: int) -> Optional[dic
 
     url = f"{RAPIDAPI_BASE}/{tour}/h2h/stats/{player1_id}/{player2_id}/"
     try:
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp = _rapidapi_get(url)
         resp.raise_for_status()
         data = resp.json().get("data")
         _H2H_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
@@ -1169,7 +1194,7 @@ def fetch_official_ranking(tour: str) -> Optional[dict]:
 
     url = f"{RAPIDAPI_BASE}/{tour}/ranking/singles/"
     try:
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp = _rapidapi_get(url)
         resp.raise_for_status()
         rows = resp.json().get("data", [])
         ranking_map: dict = {}
@@ -1216,7 +1241,7 @@ def fetch_player_career_stats(tour: str, player_id: int) -> Optional[dict]:
 
     url = f"{RAPIDAPI_BASE}/{tour}/h2h/vs-all-stats/{player_id}/"
     try:
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp = _rapidapi_get(url)
         resp.raise_for_status()
         data = resp.json().get("data")
         _CAREER_STATS_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
@@ -1250,7 +1275,7 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
 
     url = f"{RAPIDAPI_BASE}/{tour}/player/perf-breakdown/{player_id}"
     try:
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp = _rapidapi_get(url)
         resp.raise_for_status()
         raw = resp.json().get("data", {})
 
@@ -1482,7 +1507,7 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
         page = 1
         while True:
             params = {"page": page} if page > 1 else None
-            resp = requests.get(url, headers=_RAPIDAPI_HEADERS, params=params, timeout=REQUEST_TIMEOUT)
+            resp = _rapidapi_get(url, params=params)
             resp.raise_for_status()
             pages_fetched += 1
             payload = resp.json()
@@ -1558,7 +1583,7 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
                 "pageNo": page,
                 "filter": "PlayerGroup:both;",
             }
-            resp = requests.get(url, headers=_RAPIDAPI_HEADERS, params=params, timeout=REQUEST_TIMEOUT)
+            resp = _rapidapi_get(url, params=params)
             resp.raise_for_status()
             payload = resp.json()
             page_data = payload.get("data", [])
@@ -1653,7 +1678,7 @@ def get_tournament_info(tournament_id: int, tour: str) -> Optional[dict]:
 
     url = f"{RAPIDAPI_BASE}/{tour}/tournament/info/{tournament_id}"
     try:
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp = _rapidapi_get(url)
         resp.raise_for_status()
         data = resp.json().get("data", {})
         info = {
