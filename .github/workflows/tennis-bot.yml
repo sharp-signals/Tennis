@@ -40,7 +40,7 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/ site/ 2>/dev/null || true
+          git add data/ docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar caches e relatórios [skip ci]"
             git push
@@ -48,15 +48,6 @@ jobs:
             echo "Sem alterações a gravar."
           fi
 
-      - name: Publicar no Netlify (build hook)
-        if: success()
-        run: |
-          if [ -n "${{ secrets.NETLIFY_BUILD_HOOK }}" ]; then
-            curl -s -X POST -d '{}' "${{ secrets.NETLIFY_BUILD_HOOK }}" > /dev/null
-            echo "Netlify build hook acionado."
-          else
-            echo "NETLIFY_BUILD_HOOK não configurado — o Netlify publicará pelo webhook normal (se ativo)."
-          fi
 
       - name: Alertar no Telegram se alguma coisa falhou
         if: failure()
