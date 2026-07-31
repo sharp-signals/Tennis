@@ -42,6 +42,32 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
 /* Confiança da leitura */
 .confidence { margin-top:16px; max-width:420px; }
 .conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
@@ -94,7 +120,7 @@ strong { color:#fff; font-weight:700; }
       <div class="sb-odds">
         <div class="sb-odd">1.38</div>
         <div class="sb-vs">VS</div>
-        <div class="sb-odd">3.34</div>
+        <div class="sb-odd">3.36</div>
       </div>
       <div class="sb-name right">Anna Kalinskaya<div class="sb-prob">29% s/ margem</div></div>
     </div>
@@ -103,64 +129,16 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#e06c5b">32/100 · baixa</span>
+        <span class="conf-num" style="color:#e0a34a">45/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:32%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Quase todos os campos de contexto (forma, piso, fadiga, lesões, serviço/resposta gerais) estão em falta; só há H2H de amostra pequena e ranking oficial a sustentar a leitura.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:45%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Ranking e H2H apontam ambos para Pegula, mas o H2H tem apenas 5 jogos e faltam dados essenciais de forma, época atual, piso e fadiga.</div>
     </div>
+    
   </div>
 </header>
 <div class="wrap">
-  
-  <h2 class="sec-main">🔑 Pontos-chave</h2>
-<div class="items">
-<div class="item">Ranking: Pegula <strong>#3</strong> vs Kalinskaya <strong>#20</strong> — diferença grande, alinhada com as odds.</div>
-<div class="item">H2H direto: Pegula lidera <strong>4-1</strong> em <strong>5 jogos</strong> — domínio claro mas amostra pequena, não robusta.</div>
-<div class="item">Set decisivo (dentro do H2H): Pegula <strong>80%</strong> (4/5) vs Kalinskaya <strong>20%</strong> (1/5) — mesma amostra reduzida.</div>
-<div class="item">Forma recente, época atual, piso, fadiga, lesões e serviço/resposta gerais: todos em falta (null) — grande lacuna de dados.</div>
-<div class="item">Meteorologia sem impacto esperado: calor moderado (<strong>32.2°C</strong>), sem chuva, vento fraco (<strong>11.2 km/h</strong>).</div>
-</div>
-<h3 class="sec">H2H</h3>
-<div class="items">
-<div class="item"><code>h2h</code> overall/on_surface não disponível — lacuna, não equilíbrio.</div>
-<div class="item"><code>h2h_rich_stats</code>: Pegula venceu <strong>4 de 5</strong> confrontos diretos, incluindo domínio no set decisivo (<strong>80% vs 20%</strong>) — sinal consistente mas amostra pequena, tratar como indicativo, não conclusivo.</div>
-</div>
-<h3 class="sec">Forma</h3>
-<div class="items">
-<div class="item"><code>recent_form_a/b</code> e <code>current_season_a/b</code> não disponíveis — não é possível avaliar momento atual de nenhuma jogadora.</div>
-</div>
-<h3 class="sec">Piso</h3>
-<div class="items">
-<div class="item"><code>surface_stats_a/b</code> não disponíveis. Dentro do H2H (5 jogos), Pegula jogou 3 em Hard e Kalinskaya 0 em Hard (1 em Clay) — dado contextual limitado, não perfil de piso real.</div>
-</div>
-<h3 class="sec">Serviço/Resposta</h3>
-<div class="items">
-<div class="item">No confronto direto (5 jogos): Pegula ganha <strong>74%</strong> dos pontos ao 1º serviço vs <strong>65%</strong> de Kalinskaya; retorno <strong>41%</strong> vs <strong>38%</strong> — ligeira vantagem Pegula em ambas as frentes, mas amostra pequena.</div>
-</div>
-<h3 class="sec">Fadiga</h3>
-<div class="items">
-<div class="item"><code>fatigue_signal_a/b</code> não disponíveis — sem informação sobre dias de descanso ou carga recente.</div>
-</div>
-<h3 class="sec">Desistências recentes</h3>
-<div class="items">
-<div class="item"><code>injury_signal_a/b</code> não disponíveis — não há registo de desistências/walkovers recentes para nenhuma das duas.</div>
-</div>
-<h3 class="sec">Meteorologia</h3>
-<div class="items">
-<div class="item">Jogo ao ar livre, condições estáveis: sem chuva, calor moderado a alto, vento fraco — não deve influenciar o resultado.</div>
-</div>
-<h3 class="sec">Mercado</h3>
-<div class="items">
-<div class="item">Odds fortemente a favor de Pegula (<strong>1.38</strong> vs <strong>3.34</strong>), coerente com a diferença de ranking e o histórico direto.</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<div class="selos-legenda"><span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div>
-<div class="items">
-<div class="item w-white">Pegula domina o set decisivo do H2H <strong>80%</strong> (4/5 jogos) — amostra pequena, apenas contexto, não sustenta mercado extra.</div>
-<div class="item">Sem discrepâncias assinaláveis — mercado alinhado com os dados disponíveis (ranking e H2H direto convergem com as odds).</div>
-</div>
-<h3 class="sec">✅ Veredicto</h3>
-<p>Mercado alinhado — favoritismo de Pegula justificado pelo ranking e histórico direto, mas a leitura é frágil por falta de dados de forma, piso e fadiga.</p>
+  <section class="data-sections"><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Jessica Pegula #{'rank': 3, 'points': 630000, 'as_of': 'oficial (ao vivo)'} · Anna Kalinskaya #{'rank': 20, 'points': 200700, 'as_of': 'oficial (ao vivo)'}</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Jessica Pegula:</b> sem desistências recentes registadas</div><div class="d-row"><b>Anna Kalinskaya:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.2°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Mercado (odds)</div><div class="d-row"><b>Jessica Pegula:</b> 1.38</div><div class="d-row"><b>Anna Kalinskaya:</b> 3.36</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Ranking: Pegula <strong>#3</strong> vs Kalinskaya <strong>#20</strong> — diferença substancial que justifica o favoritismo de mercado.</li><li>H2H: Pegula lidera <strong>4-1</strong> em 5 confrontos (amostra pequena, sinal indicativo mas não conclusivo).</li><li>Set decisivo no H2H: Pegula <strong>80%</strong> (4/5) vs Kalinskaya <strong>20%</strong> (1/5) — mesma amostra reduzida de 5 jogos.</li><li>Lacuna grande: forma recente, época atual, stats de piso, fadiga e lesão estão todos ausentes para ambas as jogadoras.</li><li>Odds (1.38 vs 3.36) refletem o mesmo sentido do ranking e do H2H, sem sinal de divergência aparente.</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado alinhado com ranking e H2H disponível (amostra pequena) — favoritismo de Pegula parece justificado, mas a ausência de dados de forma/fadiga limita a confiança total na leitura.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

@@ -42,6 +42,32 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
 /* Confiança da leitura */
 .confidence { margin-top:16px; max-width:420px; }
 .conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
@@ -98,16 +124,17 @@ strong { color:#fff; font-weight:700; }
       </div>
       <div class="sb-name right">Ben Shelton<div class="sb-prob">71% s/ margem</div></div>
     </div>
-    <div class="sb-flag">🟢 sinal</div>
+    <div class="sb-flag">🟡 sinal</div>
     
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#4ecdc4">68/100 · alta</span>
+        <span class="conf-num" style="color:#e06c5b">0/100 · baixa</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:68%;background:#4ecdc4"></div></div>
-      <div class="conf-reason">Sinais convergem sem contradição (forma, piso, serviço, desempenho vs top ranks), mas H2H está ausente e parte da convergência é informação correlacionada.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:0%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Erro ao gerar a análise — sem base para avaliar.</div>
     </div>
+    
   </div>
 </header>
 <div class="wrap">
@@ -215,60 +242,7 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">57.5%</div>
       </div>
-    </div></div></section>
-  <h2 class="sec-main">🔑 Pontos-chave</h2>
-<div class="items">
-<div class="item">Shelton (rank <strong>8</strong>) supera Tabilo (rank <strong>30</strong>) em forma, piso Hard, serviço e desempenho vs adversários fortes.</div>
-<div class="item">Tabilo em queda de forma: <strong>40%</strong> recente (10 jogos) vs <strong>54%</strong> na época (39 jogos); Shelton estável (<strong>70%</strong> vs <strong>69%</strong>).</div>
-<div class="item">Tabilo historicamente fraco vs top10 (<strong>21.4%</strong>, 14 jogos) e top20 (<strong>17.1%</strong>, 35 jogos) — padrão relevante frente a um rank 8.</div>
-<div class="item">H2H indisponível — lacuna, não sinal de equilíbrio.</div>
-<div class="item">Fadiga de Shelton (32 dias, dado possivelmente desatualizado) não deve ser lida como falta de ritmo.</div>
-</div>
-<h3 class="sec">H2H</h3>
-<div class="items">
-<div class="item">Sem dados de confrontos diretos (geral e por piso ambos <code>null</code>) — lacuna real, não equilíbrio, não permite qualquer leitura de padrão entre os dois.</div>
-</div>
-<h3 class="sec">Forma</h3>
-<div class="items">
-<div class="item">Tabilo <strong>4-6</strong> em 10 jogos (40%), abaixo da sua média de época 2026 (<strong>21-18</strong>, 54%) — sinal de queda recente.</div>
-<div class="item">Shelton <strong>7-3</strong> (70%), consistente com a época (<strong>25-11</strong>, 69%) — sem sinal de oscilação.</div>
-<div class="item">Nota: forma, ranking e época atual são sinais correlacionados aqui, não provas independentes — apontam todos na mesma direção (Shelton mais forte no presente).</div>
-</div>
-<h3 class="sec">Piso</h3>
-<div class="items">
-<div class="item">Hard: Tabilo <strong>45.8%</strong> (38/83), Shelton <strong>63.3%</strong> (93/147) — Shelton é claramente mais forte e mais especializado neste piso.</div>
-<div class="item">Taxas não ajustadas à qualidade dos adversários, mas a diferença é ampla e consistente com os outros indicadores.</div>
-</div>
-<h3 class="sec">Serviço/Resposta</h3>
-<div class="items">
-<div class="item">Shelton superior em quase tudo: aces <strong>12.1%</strong> vs <strong>6.7%</strong>, 1º serviço ganho <strong>77.8%</strong> vs <strong>72%</strong>, BP salvos <strong>71.6%</strong> vs <strong>55.4%</strong>.</div>
-<div class="item">Na resposta de carreira Tabilo é ligeiramente melhor (<strong>39%</strong> pts resposta, <strong>43%</strong> BP convertidos) vs Shelton (<strong>34%</strong>, <strong>39%</strong>), mas não compensa o défice de serviço.</div>
-</div>
-<h3 class="sec">Fadiga</h3>
-<div class="items">
-<div class="item">Tabilo: <strong>10</strong> dias sem jogar, 0 jogos em 7d, 1 em 14d — descansado mas sem ritmo recente confirmado.</div>
-<div class="item">Shelton: <strong>32</strong> dias, <code>fatigue_data_maybe_stale=true</code> — histórico pode não refletir jogos recentes do torneio; não usar contra ele.</div>
-</div>
-<h3 class="sec">Desistências recentes</h3>
-<div class="items">
-<div class="item">Nenhuma para Tabilo (0/5 jogos verificados) nem para Shelton (0/5) — sem sinal de problema físico recente.</div>
-</div>
-<h3 class="sec">Meteorologia</h3>
-<div class="items">
-<div class="item">Hard, ar livre: máx <strong>32.9°C</strong>, sem chuva, vento moderado (<strong>19.7 km/h</strong>) — condições normais de verão, sem dado que favoreça especificamente um dos dois.</div>
-</div>
-<h3 class="sec">Mercado</h3>
-<div class="items">
-<div class="item">Shelton <strong>1.33</strong> (~75% implícito) vs Tabilo <strong>3.3</strong> (~30%) — alinhado com forma, piso e histórico vs ranks altos.</div>
-<div class="item">vs_rank_level reforça: Shelton <strong>27.3%</strong> vs top10 (33 jogos) e <strong>38.5%</strong> vs top20 (52 jogos), bem acima de Tabilo (<strong>21.4%</strong>/<strong>17.1%</strong>) — Tabilo lida pior com adversários deste calibre.</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<div class="selos-legenda"><span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div>
-<div class="items">
-<div class="item">Sem discrepâncias assinaláveis — mercado alinhado com os dados.</div>
-</div>
-<h3 class="sec">✅ Veredicto</h3>
-<p>Mercado alinhado — favoritismo de Shelton bem sustentado por forma, piso, serviço e histórico vs adversários fortes; sem sinal de valor em Tabilo.</p>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Alejandro Tabilo 4-6 · Ben Shelton 7-3</div><div class="d-row"><b>Época atual:</b> Alejandro Tabilo 21-18 (54%) · Ben Shelton 25-11 (69%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Alejandro Tabilo #{'rank': 30, 'points': 1558, 'as_of': 'oficial (ao vivo)'} · Ben Shelton #{'rank': 8, 'points': 3580, 'as_of': 'oficial (ao vivo)'}</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Alejandro Tabilo:</b> 10 dias desde o último jogo</div><div class="d-row"><b>Ben Shelton:</b> 32 dias desde o último jogo (dado pode estar desatualizado)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Alejandro Tabilo:</b> sem desistências recentes registadas</div><div class="d-row"><b>Ben Shelton:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.9°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Mercado (odds)</div><div class="d-row"><b>Alejandro Tabilo:</b> 3.3</div><div class="d-row"><b>Ben Shelton:</b> 1.33</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Não foi possível gerar a análise devido a um erro de formato na resposta do modelo. As secções de dados abaixo continuam válidas.</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Análise indisponível nesta execução — consultar os dados factuais acima.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

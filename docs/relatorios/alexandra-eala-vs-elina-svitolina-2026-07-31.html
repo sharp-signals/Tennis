@@ -42,6 +42,32 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
 /* Confiança da leitura */
 .confidence { margin-top:16px; max-width:420px; }
 .conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
@@ -103,68 +129,16 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#e06c5b">18/100 · baixa</span>
+        <span class="conf-num" style="color:#e06c5b">22/100 · baixa</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:18%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Quase todos os campos de contexto (forma, época atual, piso, fadiga, serviço/resposta, lesões) estão ausentes; só há ranking atual e um único H2H fora do piso em causa.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:22%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Quase todos os campos de contexto (forma, época, piso, fadiga, lesão, serviço/resposta) estão em falta, restando apenas ranking e um único H2H em piso diferente.</div>
     </div>
+    
   </div>
 </header>
 <div class="wrap">
-  
-  <h2 class="sec-main">🔑 Pontos-chave</h2>
-<div class="items">
-<div class="item">Ranking atual favorece Svitolina (<strong>#10</strong> vs <strong>#28</strong>), alinhado com o favoritismo nas odds.</div>
-<div class="item">H2H: apenas <strong>1 confronto</strong> disponível, disputado em <strong>grass</strong> (não no piso deste jogo, Hard) — sem valor preditivo aqui.</div>
-<div class="item">Forma recente, época atual, stats por piso, fadiga, serviço/resposta e desistências: <strong>todos null</strong> — lacunas extensas, não equilíbrio.</div>
-<div class="item">Meteorologia: calor forte (<strong>32.9°C</strong> máx), sem chuva, vento moderado — fator físico sem dados de fadiga para cruzar.</div>
-</div>
-<h3 class="sec">H2H</h3>
-<div class="items">
-<div class="item">Campo <code>h2h</code> (overall/on_surface) <strong>não disponível</strong> — lacuna, não equilíbrio.</div>
-<div class="item">Único registo (<code>h2h_rich_stats</code>): <strong>1 jogo</strong>, em grass, vencido por Eala 2 sets a 0 (12-7 games).</div>
-<div class="item">Amostra de 1 jogo, e fora do piso atual (Hard) — sem transferibilidade, tratar como não-sinal.</div>
-</div>
-<h3 class="sec">Forma</h3>
-<div class="items">
-<div class="item"><code>recent_form_a</code> e <code>recent_form_b</code>: <strong>null</strong> — lacuna total em ambas, não interpretar como paridade.</div>
-</div>
-<h3 class="sec">Piso</h3>
-<div class="items">
-<div class="item"><code>surface_stats_a/b</code>: <strong>null</strong> — sem perfil em Hard para nenhuma jogadora.</div>
-<div class="item">O único H2H foi em grass, piso diferente do desta partida — não pode suprir a lacuna.</div>
-</div>
-<h3 class="sec">Serviço/Resposta</h3>
-<div class="items">
-<div class="item"><code>serve_return_stats</code> e <code>rich_stats</code>: <strong>null</strong> para ambas.</div>
-<div class="item">No único confronto (amostra=1), Eala converteu mais BP (<strong>5/10</strong> vs <strong>3/6</strong>) e teve melhor 2º serviço (<strong>32%</strong> vs <strong>22%</strong>), mas é um jogo isolado — não generalizável.</div>
-</div>
-<h3 class="sec">Fadiga</h3>
-<div class="items">
-<div class="item"><code>fatigue_signal_a/b</code>: <strong>null</strong> — sem dados de jogos recentes/dias de descanso para nenhuma.</div>
-</div>
-<h3 class="sec">Desistências recentes</h3>
-<div class="items">
-<div class="item"><code>injury_signal_a/b</code>: <strong>null</strong> — não encontrámos registo, o que não significa ausência de problemas físicos, apenas falta de dado.</div>
-</div>
-<h3 class="sec">Meteorologia</h3>
-<div class="items">
-<div class="item">Jogo ao ar livre: <strong>32.9°C</strong> máx, <strong>20.2°C</strong> mín, sem precipitação, vento <strong>19.7 km/h</strong>.</div>
-<div class="item">Calor considerável pode pesar fisicamente, mas sem dados de fadiga/resistência para qualificar o impacto.</div>
-</div>
-<h3 class="sec">Mercado</h3>
-<div class="items">
-<div class="item">Odds: Svitolina <strong>1.60</strong> (favorita), Eala <strong>2.30</strong>.</div>
-<div class="item">Diferença coerente com o gap de ranking atual (#10 vs #28) — único dado robusto disponível.</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<div class="selos-legenda"><span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div>
-<div class="items">
-<div class="item w-white">Eala venceu o único H2H <strong>2-0</strong> (grass, amostra=1) — contexto fraco, não sustenta mercado dado piso diferente e amostra mínima.</div>
-<div class="item">Sem discrepâncias assinaláveis relevantes — mercado alinhado com o único dado sólido (ranking atual).</div>
-</div>
-<h3 class="sec">✅ Veredicto</h3>
-<p>Mercado alinhado com o dado disponível (ranking atual favorece claramente Svitolina); demasiadas lacunas (forma, piso, fadiga) para sustentar qualquer leitura contrária.</p>
+  <section class="data-sections"><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Alexandra Eala #{'rank': 28, 'points': 166600, 'as_of': 'oficial (ao vivo)'} · Elina Svitolina #{'rank': 10, 'points': 435100, 'as_of': 'oficial (ao vivo)'}</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Alexandra Eala:</b> sem desistências recentes registadas</div><div class="d-row"><b>Elina Svitolina:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.9°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Mercado (odds)</div><div class="d-row"><b>Alexandra Eala:</b> 2.3</div><div class="d-row"><b>Elina Svitolina:</b> 1.6</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Ranking oficial favorece claramente Svitolina (<strong>#10</strong>) sobre Eala (<strong>#28</strong>), coerente com as odds de mercado.</li><li>H2H mostra apenas <strong>1 confronto</strong> (vitória de Eala 2-0), disputado em relva — amostra insuficiente e piso diferente do desta partida (Hard).</li><li>Faltam dados de forma recente, época atual, stats por piso, fadiga e lesão para ambas — grande lacuna informativa, não sinal de equilíbrio.</li><li>Odds implícitas (~62.5% Svitolina, ~43.5% Eala) refletem essencialmente a diferença de ranking, sem outro suporte de dados disponível.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span> Eala venceu o único confronto direto <strong>2-0 sets</strong> (1 jogo, em relva) — sinal insuficiente para contrariar o favoritismo de Svitolina, mas pode justificar atenção ao mercado de handicap de sets de Eala.</div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado alinhado com o ranking (Svitolina favorita); dados quase todos em falta impedem confirmar ou contrariar essa leitura, e o único H2H é demasiado pequeno para pesar.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

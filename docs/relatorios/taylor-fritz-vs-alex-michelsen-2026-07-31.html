@@ -42,6 +42,32 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
 /* Confiança da leitura */
 .confidence { margin-top:16px; max-width:420px; }
 .conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
@@ -103,11 +129,12 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#4ecdc4">78/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">76/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:78%;background:#4ecdc4"></div></div>
-      <div class="conf-reason">Ranking, forma, época atual, piso e serviço apontam todos consistentemente para Fritz, com amostras grandes e coerentes; a única contra-indicação (H2H) é amostra minúscula.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:76%;background:#4ecdc4"></div></div>
+      <div class="conf-reason">Ranking, forma atual, época 2026 e stats de serviço convergem todos a favor de Fritz, com poucas lacunas relevantes.</div>
     </div>
+    
   </div>
 </header>
 <div class="wrap">
@@ -215,56 +242,7 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">46.8%</div>
       </div>
-    </div></div></section>
-  <h2 class="sec-main">🔑 Pontos-chave</h2>
-<div class="items">
-<div class="item">Fritz (#10) domina Michelsen (#40) em ranking, forma recente, época atual, piso e serviço — sinais correlacionados, não independentes.</div>
-<div class="item">H2H favorece Michelsen <strong>2-0</strong> (1-0 em hard), mas amostra de apenas 2 jogos é insuficiente para contrariar o favoritismo.</div>
-<div class="item">Serviço de Fritz é claramente superior (ace% <strong>21.1%</strong> vs <strong>6.7%</strong>, BP saved <strong>61.8%</strong> vs <strong>50%</strong>).</div>
-<div class="item">Michelsen tem desempenho fraco vs top10 (<strong>27.3%</strong>, 11 jogos) — amostra pequena mas reforça a leitura do mercado.</div>
-<div class="item">Fadiga de ambos com dados possivelmente desatualizados (23 e 31 dias sem jogo reportado) — não usar como sinal de falta de ritmo.</div>
-</div>
-<h3 class="sec">H2H</h3>
-<div class="items">
-<div class="item">Michelsen lidera <strong>2-0</strong> no confronto direto (carreira), incluindo <strong>1-0</strong> no piso Hard — amostra de apenas 2 jogos, tratar como lacuna/ausência de sinal, não como indicação forte contra Fritz.</div>
-</div>
-<h3 class="sec">Forma</h3>
-<div class="items">
-<div class="item">Fritz <strong>8-2</strong> em 10 jogos vs Michelsen <strong>5-5</strong> em 10 — forma recente reforça a diferença de ranking, mas é o mesmo sinal geral repetido, não um dado independente.</div>
-</div>
-<h3 class="sec">Piso</h3>
-<div class="items">
-<div class="item">Hard: Fritz <strong>62.9%</strong> (377 jogos) vs Michelsen <strong>54.1%</strong> (109 jogos) — amostras grandes, favorecem Fritz, coerente com o ranking e forma.</div>
-</div>
-<h3 class="sec">Serviço/Resposta</h3>
-<div class="items">
-<div class="item">Fritz muito superior no serviço (1st serve won <strong>81.6%</strong> vs <strong>70.5%</strong>; BP saved <strong>61.8%</strong> vs <strong>50%</strong>).</div>
-<div class="item">Na resposta os números são próximos e ligeiramente a favor de Michelsen (return pts won <strong>39%</strong> vs <strong>36%</strong>; BP convertidos <strong>42%</strong> vs <strong>38%</strong>), mas insuficiente para compensar a diferença de serviço.</div>
-<div class="item">Vs top10, Michelsen só ganha <strong>27.3%</strong> (11 jogos, amostra pequena) — indica dificuldade extra contra jogadores do nível de Fritz.</div>
-</div>
-<h3 class="sec">Fadiga</h3>
-<div class="items">
-<div class="item">Ambos sem jogos reportados há 23 (Fritz) e 31 dias (Michelsen), com sinalização de dados possivelmente desatualizados — não deve ser lido como falta de ritmo, o histórico pode simplesmente não refletir jogos recentes do torneio.</div>
-</div>
-<h3 class="sec">Desistências recentes</h3>
-<div class="items">
-<div class="item">Sem registos de walkover/retirement recentes para nenhum dos dois (5 jogos verificados cada) — não indica nada de relevante.</div>
-</div>
-<h3 class="sec">Meteorologia</h3>
-<div class="items">
-<div class="item">Ao ar livre, calor moderado (<strong>32.2°C</strong> máx), sem chuva, vento ligeiro (<strong>11.2 km/h</strong>) — condições normais, sem impacto assinalável.</div>
-</div>
-<h3 class="sec">Mercado</h3>
-<div class="items">
-<div class="item">Odds implícitas ~<strong>69.9%</strong> Fritz vs ~<strong>35.1%</strong> Michelsen (com overround) — alinhadas com a leitura geral dos dados (ranking, forma, piso, serviço todos a favor de Fritz).</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<div class="selos-legenda"><span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div>
-<div class="items">
-<div class="item w-white">Michelsen lidera H2H <strong>2-0</strong> (2 jogos, 1 em hard) — amostra demasiado pequena para justificar qualquer mercado contra o favoritismo de Fritz.</div>
-</div>
-<h3 class="sec">✅ Veredicto</h3>
-<p>Mercado alinhado — favoritismo de Fritz justificado pelos dados de ranking, forma, piso e serviço; H2H a favor de Michelsen é ruído estatístico, não sinal.</p>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Taylor Fritz 8-2 · Alex Michelsen 5-5</div><div class="d-row"><b>Época atual:</b> Taylor Fritz 23-13 (64%) · Alex Michelsen 18-14 (56%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Taylor Fritz #{'rank': 10, 'points': 3300, 'as_of': 'oficial (ao vivo)'} · Alex Michelsen #{'rank': 40, 'points': 1165, 'as_of': 'oficial (ao vivo)'}</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Taylor Fritz:</b> 23 dias desde o último jogo (dado pode estar desatualizado)</div><div class="d-row"><b>Alex Michelsen:</b> 31 dias desde o último jogo (dado pode estar desatualizado)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Taylor Fritz:</b> sem desistências recentes registadas</div><div class="d-row"><b>Alex Michelsen:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.2°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Mercado (odds)</div><div class="d-row"><b>Taylor Fritz:</b> 1.43</div><div class="d-row"><b>Alex Michelsen:</b> 2.85</div></div></section>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

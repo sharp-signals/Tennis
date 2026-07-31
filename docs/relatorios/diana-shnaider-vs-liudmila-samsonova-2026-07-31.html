@@ -42,6 +42,32 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
 /* Confiança da leitura */
 .confidence { margin-top:16px; max-width:420px; }
 .conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
@@ -103,67 +129,16 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#e06c5b">32/100 · baixa</span>
+        <span class="conf-num" style="color:#e06c5b">28/100 · baixa</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:32%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Quase todos os campos de contexto (forma, piso, fadiga, lesões, serve/return gerais) estão em falta e o H2H tem apenas 3 jogos, restando só o ranking ao vivo como sinal sólido.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:28%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Quase todos os indicadores de contexto (forma, época, piso, fadiga, lesão, serviço/resposta) estão em falta; a leitura assenta só no ranking e num H2H de 3 jogos.</div>
     </div>
+    
   </div>
 </header>
 <div class="wrap">
-  
-  <h2 class="sec-main">🔑 Pontos-chave</h2>
-<div class="items">
-<div class="item">Diferença de ranking ao vivo grande: Shnaider <strong>#18</strong> vs Samsonova <strong>#70</strong>, coerente com o favoritismo do mercado.</div>
-<div class="item">H2H direto de apenas <strong>3 jogos</strong> (Shnaider venceu 2-1) — amostra insuficiente para peso forte.</div>
-<div class="item">Samsonova mais agressiva no confronto direto (mais winners e aces) mas também mais erros não forçados e duplas faltas.</div>
-<div class="item">Faltam dados essenciais: forma recente, época atual, stats por piso, fadiga e desistências — lacunas relevantes, não sinal de equilíbrio.</div>
-<div class="item">Meteorologia sem impacto claro: calor (<strong>32.2°C</strong> máx), sem chuva, vento fraco.</div>
-</div>
-<h3 class="sec">H2H</h3>
-<div class="items">
-<div class="item">Apenas <strong>3 jogos</strong> disputados (sem separação overall/piso disponível) — Shnaider venceu <strong>2-1</strong>, amostra demasiado pequena para sustentar leitura forte.</div>
-<div class="item">Set decisivo: ambas com <strong>50%</strong> (1 vitória em 2 jogos cada) — sem sinal, amostra ínfima.</div>
-<div class="item">Break points convertidos: Samsonova <strong>62%</strong> vs Shnaider <strong>40%</strong>, mas ainda assim perdeu mais confrontos — sugere que outros fatores (erros, consistência) pesaram mais.</div>
-</div>
-<h3 class="sec">Forma</h3>
-<div class="items">
-<div class="item"><code>recent_form_a</code> e <code>recent_form_b</code>: <strong>null</strong> — lacuna total, não interpretar como equilíbrio.</div>
-</div>
-<h3 class="sec">Piso</h3>
-<div class="items">
-<div class="item"><code>surface_stats_a</code> e <code>surface_stats_b</code>: <strong>null</strong> — sem dados de especialização em Hard para nenhuma das duas.</div>
-</div>
-<h3 class="sec">Serviço/Resposta</h3>
-<div class="items">
-<div class="item">Apenas dados do confronto direto disponíveis: Samsonova com serviço mais potente (média 1ª serviço <strong>180 km/h</strong> vs <strong>155 km/h</strong> de Shnaider) e mais winners (<strong>30</strong> vs <strong>10</strong>).</div>
-<div class="item">Samsonova também com mais duplas faltas (<strong>18</strong> vs <strong>10</strong>) e pior % de 1º serviço dentro (<strong>50%</strong> vs <strong>64%</strong>) — perfil mais errático nestes jogos.</div>
-<div class="item">Sem <code>rich_stats</code> gerais de carreira para contextualizar fora do H2H.</div>
-</div>
-<h3 class="sec">Fadiga</h3>
-<div class="items">
-<div class="item"><code>fatigue_signal_a</code> e <code>fatigue_signal_b</code>: <strong>null</strong> — sem informação sobre ritmo recente de nenhuma das jogadoras.</div>
-</div>
-<h3 class="sec">Desistências recentes</h3>
-<div class="items">
-<div class="item"><code>injury_signal_a</code> e <code>injury_signal_b</code>: <strong>null</strong> — não encontrámos registo, não implica ausência de problemas.</div>
-</div>
-<h3 class="sec">Meteorologia</h3>
-<div class="items">
-<div class="item">Jogo ao ar livre: <strong>32.2°C</strong> máx, <strong>21.6°C</strong> mín, sem chuva (<strong>0.0mm</strong>), vento fraco (<strong>11.2 km/h</strong>) — condições de calor mas sem fator disruptivo (chuva/vento forte).</div>
-</div>
-<h3 class="sec">Mercado</h3>
-<div class="items">
-<div class="item">Odds moderadamente a favor de Shnaider (<strong>1.85</strong> vs <strong>2.04</strong>), coerente com a diferença de ranking ao vivo (<strong>#18 vs #70</strong>).</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<div class="selos-legenda"><span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div>
-<div class="items">
-<div class="item w-white">H2H de <strong>3 jogos</strong> (2-1 Shnaider) é amostra demasiado pequena para sustentar qualquer mercado específico — apenas contexto.</div>
-<div class="item">Sem discrepâncias assinaláveis — mercado alinhado com o ranking ao vivo, apesar da falta de dados complementares.</div>
-</div>
-<h3 class="sec">✅ Veredicto</h3>
-<p>Mercado alinhado com o único sinal sólido disponível (ranking ao vivo); demasiadas lacunas de dados para apontar divergência.</p>
+  <section class="data-sections"><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Diana Shnaider #{'rank': 18, 'points': 245800, 'as_of': 'oficial (ao vivo)'} · Liudmila Samsonova #{'rank': 70, 'points': 97000, 'as_of': 'oficial (ao vivo)'}</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Diana Shnaider:</b> sem desistências recentes registadas</div><div class="d-row"><b>Liudmila Samsonova:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.2°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Mercado (odds)</div><div class="d-row"><b>Diana Shnaider:</b> 1.85</div><div class="d-row"><b>Liudmila Samsonova:</b> 2.04</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Ranking: Shnaider <strong>nº18</strong> vs Samsonova <strong>nº70</strong> — diferença clara e alinhada com as odds de mercado (<strong>1.85</strong> vs <strong>2.04</strong>).</li><li>H2H: Shnaider lidera <strong>2-1</strong> em apenas <strong>3 jogos</strong> — amostra claramente insuficiente para sustentar conclusão sólida.</li><li>Nos confrontos diretos, Samsonova gerou mais winners (<strong>30 vs 10</strong>) e aces (<strong>15 vs 6</strong>) mas também mais erros não forçados (<strong>42 vs 23</strong>) — perfil mais agressivo e menos consistente, ainda que em amostra mínima.</li><li>Lacuna extensa de dados: forma recente, época atual, stats por piso, fadiga, lesão e serviço/resposta individuais estão todos ausentes para ambas.</li><li>Meteorologia sem impacto esperado (sem chuva, vento fraco, calor moderado).</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span> Shnaider lidera o H2H <strong>2-1</strong> em apenas <strong>3 jogos</strong> — amostra insuficiente para qualquer mercado de confrontos diretos, sinal apenas de contexto.</div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado alinhado com o ranking — favoritismo de Shnaider (nº18 vs nº70) parece justificado; a ausência quase total de dados de forma/piso impede maior confiança na leitura.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

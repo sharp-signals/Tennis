@@ -42,6 +42,32 @@ body {
 .sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
 .sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
 
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
 /* Confiança da leitura */
 .confidence { margin-top:16px; max-width:420px; }
 .conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
@@ -103,66 +129,16 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:#e06c5b">30/100 · baixa</span>
+        <span class="conf-num" style="color:#e0a34a">40/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:30%;background:#e06c5b"></div></div>
-      <div class="conf-reason">Faltam forma, piso, fadiga, lesões e serviço/resposta de carreira para ambas — só há ranking oficial e um único confronto direto (amostra insuficiente).</div>
+      <div class="conf-track"><div class="conf-fill" style="width:40%;background:#e0a34a"></div></div>
+      <div class="conf-reason">O ranking sustenta o favoritismo de Osaka, mas quase todos os outros campos (forma, piso, fadiga, lesão, serviço) estão em falta.</div>
     </div>
+    
   </div>
 </header>
 <div class="wrap">
-  
-  <h2 class="sec-main">🔑 Pontos-chave</h2>
-<div class="items">
-<div class="item">Ranking claramente a favor de Osaka: <strong>#13</strong> vs <strong>#71</strong> de Cocciaretto.</div>
-<div class="item">Odds muito alinhadas com esse gap: <strong>1.18</strong> vs <strong>6.4</strong>.</div>
-<div class="item">H2H: apenas <strong>1 confronto</strong> (Osaka venceu 2-0), amostra insuficiente para qualquer leitura sólida.</div>
-<div class="item">Lacunas totais em forma, piso, fadiga, lesões e serviço/resposta de carreira para ambas as jogadoras.</div>
-<div class="item">Meteorologia sem impacto especial (calor moderado, seco, vento fraco).</div>
-</div>
-<h3 class="sec">H2H</h3>
-<div class="items">
-<div class="item">Único confronto: Osaka venceu <strong>2-0</strong> (<strong>12-7</strong> em games) — amostra de <strong>1 jogo</strong>, insuficiente para sustentar qualquer discrepância ou tendência.</div>
-<div class="item"><code>overall</code>/<code>on_surface</code> não disponíveis separadamente; tudo o que existe é este jogo único.</div>
-</div>
-<h3 class="sec">Forma</h3>
-<div class="items">
-<div class="item"><code>recent_form_a</code> e <code>recent_form_b</code>: <strong>null</strong> — lacuna total, sem informação sobre momento atual de nenhuma das duas.</div>
-</div>
-<h3 class="sec">Piso</h3>
-<div class="items">
-<div class="item"><code>surface_stats_a</code> e <code>surface_stats_b</code>: <strong>null</strong> — sem dados de especialização em hard para nenhuma jogadora.</div>
-</div>
-<h3 class="sec">Serviço/Resposta</h3>
-<div class="items">
-<div class="item">Único dado é do confronto direto (1 jogo): Osaka <strong>85%</strong> de pontos ganhos no 1º serviço e <strong>42%</strong> de pontos de resposta ganhos, vs <strong>64%</strong> e <strong>18%</strong> de Cocciaretto.</div>
-<div class="item">Não representativo de carreira — amostra de 1 jogo, apenas contexto pontual.</div>
-<div class="item"><code>serve_return_stats</code> e <code>rich_stats</code> de carreira: <strong>null</strong> para ambas.</div>
-</div>
-<h3 class="sec">Fadiga</h3>
-<div class="items">
-<div class="item"><code>fatigue_signal_a</code> e <code>fatigue_signal_b</code>: <strong>null</strong> — sem qualquer indicação de ritmo/desgaste recente.</div>
-</div>
-<h3 class="sec">Desistências recentes</h3>
-<div class="items">
-<div class="item"><code>injury_signal_a</code> e <code>injury_signal_b</code>: <strong>null</strong> — não há registo de desistências/walkovers, o que é lacuna, não indicação de saúde.</div>
-</div>
-<h3 class="sec">Meteorologia</h3>
-<div class="items">
-<div class="item">Ar livre, <strong>32.2°C</strong> máx / <strong>21.6°C</strong> mín, sem chuva, vento fraco (<strong>11.2 km/h</strong>) — condições normais de verão, sem fator diferenciador.</div>
-</div>
-<h3 class="sec">Mercado</h3>
-<div class="items">
-<div class="item">Odds (<strong>1.18</strong> Osaka / <strong>6.4</strong> Cocciaretto) fortemente alinhadas com o gap de ranking (#13 vs #71), único sinal robusto disponível.</div>
-</div>
-<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>
-<div class="selos-legenda"><span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div>
-<div class="items">
-<div class="item w-white">H2H de <strong>1 jogo</strong> favorável a Osaka — amostra demasiado pequena para qualquer mercado, serve só de contexto.</div>
-<div class="item">Sem discrepâncias assinaláveis — mercado alinhado com o dado forte disponível (ranking), apesar das grandes lacunas de contexto.</div>
-</div>
-<h3 class="sec">✅ Veredicto</h3>
-<p>Mercado alinhado com o único sinal robusto (diferença de ranking); faltam dados de forma, piso e fadiga para ir além disso.</p>
+  <section class="data-sections"><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Elisabetta Cocciaretto #{'rank': 71, 'points': 96700, 'as_of': 'oficial (ao vivo)'} · Naomi Osaka #{'rank': 13, 'points': 308600, 'as_of': 'oficial (ao vivo)'}</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Elisabetta Cocciaretto:</b> sem desistências recentes registadas</div><div class="d-row"><b>Naomi Osaka:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.2°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Mercado (odds)</div><div class="d-row"><b>Elisabetta Cocciaretto:</b> 6.4</div><div class="d-row"><b>Naomi Osaka:</b> 1.18</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Diferença de ranking acentuada: Osaka <strong>#13</strong> vs Cocciaretto <strong>#71</strong>, alinhada com as odds (<strong>1.18</strong> vs <strong>6.4</strong>).</li><li>H2H limitado a <strong>1 jogo</strong> (vitória de Osaka 2-0) — amostra insuficiente para qualquer sinal, não reforça nem contraria o mercado.</li><li>Lacuna generalizada de dados: forma recente, stats por piso, fadiga e sinal de lesão estão <strong>null</strong> para ambas as jogadoras.</li><li>Meteorologia sem impacto especial: <strong>32.2°C</strong> máx, sem chuva e vento fraco (<strong>11.2 km/h</strong>).</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado alinhado com a diferença de ranking; sem dados suficientes de forma/piso/fadiga para identificar qualquer divergência.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>
