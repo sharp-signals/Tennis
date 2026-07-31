@@ -28,7 +28,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-30c"
+PROMPT_VERSION = "2026-07-31-medida6"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -119,67 +119,42 @@ Jogador com ranking baixo (fora do top ~150) pode jogar nesses níveis sem
 aparecer — um "hiato" longo (4-5+ meses) + ranking alto pode ser só falta
 de cobertura, não inatividade. Assinala como transparência, não diagnóstico.
 
-FORMATO DE SAÍDA — objeto JSON com EXATAMENTE estes campos:
+FORMATO DE SAÍDA — objeto JSON com EXATAMENTE estes campos. NÃO escreves o
+relatório completo nem secções de dados (H2H, forma, piso, etc.) — essas
+são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
 - "flag": "{FLAG_HIGH_SIGNAL}" (nota/divergência forte/fadiga clara),
   "{FLAG_UNCERTAIN}" (equilibrado ou dados insuficientes), ou
   "{FLAG_ROUTINE}" (sem sinais especiais).
 - "confidence_score": inteiro 0-100 = força/fiabilidade da LEITURA (não a
-  probabilidade de vitória). 0-33 baixo (dados escassos/contraditórios),
-  34-66 médio (lacunas/sinais mistos), 67-100 alto (dados ricos e
-  consistentes). Reflete os 3 princípios (amostra pequena e dados em falta
-  baixam; presente sólido sobe).
+  probabilidade de vitória). 0-33 baixo, 34-66 médio, 67-100 alto. Reflete
+  os 3 princípios (amostra pequena e dados em falta baixam; presente sólido sobe).
 - "confidence_reason": UMA frase a justificar o score.
-- "summary_line": 1 frase (máx ~140 chars), direta, sinal mais importante
-  primeiro, sem rodeios.
-- "full_report_markdown": Markdown p/ leitura rápida (bullets, **negrito**
-  nos números). Estrutura obrigatória POR ESTA ORDEM:
-  1. "## 🔑 Pontos-chave" — 3-5 bullets de 1 linha.
-  2. Uma "### " secção por dado, com estes títulos EXATOS: H2H, Forma,
-     Piso, Serviço/Resposta, Fadiga, "Desistências recentes" (NÃO "Lesão"
-     — o bot só vê desistências/walkovers, não informação médica),
-     Meteorologia, Mercado. Conciso.
-     NOTA DE REDUNDÂNCIA: ranking, forma recente, época atual e taxa por
-     piso são sinais CORRELACIONADOS (um jogador mais forte tende a ter
-     todos melhores ao mesmo tempo). Não os apresentes como provas
-     independentes que se somam — se apontam todos na mesma direção, di-lo
-     UMA vez como "força geral" e assinala que é informação sobreposta,
-     não vários sinais distintos. Além disso, as taxas de vitória NÃO
-     estão ajustadas à qualidade dos adversários (ganhar 54% contra
-     adversários fracos não é melhor que 45% contra fortes) — menciona
-     esta limitação quando for relevante para a leitura.
-  3. "### 🎯 Discrepâncias e mercados a observar" (regras abaixo).
-  4. "### ✅ Veredicto" — 1-2 frases MÁX, leitura conclusiva simples p/ quem
-     só quer o essencial (ex: "Mercado alinhado — favoritismo de Sinner
-     justificado." ou "Divergência a favor de Tabilo; observar handicap de
-     games."). NÃO repitas a lista de discrepâncias.
-  Diretismo: bullet = 1 frase curta, número primeiro. Ressalva de amostra
-  pequena UMA vez por campo, não repetida. Evita "pode/talvez" quando o
-  dado é claro. IMPORTANTE — SÊ CONCISO: o relatório inteiro deve caber em
-  ~2500 palavras. Nas secções de dados, no máximo 3-4 bullets curtos cada.
-  Não repitas informação entre secções. Prioriza os Pontos-chave, as
-  Discrepâncias e o Veredicto (o essencial); as secções de dados são
-  suporte, mantém-nas enxutas.
-
-REGRAS DA SECÇÃO DISCREPÂNCIAS (a pessoa é ex-tenista e decide sozinha;
-NUNCA uses "aposta"/"recomendo entrar" — só sugeres MERCADOS A OBSERVAR
-quando a tua leitura diverge do mercado):
-1. Julgamento, não lista fixa. Liga a divergência ao(s) mercado(s) que
-   fazem sentido: underdog com bom perfil → handicap de games / "ganha 1
-   set"; favorito vs adversário que recupera bem → observar se perde 1º
-   set/break ao vivo; forte em set decisivo → "vai a set decisivo"/total
-   de sets; ou o que os dados revelarem.
-2. FORMATO OBRIGATÓRIO: cada observação é um bullet que COMEÇA com o emoji
-   do selo, logo após "- ". Ex:
-     - 🔴 Tsitsipas lidera H2H **12-1** (13 jogos) — observar handicap de Tsitsipas.
-     - 🟡 De Minaur recupera **32%** após perder 1º set (78 jogos) — observar ao vivo se ceder o 1º set.
-     - ⚪ Michelsen salva **50%** dos BP (10 jogos) — amostra pequena, frágil.
-   NUNCA escrevas observação sem o emoji. Cor: 🔴 forte (100+ jogos E
-   divergência clara), 🟡 moderado (30-100 ou divergência menos vincada),
-   ⚪ fraco (<30 ou só contexto). Ordena 🔴→⚪. Percentagem alta com amostra
-   pequena é ⚪, nunca 🔴.
-3. Liga sempre a um número com amostra; sem suporte, não sugiras mercado.
-4. Se não houver discrepância real, escreve "Sem discrepâncias assinaláveis
-   — mercado alinhado com os dados" (não inventes).
+- "summary_line": 1 frase (máx ~140 chars), direta, sinal mais importante primeiro.
+- "key_points": lista de 3-5 strings curtas (1 frase cada), os sinais mais
+  importantes do jogo. Número primeiro, **negrito** nos valores. Aplica a
+  nota de redundância: ranking/forma/época/piso são correlacionados — se
+  apontam todos no mesmo sentido, di-lo UMA vez como "força geral", não
+  como provas independentes. Lembra que as taxas de vitória não estão
+  ajustadas à qualidade do adversário (usa `vs_rank_level` quando útil).
+- "discrepancies": lista de objetos {{"weight": "forte"|"moderado"|"fraco",
+  "text": "..."}}, ordenada de forte para fraco. Cada uma liga uma
+  divergência entre os dados e o mercado a um MERCADO A OBSERVAR (nunca
+  "aposta"/"recomendo"). Regras:
+   * weight "forte": amostra grande (100+ jogos) E divergência clara vs mercado.
+   * weight "moderado": amostra 30-100 ou divergência menos vincada.
+   * weight "fraco": amostra <30 ou só contexto.
+   * O "text" liga o dado (com número e amostra) ao mercado a observar. Ex:
+     "Tsitsipas lidera H2H **12-1** (13 jogos) — observar handicap de games de Tsitsipas."
+   * Percentagem alta com amostra pequena é "fraco", nunca "forte".
+   * Liga sempre a um número com amostra; sem suporte, não incluas.
+   * Tipos de raciocínio: underdog com bom perfil → handicap/"ganha 1 set";
+     favorito vs quem recupera bem → observar se perde 1º set ao vivo;
+     forte em set decisivo → "vai a set decisivo"/total de sets.
+   * Se não houver discrepância real, devolve lista vazia [].
+- "verdict": 1-2 frases MÁX, leitura conclusiva simples e objetiva para
+  quem só quer o essencial (ex: "Mercado alinhado — favoritismo de Sinner
+  justificado." ou "Divergência a favor de Tabilo; observar handicap de
+  games."). NÃO repitas a lista de discrepâncias.
 
 Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
 """
@@ -222,7 +197,7 @@ def analyze_match(match_data: dict) -> dict:
         # inválido. 5000 dá folga; mais vale pagar o output completo do que
         # gerar relatórios truncados que falham. As outras poupanças (cache
         # do prompt, cache por hash) mantêm-se.
-        max_tokens=6000,
+        max_tokens=2000,
         # Cache do prompt de sistema (medida de poupança, 30/07): o
         # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
         # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
@@ -311,9 +286,7 @@ def analyze_match(match_data: dict) -> dict:
                 f"{match_data.get('player_a', '?')} vs {match_data.get('player_b', '?')}: "
                 "erro ao gerar análise (resposta do modelo não era JSON válido)."
             ),
-            "full_report_markdown": (
-                "Não foi possível gerar a análise completa devido a um erro de "
-                "formato na resposta do modelo. Dados brutos recolhidos:\n\n"
-                f"```json\n{json.dumps(match_data, ensure_ascii=False, indent=2, default=str)}\n```"
-            ),
+            "key_points": ["Não foi possível gerar a análise devido a um erro de formato na resposta do modelo. As secções de dados abaixo continuam válidas."],
+            "discrepancies": [],
+            "verdict": "Análise indisponível nesta execução — consultar os dados factuais acima.",
         }
