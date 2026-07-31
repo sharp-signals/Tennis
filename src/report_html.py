@@ -190,31 +190,38 @@ def _data_card(title, rows):
 
 def _build_data_sections(payload: dict) -> str:
     """
-    MEDIDA 6: monta as secções de DADOS factuais (H2H, forma, época, piso,
-    fadiga, desistências, ranking, meteorologia, mercado) diretamente do
-    payload, em Python — sem passar pelo Claude. Assim o Claude só escreve
-    a análise (pontos-chave, discrepâncias, veredicto), o que reduz muito o
-    output (custo) e garante que os números estão sempre certos.
+    MEDIDA 6: monta as secções de DADOS factuais diretamente do payload, em
+    Python. Usa as chaves REAIS das funções compute_* do fetch_data:
+      - h2h: {"overall": {"a_wins","b_wins","total_matches"}, "on_surface": {...}}
+      - recent_form/current_season: {"wins","losses","matches"}
+      - surface_stats: {"wins","losses","matches","surface"}  (piso do jogo)
+      - fatigue_signal: {"days_since_last_match", "fatigue_data_maybe_stale"}
+      - injury_signal: {"recent_retirements": [...]}
+      - ranking: {"rank","points","as_of"}   (NÃO um número)
     Cada secção só aparece se tiver dados. Devolve HTML.
     """
     a = _esc(payload.get("player_a", "A"))
     b = _esc(payload.get("player_b", "B"))
     cards = []
 
+    def _rank_num(r):
+        """ranking vem como {"rank": N, ...} ou às vezes None/int."""
+        if isinstance(r, dict):
+            return r.get("rank")
+        return r
+
     # H2H
     h2h = payload.get("h2h") or {}
-    if h2h:
+    if isinstance(h2h, dict) and h2h:
         rows = []
         ov = h2h.get("overall")
-        if ov and isinstance(ov, dict):
-            wa, wb = ov.get("player_a_wins"), ov.get("player_b_wins")
-            if wa is not None and wb is not None:
-                rows.append(f"<b>Geral:</b> {a} {wa}–{wb} {b}")
+        if ov and isinstance(ov, dict) and ov.get("total_matches"):
+            rows.append(f"<b>Geral:</b> {a} {ov.get('a_wins',0)}–{ov.get('b_wins',0)} {b}")
         surf = h2h.get("on_surface")
-        if surf and isinstance(surf, dict):
-            wa, wb = surf.get("player_a_wins"), surf.get("player_b_wins")
-            if wa is not None and wb is not None:
-                rows.append(f"<b>Neste piso:</b> {a} {wa}–{wb} {b}")
+        if surf and isinstance(surf, dict) and surf.get("total_matches"):
+            rows.append(f"<b>Neste piso:</b> {a} {surf.get('a_wins',0)}–{surf.get('b_wins',0)} {b}")
+        if not rows:
+            rows.append("Sem confrontos diretos registados.")
         cards.append(_data_card("Confronto direto (H2H)", rows))
 
     # Forma recente + época atual
@@ -224,53 +231,52 @@ def _build_data_sections(payload: dict) -> str:
     if fa.get("matches") and fb.get("matches"):
         rows.append(f"<b>Últimos jogos:</b> {a} {fa['wins']}-{fa['losses']} · {b} {fb['wins']}-{fb['losses']}")
     if sa.get("matches") and sb.get("matches"):
-        pa = _fmt_pct(sa['wins']/sa['matches']) if sa.get('matches') else "?"
-        pb = _fmt_pct(sb['wins']/sb['matches']) if sb.get('matches') else "?"
+        pa = _fmt_pct(sa['wins']/sa['matches'])
+        pb = _fmt_pct(sb['wins']/sb['matches'])
         rows.append(f"<b>Época atual:</b> {a} {sa['wins']}-{sa['losses']} ({pa}) · {b} {sb['wins']}-{sb['losses']} ({pb})")
-    cards.append(_data_card("Forma recente e época atual", rows))
+    if rows:
+        cards.append(_data_card("Forma recente e época atual", rows))
 
-    # Ranking
-    ra, rb = payload.get("ranking_a"), payload.get("ranking_b")
+    # Ranking (extrair o número de dentro do dict)
+    ra, rb = _rank_num(payload.get("ranking_a")), _rank_num(payload.get("ranking_b"))
     if ra or rb:
         rows = [f"<b>Ranking oficial:</b> {a} #{ra if ra else '?'} · {b} #{rb if rb else '?'}"]
         cards.append(_data_card("Ranking", rows))
 
-    # Piso
+    # Piso (estrutura plana: wins/losses/matches, para o piso do jogo)
     supa = payload.get("surface_stats_a") or {}
     supb = payload.get("surface_stats_b") or {}
-    surface = (payload.get("surface") or "").lower()
-    if supa and supb:
-        key = "hard" if "hard" in surface else ("clay" if "clay" in surface else ("grass" if "grass" in surface else None))
-        rows = []
-        if key and supa.get(key) and supb.get(key):
-            ca, cb = supa[key], supb[key]
-            pa = _fmt_pct(ca.get("win_pct"), of=100) if ca.get("win_pct") is not None else None
-            pb = _fmt_pct(cb.get("win_pct"), of=100) if cb.get("win_pct") is not None else None
-            if pa and pb:
-                rows.append(f"<b>Neste piso ({key}):</b> {a} {pa} ({ca.get('matches','?')} jogos) · {b} {pb} ({cb.get('matches','?')} jogos)")
+    surface_name = payload.get("surface", "")
+    if supa.get("matches") and supb.get("matches"):
+        pa = _fmt_pct(supa['wins']/supa['matches'])
+        pb = _fmt_pct(supb['wins']/supb['matches'])
+        rows = [f"<b>Neste piso ({_esc(surface_name)}):</b> {a} {pa} ({supa['matches']} jogos) · {b} {pb} ({supb['matches']} jogos)"]
         cards.append(_data_card("Desempenho por piso", rows))
 
     # Fadiga
     fga, fgb = payload.get("fatigue_signal_a") or {}, payload.get("fatigue_signal_b") or {}
     rows = []
     for nome, fg in ((a, fga), (b, fgb)):
-        if fg.get("days_since_last_match") is not None:
+        if isinstance(fg, dict) and fg.get("days_since_last_match") is not None:
             stale = " (dado pode estar desatualizado)" if fg.get("fatigue_data_maybe_stale") else ""
             rows.append(f"<b>{nome}:</b> {fg['days_since_last_match']} dias desde o último jogo{stale}")
-    cards.append(_data_card("Fadiga / descanso", rows))
+    if rows:
+        cards.append(_data_card("Fadiga / descanso", rows))
 
-    # Desistências recentes (antes "Lesão")
+    # Desistências recentes
     ija, ijb = payload.get("injury_signal_a") or {}, payload.get("injury_signal_b") or {}
     rows = []
     for nome, ij in ((a, ija), (b, ijb)):
-        rets = ij.get("recent_retirements") if isinstance(ij, dict) else None
-        if rets:
-            rows.append(f"<b>{nome}:</b> {len(rets)} desistência(s) recente(s) registada(s)")
-        elif isinstance(ij, dict):
-            rows.append(f"<b>{nome}:</b> sem desistências recentes registadas")
-    cards.append(_data_card("Desistências recentes", rows))
+        if isinstance(ij, dict):
+            rets = ij.get("recent_retirements")
+            if rets:
+                rows.append(f"<b>{nome}:</b> {len(rets)} desistência(s) recente(s) registada(s)")
+            else:
+                rows.append(f"<b>{nome}:</b> sem desistências recentes registadas")
+    if rows:
+        cards.append(_data_card("Desistências recentes", rows))
 
-    # Meteorologia
+    # Meteorologia (só se ao ar livre e com dados)
     w = payload.get("weather")
     if w and isinstance(w, dict):
         parts = []
@@ -288,15 +294,18 @@ def _build_data_sections(payload: dict) -> str:
     if isinstance(odds, dict) and odds:
         rows = []
         for nome in (payload.get("player_a"), payload.get("player_b")):
+            if not nome:
+                continue
             for k, v in odds.items():
-                if nome and (k.lower() == nome.lower() or (nome.split()[-1].lower() in k.lower())):
+                if k.lower() == nome.lower() or (nome.split()[-1].lower() in k.lower()):
                     rows.append(f"<b>{_esc(nome)}:</b> {v}")
                     break
-        cards.append(_data_card("Mercado (odds)", rows))
+        if rows:
+            cards.append(_data_card("Mercado (odds)", rows))
 
+    cards = [c for c in cards if c]
     if not cards:
         return ""
-    cards = [c for c in cards if c]
     return f'<section class="data-sections">{"".join(cards)}</section>'
 
 
