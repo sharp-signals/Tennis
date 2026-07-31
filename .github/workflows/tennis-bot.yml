@@ -1,13 +1,17 @@
 name: Tennis Pre-Live Bot
 
 on:
-  schedule:
-    # Corre duas vezes por dia (horas em UTC).
-    # 07:00 UTC ~= manhã na Europa -> apanha jogos "hoje" que arrancam à tarde/noite
-    # 18:00 UTC ~= fim da tarde na Europa -> apanha véspera de jogos de amanhã de manhã
-    - cron: "0 7 * * *"
-    - cron: "0 18 * * *"
-  workflow_dispatch: {}   # permite correr manualmente a partir do GitHub UI
+  # SCHEDULE AUTOMÁTICO DESATIVADO durante a fase de testes (30/07/2026)
+  # — para não competir com os testes manuais pela quota da RapidAPI.
+  # Para REATIVAR quando o projeto estiver estável, descomenta as 2 linhas
+  # cron abaixo.
+  # schedule:
+  #   # Corre duas vezes por dia (horas em UTC).
+  #   # 07:00 UTC ~= manhã na Europa -> apanha jogos "hoje" que arrancam à tarde/noite
+  #   # 18:00 UTC ~= fim da tarde na Europa -> apanha véspera de jogos de amanhã de manhã
+  #   - cron: "0 7 * * *"
+  #   - cron: "0 18 * * *"
+  workflow_dispatch: {}   # correr manualmente a partir do GitHub UI (único trigger ativo)
 
 jobs:
   run-bot:
