@@ -120,7 +120,7 @@ INJURY_SIGNAL_LOOKBACK_MATCHES = 5
 # cobre com folga a carreira mais longa de qualquer jogador ainda ativo
 # no circuito (16/07/2026: corrigido depois de notar que só carregávamos
 # o ano corrente, o que dava H2H incompletos).
-HISTORY_YEARS_TO_LOAD = 20
+HISTORY_YEARS_TO_LOAD = 10
 
 # Pedir meteorologia só para jogos ao ar livre. O matchstat usa prefixo
 # "I." no nome do piso para indoor (ex: "I.hard") — qualquer piso que
