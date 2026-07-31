@@ -165,16 +165,24 @@ def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
     return eligible
 
 
+# Orçamento de buscas de dados ricos à RapidAPI por execução. Cada jogador
+# novo (sem ficha) custa 2 pedidos (career + perf-breakdown). Limitamos o
+# nº de jogadores novos buscados por execução para não rebentar a quota
+# (erro 429) — os restantes usam só o histórico. Como as fichas ficam
+# guardadas, ao longo dos dias todos acabam cobertos (construção incremental).
+_RICH_FETCH_BUDGET = {"remaining": 6}  # ~12 pedidos/execução, folga na quota
+
+
 def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict]) -> Optional[dict]:
     """
     Devolve os dados ricos de um jogador (métricas de resposta de carreira
     + desempenho por nível de ranking do adversário), com estratégia
     HÍBRIDA para poupar quota:
-      1. Se existir um JSON de dados guardado em knowledge/players/<slug>.json
-         (gerado pelo construtor de fichas), lê de lá — sem custo de API.
-      2. Senão, busca à RapidAPI (career stats + perf-breakdown) e grava o
-         JSON para reutilização futura.
-    Devolve None se não houver ID (jogador fora do ranking) nem dados.
+      1. Se existir um JSON de dados guardado em knowledge/players/<slug>.json,
+         lê de lá — sem custo de API.
+      2. Senão, e se ainda houver orçamento de pedidos nesta execução, busca
+         à RapidAPI e grava o JSON para reutilização futura.
+      3. Se o orçamento acabou, devolve None (o relatório usa o histórico).
     """
     slug = _slugify(player_name)
     json_path = os.path.join("knowledge", "players", f"{slug}.json")
@@ -187,11 +195,16 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
     except Exception:
         pass
 
-    # 2) resolver ID e buscar à API
+    # 2) orçamento esgotado? não força novos pedidos (evita o 429)
+    if _RICH_FETCH_BUDGET["remaining"] <= 0:
+        return None
+
+    # 3) resolver ID e buscar à API
     player_id = fetch_data.get_player_id_from_ranking(tour, player_name)
     if not player_id:
         return None
 
+    _RICH_FETCH_BUDGET["remaining"] -= 1  # consome orçamento (mesmo se falhar, evita insistir)
     career = fetch_data.fetch_player_career_stats(tour, player_id)
     perf = fetch_data.fetch_player_perf_breakdown(tour, player_id)
     if not career and not perf:
