@@ -289,6 +289,41 @@ def _build_data_sections(payload: dict) -> str:
         if parts:
             cards.append(_data_card("Meteorologia (ao ar livre)", ["; ".join(parts)]))
 
+    # Cenários de jogo (dados ricos: 1º set, set decisivo, tiebreaks) — A vs B
+    sca = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
+    scb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+    if sca and scb:
+        rows = []
+        def _scen_row(label, key, count_key=None):
+            va, vb = sca.get(key), scb.get(key)
+            if va is None or vb is None:
+                return None
+            extra = ""
+            if count_key and sca.get(count_key) and scb.get(count_key):
+                extra = f" ({sca[count_key]}/{scb[count_key]} jogos)"
+            return f"<b>{label}:</b> {a} {va}% · {b} {vb}%{extra}"
+        rows.append(_scen_row("Ganha 1º set → vence", "first_set_win_then_win_pct", "first_set_win_count"))
+        rows.append(_scen_row("Perde 1º set → vence", "first_set_lose_then_win_pct", "first_set_lose_count"))
+        rows.append(_scen_row("Set decisivo", "deciding_set_win_pct", "deciding_set_count"))
+        rows.append(_scen_row("Tie-breaks", "tiebreak_win_pct", "tiebreak_count"))
+        cards.append(_data_card("Cenários de jogo (carreira)", rows))
+
+    # Estilo de jogo (aces, erros, winners, rede, duração) — A vs B
+    sta = (payload.get("rich_stats_a") or {}).get("style") or {}
+    stb = (payload.get("rich_stats_b") or {}).get("style") or {}
+    if sta and stb:
+        rows = []
+        if sta.get("net_success_pct") is not None and stb.get("net_success_pct") is not None:
+            rows.append(f"<b>Sucesso na rede:</b> {a} {sta['net_success_pct']}% · {b} {stb['net_success_pct']}%")
+        if sta.get("avg_time") and stb.get("avg_time"):
+            rows.append(f"<b>Duração média:</b> {a} {_esc(str(sta['avg_time']))} · {b} {_esc(str(stb['avg_time']))}")
+        # winners vs erros: rácio de agressividade (bruto de carreira)
+        if sta.get("winners") and sta.get("unforced_errors") and stb.get("winners") and stb.get("unforced_errors"):
+            ra_ = round(sta["winners"]/sta["unforced_errors"], 2)
+            rb_ = round(stb["winners"]/stb["unforced_errors"], 2)
+            rows.append(f"<b>Rácio winners/erros:</b> {a} {ra_} · {b} {rb_}")
+        cards.append(_data_card("Estilo de jogo (carreira)", rows))
+
     # Mercado
     odds = payload.get("market_odds_decimal") or {}
     if isinstance(odds, dict) and odds:
