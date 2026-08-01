@@ -84,7 +84,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-31-fadiga-real"
+PROMPT_VERSION = "2026-08-01-leitura-trader"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -155,12 +155,16 @@ CAMPOS E COMO USÁ-LOS:
     (top5/10/50/100). CHAVE para a qualidade do adversário: boa taxa geral
     mas fraca vs top-10 = enche stats com adversários fracos.
   * `scenarios`: cenários de jogo em % de carreira — `first_set_win_then_win_pct`
-    (ganha 1º set→fecha o jogo), `first_set_lose_then_win_pct` (recupera de
-    1º set perdido), `deciding_set_win_pct`, `tiebreak_win_pct` (+ contagens
-    `_count` para a amostra). OURO para mercados: ex. quem fecha 88% após
-    ganhar 1º set → observar "vence 2-0"/handicap se ganhar 1º set ao vivo;
-    quem recupera pouco (baixo `first_set_lose_then_win_pct`) → se perde 1º
-    set, o jogo pode estar mais fechado do que a odd ao vivo sugere.
+    (ganha 1º set → ganha o JOGO, que pode ser 2-0 OU 2-1),
+    `first_set_lose_then_win_pct` (recupera de 1º set perdido),
+    `deciding_set_win_pct`, `tiebreak_win_pct` (+ contagens `_count` para a
+    amostra). CUIDADO COM O RACIOCÍNIO: "fecha X% após ganhar o 1º set"
+    significa ganhar o JOGO, NÃO ganhar 2-0 (parte dessas vitórias foi
+    2-1). Por isso, o mercado correto é "vence o jogo" / "handicap de sets
+    +1.5" / "observar ao vivo se ganhar o 1º set", e NUNCA "vence 2-0"
+    (para 2-0 precisarias de dados de sets sem resposta, que não temos).
+    Da mesma forma, quem recupera pouco de 1º set perdido → se perde o 1º
+    set, o jogo tende a ficar mais decidido do que a odd ao vivo sugere.
   * `style`: `net_success_pct` (sucesso na rede), `avg_time` (duração média),
     `winners`/`unforced_errors` (agressividade), `aces`/`double_faults`.
     Usa para caracterizar ESTILO (agressivo vs consistente) e ligar a
@@ -228,29 +232,74 @@ são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
    * Liga sempre a um número com amostra; sem suporte, não incluas.
    * Se não houver discrepância real, devolve lista vazia [].
    * SÊ CONCRETO no mercado (não vago). Em vez de "observar o handicap",
-     diz QUAL: "observar handicap -3.5 games de A", "observar 'A vence
-     2-0'", "observar 'mais de X.5 games'", "observar 'jogo vai a set
+     diz QUAL: "observar handicap -3.5 games de A", "observar 'A vence o
+     jogo'", "observar 'mais de X.5 games'", "observar 'vai a set
      decisivo'". O mercado tem de ser acionável.
+   * As discrepâncias são mais FACTUAIS (o dado + o mercado que sugere,
+     curto). O raciocínio de trader elaborado (entradas ao vivo, valor)
+     vai no "verdict" — aqui não o repitas por extenso, para não duplicar.
+   * RIGOR ESTATÍSTICO: o mercado sugerido tem de corresponder EXATAMENTE
+     ao que a estatística mede. "Ganha o jogo" ≠ "vence 2-0"; "ganha X% dos
+     sets" ≠ "ganha o jogo"; "% em set decisivo" só se aplica se o jogo
+     for a set decisivo. Não faças saltos lógicos entre o que o número diz
+     e o mercado.
    * CRUZA dados para observações mais afiadas (não listes factos soltos —
      combina-os). Padrões de cruzamento a procurar:
      - "A fecha X% após ganhar 1º set" × "B recupera só Y% de 1º set
-       perdido" (rich_stats.scenarios) → se A ganhar 1º set, mercado "A
-       vence 2-0" pode estar subvalorizado.
+       perdido" (rich_stats.scenarios) → se A ganhar o 1º set, o mercado
+       "A vence o jogo" (ou handicap de sets +1.5 de A) pode estar
+       subvalorizado ao vivo. NÃO concluas "2-0" — fechar o jogo inclui
+       vitórias por 2-1.
      - "A forte em set decisivo Z%" × jogo equilibrado no papel → observar
        "vai a set decisivo" / total de sets.
      - "A domina 1º serviço" (domination: own vs opp) × "B fraco a devolver"
        → observar handicap de games / total de quebras.
      - vs_rank_level: se A tem boa taxa geral mas fraca vs top-10 e B é
        top-10, o favoritismo de A pode ser frágil.
+   * PONTOS DE ENTRADA AO VIVO (o mais valioso): pensa não só no mercado,
+     mas no MOMENTO em que a odd ao vivo pode inflacionar enquanto os dados
+     de fundo continuam a favorecer o jogador. O mercado ao vivo
+     sobrerreage a eventos recentes; se a estatística de base disser o
+     contrário, há valor. Exemplos:
+     - A fecha 90% quando ganha o 1º set (amostra grande). Cenário: A ganha
+       1º set e perde o 2º → no set decisivo, a odd de A ao vivo estará
+       mais alta que no pré-live (o mercado reagiu ao 2º set perdido), mas
+       os dados dizem que A ainda fecha a maioria → observar entrada em A
+       no 3º set a odd inflacionada.
+     - A recupera muito bem de 1º set perdido (alta %). Cenário: A perde o
+       1º set → odd de A dispara ao vivo, mas historicamente recupera →
+       possível valor em A.
+     Formula estas observações como "se [evento ao vivo], a odd de X pode
+     inflacionar face aos dados — observar entrada em X". Sempre com a
+     amostra que sustenta, e sempre como OBSERVAÇÃO (nunca "aposta"). Só
+     inclui quando a estatística de base é FORTE (amostra 100+ e % clara);
+     não forces este padrão em jogos onde não há um cenário marcante.
    * Usa `domination` (o que os adversários fazem contra cada um): se A
      ganha com muito mais winners que os adversários, "domina"; se ganha
      sobretudo porque os adversários erram muito (opp_unforced_errors
      alto), a vitória é mais frágil contra quem erra menos.
-- "verdict": 1-2 frases MÁX, leitura conclusiva CONCRETA. Diz o essencial
-  E, se houver, o principal mercado a observar com o seu gatilho. Ex:
-  "Mercado alinhado — favoritismo de Sinner justificado, sem valor claro."
-  ou "De Minaur favorito justo; se ganhar o 1º set, observar 'vence 2-0'
-  (fecha 88% nesses casos)." NÃO repitas a lista toda de discrepâncias.
+- "verdict": a LEITURA DE TRADER — a conclusão mais útil do relatório.
+  2-4 frases densas (não verbosas). Diz onde está (ou não está) o valor,
+  pré-live ou ao vivo. Aplica os padrões de mercado abaixo QUANDO se
+  aplicam (com a amostra que os sustenta); se nenhum se aplica, di-lo
+  ("mercado alinhado, sem valor claro"). Padrões a caçar:
+  1. RECUPERAÇÃO DE 1º SET: se um jogador recupera bem de 1º set perdido
+     (alta %, amostra grande) e pode perder o 1º set → se perder, a odd
+     dele dispara ao vivo mas historicamente volta → observar entrada nele
+     após perder o 1º set.
+  2. VAI A 3 SETS: se ambos são fortes em set decisivo e/ou o H2H tem
+     muitos 3 sets → observar "mais de 2.5 sets" / "vai a set decisivo".
+  3. DOMÍNIO FRÁGIL: se o favorito ganha sobretudo por erro alheio
+     (opp_unforced_errors alto, poucos winners próprios) contra um
+     adversário consistente (poucos erros) → o favoritismo é frágil →
+     observar valor no underdog.
+  4. FADIGA vs FRESCO: se um jogador leva muitos jogos/sets seguidos
+     (fatigue: matches_this_tournament, sets_last_7d) e o outro teve
+     caminho mais leve → em jogo longo o desgaste pode não estar na odd →
+     observar o mais fresco / "over games".
+  Regra de ouro: mercado tem de corresponder EXATO à estatística (ver
+  rigor acima). Sempre OBSERVAÇÃO, nunca "aposta"/"recomendo". NÃO repitas
+  a lista de discrepâncias — o veredicto é a síntese acionável.
 
 Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
 """
@@ -304,7 +353,7 @@ def analyze_match(match_data: dict) -> dict:
         # inválido. 5000 dá folga; mais vale pagar o output completo do que
         # gerar relatórios truncados que falham. As outras poupanças (cache
         # do prompt, cache por hash) mantêm-se.
-        max_tokens=5000,
+        max_tokens=5500,
         # Cache do prompt de sistema (medida de poupança, 30/07): o
         # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
         # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
