@@ -87,9 +87,10 @@ def _gauge(label: str, value: float, sample: Optional[int] = None,
 
 
 def _markdown_inline(text: str) -> str:
-    """Converte **negrito** e `código` para HTML, escapando o resto."""
-    # escapar primeiro
-    text = _esc(text)
+    """Converte **negrito** e `código` para HTML. Escapa <, >, & (segurança)
+    mas NÃO apóstrofos/aspas — em conteúdo de texto são inofensivos e o
+    html.escape padrão transformava-os em &#x27; à mostra."""
+    text = html.escape(str(text if text is not None else ""), quote=False)
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
     return text
@@ -458,7 +459,7 @@ def _build_analysis_body(result: dict) -> str:
     # Pontos-chave
     kps = result.get("key_points") or []
     if kps:
-        items = "".join(f'<li>{_markdown_inline(_esc(k))}</li>' for k in kps)
+        items = "".join(f'<li>{_markdown_inline(k)}</li>' for k in kps)
         out.append(f'<h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list">{items}</ul>')
 
     # Discrepâncias (com selos) + legenda
@@ -478,12 +479,12 @@ def _build_analysis_body(result: dict) -> str:
             text = d.get("text", "") if isinstance(d, dict) else str(d)
             cls = {"forte": "disc-strong", "moderado": "disc-mid", "fraco": "disc-weak"}.get(weight, "disc-weak")
             emoji = {"forte": "🔴", "moderado": "🟡", "fraco": "⚪"}.get(weight, "⚪")
-            out.append(f'<div class="disc-item {cls}"><span class="disc-emoji">{emoji}</span> {_markdown_inline(_esc(text))}</div>')
+            out.append(f'<div class="disc-item {cls}"><span class="disc-emoji">{emoji}</span> {_markdown_inline(text)}</div>')
 
     # Veredicto — caixa destacada
     verdict = result.get("verdict")
     if verdict:
-        out.append(f'<div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">{_markdown_inline(_esc(verdict))}</div></div>')
+        out.append(f'<div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">{_markdown_inline(verdict)}</div></div>')
 
     return "".join(out)
 
