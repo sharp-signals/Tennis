@@ -45,7 +45,19 @@ jobs:
           git add data/ docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar caches e relatórios [skip ci]"
-            git push
+            # Integrar mudanças remotas antes de enviar (evita o erro
+            # "! [rejected] ... fetch first" quando o repo avançou entretanto,
+            # ex: substituições manuais de ficheiros). Rebase por cima do
+            # remoto e tenta o push; se ainda falhar, repete uma vez.
+            for tentativa in 1 2 3; do
+              git pull --rebase --autostash origin main || true
+              if git push; then
+                echo "Push concluído (tentativa $tentativa)."
+                break
+              fi
+              echo "Push falhou na tentativa $tentativa; a repetir..."
+              sleep 3
+            done
           else
             echo "Sem alterações a gravar."
           fi
