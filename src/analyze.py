@@ -84,7 +84,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-08-01-veredicto-protegido"
+PROMPT_VERSION = "2026-08-01-piso-especifico"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -154,6 +154,11 @@ CAMPOS E COMO USÁ-LOS:
   * `vs_rank_level`: desempenho por nível de ranking do adversário
     (top5/10/50/100). CHAVE para a qualidade do adversário: boa taxa geral
     mas fraca vs top-10 = enche stats com adversários fracos.
+  * `by_surface`: desempenho de CARREIRA por piso (hard, clay, hard_indoor,
+    grass, carpet), com win_pct e nº de jogos. Mais fiável que a secção de
+    piso do histórico (carreira completa, distingue hard indoor/outdoor).
+    Usa o piso DESTE jogo para a leitura; grande diferença entre pisos é
+    sinal (ex: forte em hard mas fraco em clay num torneio de terra).
   * `scenarios`: cenários de jogo em % de carreira — `first_set_win_then_win_pct`
     (ganha 1º set → ganha o JOGO, que pode ser 2-0 OU 2-1),
     `first_set_lose_then_win_pct` (recupera de 1º set perdido),
