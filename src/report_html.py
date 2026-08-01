@@ -389,19 +389,8 @@ def _build_data_sections(payload: dict) -> str:
         if rows:
             cards.append(_data_card("Domínio vs adversários (carreira)", rows))
 
-    # Mercado
-    odds = payload.get("market_odds_decimal") or {}
-    if isinstance(odds, dict) and odds:
-        rows = []
-        for nome in (payload.get("player_a"), payload.get("player_b")):
-            if not nome:
-                continue
-            for k, v in odds.items():
-                if k.lower() == nome.lower() or (nome.split()[-1].lower() in k.lower()):
-                    rows.append(f"<b>{_esc(nome)}:</b> {v}")
-                    break
-        if rows:
-            cards.append(_data_card("Mercado (odds)", rows))
+    # (Secção "Mercado (odds)" removida — as odds já aparecem no cabeçalho,
+    # com a probabilidade sem margem; repeti-las aqui era redundante.)
 
     cards = [c for c in cards if c]
     if not cards:
@@ -509,7 +498,7 @@ def _build_analysis_body(result: dict) -> str:
             text = d.get("text", "") if isinstance(d, dict) else str(d)
             cls = {"forte": "disc-strong", "moderado": "disc-mid", "fraco": "disc-weak"}.get(weight, "disc-weak")
             emoji = {"forte": "🔴", "moderado": "🟡", "fraco": "⚪"}.get(weight, "⚪")
-            out.append(f'<div class="disc-item {cls}"><span class="disc-emoji">{emoji}</span> {_markdown_inline(text)}</div>')
+            out.append(f'<div class="disc-item {cls}"><span class="disc-emoji">{emoji}</span><span class="disc-text">{_markdown_inline(text)}</span></div>')
 
     # Veredicto — caixa destacada
     verdict = result.get("verdict")
@@ -727,6 +716,7 @@ body {{
 /* Discrepâncias com selos e destaque por peso */
 .disc-item {{ padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }}
 .disc-emoji {{ flex-shrink:0; }}
+.disc-text {{ flex:1; }}
 .disc-strong {{ border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }}
 .disc-mid {{ border-left:4px solid var(--amber); }}
 .disc-weak {{ border-left:4px solid var(--dim); opacity:.9; }}
