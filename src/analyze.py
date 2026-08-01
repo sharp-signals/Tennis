@@ -84,7 +84,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-31-mercados"
+PROMPT_VERSION = "2026-07-31-fadiga-real"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -138,9 +138,16 @@ CAMPOS E COMO USÁ-LOS:
 - `handedness_matchup_*`, `layoff_return_stats_*` (1º jogo após pausa 60+
   dias), `round_stage_stats_*`: dados reais de contexto, não previsões.
   (Nota: recuperação de 1º set e set decisivo estão em rich_stats.scenarios.)
-- `fatigue_signal_*`: `days_since_last_match`, `matches_last_3/7/14d`,
-  `minutes/sets_played_last_7d`. Usa o conjunto. Métricas usam a data de
-  INÍCIO do torneio (não a exata) — trata como aproximação.
+- `fatigue_signal_*`: se `fatigue_source: "api_recent"`, os dados são
+  FIÁVEIS e incluem os jogos do torneio em curso: `days_since_last_match`
+  (real), `matches_this_tournament` (jogos já disputados nesta semana —
+  CARGA acumulada, o sinal mais importante em fases finais),
+  `matches_last_3/7/14d`, `sets_last_7d`. Um jogador com muitos jogos/sets
+  nos últimos dias pode estar desgastado; poucos dias de descanso após um
+  jogo longo é sinal de fadiga. Se NÃO tiver `fatigue_source` (veio do
+  histórico), trata `days_since_last_match` como APROXIMAÇÃO grosseira
+  (pode estar desatualizado, ignora se parecer absurdo — ex. "25 dias"
+  para quem está em fase final).
 - `rich_stats_*` (pode ser null): dados ricos da matchstat (carreira).
   * `response_stats`: resposta (pontos de resposta ganhos %, break points
     convertidos %).
