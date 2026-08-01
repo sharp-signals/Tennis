@@ -5,9 +5,12 @@ seguido, recolhe dados de várias fontes, gera um relatório visual com uma
 **leitura de mercado** (discrepâncias e pontos a observar), publica-o online
 e envia um resumo para o Telegram.
 
-> **Importante:** o bot **não recomenda apostas**. Sinaliza divergências entre
-> os dados e o mercado e sugere **mercados a observar** — a decisão é sempre
-> humana.
+> **Importante:** o bot **não recomenda apostas** e **não calcula edge nem
+> probabilidade própria**. Sinaliza divergências entre os dados e o mercado e
+> sugere **mercados a observar** — a decisão é sempre humana. Fala em "favorito
+> do mercado" (não "justo") e nunca afirma que "há valor de X%": esta é uma
+> decisão informada, validada por backtest (um modelo preditivo próprio não
+> mostrou vantagem consistente sobre o mercado).
 
 ---
 
@@ -67,6 +70,8 @@ Workflow: `.github/workflows/tennis-bot.yml` (GitHub Actions).
   set decisivo, tie-breaks, resposta, estilo (winners/erros/rede/duração),
   e **opponentStats** (o que os adversários fazem contra o jogador).
 - **Desempenho por nível de adversário** (`perf-breakdown`): vs top 10/50/100.
+- **Desempenho por piso específico** (`perf-breakdown`): registo de carreira
+  no piso exato do jogo, com hard indoor/outdoor separados.
 - **Jogos recentes** (`past-matches`): para a **fadiga real** (inclui os jogos
   do torneio em curso).
 - Base: `https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/`
@@ -95,8 +100,12 @@ Workflow: `.github/workflows/tennis-bot.yml` (GitHub Actions).
 
 Estrutura, de cima para baixo:
 
-1. **Cabeçalho** — jogadores, odds, probabilidade sem margem, confiança da
-   leitura, e **alerta de topo** 🔴 quando há discrepância forte.
+1. **Cabeçalho** — jogadores, odds, probabilidade sem margem, e dois eixos
+   de confiança separados: **Cobertura de dados** (número *calculado pelo
+   Python* — conta quantas das 8 fontes estão presentes, com chips ✓/✗ que
+   mostram exatamente quais existem e quais faltam) e **Força do sinal**
+   (juízo qualitativo do modelo, com justificação — assume-se como leitura,
+   não medida exata). E **alerta de topo** 🔴 quando há discrepância forte.
 2. **Gráficos** — Serviço/Resposta, Forma recente, Qualidade do adversário.
 3. **Secções de dados** (montadas em Python, números sempre certos):
    H2H, forma/época, ranking, piso, fadiga, desistências, cenários de jogo,
@@ -177,6 +186,28 @@ GitHub Pages: **Settings → Pages → Deploy from a branch → `main` → `/doc
 
 ---
 
+## Auditoria externa (rigor adotado)
+
+O projeto passou por uma auditoria externa. Foram adotadas as recomendações de
+**rigor e transparência**, mantendo a filosofia de "observação, não edge":
+
+- Não inferir "vence 2-0" de "ganha o jogo após 1º set" (inclui 2-1).
+- Não comparar taxas históricas com a probabilidade implícita do mercado como
+  se fossem a mesma medida.
+- Separar **cobertura de dados** de **força do sinal** (dois eixos, não um).
+- **Transparência da pontuação:** a cobertura é *calculada* (Python conta as
+  fontes presentes, mostra chips ✓/✗), não um número opaco; a força do sinal
+  é assumida como juízo, sempre com justificação.
+- Marcar dados de carreira como de relevância temporal limitada (jogadores de
+  carreira longa misturam fases).
+- "Favorito do mercado" (não "justo"); nunca afirmar "há valor de X%".
+- Não duplicar os dois lados do mesmo cenário como dois sinais.
+
+A recomendação de calcular **edge/probabilidade própria** foi **conscientemente
+não adotada** — é uma decisão informada, validada por backtest.
+
+---
+
 ## O que falta fazer
 
 ### 🔴 Crítico (antes do próximo torneio)
@@ -195,14 +226,18 @@ GitHub Pages: **Settings → Pages → Deploy from a branch → `main` → `/doc
       + veredicto rico) após ver mais relatórios.
 
 ### 🟢 Ideias futuras (não urgentes)
+- [ ] **Automação de torneios por categoria** — em vez de IDs manuais, seguir
+      automaticamente todos os ATP/WTA de nível **250, 500, 1000 e Grand Slam**
+      (descartar Challengers/ITF). A implementar depois dos testes, com um
+      "travão" de custo (limite de jogos/dia ou escolha de categorias ativas),
+      já que mais torneios = mais custo Anthropic + RapidAPI.
 - [ ] **Mais padrões de mercado** — a biblioteca de raciocínios está aberta a
       crescer (tie-break specialists, etc.).
-- [ ] **Haiku preparado mas desligado** — opção de modelo mais barato para a
-      análise, a ligar só se o volume (vários torneios) justificar e a
-      qualidade aguentar.
-- [ ] **Alargar a vários torneios** em simultâneo (decisão dependente de custo;
-      com Pro a quota aguenta, o custo Anthropic escala com os jogos).
-- [ ] Reduzir mais o consumo Anthropic (payload ainda mais enxuto, etc.).
+- [ ] **Haiku preparado mas desligado** — modelo mais barato para a análise, a
+      ligar só se o volume justificar e a qualidade aguentar (risco de perder o
+      julgamento fino que é o diferencial do bot).
+- [ ] **Plano RapidAPI custom** — negociar um plano intermédio (o grátis 50/dia
+      é apertado, o Pro 5000/dia é exagero para 1 torneio).
 - [ ] Terceira fonte de histórico WTA como reforço extra.
 
 ---
