@@ -106,8 +106,8 @@ ODDS_API_TENNIS_SPORT_KEYS = [
 
 # Janela de antecedência: só considera jogos que arrancam dentro
 # destas horas a partir do momento em que o workflow corre.
-LOOKAHEAD_HOURS_MIN = 3
-LOOKAHEAD_HOURS_MAX = 30
+LOOKAHEAD_HOURS_MIN = 0
+LOOKAHEAD_HOURS_MAX = 36
 
 SURFACES = ["Hard", "Clay", "Grass"]
 
