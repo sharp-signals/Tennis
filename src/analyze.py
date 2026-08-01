@@ -84,7 +84,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-07-31-dados-ricos-b"
+PROMPT_VERSION = "2026-07-31-mercados"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -135,9 +135,9 @@ CAMPOS E COMO USÁ-LOS:
   especialização. Cada piso pode ser null.
 - `current_season_*`: jogos/vitórias na época atual. CHAVE p/ o aviso de
   fim de carreira abaixo.
-- `set1_comeback_stats_*`, `deciding_set_stats_*`, `handedness_matchup_*`,
-  `layoff_return_stats_*` (1º jogo após pausa 60+ dias), `round_stage_stats_*`:
-  dados reais de contexto, não previsões.
+- `handedness_matchup_*`, `layoff_return_stats_*` (1º jogo após pausa 60+
+  dias), `round_stage_stats_*`: dados reais de contexto, não previsões.
+  (Nota: recuperação de 1º set e set decisivo estão em rich_stats.scenarios.)
 - `fatigue_signal_*`: `days_since_last_match`, `matches_last_3/7/14d`,
   `minutes/sets_played_last_7d`. Usa o conjunto. Métricas usam a data de
   INÍCIO do torneio (não a exata) — trata como aproximação.
@@ -158,6 +158,12 @@ CAMPOS E COMO USÁ-LOS:
     `winners`/`unforced_errors` (agressividade), `aces`/`double_faults`.
     Usa para caracterizar ESTILO (agressivo vs consistente) e ligar a
     mercados (ex. jogo longo/curto, total de games).
+  * `domination`: compara o jogador com os ADVERSÁRIOS dele (own_ vs opp_):
+    `own_first_serve_won_pct`/`opp_first_serve_won_pct` (quem serve melhor),
+    `own_winners`/`opp_winners` (quem ataca mais), `own_unforced_errors`/
+    `opp_unforced_errors` (quem erra mais). Se ganha com muitos winners
+    próprios → domina; se ganha sobretudo porque os adversários erram muito
+    (opp_unforced_errors alto) → vitória mais frágil contra quem erra pouco.
   Usa TODOS estes nos pontos-chave e discrepâncias quando forem relevantes
   e tiverem amostra suficiente (aplica o Princípio 1 — amostra pequena não
   sustenta leitura).
@@ -211,18 +217,33 @@ são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
    * weight "forte": amostra grande (100+ jogos) E divergência clara vs mercado.
    * weight "moderado": amostra 30-100 ou divergência menos vincada.
    * weight "fraco": amostra <30 ou só contexto.
-   * O "text" liga o dado (com número e amostra) ao mercado a observar. Ex:
-     "Tsitsipas lidera H2H **12-1** (13 jogos) — observar handicap de games de Tsitsipas."
    * Percentagem alta com amostra pequena é "fraco", nunca "forte".
    * Liga sempre a um número com amostra; sem suporte, não incluas.
-   * Tipos de raciocínio: underdog com bom perfil → handicap/"ganha 1 set";
-     favorito vs quem recupera bem → observar se perde 1º set ao vivo;
-     forte em set decisivo → "vai a set decisivo"/total de sets.
    * Se não houver discrepância real, devolve lista vazia [].
-- "verdict": 1-2 frases MÁX, leitura conclusiva simples e objetiva para
-  quem só quer o essencial (ex: "Mercado alinhado — favoritismo de Sinner
-  justificado." ou "Divergência a favor de Tabilo; observar handicap de
-  games."). NÃO repitas a lista de discrepâncias.
+   * SÊ CONCRETO no mercado (não vago). Em vez de "observar o handicap",
+     diz QUAL: "observar handicap -3.5 games de A", "observar 'A vence
+     2-0'", "observar 'mais de X.5 games'", "observar 'jogo vai a set
+     decisivo'". O mercado tem de ser acionável.
+   * CRUZA dados para observações mais afiadas (não listes factos soltos —
+     combina-os). Padrões de cruzamento a procurar:
+     - "A fecha X% após ganhar 1º set" × "B recupera só Y% de 1º set
+       perdido" (rich_stats.scenarios) → se A ganhar 1º set, mercado "A
+       vence 2-0" pode estar subvalorizado.
+     - "A forte em set decisivo Z%" × jogo equilibrado no papel → observar
+       "vai a set decisivo" / total de sets.
+     - "A domina 1º serviço" (domination: own vs opp) × "B fraco a devolver"
+       → observar handicap de games / total de quebras.
+     - vs_rank_level: se A tem boa taxa geral mas fraca vs top-10 e B é
+       top-10, o favoritismo de A pode ser frágil.
+   * Usa `domination` (o que os adversários fazem contra cada um): se A
+     ganha com muito mais winners que os adversários, "domina"; se ganha
+     sobretudo porque os adversários erram muito (opp_unforced_errors
+     alto), a vitória é mais frágil contra quem erra menos.
+- "verdict": 1-2 frases MÁX, leitura conclusiva CONCRETA. Diz o essencial
+  E, se houver, o principal mercado a observar com o seu gatilho. Ex:
+  "Mercado alinhado — favoritismo de Sinner justificado, sem valor claro."
+  ou "De Minaur favorito justo; se ganhar o 1º set, observar 'vence 2-0'
+  (fecha 88% nesses casos)." NÃO repitas a lista toda de discrepâncias.
 
 Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
 """
@@ -235,10 +256,21 @@ def analyze_match(match_data: dict) -> dict:
     form_a / form_b (dict ou None), surface_stats_a / surface_stats_b (dict
     ou None), fatigue_a / fatigue_b (dict ou None).
     """
+    # Onda C (poupança de input): o payload que vai ao Claude é enxugado —
+    # removemos campos DUPLICADOS que já vêm dentro de rich_stats.scenarios
+    # (set1_comeback e deciding_set já estão lá como first_set_lose_then_win_pct
+    # e deciding_set_win_pct). O payload COMPLETO continua a ir para o
+    # report_html (que monta as secções), por isso não se perde nada visual.
+    _REDUNDANT_FOR_LLM = (
+        "set1_comeback_stats_a", "set1_comeback_stats_b",
+        "deciding_set_stats_a", "deciding_set_stats_b",
+    )
+    llm_data = {k: v for k, v in match_data.items() if k not in _REDUNDANT_FOR_LLM}
+
     user_prompt = (
         "Dados do jogo (JSON). Campos a null significam que a fonte não "
         "tinha esse dado disponível:\n\n"
-        + json.dumps(match_data, ensure_ascii=False, indent=2, default=str)
+        + json.dumps(llm_data, ensure_ascii=False, indent=2, default=str)
     )
 
     # Cache por hash: se já analisámos este jogo com estes mesmos dados
