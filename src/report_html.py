@@ -244,15 +244,45 @@ def _build_data_sections(payload: dict) -> str:
         rows = [f"<b>Ranking oficial:</b> {a} #{ra if ra else '?'} · {b} #{rb if rb else '?'}"]
         cards.append(_data_card("Ranking", rows))
 
-    # Piso (estrutura plana: wins/losses/matches, para o piso do jogo)
-    supa = payload.get("surface_stats_a") or {}
-    supb = payload.get("surface_stats_b") or {}
+    # Piso: preferir o dado RICO (by_surface do perf-breakdown, carreira
+    # completa e com indoor/outdoor separado); fallback para surface_stats
+    # do histórico. Mapeia o piso do jogo para a chave certa.
     surface_name = payload.get("surface", "")
-    if supa.get("matches") and supb.get("matches"):
-        pa = _fmt_pct(supa['wins']/supa['matches'])
-        pb = _fmt_pct(supb['wins']/supb['matches'])
-        rows = [f"<b>Neste piso ({_esc(surface_name)}):</b> {a} {pa} ({supa['matches']} jogos) · {b} {pb} ({supb['matches']} jogos)"]
-        cards.append(_data_card("Desempenho por piso", rows))
+    surf_lower = surface_name.lower()
+    # determinar a chave de by_surface para o piso do jogo
+    if "clay" in surf_lower:
+        skey = "clay"
+    elif "grass" in surf_lower:
+        skey = "grass"
+    elif "carpet" in surf_lower:
+        skey = "carpet"
+    elif "indoor" in surf_lower and "hard" in surf_lower:
+        skey = "hard_indoor"
+    elif "hard" in surf_lower:
+        skey = "hard"
+    else:
+        skey = None
+
+    bsa = (payload.get("rich_stats_a") or {}).get("by_surface") or {}
+    bsb = (payload.get("rich_stats_b") or {}).get("by_surface") or {}
+    ca = bsa.get(skey) if skey else None
+    cb = bsb.get(skey) if skey else None
+
+    if ca and cb and ca.get("matches") and cb.get("matches"):
+        # dado rico (carreira completa)
+        rows = [f"<b>Neste piso ({_esc(surface_name)}):</b> "
+                f"{a} {ca['win_pct']}% ({ca['matches']} jogos) · "
+                f"{b} {cb['win_pct']}% ({cb['matches']} jogos)"]
+        cards.append(_data_card("Desempenho por piso (carreira)", rows))
+    else:
+        # fallback: surface_stats do histórico
+        supa = payload.get("surface_stats_a") or {}
+        supb = payload.get("surface_stats_b") or {}
+        if supa.get("matches") and supb.get("matches"):
+            pa = _fmt_pct(supa['wins']/supa['matches'])
+            pb = _fmt_pct(supb['wins']/supb['matches'])
+            rows = [f"<b>Neste piso ({_esc(surface_name)}):</b> {a} {pa} ({supa['matches']} jogos) · {b} {pb} ({supb['matches']} jogos)"]
+            cards.append(_data_card("Desempenho por piso", rows))
 
     # Fadiga
     fga, fgb = payload.get("fatigue_signal_a") or {}, payload.get("fatigue_signal_b") or {}
