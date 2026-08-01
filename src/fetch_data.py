@@ -1255,6 +1255,107 @@ _PERF_BREAKDOWN_CACHE: dict = {}
 PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS = 24 * 7  # 7 dias
 
 
+_RECENT_MATCHES_CACHE: dict = {}
+RECENT_MATCHES_CACHE_MAX_AGE_HOURS = 24  # 1 dia (jogos novos aparecem diariamente)
+
+
+def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
+    """
+    Jogos recentes do jogador (endpoint past-matches), por ID matchstat.
+    Devolve uma lista de jogos (mais recente primeiro), cada um com date
+    (ISO), tournamentId, match_winner, result, player1Id, player2Id.
+    É a fonte FIÁVEL para a fadiga real: inclui os jogos do torneio em
+    curso (que o histórico Sackmann/tennis-data só regista com atraso).
+    Cache 1 dia. None se falhar (a fadiga cai então no fallback do histórico).
+    """
+    cache_key = f"{tour}:{player_id}"
+    cached = _RECENT_MATCHES_CACHE.get(cache_key)
+    if cached is not None:
+        age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age_hours < RECENT_MATCHES_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+
+    if not RAPIDAPI_KEY:
+        return None
+
+    url = f"{RAPIDAPI_BASE}/{tour}/player/past-matches/{player_id}"
+    try:
+        resp = _rapidapi_get(url)
+        resp.raise_for_status()
+        data = resp.json().get("data")
+        if not isinstance(data, list):
+            data = None
+        _RECENT_MATCHES_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter jogos recentes ({tour}, id {player_id}): {exc}")
+        return None
+
+
+def compute_fatigue_from_recent(recent_matches: list, player_id: int,
+                                 match_date: datetime, current_tournament_id=None) -> Optional[dict]:
+    """
+    Fadiga REAL a partir dos jogos recentes da API (past-matches). Corrige
+    o bug de o histórico ignorar os jogos do torneio em curso (dava "25
+    dias" a quem está nas meias-finais). Calcula:
+      - days_since_last_match (real)
+      - matches_last_3d / _7d / _14d
+      - matches_this_tournament (carga acumulada esta semana — o sinal que
+        importa nas fases finais)
+      - sets_last_7d (contados do campo result)
+    """
+    if not recent_matches:
+        return None
+
+    played = []  # (data, é_do_torneio_atual, n_sets)
+    for m in recent_matches:
+        if not isinstance(m, dict):
+            continue
+        # confirmar que o jogo envolve este jogador
+        if player_id not in (m.get("player1Id"), m.get("player2Id")):
+            continue
+        raw_date = m.get("date")
+        if not raw_date:
+            continue
+        try:
+            d = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            continue
+        # só jogos ANTES do jogo que estamos a analisar (não jogos futuros)
+        if d >= match_date:
+            continue
+        # contar sets a partir do result ("6-4 3-6 6-3" = 3 sets)
+        result = m.get("result") or ""
+        n_sets = len([s for s in result.split() if "-" in s]) if result else 0
+        is_current = (current_tournament_id is not None
+                      and m.get("tournamentId") == current_tournament_id)
+        played.append((d, is_current, n_sets))
+
+    if not played:
+        return None
+
+    played.sort(key=lambda x: x[0], reverse=True)
+    last_date = played[0][0]
+    days_since = (match_date - last_date).days
+
+    def _count_within(days):
+        cutoff = match_date - timedelta(days=days)
+        return sum(1 for d, _, _ in played if d >= cutoff)
+
+    sets_7d = sum(n for d, _, n in played if d >= match_date - timedelta(days=7))
+    matches_tourn = sum(1 for _, is_cur, _ in played if is_cur)
+
+    return {
+        "days_since_last_match": days_since,
+        "matches_last_3d": _count_within(3),
+        "matches_last_7d": _count_within(7),
+        "matches_last_14d": _count_within(14),
+        "matches_this_tournament": matches_tourn,
+        "sets_last_7d": sets_7d,
+        "fatigue_source": "api_recent",  # marca que veio da fonte fiável
+    }
+
+
 def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
     """
     Desempenho do jogador SEPARADO POR NÍVEL DE RANKING do adversário
