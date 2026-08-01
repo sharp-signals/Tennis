@@ -1400,7 +1400,36 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
                 summary[lv] = {"wins": w, "losses": l, "matches": total,
                                "win_pct": round(100 * w / total, 1)}
 
-        data = {"vs_rank_level": summary} if summary else None
+        # Agregar desempenho por PISO (chave "court" por ano). Mapeamento dos
+        # índices confirmado contra o vs-all-stats (01/08/2026):
+        # 1=Hard(outdoor), 2=Clay, 3=Hard indoor, 4=Carpet, 5=Grass.
+        court_map = {"1": "hard", "2": "clay", "3": "hard_indoor",
+                     "4": "carpet", "5": "grass"}
+        surf_agg = {v: {"wins": 0, "losses": 0} for v in court_map.values()}
+        for year_data in (raw.values() if isinstance(raw, dict) else []):
+            court_block = (year_data or {}).get("court", {})
+            if not isinstance(court_block, dict):
+                continue
+            for idx, name in court_map.items():
+                cell = court_block.get(idx)
+                if isinstance(cell, dict):
+                    surf_agg[name]["wins"] += cell.get("aw", 0) or 0
+                    surf_agg[name]["losses"] += cell.get("al", 0) or 0
+
+        by_surface = {}
+        for name, rec in surf_agg.items():
+            w, l = rec["wins"], rec["losses"]
+            total = w + l
+            if total > 0:
+                by_surface[name] = {"wins": w, "losses": l, "matches": total,
+                                    "win_pct": round(100 * w / total, 1)}
+
+        data = {}
+        if summary:
+            data["vs_rank_level"] = summary
+        if by_surface:
+            data["by_surface"] = by_surface
+        data = data or None
         _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
         return data
     except requests.RequestException as exc:
