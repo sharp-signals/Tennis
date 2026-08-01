@@ -1,16 +1,14 @@
 name: Tennis Pre-Live Bot
 
 on:
-  # SCHEDULE AUTOMÁTICO DESATIVADO durante a fase de testes (30/07/2026)
-  # — para não competir com os testes manuais pela quota da RapidAPI.
+  # SCHEDULE AUTOMÁTICO DESATIVADO durante a fase de testes (30/07/2026).
+  # Passou a 1x/dia às 05:00 UTC (~6h Portugal) — apanha o dia inteiro de
+  # jogos graças à janela alargada (LOOKAHEAD 0-36h no config). Correr 1x
+  # em vez de 2x reduz a metade o custo Anthropic e as chamadas RapidAPI.
   # Para REATIVAR quando o projeto estiver estável, descomenta as 2 linhas
-  # cron abaixo.
+  # (schedule + cron) abaixo.
   # schedule:
-  #   # Corre duas vezes por dia (horas em UTC).
-  #   # 07:00 UTC ~= manhã na Europa -> apanha jogos "hoje" que arrancam à tarde/noite
-  #   # 18:00 UTC ~= fim da tarde na Europa -> apanha véspera de jogos de amanhã de manhã
-  #   - cron: "0 7 * * *"
-  #   - cron: "0 18 * * *"
+  #   - cron: "0 5 * * *"   # 05:00 UTC = ~06:00 Portugal (verão)
   workflow_dispatch: {}   # correr manualmente a partir do GitHub UI (único trigger ativo)
 
 jobs:
