@@ -253,11 +253,32 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
             style["net_success_pct"] = round(100 * na / nao)
         style["matches_played"] = stats.get("statMatchesPlayed")
 
+    # Frente 1: opponentStats — o que os ADVERSÁRIOS fazem contra este
+    # jogador. Comparar com o playerStats diz se ele "domina" (ganha os
+    # seus pontos) ou "beneficia de erros do outro". Campos confirmados no
+    # JSON real (31/07).
+    opp = (career or {}).get("opponentStats") or {}
+    domination = {}
+    if isinstance(opp, dict) and isinstance(stats, dict):
+        # 1º serviço: quanto ELE ganha vs quanto os adversários ganham no 1º serviço deles
+        if stats.get("winningOnFirstServePercentage") is not None and opp.get("winningOnFirstServePercentage") is not None:
+            domination["own_first_serve_won_pct"] = stats["winningOnFirstServePercentage"]
+            domination["opp_first_serve_won_pct"] = opp["winningOnFirstServePercentage"]
+        # erros não forçados: dele vs dos adversários (quem erra mais)
+        if stats.get("unforcedErrors") is not None and opp.get("unforcedErrors") is not None:
+            domination["own_unforced_errors"] = stats["unforcedErrors"]
+            domination["opp_unforced_errors"] = opp["unforcedErrors"]
+        # winners: dele vs dos adversários (quem é mais agressivo/eficaz)
+        if stats.get("winners") is not None and opp.get("winners") is not None:
+            domination["own_winners"] = stats["winners"]
+            domination["opp_winners"] = opp["winners"]
+
     rich = {
         "response_stats": response or None,
         "vs_rank_level": (perf or {}).get("vs_rank_level"),
         "scenarios": {k: v for k, v in scenarios.items() if v is not None} or None,
         "style": {k: v for k, v in style.items() if v is not None} or None,
+        "domination": domination or None,
     }
 
     # gravar para reutilização (best-effort)
@@ -341,8 +362,25 @@ def _build_match_payload(match: dict) -> dict:
     form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES)
     surface_a = fetch_data.compute_surface_stats(history, player_a)
     surface_b = fetch_data.compute_surface_stats(history, player_b)
-    fatigue_a = fetch_data.compute_fatigue(history, player_a, start)
+    # Fadiga: tentar primeiro a fonte REAL (jogos recentes da API, que
+    # incluem o torneio em curso), com fallback para o histórico (atrasado)
+    # se a API não tiver os dados. Corrige o bug de dar "25 dias" a quem
+    # está nas fases finais de um torneio.
+    fatigue_a = fetch_data.compute_fatigue(history, player_a, start)  # fallback base
     fatigue_b = fetch_data.compute_fatigue(history, player_b, start)
+    _tournament_id = match.get("tournamentId") or match.get("tournament_id")
+    _pid_a = match.get("player1Id")
+    _pid_b = match.get("player2Id")
+    if _pid_a is not None:
+        _recent_a = fetch_data.fetch_player_recent_matches(tour, _pid_a)
+        _fa = fetch_data.compute_fatigue_from_recent(_recent_a, _pid_a, start, _tournament_id)
+        if _fa:
+            fatigue_a = _fa
+    if _pid_b is not None:
+        _recent_b = fetch_data.fetch_player_recent_matches(tour, _pid_b)
+        _fb = fetch_data.compute_fatigue_from_recent(_recent_b, _pid_b, start, _tournament_id)
+        if _fb:
+            fatigue_b = _fb
     injury_a = fetch_data.compute_injury_signal(history, player_a, INJURY_SIGNAL_LOOKBACK_MATCHES)
     injury_b = fetch_data.compute_injury_signal(history, player_b, INJURY_SIGNAL_LOOKBACK_MATCHES)
     serve_a = fetch_data.compute_serve_return_stats(history, player_a, SERVE_RETURN_STATS_MATCHES)
