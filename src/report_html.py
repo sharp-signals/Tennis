@@ -530,25 +530,73 @@ def build_report_html(payload: dict, result: dict) -> str:
     date_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
 
     # Grau de confiança global (0-100) com cor por faixa
-    conf = result.get("confidence_score")
-    conf_reason = _esc(result.get("confidence_reason", ""))
-    conf_html = ""
-    if conf is not None:
-        try:
-            conf = int(conf)
-            conf_color = COLORS["mint"] if conf >= 67 else (COLORS["amber"] if conf >= 34 else COLORS["red"])
-            conf_label = "alta" if conf >= 67 else ("média" if conf >= 34 else "baixa")
-            conf_html = f"""
-    <div class="confidence">
+    # Confiança: dois eixos separados (auditoria) — cobertura de dados e
+    # força do sinal. Retrocompatível com o formato antigo (confidence_score).
+    def _compute_coverage(payload):
+        """Cobertura CALCULADA (não subjetiva): conta as fontes de dados
+        presentes no payload. Transparente — o número vem daqui, verificável.
+        Devolve (pct, lista de (nome, presente))."""
+        def _has(v):
+            if v is None:
+                return False
+            if isinstance(v, dict):
+                return len(v) > 0 and any(vv is not None for vv in v.values())
+            return True
+        rich_a = payload.get("rich_stats_a") or {}
+        rich_b = payload.get("rich_stats_b") or {}
+        fontes = [
+            ("Odds do mercado", _has(payload.get("market_odds_decimal"))),
+            ("Confronto direto (H2H)", _has(payload.get("h2h"))),
+            ("Forma recente", _has(payload.get("recent_form_a")) and _has(payload.get("recent_form_b"))),
+            ("Ranking", _has(payload.get("ranking_a")) and _has(payload.get("ranking_b"))),
+            ("Desempenho por piso", _has(payload.get("surface_stats_a")) or _has(rich_a.get("by_surface"))),
+            ("Serviço/resposta", _has(payload.get("serve_return_stats_a"))),
+            ("Dados ricos de carreira", _has(rich_a.get("scenarios")) or _has(rich_a.get("vs_rank_level"))),
+            ("Fadiga real (jogos recentes)", (payload.get("fatigue_signal_a") or {}).get("fatigue_source") == "api_recent"),
+        ]
+        presentes = sum(1 for _, ok in fontes if ok)
+        pct = round(100 * presentes / len(fontes))
+        return pct, fontes
+
+    coverage_pct, coverage_fontes = _compute_coverage(payload)
+
+    def _bar_html(label, v, extra=""):
+        color = COLORS["mint"] if v >= 67 else (COLORS["amber"] if v >= 34 else COLORS["red"])
+        lab = "alta" if v >= 67 else ("média" if v >= 34 else "baixa")
+        return f"""
       <div class="conf-head">
-        <span class="conf-title">Confiança da leitura</span>
-        <span class="conf-num" style="color:{conf_color}">{conf}/100 · {conf_label}</span>
+        <span class="conf-title">{_esc(label)}</span>
+        <span class="conf-num" style="color:{color}">{v}/100 · {lab}</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:{conf}%;background:{conf_color}"></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:{v}%;background:{color}"></div></div>{extra}"""
+
+    conf_reason = _esc(result.get("confidence_reason", ""))
+
+    # COBERTURA: número calculado pelo Python + decomposição das fontes
+    # (transparente — vê-se exatamente que dados existem e quais faltam).
+    presentes = sum(1 for _, ok in coverage_fontes if ok)
+    chips = "".join(
+        f'<span class="cov-chip {"on" if ok else "off"}">{"✓" if ok else "✗"} {_esc(nome)}</span>'
+        for nome, ok in coverage_fontes
+    )
+    cov_extra = (f'<div class="cov-detail">{presentes}/{len(coverage_fontes)} fontes presentes'
+                 f'<div class="cov-chips">{chips}</div></div>')
+    cov_bar = _bar_html("Cobertura de dados", coverage_pct, cov_extra)
+
+    # FORÇA DO SINAL: juízo qualitativo do Claude, com justificação (não é
+    # uma medida exata — assume-se como leitura).
+    strength = result.get("signal_strength")
+    force_bar = ""
+    if strength is not None:
+        try:
+            force_bar = _bar_html("Força do sinal (leitura)", int(strength))
+        except (ValueError, TypeError):
+            force_bar = ""
+
+    conf_html = f"""
+    <div class="confidence">{cov_bar}{force_bar}
       {f'<div class="conf-reason">{conf_reason}</div>' if conf_reason else ''}
     </div>"""
-        except (ValueError, TypeError):
-            pass
 
     # As odds vêm de find_market_odds como {nome_jogador: preço}, não com
     # chaves player_a/player_b — daí o cabeçalho aparecer vazio antes desta
@@ -696,6 +744,11 @@ body {{
 .conf-track {{ height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }}
 .conf-fill {{ height:100%; border-radius:5px; }}
 .conf-reason {{ font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }}
+.cov-detail {{ font-size:12px; color:var(--dim); margin-top:6px; }}
+.cov-chips {{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }}
+.cov-chip {{ font-size:11px; padding:2px 7px; border-radius:10px; border:1px solid var(--line); }}
+.cov-chip.on {{ color:var(--mint); border-color:var(--mint); }}
+.cov-chip.off {{ color:var(--dim); opacity:.6; }}
 
 /* Gráficos */
 .charts {{ margin:26px 0; }}
