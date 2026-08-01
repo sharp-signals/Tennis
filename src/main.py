@@ -276,6 +276,7 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
     rich = {
         "response_stats": response or None,
         "vs_rank_level": (perf or {}).get("vs_rank_level"),
+        "by_surface": (perf or {}).get("by_surface"),
         "scenarios": {k: v for k, v in scenarios.items() if v is not None} or None,
         "style": {k: v for k, v in style.items() if v is not None} or None,
         "domination": domination or None,
