@@ -44,7 +44,8 @@ def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
     summary = _find_str("summary_line")
     key_points = _find_str_list("key_points")
     verdict = _find_str("verdict")
-    conf = _find_int("confidence_score")
+    coverage = _find_int("data_coverage")
+    strength = _find_int("signal_strength")
 
     # discrepâncias: extrair objetos {weight, text} que estejam completos
     discrepancies = []
@@ -59,7 +60,8 @@ def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
 
     return {
         "flag": flag or FLAG_UNCERTAIN,
-        "confidence_score": conf if conf is not None else 40,
+        "data_coverage": coverage if coverage is not None else 40,
+        "signal_strength": strength if strength is not None else 30,
         "confidence_reason": "Análise recuperada parcialmente (resposta cortada).",
         "summary_line": summary or f"{match_data.get('player_a','?')} vs {match_data.get('player_b','?')}",
         "key_points": key_points or ["Análise parcialmente recuperada — alguns pontos podem faltar."],
@@ -84,7 +86,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-08-01-piso-especifico"
+PROMPT_VERSION = "2026-08-01-cobertura-calc"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -122,6 +124,25 @@ TRÊS PRINCÍPIOS DE LEITURA (aplicam-se a tudo):
    época atual) contradiz a carreira, o presente ganha.
 3. "SEM DADOS" ≠ "EQUILÍBRIO": falta de H2H/forma é LACUNA (di-lo como
    tal), nunca informação de equilíbrio.
+4. HONESTIDADE SOBRE O QUE SABEMOS (crítico): NÃO calculamos probabilidade
+   própria nem "edge". O bot sinaliza informação para observação humana,
+   não diz "há valor de X%". Por isso:
+   - Diz "favorito do MERCADO" (nunca "favorito justo" — não temos preço
+     justo próprio).
+   - NUNCA compares uma taxa histórica (ex. "46% vs top-20 na carreira")
+     com a probabilidade implícita do mercado (ex. "63%") como se fossem
+     a mesma medida — não são (uma é histórico agregado não ajustado, a
+     outra é a avaliação atual deste jogo). Podes apresentar a taxa
+     histórica como CONTEXTO, dizendo explicitamente que não é diretamente
+     comparável com a odd.
+   - Uma estatística histórica pode SUGERIR algo a observar, mas não PROVA
+     que o mercado está errado. Não concluas subavaliação/sobreavaliação a
+     partir de dados históricos não ajustados.
+5. CARREIRA vs ATUAL: dados de carreira (cenários, estilo, vs-rank, piso)
+   misturam fases diferentes (início, auge, pausas, regresso). Para
+   jogadores com carreira longa, marca-os como "carreira — relevância
+   temporal limitada para o estado atual" quando não houver o recorte
+   recente. Não os trates como retrato do momento presente.
 
 CAMPOS E COMO USÁ-LOS:
 - `h2h`: `overall` (carreira) e `on_surface` (só este piso, pode ser null).
@@ -214,10 +235,12 @@ são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
 - "flag": "{FLAG_HIGH_SIGNAL}" (nota/divergência forte/fadiga clara),
   "{FLAG_UNCERTAIN}" (equilibrado ou dados insuficientes), ou
   "{FLAG_ROUTINE}" (sem sinais especiais).
-- "confidence_score": inteiro 0-100 = força/fiabilidade da LEITURA (não a
-  probabilidade de vitória). 0-33 baixo, 34-66 médio, 67-100 alto. Reflete
-  os 3 princípios (amostra pequena e dados em falta baixam; presente sólido sobe).
-- "confidence_reason": UMA frase a justificar o score.
+- "signal_strength": inteiro 0-100 = quão CLARO e forte é o sinal de leitura
+  (há divergências marcantes com amostra grande? ou está tudo alinhado/
+  ambíguo?). É a FORÇA da evidência — um JUÍZO qualitativo, não uma medida
+  exata. (A cobertura de dados é calculada automaticamente, não a devolvas.)
+- "confidence_reason": UMA frase a justificar o signal_strength (porque é
+  forte/fraco o sinal), para dar transparência à leitura.
 - "summary_line": 1 frase (máx ~140 chars), direta, sinal mais importante primeiro.
 - "key_points": lista de 3-4 strings CURTAS (máx ~18 palavras cada, 1
   frase telegráfica). Número/facto primeiro. **negrito** nos valores. NÃO
@@ -247,6 +270,10 @@ são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
   Regra de ouro: o mercado corresponde EXATO à estatística. "Ganha o jogo"
   ≠ "vence 2-0" (inclui 2-1); "% set decisivo" só se for a set decisivo.
   Sem saltos lógicos. Sempre OBSERVAÇÃO, nunca "aposta"/"recomendo".
+  HONESTIDADE: escreve "favorito do mercado" (não "justo"); não afirmes que
+  há "valor" como facto — no máximo "possível valor a observar". O bot NÃO
+  quantifica edge; se o mercado parece alinhado com os dados, di-lo
+  ("mercado alinhado; sem sinal claro para observar").
 - "discrepancies": lista de objetos {{"weight": "forte"|"moderado"|"fraco",
   "text": "..."}}, ordenada de forte para fraco. Aqui são CURTAS e
   FACTUAIS (o dado + o mercado que sugere, 1 frase) — o raciocínio
@@ -256,6 +283,10 @@ são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
    * % alta com amostra pequena é "fraco", nunca "forte".
    * Concreto e acionável: "observar handicap -3.5 games de A", "observar
      'A vence o jogo'", "observar 'vai a set decisivo'".
+   * NÃO DUPLIQUES: dois lados do mesmo estado de jogo são UMA discrepância,
+     não duas. Ex: "A fecha 90% após ganhar 1º set" e "B só recupera 20%
+     de 1º set perdido" descrevem o MESMO cenário (o que acontece após o 1º
+     set) — combina-os numa só entrada, não os contes como dois sinais.
    * Liga sempre a um número com amostra; sem suporte, não incluas. Se não
      houver discrepância real, devolve [].
 
@@ -400,7 +431,8 @@ def analyze_match(match_data: dict) -> dict:
         print(f"[aviso] resposta bruta (primeiros 500 chars): {raw_text[:500]}")
         return {
             "flag": FLAG_UNCERTAIN,
-            "confidence_score": 0,
+            "data_coverage": 0,
+            "signal_strength": 0,
             "confidence_reason": "Erro ao gerar a análise — sem base para avaliar.",
             "summary_line": (
                 f"{match_data.get('player_a', '?')} vs {match_data.get('player_b', '?')}: "
