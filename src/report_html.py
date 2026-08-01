@@ -258,8 +258,19 @@ def _build_data_sections(payload: dict) -> str:
     rows = []
     for nome, fg in ((a, fga), (b, fgb)):
         if isinstance(fg, dict) and fg.get("days_since_last_match") is not None:
-            stale = " (dado pode estar desatualizado)" if fg.get("fatigue_data_maybe_stale") else ""
-            rows.append(f"<b>{nome}:</b> {fg['days_since_last_match']} dias desde o último jogo{stale}")
+            parts = [f"{fg['days_since_last_match']} dias desde o último jogo"]
+            # se veio da fonte fiável (API), mostrar a carga real do torneio
+            if fg.get("fatigue_source") == "api_recent":
+                if fg.get("matches_this_tournament"):
+                    parts.append(f"{fg['matches_this_tournament']} jogo(s) neste torneio")
+                if fg.get("matches_last_7d") is not None:
+                    extra = f"{fg['matches_last_7d']} nos últimos 7 dias"
+                    if fg.get("sets_last_7d"):
+                        extra += f" ({fg['sets_last_7d']} sets)"
+                    parts.append(extra)
+            elif fg.get("fatigue_data_maybe_stale"):
+                parts[0] += " (dado pode estar desatualizado)"
+            rows.append(f"<b>{nome}:</b> " + "; ".join(parts))
     if rows:
         cards.append(_data_card("Fadiga / descanso", rows))
 
@@ -323,6 +334,29 @@ def _build_data_sections(payload: dict) -> str:
             rb_ = round(stb["winners"]/stb["unforced_errors"], 2)
             rows.append(f"<b>Rácio winners/erros:</b> {a} {ra_} · {b} {rb_}")
         cards.append(_data_card("Estilo de jogo (carreira)", rows))
+
+    # Domínio vs adversários (own vs opp) — quem "manda" no confronto-tipo
+    doma = (payload.get("rich_stats_a") or {}).get("domination") or {}
+    domb = (payload.get("rich_stats_b") or {}).get("domination") or {}
+    if doma or domb:
+        rows = []
+        def _dom_line(nome, dom):
+            if not dom:
+                return None
+            bits = []
+            if dom.get("own_first_serve_won_pct") is not None and dom.get("opp_first_serve_won_pct") is not None:
+                bits.append(f"1º serviço ganho {dom['own_first_serve_won_pct']}% vs adversários {dom['opp_first_serve_won_pct']}%")
+            if dom.get("own_winners") is not None and dom.get("opp_winners") is not None:
+                bits.append(f"winners {dom['own_winners']} vs {dom['opp_winners']}")
+            if dom.get("own_unforced_errors") is not None and dom.get("opp_unforced_errors") is not None:
+                bits.append(f"erros {dom['own_unforced_errors']} vs {dom['opp_unforced_errors']}")
+            return f"<b>{nome}:</b> " + "; ".join(bits) if bits else None
+        r1 = _dom_line(a, doma)
+        r2 = _dom_line(b, domb)
+        if r1: rows.append(r1)
+        if r2: rows.append(r2)
+        if rows:
+            cards.append(_data_card("Domínio vs adversários (carreira)", rows))
 
     # Mercado
     odds = payload.get("market_odds_decimal") or {}
