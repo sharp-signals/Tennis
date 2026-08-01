@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Naomi Osaka vs Alexandra Eala</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-prob { font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }
+.selos-legenda { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }
+.w-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.w-dot.red { background:var(--red); }
+.w-dot.amber { background:var(--amber); }
+.w-dot.white { background:var(--dim); }
+.selos-nota { width:100%; font-style:italic; opacity:.8; margin-top:2px; }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">Mubadala DC Open - Washington · WTA 500 · Hard · 01/08/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Naomi Osaka<div class="sb-prob">63% s/ margem</div></div>
+      <div class="sb-odds">
+        <div class="sb-odd">1.55</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">2.61</div>
+      </div>
+      <div class="sb-name right">Alexandra Eala<div class="sb-prob">37% s/ margem</div></div>
+    </div>
+    <div class="sb-flag">🔴 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Confiança da leitura</span>
+        <span class="conf-num" style="color:#e0a34a">52/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:52%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Amostras ricas em cenários e vs_rank_level suportam leitura forte, mas h2h, forma, época, piso, fadiga e lesão estão todos em falta.</div>
+    </div>
+    <div class="top-alert">🔴 1 sinal forte de discrepância — ver "Discrepâncias" abaixo</div>
+  </div>
+</header>
+<div class="wrap">
+  <section class="charts"><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (48/12 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">29.2%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:14.6%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:33.4%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">66.7%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (215/47 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">54.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:27.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:21.3%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">42.6%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (336/82 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">61.3%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:30.6%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:23.8%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">47.6%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Naomi Osaka #13 · Alexandra Eala #28</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Naomi Osaka:</b> sem desistências recentes registadas</div><div class="d-row"><b>Alexandra Eala:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.7°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Naomi Osaka 90% · Alexandra Eala 82% (341/233 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Naomi Osaka 26% · Alexandra Eala 27% (218/129 jogos)</div><div class="d-row"><b>Set decisivo:</b> Naomi Osaka 65% · Alexandra Eala 51% (169/123 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Naomi Osaka 55% · Alexandra Eala 58% (130/77 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Naomi Osaka 64% · Alexandra Eala 58%</div><div class="d-row"><b>Duração média:</b> Naomi Osaka 1:10:49 · Alexandra Eala 1:43:29</div><div class="d-row"><b>Rácio winners/erros:</b> Naomi Osaka 0.99 · Alexandra Eala 0.84</div></div><div class="d-card"><div class="d-title">Mercado (odds)</div><div class="d-row"><b>Naomi Osaka:</b> 1.55</div><div class="d-row"><b>Alexandra Eala:</b> 2.61</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Ranking: Osaka <strong>#13</strong> vs Eala <strong>#28</strong>, sem forma/época atual para confirmar trajetória.</li><li>Osaka vs adversárias nível ~top20 (perfil de Eala): apenas <strong>46.6%</strong> (103 jogos) — não domina este patamar.</li><li>Osaka fecha <strong>90%</strong> após ganhar 1º set (341 jogos) vs Eala recupera só <strong>27%</strong> de 1º set perdido (129 jogos).</li><li>Set decisivo: Osaka <strong>65%</strong> (169 jogos) vs Eala <strong>51%</strong> (123 jogos) — vantagem de consistência para Osaka.</li><li>Sem h2h, forma recente, época atual, piso, fadiga ou lesão para nenhuma das duas — lacuna grande, não equilíbrio.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-strong"><span class="disc-emoji">🔴</span> Osaka fecha <strong>90%</strong> dos jogos após vencer o 1º set (341 jogos) enquanto Eala recupera só <strong>27%</strong> de 1º set perdido (129 jogos) — observar &amp;#x27;Osaka vence 2-0&amp;#x27; se ela levar o 1º set.</div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span> Osaka só vence <strong>46.6%</strong> (103 jogos) contra jogadoras de nível ~top20 (perfil de Eala), abaixo da odd implícita de ~64%; observar handicap de sets/games mais apertado que o esperado.</div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span> Eala vs top10 mostra <strong>66.7%</strong> mas em apenas 12 jogos — amostra insuficiente para sustentar qualquer leitura sobre lidar com adversárias do calibre de Osaka.</div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Osaka é favorita justa pelo ranking e por fechar jogos melhor em cenários-chave, mas o seu histórico fraco contra o nível de ranking de Eala (46.6%) sugere que o jogo pode ser mais equilibrado do que a odd 1.55 indica; se Osaka vencer o 1º set, observar &amp;#x27;vence 2-0&amp;#x27; dado o contraste com a fraca recuperação de Eala.</div></div>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>
