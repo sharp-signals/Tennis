@@ -523,6 +523,15 @@ def _build_analysis_body(result: dict) -> str:
             emoji = {"forte": "🔴", "moderado": "🟡", "fraco": "⚪"}.get(weight, "⚪")
             out.append(f'<div class="disc-item {cls}"><span class="disc-emoji">{emoji}</span><span class="disc-text">{_markdown_inline(text)}</span></div>')
 
+    # Riscos (contra-argumentos à leitura) — o outro lado, para não apostar cego
+    risks = result.get("risks") or []
+    if risks:
+        out.append('<h3 class="sec">⚠️ Principais riscos</h3>')
+        out.append('<ul class="risks-list">')
+        for rk in risks:
+            out.append(f'<li>{_markdown_inline(str(rk))}</li>')
+        out.append('</ul>')
+
     # Veredicto — caixa destacada
     verdict = result.get("verdict")
     if verdict:
@@ -740,6 +749,8 @@ body {{
 .disc-item {{ padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }}
 .disc-emoji {{ flex-shrink:0; }}
 .disc-text {{ flex:1; }}
+.risks-list {{ margin:8px 0; padding-left:22px; }}
+.risks-list li {{ margin:6px 0; font-size:14px; color:var(--muted); }}
 .disc-strong {{ border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }}
 .disc-mid {{ border-left:4px solid var(--amber); }}
 .disc-weak {{ border-left:4px solid var(--dim); opacity:.9; }}
