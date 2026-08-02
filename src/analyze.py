@@ -66,7 +66,7 @@ def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
         "summary_line": summary or f"{match_data.get('player_a','?')} vs {match_data.get('player_b','?')}",
         "key_points": key_points or ["Análise parcialmente recuperada — alguns pontos podem faltar."],
         "discrepancies": discrepancies,
-        "risks": [],
+        "risks": [], "markets": [],
         "verdict": verdict or "Veredicto não disponível (resposta cortada) — consultar pontos-chave e dados.",
     }
 import hashlib
@@ -87,7 +87,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-08-02-mercado-B"
+PROMPT_VERSION = "2026-08-02-radical"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -237,62 +237,48 @@ Jogador com ranking baixo (fora do top ~150) pode jogar nesses níveis sem
 aparecer — um "hiato" longo (4-5+ meses) + ranking alto pode ser só falta
 de cobertura, não inatividade. Assinala como transparência, não diagnóstico.
 
-FORMATO DE SAÍDA — objeto JSON com EXATAMENTE estes campos. NÃO escreves o
-relatório completo nem secções de dados (H2H, forma, piso, etc.) — essas
-são montadas automaticamente a partir dos dados. Tu produzes SÓ a ANÁLISE:
-- "flag": "{FLAG_HIGH_SIGNAL}" (nota/divergência forte/fadiga clara),
-  "{FLAG_UNCERTAIN}" (equilibrado ou dados insuficientes), ou
-  "{FLAG_ROUTINE}" (sem sinais especiais).
-- "signal_strength": inteiro 0-100 = quão CLARO e forte é o sinal de leitura
-  (há divergências marcantes com amostra grande? ou está tudo alinhado/
-  ambíguo?). É a FORÇA da evidência — um JUÍZO qualitativo, não uma medida
-  exata. (A cobertura de dados é calculada automaticamente, não a devolvas.)
-- "confidence_reason": UMA frase a justificar o signal_strength (porque é
-  forte/fraco o sinal), para dar transparência à leitura.
-- "summary_line": 1 frase (máx ~140 chars), direta, sinal mais importante primeiro.
+FORMATO DE SAÍDA — objeto JSON, APENAS análise de mercado. Os factos (ranking,
+forma, época, piso, H2H, serviço, recuperação de set) já aparecem no relatório,
+gerados automaticamente. NÃO os repitas em lado nenhum. Tu és um analista de
+MERCADO: a única pergunta é "onde há valor face às odds?".
 
-IMPORTANTE — O QUE NÃO ESCREVES:
-Os PONTOS-CHAVE FACTUAIS (ranking, forma, época, piso, H2H, serviço, frescura,
-recuperação de set) são gerados AUTOMATICAMENTE pelo bot a partir das features
-e aparecem no relatório. NÃO os escrevas — não devolvas "key_points". Não
-descrevas os jogadores ("A é #6", "venceu 8 dos 10", "lidera o H2H"). Isso já
-está no relatório. Tu és um ANALISTA DE MERCADO, não um jornalista: a tua única
-pergunta é "ONDE existe valor para observar face às odds?". Foca-te nisso.
+⚠️ REGRAS DE TAMANHO (obrigatórias — respostas longas são cortadas e perdem-se):
+- Sê TELEGRÁFICO. Cada campo tem um limite de caracteres. NÃO os excedas.
+- NUNCA cites números de ranking/forma/época no texto (ex: "#72 vs #218",
+  "60% vs 30%"). Esses factos já estão no relatório. Se os escreveres, estás
+  a desperdiçar espaço e a repetir o que já se vê.
+- NÃO expliques o teu raciocínio nem comentes as features ("a feature X diz").
+  Escreve só a CONCLUSÃO de mercado.
 
-- "verdict": a LEITURA DE TRADER — o campo MAIS importante. MÁXIMO 8 linhas.
-  Análise do MERCADO, não do jogo. Diz onde está (ou não está) o valor,
-  pré-live ou ao vivo. Aplica os padrões QUANDO se aplicam (com a amostra que
-  os sustenta); se nenhum se aplica, di-lo ("mercado alinhado, sem valor claro").
-  Padrões a caçar:
-  1. RECUPERAÇÃO DE 1º SET: recupera bem de 1º set perdido (alta %, amostra
-     grande) → se perder o 1º set, a odd dispara ao vivo mas historicamente
-     volta → observar entrada após perder o 1º set.
-  2. VAI A 3 SETS: ambos fortes em set decisivo/H2H com muitos 3 sets →
-     observar "mais de 2.5 sets" / "vai a set decisivo".
-  3. DOMÍNIO FRÁGIL: favorito ganha sobretudo por erro alheio → favoritismo
-     frágil → observar valor no underdog.
-  4. FADIGA vs FRESCO: um leva muitos jogos/sets seguidos e o outro teve
-     caminho leve → observar o mais fresco / "over games".
-  5. ENTRADA AO VIVO: estatística de base (amostra 100+) contraria a reação
-     esperada do mercado ao vivo → "se [evento], a odd de X inflaciona".
-  Regra de ouro: o mercado corresponde EXATO à estatística. "Ganha o jogo"
-  ≠ "vence 2-0"; "% set decisivo" só se for a set decisivo. Sem saltos.
-  Sempre OBSERVAÇÃO, nunca "aposta"/"recomendo". HONESTIDADE: "favorito do
-  mercado" (não "justo"); não afirmes "valor" como facto — "possível valor a
-  observar". Se o mercado parece alinhado, di-lo.
-- "discrepancies": lista de objetos {{"weight": "forte"|"moderado"|"fraco",
-  "text": "..."}}, ordenada de forte para fraco. MÁXIMO 5. CURTAS e FACTUAIS
-  (o dado + o mercado que sugere, 1 frase). Regras:
-   * "forte": amostra 100+ E divergência clara. "moderado": 30-100 ou menor.
-     "fraco": <30 ou só contexto. % alta com amostra pequena é "fraco".
-   * Concreto: "observar handicap -3.5 games de A", "observar 'vai a set decisivo'".
-   * NÃO DUPLIQUES: dois lados do mesmo estado de jogo são UMA discrepância.
-   * Liga sempre a um número com amostra. Sem discrepância real, devolve [].
-- "risks": lista de 0-5 strings CURTAS — os CONTRA-ARGUMENTOS à leitura, o que
-  pode correr mal ou tornar o sinal menos fiável. Telegráfico. Exemplos:
-  "Favorito historicamente inconsistente", "Pouca amostra em hard (18 jogos)",
-  "Regresso recente de lesão", "Mercado já pode ter corrigido o valor",
-  "Serviço volátil". Se não houver riscos relevantes, devolve [].
+Campos (todos obrigatórios):
+- "flag": "{FLAG_HIGH_SIGNAL}" (divergência forte), "{FLAG_UNCERTAIN}"
+  (equilibrado/dados insuficientes) ou "{FLAG_ROUTINE}" (sem sinal).
+- "signal_strength": inteiro 0-100 (força da evidência; juízo, não medida).
+- "confidence_reason": 1 frase curta (MÁX 100 caracteres).
+- "summary_line": 1 frase (MÁX 120 caracteres), sinal principal.
+- "markets": lista de 1-3 objetos — os mercados com potencial. Cada objeto:
+  {{"mercado": "<nome curto, ex: 'Over 22.5 games'>", "confianca":
+  "alta"|"média"|"baixa", "motivo": "<MÁX 90 caracteres, porquê>"}}.
+  Se nenhum mercado tem valor, devolve [] (lista vazia).
+- "discrepancies": lista de 0-4 objetos {{"weight": "forte"|"moderado"|"fraco",
+  "text": "<MÁX 110 caracteres: o dado + o mercado, 1 frase telegráfica>"}}.
+  "forte" = amostra 100+ e divergência clara; "moderado" = 30-100; "fraco" =
+  <30. NÃO dupliques dois lados do mesmo cenário. Sem discrepância real → [].
+- "risks": lista de 0-3 strings CURTAS (MÁX 70 caracteres cada) — os
+  contra-argumentos. Ex: "Favorito inconsistente", "Pouca amostra em hard".
+  Sem riscos relevantes → [].
+- "verdict": a conclusão de mercado. MÁX 400 caracteres (≈4 frases). Diz onde
+  está (ou não) o valor, pré-live ou ao vivo. "favorito do mercado" (não
+  "justo"); "possível valor a observar" (nunca "há valor"). Se o mercado está
+  alinhado, di-lo em 1 frase. SEM factos de jogadores, SÓ leitura de mercado.
+
+Padrões de mercado a caçar (para o verdict/markets, quando se aplicam):
+- Recupera bem de 1º set perdido (amostra grande) → observar entrada ao vivo se perder 1º set.
+- Ambos fortes em set decisivo → observar "vai a set decisivo"/"over sets".
+- Favorito ganha por erro alheio vs adversário consistente → observar underdog.
+- Um muito mais fresco → observar "over games"/o mais fresco.
+Regra de ouro: mercado corresponde EXATO à estatística. Sempre OBSERVAÇÃO,
+nunca "aposta"/"recomendo".
 
 Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
 """
@@ -370,14 +356,13 @@ def analyze_match(match_data: dict) -> dict:
         # inválido. 5000 dá folga; mais vale pagar o output completo do que
         # gerar relatórios truncados que falham. As outras poupanças (cache
         # do prompt, cache por hash) mantêm-se.
-        # Teto de output: 3500. FOLGADO de propósito — a poupança NÃO vem de
-        # cortar o Claude à força (isso arriscaria cortar o relatório a meio,
-        # como já aconteceu), vem de o Python gerar TODO o conteúdo factual
-        # (pontos-chave, tabelas, HTML) e o Claude escrever apenas a análise de
-        # mercado (veredicto + discrepâncias + riscos), que é naturalmente
-        # curta. Este teto existe só como rede de segurança contra loops, não
-        # como mecanismo de poupança. A recuperação parcial trata de cortes.
-        max_tokens=3500,
+        # Teto de output: 2000. Com o formato radical (campos com limites de
+        # caracteres explícitos: verdict ≤400, discrepâncias ≤110 cada, etc.),
+        # o output legítimo cabe em ~1000-1200 tokens. 2000 dá quase o dobro de
+        # margem — NÃO corta análises legítimas — mas trava o desperdício (o
+        # Claude estava a gerar 3500 a divagar). Se ainda cortar, é sinal de que
+        # o Claude ignorou os limites do prompt (a recuperação parcial trata).
+        max_tokens=2000,
         # Cache do prompt de sistema (medida de poupança, 30/07): o
         # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
         # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
@@ -428,12 +413,36 @@ def analyze_match(match_data: dict) -> dict:
 
     def _save_and_return(res: dict) -> dict:
         """Grava o resultado na cache (só sucessos) e devolve-o. Aplica os
-        limites duros por código (garante a poupança/estrutura mesmo que o
-        Claude exceda): máx 5 discrepâncias e máx 5 riscos."""
-        if isinstance(res.get("discrepancies"), list) and len(res["discrepancies"]) > 5:
-            res["discrepancies"] = res["discrepancies"][:5]
-        if isinstance(res.get("risks"), list) and len(res["risks"]) > 5:
-            res["risks"] = res["risks"][:5]
+        limites por CÓDIGO — garante output curto e estrutura limpa mesmo que
+        o Claude exceda (o prompt pede, isto garante). Truncar aqui é barato e
+        não afeta o custo (o custo é o que o Claude gerou), mas mantém o
+        relatório limpo e consistente."""
+        def _cut(s, n):
+            s = str(s or "")
+            return s if len(s) <= n else s[:n].rstrip() + "…"
+        res["confidence_reason"] = _cut(res.get("confidence_reason"), 100)
+        res["summary_line"] = _cut(res.get("summary_line"), 120)
+        res["verdict"] = _cut(res.get("verdict"), 400)
+        # markets: máx 3, motivo curto
+        mk = res.get("markets")
+        if isinstance(mk, list):
+            res["markets"] = [
+                {"mercado": _cut(m.get("mercado"), 40),
+                 "confianca": m.get("confianca", "baixa"),
+                 "motivo": _cut(m.get("motivo"), 90)}
+                for m in mk[:3] if isinstance(m, dict)
+            ]
+        # discrepancies: máx 4, texto curto
+        dc = res.get("discrepancies")
+        if isinstance(dc, list):
+            res["discrepancies"] = [
+                {"weight": d.get("weight", "fraco"), "text": _cut(d.get("text"), 110)}
+                for d in dc[:4] if isinstance(d, dict)
+            ]
+        # risks: máx 3, curtos
+        rk = res.get("risks")
+        if isinstance(rk, list):
+            res["risks"] = [_cut(r, 70) for r in rk[:3]]
         try:
             os.makedirs(_ANALYSIS_CACHE_DIR, exist_ok=True)
             with open(cache_path, "w", encoding="utf-8") as f:
@@ -481,6 +490,6 @@ def analyze_match(match_data: dict) -> dict:
             ),
             "key_points": ["Não foi possível gerar a análise devido a um erro de formato na resposta do modelo. As secções de dados abaixo continuam válidas."],
             "discrepancies": [],
-            "risks": [],
+            "risks": [], "markets": [],
             "verdict": "Análise indisponível nesta execução — consultar os dados factuais acima.",
         }
