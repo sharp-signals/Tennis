@@ -146,3 +146,9 @@ CLAUDE_MODEL = "claude-sonnet-5"
 SITE_BASE_URL = "https://sharp-signals.github.io/Tennis"
 SITE_OUTPUT_DIR = "docs"
 SITE_REPORTS_SUBDIR = "relatorios"
+
+# Nº de jogos processados em paralelo (ThreadPoolExecutor). Poucos workers
+# para não sobrecarregar as APIs — a pausa anti-429 no _rapidapi_get
+# serializa o espaçamento entre threads. 4 é um bom equilíbrio
+# velocidade/segurança; baixar se aparecerem 429, subir se estiver lento.
+MATCH_PROCESSING_WORKERS = 4
