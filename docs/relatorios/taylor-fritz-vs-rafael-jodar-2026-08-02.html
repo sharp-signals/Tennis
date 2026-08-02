@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Taylor Fritz vs Rafael Jodar</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-prob { font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }
+.selos-legenda { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }
+.w-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.w-dot.red { background:var(--red); }
+.w-dot.amber { background:var(--amber); }
+.w-dot.white { background:var(--dim); }
+.selos-nota { width:100%; font-style:italic; opacity:.8; margin-top:2px; }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-text { flex:1; }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+.cov-detail { font-size:12px; color:var(--dim); margin-top:6px; }
+.cov-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.cov-chip { font-size:11px; padding:2px 7px; border-radius:10px; border:1px solid var(--line); }
+.cov-chip.on { color:var(--mint); border-color:var(--mint); }
+.cov-chip.off { color:var(--dim); opacity:.6; }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">Citi Open - Washington · ATP 500 · Hard · 02/08/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Taylor Fritz<div class="sb-prob">57% s/ margem</div></div>
+      <div class="sb-odds">
+        <div class="sb-odd">1.71</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">2.24</div>
+      </div>
+      <div class="sb-name right">Rafael Jodar<div class="sb-prob">43% s/ margem</div></div>
+    </div>
+    <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Cobertura de dados</span>
+        <span class="conf-num" style="color:#4ecdc4">100/100 · alta</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:100%;background:#4ecdc4"></div></div><div class="cov-detail">8/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-head">
+        <span class="conf-title">Força do sinal (leitura)</span>
+        <span class="conf-num" style="color:#e0a34a">35/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:35%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Ranking, forma recente e serviço nos últimos 10 jogos apontam todos na mesma direção (Fritz), mas H2H é insuficiente e a única nuance (vs top-20 em carreira) não é conclusiva.</div>
+    </div>
+    
+  </div>
+</header>
+<div class="wrap">
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
+    <div class="cmp">
+      <div class="cmp-label">1º serviço ganho</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">81.6%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:40.8%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:34.1%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">68.3%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points salvos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">61.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:30.9%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:28.1%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">56.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Aces</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">21.1%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:10.6%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:2.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">4.7%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">36.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:18.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:21.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">42.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">38.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:19.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:22.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">44.0%</div>
+      </div>
+    </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 100.5 30.6" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">80%</text>
+      </svg>
+      <div class="gauge-label">Taylor Fritz (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div>
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 89.4 19.5" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">70%</text>
+      </svg>
+      <div class="gauge-label">Rafael Jodar (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (90/4 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">40.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:12.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">25.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (314/20 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">53.5%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:26.8%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:27.5%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">55.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (503/34 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">58.4%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:29.2%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:35.3%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">70.6%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Taylor Fritz 1–0 Rafael Jodar</div><div class="d-row"><b>Neste piso:</b> Taylor Fritz 1–0 Rafael Jodar</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Taylor Fritz 8-2 · Rafael Jodar 7-3</div><div class="d-row"><b>Época atual:</b> Taylor Fritz 23-13 (64%) · Rafael Jodar 26-11 (70%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Taylor Fritz #10 · Rafael Jodar #24</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Taylor Fritz 66.5% (418 jogos) · Rafael Jodar 72.1% (61 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (ATP/WTA Tour (250/500)):</b> Taylor Fritz 62.3% (292 jogos) · Rafael Jodar 78.3% (23 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Taylor Fritz:</b> 0 dias desde o último jogo; 4 jogo(s) neste torneio; 4 nos últimos 7 dias (10 sets)</div><div class="d-row"><b>Rafael Jodar:</b> 0 dias desde o último jogo; 4 jogo(s) neste torneio; 4 nos últimos 7 dias (10 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Taylor Fritz:</b> sem desistências recentes registadas</div><div class="d-row"><b>Rafael Jodar:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 32.9°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Taylor Fritz 86% · Rafael Jodar 94% (466/85 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Taylor Fritz 28% · Rafael Jodar 29% (297/41 jogos)</div><div class="d-row"><b>Set decisivo:</b> Taylor Fritz 57% · Rafael Jodar 76% (263/34 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Taylor Fritz 56% · Rafael Jodar 55% (403/33 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Taylor Fritz 65% · Rafael Jodar 64%</div><div class="d-row"><b>Duração média:</b> Taylor Fritz 1:41:1 · Rafael Jodar 1:41:7</div><div class="d-row"><b>Rácio winners/erros:</b> Taylor Fritz 1.4 · Rafael Jodar 1.07</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Taylor Fritz:</b> 1º serviço ganho 77% vs adversários 73%; winners 5048 vs 4388; erros 3610 vs 4166</div><div class="d-row"><b>Rafael Jodar:</b> 1º serviço ganho 70% vs adversários 65%; winners 498 vs 383; erros 466 vs 507</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Ranking <strong>#10</strong> (Fritz) vs <strong>#24</strong> (Jodar); época 2026 similar (<strong>63.9%</strong> vs <strong>70.3%</strong>) — força geral alinhada com favoritismo.</li><li>Serviço últimos 10 jogos: <strong>81.6%</strong> 1º serviço ganho (Fritz) vs <strong>68.3%</strong> (Jodar), ace% <strong>21.1%</strong> vs <strong>4.7%</strong> — vantagem recente clara.</li><li>H2H apenas <strong>1 jogo</strong> (Fritz venceu, hard) — amostra insuficiente para sustentar sinal.</li><li>Fritz vs top-20 (nível de Jodar) só <strong>45.2%</strong> em 146 jogos de carreira — contexto, não prova de fragilidade atual.</li><li>Fadiga idêntica: ambos com <strong>4 jogos</strong> neste torneio e <strong>10 sets</strong> nos últimos 7 dias — sem desgaste diferencial.</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado favorece Fritz e os dados convergem: ranking mais alto, serviço recente muito superior (10 jogos) e perfil de piso consolidado (hard 66.5% em 418 jogos de carreira). A única nuance é que Fritz, em carreira, só vence 45.2% contra jogadores do nível de Jodar (top-20, amostra grande de 146 jogos) — isto é contexto histórico não ajustado, não prova que o mercado esteja errado, até porque Jodar tem amostra muito menor em quase todas as categorias (vs top10/20 com 4-7 jogos, insuficiente).</div></div>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>
