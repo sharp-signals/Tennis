@@ -66,8 +66,12 @@ MAX_FIXTURE_PAGES = 5
 # descobre o tournamentId testando getTournamentInfo/getTournamentFixtures
 # na Playground do RapidAPI, tal como fizemos para o Washington Open.
 TRACKED_TOURNAMENT_IDS = {
-    21346: "atp",  # National Bank Open - Montreal (ATP Masters 1000), 2026 — confirmado via getDateFixtures (Hurkacz, Monfils, Draper, etc.)
-    14175: "wta",  # National Bank Open - Toronto (WTA 1000), 2026
+    # Washington — a terminar (final a 02/08). Remover quando acabar.
+    21344: "atp",  # Citi Open - Washington (ATP 500)
+    16738: "wta",  # Mubadala DC Open - Washington (WTA 500)
+    # Montreal/Toronto — National Bank Open (Masters 1000), a começar.
+    21346: "atp",  # Montreal (ATP Masters 1000), 2026 — confirmado via getDateFixtures (Hurkacz, Monfils, Draper, etc.)
+    14175: "wta",  # Toronto (WTA 1000), 2026
 }
 
 # Quantos jogos pedir por página do getTournamentFixtures (o default da
