@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -130,26 +132,26 @@ strong { color:#fff; font-weight:700; }
       </div>
       <div class="sb-name right">Jan-Lennard Struff<div class="sb-prob">28% s/ margem</div></div>
     </div>
-    <div class="sb-flag">🔴 sinal</div>
+    <div class="sb-flag">🟡 sinal</div>
     
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">100/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:100%;background:#4ecdc4"></div></div><div class="cov-detail">8/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
-        <span class="conf-num" style="color:#e0a34a">58/100 · média</span>
+        <span class="conf-num" style="color:#e0a34a">52/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:58%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Fadiga é dado factual e claro (carga real vs descanso total), mas os restantes sinais (forma, serve/return) vêm de amostras de só 10 jogos, o que limita a força conjunta da leitura.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:52%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Sinais conflituosos: piso e época atual (amostras médias/grandes) apoiam o favorito do mercado, mas fadiga real recente e forma últimos 10 jogos (amostra pequena) vão em sentido contrário.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">12.7%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">39.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:19.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:18.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">37.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">42.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">70%</text>
       </svg>
       <div class="gauge-label">Jan-Lennard Struff (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Alex Michelsen 1–0 Jan-Lennard Struff</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Alex Michelsen 5-5 · Jan-Lennard Struff 7-3</div><div class="d-row"><b>Época atual:</b> Alex Michelsen 18-14 (56%) · Jan-Lennard Struff 13-14 (48%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Alex Michelsen #40 · Jan-Lennard Struff #42</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Alex Michelsen:</b> 2 dias desde o último jogo; 3 nos últimos 7 dias (7 sets)</div><div class="d-row"><b>Jan-Lennard Struff:</b> 12 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Alex Michelsen:</b> sem desistências recentes registadas</div><div class="d-row"><b>Jan-Lennard Struff:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Ranking praticamente igual: <strong>#40</strong> (A) vs <strong>#42</strong> (B), mercado dá <strong>~74%</strong> a Michelsen.</li><li>Fadiga real: Michelsen <strong>7 sets/7d</strong>, <strong>3 jogos/7d</strong>, só <strong>2 dias</strong> de descanso; Struff <strong>0 jogos/14d</strong>, <strong>12 dias</strong> de descanso.</li><li>Forma últimos 10 jogos (amostra pequena): Struff <strong>7-3</strong> vs Michelsen <strong>5-5</strong>.</li><li>H2H só <strong>1 jogo</strong> (A venceu) — amostra insuficiente para qualquer leitura.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Ranking quase idêntico (40 vs 42) mas mercado atribui ~74% a Michelsen — observar valor no underdog.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Michelsen com carga real (7 sets/7d, 2 dias de descanso) vs Struff totalmente descansado (12 dias, 0 jogos/14d) — observar frescura de Struff em jogo longo.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Forma últimos 10 jogos favorece Struff (7-3 vs 5-5), amostra pequena.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Serve/return stats (10 jogos cada) favorecem Struff em first serve won% (76.9% vs 70.5%) e BP saved% (59.7% vs 50%).</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado trata isto como um favoritismo claro de Michelsen, mas o ranking está praticamente empatado (40 vs 42) e os dados de estado atual (forma últimos 10, época 2026 mais próxima em %, e sobretudo a carga de jogos) não sustentam claramente essa diferença de preço. Struff chega totalmente fresco (12 dias sem jogar, 0 jogos em 14d) enquanto Michelsen vem de carga real (7 sets em 7 dias, apenas 2 dias de descanso) — isto é observação a ter em conta especialmente se o jogo se prolongar. Sem rich_stats e com H2H limitado a 1 jogo, não há base para dizer que o mercado está errado, apenas que a diferença de preço parece maior do que a diferença de estado atual entre os dois — observar valor no underdog e possível queda de ritmo de Michelsen em sets mais tardios.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (12/65 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">25.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:12.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:11.6%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">23.1%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (70/281 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">35.7%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:17.9%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:18.7%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">37.4%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (125/469 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">46.4%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:23.2%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:22.6%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">45.2%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Alex Michelsen 1–0 Jan-Lennard Struff</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Alex Michelsen 5-5 · Jan-Lennard Struff 7-3</div><div class="d-row"><b>Época atual:</b> Alex Michelsen 18-14 (56%) · Jan-Lennard Struff 13-14 (48%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Alex Michelsen #40 · Jan-Lennard Struff #42</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Alex Michelsen 65.0% (157 jogos) · Jan-Lennard Struff 47.0% (230 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Alex Michelsen 46.3% (41 jogos) · Jan-Lennard Struff 52.8% (144 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Alex Michelsen:</b> 2 dias desde o último jogo; 3 nos últimos 7 dias (7 sets)</div><div class="d-row"><b>Jan-Lennard Struff:</b> 12 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Alex Michelsen:</b> sem desistências recentes registadas</div><div class="d-row"><b>Jan-Lennard Struff:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Alex Michelsen 85% · Jan-Lennard Struff 82% (175/615 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Alex Michelsen 28% · Jan-Lennard Struff 23% (126/479 jogos)</div><div class="d-row"><b>Set decisivo:</b> Alex Michelsen 57% · Jan-Lennard Struff 49% (105/384 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Alex Michelsen 56% · Jan-Lennard Struff 50% (132/506 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Alex Michelsen 64% · Jan-Lennard Struff 67%</div><div class="d-row"><b>Duração média:</b> Alex Michelsen 1:46:17 · Jan-Lennard Struff 1:21:3</div><div class="d-row"><b>Rácio winners/erros:</b> Alex Michelsen 0.9 · Jan-Lennard Struff 1.21</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Alex Michelsen:</b> 1º serviço ganho 70% vs adversários 70%; winners 709 vs 796; erros 791 vs 720</div><div class="d-row"><b>Jan-Lennard Struff:</b> 1º serviço ganho 75% vs adversários 71%; winners 4219 vs 3528; erros 3499 vs 2754</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Alex Michelsen</strong> superior no ranking (#40 vs #42).</li><li><strong>Jan-Lennard Struff</strong> melhor em forma, serviço (força geral a favor).</li><li><strong>Alex Michelsen</strong> lidera o confronto direto (1-0 em 1).</li><li><strong>Jan-Lennard Struff</strong> mais fresco (3 vs 0 jogos nos últimos 7 dias).</li><li>Alex Michelsen fecha 85% dos jogos após ganhar o 1º set.</li><li>Jan-Lennard Struff recupera 23% quando perde o 1º set.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Michelsen com 3 jogos/7 sets nos últimos 7 dias e só 2 dias de descanso, vs Struff parado há 12 dias — risco de queda física face ao favoritismo de 1.35.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Forma últimos 10 jogos favorece Struff (70% vs 50%), amostra pequena mas contraria o forte favoritismo do mercado.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Serviço (%) favorece Struff (76.9% vs 70.5%), sem amostra especificada, apenas contexto.</span></div><h3 class="sec">⚠️ Principais riscos</h3><ul class="risks-list"><li>Amostra de forma recente pequena (10 jogos cada)</li><li>H2H apenas 1 confronto, não conclusivo</li><li>Stats de piso e cenários são de carreira, podem não refletir o momento atual</li><li>Fadiga pode não se traduzir em queda de rendimento imediata</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado precifica Michelsen como favorito claro (~74% implícito), apoiado por vantagem de piso em carreira (65% vs 47%, amostra grande) e época atual (56% vs 48%). Contudo, dois sinais recentes vão contra essa força: forma últimos 10 jogos favorece Struff (70% vs 50%, amostra pequena, não conclusiva mas a observar) e sobretudo a carga de jogo — Michelsen jogou 3 partidas e 7 sets nos últimos 7 dias com apenas 2 dias de descanso, enquanto Struff não compete há 12 dias. Isto é sinal real (fonte fiável), não aproximação, e pode pesar num Masters 1000 de Bo3. Ambos recuperam mal de 1º set perdido (28% e 23%, amostras grandes) — se Michelsen ceder o 1º set, o jogo tende a ficar mais decidido do que a odd ao vivo pode sugerir inicialmente, dado o quadro de fadiga. Sem H2H relevante (1 jogo). Observação: acompanhar sinais de queda física de Michelsen ao vivo, especialmente se o jogo entrar em set decisivo (57% vs 49%, vantagem curta e não determinante).</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

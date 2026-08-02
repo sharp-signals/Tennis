@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -135,21 +137,21 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">75/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:75%;background:#4ecdc4"></div></div><div class="cov-detail">6/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
-        <span class="conf-num" style="color:#e0a34a">48/100 · média</span>
+        <span class="conf-num" style="color:#e0a34a">45/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:48%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Há sinais reais (layoff longo de Cilic, fadiga oposta), mas amostras moderadas e muita dependência de dados de carreira longa, não do presente.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:45%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Sinais mistos e amostras pequenas (época atual, fadiga) sem H2H nem forma recente diferenciadora — leitura sugestiva mas não conclusiva.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">7.8%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">40.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">38.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">44.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:22.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">40%</text>
       </svg>
       <div class="gauge-label">Marin Cilic (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Sho Shimabukuro 4-6 · Marin Cilic 4-6</div><div class="d-row"><b>Época atual:</b> Sho Shimabukuro 4-7 (36%) · Marin Cilic 13-14 (48%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Sho Shimabukuro #94 · Marin Cilic #86</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Sho Shimabukuro:</b> 1 dias desde o último jogo; 1 jogo(s) neste torneio; 2 nos últimos 7 dias (5 sets)</div><div class="d-row"><b>Marin Cilic:</b> 35 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Sho Shimabukuro:</b> sem desistências recentes registadas</div><div class="d-row"><b>Marin Cilic:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Ranking quase idêntico: <strong>94</strong> (A) vs <strong>86</strong> (B), sem hierarquia clara.</li><li>Época 2026 fraca para ambos: A <strong>4/11</strong> (36%), B <strong>13/27</strong> (48%) — nenhum em boa forma.</li><li>B sem competir há <strong>35 dias</strong>; historicamente só <strong>37.5%</strong> de vitórias pós-layoff 60+ dias (n=8).</li><li>A jogou há <strong>1 dia</strong>, <strong>5 sets</strong> nos últimos 7 dias — tem ritmo mas possível desgaste acumulado.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Cilic favorito do mercado (~56% implícito) mas regressa de <strong>35 dias</strong> sem jogar com só <strong>37.5%</strong> de vitórias pós-layoff (n=8) — observar underdog Shimabukuro.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Piso Hard: B <strong>55.7%</strong> (n=237, carreira) vs A <strong>33%</strong> (n=18, amostra insuficiente) — vantagem de carreira longa, relevância temporal limitada para B.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Contraste de ritmo: A jogou ontem com <strong>5 sets</strong> em 7 dias vs B <strong>0 jogos</strong> em 35 dias — dinâmicas opostas de fadiga/ritmo a observar ao vivo.</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado dá a Cilic um favoritismo moderado (~56% implícito), mas o ranking está praticamente empatado e a forma de 2026 é fraca para os dois, sem vantagem clara de forma. O sinal mais relevante é o contraste de ritmo: Cilic regressa de 35 dias sem jogos oficiais e historicamente só venceu 37.5% dos jogos após pausas longas (n=8, amostra moderada — observar com cautela), enquanto Shimabukuro chega com ritmo de competição recente, ainda que com carga física acumulada (5 sets em 7 dias). Isto sugere possível valor a observar no underdog Shimabukuro, especialmente no início do jogo enquanto Cilic reencontra ritmo, mas a amostra do layoff não é grande o suficiente para uma leitura forte. A vantagem histórica de Cilic no piso Hard (carreira longa, muitos jogos) é real mas tem relevância temporal limitada dado o ranking atual e a fase de carreira em que se encontra.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (1/143 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">0.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:0.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:13.3%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">26.6%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (8/535 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">25.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:12.5%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:24.8%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">49.5%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (28/785 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">42.9%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.4%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:29.1%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">58.3%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Sho Shimabukuro 4-6 · Marin Cilic 4-6</div><div class="d-row"><b>Época atual:</b> Sho Shimabukuro 4-7 (36%) · Marin Cilic 13-14 (48%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Sho Shimabukuro #94 · Marin Cilic #86</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Sho Shimabukuro 62.7% (359 jogos) · Marin Cilic 62.2% (413 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Sho Shimabukuro 55.6% (9 jogos) · Marin Cilic 52.7% (258 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Sho Shimabukuro:</b> 1 dias desde o último jogo; 1 jogo(s) neste torneio; 2 nos últimos 7 dias (5 sets)</div><div class="d-row"><b>Marin Cilic:</b> 35 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Sho Shimabukuro:</b> sem desistências recentes registadas</div><div class="d-row"><b>Marin Cilic:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Sho Shimabukuro 86% · Marin Cilic 86% (299/695 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Sho Shimabukuro 22% · Marin Cilic 29% (192/442 jogos)</div><div class="d-row"><b>Set decisivo:</b> Sho Shimabukuro 56% · Marin Cilic 58% (165/375 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Sho Shimabukuro 47% · Marin Cilic 51% (182/534 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Sho Shimabukuro 68% · Marin Cilic 68%</div><div class="d-row"><b>Duração média:</b> Sho Shimabukuro 1:32:25 · Marin Cilic 1:19:18</div><div class="d-row"><b>Rácio winners/erros:</b> Sho Shimabukuro 0.97 · Marin Cilic 1.09</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Sho Shimabukuro:</b> 1º serviço ganho 71% vs adversários 67%; winners 601 vs 511; erros 617 vs 512</div><div class="d-row"><b>Marin Cilic:</b> 1º serviço ganho 77% vs adversários 70%; winners 9360 vs 6084; erros 8569 vs 6942</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Marin Cilic</strong> superior no ranking (#94 vs #86).</li><li><strong>Sho Shimabukuro</strong> melhor em piso, serviço (força geral a favor).</li><li><strong>Marin Cilic</strong> mais fresco (2 vs 0 jogos nos últimos 7 dias).</li><li>Sho Shimabukuro fecha 86% dos jogos após ganhar o 1º set.</li><li>Marin Cilic recupera 29% quando perde o 1º set.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Cilic é favorito a 1.72 mas está 35 dias sem competir (dado fiável) — observar ritmo/arranque de jogo.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Serviço favorece Shimabukuro por 7.4% (78.7% vs 71.3%) sem amostra especificada — possível vantagem a observar.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Época atual favorece Cilic (48.1% vs 36.4%) mas com amostras pequenas (27 vs 11 jogos), pouco robusto.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">No piso (hard), ambos praticamente empatados em amostra grande (62.7% vs 62.2%) — sem vantagem real apesar da odd.</span></div><h3 class="sec">⚠️ Principais riscos</h3><ul class="risks-list"><li>Fadiga de Cilic pode ser rust após pausa, não vantagem de frescura</li><li>Shimabukuro com carga física recente (2 jogos/5 sets em 7 dias)</li><li>Amostra pequena em época atual para ambos</li><li>Sem H2H nem forma recente diferenciadora para confirmar leitura</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado (Cilic 1.72) apoia-se sobretudo em época atual e ranking em vivo, dois sinais correlacionados e com amostra moderada/pequena (27 vs 11 jogos). Não há H2H nem forma recente (empatada, 40% ambos, amostra 10) a reforçar isso. O dado mais atípico é a fadiga: Cilic está 35 dias sem competir (fonte fiável, api_recent) contra um Shimabukuro que jogou 2 partidas/5 sets nos últimos 7 dias. Isto cria duas leituras opostas — ritmo/rust para Cilic vs desgaste físico para Shimabukuro — que o mercado pode não estar a captar com precisão. No piso, os dois estão praticamente empatados em amostra grande (62.7% vs 62.2%), o que reduz a base do favoritismo atual. Observar arranque de jogo (sinais de ritmo em Cilic) e evolução física de Shimabukuro em sets mais longos. Sem padrão claro de recuperação de 1º set para nenhum dos dois (22% e 29%, ambos baixos) — se o favorito perder o 1º set, tende a ficar mais decidido do que a odd ao vivo pode sugerir.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -124,9 +126,9 @@ strong { color:#fff; font-weight:700; }
     <div class="sb-players">
       <div class="sb-name">Marton Fucsovics<div class="sb-prob">48% s/ margem</div></div>
       <div class="sb-odds">
-        <div class="sb-odd">2.02</div>
+        <div class="sb-odd">2.01</div>
         <div class="sb-vs">VS</div>
-        <div class="sb-odd">1.87</div>
+        <div class="sb-odd">1.88</div>
       </div>
       <div class="sb-name right">Corentin Moutet<div class="sb-prob">52% s/ margem</div></div>
     </div>
@@ -135,21 +137,21 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">100/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:100%;background:#4ecdc4"></div></div><div class="cov-detail">8/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
-        <span class="conf-num" style="color:#e0a34a">38/100 · média</span>
+        <span class="conf-num" style="color:#e06c5b">32/100 · baixa</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:38%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Há uma divergência real entre forma/época atual e o ranking que o mercado parece priorizar, mas as amostras (época com 23 jogos, H2H com só 1-2 jogos, sem rich_stats) são moderadas a insuficientes para um sinal forte.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:32%;background:#e06c5b"></div></div>
+      <div class="conf-reason">Sinais recentes (forma, época atual) favorecem Fucsovics mas com amostras pequenas (10 e 23 jogos), enquanto ranking ao vivo e mercado favorecem Moutet — divergência não sustentada por amostra robusta.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">4.0%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">40.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:20.5%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">41.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">41.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.5%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:22.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">44.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">10%</text>
       </svg>
       <div class="gauge-label">Corentin Moutet (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Marton Fucsovics 1–1 Corentin Moutet</div><div class="d-row"><b>Neste piso:</b> Marton Fucsovics 0–1 Corentin Moutet</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Marton Fucsovics 3-7 · Corentin Moutet 1-9</div><div class="d-row"><b>Época atual:</b> Marton Fucsovics 9-14 (39%) · Corentin Moutet 7-16 (30%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Marton Fucsovics #84 · Corentin Moutet #57</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Marton Fucsovics:</b> 30 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Corentin Moutet:</b> 4 dias desde o último jogo; 1 nos últimos 7 dias (2 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Marton Fucsovics:</b> sem desistências recentes registadas</div><div class="d-row"><b>Corentin Moutet:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 25.5°C; precipitação 1.8 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Época 2026: <strong>Fucsovics 9-14</strong> (39%) vs <strong>Moutet 7-16</strong> (30%), apesar do ranking pior de Fucsovics (<strong>#84</strong> vs <strong>#57</strong>).</li><li>Fadiga: <strong>Fucsovics 30 dias</strong> sem jogar (0 jogos recentes) vs <strong>Moutet</strong> jogou há <strong>4 dias</strong> (2 sets last 7d).</li><li>H2H 1-1 overall; on-surface só <strong>1 jogo</strong> — amostra insuficiente para leitura.</li><li>Serviço: <strong>Moutet 64.7%</strong> primeiro serviço dentro vs <strong>Fucsovics 60.5%</strong>; Fucsovics comete mais duplas faltas (<strong>5.6%</strong> vs <strong>2.8%</strong>).</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Forma atual (época 2026, 23 jogos) favorece Fucsovics (39% vs 30%) apesar do mercado favorecer Moutet pelo ranking — observar handicap de sets/games a favor de Fucsovics.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Fucsovics sem jogar há 30 dias vs Moutet fresco (jogou há 4 dias, 2 sets last 7d) — pode afetar ritmo inicial de Fucsovics.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">H2H on-surface com apenas 1 jogo (0-1 para Moutet) — amostra insuficiente para sustentar qualquer leitura.</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado favorece ligeiramente Moutet (1.87) pelo ranking mais alto (#57 vs #84), mas a forma recente e a época 2026 de ambos apontam no sentido contrário — Fucsovics com melhor taxa de vitórias atual. Ambos jogadores estão em má forma geral (recent_form 3-7 e 1-9), o que limita a confiança em qualquer leitura direcional forte. A diferença de ritmo (Fucsovics 30 dias parado vs Moutet a jogar há 4 dias) é um fator a observar no arranque do jogo, mas sem sinal de fadiga acumulada em nenhum dos lados. Sem H2H robusto nem rich_stats, o quadro é de mercado moderadamente alinhado com o ranking, com possível valor a observar do lado de Fucsovics dado o contraste forma/ranking, mas não há evidência forte o suficiente para falar de discrepância clara.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (41/23 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">9.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:4.9%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:4.3%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">8.7%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (180/106 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">37.2%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:18.6%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:17.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">34.9%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (337/220 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">47.2%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:23.6%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:23.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">46.8%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Marton Fucsovics 1–1 Corentin Moutet</div><div class="d-row"><b>Neste piso:</b> Marton Fucsovics 0–1 Corentin Moutet</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Marton Fucsovics 3-7 · Corentin Moutet 1-9</div><div class="d-row"><b>Época atual:</b> Marton Fucsovics 9-14 (39%) · Corentin Moutet 7-16 (30%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Marton Fucsovics #84 · Corentin Moutet #57</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Marton Fucsovics 57.6% (290 jogos) · Corentin Moutet 52.9% (138 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Marton Fucsovics 44.3% (88 jogos) · Corentin Moutet 52.1% (71 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Marton Fucsovics:</b> 30 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Corentin Moutet:</b> 4 dias desde o último jogo; 1 nos últimos 7 dias (2 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Marton Fucsovics:</b> sem desistências recentes registadas</div><div class="d-row"><b>Corentin Moutet:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 25.0°C; precipitação 19.8 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Marton Fucsovics 83% · Corentin Moutet 82% (503/369 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Marton Fucsovics 24% · Corentin Moutet 22% (392/245 jogos)</div><div class="d-row"><b>Set decisivo:</b> Marton Fucsovics 55% · Corentin Moutet 56% (291/196 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Marton Fucsovics 47% · Corentin Moutet 51% (334/201 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Marton Fucsovics 67% · Corentin Moutet 67%</div><div class="d-row"><b>Duração média:</b> Marton Fucsovics 1:31:28 · Corentin Moutet 1:46:54</div><div class="d-row"><b>Rácio winners/erros:</b> Marton Fucsovics 0.86 · Corentin Moutet 0.97</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Marton Fucsovics:</b> 1º serviço ganho 71% vs adversários 68%; winners 2623 vs 2379; erros 3036 vs 2996</div><div class="d-row"><b>Corentin Moutet:</b> 1º serviço ganho 66% vs adversários 66%; winners 2042 vs 2390; erros 2100 vs 2482</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Corentin Moutet</strong> superior no ranking (#84 vs #57).</li><li><strong>Marton Fucsovics</strong> melhor em forma, época, piso, serviço (força geral a favor).</li><li><strong>Marton Fucsovics</strong> mais fresco (0 vs 1 jogos nos últimos 7 dias).</li><li>Marton Fucsovics fecha 83% dos jogos após ganhar o 1º set.</li><li>Corentin Moutet recupera 22% quando perde o 1º set.</li></ul>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

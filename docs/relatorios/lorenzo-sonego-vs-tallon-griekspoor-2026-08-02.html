@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -135,21 +137,21 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">100/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:100%;background:#4ecdc4"></div></div><div class="cov-detail">8/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
-        <span class="conf-num" style="color:#e0a34a">42/100 · média</span>
+        <span class="conf-num" style="color:#e0a34a">38/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:42%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Há uma divergência de forma recente vs mercado, mas as amostras da época atual são moderadas e o H2H é insuficiente para reforçar o sinal.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:38%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Sinais mistos e correlacionados de amostra pequena/moderada (forma 10 jogos, época 19-25) contra um sinal de carreira com amostra grande (piso), sem consenso claro.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">7.6%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">37.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:18.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:18.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">37.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">40.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:20.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">40.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">20%</text>
       </svg>
       <div class="gauge-label">Tallon Griekspoor (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Lorenzo Sonego 1–0 Tallon Griekspoor</div><div class="d-row"><b>Neste piso:</b> Lorenzo Sonego 1–0 Tallon Griekspoor</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Lorenzo Sonego 5-5 · Tallon Griekspoor 2-8</div><div class="d-row"><b>Época atual:</b> Lorenzo Sonego 8-11 (42%) · Tallon Griekspoor 9-16 (36%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Lorenzo Sonego #80 · Tallon Griekspoor #67</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Lorenzo Sonego:</b> 19 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Tallon Griekspoor:</b> 6 dias desde o último jogo; 1 nos últimos 7 dias (3 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Lorenzo Sonego:</b> sem desistências recentes registadas</div><div class="d-row"><b>Tallon Griekspoor:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Forma recente diverge: <strong>Sonego 5-5</strong> vs <strong>Griekspoor 2-8</strong> em 10 jogos.</li><li>Ranking favorece Griekspoor (<strong>67</strong> vs <strong>80</strong>, 895 vs 758 pts), mercado quase parelho (1.91 vs 1.98).</li><li>Época 2026 fraca para ambos: <strong>Sonego 8-11</strong> (42%) vs <strong>Griekspoor 9-16</strong> (36%).</li><li>H2H apenas <strong>1 jogo</strong> em hard (Sonego venceu) — amostra insuficiente para sinal.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Forma recente contrária ao ranking/mercado: Sonego 5-5 vs Griekspoor 2-8 (10 jogos) — observar possível valor em Sonego.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">H2H apenas 1 jogo (Sonego venceu em hard) — amostra insuficiente para sustentar leitura.</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado está praticamente equilibrado, ligeiramente a favor de Griekspoor pelo ranking, mas a forma recente conta uma história diferente — Sonego 5-5 vs Griekspoor 2-8 em 10 jogos, com época atual também pior para o holandês. Isto pode sugerir observar valor no Sonego, mas a amostra de forma (10 jogos) e a diferença pequena de ranking não permitem ir além de um sinal moderado. Fadiga não é decisiva: Sonego tem 19 dias sem jogar (fonte fiável, pode ser descanso ou falta de ritmo) e Griekspoor teve carga leve (1 jogo, 3 sets, há 6 dias). Sem sinal de lesão em nenhum e H2H insuficiente para pesar na leitura.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (45/40 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">15.6%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:7.8%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:8.8%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">17.5%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (188/129 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">34.6%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:17.3%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:19.4%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">38.8%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (311/220 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">43.4%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.7%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:24.3%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">48.6%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Lorenzo Sonego 1–0 Tallon Griekspoor</div><div class="d-row"><b>Neste piso:</b> Lorenzo Sonego 1–0 Tallon Griekspoor</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Lorenzo Sonego 5-5 · Tallon Griekspoor 2-8</div><div class="d-row"><b>Época atual:</b> Lorenzo Sonego 8-11 (42%) · Tallon Griekspoor 9-16 (36%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Lorenzo Sonego #80 · Tallon Griekspoor #67</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Lorenzo Sonego 48.1% (181 jogos) · Tallon Griekspoor 63.0% (243 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Lorenzo Sonego 44.7% (103 jogos) · Tallon Griekspoor 41.8% (55 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Lorenzo Sonego:</b> 19 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Tallon Griekspoor:</b> 7 dias desde o último jogo; 1 nos últimos 7 dias (3 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Lorenzo Sonego:</b> sem desistências recentes registadas</div><div class="d-row"><b>Tallon Griekspoor:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Lorenzo Sonego 82% · Tallon Griekspoor 84% (412/431 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Lorenzo Sonego 20% · Tallon Griekspoor 27% (319/286 jogos)</div><div class="d-row"><b>Set decisivo:</b> Lorenzo Sonego 47% · Tallon Griekspoor 56% (246/263 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Lorenzo Sonego 51% · Tallon Griekspoor 56% (316/316 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Lorenzo Sonego 69% · Tallon Griekspoor 67%</div><div class="d-row"><b>Duração média:</b> Lorenzo Sonego 1:40:58 · Tallon Griekspoor 1:31:35</div><div class="d-row"><b>Rácio winners/erros:</b> Lorenzo Sonego 1.27 · Tallon Griekspoor 1.06</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Lorenzo Sonego:</b> 1º serviço ganho 72% vs adversários 70%; winners 2994 vs 2455; erros 2360 vs 2383</div><div class="d-row"><b>Tallon Griekspoor:</b> 1º serviço ganho 72% vs adversários 71%; winners 1978 vs 1783; erros 1873 vs 1430</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Tallon Griekspoor</strong> superior no ranking (#80 vs #67).</li><li><strong>Lorenzo Sonego</strong> melhor em forma, época, serviço (força geral a favor).</li><li><strong>Lorenzo Sonego</strong> lidera o confronto direto (1-0 em 1).</li><li><strong>Lorenzo Sonego</strong> mais fresco (0 vs 1 jogos nos últimos 7 dias).</li><li>Lorenzo Sonego fecha 82% dos jogos após ganhar o 1º set.</li><li>Tallon Griekspoor recupera 27% quando perde o 1º set.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Mercado quase pick'em apesar de Sonego liderar forma recente (50% vs 20%, 10 jogos cada) e época atual (42.1% vs 36%, 19/25 jogos) — sinal do presente a observar.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Griekspoor lidera piso em hard na carreira (63% vs 48.1%, amostra grande 243/181), mas é dado de carreira, não específico da época atual.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">H2H apenas 1 confronto (vitória de Sonego neste piso) — amostra insuficiente para peso na leitura.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Ambos recuperam mal de 1º set perdido (Sonego 20%/319, Griekspoor 27%/286) — jogo tende a decidir-se pelo resultado do 1º set.</span></div><h3 class="sec">⚠️ Principais riscos</h3><ul class="risks-list"><li>H2H com apenas 1 jogo — sem valor estatístico real</li><li>Sonego 19 dias sem competir — pode significar falta de ritmo, não só descanso</li><li>Piso favorece Griekspoor apenas em dado de carreira, sem recorte recente equivalente</li><li>Ranking difere pouco (13 posições) — sinal fraco isoladamente</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado praticamente equilibrado (1.98 vs 1.91, ~50-52% implícito), sem favorito de mercado claro. O 'presente' — forma recente (50% vs 20%, amostra pequena de 10) e época atual (42.1% vs 36%, amostra 19/25) — aponta para Sonego, enquanto ranking (diff pequeno de 13) e piso em carreira (63% vs 48.1%, amostra grande 181/243) apontam para Griekspoor. Este último é dado de carreira longa, não necessariamente reflete o estado atual de ambos em hard. Frescura pró-Sonego (0 jogos/sets últimos 7d) pode ser tanto descanso como falta de ritmo após 19 dias de hiato, enquanto Griekspoor vem de 1 jogo/3 sets há 7 dias — carga leve, não fadiga. H2H é só 1 confronto, insuficiente para peso. Nenhum padrão forte de recuperação de 1º set (ambos &lt;30% ao perder o 1º) sugere jogo tende a seguir o resultado do 1º set sem grande viragem. No global, mercado parece razoavelmente alinhado com a ambiguidade real dos dados — sem valor claro a observar pré-live; possível interesse em observar live se Sonego perder o 1º set (baixa recuperação para ambos torna a odd ao vivo mais preditiva que inflacionada).</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

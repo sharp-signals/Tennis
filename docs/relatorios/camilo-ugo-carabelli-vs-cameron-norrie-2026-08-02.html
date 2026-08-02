@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -124,32 +126,32 @@ strong { color:#fff; font-weight:700; }
     <div class="sb-players">
       <div class="sb-name">Camilo Ugo Carabelli<div class="sb-prob">22% s/ margem</div></div>
       <div class="sb-odds">
-        <div class="sb-odd">4.39</div>
+        <div class="sb-odd">4.32</div>
         <div class="sb-vs">VS</div>
         <div class="sb-odd">1.25</div>
       </div>
       <div class="sb-name right">Cameron Norrie<div class="sb-prob">78% s/ margem</div></div>
     </div>
-    <div class="sb-flag">🔴 sinal</div>
+    <div class="sb-flag">🟡 sinal</div>
     
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">75/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:75%;background:#4ecdc4"></div></div><div class="cov-detail">6/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
-        <span class="conf-num" style="color:#e0a34a">60/100 · média</span>
+        <span class="conf-num" style="color:#e0a34a">45/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:60%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Fadiga real e comprovada de Norrie (calendário muito carregado) e nivelamento dos registos da época atual contrastam com um favoritismo de mercado muito acentuado, mas o histórico de Hard (amostra grande) sustenta esse favoritismo.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:45%;background:#e0a34a"></div></div>
+      <div class="conf-reason">A maioria dos sinais (ranking, época atual, piso com amostra grande) está alinhada com o favoritismo de mercado, mas há uma disparidade de frescura real e fiável que pode pesar num jogo longo.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">4.3%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">42.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">45.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:22.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:21.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">42.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">30%</text>
       </svg>
       <div class="gauge-label">Cameron Norrie (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Camilo Ugo Carabelli 5-5 · Cameron Norrie 3-7</div><div class="d-row"><b>Época atual:</b> Camilo Ugo Carabelli 14-17 (45%) · Cameron Norrie 14-15 (48%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Camilo Ugo Carabelli #75 · Cameron Norrie #39</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Camilo Ugo Carabelli:</b> 14 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Cameron Norrie:</b> 2 dias desde o último jogo; 4 nos últimos 7 dias (9 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Camilo Ugo Carabelli:</b> 1 desistência(s) recente(s) registada(s)</div><div class="d-row"><b>Cameron Norrie:</b> 1 desistência(s) recente(s) registada(s)</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Fadiga: Norrie <strong>4 jogos em 7 dias</strong> e <strong>9 sets</strong>, descansou só <strong>2 dias</strong>; Carabelli <strong>0 jogos há 14 dias</strong>.</li><li>Época 2026 quase empatada: Carabelli <strong>14-17</strong> (45%) vs Norrie <strong>14-15</strong> (48%), apesar da odd 1.25 vs 4.39.</li><li>Forma recente (10 jogos, amostra pequena): Carabelli <strong>5-5</strong> vs Norrie <strong>3-7</strong>.</li><li>Piso Hard favorece claramente Norrie: <strong>56% em 280 jogos</strong> vs <strong>34% em 29 jogos</strong> de Carabelli — suporta o favoritismo.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Norrie acumula 4 jogos/7 dias e 9 sets com só 2 dias de descanso; Carabelli sem jogos há 14 dias — observar desgaste em jogo longo.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Registos da época atual quase iguais (Carabelli 14-17, Norrie 14-15) apesar da odd implícita de 78% para Norrie.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Forma últimos 10 jogos favorece Carabelli (5-5) sobre Norrie (3-7), mas amostra pequena.</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado dá a Norrie um favoritismo muito forte (~78% implícito), apoiado num histórico sólido em Hard (amostra grande) e ranking mais alto, o que é um argumento real. Mas há um contraponto factual: a carga de jogos de Norrie nesta semana (4 partidas/7 dias, 9 sets, 2 dias de descanso) contra um Carabelli totalmente fresco, somada a registos da época atual praticamente empatados e forma recente pior para Norrie, sugere que a margem de 78% pode estar a ignorar o desgaste acumulado. Não há dados para quantificar valor, mas é um cenário a observar ao vivo — especialmente se o jogo se prolongar, o desgaste de Norrie pode pesar mais do que a odd inicial reflete. Sem H2H disponível para comparar confrontos diretos, que é uma lacuna relevante aqui.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (8/60 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">0.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:0.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:10.8%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">21.7%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (29/217 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">24.1%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:12.1%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:23.2%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">46.5%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (81/374 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">38.3%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:19.1%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:26.2%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">52.4%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Camilo Ugo Carabelli 5-5 · Cameron Norrie 3-7</div><div class="d-row"><b>Época atual:</b> Camilo Ugo Carabelli 14-17 (45%) · Cameron Norrie 14-15 (48%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Camilo Ugo Carabelli #75 · Cameron Norrie #39</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Camilo Ugo Carabelli 48.8% (80 jogos) · Cameron Norrie 66.1% (369 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Camilo Ugo Carabelli 41.9% (31 jogos) · Cameron Norrie 55.1% (127 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Camilo Ugo Carabelli:</b> 14 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Cameron Norrie:</b> 2 dias desde o último jogo; 4 nos últimos 7 dias (9 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Camilo Ugo Carabelli:</b> 1 desistência(s) recente(s) registada(s)</div><div class="d-row"><b>Cameron Norrie:</b> 1 desistência(s) recente(s) registada(s)</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Camilo Ugo Carabelli 88% · Cameron Norrie 86% (367/416 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Camilo Ugo Carabelli 26% · Cameron Norrie 24% (280/286 jogos)</div><div class="d-row"><b>Set decisivo:</b> Camilo Ugo Carabelli 59% · Cameron Norrie 60% (198/239 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Camilo Ugo Carabelli 54% · Cameron Norrie 51% (174/253 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Camilo Ugo Carabelli 66% · Cameron Norrie 66%</div><div class="d-row"><b>Duração média:</b> Camilo Ugo Carabelli 1:42:37 · Cameron Norrie 1:39:15</div><div class="d-row"><b>Rácio winners/erros:</b> Camilo Ugo Carabelli 0.65 · Cameron Norrie 0.9</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Camilo Ugo Carabelli:</b> 1º serviço ganho 66% vs adversários 64%; winners 491 vs 751; erros 758 vs 954</div><div class="d-row"><b>Cameron Norrie:</b> 1º serviço ganho 70% vs adversários 69%; winners 2544 vs 3199; erros 2831 vs 3258</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Cameron Norrie</strong> superior no ranking (#75 vs #39).</li><li><strong>Camilo Ugo Carabelli</strong> melhor em forma, serviço (força geral a favor).</li><li><strong>Camilo Ugo Carabelli</strong> mais fresco (0 vs 4 jogos nos últimos 7 dias).</li><li>Camilo Ugo Carabelli fecha 88% dos jogos após ganhar o 1º set.</li><li>Cameron Norrie recupera 24% quando perde o 1º set.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Norrie acumula 4 jogos e 9 sets nos últimos 7 dias (último há 2 dias) vs Carabelli sem jogos há 14 dias — observar desgaste de Norrie num jogo longo/set decisivo.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Forma recente favorece Carabelli (50% vs 30%) mas amostra pequena (10 jogos cada), não comparável à probabilidade implícita de 80% do mercado.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Sem H2H disponível (overall e on_surface null) — lacuna de dado, não sinal de equilíbrio.</span></div><h3 class="sec">⚠️ Principais riscos</h3><ul class="risks-list"><li>Fadiga recente de Norrie é dado real mas não prova quebra de nível — pode gerir a carga bem</li><li>Amostra pequena de forma recente (10 jogos) não sustenta leitura contra o favorito</li><li>Ranking, época e piso (amostras grandes e correlacionadas) apontam consistentemente para Norrie</li><li>Retirações de ambos são antigas (maio/junho) e não ind</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O favoritismo de Norrie (1.25) está sustentado por múltiplos sinais correlacionados — ranking (diff 36), época atual (amostra 29-31) e sobretudo piso, com amostra muito maior (369 vs 80 jogos) a favor dele em hard. Não há aqui divergência forte face à odd. O ponto a observar é a fadiga: Norrie tem <code>fatigue_source: api_recent</code> fiável mostrando 4 jogos e 9 sets nos últimos 7 dias, último jogo há apenas 2 dias, enquanto Carabelli está parado há 14 dias (sem jogos recentes). Isto é um fator real de carga acumulada que pode pesar se o jogo se estender — observar live handicap de sets ou 'over games/sets' se Norrie mostrar sinais de desgaste num terceiro set. A forma recente (50% vs 30%, Carabelli) tem amostra pequena (10 jogos cada) e não deve ser lida como contradição ao mercado, apenas contexto. Cenários de carreira (recuperação 1º set, set decisivo, tiebreak) são muito semelhantes entre ambos com amostras grandes, sem edge aparente aí. Sem H2H disponível — lacuna, não equilíbrio. No global, mercado parece razoavelmente alinhado com os dados estruturais; a fadiga é o único fio a observar ao vivo.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

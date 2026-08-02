@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -135,21 +137,21 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">75/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:75%;background:#4ecdc4"></div></div><div class="cov-detail">6/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
-        <span class="conf-num" style="color:#e0a34a">60/100 · média</span>
+        <span class="conf-num" style="color:#e0a34a">62/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:60%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Fadiga e forma recente apontam para Svajda mais competitivo do que o preço sugere, mas o histórico de piso (hard) favorece claramente Shapovalov, criando sinais em direções opostas.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:62%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Vários sinais de recência (forma, época, serviço, frescura) convergem no mesmo sentido contra o favorito do mercado, mas amostras individuais (forma_recente n=10) são limitadas e não há H2H para confirmar.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">8.0%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">39.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:19.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:18.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">36.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">44.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:22.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">30%</text>
       </svg>
       <div class="gauge-label">Denis Shapovalov (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Zachary Svajda 6-4 · Denis Shapovalov 3-7</div><div class="d-row"><b>Época atual:</b> Zachary Svajda 8-10 (44%) · Denis Shapovalov 9-14 (39%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Zachary Svajda #76 · Denis Shapovalov #68</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Zachary Svajda:</b> 6 dias desde o último jogo; 1 nos últimos 7 dias (2 sets)</div><div class="d-row"><b>Denis Shapovalov:</b> 1 dias desde o último jogo; 5 nos últimos 7 dias (12 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Zachary Svajda:</b> sem desistências recentes registadas</div><div class="d-row"><b>Denis Shapovalov:</b> 1 desistência(s) recente(s) registada(s)</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Shapovalov: <strong>12 sets</strong> e <strong>2 jogos</strong> em 3 dias — carga acumulada elevada pré-jogo.</li><li>Forma recente inversa ao mercado: Svajda <strong>6-4</strong> vs Shapovalov <strong>3-7</strong> (últimos 10 jogos).</li><li>Hard carreira: Shapovalov <strong>56.9%</strong> (316 jogos) vs Svajda <strong>30.3%</strong> (33 jogos) — mas é dado de carreira, não do momento atual.</li><li>Shapovalov teve retirement real em 29/06/2026 (RET vs Carreno Busta) — facto a registar, não diagnóstico.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Shapovalov acumula <strong>5 jogos/12 sets</strong> em 7 dias vs Svajda <strong>1 jogo/2 sets</strong> — observar desgaste ao vivo nos sets finais.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Forma recente inversa ao preço: Svajda <strong>6-4</strong> vs Shapovalov <strong>3-7</strong> (últimos 10), mercado favorece Shapovalov a 1.74.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Hard carreira: Shapovalov **56.9%</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Shapovalov é favorito do mercado (~57% implícito) mas chega a este jogo com carga física relevante (5 jogos e 12 sets nos últimos 7 dias, 2 jogos em 3 dias), enquanto Svajda está descansado (6 dias, 1 jogo/7 dias) — este contraste de fadiga fiável (fonte api_recent) raramente está bem refletido num odd pré-jogo fixo, pelo que vale observar sinais de queda de nível de Shapovalov nos sets finais. A forma recente também diverge do preço (Svajda 6-4 vs Shapovalov 3-7 nos últimos 10, ambos abaixo de .500 na época 2026), sugerindo que o favoritismo pode assentar mais em reputação/ranking do que em momento atual. Em contrapartida, o domínio de Shapovalov em hard na carreira (56.9% em 316 jogos vs 30.3% de Svajda em 33) é um contraponto real, ainda que seja histórico de carreira e não garanta refletir o nível atual de nenhum. Sem H2H disponível para cruzar confrontos diretos; a leitura fica dividida entre 'observar fadiga/forma a favor de Svajda' e 'respeitar o histórico de piso a favor de Shapovalov'.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (3/54 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">0.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:0.0%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:12.9%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">25.9%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (19/233 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">26.3%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:13.2%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:22.6%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">45.1%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (41/374 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">39.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:19.5%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:25.1%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">50.3%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Zachary Svajda 6-4 · Denis Shapovalov 3-7</div><div class="d-row"><b>Época atual:</b> Zachary Svajda 8-10 (44%) · Denis Shapovalov 9-14 (39%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Zachary Svajda #76 · Denis Shapovalov #68</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Zachary Svajda 62.2% (249 jogos) · Denis Shapovalov 59.2% (260 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Zachary Svajda 43.5% (23 jogos) · Denis Shapovalov 52.4% (126 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Zachary Svajda:</b> 6 dias desde o último jogo; 1 nos últimos 7 dias (2 sets)</div><div class="d-row"><b>Denis Shapovalov:</b> 1 dias desde o último jogo; 5 nos últimos 7 dias (12 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Zachary Svajda:</b> sem desistências recentes registadas</div><div class="d-row"><b>Denis Shapovalov:</b> 1 desistência(s) recente(s) registada(s)</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Zachary Svajda 82% · Denis Shapovalov 86% (222/334 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Zachary Svajda 23% · Denis Shapovalov 23% (157/261 jogos)</div><div class="d-row"><b>Set decisivo:</b> Zachary Svajda 50% · Denis Shapovalov 57% (126/195 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Zachary Svajda 54% · Denis Shapovalov 50% (118/268 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Zachary Svajda 67% · Denis Shapovalov 68%</div><div class="d-row"><b>Duração média:</b> Zachary Svajda 1:29:26 · Denis Shapovalov 1:42:16</div><div class="d-row"><b>Rácio winners/erros:</b> Zachary Svajda 1.22 · Denis Shapovalov 0.99</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Zachary Svajda:</b> 1º serviço ganho 70% vs adversários 70%; winners 1117 vs 1334; erros 918 vs 1192</div><div class="d-row"><b>Denis Shapovalov:</b> 1º serviço ganho 75% vs adversários 71%; winners 3677 vs 2120; erros 3721 vs 2581</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Denis Shapovalov</strong> superior no ranking (#76 vs #68).</li><li><strong>Zachary Svajda</strong> melhor em forma, época, piso, serviço (força geral a favor).</li><li><strong>Zachary Svajda</strong> mais fresco (1 vs 5 jogos nos últimos 7 dias).</li><li>Zachary Svajda fecha 82% dos jogos após ganhar o 1º set.</li><li>Denis Shapovalov recupera 23% quando perde o 1º set.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Shapovalov jogou 5 jogos/12 sets nos últimos 7 dias vs 1 jogo/2 sets de Svajda — forte disparidade de frescura a observar no live.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Forma recente, época atual e serviço apontam todos para Svajda, contrariando o favoritismo de mercado de Shapovalov.</span></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Shapovalov teve uma desistência por lesão a 29/06 (RET vs Carreno Busta) — sinal de risco físico recente.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Sem dados de H2H (overall ou piso) para confirmar padrão direto entre os dois.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Ambos recuperam pouco de 1º set perdido (23% em amostra grande, 157/261 jogos) — útil para live, não distingue os dois.</span></div><h3 class="sec">⚠️ Principais riscos</h3><ul class="risks-list"><li>Amostra de forma recente pequena (10 jogos cada)</li><li>Sinal de lesão de Shapovalov já tem ~5 semanas, pode estar recuperado</li><li>Ranking ao vivo ainda favorece ligeiramente Shapovalov</li><li>Sem H2H para validar o padrão específico deste confronto</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado dá Shapovalov como favorito (1.74) apesar de Svajda liderar quase todos os indicadores recentes: forma (60% vs 30%, n=10 cada — amostra pequena, tratar com cautela), época atual (44.4% vs 39.1%), serviço (72.4% vs 68.3%) e, sobretudo, frescura física (1 jogo/2 sets vs 5 jogos/12 sets nos últimos 7 dias, dados fiáveis api_recent). Shapovalov teve ainda um walkover por lesão a 29/06 — facto real, não diagnóstico, mas soma-se ao quadro de possível desgaste. O ranking ao vivo (68 vs 76) e os splits de carreira em piso duro/set decisivo favorecem ligeiramente Shapovalov, mas são dados de carreira mais lentos a refletir o momento atual. Não há H2H para confirmar padrão direto. Face a este conjunto, há espaço para observar valor no lado de Svajda (2.20), sobretudo se a carga de Shapovalov se traduzir em queda de nível ao vivo. Ao vivo: ambos recuperam mal de 1º set perdido (23% cada, amostra grande) — perder o 1º set tende a ser decisivo para qualquer um dos dois, útil para handicaps de sets ao vivo.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

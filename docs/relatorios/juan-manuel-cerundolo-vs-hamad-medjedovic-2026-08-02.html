@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -135,21 +137,21 @@ strong { color:#fff; font-weight:700; }
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">100/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:100%;background:#4ecdc4"></div></div><div class="cov-detail">8/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
-        <span class="conf-num" style="color:#e0a34a">38/100 · média</span>
+        <span class="conf-num" style="color:#e0a34a">42/100 · média</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:38%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Piso e época atual apontam consistentemente para Medjedovic, mas H2H (1 jogo) e rich_stats (ambos null) deixam grandes lacunas para confirmar com mais profundidade.</div>
+      <div class="conf-track"><div class="conf-fill" style="width:42%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Sinais de piso e época atual (amostras moderadas, correlacionados) apoiam o favorito do mercado, mas ranking e o hiato de Medjedovic introduzem dúvida sem serem conclusivos.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">6.7%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">42.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">38.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">46.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:23.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:21.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">42.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">50%</text>
       </svg>
       <div class="gauge-label">Hamad Medjedovic (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Juan Manuel Cerundolo 0–1 Hamad Medjedovic</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Juan Manuel Cerundolo 5-5 · Hamad Medjedovic 5-5</div><div class="d-row"><b>Época atual:</b> Juan Manuel Cerundolo 13-15 (46%) · Hamad Medjedovic 11-10 (52%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Juan Manuel Cerundolo #50 · Hamad Medjedovic #73</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Juan Manuel Cerundolo:</b> 13 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Hamad Medjedovic:</b> 35 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Juan Manuel Cerundolo:</b> sem desistências recentes registadas</div><div class="d-row"><b>Hamad Medjedovic:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Hard: <strong>Medjedovic 58.3%</strong> (48 jogos) vs <strong>Cerundolo 36.4%</strong> (22 jogos) — força geral no piso deste jogo.</li><li>Época 2026: <strong>Medjedovic 52.4%</strong> (21 jogos) vs <strong>Cerundolo 46.4%</strong> (28 jogos), apesar do ranking de Cerundolo ser superior (50 vs 73).</li><li>Break points salvos: <strong>Medjedovic 73.4%</strong> vs <strong>Cerundolo 61.6%</strong> — mais sólido no serviço sob pressão.</li><li>H2H apenas <strong>1 jogo</strong> (venceu Medjedovic) — amostra insuficiente para qualquer leitura.</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O ranking mais alto de Cerundolo não se traduz em vantagem real: no piso deste jogo e na época atual ele rende pior que Medjedovic, o que justifica o favoritismo do mercado sem sinal de sobreavaliação. Sem rich_stats para nenhum dos dois, não há cenários de recuperação de 1º set, domínio frágil ou set decisivo para observar. Ambos chegam com pausa (13 e 35 dias) sem sinal de fadiga por excesso de jogos recentes, e o layoff de 60+ dias não se aplica a nenhum agora. Mercado parece alinhado com os dados disponíveis; sem valor claro identificável pré-live.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (3/8 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">33.3%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:16.6%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:12.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">25.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (31/41 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">41.9%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.9%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:25.6%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">51.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (73/88 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">43.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.9%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:27.9%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">55.7%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Juan Manuel Cerundolo 0–1 Hamad Medjedovic</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Juan Manuel Cerundolo 5-5 · Hamad Medjedovic 5-5</div><div class="d-row"><b>Época atual:</b> Juan Manuel Cerundolo 13-15 (46%) · Hamad Medjedovic 11-10 (52%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Juan Manuel Cerundolo #50 · Hamad Medjedovic #73</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Juan Manuel Cerundolo 45.7% (46 jogos) · Hamad Medjedovic 58.1% (74 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Juan Manuel Cerundolo 56.0% (25 jogos) · Hamad Medjedovic 54.2% (24 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Juan Manuel Cerundolo:</b> 13 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Hamad Medjedovic:</b> 35 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Juan Manuel Cerundolo:</b> sem desistências recentes registadas</div><div class="d-row"><b>Hamad Medjedovic:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Juan Manuel Cerundolo 87% · Hamad Medjedovic 87% (309/196 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Juan Manuel Cerundolo 24% · Hamad Medjedovic 19% (214/113 jogos)</div><div class="d-row"><b>Set decisivo:</b> Juan Manuel Cerundolo 62% · Hamad Medjedovic 56% (156/88 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Juan Manuel Cerundolo 63% · Hamad Medjedovic 52% (143/139 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Juan Manuel Cerundolo 63% · Hamad Medjedovic 63%</div><div class="d-row"><b>Duração média:</b> Juan Manuel Cerundolo 1:44:13 · Hamad Medjedovic 1:40:48</div><div class="d-row"><b>Rácio winners/erros:</b> Juan Manuel Cerundolo 0.86 · Hamad Medjedovic 1.06</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Juan Manuel Cerundolo:</b> 1º serviço ganho 64% vs adversários 64%; winners 752 vs 969; erros 874 vs 1189</div><div class="d-row"><b>Hamad Medjedovic:</b> 1º serviço ganho 72% vs adversários 69%; winners 1144 vs 840; erros 1076 vs 680</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Juan Manuel Cerundolo</strong> superior no ranking (#50 vs #73).</li><li><strong>Hamad Medjedovic</strong> melhor em época, piso (força geral a favor).</li><li><strong>Hamad Medjedovic</strong> lidera o confronto direto (0-1 em 1).</li><li>Juan Manuel Cerundolo fecha 87% dos jogos após ganhar o 1º set.</li><li>Hamad Medjedovic recupera 19% quando perde o 1º set.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Ranking favorece Cerundolo (50 vs 73) enquanto o mercado e a época atual (52.4% vs 46.4%) favorecem Medjedovic — divergência a observar, não conclusiva.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Medjedovic 35 dias sem competir vs 13 de Cerundolo — hiato maior do favorito do mercado, sem sinal de lesão.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">H2H com apenas 1 jogo — sem valor de leitura para o confronto direto.</span></div><h3 class="sec">⚠️ Principais riscos</h3><ul class="risks-list"><li>Ranking pode não refletir a forma atual (época atual diverge do ranking)</li><li>Hiato de 35 dias de Medjedovic sem jogos recentes</li><li>H2H com amostra mínima (1 jogo)</li><li>Cobertura ATP pode não incluir eventuais jogos Challenger recentes de qualquer um dos dois</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado (1.63 Medjedovic) está alinhado com os sinais de piso (58.1% vs 45.7%, amostra grande) e época atual (52.4% vs 46.4%, amostra moderada), que são correlacionados entre si. O ranking, no entanto, favorece Cerundolo (50 vs 73) — pode refletir pontos acumulados mais do que forma presente, já que a época atual já diverge do ranking. H2H tem apenas 1 jogo, sem valor de leitura. O ponto a observar é a fadiga: Medjedovic está 35 dias sem competir vs 13 dias de Cerundolo, ambos sem jogos nos últimos 7 dias — não é lesão nem stale (fonte fiável), mas um hiato maior no favorito é um contra-argumento a vigiar no arranque do jogo. Sem padrões claros de recuperação de 1º set ou domínio frágil com amostra suficientemente diferenciadora. Leitura geral: mercado razoavelmente alinhado, sem valor evidente a observar além do hiato de Medjedovic.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

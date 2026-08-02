@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -122,34 +124,34 @@ strong { color:#fff; font-weight:700; }
   <div class="sb-inner">
     <div class="sb-meta">National Bank Open - Montreal · ATP Masters 1000 · Hard · 02/08/2026</div>
     <div class="sb-players">
-      <div class="sb-name">Sebastian Baez<div class="sb-prob">52% s/ margem</div></div>
+      <div class="sb-name">Sebastian Baez<div class="sb-prob">53% s/ margem</div></div>
       <div class="sb-odds">
-        <div class="sb-odd">1.85</div>
+        <div class="sb-odd">1.83</div>
         <div class="sb-vs">VS</div>
-        <div class="sb-odd">2.04</div>
+        <div class="sb-odd">2.07</div>
       </div>
-      <div class="sb-name right">Mattia Bellucci<div class="sb-prob">48% s/ margem</div></div>
+      <div class="sb-name right">Mattia Bellucci<div class="sb-prob">47% s/ margem</div></div>
     </div>
     <div class="sb-flag">🟡 sinal</div>
     
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">75/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:75%;background:#4ecdc4"></div></div><div class="cov-detail">6/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
         <span class="conf-num" style="color:#e0a34a">38/100 · média</span>
       </div>
       <div class="conf-track"><div class="conf-fill" style="width:38%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Faltam H2H e rich_stats, e os sinais existentes (ranking/época vs piso vs forma recente) apontam em direções distintas sem nenhum ser conclusivo.</div>
+      <div class="conf-reason">Sinais contraditórios entre época atual (favorece Baez, amostra moderada) e piso/serviço de carreira (favorecem Bellucci, amostra grande), sem H2H para desempatar.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">9.3%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">42.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:21.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">38.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">45.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:22.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:20.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">40.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">50%</text>
       </svg>
       <div class="gauge-label">Mattia Bellucci (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Sebastian Baez 4-6 · Mattia Bellucci 5-5</div><div class="d-row"><b>Época atual:</b> Sebastian Baez 21-17 (55%) · Mattia Bellucci 8-13 (38%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Sebastian Baez #53 · Mattia Bellucci #81</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Sebastian Baez:</b> 11 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Mattia Bellucci:</b> 41 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Sebastian Baez:</b> sem desistências recentes registadas</div><div class="d-row"><b>Mattia Bellucci:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>Baez favorito (54% implícito) mas só <strong>37%</strong> vitórias em hard na carreira (97 jogos) vs <strong>60%</strong> em clay (149 jogos).</li><li>Época 2026: Baez <strong>21-17</strong> (55%) vs Bellucci <strong>8-13</strong> (38%) — força geral favorece Baez.</li><li>Bellucci <strong>41 dias</strong> sem jogo (fonte fiável), sem sinal de lesão; amostra de layoff pequena (3 jogos, 33%).</li><li>H2H e rich_stats ausentes — falta contexto de confronto direto e cenários (set decisivo, recuperação de 1º set).</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Baez favorito do mercado mas apenas 37% de vitórias em hard na carreira (97 jogos) vs 60% em clay (149 jogos) — especialista fora do piso preferido.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Serviço recente (10 jogos cada): Bellucci com 72.5% de pontos ganhos ao 1º serviço vs 64.4% de Baez — amostra pequena, apenas contexto.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Bellucci 41 dias sem jogo oficial na fonte; sem sinal de lesão, mas amostra de retorno pós-layoff insuficiente (3 jogos).</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado favorece Baez essencialmente pelo ranking (53 vs 81) e pela época atual, mas ambos os jogadores rendem mal em hard na carreira (Baez 37% em 97 jogos, Bellucci 39.5% em 38) — Baez é claramente um especialista de clay (60% em 149 jogos) jogando fora do seu piso mais forte, o que fragiliza um pouco a leitura do favoritismo. O hiato de 41 dias de Bellucci é real mas a amostra de retorno pós-layoff é pequena (3 jogos) para tirar conclusão, e não há sinal de lesão. Sem H2H nem rich_stats, falta informação chave (cenários de set decisivo, recuperação de 1º set) para qualquer leitura ao vivo. Mercado parece razoavelmente alinhado com ranking/forma geral; não há discrepância forte o suficiente para observação clara.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (22/6 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">13.6%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:6.8%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:8.3%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">16.7%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (92/31 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">30.4%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:15.2%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:14.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">29.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (204/71 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">48.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:24.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:14.8%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">29.6%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Sebastian Baez 4-6 · Mattia Bellucci 5-5</div><div class="d-row"><b>Época atual:</b> Sebastian Baez 21-17 (55%) · Mattia Bellucci 8-13 (38%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Sebastian Baez #53 · Mattia Bellucci #81</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Sebastian Baez 50.0% (92 jogos) · Mattia Bellucci 64.9% (239 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Sebastian Baez 36.4% (55 jogos) · Mattia Bellucci 34.6% (26 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Sebastian Baez:</b> 11 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Mattia Bellucci:</b> 41 dias desde o último jogo; 0 nos últimos 7 dias</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Sebastian Baez:</b> sem desistências recentes registadas</div><div class="d-row"><b>Mattia Bellucci:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Sebastian Baez 86% · Mattia Bellucci 87% (285/291 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Sebastian Baez 26% · Mattia Bellucci 17% (207/177 jogos)</div><div class="d-row"><b>Set decisivo:</b> Sebastian Baez 55% · Mattia Bellucci 57% (166/105 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Sebastian Baez 52% · Mattia Bellucci 56% (141/158 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Sebastian Baez 62% · Mattia Bellucci 64%</div><div class="d-row"><b>Duração média:</b> Sebastian Baez 1:43:20 · Mattia Bellucci 1:37:23</div><div class="d-row"><b>Rácio winners/erros:</b> Sebastian Baez 0.79 · Mattia Bellucci 1.01</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Sebastian Baez:</b> 1º serviço ganho 64% vs adversários 65%; winners 987 vs 1201; erros 1242 vs 1456</div><div class="d-row"><b>Mattia Bellucci:</b> 1º serviço ganho 72% vs adversários 68%; winners 938 vs 889; erros 928 vs 933</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Sebastian Baez</strong> superior no ranking (#53 vs #81).</li><li><strong>Mattia Bellucci</strong> melhor em forma, piso, serviço (força geral a favor).</li><li>Sebastian Baez fecha 86% dos jogos após ganhar o 1º set.</li><li>Mattia Bellucci recupera 17% quando perde o 1º set.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Piso hard de carreira favorece Bellucci (64.9% vs 50%, 239 vs</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado dá Baez favorito ligeiro (~53% implícito), suportado pela época atual (55.3% vs 38.1%, amostra moderada 38/21). Contudo, o histórico de carreira em hard (239 vs 92 jogos) e o serviço favorecem claramente Bellucci, criando conflito não resolvido por H2H (inexistente). A forma recente (10 jogos cada) também pende para Bellucci, mas é amostra insuficiente para pesar. O hiato de 41 dias de Bellucci sem jogos (fonte fiável, sem sinal de lesão) é um fator de incerteza sobre o ritmo atual, algo que os dados de piso/serviço de carreira não capturam. Ambos recuperam mal de 1º set perdido, especialmente Bellucci (17% em 177 jogos) — se Bellucci perder o 1º set, o jogo tende a decidir-se sem grande resistência, útil para observar handicaps de sets ao vivo. Set decisivo e tiebreak estão equilibrados (amostras grandes, sem edge claro). No global, sinais mistos sem clara sobreposição a favor de nenhum lado face à odd — mercado parece razoavelmente alinhado, com incerteza residual sobre o ritmo de Bellucci.</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>

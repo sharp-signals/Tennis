@@ -60,6 +60,8 @@ body {
 .disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
 .disc-emoji { flex-shrink:0; }
 .disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
 .disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
 .disc-mid { border-left:4px solid var(--amber); }
 .disc-weak { border-left:4px solid var(--dim); opacity:.9; }
@@ -122,34 +124,34 @@ strong { color:#fff; font-weight:700; }
   <div class="sb-inner">
     <div class="sb-meta">National Bank Open - Montreal · ATP Masters 1000 · Hard · 02/08/2026</div>
     <div class="sb-players">
-      <div class="sb-name">Hubert Hurkacz<div class="sb-prob">64% s/ margem</div></div>
+      <div class="sb-name">Hubert Hurkacz<div class="sb-prob">62% s/ margem</div></div>
       <div class="sb-odds">
-        <div class="sb-odd">1.52</div>
+        <div class="sb-odd">1.56</div>
         <div class="sb-vs">VS</div>
-        <div class="sb-odd">2.67</div>
+        <div class="sb-odd">2.55</div>
       </div>
-      <div class="sb-name right">Marcos Giron<div class="sb-prob">36% s/ margem</div></div>
+      <div class="sb-name right">Marcos Giron<div class="sb-prob">38% s/ margem</div></div>
     </div>
     <div class="sb-flag">🔴 sinal</div>
     
     <div class="confidence">
       <div class="conf-head">
         <span class="conf-title">Cobertura de dados</span>
-        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
+        <span class="conf-num" style="color:#4ecdc4">100/100 · alta</span>
       </div>
-      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip off">✗ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-track"><div class="conf-fill" style="width:100%;background:#4ecdc4"></div></div><div class="cov-detail">8/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip on">✓ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
       <div class="conf-head">
         <span class="conf-title">Força do sinal (leitura)</span>
         <span class="conf-num" style="color:#e0a34a">55/100 · média</span>
       </div>
       <div class="conf-track"><div class="conf-fill" style="width:55%;background:#e0a34a"></div></div>
-      <div class="conf-reason">Forma, serviço e H2H apontam claramente para Hurkacz, mas um sinal de fadiga/lesão real (29 dias parado + RET recente) contrasta com isso e não está refletido na odd curta.</div>
+      <div class="conf-reason">Ranking, forma, piso, serviço e H2H convergem fortemente para Hurkacz, mas são sinais correlacionados e o hiato de 29 dias sem competir mais uma retirância recente por lesão introduzem uma incerteza física não capturada por esses números.</div>
     </div>
     
   </div>
 </header>
 <div class="wrap">
-  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço</div>
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
     <div class="cmp">
       <div class="cmp-label">1º serviço ganho</div>
       <div class="cmp-row">
@@ -182,6 +184,28 @@ strong { color:#fff; font-weight:700; }
         </div>
         <div class="cmp-val right">6.1%</div>
       </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">37.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:18.5%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:19.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">38.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">39.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:19.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
     </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
     <div class="gauge">
       <svg viewBox="0 0 120 75" width="120" height="75">
@@ -198,7 +222,40 @@ strong { color:#fff; font-weight:700; }
         <text x="60" y="52" text-anchor="middle" class="gauge-val">30%</text>
       </svg>
       <div class="gauge-label">Marcos Giron (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
-    </div></div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Hubert Hurkacz 4–0 Marcos Giron</div><div class="d-row"><b>Neste piso:</b> Hubert Hurkacz 1–0 Marcos Giron</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Hubert Hurkacz 5-5 · Marcos Giron 3-7</div><div class="d-row"><b>Época atual:</b> Hubert Hurkacz 13-14 (48%) · Marcos Giron 11-15 (42%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Hubert Hurkacz #71 · Marcos Giron #85</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Hubert Hurkacz:</b> 29 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Marcos Giron:</b> 1 dias desde o último jogo; 1 jogo(s) neste torneio; 2 nos últimos 7 dias (5 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Hubert Hurkacz:</b> 1 desistência(s) recente(s) registada(s)</div><div class="d-row"><b>Marcos Giron:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 21.4°C; precipitação 14.1 mm</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li>H2H <strong>4-0</strong> carreira, mas on-surface só <strong>1 jogo</strong> (amostra insuficiente para reforçar).</li><li>Hurkacz <strong>29 dias</strong> sem competir (dado fiável, api_recent), incluindo <strong>RET</strong> vs Struff a 05/07.</li><li>Giron em ritmo: <strong>1 dia</strong> desde último jogo, <strong>5 sets</strong> nos últimos 7 dias, 1 jogo já neste torneio.</li><li>Serviço favorece claramente Hurkacz: <strong>80.9%</strong> vs 70.9% em 1º serviço ganho, <strong>72%</strong> vs 53.5% em BP salvos.</li></ul><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Hurkacz 29 dias sem jogar + retirement recente vs Giron em ritmo (5 sets/7d) — observar estado físico ao vivo, especialmente no arranque.</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">H2H on-surface é só 1 jogo (1-0); não sustenta reforço do domínio 4-0 de carreira.</span></div><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">O mercado lê bem a força geral de Hurkacz — H2H, forma recente, ranking e stats de serviço apontam todos na mesma direção, sem grande divergência aparente. O ponto a observar é físico: Hurkacz regressa de 29 dias sem jogar (dado fiável) depois de um retirement real no último jogo conhecido, enquanto Giron está fresco em competição embora com forma fraca (3-7). Isto não é prova de fragilidade, mas é um risco real não claramente precificado numa odd tão curta (1.52) — vale observar o estado físico de Hurkacz nos primeiros games, sobretudo se o jogo se prolongar em condições de vento/chuva. Sem rich_stats (nulo para ambos), não há padrões de recuperação de 1º set ou set decisivo para cruzar.</div></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (62/37 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">35.5%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:17.8%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:8.1%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">16.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (219/152 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">49.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:24.9%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:16.8%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">33.6%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (343/283 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">53.4%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:26.7%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:21.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">42.8%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Confronto direto (H2H)</div><div class="d-row"><b>Geral:</b> Hubert Hurkacz 4–0 Marcos Giron</div><div class="d-row"><b>Neste piso:</b> Hubert Hurkacz 1–0 Marcos Giron</div></div><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Hubert Hurkacz 5-5 · Marcos Giron 3-7</div><div class="d-row"><b>Época atual:</b> Hubert Hurkacz 13-14 (48%) · Marcos Giron 11-15 (42%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Hubert Hurkacz #71 · Marcos Giron #85</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Hubert Hurkacz 65.9% (296 jogos) · Marcos Giron 58.9% (472 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Hubert Hurkacz 62.8% (148 jogos) · Marcos Giron 50.0% (108 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Hubert Hurkacz:</b> 29 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Marcos Giron:</b> 2 dias desde o último jogo; 1 jogo(s) neste torneio; 2 nos últimos 7 dias (5 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Hubert Hurkacz:</b> 1 desistência(s) recente(s) registada(s)</div><div class="d-row"><b>Marcos Giron:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 23.3°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Hubert Hurkacz 83% · Marcos Giron 82% (424/432 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Hubert Hurkacz 27% · Marcos Giron 21% (262/324 jogos)</div><div class="d-row"><b>Set decisivo:</b> Hubert Hurkacz 53% · Marcos Giron 48% (257/279 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Hubert Hurkacz 52% · Marcos Giron 51% (385/326 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Hubert Hurkacz 66% · Marcos Giron 64%</div><div class="d-row"><b>Duração média:</b> Hubert Hurkacz 1:42:32 · Marcos Giron 1:32:2</div><div class="d-row"><b>Rácio winners/erros:</b> Hubert Hurkacz 1.15 · Marcos Giron 1.02</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Hubert Hurkacz:</b> 1º serviço ganho 75% vs adversários 71%; winners 3285 vs 3005; erros 2861 vs 2772</div><div class="d-row"><b>Marcos Giron:</b> 1º serviço ganho 72% vs adversários 70%; winners 1628 vs 2140; erros 1597 vs 2013</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Hubert Hurkacz</strong> superior no ranking (#71 vs #85).</li><li><strong>Hubert Hurkacz</strong> melhor em forma, época, piso, serviço (força geral a favor).</li><li><strong>Hubert Hurkacz</strong> lidera o confronto direto (4-0 em 4).</li><li><strong>Hubert Hurkacz</strong> mais fresco (0 vs 2 jogos nos últimos 7 dias).</li><li>Hubert Hurkacz fecha 83% dos jogos após ganhar o 1º set.</li><li>Marcos Giron recupera 21% quando perde o 1º set.</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado (1.56/2.55) está alinhado com o domínio geral de Hurkacz em ranking, forma, piso, serviço e H2H (4-0) — sem contradição óbvia a favor de Giron nesses dados. O ponto relevante para trader é físico: A tem 0 jogos/sets nos últimos 14 dias (dado fiável, api_recent) e uma retirância por lesão a 05/07, algo que não está precificado explicitamente na odd; vale observar os prim</div></div>
   <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
 </div>
 </body>
