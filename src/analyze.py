@@ -86,7 +86,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-08-01-cobertura-calc"
+PROMPT_VERSION = "2026-08-02-nivel-torneio"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -180,6 +180,11 @@ CAMPOS E COMO USÁ-LOS:
     piso do histórico (carreira completa, distingue hard indoor/outdoor).
     Usa o piso DESTE jogo para a leitura; grande diferença entre pisos é
     sinal (ex: forte em hard mas fraco em clay num torneio de terra).
+  * `by_level`: desempenho por NÍVEL de torneio (grand_slam, masters,
+    main_tour), win_pct e nº de jogos. Sinal útil: um jogador pode render
+    bem no tour mas mal em Masters/GS (sobe o nível da oposição). Usa o
+    nível DESTE torneio; se rende claramente pior neste nível que no geral,
+    o favoritismo pode ser mais frágil do que a forma geral sugere.
   * `scenarios`: cenários de jogo em % de carreira — `first_set_win_then_win_pct`
     (ganha 1º set → ganha o JOGO, que pode ser 2-0 OU 2-1),
     `first_set_lose_then_win_pct` (recupera de 1º set perdido),
