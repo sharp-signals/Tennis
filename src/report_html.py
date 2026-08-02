@@ -284,6 +284,29 @@ def _build_data_sections(payload: dict) -> str:
             rows = [f"<b>Neste piso ({_esc(surface_name)}):</b> {a} {pa} ({supa['matches']} jogos) · {b} {pb} ({supb['matches']} jogos)"]
             cards.append(_data_card("Desempenho por piso", rows))
 
+    # Desempenho por NÍVEL DE TORNEIO — mostra o registo no nível deste jogo
+    # (ex: num Masters, mostra o registo em Masters de cada um). Sinal útil:
+    # há jogadores que rendem mais em torneios pequenos que nos grandes.
+    tier = (payload.get("tier") or "").lower()
+    if "grand slam" in tier or "grandslam" in tier:
+        lkey, lnome = "grand_slam", "Grand Slams"
+    elif "1000" in tier or "masters" in tier:
+        lkey, lnome = "masters", "Masters 1000"
+    elif "250" in tier or "500" in tier or "atp" in tier or "wta" in tier:
+        lkey, lnome = "main_tour", "ATP/WTA Tour (250/500)"
+    else:
+        lkey, lnome = None, None
+
+    if lkey:
+        bla = (payload.get("rich_stats_a") or {}).get("by_level") or {}
+        blb = (payload.get("rich_stats_b") or {}).get("by_level") or {}
+        la, lb = bla.get(lkey), blb.get(lkey)
+        if la and lb and la.get("matches") and lb.get("matches"):
+            rows = [f"<b>Neste nível ({_esc(lnome)}):</b> "
+                    f"{a} {la['win_pct']}% ({la['matches']} jogos) · "
+                    f"{b} {lb['win_pct']}% ({lb['matches']} jogos)"]
+            cards.append(_data_card("Desempenho por nível de torneio (carreira)", rows))
+
     # Fadiga
     fga, fgb = payload.get("fatigue_signal_a") or {}, payload.get("fatigue_signal_b") or {}
     rows = []
