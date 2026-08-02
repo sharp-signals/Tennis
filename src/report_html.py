@@ -504,6 +504,26 @@ def _build_analysis_body(result: dict) -> str:
         items = "".join(f'<li>{_markdown_inline(k)}</li>' for k in kps)
         out.append(f'<h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list">{items}</ul>')
 
+    # Mercados com potencial (tabela) — o Claude preenche mercado/confiança/motivo
+    markets = result.get("markets") or []
+    if markets:
+        out.append('<h3 class="sec">💰 Mercados com maior potencial</h3>')
+        out.append('<table class="markets-table"><thead><tr>'
+                   '<th>Mercado</th><th>Confiança</th><th>Motivo</th>'
+                   '</tr></thead><tbody>')
+        for m in markets:
+            if not isinstance(m, dict):
+                continue
+            merc = _esc(m.get("mercado", ""))
+            conf = (m.get("confianca") or "baixa").lower()
+            motivo = _markdown_inline(m.get("motivo", ""))
+            cls = {"alta": "conf-alta", "média": "conf-media", "media": "conf-media",
+                   "baixa": "conf-baixa"}.get(conf, "conf-baixa")
+            out.append(f'<tr><td><b>{merc}</b></td>'
+                       f'<td><span class="conf-badge {cls}">{_esc(conf)}</span></td>'
+                       f'<td>{motivo}</td></tr>')
+        out.append('</tbody></table>')
+
     # Discrepâncias (com selos) + legenda
     discs = result.get("discrepancies") or []
     if discs:
@@ -751,6 +771,13 @@ body {{
 .disc-text {{ flex:1; }}
 .risks-list {{ margin:8px 0; padding-left:22px; }}
 .risks-list li {{ margin:6px 0; font-size:14px; color:var(--muted); }}
+.markets-table {{ width:100%; border-collapse:collapse; margin:8px 0; font-size:14px; }}
+.markets-table th {{ text-align:left; padding:8px 10px; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase; }}
+.markets-table td {{ padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }}
+.conf-badge {{ padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; }}
+.conf-alta {{ background:rgba(45,180,120,0.18); color:#2db478; }}
+.conf-media {{ background:rgba(230,180,60,0.18); color:#e6b43c; }}
+.conf-baixa {{ background:rgba(150,150,150,0.15); color:var(--muted); }}
 .disc-strong {{ border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }}
 .disc-mid {{ border-left:4px solid var(--amber); }}
 .disc-weak {{ border-left:4px solid var(--dim); opacity:.9; }}
