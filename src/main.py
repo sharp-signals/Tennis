@@ -45,6 +45,7 @@ from .config import (
     ODDS_API_TENNIS_SPORT_KEYS,
     RECENT_FORM_MATCHES,
     SERVE_RETURN_STATS_MATCHES,
+    SKIP_ANALYSIS_ODDS_THRESHOLD,
 )
 from . import fetch_data
 from .analyze import analyze_match
@@ -441,6 +442,80 @@ def _compute_features(payload: dict) -> dict:
     return feats or None
 
 
+def _factual_key_points(payload: dict) -> list:
+    """
+    Gera os PONTOS-CHAVE FACTUAIS a partir das features pré-calculadas — o
+    trabalho que antes o Claude fazia a escrever ("A é #6", "lidera o H2H").
+    Passa a ser gerado pelo Python (opção B): o Claude deixa de gastar tokens
+    a narrar factos e concentra-se na leitura de mercado. Devolve uma lista de
+    frases curtas e factuais, na "voz" do bot.
+    """
+    f = payload.get("features") or {}
+    a = payload.get("player_a", "A")
+    b = payload.get("player_b", "B")
+    pts = []
+
+    # Ranking
+    rk = f.get("ranking")
+    if rk and rk.get("lider") != "igual":
+        pts.append(f"**{rk['lider']}** superior no ranking (#{rk['valor_a']} vs #{rk['valor_b']}).")
+
+    # Força geral: contar quantas dimensões correlacionadas cada um lidera
+    dims = ["forma_recente", "epoca_atual", "piso", "servico"]
+    lideres = [f[d]["lider"] for d in dims if f.get(d) and f[d].get("lider") not in (None, "igual")]
+    if lideres:
+        from collections import Counter
+        cont = Counter(lideres)
+        dominante, n = cont.most_common(1)[0]
+        if n >= 2:
+            quais = []
+            nomes = {"forma_recente": "forma", "epoca_atual": "época", "piso": "piso", "servico": "serviço"}
+            for d in dims:
+                if f.get(d) and f[d].get("lider") == dominante:
+                    quais.append(nomes[d])
+            pts.append(f"**{dominante}** melhor em {', '.join(quais)} (força geral a favor).")
+
+    # H2H
+    h = f.get("h2h")
+    if h and h.get("lider") != "igual":
+        pts.append(f"**{h['lider']}** lidera o confronto direto ({h['a_wins']}-{h['b_wins']} em {h['total']}).")
+
+    # Frescura
+    fr = f.get("frescura")
+    if fr and fr.get("mais_fresco") != "igual":
+        pts.append(f"**{fr['mais_fresco']}** mais fresco ({fr['jogos_7d_a']} vs {fr['jogos_7d_b']} jogos nos últimos 7 dias).")
+
+    # Recuperação após 1º set (dado rico com valor de trading)
+    ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
+    rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+    if ra.get("first_set_win_then_win_pct") is not None:
+        pts.append(f"{a} fecha {ra['first_set_win_then_win_pct']}% dos jogos após ganhar o 1º set.")
+    if rb.get("first_set_lose_then_win_pct") is not None:
+        pts.append(f"{b} recupera {rb['first_set_lose_then_win_pct']}% quando perde o 1º set.")
+
+    return pts[:6]  # limite
+
+
+def _factual_only_result(payload: dict) -> dict:
+    """
+    Resultado para jogos que NÃO passam pelo Claude (superfavoritos <=1.09).
+    Só factos (do Python), sem leitura de mercado. Flag verde (rotina).
+    """
+    a = payload.get("player_a", "A")
+    b = payload.get("player_b", "B")
+    return {
+        "flag": FLAG_ROUTINE,
+        "signal_strength": 0,
+        "confidence_reason": "Superfavorito (odd ≤1.09): sem valor de mercado a observar; análise saltada.",
+        "summary_line": f"{a} vs {b}: superfavorito claro, sem mercado de valor.",
+        "key_points": _factual_key_points(payload),
+        "discrepancies": [],
+        "risks": [],
+        "verdict": "Superfavorito a odd muito baixa — sem valor de aposta a observar. Jogo incluído para registo, sem leitura de mercado.",
+        "_no_llm": True,
+    }
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -681,8 +756,21 @@ def run() -> None:
     def _process_one(match):
         try:
             payload = _build_match_payload(match)
+            # Saltar a análise do Claude para SUPERFAVORITOS (odd <= 1.09):
+            # a esse preço não há valor de mercado a observar, por isso gastar
+            # tokens do Claude não se justifica. O jogo continua a sair no
+            # relatório (com todos os dados factuais do Python), apenas sem a
+            # leitura de mercado — que não faria sentido a 1.09.
+            odds = payload.get("market_odds_decimal") or {}
+            odds_vals = [v for v in odds.values() if isinstance(v, (int, float)) and v > 1]
+            if odds_vals and min(odds_vals) <= SKIP_ANALYSIS_ODDS_THRESHOLD:
+                result = _factual_only_result(payload)
+                return (payload, result)
             result = analyze_match(payload)
             result = _enforce_minimum_flag(payload, result)
+            # Opção B: os pontos-chave factuais são gerados pelo BOT (não pelo
+            # Claude, que já não os escreve). Injetamos aqui a partir das features.
+            result["key_points"] = _factual_key_points(payload)
             return (payload, result)
         except Exception as exc:
             p1 = (match.get("player1") or {}).get("name", "?")
