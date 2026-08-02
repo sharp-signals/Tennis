@@ -41,6 +41,7 @@ from .config import (
     INJURY_SIGNAL_LOOKBACK_MATCHES,
     LOOKAHEAD_HOURS_MAX,
     LOOKAHEAD_HOURS_MIN,
+    MATCH_PROCESSING_WORKERS,
     ODDS_API_TENNIS_SPORT_KEYS,
     RECENT_FORM_MATCHES,
     SERVE_RETURN_STATS_MATCHES,
@@ -170,7 +171,10 @@ def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
 # nº de jogadores novos buscados por execução para não rebentar a quota
 # (erro 429) — os restantes usam só o histórico. Como as fichas ficam
 # guardadas, ao longo dos dias todos acabam cobertos (construção incremental).
-_RICH_FETCH_BUDGET = {"remaining": 6}  # ~12 pedidos/execução, folga na quota
+_RICH_FETCH_BUDGET = {"remaining": 200}  # praticamente sem limite: a proteção
+# contra o 429 é agora a pausa entre pedidos (_rapidapi_get), não um teto rígido.
+# Assim TODOS os jogos recebem dados ricos (antes só os primeiros 6). As fichas
+# ficam em cache, por isso o custo de quota é temporário (só no 1º encontro).
 
 
 def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict]) -> Optional[dict]:
@@ -283,11 +287,14 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
         "domination": domination or None,
     }
 
-    # gravar para reutilização (best-effort)
+    # gravar para reutilização (best-effort). Escrita ATÓMICA (tmp + rename)
+    # para não corromper o ficheiro se duas threads escreverem em paralelo.
     try:
         os.makedirs(os.path.join("knowledge", "players"), exist_ok=True)
-        with open(json_path, "w", encoding="utf-8") as f:
+        tmp_path = f"{json_path}.{os.getpid()}.{id(rich)}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(rich, f, ensure_ascii=False)
+        os.replace(tmp_path, json_path)  # rename atómico
     except Exception:
         pass
 
@@ -334,6 +341,106 @@ def _enforce_minimum_flag(payload: dict, result: dict) -> dict:
     return result
 
 
+def _compute_features(payload: dict) -> dict:
+    """
+    Pré-calcula SINAIS comparativos a partir dos dados brutos, para o Claude
+    receber já digerido (compara vantagens, direções e sinais) e se concentrar
+    na LEITURA DE MERCADO em vez de fazer aritmética. Não substitui a análise —
+    dá-lhe o trabalho de comparação já feito. Cada feature indica quem lidera e
+    a magnitude, com a amostra quando relevante. Campos None quando faltam dados.
+    """
+    a = payload.get("player_a", "A")
+    b = payload.get("player_b", "B")
+    feats = {}
+
+    def _pct(d):
+        if isinstance(d, dict) and d.get("matches"):
+            return 100.0 * d["wins"] / d["matches"]
+        return None
+
+    def _edge(va, vb, nome, unidade="%", amostra_a=None, amostra_b=None):
+        """Regista a vantagem (diferença) entre A e B numa métrica."""
+        if va is None or vb is None:
+            return
+        diff = va - vb
+        lider = a if diff > 0 else (b if diff < 0 else "igual")
+        feats[nome] = {
+            "lider": lider,
+            "diff": round(abs(diff), 1),
+            "unidade": unidade,
+            "valor_a": round(va, 1),
+            "valor_b": round(vb, 1),
+        }
+        if amostra_a is not None:
+            feats[nome]["amostra_a"] = amostra_a
+        if amostra_b is not None:
+            feats[nome]["amostra_b"] = amostra_b
+
+    # Ranking (menor = melhor)
+    ra = (payload.get("ranking_a") or {}).get("rank")
+    rb = (payload.get("ranking_b") or {}).get("rank")
+    if ra and rb:
+        feats["ranking"] = {"lider": a if ra < rb else (b if rb < ra else "igual"),
+                            "diff": abs(ra - rb), "valor_a": ra, "valor_b": rb}
+
+    # Forma recente (win%)
+    _edge(_pct(payload.get("recent_form_a")), _pct(payload.get("recent_form_b")),
+          "forma_recente",
+          amostra_a=(payload.get("recent_form_a") or {}).get("matches"),
+          amostra_b=(payload.get("recent_form_b") or {}).get("matches"))
+
+    # Época atual (win%)
+    _edge(_pct(payload.get("current_season_a")), _pct(payload.get("current_season_b")),
+          "epoca_atual",
+          amostra_a=(payload.get("current_season_a") or {}).get("matches"),
+          amostra_b=(payload.get("current_season_b") or {}).get("matches"))
+
+    # Piso (win%) — preferir o rico by_surface, senão surface_stats
+    def _surf_pct(rich, basic, surface):
+        bs = (rich or {}).get("by_surface") or {}
+        skey = None
+        s = (surface or "").lower()
+        if "clay" in s: skey = "clay"
+        elif "grass" in s: skey = "grass"
+        elif "indoor" in s and "hard" in s: skey = "hard_indoor"
+        elif "hard" in s: skey = "hard"
+        cell = bs.get(skey) if skey else None
+        if cell and cell.get("matches"):
+            return cell["win_pct"], cell["matches"]
+        p = _pct(basic)
+        return p, (basic or {}).get("matches")
+    surf = payload.get("surface")
+    pa, na = _surf_pct(payload.get("rich_stats_a"), payload.get("surface_stats_a"), surf)
+    pb, nb = _surf_pct(payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf)
+    _edge(pa, pb, "piso", amostra_a=na, amostra_b=nb)
+
+    # Serviço (1º serviço ganho %) — do serve_return_stats
+    sa = (payload.get("serve_return_stats_a") or {}).get("avg_first_serve_won_pct")
+    sb = (payload.get("serve_return_stats_b") or {}).get("avg_first_serve_won_pct")
+    if sa is not None and sb is not None:
+        _edge(sa * 100 if sa <= 1 else sa, sb * 100 if sb <= 1 else sb, "servico")
+
+    # Fadiga (menos jogos recentes = mais fresco) — sinal de frescura
+    fa = payload.get("fatigue_signal_a") or {}
+    fb = payload.get("fatigue_signal_b") or {}
+    if fa.get("matches_last_7d") is not None and fb.get("matches_last_7d") is not None:
+        ma, mb = fa["matches_last_7d"], fb["matches_last_7d"]
+        feats["frescura"] = {
+            "mais_fresco": a if ma < mb else (b if mb < ma else "igual"),
+            "jogos_7d_a": ma, "jogos_7d_b": mb,
+            "sets_7d_a": fa.get("sets_last_7d"), "sets_7d_b": fb.get("sets_last_7d"),
+        }
+
+    # H2H (quem lidera o confronto direto)
+    h2h = (payload.get("h2h") or {}).get("overall") or {}
+    if h2h.get("total_matches"):
+        aw, bw = h2h.get("a_wins", 0), h2h.get("b_wins", 0)
+        feats["h2h"] = {"lider": a if aw > bw else (b if bw > aw else "igual"),
+                        "a_wins": aw, "b_wins": bw, "total": h2h["total_matches"]}
+
+    return feats or None
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -346,40 +453,60 @@ def _build_match_payload(match: dict) -> dict:
 
     odds = fetch_data.find_market_odds(ODDS_API_TENNIS_SPORT_KEYS, player_a, player_b)
 
-    # H2H rico via matchstat (independente do Sackmann) — só para WTA por
-    # agora, decisão explícita (28/07/2026): o ATP já funciona bem com o
-    # histórico da TennisMyLife/Sackmann, e isto usa a mesma quota
-    # limitada (50/dia) da RapidAPI que já usamos para fixtures.
-    h2h_rich_stats = None
-    if tour == "wta":
-        player1_id = match.get("player1Id")
-        player2_id = match.get("player2Id")
-        if player1_id is not None and player2_id is not None:
-            h2h_rich_stats = fetch_data.fetch_h2h_stats(tour, player1_id, player2_id)
-
-    h2h = fetch_data.compute_h2h(history, player_a, player_b, surface)
-    form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES)
-    season_a = fetch_data.compute_current_season_record(history, player_a)
-    season_b = fetch_data.compute_current_season_record(history, player_b)
-    form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES)
-    surface_a = fetch_data.compute_surface_stats(history, player_a)
-    surface_b = fetch_data.compute_surface_stats(history, player_b)
-    # Fadiga: tentar primeiro a fonte REAL (jogos recentes da API, que
-    # incluem o torneio em curso), com fallback para o histórico (atrasado)
-    # se a API não tiver os dados. Corrige o bug de dar "25 dias" a quem
-    # está nas fases finais de um torneio.
-    fatigue_a = fetch_data.compute_fatigue(history, player_a, start)  # fallback base
-    fatigue_b = fetch_data.compute_fatigue(history, player_b, start)
-    _tournament_id = match.get("tournamentId") or match.get("tournament_id")
     _pid_a = match.get("player1Id")
     _pid_b = match.get("player2Id")
+    _tournament_id = match.get("tournamentId") or match.get("tournament_id")
+
+    # H2H rico via matchstat (stats de serviço/resposta específicas do confronto)
+    h2h_rich_stats = None
+    if tour == "wta" and _pid_a is not None and _pid_b is not None:
+        h2h_rich_stats = fetch_data.fetch_h2h_stats(tour, _pid_a, _pid_b)
+
+    # Dados básicos: do histórico (ATP, via TennisMyLife). Para WTA — ou
+    # sempre que o histórico não tiver o jogador — usamos a RapidAPI, que
+    # cobre ambos os tours e não depende do Sackmann (que anda partido p/ WTA).
+    h2h = fetch_data.compute_h2h(history, player_a, player_b, surface)
+    form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES)
+    form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES)
+    season_a = fetch_data.compute_current_season_record(history, player_a)
+    season_b = fetch_data.compute_current_season_record(history, player_b)
+    surface_a = fetch_data.compute_surface_stats(history, player_a)
+    surface_b = fetch_data.compute_surface_stats(history, player_b)
+
+    # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
+    _recent_a_cache = _recent_b_cache = None
+    if _pid_a is not None and _pid_b is not None:
+        precisa_api = (tour == "wta") or not h2h or not form_a or not form_b
+        if precisa_api:
+            # H2H via API
+            if not h2h:
+                _h2h_matches = fetch_data.fetch_h2h_matches(tour, _pid_a, _pid_b)
+                _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface)
+                if _h2h_api:
+                    h2h = _h2h_api
+            # forma/época/piso via jogos recentes da API
+            _recent_a_cache = fetch_data.fetch_player_recent_matches(tour, _pid_a)
+            _recent_b_cache = fetch_data.fetch_player_recent_matches(tour, _pid_b)
+            _fa = fetch_data.compute_form_from_recent(_recent_a_cache, _pid_a, start, RECENT_FORM_MATCHES, surface)
+            _fb = fetch_data.compute_form_from_recent(_recent_b_cache, _pid_b, start, RECENT_FORM_MATCHES, surface)
+            if not form_a and _fa.get("form"): form_a = _fa["form"]
+            if not form_b and _fb.get("form"): form_b = _fb["form"]
+            if not season_a and _fa.get("season"): season_a = _fa["season"]
+            if not season_b and _fb.get("season"): season_b = _fb["season"]
+            if not surface_a and _fa.get("surface"): surface_a = _fa["surface"]
+            if not surface_b and _fb.get("surface"): surface_b = _fb["surface"]
+
+    # Fadiga: fonte REAL (jogos recentes da API, inclui torneio em curso),
+    # com fallback para o histórico. Reaproveita os jogos recentes já buscados.
+    fatigue_a = fetch_data.compute_fatigue(history, player_a, start)  # fallback base
+    fatigue_b = fetch_data.compute_fatigue(history, player_b, start)
     if _pid_a is not None:
-        _recent_a = fetch_data.fetch_player_recent_matches(tour, _pid_a)
+        _recent_a = _recent_a_cache if _recent_a_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_a)
         _fa = fetch_data.compute_fatigue_from_recent(_recent_a, _pid_a, start, _tournament_id)
         if _fa:
             fatigue_a = _fa
     if _pid_b is not None:
-        _recent_b = fetch_data.fetch_player_recent_matches(tour, _pid_b)
+        _recent_b = _recent_b_cache if _recent_b_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_b)
         _fb = fetch_data.compute_fatigue_from_recent(_recent_b, _pid_b, start, _tournament_id)
         if _fb:
             fatigue_b = _fb
@@ -426,7 +553,7 @@ def _build_match_payload(match: dict) -> dict:
     round_stage_b = fetch_data.compute_round_stage_stats(history, player_b)
     weather = _get_weather_for_match(match, start)
 
-    return {
+    payload = {
         "player_a": player_a,
         "player_b": player_b,
         "tournament": tournament,
@@ -464,6 +591,11 @@ def _build_match_payload(match: dict) -> dict:
         "round_stage_stats_b": round_stage_b,
         "weather": weather,  # None para indoor ou se a geocodificação/previsão falhar
     }
+    # Frente 4/5: pré-calcular sinais comparativos (o bot compara, o Claude
+    # interpreta). Adiciona 'features' com quem lidera cada dimensão e a
+    # magnitude — o Claude recebe as comparações prontas.
+    payload["features"] = _compute_features(payload)
+    return payload
 
 
 def _slugify(text: str) -> str:
@@ -540,21 +672,29 @@ def run() -> None:
         print("[info] Sem jogos elegíveis nesta janela (fora do tier permitido ou fora de horas). Nada a enviar.")
         return
 
-    analyses = []
-    for match in eligible:
+    # Processar os jogos em PARALELO (resolve a lentidão: antes era um loop
+    # sequencial que com muitos jogos chegava a ~30 min). Poucos workers para
+    # não sobrecarregar a API — a pausa anti-429 no _rapidapi_get serializa
+    # o espaçamento entre threads. A ordem final é reposta a seguir.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _process_one(match):
         try:
             payload = _build_match_payload(match)
             result = analyze_match(payload)
             result = _enforce_minimum_flag(payload, result)
-            analyses.append((payload, result))
+            return (payload, result)
         except Exception as exc:
-            # Uma falha num jogo (ex: API da Anthropic sem créditos, erro
-            # transitório de rede) não deve matar a execução inteira — os
-            # jogos já analisados continuam a ser entregues, e este fica
-            # registado no log para diagnóstico.
             p1 = (match.get("player1") or {}).get("name", "?")
             p2 = (match.get("player2") or {}).get("name", "?")
             print(f"[aviso] falha ao analisar {p1} vs {p2}: {exc}")
+            return None
+
+    analyses = []
+    with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
+        for res in executor.map(_process_one, eligible):
+            if res is not None:
+                analyses.append(res)
 
     if not analyses:
         # A3 da auditoria (28/07/2026): terminar "verde" sem qualquer
