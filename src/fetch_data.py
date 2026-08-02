@@ -1424,11 +1424,38 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
                 by_surface[name] = {"wins": w, "losses": l, "matches": total,
                                     "win_pct": round(100 * w / total, 1)}
 
+        # Desempenho por NÍVEL DE TORNEIO (chave "level" por ano). Nomes
+        # diretos na API (confirmado no JSON real). Só guardamos os níveis
+        # relevantes para os torneios que seguimos (250/500/1000/GS); os
+        # menores (challengers/futures/cups) e o "total" são ignorados.
+        level_map = {"grandSlam": "grand_slam", "masters": "masters",
+                     "mainTour": "main_tour"}
+        lvl_agg = {v: {"wins": 0, "losses": 0} for v in level_map.values()}
+        for year_data in (raw.values() if isinstance(raw, dict) else []):
+            level_block = (year_data or {}).get("level", {})
+            if not isinstance(level_block, dict):
+                continue
+            for api_key, name in level_map.items():
+                cell = level_block.get(api_key)
+                if isinstance(cell, dict):
+                    lvl_agg[name]["wins"] += cell.get("aw", 0) or 0
+                    lvl_agg[name]["losses"] += cell.get("al", 0) or 0
+
+        by_level = {}
+        for name, rec in lvl_agg.items():
+            w, l = rec["wins"], rec["losses"]
+            total = w + l
+            if total > 0:
+                by_level[name] = {"wins": w, "losses": l, "matches": total,
+                                  "win_pct": round(100 * w / total, 1)}
+
         data = {}
         if summary:
             data["vs_rank_level"] = summary
         if by_surface:
             data["by_surface"] = by_surface
+        if by_level:
+            data["by_level"] = by_level
         data = data or None
         _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
         return data
