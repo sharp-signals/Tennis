@@ -86,7 +86,7 @@ _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-08-02-nivel-torneio"
+PROMPT_VERSION = "2026-08-02-features"
 
 
 def _payload_hash(match_data: dict) -> str:
@@ -145,20 +145,22 @@ TRÊS PRINCÍPIOS DE LEITURA (aplicam-se a tudo):
    recente. Não os trates como retrato do momento presente.
 
 CAMPOS E COMO USÁ-LOS:
+- `features`: SINAIS JÁ CALCULADOS pelo bot (usa-os como BASE, não refaças as
+  contas). Cada um diz quem LIDERA e a magnitude:
+  * `ranking`, `forma_recente`, `epoca_atual`, `piso`, `servico`: cada um tem
+    `lider`, `diff` (magnitude), `valor_a`/`valor_b` e `amostra_a`/`amostra_b`
+    quando aplicável. Aplica o Princípio 1 (amostra pequena = sinal fraco).
+  * `frescura`: quem está `mais_fresco` (menos jogos/sets nos últimos 7 dias).
+  * `h2h`: quem `lidera` o confronto direto e o registo.
+  Nota: vários apontam no mesmo sentido (ranking+forma+época+piso) por serem
+  correlacionados — trata-os como UMA "força geral", não provas independentes.
 - `h2h`: `overall` (carreira) e `on_surface` (só este piso, pode ser null).
-  Comenta os dois; destaca quando divergem (é o sinal mais interessante).
+  Destaca quando divergem (sinal interessante). O `features.h2h` já resume quem lidera.
 - `h2h_rich_stats` (só WTA, fonte matchstat): serviço/resposta, BP, sets
   decisivos, tiebreaks ESPECÍFICOS do confronto, em `player1Stats`/
   `player2Stats` (cruza `id` com `ranking_a/b`). null p/ ATP.
 - `injury_signal_*`: desistências/walkovers reais recentes — facto, não
   diagnóstico. Lista vazia = não encontrámos, não "está saudável".
-- `surface_stats_*`: perfil nos 3 pisos (Hard/Clay/Grass); usa p/ comentar
-  especialização. Cada piso pode ser null.
-- `current_season_*`: jogos/vitórias na época atual. CHAVE p/ o aviso de
-  fim de carreira abaixo.
-- `handedness_matchup_*`, `layoff_return_stats_*` (1º jogo após pausa 60+
-  dias), `round_stage_stats_*`: dados reais de contexto, não previsões.
-  (Nota: recuperação de 1º set e set decisivo estão em rich_stats.scenarios.)
 - `fatigue_signal_*`: se `fatigue_source: "api_recent"`, os dados são
   FIÁVEIS e incluem os jogos do torneio em curso: `days_since_last_match`
   (real), `matches_this_tournament` (jogos já disputados nesta semana —
@@ -306,20 +308,33 @@ def analyze_match(match_data: dict) -> dict:
     form_a / form_b (dict ou None), surface_stats_a / surface_stats_b (dict
     ou None), fatigue_a / fatigue_b (dict ou None).
     """
-    # Onda C (poupança de input): o payload que vai ao Claude é enxugado —
-    # removemos campos DUPLICADOS que já vêm dentro de rich_stats.scenarios
-    # (set1_comeback e deciding_set já estão lá como first_set_lose_then_win_pct
-    # e deciding_set_win_pct). O payload COMPLETO continua a ir para o
-    # report_html (que monta as secções), por isso não se perde nada visual.
+    # Poupança de input (Frentes 4/5): o payload que vai ao Claude é enxugado.
+    # As `features` (pré-calculadas pelo bot) já resumem ranking/forma/época/
+    # piso/serviço/fadiga/h2h em comparações prontas — por isso removemos os
+    # campos BRUTOS correspondentes do que enviamos ao Claude (ele usa as
+    # features). Também removemos duplicados e campos-nicho pouco usados na
+    # leitura. O payload COMPLETO continua a ir para o report_html (que monta
+    # as secções visuais), por isso não se perde nada no relatório.
     _REDUNDANT_FOR_LLM = (
+        # duplicados (já em rich_stats.scenarios)
         "set1_comeback_stats_a", "set1_comeback_stats_b",
         "deciding_set_stats_a", "deciding_set_stats_b",
+        # brutos já resumidos nas features (quem lidera + magnitude + amostra)
+        "recent_form_a", "recent_form_b",
+        "current_season_a", "current_season_b",
+        "surface_stats_a", "surface_stats_b",
+        "serve_return_stats_a", "serve_return_stats_b",
+        # nicho (raramente muda a leitura de mercado)
+        "handedness_matchup_a", "handedness_matchup_b",
+        "layoff_return_stats_a", "layoff_return_stats_b",
+        "round_stage_stats_a", "round_stage_stats_b",
     )
     llm_data = {k: v for k, v in match_data.items() if k not in _REDUNDANT_FOR_LLM}
 
     user_prompt = (
-        "Dados do jogo (JSON). Campos a null significam que a fonte não "
-        "tinha esse dado disponível:\n\n"
+        "Dados do jogo (JSON). O campo 'features' traz sinais JÁ CALCULADOS "
+        "(quem lidera cada dimensão e a magnitude) — usa-os como base. Campos "
+        "a null significam que a fonte não tinha esse dado:\n\n"
         + json.dumps(llm_data, ensure_ascii=False, indent=2, default=str)
     )
 
