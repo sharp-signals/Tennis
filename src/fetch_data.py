@@ -37,6 +37,7 @@ import difflib
 import io
 import json
 import os
+import threading
 import unicodedata
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -73,15 +74,40 @@ _RAPIDAPI_HEADERS = {
 # vale a pena um plano pago. Só conta chamadas à RapidAPI (não TennisMyLife,
 # tennis-data.co.uk, geocoding, etc.).
 _RAPIDAPI_CALL_COUNT = {"n": 0}
+# Anti-429: intervalo mínimo entre chamadas consecutivas à RapidAPI e
+# registo do instante da última chamada. Espalha a carga para não disparar
+# o rate limit quando buscamos dados ricos para muitos jogadores.
+RAPIDAPI_MIN_INTERVAL = 0.35  # segundos entre pedidos
+_RAPIDAPI_LAST_CALL = {"t": 0.0}
+_RAPIDAPI_LOCK = threading.Lock()  # serializa o espaçamento entre threads
 
 
 def _rapidapi_get(url, **kwargs):
-    """Wrapper único para TODAS as chamadas GET à RapidAPI: conta a chamada
-    e delega em requests.get com os headers da RapidAPI. Centralizar aqui
-    garante que a contagem nunca falha uma chamada. Aceita **kwargs
-    (params, etc.) tal como requests.get."""
+    """Wrapper único para TODAS as chamadas GET à RapidAPI: conta a chamada,
+    espaça os pedidos (pausa anti-429) e faz retry se apanhar 429. Centralizar
+    aqui garante contagem fiável e protege contra o rate limit sem precisar de
+    um orçamento rígido de pedidos. Aceita **kwargs tal como requests.get."""
+    import time
+    # pausa curta entre pedidos consecutivos, para espalhar a carga e evitar
+    # o 429 (rate limit por segundo). Thread-safe via lock, para funcionar
+    # também quando os jogos são processados em paralelo. ~0.35s por pedido.
+    with _RAPIDAPI_LOCK:
+        elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
+        if elapsed < RAPIDAPI_MIN_INTERVAL:
+            time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
+        _RAPIDAPI_LAST_CALL["t"] = time.monotonic()
+
     _RAPIDAPI_CALL_COUNT["n"] += 1
-    return requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
+    for tentativa in range(3):
+        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
+        if resp.status_code == 429:
+            # rate limit: espera crescente e tenta de novo
+            espera = 2 * (tentativa + 1)
+            print(f"[aviso] RapidAPI 429 (rate limit) — a aguardar {espera}s e a repetir...")
+            time.sleep(espera)
+            continue
+        return resp
+    return resp  # devolve a última resposta (mesmo que 429) para o chamador tratar
 
 
 def get_rapidapi_call_count() -> int:
@@ -1354,6 +1380,103 @@ def compute_fatigue_from_recent(recent_matches: list, player_id: int,
         "sets_last_7d": sets_7d,
         "fatigue_source": "api_recent",  # marca que veio da fonte fiável
     }
+
+
+def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
+                          current_surface: Optional[str] = None) -> Optional[dict]:
+    """
+    H2H calculado a partir da lista de confrontos da RapidAPI (fetch_h2h_matches),
+    para não depender do histórico Sackmann (partido para WTA). Mesmo formato
+    que compute_h2h: {overall:{a_wins,b_wins,total_matches}, on_surface, surface}.
+    """
+    if not h2h_matches:
+        return None
+    a_wins = b_wins = 0
+    a_surf = b_surf = 0
+    for m in h2h_matches:
+        if not isinstance(m, dict):
+            continue
+        winner = m.get("match_winner") or m.get("winnerId") or m.get("winner")
+        if winner is None:
+            continue
+        # normalizar o piso do confronto
+        surf = (m.get("court") or m.get("surface") or "")
+        surf = str(surf).lower()
+        same_surface = current_surface and current_surface.lower() in surf
+        if winner == player_a_id:
+            a_wins += 1
+            if same_surface: a_surf += 1
+        elif winner == player_b_id:
+            b_wins += 1
+            if same_surface: b_surf += 1
+    total = a_wins + b_wins
+    if total == 0:
+        return None
+    overall = {"a_wins": a_wins, "b_wins": b_wins, "total_matches": total}
+    on_surface = None
+    if current_surface and (a_surf + b_surf) > 0:
+        on_surface = {"a_wins": a_surf, "b_wins": b_surf, "total_matches": a_surf + b_surf}
+    return {"overall": overall, "on_surface": on_surface, "surface": current_surface}
+
+
+def compute_form_from_recent(recent_matches: list, player_id: int,
+                              match_date: datetime, n_matches: int = 10,
+                              current_surface: Optional[str] = None) -> dict:
+    """
+    Forma recente + época atual + piso, a partir dos jogos recentes da API
+    (past-matches). Substitui compute_recent_form/current_season/surface_stats
+    para o WTA (Sackmann partido). Devolve dict com 'form', 'season', 'surface'.
+    """
+    out = {"form": None, "season": None, "surface": None}
+    if not recent_matches:
+        return out
+
+    jogos = []  # (data, ganhou_bool, piso)
+    for m in recent_matches:
+        if not isinstance(m, dict):
+            continue
+        if player_id not in (m.get("player1Id"), m.get("player2Id")):
+            continue
+        raw = m.get("date")
+        if not raw:
+            continue
+        try:
+            d = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            continue
+        if d >= match_date:
+            continue
+        winner = m.get("match_winner")
+        ganhou = (winner == player_id) if winner is not None else None
+        if ganhou is None:
+            continue
+        surf = str(m.get("court") or m.get("surface") or "").lower()
+        jogos.append((d, ganhou, surf))
+
+    if not jogos:
+        return out
+    jogos.sort(key=lambda x: x[0], reverse=True)
+
+    # forma: últimos n jogos
+    ult = jogos[:n_matches]
+    w = sum(1 for _, g, _ in ult if g)
+    out["form"] = {"wins": w, "losses": len(ult) - w, "matches": len(ult)}
+
+    # época atual: jogos do ano do match_date
+    ano = match_date.year
+    da_epoca = [(g) for d, g, _ in jogos if d.year == ano]
+    if da_epoca:
+        we = sum(1 for g in da_epoca if g)
+        out["season"] = {"wins": we, "losses": len(da_epoca) - we, "matches": len(da_epoca)}
+
+    # piso: jogos no piso atual (todos os recentes disponíveis)
+    if current_surface:
+        cs = current_surface.lower()
+        no_piso = [(g) for _, g, s in jogos if cs in s]
+        if no_piso:
+            wp = sum(1 for g in no_piso if g)
+            out["surface"] = {"wins": wp, "losses": len(no_piso) - wp, "matches": len(no_piso)}
+    return out
 
 
 def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
