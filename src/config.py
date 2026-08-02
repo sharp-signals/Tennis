@@ -152,3 +152,8 @@ SITE_REPORTS_SUBDIR = "relatorios"
 # serializa o espaçamento entre threads. 4 é um bom equilíbrio
 # velocidade/segurança; baixar se aparecerem 429, subir se estiver lento.
 MATCH_PROCESSING_WORKERS = 4
+
+# Superfavoritos com odd igual ou abaixo deste valor saltam a análise do
+# Claude (a esse preço não há valor de mercado a observar). O jogo continua
+# a sair no relatório com os dados factuais, apenas sem leitura de mercado.
+SKIP_ANALYSIS_ODDS_THRESHOLD = 1.09
