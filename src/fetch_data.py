@@ -45,6 +45,7 @@ from typing import Optional
 import pandas as pd
 import requests
 
+from .cache_store import JsonCacheStore
 from .config import (
     FIXTURES_CACHE_MAX_AGE_HOURS,
     FIXTURES_CACHE_PATH,
@@ -58,6 +59,55 @@ from .config import (
     TOURS_TO_FOLLOW,
     TRACKED_TOURNAMENT_IDS,
 )
+
+_PLAYER_CACHE_STORE = JsonCacheStore("data/cache")
+
+
+def _player_cache_path(tour: str, player_id: int):
+    return _PLAYER_CACHE_STORE.entity_path(
+        "players",
+        str(tour).strip().lower(),
+        f"{int(player_id)}.json",
+    )
+
+
+def _read_player_cache_entry(
+    tour: str,
+    player_id: int,
+    entry_name: str,
+    max_age_hours: float,
+):
+    try:
+        return _PLAYER_CACHE_STORE.get_entry(
+            _player_cache_path(tour, player_id),
+            entry_name,
+            max_age_hours=max_age_hours,
+        )
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def _write_player_cache_entry(
+    tour: str,
+    player_id: int,
+    entry_name: str,
+    data,
+) -> None:
+    if data is None:
+        return
+    try:
+        _PLAYER_CACHE_STORE.set_entry(
+            _player_cache_path(tour, player_id),
+            entry_name,
+            data,
+            metadata={
+                "tour": str(tour).strip().lower(),
+                "player_id": int(player_id),
+            },
+        )
+    except (OSError, TypeError, ValueError):
+        pass
+
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
 ODDS_API_BASE = "https://api.the-odds-api.com/v4"
@@ -1262,6 +1312,19 @@ def fetch_player_career_stats(tour: str, player_id: int) -> Optional[dict]:
         if age_hours < CAREER_STATS_CACHE_MAX_AGE_HOURS:
             return cached["data"]
 
+    persistent = _read_player_cache_entry(
+        tour,
+        player_id,
+        "career_stats",
+        CAREER_STATS_CACHE_MAX_AGE_HOURS,
+    )
+    if persistent is not None:
+        _CAREER_STATS_CACHE[cache_key] = {
+            "fetched_at": datetime.now(timezone.utc),
+            "data": persistent,
+        }
+        return persistent
+
     if not RAPIDAPI_KEY:
         return None
 
@@ -1271,6 +1334,7 @@ def fetch_player_career_stats(tour: str, player_id: int) -> Optional[dict]:
         resp.raise_for_status()
         data = resp.json().get("data")
         _CAREER_STATS_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        _write_player_cache_entry(tour, player_id, "career_stats", data)
         return data
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter career stats ({tour}, id {player_id}): {exc}")
@@ -1301,6 +1365,19 @@ def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
         if age_hours < RECENT_MATCHES_CACHE_MAX_AGE_HOURS:
             return cached["data"]
 
+    persistent = _read_player_cache_entry(
+        tour,
+        player_id,
+        "recent_matches",
+        RECENT_MATCHES_CACHE_MAX_AGE_HOURS,
+    )
+    if persistent is not None:
+        _RECENT_MATCHES_CACHE[cache_key] = {
+            "fetched_at": datetime.now(timezone.utc),
+            "data": persistent,
+        }
+        return persistent
+
     if not RAPIDAPI_KEY:
         return None
 
@@ -1312,6 +1389,7 @@ def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
         if not isinstance(data, list):
             data = None
         _RECENT_MATCHES_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        _write_player_cache_entry(tour, player_id, "recent_matches", data)
         return data
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter jogos recentes ({tour}, id {player_id}): {exc}")
@@ -1494,6 +1572,19 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
         if age_hours < PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS:
             return cached["data"]
 
+    persistent = _read_player_cache_entry(
+        tour,
+        player_id,
+        "perf_breakdown",
+        PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS,
+    )
+    if persistent is not None:
+        _PERF_BREAKDOWN_CACHE[cache_key] = {
+            "fetched_at": datetime.now(timezone.utc),
+            "data": persistent,
+        }
+        return persistent
+
     if not RAPIDAPI_KEY:
         return None
 
@@ -1581,6 +1672,7 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
             data["by_level"] = by_level
         data = data or None
         _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        _write_player_cache_entry(tour, player_id, "perf_breakdown", data)
         return data
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter perf-breakdown ({tour}, id {player_id}): {exc}")
