@@ -79,6 +79,7 @@ from .config import (
     FLAG_ROUTINE,
     FLAG_UNCERTAIN,
     LLM_MODE,
+    LLM_POLICY,
 )
 from .llm_provider import get_llm_provider
 
@@ -285,6 +286,258 @@ Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
 """
 
 
+
+_SELECTIVE_FEATURE_LABELS = {
+    "ranking": "ranking",
+    "forma_recente": "forma recente",
+    "epoca_atual": "época atual",
+    "piso": "desempenho no piso",
+    "servico": "serviço",
+    "frescura": "frescura física",
+    "h2h": "confronto direto",
+}
+
+
+def _selective_number(value):
+    """Converte um valor numérico sem lançar exceções."""
+    if isinstance(value, bool):
+        return None
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _collect_selective_signals(features: object) -> list[dict]:
+    """
+    Extrai apenas sinais materialmente relevantes para decidir se vale a pena
+    pagar uma interpretação LLM.
+
+    Os limiares são intencionalmente conservadores: diferenças pequenas ou
+    amostras frágeis não justificam uma chamada paga.
+    """
+    if not isinstance(features, dict):
+        return []
+
+    signals: list[dict] = []
+
+    # nome -> (diferença mínima, amostra mínima por jogador)
+    thresholds = {
+        "ranking": (25.0, 0),
+        "forma_recente": (15.0, 5),
+        "epoca_atual": (10.0, 10),
+        "piso": (10.0, 10),
+        "servico": (5.0, 0),
+    }
+
+    for name, (minimum_diff, minimum_sample) in thresholds.items():
+        feature = features.get(name)
+        if not isinstance(feature, dict):
+            continue
+
+        leader = feature.get("lider")
+        if not leader or leader == "igual":
+            continue
+
+        diff = _selective_number(feature.get("diff"))
+        if diff is None or diff < minimum_diff:
+            continue
+
+        if minimum_sample:
+            sample_a = _selective_number(feature.get("amostra_a"))
+            sample_b = _selective_number(feature.get("amostra_b"))
+
+            # Sem amostra verificável, o sinal não deve provocar despesa.
+            if (
+                sample_a is None
+                or sample_b is None
+                or min(sample_a, sample_b) < minimum_sample
+            ):
+                continue
+
+        signals.append(
+            {
+                "name": name,
+                "label": _SELECTIVE_FEATURE_LABELS[name],
+                "leader": leader,
+                "magnitude": diff,
+            }
+        )
+
+    # Frescura: dois jogos ou quatro sets de diferença na última semana.
+    freshness = features.get("frescura")
+    if isinstance(freshness, dict):
+        leader = freshness.get("mais_fresco")
+
+        games_a = _selective_number(freshness.get("jogos_7d_a"))
+        games_b = _selective_number(freshness.get("jogos_7d_b"))
+        sets_a = _selective_number(freshness.get("sets_7d_a"))
+        sets_b = _selective_number(freshness.get("sets_7d_b"))
+
+        games_diff = (
+            abs(games_a - games_b)
+            if games_a is not None and games_b is not None
+            else 0.0
+        )
+        sets_diff = (
+            abs(sets_a - sets_b)
+            if sets_a is not None and sets_b is not None
+            else 0.0
+        )
+
+        if leader and leader != "igual" and (games_diff >= 2 or sets_diff >= 4):
+            signals.append(
+                {
+                    "name": "frescura",
+                    "label": _SELECTIVE_FEATURE_LABELS["frescura"],
+                    "leader": leader,
+                    "magnitude": max(games_diff, sets_diff),
+                }
+            )
+
+    # H2H: pelo menos três confrontos e vantagem mínima de duas vitórias.
+    h2h = features.get("h2h")
+    if isinstance(h2h, dict):
+        leader = h2h.get("lider")
+        wins_a = _selective_number(h2h.get("a_wins")) or 0.0
+        wins_b = _selective_number(h2h.get("b_wins")) or 0.0
+        total = _selective_number(h2h.get("total")) or 0.0
+
+        if (
+            leader
+            and leader != "igual"
+            and total >= 3
+            and abs(wins_a - wins_b) >= 2
+        ):
+            signals.append(
+                {
+                    "name": "h2h",
+                    "label": _SELECTIVE_FEATURE_LABELS["h2h"],
+                    "leader": leader,
+                    "magnitude": abs(wins_a - wins_b),
+                }
+            )
+
+    return signals
+
+
+def _evaluate_selective_policy(
+    features: object,
+    match_data: dict,
+) -> tuple[bool, str, list[dict]]:
+    """
+    Decide se a interpretação paga acrescenta valor.
+
+    A LLM é reservada para divergências materiais. Quando os sinais estão
+    alinhados, Python já consegue produzir uma leitura factual suficiente.
+    """
+    signals = _collect_selective_signals(features)
+
+    if not signals:
+        return (
+            False,
+            "sem sinais materiais com amostra suficiente",
+            signals,
+        )
+
+    leaders = {
+        str(signal["leader"])
+        for signal in signals
+        if signal.get("leader") and signal.get("leader") != "igual"
+    }
+
+    if len(leaders) >= 2:
+        dimensions = ", ".join(signal["label"] for signal in signals)
+        return (
+            True,
+            f"divergência material entre dimensões: {dimensions}",
+            signals,
+        )
+
+    return (
+        False,
+        "sinais materiais alinhados; síntese determinística suficiente",
+        signals,
+    )
+
+
+def _build_selective_result(
+    match_data: dict,
+    signals: list[dict],
+    reason: str,
+) -> dict:
+    """Produz o contrato normal do relatório sem recorrer a uma LLM."""
+    player_a = str(match_data.get("player_a") or "Jogador A")
+    player_b = str(match_data.get("player_b") or "Jogador B")
+
+    if not signals:
+        return {
+            "flag": FLAG_UNCERTAIN,
+            "signal_strength": 15,
+            "confidence_reason": (
+                "Dados comparativos insuficientes para uma leitura robusta."
+            ),
+            "summary_line": (
+                f"{player_a} vs {player_b} — não existem sinais comparativos "
+                "materiais suficientes."
+            ),
+            "key_points": [
+                "Os dados disponíveis não permitem distinguir uma vantagem robusta.",
+                "A leitura deve permanecer prudente até existirem melhores amostras.",
+            ],
+            "discrepancies": [],
+            "risks": [
+                "A ausência de dados pode ocultar diferenças relevantes entre os jogadores."
+            ],
+            "markets": [],
+            "verdict": (
+                "Leitura inconclusiva: não existe base factual suficiente "
+                "para uma interpretação adicional."
+            ),
+        }
+
+    counts: dict[str, int] = {}
+    for signal in signals:
+        leader = str(signal["leader"])
+        counts[leader] = counts.get(leader, 0) + 1
+
+    dominant = max(counts, key=counts.get)
+    strength = min(70, 30 + 10 * len(signals))
+
+    key_points = [
+        f"{signal['label'].capitalize()}: vantagem de {signal['leader']}."
+        for signal in signals[:4]
+    ]
+
+    if len(key_points) == 1:
+        key_points.append(
+            "As restantes dimensões não apresentam divergências materiais."
+        )
+
+    return {
+        "flag": FLAG_ROUTINE,
+        "signal_strength": strength,
+        "confidence_reason": (
+            "Sinais materiais alinhados; síntese determinística suficiente."
+        ),
+        "summary_line": (
+            f"{player_a} vs {player_b} — os indicadores materiais disponíveis "
+            f"estão alinhados a favor de {dominant}."
+        ),
+        "key_points": key_points,
+        "discrepancies": [],
+        "risks": [
+            "A síntese automática não incorpora contexto qualitativo não presente nos dados."
+        ],
+        "markets": [],
+        "verdict": (
+            f"Leitura de rotina favorável a {dominant}; não foram encontradas "
+            "divergências materiais entre os principais indicadores."
+        ),
+    }
+
+
 def analyze_match(match_data: dict) -> dict:
     """
     match_data deve conter: player_a, player_b, tournament, surface, round,
@@ -346,6 +599,37 @@ def analyze_match(match_data: dict) -> dict:
             return cached
     except Exception:
         pass  # se a cache falhar, segue para a chamada normal
+
+
+    llm_call_reason = f"política {LLM_POLICY}"
+
+    if LLM_POLICY == "selective":
+        should_call_llm, llm_call_reason, selective_signals = (
+            _evaluate_selective_policy(
+                llm_data.get("features"),
+                match_data,
+            )
+        )
+
+        if not should_call_llm:
+            print(
+                f"[llm_skipped:selective] "
+                f"{match_data.get('player_a', '?')} vs "
+                f"{match_data.get('player_b', '?')} | "
+                f"{llm_call_reason}"
+            )
+            return _build_selective_result(
+                match_data,
+                selective_signals,
+                llm_call_reason,
+            )
+
+    print(
+        f"[llm_call:{provider.name}] "
+        f"{match_data.get('player_a', '?')} vs "
+        f"{match_data.get('player_b', '?')} | "
+        f"{llm_call_reason}"
+    )
 
     provider_response = provider.generate(
         system_prompt=SYSTEM_PROMPT,
