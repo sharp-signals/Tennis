@@ -44,7 +44,6 @@ def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
     summary = _find_str("summary_line")
     key_points = _find_str_list("key_points")
     verdict = _find_str("verdict")
-    coverage = _find_int("data_coverage")
     strength = _find_int("signal_strength")
 
     # discrepâncias: extrair objetos {weight, text} que estejam completos
@@ -60,7 +59,6 @@ def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
 
     return {
         "flag": flag or FLAG_UNCERTAIN,
-        "data_coverage": coverage if coverage is not None else 40,
         "signal_strength": strength if strength is not None else 30,
         "confidence_reason": "Análise recuperada parcialmente (resposta cortada).",
         "summary_line": summary or f"{match_data.get('player_a','?')} vs {match_data.get('player_b','?')}",
@@ -74,11 +72,15 @@ import os
 
 from json_repair import repair_json
 
-import anthropic
-
-from .config import CLAUDE_MODEL, FLAG_HIGH_SIGNAL, FLAG_UNCERTAIN, FLAG_ROUTINE
-
-_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+from .config import (
+    ANALYSIS_OUTPUT_SCHEMA_VERSION,
+    CLAUDE_MODEL,
+    FLAG_HIGH_SIGNAL,
+    FLAG_ROUTINE,
+    FLAG_UNCERTAIN,
+    LLM_MODE,
+)
+from .llm_provider import get_llm_provider
 
 # Cache de análises por hash (medida de poupança, 30/07): evita repagar a
 # análise de um jogo cujos dados não mudaram (o workflow corre 2x/dia e há
@@ -90,21 +92,20 @@ _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 PROMPT_VERSION = "2026-08-02-radical"
 
 
-def _payload_hash(match_data: dict) -> str:
-    """Hash estável do que, se mudar, justifica reanalisar. Ignora campos
-    voláteis irrelevantes; foca-se nos dados materiais."""
+def _payload_hash(llm_data: dict, provider_name: str) -> str:
+    """Hash estável de todo o conteúdo efetivamente enviado ao provider.
+
+    A versão anterior omitia fadiga, dados ricos, época e outros campos
+    materiais, podendo devolver uma análise desatualizada. A fingerprint
+    passa agora a cobrir integralmente o payload LLM e o contrato de saída.
+    """
     material = {
-        "players": [match_data.get("player_a"), match_data.get("player_b")],
-        "odds": match_data.get("market_odds_decimal"),
-        "h2h": match_data.get("h2h"),
-        "form_a": match_data.get("recent_form_a"),
-        "form_b": match_data.get("recent_form_b"),
-        "rank_a": match_data.get("ranking_a"),
-        "rank_b": match_data.get("ranking_b"),
-        "surface": match_data.get("surface"),
-        "round": match_data.get("round"),
+        "llm_payload": llm_data,
+        "provider": provider_name,
+        "llm_mode": LLM_MODE,
         "model": CLAUDE_MODEL,
         "prompt_version": PROMPT_VERSION,
+        "output_schema_version": ANALYSIS_OUTPUT_SCHEMA_VERSION,
     }
     blob = json.dumps(material, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
@@ -313,6 +314,7 @@ def analyze_match(match_data: dict) -> dict:
         "round_stage_stats_a", "round_stage_stats_b",
     )
     llm_data = {k: v for k, v in match_data.items() if k not in _REDUNDANT_FOR_LLM}
+    provider = get_llm_provider()
 
     # Enxugar ainda mais os rich_stats que vão ao Claude: manter só os
     # `scenarios` (recuperação de 1º set, set decisivo, tiebreak — que o Claude
@@ -334,10 +336,10 @@ def analyze_match(match_data: dict) -> dict:
 
     # Cache por hash: se já analisámos este jogo com estes mesmos dados
     # materiais (e o mesmo prompt/modelo), reutilizamos — não repagamos.
-    cache_key = _payload_hash(match_data)
+    cache_key = _payload_hash(llm_data, provider.name)
     cache_path = os.path.join(_ANALYSIS_CACHE_DIR, f"{cache_key}.json")
     try:
-        if os.path.exists(cache_path):
+        if provider.persist_cache and os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
                 cached = json.load(f)
             print(f"[cache_hit] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} — análise reutilizada (sem custo).")
@@ -345,57 +347,27 @@ def analyze_match(match_data: dict) -> dict:
     except Exception:
         pass  # se a cache falhar, segue para a chamada normal
 
-    response = _client.messages.create(
-        model=CLAUDE_MODEL,
-        # 3000 (30/07, medida de poupança): os relatórios reais rondam
-        # 1500-2500 tokens de output; 3000 dá margem confortável sem
-        # deixar espaço a excessos. Era 8000, uma rede larga demais.
-        # 5000: 3000 revelou-se curto demais para os relatórios ricos
-        # (Onda 2 com dados de resposta + qualidade do adversário) — estavam
-        # a ser cortados a meio (stop_reason=max_tokens), gerando JSON
-        # inválido. 5000 dá folga; mais vale pagar o output completo do que
-        # gerar relatórios truncados que falham. As outras poupanças (cache
-        # do prompt, cache por hash) mantêm-se.
-        # Teto de output: 2000. Com o formato radical (campos com limites de
-        # caracteres explícitos: verdict ≤400, discrepâncias ≤110 cada, etc.),
-        # o output legítimo cabe em ~1000-1200 tokens. 2000 dá quase o dobro de
-        # margem — NÃO corta análises legítimas — mas trava o desperdício (o
-        # Claude estava a gerar 3500 a divagar). Se ainda cortar, é sinal de que
-        # o Claude ignorou os limites do prompt (a recuperação parcial trata).
-        max_tokens=2000,
-        # Cache do prompt de sistema (medida de poupança, 30/07): o
-        # SYSTEM_PROMPT é idêntico em todos os jogos e é grande (~14k
-        # caracteres). Marcá-lo como cacheable faz com que, a partir da 2ª
-        # análise da mesma execução, o input do prompt custe ~10% do preço
-        # (as análises correm em sequência, dentro da janela de cache).
-        system=[
-            {
-                "type": "text",
-                "text": SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
-        messages=[{"role": "user", "content": user_prompt}],
+    provider_response = provider.generate(
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        max_tokens=5500,
+        metadata=match_data,
     )
-
-    # Logging de custo real (medida de poupança, 30/07): regista o consumo
-    # de tokens de cada chamada, para sabermos exatamente onde vai o custo
-    # (input grande? output? cache a funcionar?) em vez de adivinhar.
+    # Logging de custo real, normalizado entre providers.
     try:
-        u = response.usage
-        cache_read = getattr(u, "cache_read_input_tokens", 0) or 0
-        cache_creation = getattr(u, "cache_creation_input_tokens", 0) or 0
-        print(
-            f"[anthropic_usage] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} | "
-            f"input={u.input_tokens} output={u.output_tokens} "
-            f"cache_read={cache_read} cache_creation={cache_creation}"
-        )
+        usage = provider_response.usage
+        if usage:
+            print(
+                f"[llm_usage:{provider.name}] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} | "
+                f"input={usage.get('input_tokens', 0)} output={usage.get('output_tokens', 0)} "
+                f"cache_read={usage.get('cache_read_input_tokens', 0)} "
+                f"cache_creation={usage.get('cache_creation_input_tokens', 0)}"
+            )
     except Exception:
         pass
+    raw_text = provider_response.text.strip()
 
-    raw_text = "".join(block.text for block in response.content if block.type == "text").strip()
-
-    if response.stop_reason == "max_tokens":
+    if provider_response.stop_reason == "max_tokens":
         print(
             "[aviso] a resposta do Claude foi CORTADA por limite de tokens "
             f"(stop_reason=max_tokens) — considera aumentar max_tokens ainda mais, "
@@ -412,45 +384,15 @@ def analyze_match(match_data: dict) -> dict:
         raw_text = raw_text.strip()
 
     def _save_and_return(res: dict) -> dict:
-        """Grava o resultado na cache (só sucessos) e devolve-o. Aplica os
-        limites por CÓDIGO — garante output curto e estrutura limpa mesmo que
-        o Claude exceda (o prompt pede, isto garante). Truncar aqui é barato e
-        não afeta o custo (o custo é o que o Claude gerou), mas mantém o
-        relatório limpo e consistente."""
-        def _cut(s, n):
-            s = str(s or "")
-            return s if len(s) <= n else s[:n].rstrip() + "…"
-        res["confidence_reason"] = _cut(res.get("confidence_reason"), 100)
-        res["summary_line"] = _cut(res.get("summary_line"), 120)
-        res["verdict"] = _cut(res.get("verdict"), 400)
-        # markets: máx 3, motivo curto
-        mk = res.get("markets")
-        if isinstance(mk, list):
-            res["markets"] = [
-                {"mercado": _cut(m.get("mercado"), 40),
-                 "confianca": m.get("confianca", "baixa"),
-                 "motivo": _cut(m.get("motivo"), 90)}
-                for m in mk[:3] if isinstance(m, dict)
-            ]
-        # discrepancies: máx 4, texto curto
-        dc = res.get("discrepancies")
-        if isinstance(dc, list):
-            res["discrepancies"] = [
-                {"weight": d.get("weight", "fraco"), "text": _cut(d.get("text"), 110)}
-                for d in dc[:4] if isinstance(d, dict)
-            ]
-        # risks: máx 3, curtos
-        rk = res.get("risks")
-        if isinstance(rk, list):
-            res["risks"] = [_cut(r, 70) for r in rk[:3]]
-        try:
-            os.makedirs(_ANALYSIS_CACHE_DIR, exist_ok=True)
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(res, f, ensure_ascii=False)
-        except Exception:
-            pass
+        """Grava o resultado na cache persistente apenas quando aplicável."""
+        if provider.persist_cache:
+            try:
+                os.makedirs(_ANALYSIS_CACHE_DIR, exist_ok=True)
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    json.dump(res, f, ensure_ascii=False)
+            except Exception:
+                pass
         return res
-
     try:
         # strict=False: tolera caracteres de controlo literais (ex: quebras
         # de linha não escapadas) dentro de strings do JSON — já vimos o
@@ -481,7 +423,6 @@ def analyze_match(match_data: dict) -> dict:
         print(f"[aviso] resposta bruta (primeiros 500 chars): {raw_text[:500]}")
         return {
             "flag": FLAG_UNCERTAIN,
-            "data_coverage": 0,
             "signal_strength": 0,
             "confidence_reason": "Erro ao gerar a análise — sem base para avaliar.",
             "summary_line": (

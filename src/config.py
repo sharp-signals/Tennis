@@ -3,6 +3,8 @@ Configuração central do bot. Ajusta aqui os parâmetros de negócio
 sem mexer na lógica dos outros módulos.
 """
 
+import os
+
 # --- Fixtures: fonte primária (RapidAPI / matchstat) --------------------
 # Confirmado manualmente (15/07/2026) que este endpoint cobre torneios
 # que a The Odds API não lista (ex: Umag, ATP 250), incluindo Challenger
@@ -136,6 +138,36 @@ FLAG_UNCERTAIN = "🟡"
 FLAG_ROUTINE = "🟢"
 
 CLAUDE_MODEL = "claude-sonnet-5"
+
+# --- Execução LLM e proteção de custos ----------------------------------
+# O modelo Anthropic permanece inalterado. Fora do workflow de produção, o
+# modo seguro por omissão é mock: importar módulos ou gerar relatórios de
+# desenvolvimento nunca deve criar uma chamada paga por acidente.
+LLM_MODE = os.environ.get("LLM_MODE", "mock").strip().lower()
+LLM_POLICY = os.environ.get("LLM_POLICY", "all_synthesis").strip().lower()
+
+# Autorização independente do modo. Mesmo com LLM_MODE=anthropic, a chamada
+# é bloqueada se esta variável não for explicitamente igual a "1".
+ALLOW_PAID_LLM = os.environ.get("ALLOW_PAID_LLM", "0").strip() == "1"
+
+VALID_LLM_MODES = {"anthropic", "mock", "disabled"}
+VALID_LLM_POLICIES = {"all_synthesis", "selective", "never"}
+
+if LLM_MODE not in VALID_LLM_MODES:
+    raise ValueError(
+        f"LLM_MODE inválido: {LLM_MODE!r}. "
+        f"Valores permitidos: {sorted(VALID_LLM_MODES)}"
+    )
+
+if LLM_POLICY not in VALID_LLM_POLICIES:
+    raise ValueError(
+        f"LLM_POLICY inválida: {LLM_POLICY!r}. "
+        f"Valores permitidos: {sorted(VALID_LLM_POLICIES)}"
+    )
+
+# Incluído na fingerprint da cache para impedir reutilização de respostas com
+# contratos incompatíveis quando o schema evoluir.
+ANALYSIS_OUTPUT_SCHEMA_VERSION = "1"
 
 # --- Publicação dos relatórios (Netlify) ---------------------------------
 # As páginas HTML são geradas para a pasta SITE_OUTPUT_DIR e publicadas
