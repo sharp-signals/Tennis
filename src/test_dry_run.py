@@ -1,7 +1,7 @@
 """
 Teste de ponta a ponta com um jogo FICTÍCIO, claramente identificado como
 teste em todas as mensagens — para validar o pipeline completo (histórico
-real + Claude + Telegraph + Telegram) sem esperar por um torneio a sério.
+real + análise configurada + publicação) sem esperar por um torneio a sério.
 
 Usa dois jogadores ATP reais (para o histórico ter alguma coisa para
 analisar), mas o "jogo" em si — torneio, data, ronda — é inventado.
@@ -12,12 +12,11 @@ Corre via: python -m src.test_dry_run
 from __future__ import annotations
 
 import html
-import os
 from datetime import datetime, timedelta, timezone
 
 from . import fetch_data
 from .analyze import analyze_match
-from .config import ODDS_API_TENNIS_SPORT_KEYS, FLAG_UNCERTAIN
+from .config import ODDS_API_TENNIS_SPORT_KEYS
 from .telegram_bot import send_message
 
 # Dois jogadores ATP conhecidos, para testar H2H/forma/piso com dados reais
@@ -73,25 +72,6 @@ def build_fake_match_payload() -> dict:
     }
 
 
-def _mock_result(payload: dict) -> dict:
-    """Resultado fictício para testar o pipeline SEM chamar a API (sem custo).
-    Usa o formato estruturado da Medida 6 (key_points/discrepancies/verdict)."""
-    return {
-        "flag": FLAG_UNCERTAIN,
-        "confidence_score": 50,
-        "confidence_reason": "Resultado MOCK de teste — não foi chamada a API.",
-        "summary_line": f"[MOCK] {payload['player_a']} vs {payload['player_b']} — teste sem API.",
-        "key_points": [
-            "**Este é um resultado MOCK** — nenhuma chamada à API da Anthropic foi feita.",
-            "Serve para testar o pipeline (geração de HTML, publicação) sem gastar créditos.",
-        ],
-        "discrepancies": [
-            {"weight": "fraco", "text": "Exemplo de observação de teste (amostra fictícia)."},
-        ],
-        "verdict": "Teste de pipeline sem custo — dados fictícios.",
-    }
-
-
 def run() -> None:
     print("=== TESTE DE PONTA A PONTA (jogo fictício) ===")
     payload = build_fake_match_payload()
@@ -99,16 +79,10 @@ def run() -> None:
     for key, value in payload.items():
         print(f"  {key}: {value}")
 
-    # Medida 8 (poupança): por omissão NÃO chama a API real — usa um mock.
-    # Para testar com a API a sério, correr com a variável USE_REAL_LLM=1.
-    use_real = os.environ.get("USE_REAL_LLM", "") == "1"
-    if use_real:
-        print("\n--- A chamar o Claude (analyze_match) [API REAL, gasta créditos] ---")
-        result = analyze_match(payload)
-    else:
-        print("\n--- A usar resultado MOCK (sem chamar a API, sem custo) ---")
-        print("    (para testar com a API real, define USE_REAL_LLM=1)")
-        result = _mock_result(payload)
+    # O provider é escolhido pela configuração central. O valor por omissão é
+    # LLM_MODE=mock e o workflow de teste reforça ALLOW_PAID_LLM=0.
+    print("\n--- A gerar análise através do provider configurado ---")
+    result = analyze_match(payload)
     print(f"Flag: {result['flag']}")
     print(f"Summary line: {result['summary_line']}")
     print(f"Pontos-chave: {len(result.get('key_points', []))} | "

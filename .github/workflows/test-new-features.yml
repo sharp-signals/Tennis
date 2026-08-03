@@ -37,9 +37,11 @@ jobs:
       - name: Testar novas funções (histórico, lesão, serviço/resposta, ranking, meteorologia)
         run: python -m src.test_new_features
 
-      - name: Teste de ponta a ponta (jogo fictício → Claude → Telegraph → Telegram)
+      - name: Teste de ponta a ponta (jogo fictício → provider mock)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_MODE: mock
+          LLM_POLICY: all_synthesis
+          ALLOW_PAID_LLM: "0"
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
