@@ -31,7 +31,7 @@ jobs:
       - name: Correr o bot
         env:
           LLM_MODE: anthropic
-          LLM_POLICY: all_synthesis
+          LLM_POLICY: selective
           ALLOW_PAID_LLM: "1"
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
