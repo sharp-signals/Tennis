@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Flavio Cobolli vs Yannick Hanfmann</title>
+<style>
+:root {
+  --bg:#14161a; --surface:#1c1f26; --surface-alt:#23272f;
+  --text:#e6e9ef; --dim:#9aa3b2; --steel:#5b9bd5;
+  --mint:#4ecdc4; --amber:#e0a34a; --red:#e06c5b; --line:#2c313b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  line-height:1.6; padding:0 0 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+
+/* Placar (assinatura) */
+.scoreboard {
+  background:linear-gradient(180deg,var(--surface-alt),var(--surface));
+  border-bottom:2px solid var(--steel);
+  padding:28px 20px 22px;
+}
+.sb-inner { max-width:760px; margin:0 auto; }
+.sb-meta { color:var(--dim); font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; }
+.sb-players { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sb-name { font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-.02em; flex:1; }
+.sb-name.right { text-align:right; }
+.sb-odds { text-align:center; padding:0 8px; }
+.sb-odd { font-size:22px; font-weight:700; color:var(--steel); }
+.sb-prob { font-size:12px; font-weight:400; color:var(--dim); margin-top:4px; }
+.selos-legenda { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--dim); margin:2px 0 12px; align-items:center; }
+.w-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.w-dot.red { background:var(--red); }
+.w-dot.amber { background:var(--amber); }
+.w-dot.white { background:var(--dim); }
+.selos-nota { width:100%; font-style:italic; opacity:.8; margin-top:2px; }
+.sb-vs { font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }
+.sb-flag { display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+
+/* Alerta de topo (discrepância forte) */
+.top-alert { margin-top:14px; padding:10px 16px; border-radius:10px; background:rgba(224,108,91,0.15); border:1px solid var(--red); color:var(--red); font-weight:700; font-size:14px; }
+
+/* Secções de dados factuais (montadas em Python — Medida 6) */
+.data-sections { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+@media (max-width:600px) { .data-sections { grid-template-columns:1fr; } }
+.d-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.d-title { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+.d-row { font-size:14px; margin:3px 0; }
+
+/* Pontos-chave */
+.kp-list { list-style:none; padding:0; margin:8px 0 20px; }
+.kp-list li { padding:8px 14px; margin:6px 0; background:var(--surface); border-left:3px solid var(--steel); border-radius:6px; font-size:15px; }
+
+/* Discrepâncias com selos e destaque por peso */
+.disc-item { padding:12px 16px; margin:8px 0; border-radius:8px; background:var(--surface); font-size:15px; display:flex; gap:10px; align-items:flex-start; }
+.disc-emoji { flex-shrink:0; }
+.disc-text { flex:1; }
+.risks-list { margin:8px 0; padding-left:22px; }
+.risks-list li { margin:6px 0; font-size:14px; color:var(--muted); }
+.markets-table { width:100%; border-collapse:collapse; margin:8px 0; font-size:14px; }
+.markets-table th { text-align:left; padding:8px 10px; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase; }
+.markets-table td { padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }
+.conf-badge { padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; }
+.conf-alta { background:rgba(45,180,120,0.18); color:#2db478; }
+.conf-media { background:rgba(230,180,60,0.18); color:#e6b43c; }
+.conf-baixa { background:rgba(150,150,150,0.15); color:var(--muted); }
+.disc-strong { border-left:4px solid var(--red); background:rgba(224,108,91,0.08); }
+.disc-mid { border-left:4px solid var(--amber); }
+.disc-weak { border-left:4px solid var(--dim); opacity:.9; }
+
+/* Veredicto — caixa destacada a fechar */
+.verdict-box { margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }
+.verdict-label { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }
+.verdict-text { font-size:16px; line-height:1.5; }
+
+/* Confiança da leitura */
+.confidence { margin-top:16px; max-width:420px; }
+.conf-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.conf-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+.conf-num { font-size:15px; font-weight:700; }
+.conf-track { height:8px; background:var(--surface-alt); border-radius:5px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:5px; }
+.conf-reason { font-size:13px; color:var(--dim); margin-top:6px; font-style:italic; }
+.cov-detail { font-size:12px; color:var(--dim); margin-top:6px; }
+.cov-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.cov-chip { font-size:11px; padding:2px 7px; border-radius:10px; border:1px solid var(--line); }
+.cov-chip.on { color:var(--mint); border-color:var(--mint); }
+.cov-chip.off { color:var(--dim); opacity:.6; }
+
+/* Gráficos */
+.charts { margin:26px 0; }
+.chart-block { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+.chart-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:14px; }
+.cmp { margin:10px 0; }
+.cmp-label { font-size:13px; color:var(--dim); margin-bottom:4px; text-align:center; }
+.cmp-row { display:flex; align-items:center; gap:8px; }
+.cmp-val { font-size:14px; font-weight:700; width:56px; }
+.cmp-val.left { text-align:right; }
+.cmp-track { flex:1; height:10px; background:var(--surface-alt); border-radius:6px; display:flex; overflow:hidden; }
+.cmp-fill { height:100%; }
+.cmp-fill.left { margin-left:auto; border-radius:6px 0 0 6px; }
+.cmp-fill.right { border-radius:0 6px 6px 0; }
+.gauges { display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; }
+.gauge { text-align:center; }
+.gauge-val { fill:var(--text); font-size:20px; font-weight:800; }
+.gauge-label { font-size:12px; color:var(--dim); margin-top:2px; }
+
+/* Corpo */
+.wrap { padding-top:26px; }
+h2.sec-main { font-size:20px; margin:26px 0 12px; color:var(--text); }
+h3.sec { font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3px solid var(--steel); padding-left:10px; }
+p { margin:10px 0; color:var(--text); }
+.items { margin:10px 0; }
+.item { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }
+.item.w-red { border-left:4px solid var(--red); }
+.item.w-amber { border-left:4px solid var(--amber); }
+.item.w-white { border-left:4px solid var(--dim); opacity:.85; }
+code { background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }
+hr { border:none; border-top:1px solid var(--line); margin:20px 0; }
+strong { color:#fff; font-weight:700; }
+.footer { text-align:center; color:var(--dim); font-size:12px; margin-top:30px; }
+</style>
+</head>
+<body>
+<header class="scoreboard">
+  <div class="sb-inner">
+    <div class="sb-meta">National Bank Open - Montreal · ATP Masters 1000 · Hard · 04/08/2026</div>
+    <div class="sb-players">
+      <div class="sb-name">Flavio Cobolli<div class="sb-prob">56% s/ margem</div></div>
+      <div class="sb-odds">
+        <div class="sb-odd">1.69</div>
+        <div class="sb-vs">VS</div>
+        <div class="sb-odd">2.18</div>
+      </div>
+      <div class="sb-name right">Yannick Hanfmann<div class="sb-prob">44% s/ margem</div></div>
+    </div>
+    <div class="sb-flag">🟡 sinal</div>
+    
+    <div class="confidence">
+      <div class="conf-head">
+        <span class="conf-title">Cobertura de dados</span>
+        <span class="conf-num" style="color:#4ecdc4">88/100 · alta</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:88%;background:#4ecdc4"></div></div><div class="cov-detail">7/8 fontes presentes<div class="cov-chips"><span class="cov-chip on">✓ Odds do mercado</span><span class="cov-chip off">✗ Confronto direto (H2H)</span><span class="cov-chip on">✓ Forma recente</span><span class="cov-chip on">✓ Ranking</span><span class="cov-chip on">✓ Desempenho por piso</span><span class="cov-chip on">✓ Serviço/resposta</span><span class="cov-chip on">✓ Dados ricos de carreira</span><span class="cov-chip on">✓ Fadiga real (jogos recentes)</span></div></div>
+      <div class="conf-head">
+        <span class="conf-title">Força do sinal (leitura)</span>
+        <span class="conf-num" style="color:#e0a34a">35/100 · média</span>
+      </div>
+      <div class="conf-track"><div class="conf-fill" style="width:35%;background:#e0a34a"></div></div>
+      <div class="conf-reason">Favorito alinhado com ranking/piso, mas serviço e ausência de jogos geram dúvida</div>
+    </div>
+    
+  </div>
+</header>
+<div class="wrap">
+  <section class="charts"><div class="chart-block"><div class="chart-title">Serviço / Resposta</div>
+    <div class="cmp">
+      <div class="cmp-label">1º serviço ganho</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">69.2%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:34.6%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:39.0%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">78.1%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points salvos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">58.4%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:29.2%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:27.6%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">55.1%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Aces</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">7.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:3.5%;background:#9aa3b2"></div>
+          <div class="cmp-fill right" style="width:7.1%;background:#5b9bd5"></div>
+        </div>
+        <div class="cmp-val right">14.2%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Pontos de resposta ganhos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">40.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.0%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:19.5%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">39.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">Break points convertidos</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">41.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:20.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">40.0%</div>
+      </div>
+    </div></div><div class="chart-block"><div class="chart-title">Forma recente</div><div class="gauges">
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 75.5 12.4" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">60%</text>
+      </svg>
+      <div class="gauge-label">Flavio Cobolli (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div>
+    <div class="gauge">
+      <svg viewBox="0 0 120 75" width="120" height="75">
+        <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#2c313b" stroke-width="8"/>
+        <path d="M 10 60 A 50 50 0 0 1 75.5 12.4" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round"/>
+        <text x="60" y="52" text-anchor="middle" class="gauge-val">60%</text>
+      </svg>
+      <div class="gauge-label">Yannick Hanfmann (forma)<tspan class="gauge-sample"> · 10 jogos</tspan></div>
+    </div></div></div><div class="chart-block"><div class="chart-title">Desempenho por qualidade do adversário</div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 10 (24/25 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">20.8%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:10.4%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:8.0%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">16.0%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 50 (85/81 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">41.2%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:20.6%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:14.2%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">28.4%</div>
+      </div>
+    </div>
+    <div class="cmp">
+      <div class="cmp-label">vs Top 100 (157/181 jogos)</div>
+      <div class="cmp-row">
+        <div class="cmp-val left">51.0%</div>
+        <div class="cmp-track">
+          <div class="cmp-fill left" style="width:25.5%;background:#5b9bd5"></div>
+          <div class="cmp-fill right" style="width:20.4%;background:#9aa3b2"></div>
+        </div>
+        <div class="cmp-val right">40.9%</div>
+      </div>
+    </div></div></section><section class="data-sections"><div class="d-card"><div class="d-title">Forma recente e época atual</div><div class="d-row"><b>Últimos jogos:</b> Flavio Cobolli 6-4 · Yannick Hanfmann 6-4</div><div class="d-row"><b>Época atual:</b> Flavio Cobolli 28-16 (64%) · Yannick Hanfmann 20-16 (56%)</div></div><div class="d-card"><div class="d-title">Ranking</div><div class="d-row"><b>Ranking oficial:</b> Flavio Cobolli #8 · Yannick Hanfmann #57</div></div><div class="d-card"><div class="d-title">Desempenho por piso (carreira)</div><div class="d-row"><b>Neste piso (Hard):</b> Flavio Cobolli 59.0% (117 jogos) · Yannick Hanfmann 52.3% (155 jogos)</div></div><div class="d-card"><div class="d-title">Desempenho por nível de torneio (carreira)</div><div class="d-row"><b>Neste nível (Masters 1000):</b> Flavio Cobolli 46.0% (50 jogos) · Yannick Hanfmann 52.5% (59 jogos)</div></div><div class="d-card"><div class="d-title">Fadiga / descanso</div><div class="d-row"><b>Flavio Cobolli:</b> 21 dias desde o último jogo; 0 nos últimos 7 dias</div><div class="d-row"><b>Yannick Hanfmann:</b> 1 dias desde o último jogo; 1 jogo(s) neste torneio; 1 nos últimos 7 dias (3 sets)</div></div><div class="d-card"><div class="d-title">Desistências recentes</div><div class="d-row"><b>Flavio Cobolli:</b> sem desistências recentes registadas</div><div class="d-row"><b>Yannick Hanfmann:</b> sem desistências recentes registadas</div></div><div class="d-card"><div class="d-title">Meteorologia (ao ar livre)</div><div class="d-row">máx 26.4°C; precipitação 0.0 mm</div></div><div class="d-card"><div class="d-title">Cenários de jogo (carreira)</div><div class="d-row"><b>Ganha 1º set → vence:</b> Flavio Cobolli 90% · Yannick Hanfmann 86% (227/414 jogos)</div><div class="d-row"><b>Perde 1º set → vence:</b> Flavio Cobolli 24% · Yannick Hanfmann 22% (217/311 jogos)</div><div class="d-row"><b>Set decisivo:</b> Flavio Cobolli 63% · Yannick Hanfmann 58% (152/235 jogos)</div><div class="d-row"><b>Tie-breaks:</b> Flavio Cobolli 55% · Yannick Hanfmann 45% (171/252 jogos)</div></div><div class="d-card"><div class="d-title">Estilo de jogo (carreira)</div><div class="d-row"><b>Sucesso na rede:</b> Flavio Cobolli 64% · Yannick Hanfmann 66%</div><div class="d-row"><b>Duração média:</b> Flavio Cobolli 1:46:51 · Yannick Hanfmann 1:27:33</div><div class="d-row"><b>Rácio winners/erros:</b> Flavio Cobolli 0.94 · Yannick Hanfmann 1.04</div></div><div class="d-card"><div class="d-title">Domínio vs adversários (carreira)</div><div class="d-row"><b>Flavio Cobolli:</b> 1º serviço ganho 69% vs adversários 67%; winners 1700 vs 1387; erros 1804 vs 1842</div><div class="d-row"><b>Yannick Hanfmann:</b> 1º serviço ganho 71% vs adversários 68%; winners 1705 vs 1557; erros 1640 vs 1456</div></div></section><h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list"><li><strong>Flavio Cobolli</strong> superior no ranking (#8 vs #57).</li><li><strong>Flavio Cobolli</strong> melhor em época, piso (força geral a favor).</li><li><strong>Flavio Cobolli</strong> mais fresco (0 vs 1 jogos nos últimos 7 dias).</li><li>Flavio Cobolli fecha 90% dos jogos após ganhar o 1º set.</li><li>Yannick Hanfmann recupera 22% quando perde o 1º set.</li></ul><h3 class="sec">💰 Mercados com maior potencial</h3><table class="markets-table"><thead><tr><th>Mercado</th><th>Confiança</th><th>Motivo</th></tr></thead><tbody><tr><td><b>Observar arranque ao vivo</b></td><td><span class="conf-badge conf-baixa">baixa</span></td><td>Cobolli 21 dias sem competir; risco de arranque lento vs Hanfmann em ritmo</td></tr><tr><td><b>Set decisivo / over sets</b></td><td><span class="conf-badge conf-baixa">baixa</span></td><td>Ambos com % de set decisivo próximos e amostra considerável</td></tr></tbody></table><h3 class="sec">🎯 Discrepâncias e mercados a observar</h3><div class="selos-legenda"><span><b class="w-dot red"></b> forte</span><span><b class="w-dot amber"></b> moderado</span><span><b class="w-dot white"></b> fraco / contextual</span><div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div></div><div class="disc-item disc-mid"><span class="disc-emoji">🟡</span><span class="disc-text">Serviço favorece Hanfmann apesar do mercado dar Cobolli claro favorito — contexto, não prova de erro</span></div><div class="disc-item disc-weak"><span class="disc-emoji">⚪</span><span class="disc-text">Cobolli sem jogos há 21 dias vs Hanfmann em competição recente; sinal de ritmo, não de forma</span></div><h3 class="sec">⚠️ Principais riscos</h3><ul class="risks-list"><li>Cobolli sem ritmo competitivo recente (21 dias)</li><li>Sem H2H disponível para contextualizar confronto</li><li>Serviço de Hanfmann pode complicar breaks de Cobolli</li></ul><div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">Mercado favorece claramente Cobolli, suportado por ranking, época e piso — sinais correlacionados, não independentes. A ausência de ritmo recente de Cobolli e o serviço superior de Hanfmann são pontos a observar ao vivo, sobretudo no arranque do jogo. Sem H2H para reforçar leitura. Possível valor a observar apenas em cenários específicos (arranque lento ou sets equilibrados), não uma divergência forte pré-jogo.</div></div>
+  <div class="footer">Tennis Pre-Live Bot · análise informativa, não é recomendação de aposta</div>
+</div>
+</body>
+</html>
