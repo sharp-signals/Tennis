@@ -30,10 +30,10 @@ jobs:
 
       - name: Correr o bot
         env:
-          LLM_MODE: anthropic
-          LLM_POLICY: selective
-          ALLOW_PAID_LLM: "1"
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_MODE: mock
+          LLM_POLICY: all_synthesis
+          ALLOW_PAID_LLM: "0"
+          ANTHROPIC_API_KEY: ""
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
