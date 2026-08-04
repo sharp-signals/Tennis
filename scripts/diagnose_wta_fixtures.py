@@ -48,7 +48,7 @@ def main() -> None:
         day_label = day.strftime("%Y-%m-%d")
 
         try:
-            matches = fetch_data._fetch_date_fixtures(day, "wta")
+            matches = fetch_data.fetch_date_fixtures(day, "wta")
         except Exception as exc:
             print(f"[WTA] {day_label} | ERRO nas fixtures: {type(exc).__name__}: {exc}")
             day_results.append(
