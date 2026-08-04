@@ -30,18 +30,28 @@ jobs:
 
       - name: Correr o bot
         env:
-          LLM_MODE: anthropic
-          LLM_POLICY: selective
-          ALLOW_PAID_LLM: "1"
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_MODE: mock
+          LLM_POLICY: all_synthesis
+          ALLOW_PAID_LLM: "0"
+          ANTHROPIC_API_KEY: ""
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
-        run: python -m src.main
+          ODDS_API_KEY: ""
+          TELEGRAM_BOT_TOKEN: ""
+          TELEGRAM_CHAT_ID: ""
+          TELEGRAPH_ACCESS_TOKEN: ""
+        run: PYTHONUNBUFFERED=1 python -m src.main
+      - name: Guardar resultado integral do diagnóstico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wta-full-pipeline-mock
+          path: |
+            site/
+            data/rapidapi_usage_log.json
+          if-no-files-found: warn
 
       - name: Gravar caches + relatórios do site, se mudaram
+        if: false  # diagnóstico: nunca gravar ficheiros
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
