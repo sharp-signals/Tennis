@@ -80,13 +80,9 @@ TRACKED_TOURNAMENT_IDS = {
 # API é 10; pedimos mais para reduzir o número de páginas/pedidos).
 TOURNAMENT_FIXTURES_PAGE_SIZE = 50
 
-# Tours a seguir. Reduzido a ATP apenas (16/07/2026): os repositórios
-# tennis_atp/tennis_wta do Jeff Sackmann desapareceram do GitHub, e não
-# há outra fonte gratuita fiável de histórico WTA (a TennisMyLife nunca
-# cobriu WTA). Em vez de teres um bot inconsistente que às vezes fala de
-# WTA sem H2H/forma/piso nenhum, reduzimos o âmbito. Se aparecer uma fonte
-# WTA fiável no futuro, é só voltar a acrescentar "wta" aqui.
-TOURS_TO_FOLLOW = ("atp",)
+# ATP e WTA percorrem o mesmo pipeline de fixtures, enriquecimento,
+# análise, geração de HTML e envio para Telegram.
+TOURS_TO_FOLLOW = ("atp", "wta")
 
 # --- Odds de mercado: fonte secundária/opcional (The Odds API) ----------
 # Já não decide "que jogos existem" — só tenta enriquecer com odds quando
