@@ -7,13 +7,13 @@ import requests
 REQUEST_TIMEOUT = 20
 
 
-def send_message(text: str) -> None:
+def send_message(text: str) -> bool:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
     if not token or not chat_id:
         print("[aviso] TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID em falta — a imprimir no log em vez de enviar:")
         print(text)
-        return
+        return False
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     resp = requests.post(
@@ -27,3 +27,4 @@ def send_message(text: str) -> None:
         timeout=REQUEST_TIMEOUT,
     )
     resp.raise_for_status()
+    return True

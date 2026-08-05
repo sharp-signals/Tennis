@@ -1117,21 +1117,56 @@ def run() -> None:
     if current:
         chunks.append("\n".join(current))
 
-    for i, chunk in enumerate(chunks):
-        prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
-        send_message(prefix + chunk)
-    telegram_counts = _pipeline_counts(match_reports)
-    for tour in ("atp", "wta"):
-        print(
-            f"[{tour.upper()}] Telegram: "
-            f"reports_in_summary={telegram_counts[tour]} "
-            f"chunks_sent={len(chunks)}"
+        telegram_chunk_results: list[bool] = []
+
+        for i, chunk in enumerate(chunks):
+            prefix = (
+                f"(parte {i + 1}/{len(chunks)})\n"
+                if len(chunks) > 1 and i > 0
+                else ""
+            )
+            telegram_chunk_results.append(
+                send_message(prefix + chunk)
+            )
+
+        telegram_chunks_sent = sum(
+            1 for sent in telegram_chunk_results if sent
+        )
+        telegram_delivery_ok = (
+            bool(telegram_chunk_results)
+            and all(telegram_chunk_results)
         )
 
-    for payload, result, url in match_reports:
-        _wta_trace(payload, "Telegram", f"sent=1 report_url={int(bool(url))}")
+        telegram_counts = _pipeline_counts(match_reports)
+        for tour in ("atp", "wta"):
+            print(
+                f"[{tour.upper()}] Telegram: "
+                f"reports_in_summary={telegram_counts[tour]} "
+                f"chunks_attempted={len(chunks)} "
+                f"chunks_sent={telegram_chunks_sent}"
+            )
 
-    print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
+        for payload, result, url in match_reports:
+            _wta_trace(
+                payload,
+                "Telegram",
+                (
+                    f"sent={int(telegram_delivery_ok)} "
+                    f"report_url={int(bool(url))}"
+                ),
+            )
+
+        if telegram_delivery_ok:
+            print(
+                f"[info] Enviado com sucesso. "
+                f"{len(analyses)} jogo(s)."
+            )
+        else:
+            print(
+                f"[aviso] Relatórios gerados, mas o resumo Telegram "
+                f"não foi confirmado como enviado "
+                f"({telegram_chunks_sent}/{len(chunks)} blocos)."
+            )
 
     # Registo do consumo da RapidAPI nesta execução (medição de quota).
     # Imprime o total no log e guarda o histórico dia a dia num ficheiro,
