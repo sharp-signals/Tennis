@@ -27,6 +27,8 @@ import html
 import json
 import os
 import re
+import threading
+import traceback
 import unicodedata
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -52,6 +54,140 @@ from .analyze import analyze_match
 from .report_html import build_report_html
 from .telegram_bot import send_message
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
+
+
+# Instrumentação temporária da auditoria ATP/WTA.
+_WTA_PIPELINE_OBSERVABILITY = True
+
+_PIPELINE_METRICS_LOCK = threading.Lock()
+_PIPELINE_METRICS = {
+    "atp": {
+        "analysis_requested": 0,
+        "analysis_completed": 0,
+        "analysis_skipped": 0,
+        "process_failed": 0,
+    },
+    "wta": {
+        "analysis_requested": 0,
+        "analysis_completed": 0,
+        "analysis_skipped": 0,
+        "process_failed": 0,
+    },
+    "unknown": {
+        "analysis_requested": 0,
+        "analysis_completed": 0,
+        "analysis_skipped": 0,
+        "process_failed": 0,
+    },
+}
+
+
+def _pipeline_tour(item) -> str:
+    """Resolve ATP/WTA a partir de um jogo, payload ou resultado do worker."""
+    if isinstance(item, tuple) and item and isinstance(item[0], dict):
+        item = item[0]
+
+    if not isinstance(item, dict):
+        return "unknown"
+
+    tour = item.get("_tour") or item.get("tour")
+    if tour:
+        normalized = str(tour).strip().lower()
+        if normalized in {"atp", "wta"}:
+            return normalized
+
+    tier = str(item.get("tier") or "").strip().upper()
+    if tier.startswith("WTA"):
+        return "wta"
+    if tier.startswith("ATP") or tier == "GRAND SLAM":
+        return "atp"
+
+    return "unknown"
+
+
+def _pipeline_counts(items) -> dict[str, int]:
+    counts = {"atp": 0, "wta": 0, "unknown": 0}
+    for item in items:
+        tour = _pipeline_tour(item)
+        counts[tour] = counts.get(tour, 0) + 1
+    return counts
+
+
+def _log_pipeline_stage(stage: str, items) -> None:
+    counts = _pipeline_counts(items)
+    print(f"[ATP] {stage}: {counts['atp']}")
+    print(f"[WTA] {stage}: {counts['wta']}")
+    if counts["unknown"]:
+        print(f"[UNKNOWN] {stage}: {counts['unknown']}")
+
+
+def _reset_pipeline_metrics() -> None:
+    with _PIPELINE_METRICS_LOCK:
+        for values in _PIPELINE_METRICS.values():
+            for key in values:
+                values[key] = 0
+
+
+def _increment_pipeline_metric(item, metric: str) -> None:
+    tour = _pipeline_tour(item)
+    with _PIPELINE_METRICS_LOCK:
+        _PIPELINE_METRICS[tour][metric] += 1
+
+
+def _match_identity(item: dict) -> tuple[str, str, object, str, object]:
+    p1_data = item.get("player1") or {}
+    p2_data = item.get("player2") or {}
+
+    p1 = (
+        p1_data.get("name")
+        or item.get("player_a")
+        or item.get("player1_name")
+        or "?"
+    )
+    p2 = (
+        p2_data.get("name")
+        or item.get("player_b")
+        or item.get("player2_name")
+        or "?"
+    )
+
+    p1_id = (
+        p1_data.get("id")
+        or item.get("player_a_id")
+        or item.get("player1_id")
+    )
+    p2_id = (
+        p2_data.get("id")
+        or item.get("player_b_id")
+        or item.get("player2_id")
+    )
+
+    tournament = (
+        item.get("tournament_name")
+        or item.get("tournament")
+        or item.get("tournamentId")
+        or "?"
+    )
+
+    return str(tournament), str(p1), p1_id, str(p2), p2_id
+
+
+def _wta_trace(item: dict, stage: str, detail: str = "") -> None:
+    """Log detalhado apenas para WTA, evitando duplicar demasiado o output ATP."""
+    if _pipeline_tour(item) != "wta":
+        return
+
+    tournament, p1, p1_id, p2, p2_id = _match_identity(item)
+    suffix = f" | {detail}" if detail else ""
+
+    print(
+        f"[WTA][{stage}] "
+        f"Tournament={tournament} | "
+        f"Players={p1} vs {p2} | "
+        f"Player IDs={p1_id}/{p2_id} | "
+        f"Tour=WTA"
+        f"{suffix}"
+    )
 
 
 def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dict]:
@@ -93,16 +229,19 @@ def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dic
             # sem info disponível (falha da API, sem cache, ou quota
             # esgotada antes de chegar a este torneio) — não arriscamos
             # incluir um Challenger/ITF por engano.
+            _wta_trace(match, "Eligible", "accepted=0 reason=tournament_info_none")
             continue
 
         tier = info.get("tier")
         if tier not in ALLOWED_TOURNAMENT_TIERS:
+            _wta_trace(match, "Eligible", f"accepted=0 reason=tier_not_allowed tier={tier!r}")
             continue
 
         match["tournament_name"] = info.get("name") or f"Torneio {tournament_id}"
         match["surface"] = info.get("surface") or "Desconhecido"
         match["tier"] = tier
         match["country"] = info.get("country")
+        _wta_trace(match, "Eligible", f"accepted=1 tier={tier!r} surface={match.get('surface')!r}")
         eligible.append(match)
 
     return eligible
@@ -733,13 +872,19 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
 
 def run() -> None:
     fetch_data.reset_rapidapi_call_count()  # zerar o contador de chamadas desta execução
+    _reset_pipeline_metrics()
+    print("[pipeline] diagnóstico ATP/WTA iniciado")
     raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
+    _log_pipeline_stage("Fixtures", raw_matches)
     print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
     raw_matches = _deduplicate_matches(raw_matches)
+    _log_pipeline_stage("Deduplicated", raw_matches)
     print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
 
     windowed = _filter_matches_in_window(raw_matches)
+    _log_pipeline_stage("Windowed", windowed)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
+    _log_pipeline_stage("Eligible", eligible)
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
 
@@ -751,11 +896,23 @@ def run() -> None:
     # sequencial que com muitos jogos chegava a ~30 min). Poucos workers para
     # não sobrecarregar a API — a pausa anti-429 no _rapidapi_get serializa
     # o espaçamento entre threads. A ordem final é reposta a seguir.
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _process_one(match):
         try:
             payload = _build_match_payload(match)
+            rich_present = bool(
+                payload.get("rich_stats_a")
+                or payload.get("rich_stats_b")
+                or payload.get("h2h")
+                or payload.get("recent_form_a")
+                or payload.get("recent_form_b")
+                or payload.get("current_season_a")
+                or payload.get("current_season_b")
+            )
+            feature_keys = sorted((payload.get("features") or {}).keys())
+            _wta_trace(match, "Rich Data", f"present={int(rich_present)}")
+            _wta_trace(match, "Features", f"present={int(bool(feature_keys))} keys={feature_keys[:15]}")
             # Saltar a análise do Claude para SUPERFAVORITOS (odd <= 1.09):
             # a esse preço não há valor de mercado a observar, por isso gastar
             # tokens do Claude não se justifica. O jogo continua a sair no
@@ -764,9 +921,15 @@ def run() -> None:
             odds = payload.get("market_odds_decimal") or {}
             odds_vals = [v for v in odds.values() if isinstance(v, (int, float)) and v > 1]
             if odds_vals and min(odds_vals) <= SKIP_ANALYSIS_ODDS_THRESHOLD:
+                _increment_pipeline_metric(match, "analysis_skipped")
+                _wta_trace(match, "Claude", "requested=0 reason=superfavorite")
                 result = _factual_only_result(payload)
                 return (payload, result)
+            _increment_pipeline_metric(match, "analysis_requested")
+            _wta_trace(match, "Claude", f"requested=1 mode={os.getenv('LLM_MODE', 'configured')}")
             result = analyze_match(payload)
+            _increment_pipeline_metric(match, "analysis_completed")
+            _wta_trace(match, "Claude", f"completed=1 result_present={int(bool(result))}")
             result = _enforce_minimum_flag(payload, result)
             # Opção B: os pontos-chave factuais são gerados pelo BOT (não pelo
             # Claude, que já não os escreve). Injetamos aqui a partir das features.
@@ -776,13 +939,74 @@ def run() -> None:
             p1 = (match.get("player1") or {}).get("name", "?")
             p2 = (match.get("player2") or {}).get("name", "?")
             print(f"[aviso] falha ao analisar {p1} vs {p2}: {exc}")
+            _increment_pipeline_metric(match, "process_failed")
+            traceback.print_exc()
             return None
 
-    analyses = []
+    analyses_by_index = {}
+    thread_stats = {
+        tour: {"submitted": 0, "completed": 0, "none": 0, "exceptions": 0, "analyses": 0}
+        for tour in ("atp", "wta", "unknown")
+    }
+
     with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
-        for res in executor.map(_process_one, eligible):
-            if res is not None:
-                analyses.append(res)
+        future_meta = {}
+
+        for index, match in enumerate(eligible):
+            tour = _pipeline_tour(match)
+            thread_stats[tour]["submitted"] += 1
+            future = executor.submit(_process_one, match)
+            future_meta[future] = (index, match, tour)
+
+        for future in as_completed(future_meta):
+            index, match, tour = future_meta[future]
+            thread_stats[tour]["completed"] += 1
+
+            try:
+                res = future.result()
+            except Exception as exc:
+                thread_stats[tour]["exceptions"] += 1
+                print(
+                    f"[{tour.upper()}][ThreadPool] EXCEPTION "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                traceback.print_exc()
+                continue
+
+            if res is None:
+                thread_stats[tour]["none"] += 1
+                _wta_trace(match, "ThreadPool", "result=None")
+                continue
+
+            analyses_by_index[index] = res
+            thread_stats[tour]["analyses"] += 1
+            _wta_trace(match, "ThreadPool", "result=analysis")
+
+    analyses = [
+        analyses_by_index[index]
+        for index in sorted(analyses_by_index)
+    ]
+
+    for tour in ("atp", "wta"):
+        stats = thread_stats[tour]
+        print(
+            f"[{tour.upper()}] ThreadPool: "
+            f"submitted={stats['submitted']} "
+            f"completed={stats['completed']} "
+            f"none={stats['none']} "
+            f"exceptions={stats['exceptions']} "
+            f"analyses={stats['analyses']}"
+        )
+
+        metrics = _PIPELINE_METRICS[tour]
+        print(
+            f"[{tour.upper()}] Análise Claude/LLM: "
+            f"requested={metrics['analysis_requested']} "
+            f"completed={metrics['analysis_completed']} "
+            f"skipped={metrics['analysis_skipped']} "
+            f"process_failed={metrics['process_failed']} "
+            f"mode={os.getenv('LLM_MODE', 'configured')}"
+        )
 
     if not analyses:
         # A3 da auditoria (28/07/2026): terminar "verde" sem qualquer
@@ -821,7 +1045,13 @@ def run() -> None:
 
     match_reports = []  # (payload, result, url_ou_None)
     generated_slugs = []
+    html_stats = {
+        "atp": {"success": 0, "failed": 0},
+        "wta": {"success": 0, "failed": 0},
+        "unknown": {"success": 0, "failed": 0},
+    }
     for payload, result in analyses:
+        tour = _pipeline_tour(payload)
         # nome de ficheiro único e estável por jogo+dia
         slug = _slugify(f"{payload['player_a']}-vs-{payload['player_b']}-{today_str}")
         filename = f"{slug}.html"
@@ -831,10 +1061,22 @@ def run() -> None:
                 f.write(html_page)
             url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/{filename}"
             generated_slugs.append((payload, result, slug))
+            html_stats[tour]["success"] += 1
+            _wta_trace(payload, "HTML", f"generated=1 filename={filename}")
         except Exception as exc:
             print(f"[aviso] falha a gerar HTML para {payload['player_a']} vs {payload['player_b']}: {exc}")
+            html_stats[tour]["failed"] += 1
+            _wta_trace(payload, "HTML", f"generated=0 error={type(exc).__name__}: {exc}")
+            traceback.print_exc()
             url = None
         match_reports.append((payload, result, url))
+
+    for tour in ("atp", "wta"):
+        print(
+            f"[{tour.upper()}] HTML: "
+            f"success={html_stats[tour]['success']} "
+            f"failed={html_stats[tour]['failed']}"
+        )
 
     # Índice do dia: uma página que lista todos os jogos, para o Netlify
     # ter uma raiz navegável (e evitar o "Page not found").
@@ -878,6 +1120,17 @@ def run() -> None:
     for i, chunk in enumerate(chunks):
         prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
         send_message(prefix + chunk)
+    telegram_counts = _pipeline_counts(match_reports)
+    for tour in ("atp", "wta"):
+        print(
+            f"[{tour.upper()}] Telegram: "
+            f"reports_in_summary={telegram_counts[tour]} "
+            f"chunks_sent={len(chunks)}"
+        )
+
+    for payload, result, url in match_reports:
+        _wta_trace(payload, "Telegram", f"sent=1 report_url={int(bool(url))}")
+
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
 
     # Registo do consumo da RapidAPI nesta execução (medição de quota).
