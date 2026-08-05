@@ -57,7 +57,18 @@ from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
 
 
 # Instrumentação temporária da auditoria ATP/WTA.
-_WTA_PIPELINE_OBSERVABILITY = True
+def _env_flag(name: str, default: bool = False) -> bool:
+    """Lê uma variável de ambiente booleana de forma explícita."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+_WTA_PIPELINE_OBSERVABILITY = _env_flag(
+    "WTA_PIPELINE_OBSERVABILITY",
+    default=False,
+)
 
 _PIPELINE_METRICS_LOCK = threading.Lock()
 _PIPELINE_METRICS = {
@@ -770,6 +781,8 @@ def _build_match_payload(match: dict) -> dict:
     payload = {
         "player_a": player_a,
         "player_b": player_b,
+        "player_a_id": _pid_a,
+        "player_b_id": _pid_b,
         "tournament": tournament,
         "tier": match["tier"],
         "surface": surface,
