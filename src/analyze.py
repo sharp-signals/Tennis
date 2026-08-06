@@ -90,7 +90,7 @@ from .llm_provider import get_llm_provider
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-08-02-radical"
+PROMPT_VERSION = "2026-08-06-trading-report"
 
 
 def _payload_hash(llm_data: dict, provider_name: str) -> str:
@@ -239,48 +239,32 @@ Jogador com ranking baixo (fora do top ~150) pode jogar nesses níveis sem
 aparecer — um "hiato" longo (4-5+ meses) + ranking alto pode ser só falta
 de cobertura, não inatividade. Assinala como transparência, não diagnóstico.
 
-FORMATO DE SAÍDA — objeto JSON, APENAS análise de mercado. Os factos (ranking,
-forma, época, piso, H2H, serviço, recuperação de set) já aparecem no relatório,
-gerados automaticamente. NÃO os repitas em lado nenhum. Tu és um analista de
-MERCADO: a única pergunta é "onde há valor face às odds?".
+FORMATO DE SAÍDA — objeto JSON, APENAS a leitura de mercado de alto nível. Os
+factos (ranking, forma, piso, H2H, serviço), o Market Overview (interesse de
+cada mercado) e os fatores decisivos são gerados AUTOMATICAMENTE pelo sistema e
+já aparecem no relatório. NÃO os repitas. Tu escreves só DOIS textos de
+interpretação. A tua pergunta: "onde há (ou não) valor face às odds?".
 
-⚠️ REGRAS DE TAMANHO (obrigatórias — respostas longas são cortadas e perdem-se):
-- Sê TELEGRÁFICO. Cada campo tem um limite de caracteres. NÃO os excedas.
-- NUNCA cites números de ranking/forma/época no texto (ex: "#72 vs #218",
-  "60% vs 30%"). Esses factos já estão no relatório. Se os escreveres, estás
-  a desperdiçar espaço e a repetir o que já se vê.
-- NÃO expliques o teu raciocínio nem comentes as features ("a feature X diz").
-  Escreve só a CONCLUSÃO de mercado.
+⚠️ REGRAS (obrigatórias — respostas longas são cortadas e perdem-se):
+- Sê TELEGRÁFICO. Respeita os limites de caracteres.
+- NUNCA cites números de ranking/forma/época (ex: "#72 vs #218", "60% vs 30%").
+  Já estão no relatório. Escreve CONCLUSÕES de mercado, não factos.
+- NÃO expliques o teu raciocínio nem comentes as features.
+- Linguagem de OBSERVAÇÃO: "favorito do mercado" (não "justo"), "possível valor
+  a acompanhar" (nunca "há valor" ou "apostar"/"recomendo").
 
 Campos (todos obrigatórios):
-- "flag": "{FLAG_HIGH_SIGNAL}" (divergência forte), "{FLAG_UNCERTAIN}"
-  (equilibrado/dados insuficientes) ou "{FLAG_ROUTINE}" (sem sinal).
-- "signal_strength": inteiro 0-100 (força da evidência; juízo, não medida).
-- "confidence_reason": 1 frase curta (MÁX 100 caracteres).
-- "summary_line": 1 frase (MÁX 120 caracteres), sinal principal.
-- "markets": lista de 1-3 objetos — os mercados com potencial. Cada objeto:
-  {{"mercado": "<nome curto, ex: 'Over 22.5 games'>", "confianca":
-  "alta"|"média"|"baixa", "motivo": "<MÁX 90 caracteres, porquê>"}}.
-  Se nenhum mercado tem valor, devolve [] (lista vazia).
-- "discrepancies": lista de 0-4 objetos {{"weight": "forte"|"moderado"|"fraco",
-  "text": "<MÁX 110 caracteres: o dado + o mercado, 1 frase telegráfica>"}}.
-  "forte" = amostra 100+ e divergência clara; "moderado" = 30-100; "fraco" =
-  <30. NÃO dupliques dois lados do mesmo cenário. Sem discrepância real → [].
-- "risks": lista de 0-3 strings CURTAS (MÁX 70 caracteres cada) — os
-  contra-argumentos. Ex: "Favorito inconsistente", "Pouca amostra em hard".
-  Sem riscos relevantes → [].
-- "verdict": a conclusão de mercado. MÁX 400 caracteres (≈4 frases). Diz onde
-  está (ou não) o valor, pré-live ou ao vivo. "favorito do mercado" (não
-  "justo"); "possível valor a observar" (nunca "há valor"). Se o mercado está
-  alinhado, di-lo em 1 frase. SEM factos de jogadores, SÓ leitura de mercado.
-
-Padrões de mercado a caçar (para o verdict/markets, quando se aplicam):
-- Recupera bem de 1º set perdido (amostra grande) → observar entrada ao vivo se perder 1º set.
-- Ambos fortes em set decisivo → observar "vai a set decisivo"/"over sets".
-- Favorito ganha por erro alheio vs adversário consistente → observar underdog.
-- Um muito mais fresco → observar "over games"/o mais fresco.
-Regra de ouro: mercado corresponde EXATO à estatística. Sempre OBSERVAÇÃO,
-nunca "aposta"/"recomendo".
+- "flag": "{FLAG_HIGH_SIGNAL}" (divergência forte face ao mercado),
+  "{FLAG_UNCERTAIN}" (equilibrado/dados insuficientes) ou "{FLAG_ROUTINE}"
+  (mercado alinhado, sem sinal).
+- "signal_strength": inteiro 0-100 (força da evidência de divergência; juízo).
+- "executive_summary": 2-4 frases (MÁX 350 caracteres). Visão geral: o mercado
+  está ajustado? há divergência? onde está o maior interesse? Linguagem de trader.
+- "verdict": a conclusão final de mercado (MÁX 400 caracteres, ≈4 frases). Onde
+  está (ou não) o valor, pré-live ou ao vivo. Se o mercado está alinhado, di-lo.
+  Padrões a considerar quando se aplicam: recuperação de 1º set → entrada ao
+  vivo; ambos fortes em set decisivo → "vai a set decisivo"; favorito ganha por
+  erro alheio → valor no underdog; um muito mais fresco → "over games".
 
 Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
 """
@@ -634,7 +618,12 @@ def analyze_match(match_data: dict) -> dict:
     provider_response = provider.generate(
         system_prompt=SYSTEM_PROMPT,
         user_prompt=user_prompt,
-        max_tokens=5500,
+        # Teto de output: 1500. O novo formato pede só 2 textos curtos
+        # (executive_summary ≤350 chars + verdict ≤400 chars) + flag/signal —
+        # o output legítimo ronda os ~400-600 tokens. 1500 dá margem larga
+        # sem cortar, e trava qualquer divagação. A poupança real vem de o
+        # Claude escrever MENOS (2 campos, não 6), não só do teto.
+        max_tokens=1500,
         metadata=match_data,
     )
     # Logging de custo real, normalizado entre providers.
@@ -668,7 +657,15 @@ def analyze_match(match_data: dict) -> dict:
         raw_text = raw_text.strip()
 
     def _save_and_return(res: dict) -> dict:
-        """Grava o resultado na cache persistente apenas quando aplicável."""
+        """Grava o resultado na cache persistente apenas quando aplicável.
+        Aplica limites por código aos textos do Claude (garante output curto)."""
+        def _cut(s, n):
+            s = str(s or "")
+            return s if len(s) <= n else s[:n].rstrip() + "…"
+        if res.get("executive_summary"):
+            res["executive_summary"] = _cut(res["executive_summary"], 350)
+        if res.get("verdict"):
+            res["verdict"] = _cut(res["verdict"], 400)
         if provider.persist_cache:
             try:
                 os.makedirs(_ANALYSIS_CACHE_DIR, exist_ok=True)
