@@ -47,7 +47,7 @@ jobs:
           git config user.email "actions@github.com"
           git add data/ docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-            git commit -m "chore: atualizar caches e relatórios [skip ci]"
+            git commit -m "chore: atualizar caches e relatórios"
             # Integrar mudanças remotas antes de enviar (evita o erro
             # "! [rejected] ... fetch first" quando o repo avançou entretanto,
             # ex: substituições manuais de ficheiros). Rebase por cima do
