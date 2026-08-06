@@ -510,18 +510,15 @@ def get_history(tour: str) -> pd.DataFrame:
         df = _load_tennismylife(tour)
         source = "tennismylife"
     else:
-        # Reativado (28/07/2026): o repositório tennis_wta do Sackmann
-        # voltou a ficar disponível — confirmado ao vivo. Passa a ser a
-        # fonte principal para WTA (a TennisMyLife nunca teve WTA).
-        df = _load_sackmann_multi_year(tour, HISTORY_YEARS_TO_LOAD)
-        source = "sackmann (multi-ano)"
-
-    if df is None or df.empty:
-        df = _load_sackmann(tour, year)
-        source = "sackmann"
-    if df is None or df.empty:
+        # WTA: fonte principal é o tennis-data.co.uk (histórico estável de
+        # vários anos). O Sackmann foi DESATIVADO da cadeia (02/08/2026): o
+        # repositório tennis_wta anda indisponível (404) e só gerava dezenas
+        # de avisos no log; o WTA já era servido na prática pelo tennis-data.
+        # A RapidAPI complementa por jogo (H2H/forma) no main. As funções
+        # _load_sackmann* ficam no ficheiro, apenas não são chamadas.
         df = _load_tennisdata_couk_multi_year(tour, HISTORY_YEARS_TO_LOAD)
         source = "tennisdata.co.uk (multi-ano)"
+
     if df is None:
         print(f"[aviso] nenhuma fonte histórica disponível para {tour}.")
         df = pd.DataFrame()
