@@ -3,7 +3,7 @@
 Bot de análise **pré-live** de ténis (ATP/WTA). Para cada jogo de um torneio
 seguido, recolhe dados de várias fontes, gera um relatório visual com uma
 **leitura de mercado** (discrepâncias e pontos a observar), publica-o online
-e envia um resumo para o Telegram.
+e envia um resumo para o Telegrram.
 
 > **Importante:** o bot **não recomenda apostas** e **não calcula edge nem
 > probabilidade própria**. Sinaliza divergências entre os dados e o mercado e
