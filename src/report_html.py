@@ -489,73 +489,257 @@ def _build_charts(payload: dict) -> str:
     return f'<section class="charts">{"".join(charts)}</section>'
 
 
-def _build_analysis_body(result: dict) -> str:
+def _compute_model_vs_market(payload):
+    """Model vs Market (Python): prob do mercado (odds s/ margem) vs inclinação
+    do modelo (dimensões lideradas nas features). Leitura visual de divergência."""
+    a = payload.get("player_a", "A")
+    b = payload.get("player_b", "B")
+    odds = payload.get("market_odds_decimal") or {}
+    oa = ob = None
+    for k, v in odds.items():
+        if not isinstance(v, (int, float)) or v <= 1:
+            continue
+        if k == "player_a" or (a and a.split()[-1].lower() in k.lower()):
+            oa = v
+        elif k == "player_b" or (b and b.split()[-1].lower() in k.lower()):
+            ob = v
+    if oa is None or ob is None:
+        vals = [v for v in odds.values() if isinstance(v, (int, float)) and v > 1]
+        if len(vals) == 2:
+            oa, ob = vals[0], vals[1]
+    market = None
+    if oa and ob:
+        inv_a, inv_b = 1 / oa, 1 / ob
+        tot = inv_a + inv_b
+        market = {"a": round(100 * inv_a / tot), "b": round(100 * inv_b / tot)}
+    feats = payload.get("features") or {}
+    lead_a = lead_b = 0
+    for d in ("ranking", "forma_recente", "epoca_atual", "piso", "servico", "h2h"):
+        f = feats.get(d)
+        if not isinstance(f, dict):
+            continue
+        lider = f.get("lider") or f.get("mais_fresco")
+        if lider == a:
+            lead_a += 1
+        elif lider == b:
+            lead_b += 1
+    total_dims = lead_a + lead_b
+    model = None
+    if total_dims > 0:
+        model = {"a": round(100 * lead_a / total_dims), "b": round(100 * lead_b / total_dims),
+                 "lead_a": lead_a, "lead_b": lead_b, "total": total_dims}
+    divergencia = None
+    if market and model:
+        gap = model["a"] - market["a"]
+        if abs(gap) >= 20:
+            divergencia = {"gap": abs(gap), "favorecido": a if gap > 0 else b}
+    return {"market": market, "model": model, "divergencia": divergencia}
+
+
+def _compute_fatores_decisivos(payload):
+    """5 bullets factuais curtos, das features (substitui key_points do Claude)."""
+    f = payload.get("features") or {}
+    bullets = []
+    rk = f.get("ranking")
+    if isinstance(rk, dict) and rk.get("lider") not in (None, "igual"):
+        diff = rk.get("diff", 0)
+        intensidade = "clara" if diff >= 20 else ("moderada" if diff >= 8 else "ligeira")
+        bullets.append(f"Ranking favorece {rk['lider']} ({intensidade}).")
+    sv = f.get("servico")
+    if isinstance(sv, dict):
+        if sv.get("lider") in (None, "igual") or sv.get("diff", 0) < 3:
+            bullets.append("Serviço muito equilibrado.")
+        else:
+            bullets.append(f"Serviço favorece {sv['lider']}.")
+    fr = f.get("forma_recente")
+    if isinstance(fr, dict):
+        if fr.get("lider") in (None, "igual") or fr.get("diff", 0) < 10:
+            bullets.append("Forma recente semelhante.")
+        else:
+            bullets.append(f"Forma recente favorece {fr['lider']}.")
+    ps = f.get("piso")
+    if isinstance(ps, dict):
+        if ps.get("lider") in (None, "igual") or ps.get("diff", 0) < 5:
+            bullets.append("Sem vantagem significativa na superfície.")
+        else:
+            bullets.append(f"Superfície favorece {ps['lider']}.")
+    frescura = f.get("frescura")
+    if isinstance(frescura, dict) and frescura.get("mais_fresco") not in (None, "igual"):
+        ja, jb = frescura.get("jogos_7d_a"), frescura.get("jogos_7d_b")
+        if ja is not None and jb is not None and abs(ja - jb) >= 2:
+            bullets.append(f"{frescura['mais_fresco']} chega mais fresco.")
+    return bullets[:5]
+
+
+def _compute_pontos_atencao(payload):
+    """Alertas/limitações factuais (sem H2H, amostra reduzida, sem fadiga)."""
+    pts = []
+    f = payload.get("features") or {}
+    h2h = (payload.get("h2h") or {}).get("overall") or {}
+    if not h2h.get("total_matches"):
+        pts.append("Sem confronto direto (H2H) entre os jogadores.")
+    elif h2h.get("total_matches", 0) < 3:
+        pts.append(f"H2H com amostra reduzida ({h2h['total_matches']} jogo(s)).")
+    piso = f.get("piso")
+    if isinstance(piso, dict):
+        amostra = min(piso.get("amostra_a") or 999, piso.get("amostra_b") or 999)
+        if amostra < 30:
+            pts.append(f"Amostra reduzida na superfície ({amostra} jogos).")
+    fa = payload.get("fatigue_signal_a") or {}
+    fb = payload.get("fatigue_signal_b") or {}
+    if (fa.get("matches_last_7d") in (0, None)) and (fb.get("matches_last_7d") in (0, None)):
+        pts.append("Sem sinais de fadiga recente.")
+    ea = f.get("epoca_atual")
+    if isinstance(ea, dict):
+        amostra_ep = min(ea.get("amostra_a") or 999, ea.get("amostra_b") or 999)
+        if amostra_ep < 15:
+            pts.append(f"Poucos jogos na época atual ({amostra_ep}).")
+    return pts[:5]
+
+
+def _build_top_verdict(result: dict) -> str:
+    """Veredicto no TOPO (logo após o cabeçalho) — é o que capta a atenção."""
+    verdict = result.get("verdict")
+    if not verdict:
+        return ""
+    flag = result.get("flag", "")
+    return (f'<div class="verdict-box top"><div class="verdict-label">✅ Veredicto</div>'
+            f'<div class="verdict-text">{_markdown_inline(verdict)}</div></div>')
+
+
+def _compute_market_overview(payload, mvm):
+    """Market Overview (Python): interesse de cada mercado padrão, das features
+    e do model-vs-market. Interesse 0-3 com regra factual transparente."""
+    f = payload.get("features") or {}
+    a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
+    market = mvm.get("market"); model = mvm.get("model"); div = mvm.get("divergencia")
+    fav = None
+    if market:
+        fav = a if market["a"] >= market["b"] else b
+    linhas = []
+    # Moneyline Favorito
+    i, t = 1, "Alinhado com o mercado"
+    if div and fav and div["favorecido"] == fav:
+        i, t = 3, "Favorito possivelmente subvalorizado"
+    elif div and fav and div["favorecido"] != fav:
+        i, t = 0, "Modelo não confirma o favorito"
+    linhas.append(("Moneyline Favorito", i, t))
+    # Moneyline Underdog
+    und = b if fav == a else a
+    i, t = 0, "Sem edge relevante"
+    if div and div["favorecido"] == und:
+        i, t = 3, "Underdog com valor segundo o modelo"
+    linhas.append(("Moneyline Underdog", i, t))
+    # Total Games
+    i, t = 1, "Sem sinal claro"
+    if market:
+        margem = abs(market["a"] - market["b"])
+        equilibrio = model and abs(model["a"] - model["b"]) <= 40
+        if margem <= 20 or equilibrio:
+            i, t = 2, "Encontro pode ser equilibrado — acompanhar"
+        if margem <= 12:
+            i, t = 3, "Jogo renhido provável — acompanhar linhas"
+    linhas.append(("Total Games", i, t))
+    # Handicap Games
+    i, t = 1, "Sem sinal claro"
+    if market:
+        margem = abs(market["a"] - market["b"])
+        if 15 <= margem <= 45:
+            i, t = 2, "Handicap pode ter valor — acompanhar"
+        elif margem < 15:
+            i, t = 2, "Jogo equilibrado — handicap curto a acompanhar"
+    linhas.append(("Handicap Games", i, t))
+    # Tie-break
+    i, t = 1, "Apenas se houver linhas interessantes"
+    sv = f.get("servico")
+    if isinstance(sv, dict) and sv.get("diff", 99) < 3:
+        i, t = 2, "Serviços equilibrados — tiebreaks possíveis"
+    linhas.append(("Tie-break", i, t))
+    return linhas
+
+
+def _render_interesse_dots(nivel):
+    """Bolinhas de interesse: 3 pontos, preenchidos conforme o nível (0-3).
+    Cor: verde para 2-3, âmbar para 1, vermelho para 0 (sem edge)."""
+    if nivel == 0:
+        cor = "dot-red"
+        cheios = 1  # 1 ponto vermelho
+    elif nivel == 1:
+        cor = "dot-amber"
+        cheios = 1
+    else:
+        cor = "dot-green"
+        cheios = nivel
+    dots = ""
+    for k in range(3):
+        if k < cheios:
+            dots += f'<span class="mo-dot {cor}"></span>'
+        else:
+            dots += '<span class="mo-dot dot-empty"></span>'
+    return dots
+
+
+def _build_analysis_body(result: dict, payload: dict) -> str:
     """
-    MEDIDA 6: renderiza a parte ANALÍTICA que o Claude devolve — em campos
-    estruturados (key_points, discrepancies, verdict), não um markdown
-    gigante. Dá destaque visual forte aos alertas 🔴 (topo e fundo), como
-    pedido: leitura objetiva e alertas bem visíveis.
+    Nova estrutura orientada a TRADING. O Claude escreve só 3 blocos curtos
+    (Executive Summary, Mercados a acompanhar, Veredicto — este vai ao topo).
+    Tudo o resto (Model vs Market, Fatores decisivos, Pontos de atenção) é
+    gerado pelo PYTHON a partir das features. Zero descrição pelo Claude.
     """
     out = []
 
-    # Pontos-chave
-    kps = result.get("key_points") or []
-    if kps:
-        items = "".join(f'<li>{_markdown_inline(k)}</li>' for k in kps)
-        out.append(f'<h2 class="sec-main">🔑 Pontos-chave</h2><ul class="kp-list">{items}</ul>')
+    # 1. EXECUTIVE SUMMARY (Claude, curto)
+    summary = result.get("executive_summary") or result.get("summary_line")
+    if summary:
+        out.append('<h2 class="sec-main">📋 Executive Summary</h2>')
+        out.append(f'<div class="exec-summary">{_markdown_inline(summary)}</div>')
 
-    # Mercados com potencial (tabela) — o Claude preenche mercado/confiança/motivo
-    markets = result.get("markets") or []
-    if markets:
-        out.append('<h3 class="sec">💰 Mercados com maior potencial</h3>')
-        out.append('<table class="markets-table"><thead><tr>'
-                   '<th>Mercado</th><th>Confiança</th><th>Motivo</th>'
-                   '</tr></thead><tbody>')
-        for m in markets:
-            if not isinstance(m, dict):
-                continue
-            merc = _esc(m.get("mercado", ""))
-            conf = (m.get("confianca") or "baixa").lower()
-            motivo = _markdown_inline(m.get("motivo", ""))
-            cls = {"alta": "conf-alta", "média": "conf-media", "media": "conf-media",
-                   "baixa": "conf-baixa"}.get(conf, "conf-baixa")
-            out.append(f'<tr><td><b>{merc}</b></td>'
-                       f'<td><span class="conf-badge {cls}">{_esc(conf)}</span></td>'
-                       f'<td>{motivo}</td></tr>')
-        out.append('</tbody></table>')
-
-    # Discrepâncias (com selos) + legenda
-    discs = result.get("discrepancies") or []
-    if discs:
-        out.append('<h3 class="sec">🎯 Discrepâncias e mercados a observar</h3>')
+    # 2. MODEL vs MARKET (Python) — divergência num relance
+    mvm = _compute_model_vs_market(payload)
+    if mvm.get("market") and mvm.get("model"):
+        a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
+        mk, md = mvm["market"], mvm["model"]
+        div = mvm.get("divergencia")
+        if div:
+            div_txt = (f'<div class="mvm-diverg">⚠️ Modelo inclina-se mais para '
+                       f'<b>{_esc(div["favorecido"])}</b> do que o mercado '
+                       f'(diferença de {div["gap"]} p.p.) — possível ponto a investigar.</div>')
+        else:
+            div_txt = '<div class="mvm-align">✓ Modelo e mercado alinhados — sem divergência aparente.</div>'
+        out.append('<h3 class="sec">⚖️ Model vs Market</h3>')
         out.append(
-            '<div class="selos-legenda">'
-            '<span><b class="w-dot red"></b> forte</span>'
-            '<span><b class="w-dot amber"></b> moderado</span>'
-            '<span><b class="w-dot white"></b> fraco / contextual</span>'
-            '<div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div>'
-            '</div>'
-        )
-        for d in discs:
-            weight = (d.get("weight") or "").lower() if isinstance(d, dict) else ""
-            text = d.get("text", "") if isinstance(d, dict) else str(d)
-            cls = {"forte": "disc-strong", "moderado": "disc-mid", "fraco": "disc-weak"}.get(weight, "disc-weak")
-            emoji = {"forte": "🔴", "moderado": "🟡", "fraco": "⚪"}.get(weight, "⚪")
-            out.append(f'<div class="disc-item {cls}"><span class="disc-emoji">{emoji}</span><span class="disc-text">{_markdown_inline(text)}</span></div>')
+            f'<table class="mvm-table"><thead><tr><th></th>'
+            f'<th>{_esc(a)}</th><th>{_esc(b)}</th></tr></thead><tbody>'
+            f'<tr><td>Mercado (s/ margem)</td><td>{mk["a"]}%</td><td>{mk["b"]}%</td></tr>'
+            f'<tr><td>Modelo (sinais)</td><td>{md["a"]}%</td><td>{md["b"]}%</td></tr>'
+            f'</tbody></table>{div_txt}')
 
-    # Riscos (contra-argumentos à leitura) — o outro lado, para não apostar cego
-    risks = result.get("risks") or []
-    if risks:
-        out.append('<h3 class="sec">⚠️ Principais riscos</h3>')
-        out.append('<ul class="risks-list">')
-        for rk in risks:
-            out.append(f'<li>{_markdown_inline(str(rk))}</li>')
-        out.append('</ul>')
+    # 3. MARKET OVERVIEW (Python) — panorama de todos os mercados padrão
+    overview = _compute_market_overview(payload, mvm)
+    if overview:
+        out.append('<h3 class="sec">📊 Market Overview</h3>')
+        out.append('<table class="mo-table"><thead><tr>'
+                   '<th>Mercado</th><th>Interesse</th><th>Leitura</th>'
+                   '</tr></thead><tbody>')
+        for merc, nivel, leitura in overview:
+            dots = _render_interesse_dots(nivel)
+            out.append(f'<tr><td><b>{_esc(merc)}</b></td>'
+                       f'<td class="mo-dots">{dots}</td>'
+                       f'<td>{_esc(leitura)}</td></tr>')
+        out.append('</tbody></table>')
+        out.append('<div class="mo-nota">Interesse calculado a partir dos dados — nunca é recomendação de aposta.</div>')
 
-    # Veredicto — caixa destacada
-    verdict = result.get("verdict")
-    if verdict:
-        out.append(f'<div class="verdict-box"><div class="verdict-label">✅ Veredicto</div><div class="verdict-text">{_markdown_inline(verdict)}</div></div>')
+    # 4. FATORES DECISIVOS (Python) — 5 bullets curtos das features
+    fatores = _compute_fatores_decisivos(payload)
+    if fatores:
+        items = "".join(f'<li>{_esc(f)}</li>' for f in fatores)
+        out.append(f'<h3 class="sec">🎯 Fatores decisivos</h3><ul class="fatores-list">{items}</ul>')
+
+    # 5. PONTOS DE ATENÇÃO (Python) — limitações/alertas factuais
+    atencao = _compute_pontos_atencao(payload)
+    if atencao:
+        items = "".join(f'<li>{_esc(p)}</li>' for p in atencao)
+        out.append(f'<h3 class="sec">⚠️ Pontos de atenção</h3><ul class="atencao-list">{items}</ul>')
 
     return "".join(out)
 
@@ -697,15 +881,16 @@ def build_report_html(payload: dict, result: dict) -> str:
             f'de discrepância — ver "Discrepâncias" abaixo</div>'
         )
 
-    # MEDIDA 6: o Claude devolve só a análise (pontos-chave, discrepâncias,
-    # veredicto), em vez do relatório inteiro. Se vier o formato antigo
-    # (full_report_markdown), usamo-lo por retrocompatibilidade.
+    # Nova estrutura de trading. Ordem: cabeçalho → VEREDICTO (topo, capta
+    # atenção) → análise de mercado → dados estatísticos (referência).
     if result.get("full_report_markdown"):
+        top_verdict = ""
         analysis_body = _render_markdown_body(result["full_report_markdown"])
+        body = charts + data_sections + analysis_body
     else:
-        analysis_body = _build_analysis_body(result)
-
-    body = charts + data_sections + analysis_body
+        top_verdict = _build_top_verdict(result)
+        analysis_body = _build_analysis_body(result, payload)
+        body = top_verdict + charts + analysis_body + data_sections
 
     return f"""<!DOCTYPE html>
 <html lang="pt">
@@ -784,6 +969,28 @@ body {{
 
 /* Veredicto — caixa destacada a fechar */
 .verdict-box {{ margin:24px 0 8px; padding:18px 20px; border-radius:12px; background:linear-gradient(180deg,rgba(78,205,196,0.12),var(--surface)); border:1px solid var(--mint); }}
+.verdict-box.top {{ margin:16px 0 20px; }}
+.exec-summary {{ background:var(--surface); border-left:3px solid var(--steel); padding:14px 16px; border-radius:8px; margin:8px 0 4px; font-size:15px; }}
+.mvm-table {{ width:100%; border-collapse:collapse; margin:8px 0; font-size:14px; }}
+.mvm-table th {{ text-align:center; padding:8px 10px; color:var(--dim); font-size:12px; text-transform:uppercase; border-bottom:1px solid var(--line); }}
+.mvm-table th:first-child {{ text-align:left; }}
+.mvm-table td {{ padding:9px 10px; border-bottom:1px solid var(--line); text-align:center; font-weight:600; }}
+.mvm-table td:first-child {{ text-align:left; font-weight:400; color:var(--dim); }}
+.mvm-diverg {{ background:rgba(230,180,60,0.12); border-left:3px solid var(--amber); padding:10px 14px; border-radius:8px; margin:6px 0; font-size:14px; }}
+.mvm-align {{ background:rgba(78,205,196,0.10); border-left:3px solid var(--mint); padding:10px 14px; border-radius:8px; margin:6px 0; font-size:14px; }}
+.fatores-list, .atencao-list {{ margin:8px 0; padding-left:22px; }}
+.fatores-list li {{ margin:6px 0; font-size:15px; }}
+.atencao-list li {{ margin:6px 0; font-size:14px; color:var(--dim); }}
+.mo-table {{ width:100%; border-collapse:collapse; margin:8px 0 4px; font-size:14px; }}
+.mo-table th {{ text-align:left; padding:8px 10px; color:var(--dim); font-size:12px; text-transform:uppercase; border-bottom:1px solid var(--line); }}
+.mo-table td {{ padding:10px; border-bottom:1px solid var(--line); vertical-align:middle; }}
+.mo-dots {{ white-space:nowrap; }}
+.mo-dot {{ display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:3px; }}
+.mo-dot.dot-green {{ background:var(--mint); }}
+.mo-dot.dot-amber {{ background:var(--amber); }}
+.mo-dot.dot-red {{ background:var(--red); }}
+.mo-dot.dot-empty {{ background:transparent; border:1px solid var(--line); }}
+.mo-nota {{ font-size:12px; color:var(--dim); font-style:italic; margin:4px 0 8px; }}
 .verdict-label {{ font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mint); font-weight:700; margin-bottom:6px; }}
 .verdict-text {{ font-size:16px; line-height:1.5; }}
 
