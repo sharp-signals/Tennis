@@ -49,7 +49,7 @@ from .config import (
 )
 from . import fetch_data
 from .analyze import analyze_match
-from .report_html import build_report_html
+from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
 
@@ -670,6 +670,13 @@ def _build_match_payload(match: dict) -> dict:
     # interpreta). Adiciona 'features' com quem lidera cada dimensão e a
     # magnitude — o Claude recebe as comparações prontas.
     payload["features"] = _compute_features(payload)
+    # Motor de divergência V3: calcula UMA vez aqui e partilha via payload
+    # com o analyze (Claude escreve alinhado) e o report_html (mostra o mesmo).
+    # Fonte única de verdade — bola, veredicto e Model vs Market coerentes.
+    try:
+        payload["divergencia"] = calcular_divergencia_publico(payload)
+    except Exception:
+        payload["divergencia"] = None
     return payload
 
 
