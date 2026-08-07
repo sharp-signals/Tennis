@@ -90,7 +90,7 @@ from .llm_provider import get_llm_provider
 _ANALYSIS_CACHE_DIR = os.path.join("data", "analysis_cache")
 # Versão do prompt: muda esta string sempre que o SYSTEM_PROMPT for alterado
 # de forma relevante, para invalidar a cache e forçar reanálise.
-PROMPT_VERSION = "2026-08-06-trading-report"
+PROMPT_VERSION = "2026-08-07-motor-divergencia-v3"
 
 
 def _payload_hash(llm_data: dict, provider_name: str) -> str:
@@ -258,13 +258,25 @@ Campos (todos obrigatórios):
   "{FLAG_UNCERTAIN}" (equilibrado/dados insuficientes) ou "{FLAG_ROUTINE}"
   (mercado alinhado, sem sinal).
 - "signal_strength": inteiro 0-100 (força da evidência de divergência; juízo).
-- "executive_summary": 2-4 frases (MÁX 350 caracteres). Visão geral: o mercado
-  está ajustado? há divergência? onde está o maior interesse? Linguagem de trader.
-- "verdict": a conclusão final de mercado (MÁX 400 caracteres, ≈4 frases). Onde
-  está (ou não) o valor, pré-live ou ao vivo. Se o mercado está alinhado, di-lo.
-  Padrões a considerar quando se aplicam: recuperação de 1º set → entrada ao
-  vivo; ambos fortes em set decisivo → "vai a set decisivo"; favorito ganha por
-  erro alheio → valor no underdog; um muito mais fresco → "over games".
+- "executive_summary": EXATAMENTE 4 frases curtas (MÁX 350 caracteres), nesta
+  ordem fixa: (1) estado do mercado — está eficiente ou há divergência? (2) há
+  edge/divergência e em que direção (usa a CLASSIFICAÇÃO DO MOTOR); (3) que
+  mercados merecem acompanhamento; (4) conclusão sobre a confiança da leitura.
+  Linguagem de trader, seca. NÃO repitas rankings/estatísticas (já estão nas
+  tabelas). Ex: "O modelo confirma o favoritismo e considera o mercado ajustado.
+  Não há divergência relevante na Moneyline. Total Games e Handicap merecem
+  acompanhamento pelo equilíbrio. Confiança elevada."
+- "verdict": conclusão final de mercado (MÁX 400 caracteres, ≈4 frases),
+  COERENTE com a classificação do motor. Se o motor diz "Mercado eficiente",
+  di-lo direto (sem inventar valor). Se diz divergência, assume-a com clareza —
+  SEM "mas por outro lado" a diluir. Onde está (ou não) o interesse analítico,
+  pré-live ou ao vivo. Nunca "apostar"/"recomendo"/"stake" — só "acompanhar",
+  "monitorizar", "possível interesse analítico". Padrões ao vivo quando se
+  aplicam: recuperação de 1º set, set decisivo, fadiga → over games.
+
+LINGUAGEM (obrigatório): frases curtas e diretas. PROIBIDO narrativo como
+"tem vindo a demonstrar", "ao longo da temporada", "é conhecido por". Vai
+direto ao mercado.
 
 Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
 """
@@ -550,7 +562,7 @@ def analyze_match(match_data: dict) -> dict:
         "layoff_return_stats_a", "layoff_return_stats_b",
         "round_stage_stats_a", "round_stage_stats_b",
     )
-    llm_data = {k: v for k, v in match_data.items() if k not in _REDUNDANT_FOR_LLM}
+    llm_data = {k: v for k, v in match_data.items() if k not in _REDUNDANT_FOR_LLM and k != "divergencia"}
     provider = get_llm_provider()
 
     # Enxugar ainda mais os rich_stats que vão ao Claude: manter só os
@@ -564,11 +576,36 @@ def analyze_match(match_data: dict) -> dict:
             scen = rs.get("scenarios")
             llm_data[_k] = {"scenarios": scen} if scen else None
 
+    # DIVERGÊNCIA JÁ CLASSIFICADA PELO MOTOR (Python): o Claude NÃO decide se
+    # há divergência nem a sua intensidade — isso é calculado pelo motor
+    # ponderado. O Claude recebe a classificação PRONTA e limita-se a
+    # INTERPRETÁ-LA em linguagem de trader. Isto garante que o texto do Claude
+    # nunca contradiz a bola/Model vs Market (fonte única de verdade).
+    _div = match_data.get("divergencia")
+    _div_bloco = ""
+    if _div and _div.get("classificacao"):
+        _clf = _div["classificacao"]
+        _fav = _div.get("favorecido")
+        _fatores = _div.get("fatores_chave") or []
+        _fat_txt = ", ".join(f"{f} (favorece {q})" for f, q in _fatores) if _fatores else "n/d"
+        _div_bloco = (
+            "\n\n### CLASSIFICAÇÃO DO MOTOR (já decidida — NÃO a contradigas):\n"
+            f"- Divergência: **{_clf['texto']}** (nível {_clf['nivel']}/3)\n"
+            f"- Gap modelo vs mercado: {_div.get('gap_pp', 0)} p.p.\n"
+            f"- Modelo inclina para: {_fav or 'nenhum (mercado eficiente)'}\n"
+            f"- Fatores que sustentam: {_fat_txt}\n"
+            "REGRA: escreve o executive_summary e o verdict COERENTES com esta "
+            "classificação. Se o motor diz 'Mercado eficiente', NÃO inventes "
+            "divergência. Se diz 'Divergência forte', assume-a com clareza (sem "
+            "'mas por outro lado'). Interpreta, não recalcules."
+        )
+
     user_prompt = (
         "Dados do jogo (JSON). O campo 'features' traz sinais JÁ CALCULADOS "
         "(quem lidera cada dimensão e a magnitude) — usa-os como base. Campos "
         "a null significam que a fonte não tinha esse dado:\n\n"
         + json.dumps(llm_data, ensure_ascii=False, indent=2, default=str)
+        + _div_bloco
     )
 
     # Cache por hash: se já analisámos este jogo com estes mesmos dados
