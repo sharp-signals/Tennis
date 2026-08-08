@@ -1244,6 +1244,193 @@ def compute_injury_signal(history: pd.DataFrame, player: str, lookback_matches: 
     }
 
 
+# ===== FASE 2: recolha RapidAPI para stats antes só no Sackmann =====
+_RECENT_STATS_CACHE: dict = {}
+_PROFILE_CACHE: dict = {}
+RECENT_STATS_CACHE_MAX_AGE_HOURS = 24 * 3
+
+
+def fetch_recent_stats(tour: str, player_id: int) -> Optional[dict]:
+    """Endpoint h2h/recent-stats/{tour}/{id}: serviço/resposta + sets decisivos."""
+    cache_key = f"{tour}:{player_id}"
+    cached = _RECENT_STATS_CACHE.get(cache_key)
+    if cached is not None:
+        age = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age < RECENT_STATS_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+    persistent = _read_player_cache_entry(tour, player_id, "recent_stats", RECENT_STATS_CACHE_MAX_AGE_HOURS)
+    if persistent is not None:
+        _RECENT_STATS_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": persistent}
+        return persistent
+    if not RAPIDAPI_KEY:
+        return None
+    url = f"{RAPIDAPI_BASE}/h2h/recent-stats/{tour}/{player_id}"
+    try:
+        resp = _rapidapi_get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        _RECENT_STATS_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        _write_player_cache_entry(tour, player_id, "recent_stats", data)
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter recent-stats ({tour}, id {player_id}): {exc}")
+        return None
+
+
+def fetch_player_profile(player_name: str) -> Optional[dict]:
+    """Endpoint ms-api/profile/{nome}: perfil do jogador (para a MÃO).
+    Usa o NOME (URL-encoded), não o ID."""
+    from urllib.parse import quote
+    cache_key = player_name.lower().strip()
+    cached = _PROFILE_CACHE.get(cache_key)
+    if cached is not None:
+        age = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age < 24 * 30:  # perfil muda raramente -> cache 30 dias
+            return cached["data"]
+    if not RAPIDAPI_KEY:
+        return None
+    url = f"{RAPIDAPI_BASE}/ms-api/profile/{quote(player_name)}"
+    try:
+        resp = _rapidapi_get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        _PROFILE_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter profile ({player_name}): {exc}")
+        return None
+
+
+def compute_serve_return_from_recent_stats(recent_stats: dict) -> Optional[dict]:
+    """Serviço/resposta do recent-stats (já em %)."""
+    if not isinstance(recent_stats, dict):
+        return None
+    rs = recent_stats.get("recentStats") or {}
+    ps = rs.get("playerStats") or {}
+    if not rs:
+        return None
+    def _pct(nk, dk):
+        num, den = ps.get(nk), ps.get(dk)
+        if num is None or not den:
+            return None
+        return round(100 * num / den, 1)
+    fw = rs.get("firstServeWinPer")
+    out = {
+        "avg_first_serve_won_pct": float(fw) if fw is not None else None,
+        "avg_second_serve_won_pct": float(rs["secondServeWinPer"]) if rs.get("secondServeWinPer") is not None else None,
+        "avg_break_points_saved_pct": float(rs["bpSavedPer"]) if rs.get("bpSavedPer") is not None else None,
+        "avg_break_points_converted_pct": float(rs["bpConvertedPer"]) if rs.get("bpConvertedPer") is not None else None,
+        "avg_first_serve_in_pct": _pct("firstServe", "firstServeOf"),
+    }
+    return out if out["avg_first_serve_won_pct"] is not None else None
+
+
+def compute_deciding_set_from_recent_stats(recent_stats: dict) -> Optional[dict]:
+    """Sets decisivos do recent-stats (yearStats)."""
+    if not isinstance(recent_stats, dict):
+        return None
+    ys = recent_stats.get("yearStats") or {}
+    pct = ys.get("decidingSetWinPer")
+    if pct is None:
+        return None
+    return {
+        "deciding_set_win_pct": float(pct),
+        "deciding_set_count": ys.get("decidingSetWinOf"),
+        "deciding_set_wins": ys.get("decidingSetWin"),
+    }
+
+
+def _extract_hand(plays_str) -> Optional[str]:
+    if not plays_str or not isinstance(plays_str, str):
+        return None
+    s = plays_str.lower()
+    if "left" in s:
+        return "L"
+    if "right" in s:
+        return "R"
+    return None
+
+
+def compute_hand_from_profile(profile: dict) -> Optional[str]:
+    """Mão do jogador do perfil ms-api."""
+    if not isinstance(profile, dict):
+        return None
+    d = profile.get("data", profile)
+    info = d.get("information") or {}
+    return _extract_hand(info.get("plays") or d.get("plays"))
+
+
+def compute_scenarios_from_past_matches(past_matches: list, player_id: int) -> Optional[dict]:
+    """Recuperação de 1º set a partir do score set-a-set ('result')."""
+    if not past_matches:
+        return None
+    fsl_win = fsl_tot = fsw_win = fsw_tot = 0
+    for m in past_matches:
+        if not isinstance(m, dict):
+            continue
+        result = m.get("result")
+        winner = m.get("match_winner")
+        p1, p2 = m.get("player1Id"), m.get("player2Id")
+        if not result or winner is None or player_id not in (p1, p2):
+            continue
+        sets = []
+        for token in str(result).split():
+            base = token.split("(")[0]
+            if "-" in base:
+                try:
+                    a, b = base.split("-")
+                    sets.append((int(a), int(b)))
+                except ValueError:
+                    continue
+        if not sets:
+            continue
+        sou_p1 = (player_id == p1)
+        s1a, s1b = sets[0]
+        ganhou_1set = (s1a > s1b) if sou_p1 else (s1b > s1a)
+        ganhou_jogo = (winner == player_id)
+        if ganhou_1set:
+            fsw_tot += 1
+            if ganhou_jogo:
+                fsw_win += 1
+        else:
+            fsl_tot += 1
+            if ganhou_jogo:
+                fsl_win += 1
+    out = {}
+    if fsl_tot:
+        out["first_set_lose_then_win_pct"] = round(100 * fsl_win / fsl_tot)
+        out["first_set_lose_count"] = fsl_tot
+    if fsw_tot:
+        out["first_set_win_then_win_pct"] = round(100 * fsw_win / fsw_tot)
+        out["first_set_win_count"] = fsw_tot
+    return out or None
+
+
+def compute_layoff_from_past_matches(past_matches: list, player_id: int, match_date) -> Optional[dict]:
+    """Regresso de lesão: maior gap entre jogos + dias desde o último."""
+    if not past_matches:
+        return None
+    datas = []
+    for m in past_matches:
+        if not isinstance(m, dict):
+            continue
+        if player_id not in (m.get("player1Id"), m.get("player2Id")):
+            continue
+        raw = m.get("date")
+        if not raw:
+            continue
+        try:
+            datas.append(datetime.fromisoformat(raw.replace("Z", "+00:00")))
+        except (ValueError, AttributeError):
+            continue
+    if len(datas) < 2:
+        return None
+    datas.sort(reverse=True)
+    dias_ultimo = (match_date - datas[0]).days if match_date else None
+    maior_gap = max((datas[i] - datas[i + 1]).days for i in range(len(datas) - 1))
+    return {"days_since_last_match": dias_ultimo, "days_out": maior_gap}
+
+
 def compute_serve_return_stats(history: pd.DataFrame, player: str, n_matches: int) -> Optional[dict]:
     """
     Médias de serviço/resposta nos últimos n_matches, agregadas a partir
