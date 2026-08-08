@@ -341,6 +341,35 @@ def _enforce_minimum_flag(payload: dict, result: dict) -> dict:
     return result
 
 
+def _fontes_divergem(sack, rapid, tol_pct=15):
+    """Compara o mesmo dado das duas fontes (Sackmann vs RapidAPI). Devolve
+    True se divergem significativamente (win% difere mais que tol_pct pontos).
+    Ambos no formato {wins, losses, matches}. Usado só para REGISTAR a
+    discrepância — a decisão de qual usar é sempre RapidAPI."""
+    def _pct(d):
+        if not d or not d.get("matches"):
+            return None
+        return 100 * d["wins"] / d["matches"]
+    pa, pb = _pct(sack), _pct(rapid)
+    if pa is None or pb is None:
+        return False  # falta uma fonte -> nada a comparar
+    return abs(pa - pb) > tol_pct
+
+
+def _fontes_divergem_serve(sack, rapid, tol_pct=10):
+    """Compara o 1º serviço ganho entre Sackmann e RapidAPI."""
+    if not sack or not rapid:
+        return False
+    sa = sack.get("avg_first_serve_won_pct")
+    ra = rapid.get("avg_first_serve_won_pct")
+    if sa is None or ra is None:
+        return False
+    # Sackmann pode estar em fração (0-1) ou %; normalizar
+    if sa <= 1:
+        sa *= 100
+    return abs(sa - ra) > tol_pct
+
+
 def _compute_features(payload: dict) -> dict:
     """
     Pré-calcula SINAIS comparativos a partir dos dados brutos, para o Claude
@@ -547,6 +576,16 @@ def _build_match_payload(match: dict) -> dict:
     surface_a = fetch_data.compute_surface_stats(history, player_a)
     surface_b = fetch_data.compute_surface_stats(history, player_b)
 
+    # Guardar os valores do Sackmann ANTES de a RapidAPI os sobrepor, para
+    # comparar as duas fontes e registar discrepâncias. A RapidAPI ganha
+    # sempre (paga, mais completa), mas queremos SABER quando divergem — é
+    # sinal de que uma fonte anda a falhar (tipicamente o Sackmann).
+    _sack = {
+        "h2h": h2h, "forma": (form_a, form_b), "epoca": (season_a, season_b),
+        "piso": (surface_a, surface_b),
+    }
+    _discrepancias = []  # lista de nomes de stats onde as fontes divergiram
+
     # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
     _recent_a_cache = _recent_b_cache = None
     if _pid_a is not None and _pid_b is not None:
@@ -578,6 +617,34 @@ def _build_match_payload(match: dict) -> dict:
             if _fb.get("season"): season_b = _fb["season"]
             if _fa.get("surface"): surface_a = _fa["surface"]
             if _fb.get("surface"): surface_b = _fb["surface"]
+
+            # COMPARAÇÃO DE FONTES: registar onde Sackmann e RapidAPI divergem
+            # (a RapidAPI já ganhou acima; isto é só para SABER). Compara o
+            # win% de cada stat/jogador; se diferir >15 p.p., regista.
+            _sf_a, _sf_b = _sack["forma"]
+            if _fontes_divergem(_sf_a, _fa.get("form")) or _fontes_divergem(_sf_b, _fb.get("form")):
+                _discrepancias.append("forma recente")
+            _ss_a, _ss_b = _sack["epoca"]
+            if _fontes_divergem(_ss_a, _fa.get("season")) or _fontes_divergem(_ss_b, _fb.get("season")):
+                _discrepancias.append("época atual")
+            _sp_a, _sp_b = _sack["piso"]
+            if _fontes_divergem(_sp_a, _fa.get("surface")) or _fontes_divergem(_sp_b, _fb.get("surface")):
+                _discrepancias.append("desempenho no piso")
+            # H2H: comparar total de jogos (se diferirem, as fontes divergem)
+            _sh = _sack["h2h"]
+            if _sh and _h2h_api:
+                _st = (_sh.get("a_wins", 0) + _sh.get("b_wins", 0))
+                _rt = (_h2h_api.get("a_wins", 0) + _h2h_api.get("b_wins", 0))
+                if _st != _rt:
+                    _discrepancias.append("confronto direto (H2H)")
+
+            # LOG das discrepâncias (só aparece quando há divergência real):
+            # avisa-te que o Sackmann e a RapidAPI não bateram certo neste jogo.
+            # A RapidAPI foi usada (é a fiável); isto é só para monitorizares.
+            if _discrepancias:
+                print(f"[fontes] {player_a} vs {player_b} | "
+                      f"Sackmann≠RapidAPI em: {', '.join(_discrepancias)} "
+                      f"(usada a RapidAPI)")
 
     # Fadiga: fonte REAL (jogos recentes da API, inclui torneio em curso),
     # com fallback para o histórico. Reaproveita os jogos recentes já buscados.
@@ -634,6 +701,61 @@ def _build_match_payload(match: dict) -> dict:
     deciding_set_b = fetch_data.compute_deciding_set_stats(history, player_b)
     round_stage_a = fetch_data.compute_round_stage_stats(history, player_a)
     round_stage_b = fetch_data.compute_round_stage_stats(history, player_b)
+
+    # ===== FASE 2: RapidAPI como fonte PRINCIPAL destas stats =====
+    # (serviço, sets decisivos, mão, recuperação 1º set, lesão). O Sackmann
+    # calculado acima fica como FALLBACK. Comparamos as fontes e registamos
+    # divergências no log (a RapidAPI ganha sempre).
+    if _pid_a is not None and _pid_b is not None:
+        _rs_a = fetch_data.fetch_recent_stats(tour, _pid_a)
+        _rs_b = fetch_data.fetch_recent_stats(tour, _pid_b)
+        # -- Serviço/resposta --
+        _srv_a = fetch_data.compute_serve_return_from_recent_stats(_rs_a) if _rs_a else None
+        _srv_b = fetch_data.compute_serve_return_from_recent_stats(_rs_b) if _rs_b else None
+        if _srv_a:
+            if serve_a and _fontes_divergem_serve(serve_a, _srv_a):
+                _discrepancias.append("serviço")
+            serve_a = _srv_a
+        if _srv_b:
+            serve_b = _srv_b
+        # -- Sets decisivos --
+        _ds_a = fetch_data.compute_deciding_set_from_recent_stats(_rs_a) if _rs_a else None
+        _ds_b = fetch_data.compute_deciding_set_from_recent_stats(_rs_b) if _rs_b else None
+        if _ds_a:
+            deciding_set_a = _ds_a
+        if _ds_b:
+            deciding_set_b = _ds_b
+        # -- Recuperação de 1º set (past-matches, reaproveita cache) --
+        _pm_a = _recent_a_cache if _recent_a_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_a)
+        _pm_b = _recent_b_cache if _recent_b_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_b)
+        _sc_a = fetch_data.compute_scenarios_from_past_matches(_pm_a, _pid_a) if _pm_a else None
+        _sc_b = fetch_data.compute_scenarios_from_past_matches(_pm_b, _pid_b) if _pm_b else None
+        if _sc_a:
+            set1_comeback_a = _sc_a
+        if _sc_b:
+            set1_comeback_b = _sc_b
+        # -- Regresso de lesão --
+        _lay_a = fetch_data.compute_layoff_from_past_matches(_pm_a, _pid_a, start) if _pm_a else None
+        _lay_b = fetch_data.compute_layoff_from_past_matches(_pm_b, _pid_b, start) if _pm_b else None
+        if _lay_a:
+            layoff_return_a = _lay_a
+        if _lay_b:
+            layoff_return_b = _lay_b
+        # -- Matchup de mão (perfil por nome) --
+        _prof_a = fetch_data.fetch_player_profile(player_a)
+        _prof_b = fetch_data.fetch_player_profile(player_b)
+        _hand_a = fetch_data.compute_hand_from_profile(_prof_a) if _prof_a else None
+        _hand_b = fetch_data.compute_hand_from_profile(_prof_b) if _prof_b else None
+        # guardar as mãos no payload (o motor usa para o matchup)
+        if _hand_a and _hand_b:
+            payload_hands = {"a": _hand_a, "b": _hand_b}
+        else:
+            payload_hands = None
+        if _discrepancias and ("serviço" in _discrepancias):
+            print(f"[fontes] {player_a} vs {player_b} | serviço divergiu Sackmann≠RapidAPI (usada RapidAPI)")
+    else:
+        payload_hands = None
+
     weather = _get_weather_for_match(match, start)
 
     payload = {
@@ -644,6 +766,7 @@ def _build_match_payload(match: dict) -> dict:
         "surface": surface,
         "commence_time_utc": start.isoformat(),
         "market_odds_decimal": odds,  # None se a RapidAPI não tiver Moneyline para o evento
+        "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
         "h2h_rich_stats": h2h_rich_stats,  # só WTA: stats de serviço/resposta/sets decisivos específicas deste confronto, via matchstat
         "recent_form_a": form_a,
@@ -666,6 +789,7 @@ def _build_match_payload(match: dict) -> dict:
         "set1_comeback_stats_b": set1_comeback_b,
         "handedness_matchup_a": handedness_a,  # taxa vs canhotos/destros
         "handedness_matchup_b": handedness_b,
+        "player_hands": payload_hands,  # {"a":"R","b":"L"} da RapidAPI (mão real)
         "layoff_return_stats_a": layoff_return_a,  # desempenho no 1º jogo após paragem longa (60+ dias)
         "layoff_return_stats_b": layoff_return_b,
         "deciding_set_stats_a": deciding_set_a,  # taxa de vitória quando o jogo vai até ao set decisivo
