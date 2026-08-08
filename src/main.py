@@ -854,15 +854,47 @@ def run() -> None:
     # A frase de cada jogo vem do Claude em texto livre — tem de ser
     # escapada antes de entrar numa mensagem com parse_mode=HTML, senão
     # um "<" ou "&" na frase parte a mensagem toda (erro 400 silencioso).
-    summary_lines = [f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"]
+    # Cada linha do Telegram usa a DIVERGÊNCIA DO MOTOR (mesma fonte do
+    # relatório) — não a flag antiga do Claude. Assim a bola e a frase dizem
+    # logo se há valor a investigar, sem teres de abrir o relatório.
+    # Ordena por interesse: divergências fortes/moderadas primeiro.
+    def _linha_telegram(payload, result):
+        div = (payload.get("divergencia") or {})
+        clf = div.get("classificacao") or {}
+        nivel = clf.get("nivel", -1)
+        fav = div.get("favorecido")
+        gap = div.get("gap_pp", 0)
+        a = payload.get("player_a", "?"); b = payload.get("player_b", "?")
+        market = div.get("market")
+        if not market:
+            # sem odds -> não há divergência calculável
+            return (-1, "⚪", f"{a} vs {b} — sem odds de mercado (análise limitada)")
+        bola = {3: "🟢", 2: "🟡", 1: "🟡", 0: "🔴"}.get(nivel, "⚪")
+        if nivel >= 2 and fav:
+            txt = f"{a} vs {b} — <b>{clf.get('texto','')}</b> a favor de {fav} (+{gap} p.p.)"
+        elif nivel == 1 and fav:
+            txt = f"{a} vs {b} — divergência ligeira a favor de {fav}"
+        else:
+            txt = f"{a} vs {b} — mercado eficiente (sem valor claro)"
+        return (nivel, bola, txt)
+
+    # construir e ordenar (maior interesse primeiro)
+    linhas_dados = []
     for payload, result, url in match_reports:
-        flag = html.escape(result.get("flag", ""))
-        line = html.escape(result.get("summary_line", ""))
-        summary_lines.append(f"{flag} {line}")
+        nivel, bola, txt = _linha_telegram(payload, result)
+        linhas_dados.append((nivel, bola, txt, url))
+    linhas_dados.sort(key=lambda x: x[0], reverse=True)
+
+    n_interesse = sum(1 for n, _, _, _ in linhas_dados if n >= 2)
+    cabecalho = (f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
+                 f"<i>{n_interesse} jogo(s) com divergência a acompanhar</i>\n")
+    summary_lines = [cabecalho]
+    for nivel, bola, txt, url in linhas_dados:
+        summary_lines.append(f"{bola} {txt}")
         if url:
             summary_lines.append(f"📄 {html.escape(url)}\n")
         else:
-            summary_lines.append("⚠️ Relatório completo indisponível para este jogo.\n")
+            summary_lines.append("⚠️ Relatório indisponível.\n")
 
     # B3 da auditoria (28/07/2026): o Telegram limita mensagens a 4096
     # caracteres — com um torneio inteiro (20+ jogos com links), uma
