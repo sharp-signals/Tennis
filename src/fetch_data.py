@@ -262,15 +262,38 @@ def find_market_odds(sport_keys: list[str], player_a: str, player_b: str) -> Opt
     torneios que a Odds API não cobre (ex: Umag).
     """
     snapshot = fetch_market_odds_snapshot(sport_keys)
-    names = {player_a.lower(), player_b.lower()}
+
+    def _surname(full_name):
+        # último "token" alfabético do nome = apelido (ex: "Arthur Rinderknech"
+        # -> "rinderknech"; "J. Fonseca" -> "fonseca"). Tolerante a formatos
+        # diferentes entre a fonte de fixtures e a Odds API.
+        toks = [t for t in str(full_name).lower().replace(".", " ").split() if t.isalpha()]
+        return toks[-1] if toks else str(full_name).lower().strip()
+
+    want = {_surname(player_a), _surname(player_b)}
     for match in snapshot:
-        match_names = {match.get("home_team", "").lower(), match.get("away_team", "").lower()}
-        if names == match_names:
+        home = match.get("home_team", "")
+        away = match.get("away_team", "")
+        got = {_surname(home), _surname(away)}
+        # casa se os apelidos coincidirem (match tolerante em vez de exato)
+        if want == got and len(want) == 2:
             bookmakers = match.get("bookmakers") or []
             if bookmakers:
                 outcomes = bookmakers[0].get("markets", [{}])[0].get("outcomes", [])
                 if outcomes:
-                    return {o["name"]: o["price"] for o in outcomes}
+                    # mapear as odds de volta aos nomes originais do nosso jogo,
+                    # para o resto do pipeline os reconhecer
+                    out = {}
+                    for o in outcomes:
+                        sn = _surname(o.get("name", ""))
+                        if sn == _surname(player_a):
+                            out[player_a] = o["price"]
+                        elif sn == _surname(player_b):
+                            out[player_b] = o["price"]
+                        else:
+                            out[o["name"]] = o["price"]
+                    if out:
+                        return out
     return None
 
 
