@@ -550,25 +550,34 @@ def _build_match_payload(match: dict) -> dict:
     # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
     _recent_a_cache = _recent_b_cache = None
     if _pid_a is not None and _pid_b is not None:
-        precisa_api = (tour == "wta") or not h2h or not form_a or not form_b
+        # RapidAPI é agora a fonte PRINCIPAL de forma/época/piso (o Sackmann
+        # anda partido e dava valores errados — ex: 20% quando o real era 40%).
+        # Por isso buscamos SEMPRE que há player IDs, não só quando o Sackmann
+        # falha. O Sackmann fica como fallback quando a RapidAPI não tem o dado.
+        precisa_api = True
         if precisa_api:
-            # H2H via API
-            if not h2h:
-                _h2h_matches = fetch_data.fetch_h2h_matches(tour, _pid_a, _pid_b)
-                _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface)
-                if _h2h_api:
-                    h2h = _h2h_api
+            # H2H via API — RapidAPI é a fonte PRINCIPAL (mesmo motivo da
+            # forma: o Sackmann partido pode dar H2H errados). Só fica o
+            # Sackmann se a RapidAPI não devolver H2H.
+            _h2h_matches = fetch_data.fetch_h2h_matches(tour, _pid_a, _pid_b)
+            _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface)
+            if _h2h_api:
+                h2h = _h2h_api
             # forma/época/piso via jogos recentes da API
             _recent_a_cache = fetch_data.fetch_player_recent_matches(tour, _pid_a)
             _recent_b_cache = fetch_data.fetch_player_recent_matches(tour, _pid_b)
             _fa = fetch_data.compute_form_from_recent(_recent_a_cache, _pid_a, start, RECENT_FORM_MATCHES, surface)
             _fb = fetch_data.compute_form_from_recent(_recent_b_cache, _pid_b, start, RECENT_FORM_MATCHES, surface)
-            if not form_a and _fa.get("form"): form_a = _fa["form"]
-            if not form_b and _fb.get("form"): form_b = _fb["form"]
-            if not season_a and _fa.get("season"): season_a = _fa["season"]
-            if not season_b and _fb.get("season"): season_b = _fb["season"]
-            if not surface_a and _fa.get("surface"): surface_a = _fa["surface"]
-            if not surface_b and _fb.get("surface"): surface_b = _fb["surface"]
+            # PRIORIDADE À RAPIDAPI (fonte fiável). Só cai no valor anterior
+            # (Sackmann) se a RapidAPI não tiver o dado. Antes era ao contrário
+            # — e o Sackmann partido, por devolver valores errados mas não
+            # vazios, ganhava sempre. Agora a RapidAPI manda.
+            if _fa.get("form"): form_a = _fa["form"]
+            if _fb.get("form"): form_b = _fb["form"]
+            if _fa.get("season"): season_a = _fa["season"]
+            if _fb.get("season"): season_b = _fb["season"]
+            if _fa.get("surface"): surface_a = _fa["surface"]
+            if _fb.get("surface"): surface_b = _fb["surface"]
 
     # Fadiga: fonte REAL (jogos recentes da API, inclui torneio em curso),
     # com fallback para o histórico. Reaproveita os jogos recentes já buscados.
