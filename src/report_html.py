@@ -98,15 +98,17 @@ def _markdown_inline(text: str) -> str:
 
 
 def _weight_badge(line: str) -> tuple[str, str]:
-    """Deteta o selo de peso (🔴/🟡/⚪) no início de uma linha e devolve
-    (classe_css, texto_sem_emoji)."""
+    """Deteta o selo de peso no início de uma linha e devolve (classe_css,
+    texto). Auditoria P2: os pesos passam a BARRAS de intensidade (w-bar-*),
+    não bolas coloridas — para o vermelho/verde terem um só significado no
+    relatório (a conclusão/divergência). Aqui é só intensidade, cor neutra."""
     stripped = line.lstrip()
     if stripped.startswith("🔴"):
-        return "w-red", stripped[1:].strip()
+        return "w-bar-3", stripped[1:].strip()  # forte
     if stripped.startswith("🟡"):
-        return "w-amber", stripped[1:].strip()
+        return "w-bar-2", stripped[1:].strip()  # moderado
     if stripped.startswith("⚪"):
-        return "w-white", stripped[1:].strip()
+        return "w-bar-1", stripped[1:].strip()  # fraco
     return "", stripped
 
 
@@ -136,9 +138,9 @@ def _render_markdown_body(markdown_text: str) -> str:
             if "Discrep" in title or "mercados a observar" in title:
                 out.append(
                     '<div class="selos-legenda">'
-                    '<span><b class="w-dot red"></b> forte (amostra grande + divergência clara)</span>'
-                    '<span><b class="w-dot amber"></b> moderado</span>'
-                    '<span><b class="w-dot white"></b> fraco / contextual</span>'
+                    '<span><b class="w-bar w-bar-3"></b> forte (amostra grande + divergência clara)</span>'
+                    '<span><b class="w-bar w-bar-2"></b> moderado</span>'
+                    '<span><b class="w-bar w-bar-1"></b> fraco / contextual</span>'
                     '<div class="selos-nota">Pontos de observação para leitura ao vivo — não são recomendações de aposta.</div>'
                     '</div>'
                 )
@@ -459,9 +461,15 @@ def _build_charts(payload: dict) -> str:
             ("Break points salvos", "avg_break_points_saved_pct"),
             ("Aces", "avg_ace_pct"),
         ]
+        def _pct_escala(v):
+            # A RapidAPI dá já em % (ex: 66); o Sackmann dava em fração (0.66).
+            # Deteta a escala: se <= 1.5 é fração -> ×100; senão já é %.
+            if v is None:
+                return None
+            return round(v * 100, 1) if v <= 1.5 else round(v, 1)
         for label, key in pairs:
             if sa.get(key) is not None and sb.get(key) is not None:
-                rows.append(_bar_comparison(label, a, round(sa[key]*100, 1), b, round(sb[key]*100, 1)))
+                rows.append(_bar_comparison(label, a, _pct_escala(sa[key]), b, _pct_escala(sb[key])))
 
         # Resposta (Onda 2): vem em percentagem inteira já (ex: 41), não fração
         resp_a = (payload.get("rich_stats_a") or {}).get("response_stats") or {}
@@ -547,7 +555,7 @@ def _nome_fator(chave):
         "h2h": "confronto direto", "piso": "superfície",
         "recuperacao_sets": "resiliência em sets", "matchup_maos": "matchup de mão",
         "forma_recente": "forma recente", "ranking": "ranking",
-        "lesao": "regresso de lesão", "fadiga": "fadiga",
+        "lesao": "regresso após paragem", "fadiga": "fadiga",
         "epoca_atual": "época atual", "servico": "serviço", "meteo": "meteorologia",
     }.get(chave, chave)
 
@@ -568,11 +576,22 @@ def _calcular_divergencia(payload):
 
     # --- 1. Recolher a "vantagem" de cada fator (quem lidera e força) ---
     # Para cada fator disponível: +peso se lidera A, -peso se lidera B,
-    # escalado pela força relativa (diff) quando faz sentido.
+    # escalado pela força relativa (diff) E pela CONFIANÇA DA AMOSTRA.
     contribuicoes = []  # (chave, sinal_para_A, peso_efetivo)
 
-    def _add(chave, lider, forca_rel=1.0, peso_override=None):
-        peso = (peso_override if peso_override is not None else PESOS.get(chave, 0)) * forca_rel
+    def _conf_amostra(n_jogos, n_pleno=30):
+        """Confiança da amostra (0.2 a 1.0). Auditoria P0 #3: um fator com
+        poucos jogos (ex: 8 num piso) não deve entrar com peso quase total.
+        Cresce com a amostra; satura em n_pleno jogos. Nunca zero (mínimo 0.2)
+        para não anular fatores com amostra pequena mas legítima."""
+        if not n_jogos or n_jogos <= 0:
+            return 0.5  # amostra desconhecida -> confiança média (neutra)
+        return max(0.2, min(n_jogos / n_pleno, 1.0))
+
+    def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
+        # peso efetivo = peso base × força da diferença × confiança da amostra
+        base = peso_override if peso_override is not None else PESOS.get(chave, 0)
+        peso = base * forca_rel * conf_amostra
         if lider == a:
             contribuicoes.append((chave, +1, peso))
         elif lider == b:
@@ -586,12 +605,13 @@ def _calcular_divergencia(payload):
         if _h_total >= 2:  # ignora H2H de 1 só jogo
             forca = min(_h_total / 4.0, 1.0)  # 4+ jogos = peso total
             _add("h2h", h["lider"], max(forca, 0.5))
-    # Piso
+    # Piso — com confiança de amostra (auditoria: 8 jogos não pesa como 300)
     ps = feats.get("piso")
     if isinstance(ps, dict) and ps.get("lider") not in (None, "igual"):
-        # força relativa: diferença de win% no piso (cap a 1.0)
         forca = min((ps.get("diff") or 5) / 15.0, 1.0)
-        _add("piso", ps["lider"], max(forca, 0.4))
+        # amostra: nº de jogos no piso (o menor dos dois jogadores, conservador)
+        _n_piso = min(ps.get("amostra_a") or 0, ps.get("amostra_b") or 0) or ps.get("amostra") or 0
+        _add("piso", ps["lider"], max(forca, 0.4), conf_amostra=_conf_amostra(_n_piso, 40))
     # Recuperação de sets (rich_stats scenarios)
     ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
     rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
@@ -599,9 +619,10 @@ def _calcular_divergencia(payload):
     dec_b = rb.get("deciding_set_win_pct")
     if dec_a is not None and dec_b is not None:
         lider = a if dec_a > dec_b else (b if dec_b > dec_a else "igual")
-        if lider != "igual" and abs(dec_a - dec_b) >= 3:  # ignora diferenças ínfimas
+        if lider != "igual" and abs(dec_a - dec_b) >= 3:
             forca = min(abs(dec_a - dec_b) / 15.0, 1.0)
-            _add("recuperacao_sets", lider, max(forca, 0.4))
+            _n_dec = min(ra.get("deciding_set_count") or 0, rb.get("deciding_set_count") or 0)
+            _add("recuperacao_sets", lider, max(forca, 0.4), conf_amostra=_conf_amostra(_n_dec, 20))
     # Matchup de mão (handedness)
     hm = payload.get("handedness_matchup_a") or {}
     hmb = payload.get("handedness_matchup_b") or {}
@@ -635,17 +656,23 @@ def _calcular_divergencia(payload):
     # Fadiga (sobe se último jogo foi longo)
     fa = payload.get("fatigue_signal_a") or {}
     fb = payload.get("fatigue_signal_b") or {}
-    # aproximação de "jogo longo": sets no último jogo (se disponível) ou sets_last_7d altos
-    def _jogo_longo(f):
-        return (f.get("last_match_sets") or 0) >= 3 or (f.get("sets_last_7d") or 0) >= 8
-    peso_fadiga = PESOS["fadiga"]
-    if _jogo_longo(fa) or _jogo_longo(fb):
-        peso_fadiga = 7  # sobe quando há jogo longo
-    ja = fa.get("matches_last_7d"); jb = fb.get("matches_last_7d")
-    if ja is not None and jb is not None and ja != jb:
-        # menos jogos = mais fresco = vantagem
-        lider = a if ja < jb else b
-        _add("fadiga", lider, peso_override=peso_fadiga)
+    # AUDITORIA P1: a fadiga só entra no motor se a fonte for 'api_recent'
+    # (jogos reais recentes). Dados históricos de fadiga podem estar
+    # desatualizados — o próprio prompt do Claude já os ignora, e o motor
+    # também deve. Se qualquer dos jogadores tiver fadiga só histórica, não
+    # damos peso quantitativo a este fator.
+    _fadiga_fiavel = (fa.get("fatigue_source") == "api_recent"
+                      and fb.get("fatigue_source") == "api_recent")
+    if _fadiga_fiavel:
+        def _jogo_longo(f):
+            return (f.get("last_match_sets") or 0) >= 3 or (f.get("sets_last_7d") or 0) >= 8
+        peso_fadiga = PESOS["fadiga"]
+        if _jogo_longo(fa) or _jogo_longo(fb):
+            peso_fadiga = 7  # sobe quando há jogo longo
+        ja = fa.get("matches_last_7d"); jb = fb.get("matches_last_7d")
+        if ja is not None and jb is not None and ja != jb:
+            lider = a if ja < jb else b
+            _add("fadiga", lider, peso_override=peso_fadiga)
     # Lesão (só ativa em regresso claro/longo)
     la = payload.get("layoff_return_stats_a") or {}
     lb = payload.get("layoff_return_stats_b") or {}
@@ -659,24 +686,61 @@ def _calcular_divergencia(payload):
     # Meteorologia (peso mínimo — só entra como desempate simbólico, quase nulo)
     # (não implementado como vantagem direcional; fica como contexto)
 
-    # --- 2. Calcular inclinação ponderada do modelo (% a favor de A) ---
+    # --- 1.5. CAP POR FAMÍLIA (auditoria P1 — evitar double counting) ---
+    # ranking+época+serviço+forma medem em parte a mesma coisa ("qualidade
+    # geral"). Somá-los como independentes conta a mesma variável várias vezes.
+    # Agrupamos em famílias e limitamos a contribuição de cada família a um
+    # teto, para que medir a qualidade de 4 formas não a inflacione 4x.
+    FAMILIAS = {
+        "forca_base": {"ranking", "epoca_atual", "servico", "forma_recente"},
+        "matchup": {"piso", "matchup_maos", "h2h"},
+        "resiliencia": {"recuperacao_sets"},
+        "contexto": {"fadiga", "lesao", "meteo"},
+    }
+    # teto de peso efetivo por família (a família "força base", muito
+    # correlacionada, é a mais limitada; matchup/resiliência são sinais mais
+    # distintos e específicos do confronto, logo teto mais alto).
+    CAP_FAMILIA = {"forca_base": 12, "matchup": 20, "resiliencia": 9, "contexto": 6}
+
+    def _familia(chave):
+        for fam, membros in FAMILIAS.items():
+            if chave in membros:
+                return fam
+        return "contexto"
+
+    # agrupar contribuições por família (mantendo o sinal), aplicar cap
+    _por_familia = {}
+    for chave, sinal, peso in contribuicoes:
+        fam = _familia(chave)
+        _por_familia.setdefault(fam, []).append((chave, sinal, peso))
+    contribuicoes_capadas = []
+    for fam, items in _por_familia.items():
+        soma_peso = sum(abs(p) for _, _, p in items)
+        cap = CAP_FAMILIA.get(fam, 10)
+        if soma_peso > cap and soma_peso > 0:
+            # reduzir proporcionalmente todos os fatores da família
+            escala = cap / soma_peso
+            items = [(c, s, p * escala) for c, s, p in items]
+        contribuicoes_capadas.extend(items)
+    contribuicoes = contribuicoes_capadas
+
+    # --- 2. Calcular inclinação ponderada do modelo (índice a favor de A) ---
     peso_total = sum(abs(p) for _, _, p in contribuicoes)
     if peso_total == 0:
         return None  # sem dados suficientes
     soma_a = sum(sinal * p for _, sinal, p in contribuicoes if sinal > 0)
     soma_b = sum(-sinal * p for _, sinal, p in contribuicoes if sinal < 0)
-    bruto_a = soma_a / peso_total  # 0-1 (quota de A no peso total)
+    bruto_a = soma_a / peso_total  # 0-1 (quota de A no peso total dos sinais)
 
-    # SUAVIZAÇÃO: a inclinação bruta pode ir a extremos irrealistas (0% ou
-    # 100%) quando um jogador lidera todos os fatores. Mas nenhum jogador tem
-    # 0% de hipóteses. Comprimimos para uma banda realista [15%, 85%], onde
-    # 50% = equilíbrio. Isto evita "divergências falsas" contra superfavoritos
-    # (onde o modelo exagerava a 100% e inventava um gap face ao mercado).
-    # Fórmula: centrar em 0.5, comprimir a amplitude para ±0.35.
-    inclinacao_a = round(50 + (bruto_a - 0.5) * 70)  # mapeia [0,1] -> [15,85]
-    inclinacao_a = max(15, min(85, inclinacao_a))
+    # ÍNDICE DE EVIDÊNCIA (0-100) — NÃO é uma probabilidade de vitória. É a
+    # quota do peso dos sinais que aponta para A. Apresenta-se como "índice de
+    # evidência: X/100 a favor de A", nunca como "X% de hipóteses". Resolve o
+    # problema metodológico (auditoria P0 #1): antes fingíamos uma probabilidade
+    # (50 + (bruto-0.5)*70) e comparávamos com o mercado em pontos percentuais,
+    # o que é falsa precisão — um score de peso não é uma probabilidade.
+    indice_evidencia_a = round(100 * bruto_a)  # 0-100, honesto (só o índice)
 
-    # --- 3. Probabilidade do mercado (sem margem) ---
+    # --- 3. Direção do mercado (sem inventar probabilidade do modelo) ---
     odds = payload.get("market_odds_decimal") or {}
     oa = ob = None
     for k, v in odds.items():
@@ -697,35 +761,76 @@ def _calcular_divergencia(payload):
     if prob_mercado_a is None:
         return None
 
-    # --- 4. Gap e classificação ---
-    gap = inclinacao_a - prob_mercado_a
-    chave, texto, nivel = _classificar_divergencia(gap)
+    # --- 4. Comparação: DIREÇÃO + MAGNITUDE (Caso C) ---
+    # Dois tipos de situação interessante:
+    #  (1) DIREÇÃO: mercado num jogador, índice no outro -> "contra o mercado".
+    #  (2) CONVICÇÃO: ambos no mesmo jogador, mas o índice bem mais forte que o
+    #      mercado -> "favorito subvalorizado", os dados suportam-no mais que a
+    #      odd. É valor do lado do favorito (o que o utilizador quer apanhar).
+    # NÃO fingimos que o índice é probabilidade: a magnitude mede o
+    # "desalinhamento de convicção", não "o mercado está errado em X%".
+    mercado_favorece = a if prob_mercado_a >= 50 else b
+    indice_favorece = a if indice_evidencia_a >= 50 else b
+    forca_indice = abs(indice_evidencia_a - 50)      # 0-50
+    forca_mercado = abs(prob_mercado_a - 50)          # 0-50
+    # desalinhamento de magnitude (mesmo apontando ao mesmo lado)
+    desalinhamento = abs(indice_evidencia_a - prob_mercado_a)  # 0-100
+    tipo = "eficiente"
+    if indice_favorece != mercado_favorece:
+        # (1) direção oposta -> divergência clássica
+        tipo = "direcao"
+        conviccao = forca_indice + forca_mercado
+        if conviccao < 15:
+            nivel = 1
+        elif conviccao < 30:
+            nivel = 2
+        else:
+            nivel = 3
+    elif desalinhamento >= 12:
+        # (2) mesmo lado, mas índice bem mais forte -> convicção reforçada
+        # (favorito subvalorizado). SÓ interessa se a odd do favorito estiver na
+        # zona de entrada do punter (>=1.70): perto da par, onde vale a pena
+        # entrar a favor do favorito quando ele paga mais do que "devia". Num
+        # superfavorito (ex: 1.15) não há valor prático, por isso não sinaliza.
+        odd_favorito = oa if mercado_favorece == a else ob
+        ODD_MINIMA_CONVICCAO = 1.70
+        if odd_favorito is not None and odd_favorito >= ODD_MINIMA_CONVICCAO:
+            tipo = "conviccao"
+            if desalinhamento < 18:
+                nivel = 1
+            elif desalinhamento < 28:
+                nivel = 2
+            else:
+                nivel = 3
+        else:
+            # favorito paga pouco -> sem valor prático -> eficiente
+            nivel = 0
+    else:
+        # concordam em direção e magnitude -> mercado eficiente
+        nivel = 0
 
-    # SALVAGUARDA DE CONFIANÇA (crítica contra falsos positivos):
-    # A divergência só pode ser "forte" ou "moderada" se houver DADOS
-    # SUFICIENTES e de PESO a sustentá-la. Se só temos poucos fatores (ex: só
-    # ranking, que dá falsos positivos), a classificação é REBAIXADA — por
-    # muito grande que o gap seja. Isto impede um sinal forte assente num único
-    # fator fraco. Medimos a "massa de evidência" = soma dos pesos efetivos.
+    # SALVAGUARDA DE CONFIANÇA (contra falsos positivos): a divergência só pode
+    # ser "forte"/"moderada" se houver massa de evidência e fatores suficientes.
     massa_evidencia = peso_total
     n_fatores = len([c for c in contribuicoes if abs(c[2]) > 0])
-    # tetos de classificação conforme a evidência disponível:
     if massa_evidencia < 8 or n_fatores < 2:
-        # praticamente só um fator ou fatores de peso baixo -> no máximo "ligeira"
         nivel = min(nivel, 1)
     elif massa_evidencia < 18 or n_fatores < 3:
-        # evidência mediana -> no máximo "moderada"
         nivel = min(nivel, 2)
-    # remapear texto/chave após rebaixamento
-    _mapa = {0: ("eficiente", "Mercado eficiente"),
-             1: ("ligeira", "Divergência ligeira"),
-             2: ("moderada", "Divergência moderada"),
-             3: ("forte", "Divergência forte")}
+    # texto conforme o TIPO (direção vs convicção) e o nível
+    if tipo == "conviccao":
+        _mapa = {0: ("eficiente", "Mercado eficiente"),
+                 1: ("ligeira", "Convicção ligeira"),
+                 2: ("moderada", "Convicção reforçada"),
+                 3: ("forte", "Convicção forte")}
+    else:
+        _mapa = {0: ("eficiente", "Mercado eficiente"),
+                 1: ("ligeira", "Divergência ligeira"),
+                 2: ("moderada", "Divergência moderada"),
+                 3: ("forte", "Divergência forte")}
     chave, texto = _mapa[nivel]
 
-    favorecido = None
-    if nivel >= 1:
-        favorecido = a if gap > 0 else b
+    favorecido = indice_favorece if nivel >= 1 else None
 
     # --- 5. Fatores-chave (os que mais pesaram, para justificar) ---
     contribuicoes.sort(key=lambda x: abs(x[2]), reverse=True)
@@ -737,12 +842,19 @@ def _calcular_divergencia(payload):
         fatores_chave.append((_nome_fator(chave_f), quem))
 
     return {
-        "inclinacao_modelo_a": inclinacao_a,
-        "inclinacao_modelo_b": 100 - inclinacao_a,
+        # ÍNDICE DE EVIDÊNCIA (não probabilidade) — 0-100 a favor de cada um
+        "indice_evidencia_a": indice_evidencia_a,
+        "indice_evidencia_b": 100 - indice_evidencia_a,
+        # direção do mercado (só para comparação direcional)
         "prob_mercado_a": prob_mercado_a,
         "prob_mercado_b": 100 - prob_mercado_a,
-        "gap_pp": abs(gap),
+        "mercado_favorece": mercado_favorece,
+        "indice_favorece": indice_favorece,
+        # compatibilidade retro: alguns sítios ainda leem estas chaves
+        "inclinacao_modelo_a": indice_evidencia_a,
+        "inclinacao_modelo_b": 100 - indice_evidencia_a,
         "classificacao": {"chave": chave, "texto": texto, "nivel": nivel},
+        "tipo": tipo,  # "direcao" | "conviccao" | "eficiente"
         "favorecido": favorecido,
         "fatores_chave": fatores_chave,
         "player_a": a, "player_b": b,
@@ -760,40 +872,46 @@ def _compute_model_vs_market(payload):
     if not r:
         return {"market": None, "model": None, "divergencia": None}
     market = {"a": r["prob_mercado_a"], "b": r["prob_mercado_b"]}
-    model = {"a": r["inclinacao_modelo_a"], "b": r["inclinacao_modelo_b"]}
+    # "model" agora é o ÍNDICE DE EVIDÊNCIA (0-100), não uma probabilidade
+    model = {"a": r["indice_evidencia_a"], "b": r["indice_evidencia_b"]}
     divergencia = None
     if r["classificacao"]["nivel"] >= 1 and r["favorecido"]:
-        divergencia = {"gap": r["gap_pp"], "favorecido": r["favorecido"]}
+        divergencia = {"favorecido": r["favorecido"]}
     return {
         "market": market, "model": model, "divergencia": divergencia,
         "classificacao": r["classificacao"], "fatores_chave": r["fatores_chave"],
-        "gap_pp": r["gap_pp"], "favorecido": r["favorecido"],
+        "indice_evidencia": {"a": r["indice_evidencia_a"], "b": r["indice_evidencia_b"]},
+        "favorecido": r["favorecido"],
+        "mercado_favorece": r.get("mercado_favorece"),
+        "indice_favorece": r.get("indice_favorece"),
     }
 
 
 def _compute_market_overview(payload, mvm):
-    """Market Overview (Python): interesse de cada mercado padrão. Leituras
-    QUANTITATIVAS (usam o gap real do motor), não frases vagas. Interesse 0-3."""
+    """Market Overview (Python): interesse de cada mercado padrão. Usa o ÍNDICE
+    DE EVIDÊNCIA direcional (não pseudo-probabilidade nem p.p.). Interesse 0-3."""
     f = payload.get("features") or {}
     a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
     market = mvm.get("market"); model = mvm.get("model"); div = mvm.get("divergencia")
-    gap = mvm.get("gap_pp", 0)
+    idx = mvm.get("indice_evidencia") or {}
     fav = None
     if market:
         fav = a if market["a"] >= market["b"] else b
     linhas = []
-    # Moneyline Favorito — leitura com o gap concreto
-    i, t = 1, "Mercado alinhado com o modelo"
+    # Moneyline Favorito — leitura direcional (sem inventar p.p.)
+    i, t = 1, "Mercado alinhado com os indicadores"
     if div and fav and div["favorecido"] == fav:
-        i, t = 3, f"Favorito subvalorizado: modelo dá +{gap} p.p."
+        idx_fav = idx.get("a") if fav == a else idx.get("b")
+        i, t = 3, f"Favorito também suportado pelos indicadores (índice {idx_fav}/100)"
     elif div and fav and div["favorecido"] != fav:
-        i, t = 0, f"Modelo não confirma o favorito ({gap} p.p. contra)"
+        i, t = 0, "Indicadores não confirmam o favorito do mercado"
     linhas.append(("Moneyline Favorito", i, t))
     # Moneyline Underdog
     und = b if fav == a else a
-    i, t = 0, "Sem valor: modelo concorda com o mercado"
+    i, t = 0, "Sem valor: indicadores concordam com o mercado"
     if div and div["favorecido"] == und:
-        i, t = 3, f"Underdog com valor: modelo dá +{gap} p.p."
+        idx_und = idx.get("a") if und == a else idx.get("b")
+        i, t = 3, f"Underdog favorecido pelos indicadores (índice {idx_und}/100)"
     linhas.append(("Moneyline Underdog", i, t))
     # Total Games — quantificado pela margem do mercado
     i, t = 1, "Sem sinal de equilíbrio"
@@ -960,30 +1078,29 @@ def _build_analysis_body(result: dict, payload: dict) -> str:
         mk, md = mvm["market"], mvm["model"]
         clf = mvm.get("classificacao") or {}
         nivel = clf.get("nivel", 0)
-        gap = mvm.get("gap_pp", 0)
         fav = mvm.get("favorecido")
         fatores = mvm.get("fatores_chave") or []
+        merc_fav = mvm.get("mercado_favorece")
         # caixa de conclusão conforme o nível de divergência
         if nivel == 0:
-            box = (f'<div class="mvm-align">✓ <b>Mercado eficiente</b> — modelo e '
-                   f'mercado concordam (diferença de apenas {gap} p.p.). Sem edge aparente.</div>')
+            box = (f'<div class="mvm-align">✓ <b>Mercado eficiente</b> — os indicadores '
+                   f'apontam na mesma direção do mercado. Sem divergência a assinalar.</div>')
         else:
             cor_cls = {1: "mvm-lig", 2: "mvm-mod", 3: "mvm-forte"}.get(nivel, "mvm-lig")
-            # justificação pelos fatores-chave a favor do favorecido
             just = ""
             if fatores and fav:
                 fav_fatores = [f for f, quem in fatores if quem == fav]
                 if fav_fatores:
                     just = f' Sustentada por: {", ".join(fav_fatores[:3])}.'
-            box = (f'<div class="{cor_cls}">⚠️ <b>{_esc(clf.get("texto",""))}</b> '
-                   f'a favor de <b>{_esc(fav)}</b> — o modelo inclina-se para {_esc(fav)} '
-                   f'{gap} p.p. acima do mercado.{just}</div>')
-        out.append('<h3 class="sec">⚖️ Model vs Market</h3>')
+            box = (f'<div class="{cor_cls}">⚠️ <b>{_esc(clf.get("texto",""))}</b> — '
+                   f'os indicadores favorecem <b>{_esc(fav)}</b>, mas o mercado favorece '
+                   f'<b>{_esc(merc_fav)}</b>.{just}</div>')
+        out.append('<h3 class="sec">⚖️ Indicadores vs Mercado</h3>')
         out.append(
             f'<table class="mvm-table"><thead><tr><th></th>'
             f'<th>{_esc(a)}</th><th>{_esc(b)}</th></tr></thead><tbody>'
             f'<tr><td>Mercado (s/ margem)</td><td>{mk["a"]}%</td><td>{mk["b"]}%</td></tr>'
-            f'<tr><td>Modelo (sinais ponderados)</td><td>{md["a"]}%</td><td>{md["b"]}%</td></tr>'
+            f'<tr><td>Índice de evidência</td><td>{md["a"]}/100</td><td>{md["b"]}/100</td></tr>'
             f'</tbody></table>{box}')
 
     # 3. MARKET OVERVIEW (Python) — mostra só os mercados que SE ADEQUAM à
@@ -1024,7 +1141,24 @@ def _build_analysis_body(result: dict, payload: dict) -> str:
 
 
 def build_report_html(payload: dict, result: dict) -> str:
-    """Gera a página HTML completa e autónoma para um jogo."""
+    """Gera a página HTML completa e autónoma para um jogo.
+
+    REDESENHO V2 (auditoria do relatório): delega no build_report_html_v2, que
+    aplica a nova arquitetura (decisão -> evidência -> detalhe), corrige escalas,
+    estados de erro e cores. Se o V2 falhar por algum motivo inesperado, cai no
+    gerador antigo (_build_report_html_v1) para nunca deixar um jogo sem página.
+    """
+    try:
+        return build_report_html_v2(payload, result, _calcular_divergencia)
+    except Exception as exc:
+        import traceback
+        print(f"[aviso] V2 falhou ({exc}); a usar o gerador antigo. "
+              f"{traceback.format_exc().splitlines()[-1]}")
+        return _build_report_html_v1(payload, result)
+
+
+def _build_report_html_v1(payload: dict, result: dict) -> str:
+    """Gerador antigo (V1) — mantido como fallback de segurança."""
     a = _esc(payload.get("player_a", "?"))
     b = _esc(payload.get("player_b", "?"))
     tournament = _esc(payload.get("tournament", ""))
@@ -1120,12 +1254,17 @@ def build_report_html(payload: dict, result: dict) -> str:
     _mvm_head = _compute_model_vs_market(payload)
     _clf = (_mvm_head or {}).get("classificacao") or {}
     _nivel_div = _clf.get("nivel", 0)
-    _gap_head = (_mvm_head or {}).get("gap_pp", 0)
+    _idx_head = (_mvm_head or {}).get("indice_evidencia") or {}
+    _fav_head = (_mvm_head or {}).get("favorecido")
     force_bar = ""
     if _mvm_head and _mvm_head.get("market"):
         _label_div = _clf.get("texto", "Mercado eficiente")
-        force_bar = _div_bar_html(_nivel_div, _label_div,
-                                  extra=f'<div class="cov-detail">Gap modelo vs mercado: {_gap_head} p.p.</div>')
+        if _nivel_div >= 1 and _fav_head:
+            _idx_fav = _idx_head.get("a") if _fav_head == payload.get("player_a") else _idx_head.get("b")
+            _extra = f'<div class="cov-detail">Índice de evidência: {_idx_fav}/100 a favor de {_esc(_fav_head)}</div>'
+        else:
+            _extra = '<div class="cov-detail">Indicadores alinhados com o mercado</div>'
+        force_bar = _div_bar_html(_nivel_div, _label_div, extra=_extra)
 
     conf_html = f"""
     <div class="confidence">{cov_bar}{force_bar}
@@ -1263,6 +1402,14 @@ body {{
 .w-dot.red {{ background:var(--red); }}
 .w-dot.amber {{ background:var(--amber); }}
 .w-dot.white {{ background:var(--dim); }}
+/* Barras de intensidade (auditoria P2): cor neutra azul-aço, a intensidade
+   vem do nº de barras cheias — sem conflito de cor com a bola da conclusão. */
+.w-bar {{ display:inline-block; width:22px; height:10px; margin-right:6px; vertical-align:middle;
+  background:linear-gradient(90deg, var(--steel) 0 var(--fill,33%), rgba(120,140,160,.18) var(--fill,33%) 100%);
+  border-radius:2px; }}
+.w-bar-3 {{ --fill:100%; }}
+.w-bar-2 {{ --fill:66%; }}
+.w-bar-1 {{ --fill:33%; }}
 .selos-nota {{ width:100%; font-style:italic; opacity:.8; margin-top:2px; }}
 .sb-vs {{ font-size:12px; color:var(--dim); letter-spacing:.1em; margin:2px 0; }}
 .sb-flag {{ display:inline-block; margin-top:14px; font-size:14px; padding:4px 12px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }}
@@ -1375,9 +1522,9 @@ h3.sec {{ font-size:16px; margin:22px 0 10px; color:var(--steel); border-left:3p
 p {{ margin:10px 0; color:var(--text); }}
 .items {{ margin:10px 0; }}
 .item {{ background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:6px 0; font-size:15px; }}
-.item.w-red {{ border-left:4px solid var(--red); }}
-.item.w-amber {{ border-left:4px solid var(--amber); }}
-.item.w-white {{ border-left:4px solid var(--dim); opacity:.85; }}
+.item.w-bar-3 {{ border-left:4px solid var(--steel); }}
+.item.w-bar-2 {{ border-left:4px solid rgba(120,140,160,.6); }}
+.item.w-bar-1 {{ border-left:4px solid rgba(120,140,160,.3); opacity:.85; }}
 code {{ background:var(--surface-alt); padding:1px 6px; border-radius:4px; font-size:13px; color:var(--mint); }}
 hr {{ border:none; border-top:1px solid var(--line); margin:20px 0; }}
 strong {{ color:#fff; font-weight:700; }}
@@ -1409,3 +1556,586 @@ strong {{ color:#fff; font-weight:700; }}
 </div>
 </body>
 </html>"""
+
+# ============================================================
+# RELATÓRIO V2 (redesenho da auditoria) — integrado
+# ============================================================
+# ---- ESCALA ÚNICA (auditoria P0.2): normaliza %, aceita 0.68 ou 68 ----
+def _pct(v):
+    """Normaliza qualquer valor de percentagem para 0-100. Aceita fração
+    (0.68 -> 68) ou já-percentagem (68 -> 68). Função ÚNICA de normalização,
+    usada em TODO o relatório antes de renderizar (resolve o 6800%)."""
+    if v is None:
+        return None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    return round(v * 100, 1) if v <= 1.5 else round(v, 1)
+
+
+def _pct_str(v, casas=0):
+    p = _pct(v)
+    if p is None:
+        return "—"
+    return f"{p:.{casas}f}%"
+
+
+# ---- PALETA V2 (cada cor com um só significado) ----
+COLORS_V2 = {
+    "bg": "#0f1419", "surface": "#161c23", "surface2": "#1c242d",
+    "text": "#e6edf3", "dim": "#8896a5", "line": "#2a333d",
+    "a": "#4aa3df",        # jogador A — azul-ciano (frio)
+    "b": "#e8935a",        # jogador B — laranja-âmbar (quente, contrasta com A)
+    "mint": "#3fb9a8",     # divergência relevante / oportunidade
+    "amber": "#d9a441",    # a acompanhar
+    "neutral": "#5a6b7a",  # mercado eficiente / sem divergência
+    "error": "#e06c5b",    # SÓ erro / dados indisponíveis
+}
+
+
+# ---- DETEÇÃO DE ESTADO (auditoria P0.3 + #17) ----
+def detetar_estado(payload, result, divergencia):
+    """Determina o estado do relatório, que muda o layout.
+    Devolve: (chave, cor, label, bola)
+      - 'erro': sem análise E/ou dados corrompidos -> layout parcial
+      - 'sem_odds': sem mercado -> não avalia eficiência, sem sinal
+      - 'eficiente': mercado alinhado com indicadores
+      - 'acompanhar': divergência ligeira/moderada
+      - 'oportunidade': divergência forte
+    """
+    tem_odds = bool(divergencia and divergencia.get("market"))
+    analise_falhou = bool(result.get("analysis_error") or result.get("llm_error"))
+    if analise_falhou and not tem_odds:
+        return ("erro", COLORS_V2["error"], "Análise parcial", "⚠️")
+    if not tem_odds:
+        return ("sem_odds", COLORS_V2["neutral"], "Sem odds — comparação indisponível", "⚪")
+    nivel = (divergencia.get("classificacao") or {}).get("nivel", 0)
+    tipo = divergencia.get("tipo", "")
+    if nivel >= 3:
+        lbl = "Convicção forte" if tipo == "conviccao" else "Divergência forte"
+        return ("oportunidade", COLORS_V2["mint"], lbl, "🟢")
+    if nivel >= 1:
+        return ("acompanhar", COLORS_V2["amber"], "A acompanhar", "🟡")
+    return ("eficiente", COLORS_V2["neutral"], "Mercado eficiente", "⚪")
+
+
+def _css():
+    c = COLORS_V2
+    return f"""
+:root {{
+  --bg:{c['bg']}; --surface:{c['surface']}; --surface2:{c['surface2']};
+  --text:{c['text']}; --dim:{c['dim']}; --line:{c['line']};
+  --a:{c['a']}; --b:{c['b']}; --mint:{c['mint']}; --amber:{c['amber']};
+  --neutral:{c['neutral']}; --error:{c['error']};
+}}
+* {{ box-sizing:border-box; margin:0; padding:0; }}
+body {{ background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  line-height:1.5; font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased; padding:16px; }}
+.wrap {{ max-width:1080px; margin:0 auto; }}
+.wrap-text {{ max-width:720px; margin-left:auto; margin-right:auto; }}
+.num {{ font-variant-numeric:tabular-nums; }}
+
+/* --- MATCHUP HEADER (ficha de combate) --- */
+.mh {{ background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  padding:20px; margin-bottom:14px; }}
+.mh-top {{ display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:start; }}
+.mh-name {{ font-size:22px; font-weight:700; letter-spacing:-.3px;
+  border-left:3px solid var(--a); padding-left:8px; }}
+.mh-name.b {{ text-align:right; border-left:none;
+  border-right:3px solid var(--b); padding-left:0; padding-right:8px; }}
+.mh-sub {{ font-size:13px; color:var(--dim); margin-top:3px; }}
+.mh-sub.b {{ text-align:right; }}
+.mh-vs {{ font-size:12px; color:var(--dim); text-align:center; padding-top:6px;
+  font-weight:600; letter-spacing:1px; }}
+.mh-tourn {{ font-size:11px; color:var(--dim); text-align:center; margin-top:4px;
+  text-transform:uppercase; letter-spacing:.5px; }}
+.mh-odds {{ display:grid; grid-template-columns:1fr auto 1fr; gap:12px;
+  margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }}
+.mh-odd {{ font-size:20px; font-weight:700; }}
+.mh-odd.b {{ text-align:right; }}
+.mh-odd small {{ display:block; font-size:12px; color:var(--dim); font-weight:400; }}
+.mh-mid {{ text-align:center; font-size:12px; color:var(--dim); }}
+
+/* --- LEITURA DO JOGO (a decisão, 1 frase) --- */
+.leitura {{ border-radius:12px; padding:14px 16px; margin-bottom:14px;
+  border:1px solid var(--line); display:flex; gap:12px; align-items:center; }}
+.leitura-bola {{ font-size:24px; }}
+.leitura-txt b {{ font-size:15px; }}
+.leitura-txt div {{ font-size:13px; color:var(--dim); margin-top:2px; }}
+
+/* --- 4 FATORES (chips) --- */
+.fatores {{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }}
+@media(max-width:640px){{ .fatores {{ grid-template-columns:repeat(2,1fr); }} }}
+.fator {{ background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:10px; text-align:center; }}
+.fator-lbl {{ font-size:10px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.5px; margin-bottom:4px; }}
+.fator-val {{ font-size:14px; font-weight:600; }}
+.fator-fav {{ font-size:11px; margin-top:2px; }}
+
+/* --- MERCADO vs SINAL (gráfico central) --- */
+.mvs {{ background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin-bottom:14px; }}
+.mvs h3, .card h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:14px; font-weight:600; }}
+.mvs-row {{ margin-bottom:14px; }}
+.mvs-row-lbl {{ display:flex; justify-content:space-between; font-size:12px;
+  color:var(--dim); margin-bottom:5px; }}
+.mvs-track {{ position:relative; height:26px; background:var(--surface2);
+  border-radius:6px; overflow:hidden; }}
+.mvs-fill {{ position:absolute; top:0; bottom:0; left:0; border-radius:6px; }}
+.mvs-mid {{ position:absolute; left:50%; top:0; bottom:0; width:1px;
+  background:var(--dim); opacity:.4; }}
+.mvs-val {{ position:absolute; top:50%; transform:translateY(-50%); font-size:12px;
+  font-weight:700; padding:0 8px; }}
+.mvs-delta {{ text-align:center; font-size:13px; margin-top:10px; font-weight:600; }}
+
+/* --- CARDS genéricos --- */
+.card {{ background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:16px; margin-bottom:14px; }}
+.grid2 {{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }}
+@media(max-width:760px){{ .grid2 {{ grid-template-columns:1fr; }} }}
+
+/* --- barra comparativa (forma, serviço) --- */
+.cmp {{ margin-bottom:12px; }}
+.cmp:last-child {{ margin-bottom:0; }}
+.cmp-lbl {{ font-size:12px; color:var(--dim); margin-bottom:6px; }}
+.cmp-row {{ display:grid; grid-template-columns:90px 1fr 54px; gap:8px;
+  align-items:center; margin-bottom:4px; }}
+.cmp-name {{ font-size:12px; color:var(--dim); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }}
+.cmp-bar {{ height:14px; background:var(--surface2); border-radius:4px; overflow:hidden; }}
+.cmp-bar span {{ display:block; height:100%; border-radius:4px; }}
+.cmp-num {{ font-size:13px; font-weight:600; text-align:right; }}
+.cmp-delta {{ font-size:11px; text-align:center; color:var(--mint); margin-top:3px; }}
+
+/* amostra (auditoria #8): esbatido se n<10 */
+.samp-low {{ opacity:.5; }}
+.samp-tag {{ font-size:10px; color:var(--dim); }}
+
+/* --- fadiga --- */
+.fadiga-cmp {{ display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center; }}
+.fadiga-side {{ font-size:13px; }}
+.fadiga-side.b {{ text-align:right; }}
+.fadiga-big {{ font-size:18px; font-weight:700; }}
+.fadiga-delta {{ text-align:center; font-size:12px; color:var(--amber); font-weight:600; }}
+
+/* --- details (mais estatísticas) --- */
+details.more {{ background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; margin-bottom:14px; }}
+details.more>summary {{ padding:14px 16px; cursor:pointer; font-size:13px;
+  font-weight:600; color:var(--dim); list-style:none; }}
+details.more>summary::-webkit-details-marker {{ display:none; }}
+details.more>summary::before {{ content:"▸ "; }}
+details.more[open]>summary::before {{ content:"▾ "; }}
+details.more .more-body {{ padding:0 16px 16px; }}
+
+/* --- estado parcial/erro --- */
+.parcial {{ background:rgba(224,108,91,.1); border:1px solid var(--error);
+  border-radius:12px; padding:16px; margin-bottom:14px; }}
+.parcial b {{ color:var(--error); }}
+
+/* --- veredicto --- */
+.veredicto {{ background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; padding:18px; margin-bottom:14px; }}
+.veredicto h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:10px; }}
+.foot {{ text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
+  padding-top:14px; border-top:1px solid var(--line); }}
+"""
+
+
+# ============ MÓDULOS DE RENDERIZAÇÃO ============
+
+def _mod_header(payload, div, estado):
+    """Módulo 1: Matchup header (ficha de combate)."""
+    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    ra = payload.get("rank_a") or {}; rb = payload.get("rank_b") or {}
+    rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""
+    rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
+    tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
+    surf = _esc(payload.get("surface", ""))
+    odds = payload.get("market_odds_decimal") or {}
+    oa = odds.get(payload.get("player_a")) or "—"
+    ob = odds.get(payload.get("player_b")) or "—"
+    # prob mercado
+    pa = pb = None
+    if div and div.get("market"):
+        pa = div["market"]["a"]; pb = div["market"]["b"]
+    # forma resumida
+    fa = payload.get("recent_form_a") or {}; fb = payload.get("recent_form_b") or {}
+    forma_a = f"Forma {fa.get('wins','?')}–{fa.get('losses','?')}" if fa else ""
+    forma_b = f"Forma {fb.get('wins','?')}–{fb.get('losses','?')}" if fb else ""
+    # meteo à hora do jogo (contextual)
+    w = payload.get("weather") or {}
+    meteo = ""
+    if w:
+        bits = []
+        if w.get("hour_local"): bits.append(_esc(w["hour_local"]))
+        if w.get("temp_c") is not None: bits.append(f"{w['temp_c']:.0f}°C")
+        if w.get("humidity") is not None: bits.append(f"{w['humidity']:.0f}% HR")
+        if w.get("wind_kmh") is not None: bits.append(f"vento {w['wind_kmh']:.0f} km/h")
+        if w.get("precip_mm"): bits.append(f"{w['precip_mm']:.0f}mm chuva")
+        meteo = " · ".join(bits)
+    return f"""
+<div class="mh">
+  <div class="mh-top">
+    <div>
+      <div class="mh-name">{a}</div>
+      <div class="mh-sub">{rank_a} · {forma_a}</div>
+    </div>
+    <div>
+      <div class="mh-vs">VS</div>
+      <div class="mh-tourn">{tourn}<br>{tier} · {surf}</div>
+    </div>
+    <div>
+      <div class="mh-name b">{b}</div>
+      <div class="mh-sub b">{rank_b} · {forma_b}</div>
+    </div>
+  </div>
+  <div class="mh-odds">
+    <div class="mh-odd">{oa}<small>{f'{pa}% mercado' if pa is not None else 'sem odds'}</small></div>
+    <div class="mh-mid">{_esc(meteo)}</div>
+    <div class="mh-odd b">{ob}<small>{f'{pb}% mercado' if pb is not None else ''}</small></div>
+  </div>
+</div>"""
+
+
+def _mod_leitura(payload, div, estado, result):
+    """Módulo 2: Leitura do jogo — a decisão numa frase."""
+    chave, cor, label, bola = estado
+    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    if chave in ("erro", "sem_odds"):
+        sub = ("Sem odds de mercado para comparar — mostramos só os dados factuais."
+               if chave == "sem_odds" else "Análise indisponível — dados factuais apenas.")
+        return f"""
+<div class="leitura" style="border-color:{cor}">
+  <div class="leitura-bola">{bola}</div>
+  <div class="leitura-txt"><b>{label}</b><div>{sub}</div></div>
+</div>"""
+    fav = div.get("favorecido")
+    idx = div.get("indice_evidencia") or {}
+    idx_fav = idx.get("a") if fav == payload.get("player_a") else idx.get("b")
+    merc_fav = div.get("mercado_favorece")
+    tipo = div.get("tipo", "")
+    if chave == "eficiente":
+        frase = f"Os indicadores e o mercado concordam ({_esc(merc_fav)} favorito). Sem valor aparente."
+    elif tipo == "conviccao":
+        # favorito subvalorizado: mercado e índice no mesmo lado, mas índice mais forte
+        frase = (f"<b>{_esc(fav)}</b> é favorito do mercado <b>e</b> dos indicadores "
+                 f"(índice {idx_fav}/100) — mas os dados suportam-no mais do que a odd "
+                 f"reflete. Favorito a acompanhar dentro da tua zona de entrada.")
+    else:
+        # divergência de direção: contra o mercado
+        frase = (f"Os indicadores apontam para <b>{_esc(fav)}</b> (índice {idx_fav}/100), "
+                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>.")
+    return f"""
+<div class="leitura" style="border-color:{cor}">
+  <div class="leitura-bola">{bola}</div>
+  <div class="leitura-txt"><b>{label}</b><div>{frase}</div></div>
+</div>"""
+
+
+def _mod_fatores(payload, div):
+    """Módulo 3: os 4 fatores decisivos em chips."""
+    fatores = (div or {}).get("fatores_chave") or []
+    if not fatores:
+        return ""
+    chips = []
+    for nome, quem in fatores[:4]:
+        quem_esc = _esc(quem)
+        chips.append(f"""
+<div class="fator">
+  <div class="fator-lbl">{_esc(nome)}</div>
+  <div class="fator-fav" style="color:var(--mint)">▲ {quem_esc}</div>
+</div>""")
+    while len(chips) < 4:
+        chips.append('<div class="fator"><div class="fator-lbl">—</div></div>')
+    return f'<div class="fatores">{"".join(chips)}</div>'
+
+
+def _mod_mercado_vs_sinal(payload, div):
+    """Módulo 4: Mercado vs Sinal — o gráfico central. Índice de evidência,
+    não pseudo-probabilidade (auditoria #15)."""
+    if not div or not div.get("market"):
+        return ""
+    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    mk = div["market"]; idx = div.get("indice_evidencia") or {}
+    ca, cb = COLORS_V2["a"], COLORS_V2["b"]
+
+    def barra(titulo, va, vb, sufixo=""):
+        return f"""
+<div class="mvs-row">
+  <div class="mvs-row-lbl"><span>{a}</span><span>{titulo}</span><span>{b}</span></div>
+  <div class="mvs-track">
+    <div class="mvs-fill" style="width:{va}%; background:{ca}; opacity:.7"></div>
+    <div class="mvs-mid"></div>
+    <div class="mvs-val" style="left:0; color:#fff">{va}{sufixo}</div>
+    <div class="mvs-val" style="right:0; color:#fff">{vb}{sufixo}</div>
+  </div>
+</div>"""
+
+    merc = barra("Mercado", mk["a"], mk["b"], "%")
+    sinal = barra("Índice de sinais", idx.get("a", 50), idx.get("b", 50), "/100")
+    fav = div.get("favorecido")
+    clf = (div.get("classificacao") or {}).get("texto", "")
+    delta = ""
+    if fav:
+        delta = f'<div class="mvs-delta" style="color:var(--mint)">{clf} — indicadores a favor de {_esc(fav)}</div>'
+    return f"""
+<div class="mvs">
+  <h3>Mercado vs Sinal</h3>
+  {merc}{sinal}{delta}
+</div>"""
+
+
+def _barra_cmp(nome, valor, cor, largura_pct, sufixo="%", amostra=None):
+    """Uma linha de barra comparativa com nome, barra e número."""
+    tag = ""
+    cls = ""
+    if amostra is not None:
+        tag = f' <span class="samp-tag">n={amostra}</span>'
+        if amostra < 10:
+            cls = " samp-low"
+    return f"""
+<div class="cmp-row{cls}">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{cor};margin-right:5px;vertical-align:middle"></span>{_esc(nome)}</div>
+  <div class="cmp-bar"><span style="width:{largura_pct}%; background:{cor}"></span></div>
+  <div class="cmp-num">{valor}{sufixo}{tag}</div>
+</div>"""
+
+
+def _mod_forma(payload):
+    """Módulo 5: Forma + época num só card (auditoria #6 — elimina gauges
+    duplicados e o card textual)."""
+    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    fa = payload.get("recent_form_a") or {}; fb = payload.get("recent_form_b") or {}
+    sa = payload.get("season_a") or {}; sb = payload.get("season_b") or {}
+    if not (fa and fb):
+        return ""
+    ca, cb = COLORS_V2["a"], COLORS_V2["b"]
+
+    def pct_form(d):
+        if not d or not d.get("matches"):
+            return None
+        return round(100 * d["wins"] / d["matches"])
+    fpa, fpb = pct_form(fa), pct_form(fb)
+    spa, spb = pct_form(sa), pct_form(sb)
+    forma_bloc = f"""
+<div class="cmp">
+  <div class="cmp-lbl">Forma (últimos {fa.get('matches','?')})</div>
+  {_barra_cmp(a, f"{fa.get('wins')}–{fa.get('losses')} · {fpa}", ca, fpa or 0, "%")}
+  {_barra_cmp(b, f"{fb.get('wins')}–{fb.get('losses')} · {fpb}", cb, fpb or 0, "%")}
+</div>"""
+    epoca_bloc = ""
+    if sa and sb and spa is not None and spb is not None:
+        epoca_bloc = f"""
+<div class="cmp">
+  <div class="cmp-lbl">Época atual</div>
+  {_barra_cmp(a, f"{sa.get('wins')}–{sa.get('losses')} · {spa}", ca, spa, "%")}
+  {_barra_cmp(b, f"{sb.get('wins')}–{sb.get('losses')} · {spb}", cb, spb, "%")}
+</div>"""
+    return f'<div class="card"><h3>Forma</h3>{forma_bloc}{epoca_bloc}</div>'
+
+
+def _mod_servico(payload):
+    """Módulo 6: Serviço/resposta com DELTAS explícitos (auditoria #7)."""
+    sa = payload.get("serve_return_stats_a") or {}
+    sb = payload.get("serve_return_stats_b") or {}
+    if not (sa and sb):
+        return ""
+    a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
+    metricas = [
+        ("1º serviço ganho", "avg_first_serve_won_pct"),
+        ("BP salvos", "avg_break_points_saved_pct"),
+        ("Resposta ganha", "avg_return_points_won_pct"),
+        ("BP convertidos", "avg_break_points_converted_pct"),
+    ]
+    linhas = []
+    for label, key in metricas:
+        va, vb = _pct(sa.get(key)), _pct(sb.get(key))
+        if va is None or vb is None:
+            continue
+        delta = va - vb
+        if abs(delta) < 0.5:
+            vant = "="
+            cor_d = COLORS_V2["dim"]
+        elif delta > 0:
+            vant = f"+{delta:.1f} {_esc(a.split()[-1])}"
+            cor_d = COLORS_V2["a"]
+        else:
+            vant = f"+{abs(delta):.1f} {_esc(b.split()[-1])}"
+            cor_d = COLORS_V2["b"]
+        linhas.append(f"""
+<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
+  <div class="cmp-name">{_esc(label)}</div>
+  <div class="cmp-num">{va:.1f}%</div>
+  <div class="cmp-delta" style="color:{cor_d}">{vant}</div>
+  <div class="cmp-num">{vb:.1f}%</div>
+</div>""")
+    if not linhas:
+        return ""
+    return f"""
+<div class="card"><h3>Serviço / Resposta</h3>
+  <div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px; color:var(--dim); font-size:11px">
+    <div></div><div class="cmp-num">{_esc(a.split()[-1])}</div>
+    <div class="cmp-delta" style="color:var(--dim)">vantagem</div>
+    <div class="cmp-num">{_esc(b.split()[-1])}</div>
+  </div>
+  {"".join(linhas)}
+</div>"""
+
+
+def _mod_fadiga(payload):
+    """Módulo 7: Fadiga como comparador em destaque (auditoria — sobe muito)."""
+    fa = payload.get("fatigue_signal_a") or {}
+    fb = payload.get("fatigue_signal_b") or {}
+    if not (fa.get("matches_last_7d") is not None and fb.get("matches_last_7d") is not None):
+        return ""
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+    ja, jb = fa.get("matches_last_7d", 0), fb.get("matches_last_7d", 0)
+    seta, setb = fa.get("sets_last_7d", 0), fb.get("sets_last_7d", 0)
+    delta_sets = seta - setb
+    delta_txt = ""
+    if delta_sets != 0:
+        mais = a if delta_sets > 0 else b
+        delta_txt = f"Δ +{abs(delta_sets)} sets {_esc(mais)}"
+    return f"""
+<div class="card"><h3>Carga (7 dias)</h3>
+  <div class="fadiga-cmp">
+    <div class="fadiga-side">
+      <div class="fadiga-big">{ja} jogos</div>
+      <div class="samp-tag">{seta} sets · {fa.get('days_since_last_match','?')}d descanso</div>
+    </div>
+    <div class="fadiga-delta">{delta_txt}</div>
+    <div class="fadiga-side b">
+      <div class="fadiga-big">{jb} jogos</div>
+      <div class="samp-tag">{setb} sets · {fb.get('days_since_last_match','?')}d descanso</div>
+    </div>
+  </div>
+</div>"""
+
+
+def _mod_cenarios(payload):
+    """Módulo 9: cenários — só os DIFERENCIADORES (auditoria)."""
+    ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
+    rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+    if not (ra and rb):
+        return ""
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+    ca, cb = COLORS_V2["a"], COLORS_V2["b"]
+    cenarios = [
+        ("Set decisivo", "deciding_set_win_pct", "deciding_set_count"),
+        ("Recupera após perder 1º set", "first_set_lose_then_win_pct", "first_set_lose_count"),
+    ]
+    linhas = []
+    for label, key, ckey in cenarios:
+        va, vb = ra.get(key), rb.get(key)
+        if va is None or vb is None:
+            continue
+        # só mostra se diferencia (>=8 p.p.)
+        if abs(va - vb) < 8:
+            continue
+        na, nb = ra.get(ckey), rb.get(ckey)
+        linhas.append(f"""
+<div class="cmp">
+  <div class="cmp-lbl">{_esc(label)}</div>
+  {_barra_cmp(a, f"{va}", ca, va, "%", amostra=na)}
+  {_barra_cmp(b, f"{vb}", cb, vb, "%", amostra=nb)}
+</div>""")
+    if not linhas:
+        return ""
+    return f'<div class="card"><h3>Cenários decisivos</h3>{"".join(linhas)}</div>'
+
+
+def _mod_veredicto(result):
+    """Veredicto do Claude (quando existe)."""
+    verd = result.get("verdict") or result.get("executive_summary")
+    if not verd:
+        return ""
+    return f'<div class="veredicto"><h3>Leitura</h3><div>{_esc(verd)}</div></div>'
+
+
+def _normalizar_div(raw):
+    """Converte o output do _calcular_divergencia (chaves prob_mercado_a etc.)
+    no formato que o V2 usa (market/indice_evidencia estruturados)."""
+    if not raw:
+        return None
+    if raw.get("prob_mercado_a") is None:
+        return {"market": None, "indice_evidencia": None,
+                "classificacao": raw.get("classificacao"), "favorecido": raw.get("favorecido")}
+    return {
+        "market": {"a": raw["prob_mercado_a"], "b": raw["prob_mercado_b"]},
+        "indice_evidencia": {"a": raw["indice_evidencia_a"], "b": raw["indice_evidencia_b"]},
+        "classificacao": raw.get("classificacao"),
+        "favorecido": raw.get("favorecido"),
+        "tipo": raw.get("tipo"),
+        "mercado_favorece": raw.get("mercado_favorece"),
+        "indice_favorece": raw.get("indice_favorece"),
+        "fatores_chave": raw.get("fatores_chave"),
+    }
+
+
+def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
+    """Monta a página V2 completa. Recebe a função do motor (índice de
+    evidência) de fora, para reaproveitar o report_html original.
+    Arquitetura: Decisão -> explicação -> evidência -> detalhe."""
+    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    # usar o wrapper (tem market/model/indice_evidencia estruturados) se dado,
+    # senão o motor direto (e normalizamos as chaves)
+    if mvm_fn is not None:
+        div = mvm_fn(payload)
+    else:
+        raw = payload.get("divergencia") or calcular_divergencia_fn(payload)
+        div = _normalizar_div(raw)
+    estado = detetar_estado(payload, result, div)
+    chave = estado[0]
+
+    partes = ['<div class="wrap">']
+    # 1. Header (sempre)
+    partes.append(_mod_header(payload, div, estado))
+    # 2. Leitura do jogo (sempre — muda conforme estado)
+    partes.append(_mod_leitura(payload, div, estado, result))
+
+    # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
+    if chave == "erro":
+        partes.append(f"""
+<div class="parcial">
+  <b>⚠️ Análise parcial</b> — odds indisponíveis e análise não gerada.
+  Mostramos apenas os dados factuais abaixo, sem sinal nem veredicto.
+</div>""")
+        # só dados factuais, sem mercado/sinal/veredicto
+        partes.append(f'<div class="grid2">{_mod_forma(payload)}{_mod_servico(payload)}</div>')
+        partes.append(_mod_fadiga(payload))
+        partes.append('</div>')
+        return _pagina(a, b, "".join(partes))
+
+    # 3. 4 fatores (se há divergência)
+    if chave in ("acompanhar", "oportunidade"):
+        partes.append(_mod_fatores(payload, div))
+    # 4. Mercado vs Sinal (só com odds)
+    if chave not in ("sem_odds",):
+        partes.append(_mod_mercado_vs_sinal(payload, div))
+    # 5-9. Evidência (grelha 2 colunas)
+    partes.append(f'<div class="grid2">{_mod_forma(payload)}{_mod_servico(payload)}</div>')
+    partes.append(_mod_fadiga(payload))
+    partes.append(_mod_cenarios(payload))
+    # Veredicto (se há)
+    partes.append(_mod_veredicto(result))
+    partes.append('</div>')
+    return _pagina(a, b, "".join(partes))
+
+
+def _pagina(a, b, corpo):
+    hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    return f"""<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{a} vs {b}</title>
+<style>{_css()}</style></head>
+<body>{corpo}
+<div class="wrap"><div class="foot">Gerado em {hoje} · Pontos de observação para leitura pré-live e ao vivo — não são recomendações de aposta.</div></div>
+</body></html>"""
