@@ -35,8 +35,9 @@ Fluxo de uma execução (`python -m src.main`):
 2. **Filtrar** por janela temporal e por tier/elegibilidade.
 3. Para cada jogo, **recolher dados**: H2H, forma, época, ranking, piso,
    fadiga, serviço/resposta, meteorologia, odds, e dados ricos de carreira.
-4. **Analisar** com o Claude (Sonnet) — devolve só a *análise* (pontos-chave,
-   discrepâncias, veredicto), não o relatório todo.
+4. **Analisar** com o Claude (Sonnet), quando o motor deteta divergência
+   relevante — devolve só a *análise* (resumo executivo + veredicto), a partir
+   da classificação do motor, não o relatório todo.
 5. **Montar o relatório HTML** (o Python monta as secções de dados; o Claude
    fornece a análise).
 6. **Publicar** no GitHub Pages e **enviar resumo** para o Telegram.
@@ -78,17 +79,20 @@ Workflow: `.github/workflows/tennis-bot.yml` (GitHub Actions).
 - Consumo medido: **~18-26 chamadas por execução** (varia com dados ricos e
   fadiga). Registado em `data/rapidapi_usage_log.json`.
 
-### Histórico de jogos (grátis)
-- **ATP:** TennisMyLife (fiável, nunca falhou).
-- **WTA:** tennis-data.co.uk multi-ano (**10 anos**, ~22 mil jogos). Fiável.
-  O Sackmann (`tennis_wta`) é tentado primeiro mas anda instável (404); há
-  **cópia local** em `data/history_cache/` que se auto-atualiza quando a fonte
-  está disponível.
-- Profundidade: **10 anos** (`HISTORY_YEARS_TO_LOAD`).
+### Dados de jogos e estatísticas (RapidAPI — fonte principal)
+- **RapidAPI** (`tennis-api-atp-wta-itf`, plano PRO) é a fonte **principal** de
+  forma, época, piso, H2H, fadiga, serviço/resposta, sets decisivos, mão e
+  regresso após paragem. Cobre ATP e WTA de forma consistente.
+- Os históricos gratuitos (TennisMyLife ATP, tennis-data.co.uk WTA, Sackmann)
+  ficam como **fallback**: só entram quando a RapidAPI não tem o dado. Quando as
+  fontes divergem, a RapidAPI ganha e a discrepância é registada no log
+  (`[fontes]`).
+- Profundidade histórica: **10 anos** (`HISTORY_YEARS_TO_LOAD`).
 
-### Odds (grátis)
-- The Odds API — devolve `{nome_jogador: preço}`. Probabilidade sem margem
-  calculada no cabeçalho.
+### Odds (RapidAPI)
+- As odds (Moneyline) vêm da **RapidAPI** (endpoint `recent-odds`), casadas por
+  event ID. Probabilidade de mercado sem margem calculada no cabeçalho. Sem
+  odds, o motor não classifica divergência (o jogo fica assinalado "sem odds").
 
 ### Análise (Anthropic)
 - Modelo: **`claude-sonnet-5`**. Escolha deliberada de manter o Sonnet (não
@@ -100,21 +104,23 @@ Workflow: `.github/workflows/tennis-bot.yml` (GitHub Actions).
 
 Estrutura, de cima para baixo:
 
-1. **Cabeçalho** — jogadores, odds, probabilidade sem margem, e dois eixos
-   de confiança separados: **Cobertura de dados** (número *calculado pelo
-   Python* — conta quantas das 8 fontes estão presentes, com chips ✓/✗ que
-   mostram exatamente quais existem e quais faltam) e **Força do sinal**
-   (juízo qualitativo do modelo, com justificação — assume-se como leitura,
-   não medida exata). E **alerta de topo** 🔴 quando há discrepância forte.
-2. **Gráficos** — Serviço/Resposta, Forma recente, Qualidade do adversário.
+1. **Cabeçalho** — jogadores, ranking, odds, probabilidade de mercado sem
+   margem, e a **bola do motor** (🟢 oportunidade forte / 🟡 acompanhar /
+   🔴 mercado eficiente / ⚪ sem odds). Mostra o **índice de evidência**
+   (0-100 a favor de quem os indicadores apoiam) e a **cobertura de dados**
+   (quantas fontes presentes, chips ✓/✗).
+2. **Gráficos** — Serviço/Resposta, Forma recente, Desempenho vs adversário.
 3. **Secções de dados** (montadas em Python, números sempre certos):
-   H2H, forma/época, ranking, piso, fadiga, desistências, cenários de jogo,
-   estilo, domínio vs adversários, meteorologia, mercado.
-4. **Pontos-chave** — os sinais mais importantes (análise do Claude).
-5. **Discrepâncias** — divergências dados vs mercado, com selos
-   🔴 forte / 🟡 moderado / ⚪ fraco.
-6. **Veredicto** — a **leitura de trader**: onde está (ou não) o valor,
-   pré-live ou ao vivo.
+   H2H, forma/época, ranking, piso, fadiga, cenários de jogo (sets decisivos,
+   recuperação de 1º set), matchup de mão, regresso após paragem, meteo, mercado.
+4. **Indicadores vs Mercado** — o índice de evidência de cada jogador vs a
+   probabilidade de mercado; comparação **direcional** (concordam = mercado
+   eficiente; discordam = divergência classificada em ligeira/moderada/forte).
+5. **Fatores decisivos** — os pesos que sustentam a leitura, com **barras de
+   intensidade** (forte/moderado/fraco). As cores (🟢🟡🔴) ficam reservadas à
+   conclusão/divergência, para o vermelho ter um só significado.
+6. **Veredicto** — a leitura de trader: onde está (ou não) o valor, pré-live
+   ou ao vivo.
 
 ### Padrões de mercado que o bot caça (no veredicto)
 1. **Recuperação de 1º set** — entrada após perder o 1º set, se recupera bem.
@@ -149,8 +155,9 @@ Otimizações já implementadas:
 - **1x/dia** — execução única de manhã (05:00 UTC) com janela alargada
   (0-36h) para cobrir o dia inteiro. Corta ~50% em ambas as contas.
 
-Estado atual: `max_tokens=5500`, output médio ~4000 tokens/jogo (análise rica).
-Projeção Anthropic com 1x/dia: **~$12-19/mês** conforme o volume de jogos.
+Estado atual: `max_tokens=1500`, output médio ~400-600 tokens/jogo (o Claude
+recebe a classificação do motor e escreve a partir dela — resumo executivo de
+4 frases + veredicto, sem divagar). Execuções recentes custaram ~9-16 cêntimos.
 
 ---
 
@@ -160,7 +167,7 @@ Principais em `src/config.py`:
 
 | Variável | Valor atual | Nota |
 |---|---|---|
-| `TRACKED_TOURNAMENT_IDS` | Washington (21344 ATP, 16738 WTA) | **A trocar por torneio** |
+| `TRACKED_TOURNAMENT_IDS` | Canadian Open (21337 ATP, 16739 WTA Toronto) | **Trocar a cada torneio novo** |
 | `CLAUDE_MODEL` | `claude-sonnet-5` | |
 | `HISTORY_YEARS_TO_LOAD` | 10 | |
 | `LOOKAHEAD_HOURS_MIN/MAX` | 0 / 36 | Janela para 1x/dia |
@@ -188,34 +195,38 @@ GitHub Pages: **Settings → Pages → Deploy from a branch → `main` → `/doc
 
 ## Auditoria externa (rigor adotado)
 
-O projeto passou por uma auditoria externa. Foram adotadas as recomendações de
+O projeto passou por duas auditorias externas. Adotadas as recomendações de
 **rigor e transparência**, mantendo a filosofia de "observação, não edge":
 
-- Não inferir "vence 2-0" de "ganha o jogo após 1º set" (inclui 2-1).
-- Não comparar taxas históricas com a probabilidade implícita do mercado como
-  se fossem a mesma medida.
-- Separar **cobertura de dados** de **força do sinal** (dois eixos, não um).
-- **Transparência da pontuação:** a cobertura é *calculada* (Python conta as
-  fontes presentes, mostra chips ✓/✗), não um número opaco; a força do sinal
-  é assumida como juízo, sempre com justificação.
-- Marcar dados de carreira como de relevância temporal limitada (jogadores de
-  carreira longa misturam fases).
+- **Índice de evidência, não probabilidade** — o motor apresenta um índice
+  0-100 ("quanto do peso dos sinais aponta para A"), nunca uma probabilidade
+  de vitória. A comparação com o mercado é **direcional** (concordam/discordam),
+  sem inventar "pontos percentuais" de vantagem.
+- **Selective pelo motor** — o Claude (pago) é chamado quando o motor deteta
+  divergência relevante (nível ≥2), não pelos líderes dos sinais. Assim não se
+  salta o jogo mais interessante (todos os sinais num lado, mercado no outro).
+- **Confiança de amostra** — cada fator pesa conforme a robustez da amostra
+  (8 jogos num piso pesam menos que 300).
+- **Sem double counting** — fatores correlacionados (ranking/época/forma/
+  serviço) agrupados em famílias com teto, para não contar a "qualidade geral"
+  várias vezes.
+- **Fadiga só de fonte recente fiável** (`api_recent`), nunca histórica.
+- **Testes do motor** — suite determinística (`tests/test_motor.py`).
 - "Favorito do mercado" (não "justo"); nunca afirmar "há valor de X%".
-- Não duplicar os dois lados do mesmo cenário como dois sinais.
 
 A recomendação de calcular **edge/probabilidade própria** foi **conscientemente
-não adotada** — é uma decisão informada, validada por backtest.
+não adotada** — o bot reúne informação e compara com o mercado, não pretende
+bater o mercado com um modelo próprio.
 
 ---
 
 ## O que falta fazer
 
 ### 🔴 Crítico (antes do próximo torneio)
-- [ ] **Trocar `TRACKED_TOURNAMENT_IDS`** do Washington para o torneio novo
-      (precisa dos IDs ATP+WTA). Sem isto, o bot não apanha os jogos certos.
-- [ ] **Reativar o schedule** (descomentar `schedule`/`cron` no workflow)
-      quando os testes terminarem.
-- [ ] **Auditoria externa** do projeto (revisão por terceiro).
+- [ ] **Trocar `TRACKED_TOURNAMENT_IDS`** para o torneio novo (IDs ATP+WTA).
+      Sem isto, o bot não apanha os jogos certos.
+- [ ] **Uma execução manual de teste** para validar que o índice de evidência
+      produz resultados sensatos nos jogos reais, antes de reativar o schedule.
 
 ### 🟡 Melhorias em curso / a validar
 - [ ] Validar a **leitura de trader** no veredicto (padrões 1/2/4/5) em jogos
