@@ -258,21 +258,20 @@ Campos (todos obrigatórios):
   "{FLAG_UNCERTAIN}" (equilibrado/dados insuficientes) ou "{FLAG_ROUTINE}"
   (mercado alinhado, sem sinal).
 - "signal_strength": inteiro 0-100 (força da evidência de divergência; juízo).
-- "executive_summary": EXATAMENTE 4 frases curtas (MÁX 350 caracteres), nesta
-  ordem fixa: (1) estado do mercado — está eficiente ou há divergência? (2) há
-  edge/divergência e em que direção (usa a CLASSIFICAÇÃO DO MOTOR); (3) que
-  mercados merecem acompanhamento; (4) conclusão sobre a confiança da leitura.
-  Linguagem de trader, seca. NÃO repitas rankings/estatísticas (já estão nas
-  tabelas). Ex: "O modelo confirma o favoritismo e considera o mercado ajustado.
-  Não há divergência relevante na Moneyline. Total Games e Handicap merecem
-  acompanhamento pelo equilíbrio. Confiança elevada."
-- "verdict": conclusão final de mercado (MÁX 400 caracteres, ≈4 frases),
-  COERENTE com a classificação do motor. Se o motor diz "Mercado eficiente",
-  di-lo direto (sem inventar valor). Se diz divergência, assume-a com clareza —
-  SEM "mas por outro lado" a diluir. Onde está (ou não) o interesse analítico,
-  pré-live ou ao vivo. Nunca "apostar"/"recomendo"/"stake" — só "acompanhar",
-  "monitorizar", "possível interesse analítico". Padrões ao vivo quando se
-  aplicam: recuperação de 1º set, set decisivo, fadiga → over games.
+- "executive_summary": UMA a DUAS frases, MÁX 200 caracteres. Interpreta a
+  leitura já calculada pelo Python (recebes a classificação do motor e os
+  fatores). NÃO repitas números de forma/ranking/H2H — já estão nas tabelas.
+  NÃO recalcules nem contradigas o motor. Formato:
+  "<classificação do motor> a favor de <favorecido>. <2-3 fatores> são os
+  principais; mercado mantém <favorito do mercado>." Ou, se eficiente:
+  "Mercado eficiente. Sem divergência relevante entre mercado e indicadores."
+- "verdict": UMA a DUAS frases, MÁX 200 caracteres, COERENTE com o motor.
+  Diz o lado favorecido pelos indicadores e que Moneyline acompanhar (só
+  Moneyline — é o único mercado com odds). PROIBIDO: "apostar", "entrar",
+  "há valor", "boa entrada", "zona de entrada", "stake", "odd de entrada".
+  Usa só "acompanhar"/"monitorizar". "Sinal" significa merece atenção, NÃO
+  apostar. Ex: "Bencic é o lado favorecido pelos indicadores, com divergência
+  moderada face ao mercado. Acompanhar Moneyline Bencic."
 
 LINGUAGEM (obrigatório): frases curtas e diretas. PROIBIDO narrativo como
 "tem vindo a demonstrar", "ao longo da temporada", "é conhecido por". Vai
@@ -467,18 +466,16 @@ def _evaluate_selective_policy(
             signals,
         )
 
-    # 2. Sem motor/odds (fallback ao comportamento antigo, mais conservador)
-    if not signals:
-        return (False, "sem sinais materiais com amostra suficiente", signals)
-    leaders = {
-        str(signal["leader"])
-        for signal in signals
-        if signal.get("leader") and signal.get("leader") != "igual"
-    }
-    if len(leaders) >= 2:
-        dimensions = ", ".join(signal["label"] for signal in signals)
-        return (True, f"divergência material entre dimensões: {dimensions}", signals)
-    return (False, "sinais materiais alinhados; síntese determinística suficiente", signals)
+    # 2. Sem motor/odds -> NÃO chamar o Claude. Sem odds de mercado, o motor
+    # não consegue avaliar divergência (que é o propósito da análise paga), e
+    # o Claude tende a divagar sem esse contexto (chegava a bater no limite de
+    # tokens). Poupa-se a chamada e evita-se o corte. O relatório sai na mesma,
+    # em modo "análise parcial / sem odds" (só dados factuais).
+    return (
+        False,
+        "sem odds de mercado — sem divergência a avaliar; relatório factual sem LLM",
+        signals,
+    )
 
 
 def _build_selective_result(
@@ -718,14 +715,48 @@ def analyze_match(match_data: dict) -> dict:
 
     def _save_and_return(res: dict) -> dict:
         """Grava o resultado na cache persistente apenas quando aplicável.
-        Aplica limites por código aos textos do Claude (garante output curto)."""
+        Aplica limites por código aos textos do Claude (garante output curto)
+        e VALIDA a coerência com o motor (auditoria 2, ponto 6)."""
         def _cut(s, n):
             s = str(s or "")
             return s if len(s) <= n else s[:n].rstrip() + "…"
+
+        # VALIDAÇÃO PÓS-CLAUDE (sem 2ª chamada): se o Claude contradiz o motor
+        # (aponta o favorecido errado, ou nega divergência que existe), rejeita
+        # a interpretação e usa um fallback determinístico curto gerado pelo
+        # Python. Zero contradições entre Python, Claude, HTML e Telegram.
+        div = match_data.get("divergencia") or {}
+        clf = div.get("classificacao") or {}
+        favorecido = div.get("favorecido")
+        nivel = clf.get("nivel")
+        merc_fav = div.get("mercado_favorece")
+        if nivel is not None and div.get("market"):
+            texto_motor = clf.get("texto", "")
+            contradiz = False
+            blob = f"{res.get('executive_summary','')} {res.get('verdict','')}".lower()
+            # (a) motor diz divergência a favor de X, mas o Claude favorece o outro
+            if nivel >= 1 and favorecido:
+                outro = match_data.get("player_a") if favorecido == match_data.get("player_b") else match_data.get("player_b")
+                if outro and outro.lower() in blob and favorecido.lower() not in blob:
+                    contradiz = True
+            # (b) motor diz divergência, mas o Claude diz "eficiente/rotina/sem divergência"
+            if nivel >= 2 and any(t in blob for t in ["eficiente", "rotina", "sem divergência", "sem divergencia", "alinhad"]):
+                contradiz = True
+            if contradiz:
+                # fallback determinístico curto, 100% coerente com o motor
+                if nivel == 0:
+                    fb = "Mercado eficiente. Sem divergência relevante entre mercado e indicadores."
+                else:
+                    fb = (f"{texto_motor} a favor de {favorecido}. "
+                          f"Mercado mantém {merc_fav}. Acompanhar Moneyline {favorecido}.")
+                res["executive_summary"] = fb
+                res["verdict"] = fb
+                res["_validacao"] = "fallback_determinístico (Claude contradizia o motor)"
+
         if res.get("executive_summary"):
-            res["executive_summary"] = _cut(res["executive_summary"], 350)
+            res["executive_summary"] = _cut(res["executive_summary"], 200)
         if res.get("verdict"):
-            res["verdict"] = _cut(res["verdict"], 400)
+            res["verdict"] = _cut(res["verdict"], 200)
         if provider.persist_cache:
             try:
                 os.makedirs(_ANALYSIS_CACHE_DIR, exist_ok=True)
