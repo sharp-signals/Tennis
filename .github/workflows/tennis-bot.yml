@@ -51,16 +51,25 @@ jobs:
             # Integrar mudanças remotas antes de enviar (evita o erro
             # "! [rejected] ... fetch first" quando o repo avançou entretanto,
             # ex: substituições manuais de ficheiros). Rebase por cima do
-            # remoto e tenta o push; se ainda falhar, repete uma vez.
+            # remoto e tenta o push; se ainda falhar, repete.
+            push_ok=0
             for tentativa in 1 2 3; do
               git pull --rebase --autostash origin main || true
               if git push; then
                 echo "Push concluído (tentativa $tentativa)."
+                push_ok=1
                 break
               fi
               echo "Push falhou na tentativa $tentativa; a repetir..."
               sleep 3
             done
+            # AUDITORIA P1: se as 3 tentativas falharam, falhar o workflow
+            # explicitamente para o alerta do Telegram (if: failure()) disparar.
+            # Sem isto, o push podia falhar em silêncio e ninguém saberia.
+            if [ "$push_ok" -ne 1 ]; then
+              echo "Push falhou definitivamente após 3 tentativas."
+              exit 1
+            fi
           else
             echo "Sem alterações a gravar."
           fi
