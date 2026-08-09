@@ -423,39 +423,62 @@ def _evaluate_selective_policy(
     match_data: dict,
 ) -> tuple[bool, str, list[dict]]:
     """
-    Decide se a interpretação paga acrescenta valor.
+    Decide se a interpretação paga (Claude) acrescenta valor.
 
-    A LLM é reservada para divergências materiais. Quando os sinais estão
-    alinhados, Python já consegue produzir uma leitura factual suficiente.
+    NOVA LÓGICA (auditoria P0 #2): o gatilho é o MOTOR DE DIVERGÊNCIA, não os
+    líderes dos sinais. O Claude é chamado quando o motor deteta divergência
+    RELEVANTE contra o mercado (nível >=2) — que são os jogos economicamente
+    interessantes. Antes decidíamos pelos líderes dos sinais, o que ignorava o
+    motor e podia saltar precisamente o jogo mais interessante (todos os sinais
+    num jogador, mercado forte no outro = 1 só líder -> não chamava, quando é
+    uma divergência forte).
     """
     signals = _collect_selective_signals(features)
 
-    if not signals:
+    # 1. Ler a classificação do motor (já calculada pelo main e posta no payload)
+    div = match_data.get("divergencia") or {}
+    clf = div.get("classificacao") or {}
+    nivel = clf.get("nivel")
+
+    if nivel is not None and div.get("market"):
+        # temos motor com odds -> decidir pelo nível de divergência
+        if nivel >= 2:
+            return (
+                True,
+                f"divergência {clf.get('texto', 'relevante')} detetada pelo motor (nível {nivel})",
+                signals,
+            )
+        # nível 0-1: mercado eficiente ou divergência ligeira -> Python chega.
+        # EXCEÇÃO (auditoria): sinais fortemente contraditórios entre si +
+        # dados suficientes -> vale a interpretação mesmo com gap de mercado baixo.
+        leaders = {
+            str(s["leader"]) for s in signals
+            if s.get("leader") and s.get("leader") != "igual"
+        }
+        if len(leaders) >= 2 and len(signals) >= 4:
+            return (
+                True,
+                "sinais fortemente contraditórios entre si com amostra suficiente",
+                signals,
+            )
         return (
             False,
-            "sem sinais materiais com amostra suficiente",
+            f"sem divergência relevante (motor nível {nivel}); síntese Python suficiente",
             signals,
         )
 
+    # 2. Sem motor/odds (fallback ao comportamento antigo, mais conservador)
+    if not signals:
+        return (False, "sem sinais materiais com amostra suficiente", signals)
     leaders = {
         str(signal["leader"])
         for signal in signals
         if signal.get("leader") and signal.get("leader") != "igual"
     }
-
     if len(leaders) >= 2:
         dimensions = ", ".join(signal["label"] for signal in signals)
-        return (
-            True,
-            f"divergência material entre dimensões: {dimensions}",
-            signals,
-        )
-
-    return (
-        False,
-        "sinais materiais alinhados; síntese determinística suficiente",
-        signals,
-    )
+        return (True, f"divergência material entre dimensões: {dimensions}", signals)
+    return (False, "sinais materiais alinhados; síntese determinística suficiente", signals)
 
 
 def _build_selective_result(
