@@ -788,23 +788,17 @@ def _calcular_divergencia(payload):
             nivel = 3
     elif desalinhamento >= 12:
         # (2) mesmo lado, mas índice bem mais forte -> convicção reforçada
-        # (favorito subvalorizado). SÓ interessa se a odd do favorito estiver na
-        # zona de entrada do punter (>=1.70): perto da par, onde vale a pena
-        # entrar a favor do favorito quando ele paga mais do que "devia". Num
-        # superfavorito (ex: 1.15) não há valor prático, por isso não sinaliza.
-        odd_favorito = oa if mercado_favorece == a else ob
-        ODD_MINIMA_CONVICCAO = 1.70
-        if odd_favorito is not None and odd_favorito >= ODD_MINIMA_CONVICCAO:
-            tipo = "conviccao"
-            if desalinhamento < 18:
-                nivel = 1
-            elif desalinhamento < 28:
-                nivel = 2
-            else:
-                nivel = 3
+        # (favorito que os dados suportam mais do que a odd reflete). Tratamento
+        # SIMÉTRICO com a divergência de direção (auditoria ponto 9): sem
+        # limiar de odd — mostra a todos os favoritos subvalorizados e o
+        # utilizador decide o que fazer (Moneyline, handicap, etc.).
+        tipo = "conviccao"
+        if desalinhamento < 18:
+            nivel = 1
+        elif desalinhamento < 28:
+            nivel = 2
         else:
-            # favorito paga pouco -> sem valor prático -> eficiente
-            nivel = 0
+            nivel = 3
     else:
         # concordam em direção e magnitude -> mercado eficiente
         nivel = 0
@@ -1743,6 +1737,15 @@ details.more .more-body {{ padding:0 16px 16px; }}
   border-radius:12px; padding:18px; margin-bottom:14px; }}
 .veredicto h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:1px;
   color:var(--dim); margin-bottom:10px; }}
+.merc-linha {{ display:flex; align-items:center; gap:10px; padding:7px 0;
+  border-bottom:1px solid var(--line); font-size:13px; }}
+.merc-linha:last-of-type {{ border-bottom:none; }}
+.merc-bola {{ font-size:14px; }}
+.merc-nome {{ font-weight:600; min-width:130px; }}
+.merc-nota {{ color:var(--dim); font-size:12px; }}
+.merc-aviso {{ font-size:11px; color:var(--dim); margin-top:10px;
+  padding-top:8px; border-top:1px solid var(--line); }}
+.h2h-line {{ font-size:14px; line-height:1.6; }}
 .foot {{ text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }}
 """
@@ -1827,7 +1830,7 @@ def _mod_leitura(payload, div, estado, result):
         # favorito subvalorizado: mercado e índice no mesmo lado, mas índice mais forte
         frase = (f"<b>{_esc(fav)}</b> é favorito do mercado <b>e</b> dos indicadores "
                  f"(índice {idx_fav}/100) — mas os dados suportam-no mais do que a odd "
-                 f"reflete. Favorito a acompanhar dentro da tua zona de entrada.")
+                 f"reflete. Favorito a acompanhar.")
     else:
         # divergência de direção: contra o mercado
         frase = (f"Os indicadores apontam para <b>{_esc(fav)}</b> (índice {idx_fav}/100), "
@@ -2051,6 +2054,77 @@ def _mod_cenarios(payload):
     return f'<div class="card"><h3>Cenários decisivos</h3>{"".join(linhas)}</div>'
 
 
+def _mod_h2h(payload):
+    """Módulo H2H (auditoria 2, ponto 2): o H2H tem peso 10 no motor mas não
+    aparecia no V2. Mostra de forma clara e curta, com as regras pedidas:
+    - histórico suficiente -> 'X lidera 3–1' (+ piso se relevante)
+    - equilibrado -> '2–2 sem vantagem'
+    - 1 confronto -> 'amostra insuficiente'
+    - nenhum -> 'sem confrontos'"""
+    h = payload.get("h2h")
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+    if not h:
+        overall = None
+    else:
+        overall = h.get("overall") or h
+    if not overall or overall.get("total_matches", overall.get("total", 0)) in (0, None):
+        texto = "Sem confrontos diretos entre as duas jogadoras."
+        return f'<div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">{texto}</div></div>'
+    aw = overall.get("a_wins", 0); bw = overall.get("b_wins", 0)
+    total = overall.get("total_matches", overall.get("total", aw + bw))
+    # piso, se houver
+    surf = (h.get("surface") or {}) if isinstance(h, dict) else {}
+    saw, sbw = surf.get("a_wins"), surf.get("b_wins")
+    surf_txt = ""
+    if saw is not None and sbw is not None and (saw + sbw) > 0:
+        piso_nome = _esc(payload.get("surface", "piso"))
+        lider_s = a if saw > sbw else (b if sbw > saw else None)
+        if lider_s:
+            surf_txt = f"; {max(saw,sbw)}–{min(saw,sbw)} em {piso_nome.lower()}"
+    if total == 1:
+        texto = f"1 confronto apenas — amostra insuficiente para sinal relevante."
+    elif aw == bw:
+        texto = f"{aw}–{bw} — sem vantagem relevante no confronto direto."
+    else:
+        lider = a if aw > bw else b
+        texto = f"<b>{lider}</b> lidera {max(aw,bw)}–{min(aw,bw)} nos confrontos anteriores{surf_txt}."
+    return f'<div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">{texto}</div></div>'
+
+
+def _mod_mercados(payload, div):
+    """Mercados a acompanhar (auditoria pontos 7, 16): marca INTERESSE, nunca
+    'valor' (só temos odds de Moneyline). 'acompanhar' ≠ 'apostar'."""
+    if not div or not div.get("market"):
+        return ""
+    a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
+    mk = div["market"]
+    fav = div.get("favorecido")
+    nivel = (div.get("classificacao") or {}).get("nivel", 0)
+    linhas = []
+    # Moneyline — vem do motor (é o único mercado com odds)
+    if nivel >= 2 and fav:
+        linhas.append(("🟢", f"Moneyline {_esc(fav)}", "indicadores divergem do mercado"))
+    elif nivel == 1 and fav:
+        linhas.append(("🟡", f"Moneyline {_esc(fav)}", "divergência ligeira"))
+    else:
+        linhas.append(("⚪", "Moneyline", "mercado alinhado com os indicadores"))
+    # Total Games e Handicap — só marcam interesse pelo equilíbrio (NÃO valor,
+    # não temos odds destes mercados)
+    margem = abs(mk["a"] - mk["b"])
+    if margem <= 12:
+        linhas.append(("🟡", "Total Games", "jogo equilibrado — acompanhar linhas ao vivo"))
+        linhas.append(("🟡", "Handicap Games", "equilíbrio pode dar interesse ao handicap"))
+    itens = "".join(
+        f'<div class="merc-linha"><span class="merc-bola">{bola}</span>'
+        f'<span class="merc-nome">{nome}</span>'
+        f'<span class="merc-nota">{_esc(nota)}</span></div>'
+        for bola, nome, nota in linhas
+    )
+    return (f'<div class="card"><h3>Mercados a acompanhar</h3>{itens}'
+            f'<div class="merc-aviso">Marcação de <b>interesse</b> para observação — '
+            f'não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div>')
+
+
 def _mod_veredicto(result):
     """Veredicto do Claude (quando existe)."""
     verd = result.get("verdict") or result.get("executive_summary")
@@ -2119,9 +2193,11 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 4. Mercado vs Sinal (só com odds)
     if chave not in ("sem_odds",):
         partes.append(_mod_mercado_vs_sinal(payload, div))
+        partes.append(_mod_mercados(payload, div))
     # 5-9. Evidência (grelha 2 colunas)
     partes.append(f'<div class="grid2">{_mod_forma(payload)}{_mod_servico(payload)}</div>')
     partes.append(_mod_fadiga(payload))
+    partes.append(_mod_h2h(payload))
     partes.append(_mod_cenarios(payload))
     # Veredicto (se há)
     partes.append(_mod_veredicto(result))
