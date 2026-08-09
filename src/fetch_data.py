@@ -184,6 +184,7 @@ RAPIDAPI_EXTEND_BASE = f"{RAPIDAPI_BASE}/extend/api"
 _RAPIDAPI_EVENT_INDEX: dict[str, dict] = {}
 _RAPIDAPI_EVENT_INDEX_READY: set[str] = set()
 _RAPIDAPI_ODDS_CACHE: dict[str, Optional[dict]] = {}
+_RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 
 
 def _event_match_key(player1_id, player2_id, tournament_id, round_id=None):
@@ -216,10 +217,15 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
             resp = _rapidapi_get(url, params={"page": page, "limit": 100})
             resp.raise_for_status()
             payload = resp.json() or {}
-            page_results = payload.get("results") or []
-            events.extend(e for e in page_results if isinstance(e, dict) and e.get("id"))
-            pagination = payload.get("pagination") or {}
-            if not pagination.get("hasNext"):
+            # A API devolve {"total": N, "matches": [...]}. (O código antigo lia
+            # "results", que não existe — por isso o cruzamento de eventId
+            # falhava. Cada match traz jogadores, data, torneio e ODDS embutidas
+            # em player1.odd/player2.odd, que usamos diretamente.)
+            page_results = payload.get("matches") or payload.get("results") or []
+            events.extend(e for e in page_results if isinstance(e, dict))
+            total = payload.get("total")
+            # paginação: parar quando já temos tudo ou a página veio vazia
+            if not page_results or (isinstance(total, int) and len(events) >= total):
                 break
             page += 1
             if page > MAX_FIXTURE_PAGES:
@@ -233,9 +239,65 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
 
 def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
     """
-    Prepara, uma vez por execução, a correspondência entre cada fixture e o
-    eventId da camada Extend. Isto evita uma chamada /event/get por jogo.
+    Prepara, uma vez por execução, as odds de cada jogo a partir da lista de
+    upcoming events da RapidAPI. As odds vêm EMBUTIDAS em cada evento
+    (player1.odd / player2.odd), por isso lemo-las diretamente daqui — sem
+    precisar de cruzar eventId nem de uma segunda chamada ao recent-odds
+    (que era o que falhava para alguns jogos). Indexadas por par de apelidos.
     """
+    global _RAPIDAPI_EVENT_INDEX_READY
+
+    tours = {m.get("_tour") for m in matches if m.get("_tour")}
+    for tour in tours:
+        if tour in _RAPIDAPI_EVENT_INDEX_READY:
+            continue
+
+        events = _fetch_extend_upcoming_events(tour)
+        matched = 0
+        for event in events:
+            p1 = event.get("player1") or {}
+            p2 = event.get("player2") or {}
+            n1, n2 = p1.get("name", ""), p2.get("name", "")
+            if not n1 or not n2:
+                continue
+            # odds embutidas: preferir player.odd; fallback ao bloco odds.k1/k2
+            def _odd(pl, kkey, ev):
+                o = pl.get("odd")
+                if o is None:
+                    o = (ev.get("odds") or {}).get(kkey)
+                try:
+                    o = float(o)
+                    return o if o > 1 else None
+                except (TypeError, ValueError):
+                    return None
+            oa = _odd(p1, "k1", event)
+            ob = _odd(p2, "k2", event)
+            if oa is None or ob is None:
+                continue
+            # indexar por par de apelidos (tolerante à ordem)
+            key = _odds_names_key(n1, n2)
+            if key:
+                _RAPIDAPI_EMBEDDED_ODDS[f"{tour}:{key}"] = {"n1": n1, "n2": n2, "o1": oa, "o2": ob}
+                matched += 1
+
+        _RAPIDAPI_EVENT_INDEX_READY.add(tour)
+        n_tour = sum(1 for m in matches if m.get("_tour") == tour)
+        print(f"[info] RapidAPI odds embutidas {tour}: {len(_RAPIDAPI_EMBEDDED_ODDS)} eventos indexados ({n_tour} jogos a cobrir).")
+
+
+def _odds_names_key(n1: str, n2: str):
+    """Chave estável por par de apelidos, independente da ordem."""
+    def _sn(nome):
+        toks = [t for t in str(nome).lower().replace(".", " ").split() if t.isalpha()]
+        return toks[-1] if toks else str(nome).lower().strip()
+    a, b = _sn(n1), _sn(n2)
+    if not a or not b:
+        return None
+    return "|".join(sorted([a, b]))
+
+
+def _prepare_rapidapi_odds_index_OLD(matches: list[dict]) -> None:
+    """(versão antiga por eventId — mantida como referência, já não usada)"""
     global _RAPIDAPI_EVENT_INDEX_READY
 
     tours = {m.get("_tour") for m in matches if m.get("_tour")}
@@ -357,11 +419,34 @@ def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
 
 def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
     """
-    Obtém a Moneyline (Full Time Result) atual de um jogo pela RapidAPI.
-    Usa o eventId da camada Extend e escolhe a melhor odd disponível por
-    jogador entre os bookmakers devolvidos. Devolve apenas os números que o
-    relatório já espera: {nome_jogador: odd}.
+    Obtém a Moneyline de um jogo pela RapidAPI. Estratégia robusta:
+    1) ODDS EMBUTIDAS na lista upcoming (player.odd) — indexadas por apelidos.
+       É a fonte principal: não depende de cruzar eventId (que falhava para
+       alguns jogos) nem de uma segunda chamada.
+    2) Fallback: endpoint recent-odds/get/{eventId}, se o eventId existir.
+    Devolve {nome_jogador: odd} com os nomes do nosso jogo.
     """
+    player_a = (match.get("player1") or {}).get("name", "")
+    player_b = (match.get("player2") or {}).get("name", "")
+    tour = match.get("_tour")
+
+    # --- 1) odds embutidas (fonte principal) ---
+    key = _odds_names_key(player_a, player_b)
+    if key and tour:
+        emb = _RAPIDAPI_EMBEDDED_ODDS.get(f"{tour}:{key}")
+        if emb:
+            # mapear as odds aos nomes do NOSSO jogo (a ordem pode diferir)
+            def _sn(n):
+                toks = [t for t in str(n).lower().replace(".", " ").split() if t.isalpha()]
+                return toks[-1] if toks else str(n).lower().strip()
+            if _sn(player_a) == _sn(emb["n1"]):
+                odds = {player_a: emb["o1"], player_b: emb["o2"]}
+            else:
+                odds = {player_a: emb["o2"], player_b: emb["o1"]}
+            print(f"[odds] {player_a} vs {player_b} | RapidAPI embutidas | {odds}")
+            return odds
+
+    # --- 2) fallback: recent-odds por eventId ---
     event_id = _rapidapi_event_id_for_match(match)
     if not event_id:
         return None
@@ -379,8 +464,6 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
             _RAPIDAPI_ODDS_CACHE[event_id] = None
             return None
 
-        player_a = (match.get("player1") or {}).get("name", "")
-        player_b = (match.get("player2") or {}).get("name", "")
         best_a = None
         best_b = None
 
@@ -2120,7 +2203,7 @@ def get_weather_forecast(lat: float, lon: float, match_date: "datetime") -> Opti
         "start_date": date_str,
         "end_date": date_str,
     }
-    for attempt in (1, 2):
+    for attempt in (1, 2, 3):
         try:
             resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
