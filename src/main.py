@@ -1001,7 +1001,6 @@ def run() -> None:
         clf = div.get("classificacao") or {}
         nivel = clf.get("nivel", -1)
         fav = div.get("favorecido")
-        gap = div.get("gap_pp", 0)
         a = payload.get("player_a", "?")
         b = payload.get("player_b", "?")
         # As odds reais estão no payload (RapidAPI), não em div["market"].
@@ -1023,12 +1022,12 @@ def run() -> None:
         if not numeric:
             return (-1, "⚠️", f"{a} vs {b} — <b>SEM ODDS</b> · análise limitada")
 
-        # Convenção intuitiva para o Telegram:
-        # 🔴 forte, 🟢 relevante, 🟡 ligeira, ⚪ sem edge.
-        bola = {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(nivel, "⚪")
+        # Cores do Telegram = nível determinístico do Python (auditoria p.17):
+        # 🟢 forte, 🟡 acompanhar, ⚪ sem sinal, ⚠️ sem odds/dados.
+        bola = {3: "🟢", 2: "🟢", 1: "🟡", 0: "⚪"}.get(nivel, "⚪")
 
-        # Identificar se a divergência favorece o favorito ou o underdog,
-        # usando as odds Moneyline já presentes no payload.
+        tipo = div.get("tipo", "")
+        # rótulo do lado (favorito/underdog) a partir das odds
         lado = "Moneyline"
         try:
             if fav in numeric and len(numeric) >= 2:
@@ -1037,12 +1036,9 @@ def run() -> None:
         except Exception:
             pass
 
-        if nivel >= 3 and fav:
-            txt = f"{a} vs {b} — <b>{lado}: divergência FORTE</b> a favor de {html.escape(str(fav))} (+{gap} p.p.)"
-        elif nivel == 2 and fav:
-            txt = f"{a} vs {b} — <b>{lado}: divergência relevante</b> a favor de {html.escape(str(fav))} (+{gap} p.p.)"
-        elif nivel == 1 and fav:
-            txt = f"{a} vs {b} — <b>{lado}: divergência ligeira</b> a favor de {html.escape(str(fav))}"
+        _txt_motor = (clf.get("texto") or "").lower()
+        if nivel >= 1 and fav:
+            txt = f"{a} vs {b} — <b>{lado}: {_txt_motor}</b> a favor de {html.escape(str(fav))}"
         else:
             txt = f"{a} vs {b} — sem divergência relevante"
         return (nivel, bola, txt)
