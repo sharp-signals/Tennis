@@ -181,6 +181,10 @@ RAPIDAPI_EXTEND_BASE = f"{RAPIDAPI_BASE}/extend/api"
 #   /tennis/v2/ms-api/upcoming/matches?tournament=...&limit=...&page=...
 # (NÃO é /extend/api/events/upcoming — esse devolve 'results' sem as odds.)
 RAPIDAPI_ALL_UPCOMING_URL = f"{RAPIDAPI_BASE}/ms-api/upcoming/matches"
+# Teto de páginas ao carregar o all-upcoming (100 jogos/página). 20 = 2000
+# jogos, cobre qualquer dia com folga. Evita loop infinito se a API não
+# sinalizar bem a última página.
+_ALL_UPCOMING_MAX_PAGES = 20
 
 # Índice de eventos da camada Extend da RapidAPI.
 # As fixtures normais usam o ID principal do jogo (match ID), enquanto os
@@ -219,11 +223,16 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     events: list[dict] = []
 
     # --- FONTE PRINCIPAL: All Upcoming Matches (tem matches + odds embutidas) ---
+    # NOTA: o campo "total" da resposta é o tamanho da PÁGINA (=limit), não o
+    # total de jogos — por isso NÃO serve como condição de paragem (parava logo
+    # na 1ª página e os jogos mais atrás, ex. WTA Toronto, nunca eram lidos).
+    # Paginamos até uma página vir vazia (ou < limit), com um teto de segurança.
     page = 1
-    while True:
+    LIMIT = 100
+    while page <= _ALL_UPCOMING_MAX_PAGES:
         url = f"{RAPIDAPI_ALL_UPCOMING_URL}"
         try:
-            resp = _rapidapi_get(url, params={"page": page, "limit": 100})
+            resp = _rapidapi_get(url, params={"page": page, "limit": LIMIT})
             resp.raise_for_status()
             payload = resp.json() or {}
             page_results = payload.get("matches") or []
@@ -232,16 +241,16 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                 print(f"[diag] all-upcoming: HTTP {resp.status_code}, "
                       f"chaves={_chaves}, total={payload.get('total')}, "
                       f"matches_pag1={len(page_results)}, url={url}")
-            events.extend(e for e in page_results if isinstance(e, dict))
-            total = payload.get("total")
-            if not page_results or (isinstance(total, int) and len(events) >= total):
+            novos = [e for e in page_results if isinstance(e, dict)]
+            events.extend(novos)
+            # parar quando a página vier vazia ou incompleta (última página)
+            if len(page_results) < LIMIT or not novos:
                 break
             page += 1
-            if page > MAX_FIXTURE_PAGES:
-                break
         except requests.RequestException as exc:
-            print(f"[aviso] falha a obter all-upcoming para odds: {exc}")
+            print(f"[aviso] falha a obter all-upcoming (pág {page}) para odds: {exc}")
             break
+    print(f"[diag] all-upcoming: {len(events)} jogos carregados em {page} página(s).")
 
     if events:
         return events
@@ -283,6 +292,57 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
     """
     global _RAPIDAPI_EVENT_INDEX_READY
 
+    # O all-upcoming traz TODOS os tours de uma vez — por isso carregamos UMA
+    # só vez (não por tour), evitando descarregar centenas de jogos em
+    # duplicado. Indexamos tudo na chave global "*:{key}" e também por tour.
+    if "__ALL__" not in _RAPIDAPI_EVENT_INDEX_READY:
+        events = _fetch_extend_upcoming_events("all")
+        def _odd(pl, kkey, ev):
+            o = pl.get("odd")
+            if o is None:
+                o = (ev.get("odds") or {}).get(kkey)
+            try:
+                o = float(o)
+                return o if o > 1 else None
+            except (TypeError, ValueError):
+                return None
+        n_indexados = 0
+        for event in events:
+            p1 = event.get("player1") or {}
+            p2 = event.get("player2") or {}
+            n1, n2 = p1.get("name", ""), p2.get("name", "")
+            if not n1 or not n2:
+                continue
+            oa = _odd(p1, "k1", event)
+            ob = _odd(p2, "k2", event)
+            if oa is None or ob is None:
+                continue
+            key = _odds_names_key(n1, n2)
+            if key:
+                registo = {"n1": n1, "n2": n2, "o1": oa, "o2": ob}
+                _RAPIDAPI_EMBEDDED_ODDS[f"*:{key}"] = registo
+                n_indexados += 1
+        _RAPIDAPI_EVENT_INDEX_READY.add("__ALL__")
+        # diagnóstico: quantos dos NOSSOS jogos casaram
+        casados = 0
+        for m in matches:
+            pa = (m.get("player1") or {}).get("name", "")
+            pb = (m.get("player2") or {}).get("name", "")
+            k = _odds_names_key(pa, pb)
+            if k and f"*:{k}" in _RAPIDAPI_EMBEDDED_ODDS:
+                casados += 1
+        print(f"[info] RapidAPI odds embutidas: {n_indexados} eventos indexados; "
+              f"{casados}/{len(matches)} dos nossos jogos casaram.")
+        # se algum não casou, mostrar quais (para diagnóstico de nomes)
+        for m in matches:
+            pa = (m.get("player1") or {}).get("name", "")
+            pb = (m.get("player2") or {}).get("name", "")
+            k = _odds_names_key(pa, pb)
+            if k and f"*:{k}" not in _RAPIDAPI_EMBEDDED_ODDS:
+                print(f"[diag] sem odds: {pa} vs {pb} (chave {k})")
+    return
+
+    # (código antigo por tour — já não usado, mantido comentado abaixo)
     tours = {m.get("_tour") for m in matches if m.get("_tour")}
     for tour in tours:
         if tour in _RAPIDAPI_EVENT_INDEX_READY:
