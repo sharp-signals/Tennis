@@ -176,6 +176,11 @@ SACKMANN_RAW_BASE_WTA = SACKMANN_SOURCES_WTA[0]
 REQUEST_TIMEOUT = 20
 
 RAPIDAPI_EXTEND_BASE = f"{RAPIDAPI_BASE}/extend/api"
+# URL do "All Upcoming Matches" — devolve {"total","matches"} com odds
+# embutidas (player.odd). Path confirmado pelo curl real da RapidAPI:
+#   /tennis/v2/ms-api/upcoming/matches?tournament=...&limit=...&page=...
+# (NÃO é /extend/api/events/upcoming — esse devolve 'results' sem as odds.)
+RAPIDAPI_ALL_UPCOMING_URL = f"{RAPIDAPI_BASE}/ms-api/upcoming/matches"
 
 # Índice de eventos da camada Extend da RapidAPI.
 # As fixtures normais usam o ID principal do jogo (match ID), enquanto os
@@ -202,14 +207,47 @@ def _event_names_key(player1: str, player2: str) -> tuple[str, str]:
 
 def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     """
-    Carrega os eventos upcoming da camada Extend para obter o eventId que
-    os endpoints de odds exigem. Faz paginação completa e só é chamado uma
-    vez por tour nesta execução.
+    Carrega os eventos upcoming para obter as ODDS EMBUTIDAS (player.odd).
+    Usa PRIMEIRO o "All Upcoming Matches" — devolve {"total", "matches"} com
+    as odds embutidas em cada jogo (confirmado: traz ATP e WTA, incluindo os
+    jogos que o by-tour não indexava). Só cai no by-tour se o All falhar.
+    O parâmetro `tour` mantém-se por compatibilidade, mas o All traz tudo.
     """
     if not RAPIDAPI_KEY:
         return []
 
     events: list[dict] = []
+
+    # --- FONTE PRINCIPAL: All Upcoming Matches (tem matches + odds embutidas) ---
+    page = 1
+    while True:
+        url = f"{RAPIDAPI_ALL_UPCOMING_URL}"
+        try:
+            resp = _rapidapi_get(url, params={"page": page, "limit": 100})
+            resp.raise_for_status()
+            payload = resp.json() or {}
+            page_results = payload.get("matches") or []
+            if page == 1:
+                _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
+                print(f"[diag] all-upcoming: HTTP {resp.status_code}, "
+                      f"chaves={_chaves}, total={payload.get('total')}, "
+                      f"matches_pag1={len(page_results)}, url={url}")
+            events.extend(e for e in page_results if isinstance(e, dict))
+            total = payload.get("total")
+            if not page_results or (isinstance(total, int) and len(events) >= total):
+                break
+            page += 1
+            if page > MAX_FIXTURE_PAGES:
+                break
+        except requests.RequestException as exc:
+            print(f"[aviso] falha a obter all-upcoming para odds: {exc}")
+            break
+
+    if events:
+        return events
+
+    # --- FALLBACK: by-tour (estrutura antiga, caso o All falhe) ---
+    print(f"[diag] all-upcoming vazio — a tentar by-tour {tour}.")
     page = 1
     while True:
         url = f"{RAPIDAPI_EXTEND_BASE}/events/upcoming/{tour}"
@@ -217,56 +255,21 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
             resp = _rapidapi_get(url, params={"page": page, "limit": 100})
             resp.raise_for_status()
             payload = resp.json() or {}
-            # A API devolve {"total": N, "matches": [...]}. (O código antigo lia
-            # "results", que não existe — por isso o cruzamento de eventId
-            # falhava. Cada match traz jogadores, data, torneio e ODDS embutidas
-            # em player1.odd/player2.odd, que usamos diretamente.)
             page_results = payload.get("matches") or payload.get("results") or []
             if page == 1:
-                # diagnóstico: o que a API devolveu de facto (uma vez por tour)
                 _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
                 print(f"[diag] upcoming/{tour}: HTTP {resp.status_code}, "
-                      f"chaves={_chaves}, total={payload.get('total')}, "
-                      f"matches_nesta_pagina={len(page_results)}, url={url}")
+                      f"chaves={_chaves}, matches={len(page_results)}, url={url}")
             events.extend(e for e in page_results if isinstance(e, dict))
             total = payload.get("total")
-            # paginação: parar quando já temos tudo ou a página veio vazia
             if not page_results or (isinstance(total, int) and len(events) >= total):
                 break
             page += 1
             if page > MAX_FIXTURE_PAGES:
-                print(f"[aviso] eventos upcoming {tour}: limite de {MAX_FIXTURE_PAGES} páginas atingido.")
                 break
         except requests.RequestException as exc:
-            print(f"[aviso] falha a obter eventos upcoming {tour} para odds: {exc}")
+            print(f"[aviso] falha a obter eventos upcoming {tour}: {exc}")
             break
-
-    # Fallback: se o endpoint by-tour não devolveu nada, tenta o "all upcoming"
-    # (sem tour) — sabemos que devolve os jogos com odds embutidas, só que
-    # mistura tours. Filtramos depois pelos jogadores do dia na indexação.
-    if not events:
-        print(f"[diag] upcoming/{tour} vazio — a tentar 'all upcoming' como fallback.")
-        page = 1
-        while True:
-            url = f"{RAPIDAPI_EXTEND_BASE}/events/upcoming"
-            try:
-                resp = _rapidapi_get(url, params={"page": page, "limit": 100})
-                resp.raise_for_status()
-                payload = resp.json() or {}
-                page_results = payload.get("matches") or payload.get("results") or []
-                if page == 1:
-                    print(f"[diag] all-upcoming: HTTP {resp.status_code}, "
-                          f"total={payload.get('total')}, matches={len(page_results)}, url={url}")
-                events.extend(e for e in page_results if isinstance(e, dict))
-                total = payload.get("total")
-                if not page_results or (isinstance(total, int) and len(events) >= total):
-                    break
-                page += 1
-                if page > MAX_FIXTURE_PAGES:
-                    break
-            except requests.RequestException as exc:
-                print(f"[aviso] falha no fallback all-upcoming: {exc}")
-                break
     return events
 
 
