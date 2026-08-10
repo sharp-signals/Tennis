@@ -222,6 +222,12 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
             # falhava. Cada match traz jogadores, data, torneio e ODDS embutidas
             # em player1.odd/player2.odd, que usamos diretamente.)
             page_results = payload.get("matches") or payload.get("results") or []
+            if page == 1:
+                # diagnóstico: o que a API devolveu de facto (uma vez por tour)
+                _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
+                print(f"[diag] upcoming/{tour}: HTTP {resp.status_code}, "
+                      f"chaves={_chaves}, total={payload.get('total')}, "
+                      f"matches_nesta_pagina={len(page_results)}, url={url}")
             events.extend(e for e in page_results if isinstance(e, dict))
             total = payload.get("total")
             # paginação: parar quando já temos tudo ou a página veio vazia
@@ -234,6 +240,33 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
         except requests.RequestException as exc:
             print(f"[aviso] falha a obter eventos upcoming {tour} para odds: {exc}")
             break
+
+    # Fallback: se o endpoint by-tour não devolveu nada, tenta o "all upcoming"
+    # (sem tour) — sabemos que devolve os jogos com odds embutidas, só que
+    # mistura tours. Filtramos depois pelos jogadores do dia na indexação.
+    if not events:
+        print(f"[diag] upcoming/{tour} vazio — a tentar 'all upcoming' como fallback.")
+        page = 1
+        while True:
+            url = f"{RAPIDAPI_EXTEND_BASE}/events/upcoming"
+            try:
+                resp = _rapidapi_get(url, params={"page": page, "limit": 100})
+                resp.raise_for_status()
+                payload = resp.json() or {}
+                page_results = payload.get("matches") or payload.get("results") or []
+                if page == 1:
+                    print(f"[diag] all-upcoming: HTTP {resp.status_code}, "
+                          f"total={payload.get('total')}, matches={len(page_results)}, url={url}")
+                events.extend(e for e in page_results if isinstance(e, dict))
+                total = payload.get("total")
+                if not page_results or (isinstance(total, int) and len(events) >= total):
+                    break
+                page += 1
+                if page > MAX_FIXTURE_PAGES:
+                    break
+            except requests.RequestException as exc:
+                print(f"[aviso] falha no fallback all-upcoming: {exc}")
+                break
     return events
 
 
@@ -274,10 +307,14 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
             ob = _odd(p2, "k2", event)
             if oa is None or ob is None:
                 continue
-            # indexar por par de apelidos (tolerante à ordem)
+            # indexar por par de apelidos (tolerante à ordem). Guardamos com
+            # prefixo de tour E numa chave global (sem tour), para o match
+            # funcionar mesmo que o tour do fallback all-upcoming não bata.
             key = _odds_names_key(n1, n2)
             if key:
-                _RAPIDAPI_EMBEDDED_ODDS[f"{tour}:{key}"] = {"n1": n1, "n2": n2, "o1": oa, "o2": ob}
+                registo = {"n1": n1, "n2": n2, "o1": oa, "o2": ob}
+                _RAPIDAPI_EMBEDDED_ODDS[f"{tour}:{key}"] = registo
+                _RAPIDAPI_EMBEDDED_ODDS.setdefault(f"*:{key}", registo)
                 matched += 1
 
         _RAPIDAPI_EVENT_INDEX_READY.add(tour)
@@ -432,8 +469,13 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
 
     # --- 1) odds embutidas (fonte principal) ---
     key = _odds_names_key(player_a, player_b)
-    if key and tour:
-        emb = _RAPIDAPI_EMBEDDED_ODDS.get(f"{tour}:{key}")
+    if key:
+        # tenta a chave com tour; se falhar, a chave global (sem tour)
+        emb = None
+        if tour:
+            emb = _RAPIDAPI_EMBEDDED_ODDS.get(f"{tour}:{key}")
+        if not emb:
+            emb = _RAPIDAPI_EMBEDDED_ODDS.get(f"*:{key}")
         if emb:
             # mapear as odds aos nomes do NOSSO jogo (a ordem pode diferir)
             def _sn(n):
