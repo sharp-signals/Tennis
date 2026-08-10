@@ -285,8 +285,8 @@ def _build_data_sections(payload: dict) -> str:
     else:
         skey = None
 
-    bsa = (payload.get("rich_stats_a") or {}).get("by_surface") or {}
-    bsb = (payload.get("rich_stats_b") or {}).get("by_surface") or {}
+    bsa = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("by_surface") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("by_surface"), dict) else {}
+    bsb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("by_surface") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("by_surface"), dict) else {}
     ca = bsa.get(skey) if skey else None
     cb = bsb.get(skey) if skey else None
 
@@ -320,8 +320,8 @@ def _build_data_sections(payload: dict) -> str:
         lkey, lnome = None, None
 
     if lkey:
-        bla = (payload.get("rich_stats_a") or {}).get("by_level") or {}
-        blb = (payload.get("rich_stats_b") or {}).get("by_level") or {}
+        bla = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("by_level") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("by_level"), dict) else {}
+        blb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("by_level") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("by_level"), dict) else {}
         la, lb = bla.get(lkey), blb.get(lkey)
         if la and lb and la.get("matches") and lb.get("matches"):
             rows = [f"<b>Neste nível ({_esc(lnome)}):</b> "
@@ -330,7 +330,7 @@ def _build_data_sections(payload: dict) -> str:
             cards.append(_data_card("Desempenho por nível de torneio (carreira)", rows))
 
     # Fadiga
-    fga, fgb = payload.get("fatigue_signal_a") or {}, payload.get("fatigue_signal_b") or {}
+    fga, fgb = (payload.get("fatigue_signal_a") if isinstance(payload.get("fatigue_signal_a"), dict) else {}), (payload.get("fatigue_signal_b") if isinstance(payload.get("fatigue_signal_b"), dict) else {})
     rows = []
     for nome, fg in ((a, fga), (b, fgb)):
         if isinstance(fg, dict) and fg.get("days_since_last_match") is not None:
@@ -377,8 +377,8 @@ def _build_data_sections(payload: dict) -> str:
             cards.append(_data_card("Meteorologia (ao ar livre)", ["; ".join(parts)]))
 
     # Cenários de jogo (dados ricos: 1º set, set decisivo, tiebreaks) — A vs B
-    sca = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
-    scb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+    sca = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
+    scb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
     if sca and scb:
         rows = []
         def _scen_row(label, key, count_key=None):
@@ -396,8 +396,8 @@ def _build_data_sections(payload: dict) -> str:
         cards.append(_data_card_avb("Cenários de jogo (carreira)", a, b, rows))
 
     # Estilo de jogo (aces, erros, winners, rede, duração) — A vs B
-    sta = (payload.get("rich_stats_a") or {}).get("style") or {}
-    stb = (payload.get("rich_stats_b") or {}).get("style") or {}
+    sta = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("style") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("style"), dict) else {}
+    stb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("style") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("style"), dict) else {}
     if sta and stb:
         rows = []
         if sta.get("net_success_pct") is not None and stb.get("net_success_pct") is not None:
@@ -412,8 +412,8 @@ def _build_data_sections(payload: dict) -> str:
         cards.append(_data_card("Estilo de jogo (carreira)", rows))
 
     # Domínio vs adversários (own vs opp) — quem "manda" no confronto-tipo
-    doma = (payload.get("rich_stats_a") or {}).get("domination") or {}
-    domb = (payload.get("rich_stats_b") or {}).get("domination") or {}
+    doma = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("domination") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("domination"), dict) else {}
+    domb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("domination") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("domination"), dict) else {}
     if doma or domb:
         rows = []
         def _dom_line(nome, dom):
@@ -472,8 +472,8 @@ def _build_charts(payload: dict) -> str:
                 rows.append(_bar_comparison(label, a, _pct_escala(sa[key]), b, _pct_escala(sb[key])))
 
         # Resposta (Onda 2): vem em percentagem inteira já (ex: 41), não fração
-        resp_a = (payload.get("rich_stats_a") or {}).get("response_stats") or {}
-        resp_b = (payload.get("rich_stats_b") or {}).get("response_stats") or {}
+        resp_a = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("response_stats") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("response_stats"), dict) else {}
+        resp_b = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("response_stats") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("response_stats"), dict) else {}
         has_response = False
         resp_pairs = [
             ("Pontos de resposta ganhos", "return_pts_won_pct"),
@@ -498,8 +498,8 @@ def _build_charts(payload: dict) -> str:
 
     # Desempenho por nível de adversário (Onda 2, ponto 7) — barras de
     # confronto por patamar de ranking, quando ambos têm o dado.
-    ra = (payload.get("rich_stats_a") or {}).get("vs_rank_level") or {}
-    rb = (payload.get("rich_stats_b") or {}).get("vs_rank_level") or {}
+    ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("vs_rank_level") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("vs_rank_level"), dict) else {}
+    rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("vs_rank_level") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("vs_rank_level"), dict) else {}
     if ra and rb:
         level_labels = [("top10", "vs Top 10"), ("top50", "vs Top 50"), ("top100", "vs Top 100")]
         rows = []
@@ -613,8 +613,8 @@ def _calcular_divergencia(payload):
         _n_piso = min(ps.get("amostra_a") or 0, ps.get("amostra_b") or 0) or ps.get("amostra") or 0
         _add("piso", ps["lider"], max(forca, 0.4), conf_amostra=_conf_amostra(_n_piso, 40))
     # Recuperação de sets (rich_stats scenarios)
-    ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
-    rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+    ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
+    rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
     dec_a = ra.get("deciding_set_win_pct")
     dec_b = rb.get("deciding_set_win_pct")
     if dec_a is not None and dec_b is not None:
@@ -654,8 +654,8 @@ def _calcular_divergencia(payload):
     if isinstance(sv, dict) and sv.get("lider") not in (None, "igual"):
         _add("servico", sv["lider"])
     # Fadiga (sobe se último jogo foi longo)
-    fa = payload.get("fatigue_signal_a") or {}
-    fb = payload.get("fatigue_signal_b") or {}
+    fa = (payload.get("fatigue_signal_a") if isinstance(payload.get("fatigue_signal_a"), dict) else {})
+    fb = (payload.get("fatigue_signal_b") if isinstance(payload.get("fatigue_signal_b"), dict) else {})
     # AUDITORIA P1: a fadiga só entra no motor se a fonte for 'api_recent'
     # (jogos reais recentes). Dados históricos de fadiga podem estar
     # desatualizados — o próprio prompt do Claude já os ignora, e o motor
@@ -994,8 +994,8 @@ def _compute_fatores_decisivos(payload):
         else:
             bullets.append(f"Superfície favorece {ps['lider']}.")
     # Sets decisivos (peso alto) — dos rich_stats
-    ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
-    rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+    ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
+    rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
     da, db = ra.get("deciding_set_win_pct"), rb.get("deciding_set_win_pct")
     if da is not None and db is not None and abs(da - db) >= 5:
         quem = a if da > db else b
@@ -1038,8 +1038,8 @@ def _compute_pontos_atencao(payload):
         amostra = min(piso.get("amostra_a") or 999, piso.get("amostra_b") or 999)
         if amostra < 30:
             pts.append(f"Amostra reduzida na superfície ({amostra} jogos).")
-    fa = payload.get("fatigue_signal_a") or {}
-    fb = payload.get("fatigue_signal_b") or {}
+    fa = (payload.get("fatigue_signal_a") if isinstance(payload.get("fatigue_signal_a"), dict) else {})
+    fb = (payload.get("fatigue_signal_b") if isinstance(payload.get("fatigue_signal_b"), dict) else {})
     if (fa.get("matches_last_7d") in (0, None)) and (fb.get("matches_last_7d") in (0, None)):
         pts.append("Sem sinais de fadiga recente.")
     ea = f.get("epoca_atual")
@@ -1196,7 +1196,7 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
             ("Desempenho por piso", _has(payload.get("surface_stats_a")) or _has(rich_a.get("by_surface"))),
             ("Serviço/resposta", _has(payload.get("serve_return_stats_a"))),
             ("Dados ricos de carreira", _has(rich_a.get("scenarios")) or _has(rich_a.get("vs_rank_level"))),
-            ("Fadiga real (jogos recentes)", (payload.get("fatigue_signal_a") or {}).get("fatigue_source") == "api_recent"),
+            ("Fadiga real (jogos recentes)", ((payload.get("fatigue_signal_a") if isinstance(payload.get("fatigue_signal_a"), dict) else {})).get("fatigue_source") == "api_recent"),
         ]
         presentes = sum(1 for _, ok in fontes if ok)
         pct = round(100 * presentes / len(fontes))
@@ -1555,6 +1555,14 @@ strong {{ color:#fff; font-weight:700; }}
 # RELATÓRIO V2 (redesenho da auditoria) — integrado
 # ============================================================
 # ---- ESCALA ÚNICA (auditoria P0.2): normaliza %, aceita 0.68 ou 68 ----
+def _d(v):
+    """Garante que o valor é um dict. Blinda os módulos V2 contra campos que
+    venham como string, None ou outro tipo (evita 'str has no attribute get').
+    Todos os módulos usam _d(payload.get("x")) em vez de _d(payload.get("x")).
+    """
+    return v if isinstance(v, dict) else {}
+
+
 def _pct(v):
     """Normaliza qualquer valor de percentagem para 0-100. Aceita fração
     (0.68 -> 68) ou já-percentagem (68 -> 68). Função ÚNICA de normalização,
@@ -1604,7 +1612,7 @@ def detetar_estado(payload, result, divergencia):
         return ("erro", COLORS_V2["error"], "Análise parcial", "⚠️")
     if not tem_odds:
         return ("sem_odds", COLORS_V2["neutral"], "Sem odds — comparação indisponível", "⚪")
-    nivel = (divergencia.get("classificacao") or {}).get("nivel", 0)
+    nivel = (_d(divergencia.get("classificacao"))).get("nivel", 0)
     tipo = divergencia.get("tipo", "")
     if nivel >= 3:
         lbl = "Convicção forte" if tipo == "conviccao" else "Divergência forte"
@@ -1756,12 +1764,12 @@ details.more .more-body {{ padding:0 16px 16px; }}
 def _mod_header(payload, div, estado):
     """Módulo 1: Matchup header (ficha de combate)."""
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
-    ra = payload.get("rank_a") or {}; rb = payload.get("rank_b") or {}
+    ra = _d(payload.get("rank_a")); rb = _d(payload.get("rank_b"))
     rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""
     rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
     surf = _esc(payload.get("surface", ""))
-    odds = payload.get("market_odds_decimal") or {}
+    odds = _d(payload.get("market_odds_decimal"))
     oa = odds.get(payload.get("player_a")) or "—"
     ob = odds.get(payload.get("player_b")) or "—"
     # prob mercado
@@ -1769,11 +1777,11 @@ def _mod_header(payload, div, estado):
     if div and div.get("market"):
         pa = div["market"]["a"]; pb = div["market"]["b"]
     # forma resumida
-    fa = payload.get("recent_form_a") or {}; fb = payload.get("recent_form_b") or {}
+    fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
     forma_a = f"Forma {fa.get('wins','?')}–{fa.get('losses','?')}" if fa else ""
     forma_b = f"Forma {fb.get('wins','?')}–{fb.get('losses','?')}" if fb else ""
     # meteo à hora do jogo (contextual)
-    w = payload.get("weather") or {}
+    w = _d(payload.get("weather"))
     meteo = ""
     if w:
         bits = []
@@ -1820,7 +1828,7 @@ def _mod_leitura(payload, div, estado, result):
   <div class="leitura-txt"><b>{label}</b><div>{sub}</div></div>
 </div>"""
     fav = div.get("favorecido")
-    idx = div.get("indice_evidencia") or {}
+    idx = _d(div.get("indice_evidencia"))
     idx_fav = idx.get("a") if fav == payload.get("player_a") else idx.get("b")
     merc_fav = div.get("mercado_favorece")
     tipo = div.get("tipo", "")
@@ -1866,7 +1874,7 @@ def _mod_mercado_vs_sinal(payload, div):
     if not div or not div.get("market"):
         return ""
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
-    mk = div["market"]; idx = div.get("indice_evidencia") or {}
+    mk = div["market"]; idx = _d(div.get("indice_evidencia"))
     ca, cb = COLORS_V2["a"], COLORS_V2["b"]
 
     def barra(titulo, va, vb, sufixo=""):
@@ -1884,7 +1892,7 @@ def _mod_mercado_vs_sinal(payload, div):
     merc = barra("Mercado", mk["a"], mk["b"], "%")
     sinal = barra("Índice de sinais", idx.get("a", 50), idx.get("b", 50), "/100")
     fav = div.get("favorecido")
-    clf = (div.get("classificacao") or {}).get("texto", "")
+    clf = (_d(div.get("classificacao"))).get("texto", "")
     delta = ""
     if fav:
         delta = f'<div class="mvs-delta" style="color:var(--mint)">{clf} — indicadores a favor de {_esc(fav)}</div>'
@@ -1915,8 +1923,8 @@ def _mod_forma(payload):
     """Módulo 5: Forma + época num só card (auditoria #6 — elimina gauges
     duplicados e o card textual)."""
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
-    fa = payload.get("recent_form_a") or {}; fb = payload.get("recent_form_b") or {}
-    sa = payload.get("season_a") or {}; sb = payload.get("season_b") or {}
+    fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
+    sa = _d(payload.get("season_a")); sb = _d(payload.get("season_b"))
     if not (fa and fb):
         return ""
     ca, cb = COLORS_V2["a"], COLORS_V2["b"]
@@ -1946,8 +1954,8 @@ def _mod_forma(payload):
 
 def _mod_servico(payload):
     """Módulo 6: Serviço/resposta com DELTAS explícitos (auditoria #7)."""
-    sa = payload.get("serve_return_stats_a") or {}
-    sb = payload.get("serve_return_stats_b") or {}
+    sa = _d(payload.get("serve_return_stats_a"))
+    sb = _d(payload.get("serve_return_stats_b"))
     if not (sa and sb):
         return ""
     a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
@@ -1994,8 +2002,8 @@ def _mod_servico(payload):
 
 def _mod_fadiga(payload):
     """Módulo 7: Fadiga como comparador em destaque (auditoria — sobe muito)."""
-    fa = payload.get("fatigue_signal_a") or {}
-    fb = payload.get("fatigue_signal_b") or {}
+    fa = _d(payload.get("fatigue_signal_a"))
+    fb = _d(payload.get("fatigue_signal_b"))
     if not (fa.get("matches_last_7d") is not None and fb.get("matches_last_7d") is not None):
         return ""
     a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
@@ -2024,8 +2032,8 @@ def _mod_fadiga(payload):
 
 def _mod_cenarios(payload):
     """Módulo 9: cenários — só os DIFERENCIADORES (auditoria)."""
-    ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
-    rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+    ra = _d(_d(payload.get("rich_stats_a")).get("scenarios"))
+    rb = _d(_d(payload.get("rich_stats_b")).get("scenarios"))
     if not (ra and rb):
         return ""
     a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
@@ -2062,18 +2070,19 @@ def _mod_h2h(payload):
     - 1 confronto -> 'amostra insuficiente'
     - nenhum -> 'sem confrontos'"""
     h = payload.get("h2h")
+    h = h if isinstance(h, dict) else None
     a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
     if not h:
         overall = None
     else:
-        overall = h.get("overall") or h
+        overall = h.get("overall") if isinstance(h.get("overall"), dict) else h
     if not overall or overall.get("total_matches", overall.get("total", 0)) in (0, None):
         texto = "Sem confrontos diretos entre as duas jogadoras."
         return f'<div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">{texto}</div></div>'
     aw = overall.get("a_wins", 0); bw = overall.get("b_wins", 0)
     total = overall.get("total_matches", overall.get("total", aw + bw))
     # piso, se houver
-    surf = (h.get("surface") or {}) if isinstance(h, dict) else {}
+    surf = (_d(h.get("surface"))) if isinstance(h, dict) else {}
     saw, sbw = surf.get("a_wins"), surf.get("b_wins")
     surf_txt = ""
     if saw is not None and sbw is not None and (saw + sbw) > 0:
@@ -2099,7 +2108,7 @@ def _mod_mercados(payload, div):
     a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
     mk = div["market"]
     fav = div.get("favorecido")
-    nivel = (div.get("classificacao") or {}).get("nivel", 0)
+    nivel = (_d(div.get("classificacao"))).get("nivel", 0)
     linhas = []
     # Moneyline — vem do motor (é o único mercado com odds)
     if nivel >= 2 and fav:
