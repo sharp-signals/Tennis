@@ -47,6 +47,7 @@ import requests
 
 from .cache_store import JsonCacheStore
 from .config import (
+    ALLOWED_TOURNAMENT_TIERS,
     FIXTURES_CACHE_MAX_AGE_HOURS,
     FIXTURES_CACHE_PATH,
     HISTORY_YEARS_TO_LOAD,
@@ -194,6 +195,7 @@ _RAPIDAPI_EVENT_INDEX: dict[str, dict] = {}
 _RAPIDAPI_EVENT_INDEX_READY: set[str] = set()
 _RAPIDAPI_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
+_ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
 
 
 def _event_match_key(player1_id, player2_id, tournament_id, round_id=None):
@@ -211,12 +213,22 @@ def _event_names_key(player1: str, player2: str) -> tuple[str, str]:
 
 def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     """
-    Carrega os eventos upcoming para obter as ODDS EMBUTIDAS (player.odd).
+    Carrega os eventos upcoming para obter as ODDS EMBUTIDAS (player.odd) e
+    também o TORNEIO de cada jogo (tournament.id/name/rankId) — usado pela
+    descoberta automática de torneios (discover_tracked_tournaments).
     Usa PRIMEIRO o "All Upcoming Matches" — devolve {"total", "matches"} com
     as odds embutidas em cada jogo (confirmado: traz ATP e WTA, incluindo os
     jogos que o by-tour não indexava). Só cai no by-tour se o All falhar.
     O parâmetro `tour` mantém-se por compatibilidade, mas o All traz tudo.
+
+    Cacheado nesta execução (_ALL_UPCOMING_EVENTS_CACHE): tanto a descoberta
+    de torneios como a indexação de odds precisam deste mesmo feed — sem
+    cache, duplicaria ~6 pedidos paginados por execução.
     """
+    global _ALL_UPCOMING_EVENTS_CACHE
+    if _ALL_UPCOMING_EVENTS_CACHE is not None:
+        return _ALL_UPCOMING_EVENTS_CACHE
+
     if not RAPIDAPI_KEY:
         return []
 
@@ -259,6 +271,7 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
         events.extend(tour_events)
 
     if events:
+        _ALL_UPCOMING_EVENTS_CACHE = events
         return events
 
     # --- FALLBACK: by-tour (estrutura antiga, caso o All falhe) ---
@@ -845,15 +858,20 @@ def get_history(tour: str) -> pd.DataFrame:
         df = _load_tennismylife(tour)
         source = "tennismylife"
     else:
-        # Reativado (28/07/2026): o repositório tennis_wta do Sackmann
-        # voltou a ficar disponível — confirmado ao vivo. Passa a ser a
-        # fonte principal para WTA (a TennisMyLife nunca teve WTA).
-        df = _load_sackmann_multi_year(tour, HISTORY_YEARS_TO_LOAD)
-        source = "sackmann (multi-ano)"
+        # (correção: repositório tennis_wta do Sackmann continua a devolver
+        # 404 para todos os anos, confirmado por logs reais — ver histórico
+        # do projeto. Deixámos de o tentar para o WTA: ia direto ao
+        # tennis-data.co.uk, que é fiável e já funciona bem como fonte.
+        # Poupa ~20 pedidos falhados por jogo WTA.)
+        df = None
+        source = "sackmann (desativado para wta)"
 
     if df is None or df.empty:
-        df = _load_sackmann(tour, year)
-        source = "sackmann"
+        if tour == "atp":
+            df = _load_sackmann(tour, year)
+            source = "sackmann"
+        # para wta não tentamos o Sackmann de todo (ver nota acima) —
+        # passamos direto ao tennis-data.co.uk abaixo.
     if df is None or df.empty:
         df = _load_tennisdata_couk_multi_year(tour, HISTORY_YEARS_TO_LOAD)
         source = "tennisdata.co.uk (multi-ano)"
@@ -2514,10 +2532,62 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
         return []
 
 
+def discover_tracked_tournaments() -> dict[int, str]:
+    """
+    Descoberta automática dos torneios ATP/WTA elegíveis (substitui a
+    manutenção manual de TRACKED_TOURNAMENT_IDS em config.py sempre que um
+    torneio novo começa, ex: Cincinnati a seguir a Montreal/Toronto).
+
+    Fonte: o mesmo feed "All Upcoming Matches" já usado para as odds
+    embutidas (_fetch_extend_upcoming_events) — cada jogo já vem com
+    tournament.id/name e o tour (atp/wta). Agrupamos por torneio e
+    filtramos pelo tier via get_tournament_info() (já testada, com cache
+    local — só 1 pedido por torneio NOVO, não por jogo).
+
+    Robustez: se a descoberta falhar por qualquer razão (sem chave, feed
+    vazio, ou 0 torneios elegíveis), cai para TRACKED_TOURNAMENT_IDS
+    (config.py) como rede de segurança — nunca fica sem jogos por causa
+    disto. Podes continuar a usar a lista manual como reforço/override se
+    quiseres forçar um torneio específico.
+    """
+    events = _fetch_extend_upcoming_events("all")
+    if not events:
+        print("[aviso] descoberta automática de torneios: feed vazio — "
+              "a usar TRACKED_TOURNAMENT_IDS manual (config.py).")
+        return dict(TRACKED_TOURNAMENT_IDS)
+
+    candidatos: dict[int, str] = {}
+    for ev in events:
+        t = ev.get("tournament") or {}
+        tid = t.get("id")
+        tour = ev.get("type")
+        if tid is None or tour not in ("atp", "wta"):
+            continue
+        candidatos.setdefault(tid, tour)
+
+    aceites: dict[int, str] = {}
+    for tid, tour in candidatos.items():
+        info = get_tournament_info(tid, tour)
+        if info and info.get("tier") in ALLOWED_TOURNAMENT_TIERS:
+            aceites[tid] = tour
+
+    if not aceites:
+        print(f"[aviso] descoberta automática: {len(candidatos)} torneio(s) candidato(s), "
+              "nenhum no tier permitido — a usar TRACKED_TOURNAMENT_IDS manual (config.py).")
+        return dict(TRACKED_TOURNAMENT_IDS)
+
+    resumo = ", ".join(f"{tid}:{tour}" for tid, tour in aceites.items())
+    print(f"[info] descoberta automática: {len(aceites)} torneio(s) elegível(is) — {resumo}")
+    return aceites
+
+
 def fetch_tracked_tournament_fixtures() -> list[dict]:
-    """Junta fixtures de todos os torneios em TRACKED_TOURNAMENT_IDS."""
+    """Junta fixtures de todos os torneios elegíveis, descobertos
+    automaticamente (discover_tracked_tournaments), com fallback para a
+    lista manual TRACKED_TOURNAMENT_IDS se a descoberta falhar."""
+    tracked = discover_tracked_tournaments()
     all_matches = []
-    for tournament_id, tour in TRACKED_TOURNAMENT_IDS.items():
+    for tournament_id, tour in tracked.items():
         all_matches.extend(fetch_tournament_fixtures(tournament_id, tour))
     return all_matches
 
