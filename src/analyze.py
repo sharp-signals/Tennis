@@ -439,7 +439,15 @@ def _evaluate_selective_policy(
     clf = div.get("classificacao") or {}
     nivel = clf.get("nivel")
 
-    if nivel is not None and div.get("market"):
+    # NOTA (correção): o payload["divergencia"] guardado pelo main.py é o
+    # dict CRU de _calcular_divergencia (prob_mercado_a/b), NÃO o formato
+    # normalizado do report_html (que tem "market"). Verificar "market" aqui
+    # fazia esta condição falhar SEMPRE, mesmo com odds reais — o Claude
+    # nunca era chamado e o relatório caía sempre no fallback determinístico
+    # (_build_selective_result), que por sua vez tinha a sua própria lógica
+    # de "dominante", divergente da conclusão do motor. Corrigido para olhar
+    # à chave que realmente existe.
+    if nivel is not None and div.get("prob_mercado_a") is not None:
         # temos motor com odds -> decidir pelo nível de divergência
         if nivel >= 2:
             return (
@@ -483,9 +491,57 @@ def _build_selective_result(
     signals: list[dict],
     reason: str,
 ) -> dict:
-    """Produz o contrato normal do relatório sem recorrer a uma LLM."""
+    """Produz o contrato normal do relatório sem recorrer a uma LLM.
+
+    CORREÇÃO: quando existe motor de divergência com odds (div com
+    prob_mercado_a), o veredicto/summary têm de vir da CLASSIFICAÇÃO DO
+    MOTOR (favorecido, classificacao, fatores_chave) — a mesma fonte que a
+    "Leitura" e os "Mercados a acompanhar" usam no relatório. Antes,
+    calculava-se aqui um "dominante" à parte, a partir dos sinais crus
+    (h2h/forma/fadiga), que podia apontar um jogador diferente do que o
+    motor concluía — daí o Veredoto por vezes contradizer a Leitura no
+    mesmo relatório. Só cai no cálculo antigo (por sinais) quando não há
+    motor/odds de todo.
+    """
     player_a = str(match_data.get("player_a") or "Jogador A")
     player_b = str(match_data.get("player_b") or "Jogador B")
+
+    div = match_data.get("divergencia") or {}
+    clf = div.get("classificacao") or {}
+    nivel = clf.get("nivel")
+
+    if nivel is not None and div.get("prob_mercado_a") is not None:
+        # --- Caminho correto: alinhado 100% com o motor ---
+        favorecido = div.get("favorecido")
+        mercado_favorece = div.get("mercado_favorece")
+        texto_clf = clf.get("texto", "Mercado eficiente")
+        fatores = div.get("fatores_chave") or []
+        fatores_txt = ", ".join(f"{nome} ({quem})" for nome, quem in fatores[:3])
+
+        if nivel == 0:
+            summary = f"{player_a} vs {player_b} — mercado eficiente, sem divergência relevante face aos indicadores."
+            verdict = "Mercado eficiente. Sem divergência relevante entre mercado e indicadores."
+            key_points = [f"Mercado e indicadores alinhados a favor de {mercado_favorece}." if mercado_favorece else "Sem vantagem clara de nenhum lado."]
+        else:
+            summary = f"{player_a} vs {player_b} — {texto_clf.lower()} a favor de {favorecido}."
+            verdict = (
+                f"{texto_clf} a favor de {favorecido}. "
+                f"Mercado mantém {mercado_favorece}. "
+                f"Acompanhar Moneyline {favorecido}."
+            )
+            key_points = [f"Fatores que sustentam: {fatores_txt}."] if fatores_txt else [f"{texto_clf} a favor de {favorecido}."]
+
+        return {
+            "flag": FLAG_ROUTINE if nivel <= 1 else FLAG_UNCERTAIN,
+            "signal_strength": 20 + nivel * 20,
+            "confidence_reason": "Classificação determinística do motor; síntese Python suficiente (sem LLM).",
+            "summary_line": summary,
+            "key_points": key_points,
+            "discrepancies": [],
+            "risks": [],
+            "markets": [],
+            "verdict": verdict,
+        }
 
     if not signals:
         return {
