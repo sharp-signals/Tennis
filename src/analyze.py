@@ -246,7 +246,12 @@ já aparecem no relatório. NÃO os repitas. Tu escreves só DOIS textos de
 interpretação. A tua pergunta: "onde há (ou não) valor face às odds?".
 
 ⚠️ REGRAS (obrigatórias — respostas longas são cortadas e perdem-se):
-- Sê TELEGRÁFICO. Respeita os limites de caracteres.
+- Sê TELEGRÁFICO. Respeita os limites de caracteres — à LETRA, não os
+  ultrapasses "um bocadinho". Excesso é sempre cortado e desperdiça tokens.
+- Responde IMEDIATAMENTE com o objeto JSON. SEM introdução, SEM explicação
+  antes ou depois, SEM revisares/repetires o texto duas vezes.
+- APENAS os 4 campos pedidos abaixo. Nenhum campo extra, nenhum comentário
+  fora do JSON.
 - NUNCA cites números de ranking/forma/época (ex: "#72 vs #218", "60% vs 30%").
   Já estão no relatório. Escreve CONCLUSÕES de mercado, não factos.
 - NÃO expliques o teu raciocínio nem comentes as features.
@@ -277,7 +282,9 @@ LINGUAGEM (obrigatório): frases curtas e diretas. PROIBIDO narrativo como
 "tem vindo a demonstrar", "ao longo da temporada", "é conhecido por". Vai
 direto ao mercado.
 
-Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
+Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código. A
+tua resposta é injetada diretamente a seguir a um "{{" — começa logo pelo
+primeiro campo (ex: "flag": "..."), sem repetir a chaveta de abertura.
 """
 
 
@@ -731,12 +738,17 @@ def analyze_match(match_data: dict) -> dict:
     provider_response = provider.generate(
         system_prompt=SYSTEM_PROMPT,
         user_prompt=user_prompt,
-        # Teto de output: 1500. O novo formato pede só 2 textos curtos
-        # (executive_summary ≤350 chars + verdict ≤400 chars) + flag/signal —
-        # o output legítimo ronda os ~400-600 tokens. 1500 dá margem larga
-        # sem cortar, e trava qualquer divagação. A poupança real vem de o
-        # Claude escrever MENOS (2 campos, não 6), não só do teto.
-        max_tokens=1500,
+        # Teto de output: reduzido de 1500 para 600 (11/08/2026 — auditoria de
+        # custo real). O formato pede só 4 campos curtos (flag, signal_strength,
+        # executive_summary ≤200 chars, verdict ≤200 chars) — output legítimo
+        # ronda 150-250 tokens. Vimos casos reais a chegar aos 1500 (respostas
+        # verbosas que eram cortadas ANTES da poda de 200 chars, gastando
+        # tokens à toa — a poda só corta a STRING final, não impede o modelo
+        # de gerar de mais). 600 dá margem de ~2-3x sobre o esperado; combinado
+        # com o prefill "{" e o reforço "responde já, sem preâmbulo" no prompt,
+        # deve evitar tanto o desperdício como cortes reais. json_repair fica
+        # como rede de segurança se, mesmo assim, cortar a meio.
+        max_tokens=600,
         metadata=match_data,
     )
     # Logging de custo real, normalizado entre providers.
@@ -786,7 +798,11 @@ def analyze_match(match_data: dict) -> dict:
         favorecido = div.get("favorecido")
         nivel = clf.get("nivel")
         merc_fav = div.get("mercado_favorece")
-        if nivel is not None and div.get("market"):
+        # NOTA (correção — mesmo bug já corrigido em _evaluate_selective_policy
+        # e _build_selective_result): "market" não existe no dict cru de
+        # _calcular_divergencia (só "prob_mercado_a"). Com a chave errada,
+        # esta validação NUNCA corria — nenhuma contradição era detetada.
+        if nivel is not None and div.get("prob_mercado_a") is not None:
             texto_motor = clf.get("texto", "")
             contradiz = False
             blob = f"{res.get('executive_summary','')} {res.get('verdict','')}".lower()
