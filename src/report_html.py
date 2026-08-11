@@ -1753,6 +1753,14 @@ details.more .more-body {{ padding:0 16px 16px; }}
 .merc-nota {{ color:var(--dim); font-size:12px; }}
 .merc-aviso {{ font-size:11px; color:var(--dim); margin-top:10px;
   padding-top:8px; border-top:1px solid var(--line); }}
+.merc-principal {{ border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  margin-bottom:10px; background:var(--surface2); }}
+.merc-principal-tag {{ font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--dim); font-weight:700; display:block; margin-bottom:4px; }}
+.merc-linha-top {{ border-bottom:none; padding:2px 0; font-size:14px; }}
+.merc-linha-top .merc-nome {{ font-size:15px; }}
+.merc-secundarios {{ opacity:.75; }}
+.merc-sec-tag {{ font-size:10px; color:var(--dim); margin-bottom:2px; }}
 .h2h-line {{ font-size:14px; line-height:1.6; }}
 .foot {{ text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }}
@@ -2102,34 +2110,55 @@ def _mod_h2h(payload):
 
 def _mod_mercados(payload, div):
     """Mercados a acompanhar (auditoria pontos 7, 16): marca INTERESSE, nunca
-    'valor' (só temos odds de Moneyline). 'acompanhar' ≠ 'apostar'."""
+    'valor' (só temos odds de Moneyline). 'acompanhar' ≠ 'apostar'.
+
+    CORREÇÃO: quando há Moneyline com sinal (nível>=1), esse é sempre o
+    MERCADO PRINCIPAL e é destacado visualmente à parte — os extras
+    (Total Games/Handicap, que não têm odds próprias) aparecem por baixo,
+    claramente secundários, para não ficarem 2-3 bolas coloridas ao mesmo
+    nível sem se perceber qual merece mais atenção."""
     if not div or not div.get("market"):
         return ""
     a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
     mk = div["market"]
     fav = div.get("favorecido")
     nivel = (_d(div.get("classificacao"))).get("nivel", 0)
-    linhas = []
-    # Moneyline — vem do motor (é o único mercado com odds)
+
+    # Mercado principal — sempre o Moneyline (é o único com odds reais)
     if nivel >= 2 and fav:
-        linhas.append(("🟢", f"Moneyline {_esc(fav)}", "indicadores divergem do mercado"))
+        principal = ("🟢", f"Moneyline {_esc(fav)}", "indicadores divergem do mercado")
     elif nivel == 1 and fav:
-        linhas.append(("🟡", f"Moneyline {_esc(fav)}", "divergência ligeira"))
+        principal = ("🟡", f"Moneyline {_esc(fav)}", "divergência ligeira")
     else:
-        linhas.append(("⚪", "Moneyline", "mercado alinhado com os indicadores"))
-    # Total Games e Handicap — só marcam interesse pelo equilíbrio (NÃO valor,
-    # não temos odds destes mercados)
+        principal = ("⚪", "Moneyline", "mercado alinhado com os indicadores")
+
+    # Secundários — só marcam interesse pelo equilíbrio (NÃO valor, sem odds)
+    secundarios = []
     margem = abs(mk["a"] - mk["b"])
     if margem <= 12:
-        linhas.append(("🟡", "Total Games", "jogo equilibrado — acompanhar linhas ao vivo"))
-        linhas.append(("🟡", "Handicap Games", "equilíbrio pode dar interesse ao handicap"))
-    itens = "".join(
-        f'<div class="merc-linha"><span class="merc-bola">{bola}</span>'
-        f'<span class="merc-nome">{nome}</span>'
-        f'<span class="merc-nota">{_esc(nota)}</span></div>'
-        for bola, nome, nota in linhas
+        secundarios.append(("🟡", "Total Games", "jogo equilibrado — acompanhar linhas ao vivo"))
+        secundarios.append(("🟡", "Handicap Games", "equilíbrio pode dar interesse ao handicap"))
+
+    bola_p, nome_p, nota_p = principal
+    principal_html = (
+        f'<div class="merc-principal">'
+        f'<span class="merc-principal-tag">Mercado principal</span>'
+        f'<div class="merc-linha merc-linha-top">'
+        f'<span class="merc-bola">{bola_p}</span>'
+        f'<span class="merc-nome">{nome_p}</span>'
+        f'<span class="merc-nota">{_esc(nota_p)}</span></div></div>'
     )
-    return (f'<div class="card"><h3>Mercados a acompanhar</h3>{itens}'
+    sec_html = ""
+    if secundarios:
+        itens_sec = "".join(
+            f'<div class="merc-linha"><span class="merc-bola">{bola}</span>'
+            f'<span class="merc-nome">{nome}</span>'
+            f'<span class="merc-nota">{_esc(nota)}</span></div>'
+            for bola, nome, nota in secundarios
+        )
+        sec_html = f'<div class="merc-secundarios"><div class="merc-sec-tag">Também de interesse (sem odds próprias)</div>{itens_sec}</div>'
+
+    return (f'<div class="card"><h3>Mercados a acompanhar</h3>{principal_html}{sec_html}'
             f'<div class="merc-aviso">Marcação de <b>interesse</b> para observação — '
             f'não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div>')
 
