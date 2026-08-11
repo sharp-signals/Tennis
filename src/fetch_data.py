@@ -222,35 +222,41 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
 
     events: list[dict] = []
 
-    # --- FONTE PRINCIPAL: All Upcoming Matches (tem matches + odds embutidas) ---
+    # --- FONTE PRINCIPAL: Upcoming Matches por tour (tem matches + odds embutidas) ---
+    # Confirmado por teste real: o endpoint SEM tour no path só devolve ATP.
+    # O tour é um SEGMENTO DE PATH, não um query param:
+    #   /tennis/v2/ms-api/upcoming/matches/atp
+    #   /tennis/v2/ms-api/upcoming/matches/wta
+    # Por isso é preciso uma chamada (paginada) por cada tour.
     # NOTA: o campo "total" da resposta é o tamanho da PÁGINA (=limit), não o
-    # total de jogos — por isso NÃO serve como condição de paragem (parava logo
-    # na 1ª página e os jogos mais atrás, ex. WTA Toronto, nunca eram lidos).
-    # Paginamos até uma página vir vazia (ou < limit), com um teto de segurança.
-    page = 1
+    # total de jogos — por isso NÃO serve como condição de paragem.
     LIMIT = 100
-    while page <= _ALL_UPCOMING_MAX_PAGES:
-        url = f"{RAPIDAPI_ALL_UPCOMING_URL}"
-        try:
-            resp = _rapidapi_get(url, params={"page": page, "limit": LIMIT})
-            resp.raise_for_status()
-            payload = resp.json() or {}
-            page_results = payload.get("matches") or []
-            if page == 1:
-                _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
-                print(f"[diag] all-upcoming: HTTP {resp.status_code}, "
-                      f"chaves={_chaves}, total={payload.get('total')}, "
-                      f"matches_pag1={len(page_results)}, url={url}")
-            novos = [e for e in page_results if isinstance(e, dict)]
-            events.extend(novos)
-            # parar quando a página vier vazia ou incompleta (última página)
-            if len(page_results) < LIMIT or not novos:
+    for t in ("atp", "wta"):
+        page = 1
+        tour_events: list[dict] = []
+        while page <= _ALL_UPCOMING_MAX_PAGES:
+            url = f"{RAPIDAPI_ALL_UPCOMING_URL}/{t}"
+            try:
+                resp = _rapidapi_get(url, params={"page": page, "limit": LIMIT})
+                resp.raise_for_status()
+                payload = resp.json() or {}
+                page_results = payload.get("matches") or []
+                if page == 1:
+                    _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
+                    print(f"[diag] all-upcoming/{t}: HTTP {resp.status_code}, "
+                          f"chaves={_chaves}, total={payload.get('total')}, "
+                          f"matches_pag1={len(page_results)}, url={url}")
+                novos = [e for e in page_results if isinstance(e, dict)]
+                tour_events.extend(novos)
+                # parar quando a página vier vazia ou incompleta (última página)
+                if len(page_results) < LIMIT or not novos:
+                    break
+                page += 1
+            except requests.RequestException as exc:
+                print(f"[aviso] falha a obter all-upcoming/{t} (pág {page}) para odds: {exc}")
                 break
-            page += 1
-        except requests.RequestException as exc:
-            print(f"[aviso] falha a obter all-upcoming (pág {page}) para odds: {exc}")
-            break
-    print(f"[diag] all-upcoming: {len(events)} jogos carregados em {page} página(s).")
+        print(f"[diag] all-upcoming/{t}: {len(tour_events)} jogos carregados em {page} página(s).")
+        events.extend(tour_events)
 
     if events:
         return events
