@@ -2125,10 +2125,14 @@ def _mod_mercados(payload, div):
     nivel = (_d(div.get("classificacao"))).get("nivel", 0)
 
     # Mercado principal — sempre o Moneyline (é o único com odds reais)
+    tipo = div.get("tipo", "")
     if nivel >= 2 and fav:
-        principal = ("🟢", f"Moneyline {_esc(fav)}", "indicadores divergem do mercado")
+        nota = ("favorito subvalorizado pelo mercado" if tipo == "conviccao"
+                else "indicadores divergem do mercado")
+        principal = ("🟢", f"Moneyline {_esc(fav)}", nota)
     elif nivel == 1 and fav:
-        principal = ("🟡", f"Moneyline {_esc(fav)}", "divergência ligeira")
+        nota = "convicção ligeira" if tipo == "conviccao" else "divergência ligeira"
+        principal = ("🟡", f"Moneyline {_esc(fav)}", nota)
     else:
         principal = ("⚪", "Moneyline", "mercado alinhado com os indicadores")
 
