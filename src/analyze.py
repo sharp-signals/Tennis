@@ -82,6 +82,7 @@ from .config import (
     LLM_POLICY,
 )
 from .llm_provider import get_llm_provider
+from . import run_metrics
 
 # Cache de análises por hash (medida de poupança, 30/07): evita repagar a
 # análise de um jogo cujos dados não mudaram (o workflow corre 2x/dia e há
@@ -735,6 +736,7 @@ def analyze_match(match_data: dict) -> dict:
         if provider.persist_cache and os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
                 cached = json.load(f)
+            run_metrics.increment("llm_cache_hits")
             print(f"[cache_hit] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} — análise reutilizada (sem custo).")
             return cached
     except Exception:
@@ -753,6 +755,7 @@ def analyze_match(match_data: dict) -> dict:
         )
 
         if not should_call_llm:
+            run_metrics.increment("llm_skipped")
             print(
                 f"[llm_skipped:selective] "
                 f"{match_data.get('player_a', '?')} vs "
@@ -765,6 +768,7 @@ def analyze_match(match_data: dict) -> dict:
                 llm_call_reason,
             )
 
+    run_metrics.increment("llm_calls")
     print(
         f"[llm_call:{provider.name}] "
         f"{match_data.get('player_a', '?')} vs "
@@ -799,6 +803,8 @@ def analyze_match(match_data: dict) -> dict:
             metadata=match_data,
         )
     except Exception as exc:
+        run_metrics.increment("llm_api_failures")
+        run_metrics.increment("llm_fallbacks")
         print(
             f"[aviso] falha na chamada à API do Claude para "
             f"{match_data.get('player_a', '?')} vs {match_data.get('player_b', '?')}: "
@@ -811,6 +817,10 @@ def analyze_match(match_data: dict) -> dict:
     try:
         usage = provider_response.usage
         if usage:
+            run_metrics.increment("llm_input_tokens", usage.get("input_tokens", 0))
+            run_metrics.increment("llm_output_tokens", usage.get("output_tokens", 0))
+            run_metrics.increment("llm_cache_read_tokens", usage.get("cache_read_input_tokens", 0))
+            run_metrics.increment("llm_cache_creation_tokens", usage.get("cache_creation_input_tokens", 0))
             print(
                 f"[llm_usage:{provider.name}] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} | "
                 f"input={usage.get('input_tokens', 0)} output={usage.get('output_tokens', 0)} "
@@ -885,6 +895,8 @@ def analyze_match(match_data: dict) -> dict:
             if tipo == "direcao" and any(t in blob for t in ["convicção", "conviccao"]) and not any(t in blob for t in ["divergência", "divergencia", "diverge"]):
                 contradiz = True
             if contradiz:
+                run_metrics.increment("llm_validation_fallbacks")
+                run_metrics.increment("llm_fallbacks")
                 # fallback determinístico curto, 100% coerente com o motor
                 if nivel == 0:
                     fb = "Mercado eficiente. Sem divergência relevante entre mercado e indicadores."
@@ -919,6 +931,7 @@ def analyze_match(match_data: dict) -> dict:
         try:
             repaired = repair_json(raw_text)
             result = json.loads(repaired, strict=False)
+            run_metrics.increment("llm_json_repairs")
             print("[info] reparação de JSON bem-sucedida — a análise não foi perdida.")
             return _save_and_return(result)
         except Exception as repair_exc:
@@ -930,6 +943,7 @@ def analyze_match(match_data: dict) -> dict:
         # cortou, aproveitamos o que há em vez de perder tudo.
         partial = _extract_partial_fields(raw_text, match_data)
         if partial:
+            run_metrics.increment("llm_partial_recoveries")
             print("[info] recuperação parcial: aproveitados campos que vieram completos antes do corte.")
             return _save_and_return(partial)
 

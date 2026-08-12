@@ -47,6 +47,7 @@ from .config import (
     SKIP_ANALYSIS_ODDS_THRESHOLD,
 )
 from . import fetch_data
+from . import run_metrics
 from .analyze import analyze_match
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
@@ -941,6 +942,7 @@ search.addEventListener('input',applyFilters); priority.addEventListener('change
 
 
 def run() -> None:
+    run_metrics.reset()
     # O contador RapidAPI é opcional; versões anteriores de fetch_data.py podem não expor estas funções.
     reset_calls = getattr(fetch_data, "reset_rapidapi_call_count", None)
     if callable(reset_calls):
@@ -1229,6 +1231,20 @@ def run() -> None:
             pass
     except Exception as exc:
         print(f"[aviso] falha ao registar uso da RapidAPI: {exc}")
+
+    try:
+        metrics = run_metrics.append_run(context={
+            "eligible": len(eligible),
+            "processed": len(analyses),
+            "analysis_failed": len(eligible) - len(analyses),
+            "reports_ok": reports_ok,
+            "reports_failed": len(match_reports) - reports_ok,
+            "telegram_chunks": len(chunks),
+            "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
+        })
+        print(f"[metrics] {json.dumps(metrics, ensure_ascii=False, sort_keys=True)}")
+    except Exception as exc:
+        print(f"[aviso] falha ao persistir métricas operacionais: {exc}")
 
 
 if __name__ == "__main__":
