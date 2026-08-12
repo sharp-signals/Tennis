@@ -11,6 +11,10 @@ on:
   #   - cron: "0 5 * * *"   # 05:00 UTC = ~06:00 Portugal (verão)
   workflow_dispatch: {}   # correr manualmente a partir do GitHub UI (único trigger ativo)
 
+concurrency:
+  group: tennis-pre-live-production
+  cancel-in-progress: false
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
@@ -39,13 +43,16 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
+          RAPIDAPI_MAX_CALLS_PER_RUN: "800"
+          RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
         run: python -m src.main
 
       - name: Gravar caches + relatórios do site, se mudaram
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/ docs/ 2>/dev/null || true
+          git add data/analysis_cache/ data/cache/ data/fixtures_cache.json \
+            data/tournament_cache.json data/rapidapi_usage_log.json docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar caches e relatórios"
             # Integrar mudanças remotas antes de enviar (evita o erro
@@ -54,7 +61,10 @@ jobs:
             # remoto e tenta o push; se ainda falhar, repete.
             push_ok=0
             for tentativa in 1 2 3; do
-              git pull --rebase --autostash origin main || true
+              if ! git pull --rebase --autostash origin main; then
+                echo "Rebase falhou; não é seguro continuar para push."
+                exit 1
+              fi
               if git push; then
                 echo "Push concluído (tentativa $tentativa)."
                 push_ok=1

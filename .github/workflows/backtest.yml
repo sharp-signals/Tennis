@@ -3,6 +3,10 @@ name: Backtest (sinais vs mercado histórico)
 on:
   workflow_dispatch: {}   # só corre manualmente — é pesado, não faz sentido agendar
 
+concurrency:
+  group: tennis-backtest-write
+  cancel-in-progress: false
+
 jobs:
   backtest:
     runs-on: ubuntu-latest

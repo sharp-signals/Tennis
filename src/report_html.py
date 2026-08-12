@@ -2414,7 +2414,7 @@ def _mod_h2h(payload):
     else:
         overall = h.get("overall") if isinstance(h.get("overall"), dict) else h
     if not overall or overall.get("total_matches", overall.get("total", 0)) in (0, None):
-        texto = "Sem confrontos diretos entre as duas jogadoras."
+        texto = "Sem confrontos diretos entre os dois jogadores."
         return f'<div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">{texto}</div></div>'
     aw = overall.get("a_wins", 0); bw = overall.get("b_wins", 0)
     total = overall.get("total_matches", overall.get("total", aw + bw))
