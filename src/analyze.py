@@ -669,18 +669,45 @@ def analyze_match(match_data: dict) -> dict:
     if _div and _div.get("classificacao"):
         _clf = _div["classificacao"]
         _fav = _div.get("favorecido")
+        _tipo = _div.get("tipo", "")
         _fatores = _div.get("fatores_chave") or []
         _fat_txt = ", ".join(f"{f} (favorece {q})" for f, q in _fatores) if _fatores else "n/d"
+        # REGRA DE VOCABULÁRIO (bug real observado 11/08/2026: o Claude usou
+        # "divergência forte" num caso de CONVICÇÃO, confundindo os dois
+        # conceitos apesar da classificação estar correta). São coisas
+        # diferentes e a palavra errada muda o significado:
+        #   - "conviccao": mercado E índice apontam para O MESMO jogador, só
+        #     que o índice é mais forte. NÃO é um desacordo — é um reforço.
+        #   - "direcao": mercado e índice apontam para JOGADORES DIFERENTES —
+        #     aqui sim é um desacordo genuíno.
+        if _tipo == "conviccao":
+            _regra_vocab = (
+                "ESTE É UM CASO DE CONVICÇÃO, NÃO DE DIVERGÊNCIA: o mercado e "
+                f"o índice concordam no MESMO lado ({_fav}), o índice só é mais "
+                "forte do que a odd sugere. Usa APENAS a palavra 'convicção' "
+                "(ex: 'convicção forte'). PROIBIDO escrever 'divergência' ou "
+                "'diverge' neste texto — não é o caso, e confundir os dois é "
+                "um erro grave de leitura."
+            )
+        elif _tipo == "direcao":
+            _regra_vocab = (
+                "ESTE É UM CASO DE DIVERGÊNCIA DE DIREÇÃO: mercado e índice "
+                f"apontam para jogadores DIFERENTES (mercado favorece "
+                f"{_div.get('mercado_favorece')}, índice favorece {_fav}). "
+                "Usa a palavra 'divergência'."
+            )
+        else:
+            _regra_vocab = "Mercado eficiente — não uses 'divergência' nem 'convicção'."
         _div_bloco = (
             "\n\n### CLASSIFICAÇÃO DO MOTOR (já decidida — NÃO a contradigas):\n"
-            f"- Divergência: **{_clf['texto']}** (nível {_clf['nivel']}/3)\n"
+            f"- Classificação: **{_clf['texto']}** (nível {_clf['nivel']}/3, tipo={_tipo})\n"
             f"- Gap modelo vs mercado: {_div.get('gap_pp', 0)} p.p.\n"
             f"- Modelo inclina para: {_fav or 'nenhum (mercado eficiente)'}\n"
             f"- Fatores que sustentam: {_fat_txt}\n"
-            "REGRA: escreve o executive_summary e o verdict COERENTES com esta "
-            "classificação. Se o motor diz 'Mercado eficiente', NÃO inventes "
-            "divergência. Se diz 'Divergência forte', assume-a com clareza (sem "
-            "'mas por outro lado'). Interpreta, não recalcules."
+            f"- {_regra_vocab}\n"
+            "REGRA GERAL: escreve o executive_summary e o verdict COERENTES com "
+            "esta classificação. Se o motor diz 'Mercado eficiente', NÃO "
+            "inventes divergência nem convicção. Interpreta, não recalcules."
         )
 
     user_prompt = (
@@ -813,6 +840,20 @@ def analyze_match(match_data: dict) -> dict:
                     contradiz = True
             # (b) motor diz divergência, mas o Claude diz "eficiente/rotina/sem divergência"
             if nivel >= 2 and any(t in blob for t in ["eficiente", "rotina", "sem divergência", "sem divergencia", "alinhad"]):
+                contradiz = True
+            # (c) motor é CONVICÇÃO (mercado e índice concordam, só magnitude
+            # difere), mas o Claude escreve "divergência"/"diverge" — confusão
+            # terminológica real observada 11/08/2026 (caso Jodar vs Fils: a
+            # Leitura dizia corretamente "Convicção forte", mas o veredito do
+            # Claude dizia "divergência forte face ao mercado", o que sugere
+            # incorretamente um desacordo de direção que não existe).
+            tipo = div.get("tipo", "")
+            if tipo == "conviccao" and any(t in blob for t in ["divergência", "divergencia", "diverge"]):
+                contradiz = True
+            # (d) motor é DIREÇÃO (desacordo genuíno), mas o Claude escreve
+            # "convicção"/"reforçada" sem mencionar divergência — mistura o
+            # conceito inverso.
+            if tipo == "direcao" and any(t in blob for t in ["convicção", "conviccao"]) and not any(t in blob for t in ["divergência", "divergencia", "diverge"]):
                 contradiz = True
             if contradiz:
                 # fallback determinístico curto, 100% coerente com o motor
