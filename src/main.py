@@ -460,12 +460,20 @@ def _compute_features(payload: dict) -> dict:
             "sets_7d_a": fa.get("sets_last_7d"), "sets_7d_b": fb.get("sets_last_7d"),
         }
 
-    # H2H (quem lidera o confronto direto)
-    h2h = (payload.get("h2h") or {}).get("overall") or {}
+    # H2H (quem lidera o confronto direto) — global E por piso, separados
+    # (auditoria 11/08/2026: o "on_surface" já vinha calculado em compute_h2h
+    # mas nunca era usado por ninguém — dado morto).
+    h2h_obj = payload.get("h2h") or {}
+    h2h = h2h_obj.get("overall") or {}
     if h2h.get("total_matches"):
         aw, bw = h2h.get("a_wins", 0), h2h.get("b_wins", 0)
         feats["h2h"] = {"lider": a if aw > bw else (b if bw > aw else "igual"),
                         "a_wins": aw, "b_wins": bw, "total": h2h["total_matches"]}
+    h2h_surf = h2h_obj.get("on_surface") or {}
+    if h2h_surf.get("total_matches"):
+        aw_s, bw_s = h2h_surf.get("a_wins", 0), h2h_surf.get("b_wins", 0)
+        feats["h2h_piso"] = {"lider": a if aw_s > bw_s else (b if bw_s > aw_s else "igual"),
+                             "a_wins": aw_s, "b_wins": bw_s, "total": h2h_surf["total_matches"]}
 
     return feats or None
 
@@ -749,8 +757,16 @@ def _build_match_payload(match: dict) -> dict:
         # guardar as mãos no payload (o motor usa para o matchup)
         if _hand_a and _hand_b:
             payload_hands = {"a": _hand_a, "b": _hand_b}
+            # CORREÇÃO (11/08/2026): resolver para a taxa de vitória
+            # específica contra a mão REAL do adversário deste jogo — ver
+            # resolve_handedness_matchup para o porquê (o motor lia uma
+            # chave "win_pct" que nunca existia nos dados crus).
+            handedness_a = fetch_data.resolve_handedness_matchup(handedness_a, _hand_b)
+            handedness_b = fetch_data.resolve_handedness_matchup(handedness_b, _hand_a)
         else:
             payload_hands = None
+            handedness_a = None
+            handedness_b = None
         if _discrepancias and ("serviço" in _discrepancias):
             print(f"[fontes] {player_a} vs {player_b} | serviço divergiu Sackmann≠RapidAPI (usada RapidAPI)")
     else:
