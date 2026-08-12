@@ -522,7 +522,8 @@ def _build_charts(payload: dict) -> str:
 # ===== MOTOR DE DIVERGÊNCIA PONDERADA V3 (Python puro, zero Claude) =====
 # afinam-se com o backtest e os relatórios reais.
 PESOS = {
-    "h2h": 10,                 # ALTO — mais importante que o ranking
+    "h2h_piso": 12,             # MUITO ALTO — confronto direto NESTE piso (mais específico que o global)
+    "h2h": 6,                  # MÉDIO — confronto direto na carreira toda (desceu; o piso é mais relevante)
     "piso": 10,                # ALTO — performance na superfície
     "recuperacao_sets": 9,     # ALTO — recuperar 1 set abaixo / sets decisivos
     "matchup_maos": 8,         # ALTO — canhoto vs destro
@@ -552,7 +553,8 @@ def _classificar_divergencia(gap_pp):
 
 def _nome_fator(chave):
     return {
-        "h2h": "confronto direto", "piso": "superfície",
+        "h2h": "confronto direto", "h2h_piso": "confronto direto (piso)",
+        "piso": "superfície",
         "recuperacao_sets": "resiliência em sets", "matchup_maos": "matchup de mão",
         "forma_recente": "forma recente", "ranking": "ranking",
         "lesao": "regresso após paragem", "fadiga": "fadiga",
@@ -578,6 +580,17 @@ def _calcular_divergencia(payload):
     # Para cada fator disponível: +peso se lidera A, -peso se lidera B,
     # escalado pela força relativa (diff) E pela CONFIANÇA DA AMOSTRA.
     contribuicoes = []  # (chave, sinal_para_A, peso_efetivo)
+    # ESTADO DE TODOS OS FATORES (11/08/2026) — para o módulo "Fatores
+    # Detalhados" do relatório: ao contrário de `contribuicoes` (só os que
+    # pesaram na decisão), isto regista TODOS os fatores aplicáveis, mesmo
+    # os que não contribuíram (sem dados, empate, ou abaixo do limiar) —
+    # 100% Python, o Claude nunca vê nem decide isto.
+    status: dict = {}
+
+    def _reg_status(chave, disponivel, lider=None, motivo_exclusao=None, **extra):
+        entry = {"disponivel": disponivel, "lider": lider, "motivo_exclusao": motivo_exclusao}
+        entry.update(extra)
+        status[chave] = entry
 
     def _conf_amostra(n_jogos, n_pleno=30):
         """Confiança da amostra (0.2 a 1.0). Auditoria P0 #3: um fator com
@@ -597,14 +610,39 @@ def _calcular_divergencia(payload):
         elif lider == b:
             contribuicoes.append((chave, -1, peso))
 
-    # H2H — só conta com amostra mínima (1 jogo não é evidência fiável) e
-    # com força proporcional ao domínio do confronto.
+    # H2H NO PISO — peso mais alto do motor (auditoria 11/08/2026: dado que
+    # já existia em compute_h2h [on_surface] mas nunca era usado por
+    # ninguém). Mais específico que o global, por isso pesa mais.
+    hp = feats.get("h2h_piso")
+    if isinstance(hp, dict) and hp.get("lider") not in (None, "igual"):
+        _hp_total = hp.get("a_wins", 0) + hp.get("b_wins", 0)
+        if _hp_total >= 1:  # amostra por piso é sempre pequena; 1 jogo já conta, com confiança baixa
+            forca = min(_hp_total / 3.0, 1.0)
+            _add("h2h_piso", hp["lider"], max(forca, 0.5), conf_amostra=_conf_amostra(_hp_total, 6))
+            _reg_status("h2h_piso", True, hp["lider"], valor_a=hp.get("a_wins"), valor_b=hp.get("b_wins"), amostra=_hp_total)
+        else:
+            _reg_status("h2h_piso", True, "igual", "amostra insuficiente")
+    elif isinstance(hp, dict) and hp.get("lider") == "igual":
+        _reg_status("h2h_piso", True, "igual")
+    else:
+        _reg_status("h2h_piso", False)
+
+    # H2H global — só conta com amostra mínima (1 jogo não é evidência
+    # fiável) e com força proporcional ao domínio do confronto.
     h = feats.get("h2h")
     if isinstance(h, dict) and h.get("lider") not in (None, "igual"):
         _h_total = (h.get("a_wins", 0) + h.get("b_wins", 0)) or h.get("diff", 0)
         if _h_total >= 2:  # ignora H2H de 1 só jogo
             forca = min(_h_total / 4.0, 1.0)  # 4+ jogos = peso total
             _add("h2h", h["lider"], max(forca, 0.5))
+            _reg_status("h2h", True, h["lider"], valor_a=h.get("a_wins"), valor_b=h.get("b_wins"), amostra=_h_total)
+        else:
+            _reg_status("h2h", True, h["lider"], "amostra insuficiente (1 jogo)")
+    elif isinstance(h, dict) and h.get("lider") == "igual":
+        _reg_status("h2h", True, "igual")
+    else:
+        _reg_status("h2h", False)
+
     # Piso — com confiança de amostra (auditoria: 8 jogos não pesa como 300)
     ps = feats.get("piso")
     if isinstance(ps, dict) and ps.get("lider") not in (None, "igual"):
@@ -612,17 +650,60 @@ def _calcular_divergencia(payload):
         # amostra: nº de jogos no piso (o menor dos dois jogadores, conservador)
         _n_piso = min(ps.get("amostra_a") or 0, ps.get("amostra_b") or 0) or ps.get("amostra") or 0
         _add("piso", ps["lider"], max(forca, 0.4), conf_amostra=_conf_amostra(_n_piso, 40))
-    # Recuperação de sets (rich_stats scenarios)
+        _reg_status("piso", True, ps["lider"], valor_a=ps.get("valor_a"), valor_b=ps.get("valor_b"), amostra=_n_piso)
+    elif isinstance(ps, dict) and ps.get("lider") == "igual":
+        _reg_status("piso", True, "igual")
+    else:
+        _reg_status("piso", False)
+
+    # Recuperação de sets — set decisivo (auditoria 11/08/2026: o motor só
+    # lia rich_stats.scenarios, que vem dum endpoint com ORÇAMENTO LIMITADO
+    # por execução e cache local — frequentemente indisponível. Ignorava
+    # `deciding_set_stats_a/b`, uma fonte separada e muito mais disponível
+    # (RapidAPI recent-stats, com fallback Sackmann/histórico). Adicionado
+    # fallback: se o "rich" não tiver o dado, tenta a outra fonte — que tem
+    # DUAS formas possíveis (plana da RapidAPI, ou bo3/bo5 do histórico),
+    # por isso a extração trata as duas.
+    def _deciding_set_signal(d):
+        """Devolve (win_pct, contagem) de set decisivo, aceitando tanto a
+        forma plana (RapidAPI recent-stats: deciding_set_win_pct/_count)
+        como a forma bo3/bo5 (Sackmann/histórico: combina as duas)."""
+        if not isinstance(d, dict):
+            return None, None
+        if d.get("deciding_set_win_pct") is not None:
+            return d["deciding_set_win_pct"], d.get("deciding_set_count")
+        wins = matches = 0
+        tem_dados = False
+        for label in ("bo3", "bo5"):
+            cell = d.get(label)
+            if isinstance(cell, dict) and cell.get("matches_went_the_distance"):
+                tem_dados = True
+                matches += cell["matches_went_the_distance"]
+                wins += cell.get("wins", 0)
+        if not tem_dados or matches == 0:
+            return None, None
+        return round(100 * wins / matches, 1), matches
+
     ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
     rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
-    dec_a = ra.get("deciding_set_win_pct")
-    dec_b = rb.get("deciding_set_win_pct")
+    dec_a, dec_a_n = ra.get("deciding_set_win_pct"), ra.get("deciding_set_count")
+    dec_b, dec_b_n = rb.get("deciding_set_win_pct"), rb.get("deciding_set_count")
+    if dec_a is None:
+        dec_a, dec_a_n = _deciding_set_signal(payload.get("deciding_set_stats_a"))
+    if dec_b is None:
+        dec_b, dec_b_n = _deciding_set_signal(payload.get("deciding_set_stats_b"))
     if dec_a is not None and dec_b is not None:
         lider = a if dec_a > dec_b else (b if dec_b > dec_a else "igual")
         if lider != "igual" and abs(dec_a - dec_b) >= 3:
             forca = min(abs(dec_a - dec_b) / 15.0, 1.0)
-            _n_dec = min(ra.get("deciding_set_count") or 0, rb.get("deciding_set_count") or 0)
+            _n_dec = min(dec_a_n or 0, dec_b_n or 0)
             _add("recuperacao_sets", lider, max(forca, 0.4), conf_amostra=_conf_amostra(_n_dec, 20))
+            _reg_status("recuperacao_sets", True, lider, valor_a=dec_a, valor_b=dec_b, amostra=_n_dec)
+        else:
+            _reg_status("recuperacao_sets", True, lider, "diferença irrelevante" if lider == "igual" else "abaixo do limiar (<3 p.p.)")
+    else:
+        _reg_status("recuperacao_sets", False)
+
     # Matchup de mão (handedness)
     hm = payload.get("handedness_matchup_a") or {}
     hmb = payload.get("handedness_matchup_b") or {}
@@ -632,11 +713,23 @@ def _calcular_divergencia(payload):
         if lider != "igual" and abs(wa - wb) >= 3:
             forca = min(abs(wa - wb) / 15.0, 1.0)
             _add("matchup_maos", lider, max(forca, 0.4))
+            _reg_status("matchup_maos", True, lider, valor_a=wa, valor_b=wb)
+        else:
+            _reg_status("matchup_maos", True, lider, "diferença irrelevante" if lider == "igual" else "abaixo do limiar (<3 p.p.)")
+    else:
+        _reg_status("matchup_maos", False)
+
     # Forma recente
     fr = feats.get("forma_recente")
     if isinstance(fr, dict) and fr.get("lider") not in (None, "igual"):
         forca = min((fr.get("diff") or 10) / 25.0, 1.0)
         _add("forma_recente", fr["lider"], max(forca, 0.4))
+        _reg_status("forma_recente", True, fr["lider"], valor_a=fr.get("valor_a"), valor_b=fr.get("valor_b"), amostra=fr.get("amostra_a"))
+    elif isinstance(fr, dict) and fr.get("lider") == "igual":
+        _reg_status("forma_recente", True, "igual")
+    else:
+        _reg_status("forma_recente", False)
+
     # Ranking — só conta se a diferença for RELEVANTE (não #70 vs #72). A força
     # cresce com o fosso: <5 lugares ~ irrelevante; 50+ ~ peso total.
     rk = feats.get("ranking")
@@ -645,14 +738,34 @@ def _calcular_divergencia(payload):
         if _rk_diff >= 5:  # ignora rankings quase iguais
             forca = min(_rk_diff / 50.0, 1.0)
             _add("ranking", rk["lider"], max(forca, 0.3))
+            _reg_status("ranking", True, rk["lider"], valor_a=rk.get("valor_a"), valor_b=rk.get("valor_b"))
+        else:
+            _reg_status("ranking", True, rk["lider"], "diferença irrelevante (<5 posições)")
+    elif isinstance(rk, dict) and rk.get("lider") == "igual":
+        _reg_status("ranking", True, "igual")
+    else:
+        _reg_status("ranking", False)
+
     # Época atual
     ea = feats.get("epoca_atual")
     if isinstance(ea, dict) and ea.get("lider") not in (None, "igual"):
         _add("epoca_atual", ea["lider"])
+        _reg_status("epoca_atual", True, ea["lider"], valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
+    elif isinstance(ea, dict) and ea.get("lider") == "igual":
+        _reg_status("epoca_atual", True, "igual")
+    else:
+        _reg_status("epoca_atual", False)
+
     # Serviço
     sv = feats.get("servico")
     if isinstance(sv, dict) and sv.get("lider") not in (None, "igual"):
         _add("servico", sv["lider"])
+        _reg_status("servico", True, sv["lider"], valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
+    elif isinstance(sv, dict) and sv.get("lider") == "igual":
+        _reg_status("servico", True, "igual")
+    else:
+        _reg_status("servico", False)
+
     # Fadiga (sobe se último jogo foi longo)
     fa = (payload.get("fatigue_signal_a") if isinstance(payload.get("fatigue_signal_a"), dict) else {})
     fb = (payload.get("fatigue_signal_b") if isinstance(payload.get("fatigue_signal_b"), dict) else {})
@@ -673,16 +786,35 @@ def _calcular_divergencia(payload):
         if ja is not None and jb is not None and ja != jb:
             lider = a if ja < jb else b
             _add("fadiga", lider, peso_override=peso_fadiga)
+            _reg_status("fadiga", True, lider, valor_a=ja, valor_b=jb)
+        else:
+            _reg_status("fadiga", True, "igual" if ja == jb else None, "sem diferença nos jogos recentes")
+    else:
+        _reg_status("fadiga", False, motivo_exclusao="fonte não fiável (histórico, não api_recent)")
+
     # Lesão (só ativa em regresso claro/longo)
-    la = payload.get("layoff_return_stats_a") or {}
-    lb = payload.get("layoff_return_stats_b") or {}
-    def _regresso_claro(l):
-        return (l.get("days_out") or 0) >= 60  # 2+ meses parado
+    # CORREÇÃO (11/08/2026): lia layoff_return_stats.days_out, que só existe
+    # na variante RapidAPI (compute_layoff_from_past_matches). No fallback
+    # histórico (compute_return_from_layoff_stats), esse dict mede outra
+    # coisa (taxa de vitória histórica após regressos — win_rate_pct) e
+    # NUNCA teve "days_out": o fator ficava sempre a zero nesse caminho,
+    # silenciosamente. days_since_last_match do sinal de FADIGA existe de
+    # forma consistente nas duas fontes (api_recent e histórico) — é a
+    # medida certa e sempre disponível de "quanto tempo parado até agora".
+    def _regresso_claro(f):
+        return (f.get("days_since_last_match") or 0) >= 60  # 2+ meses parado
     # quem regressa de lesão longa fica em desvantagem
-    if _regresso_claro(la) and not _regresso_claro(lb):
+    if _regresso_claro(fa) and not _regresso_claro(fb):
         _add("lesao", b)  # B beneficia (A está a regressar)
-    elif _regresso_claro(lb) and not _regresso_claro(la):
+        _reg_status("lesao", True, b, valor_a=fa.get("days_since_last_match"), valor_b=fb.get("days_since_last_match"))
+    elif _regresso_claro(fb) and not _regresso_claro(fa):
         _add("lesao", a)
+        _reg_status("lesao", True, a, valor_a=fa.get("days_since_last_match"), valor_b=fb.get("days_since_last_match"))
+    elif fa.get("days_since_last_match") is not None or fb.get("days_since_last_match") is not None:
+        _reg_status("lesao", True, "igual", "nenhum em regresso claro (<60 dias parado)")
+    else:
+        _reg_status("lesao", False)
+
     # Meteorologia (peso mínimo — só entra como desempate simbólico, quase nulo)
     # (não implementado como vantagem direcional; fica como contexto)
 
@@ -693,7 +825,7 @@ def _calcular_divergencia(payload):
     # teto, para que medir a qualidade de 4 formas não a inflacione 4x.
     FAMILIAS = {
         "forca_base": {"ranking", "epoca_atual", "servico", "forma_recente"},
-        "matchup": {"piso", "matchup_maos", "h2h"},
+        "matchup": {"piso", "matchup_maos", "h2h", "h2h_piso"},
         "resiliencia": {"recuperacao_sets"},
         "contexto": {"fadiga", "lesao", "meteo"},
     }
@@ -851,6 +983,10 @@ def _calcular_divergencia(payload):
         "tipo": tipo,  # "direcao" | "conviccao" | "eficiente"
         "favorecido": favorecido,
         "fatores_chave": fatores_chave,
+        "n_fatores": n_fatores,  # nº de sinais que contribuíram (transparência
+                                  # quando o índice bate no extremo com poucos)
+        "fatores_status": status,  # TODOS os fatores (não só o top-3), para o
+                                    # módulo "Fatores Detalhados" — 100% Python
         "player_a": a, "player_b": b,
     }
 
@@ -1762,6 +1898,13 @@ details.more .more-body {{ padding:0 16px 16px; }}
 .merc-secundarios {{ opacity:.75; }}
 .merc-sec-tag {{ font-size:10px; color:var(--dim); margin-bottom:2px; }}
 .h2h-line {{ font-size:14px; line-height:1.6; }}
+.fd-linha {{ display:flex; justify-content:space-between; align-items:center;
+  padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; }}
+.fd-linha:last-child {{ border-bottom:none; }}
+.fd-nome {{ color:var(--dim); }}
+.fd-val {{ font-weight:600; text-align:right; }}
+.fd-dim {{ color:var(--dim); font-weight:400; }}
+.fd-nota {{ color:var(--dim); font-size:11px; font-weight:400; }}
 .foot {{ text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }}
 """
@@ -1840,17 +1983,27 @@ def _mod_leitura(payload, div, estado, result):
     idx_fav = idx.get("a") if fav == payload.get("player_a") else idx.get("b")
     merc_fav = div.get("mercado_favorece")
     tipo = div.get("tipo", "")
+    n_fatores = div.get("n_fatores")
+    # Transparência (11/08/2026): quando o índice bate no extremo (todos os
+    # sinais disponíveis concordam, sem nenhum contrapeso) e há poucos sinais
+    # a sustentá-lo, isso é matematicamente correto mas FRÁGIL — vale a pena
+    # dizê-lo, para não parecer "mais evidência" do que realmente há.
+    nota_fragil = ""
+    if isinstance(n_fatores, int) and n_fatores <= 3 and idx_fav is not None and (idx_fav >= 95 or idx_fav <= 5):
+        nota_fragil = (f" <span style=\"opacity:.7\">(índice construído a partir de só "
+                        f"{n_fatores} sinal{'is' if n_fatores != 1 else ''} — todos no mesmo "
+                        f"sentido, sem contrapeso.)</span>")
     if chave == "eficiente":
         frase = f"Os indicadores e o mercado concordam ({_esc(merc_fav)} favorito). Sem valor aparente."
     elif tipo == "conviccao":
         # favorito subvalorizado: mercado e índice no mesmo lado, mas índice mais forte
         frase = (f"<b>{_esc(fav)}</b> é favorito do mercado <b>e</b> dos indicadores "
                  f"(índice {idx_fav}/100) — mas os dados suportam-no mais do que a odd "
-                 f"reflete. Favorito a acompanhar.")
+                 f"reflete. Favorito a acompanhar.{nota_fragil}")
     else:
         # divergência de direção: contra o mercado
         frase = (f"Os indicadores apontam para <b>{_esc(fav)}</b> (índice {idx_fav}/100), "
-                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>.")
+                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>.{nota_fragil}")
     return f"""
 <div class="leitura" style="border-color:{cor}">
   <div class="leitura-bola">{bola}</div>
@@ -1874,6 +2027,54 @@ def _mod_fatores(payload, div):
     while len(chips) < 4:
         chips.append('<div class="fator"><div class="fator-lbl">—</div></div>')
     return f'<div class="fatores">{"".join(chips)}</div>'
+
+
+# Ordem de exibição do módulo "Fatores Detalhados" (por peso, do motor)
+_FACTOR_ORDER = [
+    "h2h_piso", "piso", "recuperacao_sets", "matchup_maos", "h2h",
+    "forma_recente", "ranking", "lesao", "fadiga", "epoca_atual", "servico",
+]
+
+
+def _mod_fatores_detalhados(payload, div):
+    """Módulo: TODOS os fatores do motor (não só o top-3/4), com quem tem
+    vantagem em cada um — "sem dados"/"empate"/"abaixo do limiar" quando
+    aplicável. 100% Python, a partir de `fatores_status` (ver
+    _calcular_divergencia) — o Claude nunca vê nem decide isto."""
+    status = (div or {}).get("fatores_status") or {}
+    if not status:
+        return ""
+    linhas = []
+    for chave in _FACTOR_ORDER:
+        st = status.get(chave)
+        if st is None:
+            continue
+        nome = _esc(_nome_fator(chave))
+        if not st.get("disponivel"):
+            linhas.append(
+                f'<div class="fd-linha"><span class="fd-nome">{nome}</span>'
+                f'<span class="fd-val fd-dim">sem dados</span></div>')
+            continue
+        lider = st.get("lider")
+        motivo = st.get("motivo_exclusao")
+        if lider in (None, "igual"):
+            txt = "empate" if lider == "igual" else (motivo or "sem vantagem clara")
+            linhas.append(
+                f'<div class="fd-linha"><span class="fd-nome">{nome}</span>'
+                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>')
+            continue
+        # contribuiu de facto (sem motivo de exclusão) -> destaque; excluído
+        # apesar de haver vantagem (ex: abaixo do limiar) -> tom neutro
+        cor = "var(--dim)" if motivo else "var(--mint)"
+        seta = "·" if motivo else "▲"
+        nota = f' <span class="fd-nota">({_esc(motivo)})</span>' if motivo else ""
+        linhas.append(
+            f'<div class="fd-linha"><span class="fd-nome">{nome}</span>'
+            f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>')
+    if not linhas:
+        return ""
+    return (f'<details class="more"><summary>Fatores detalhados ({len(linhas)})</summary>'
+            f'<div class="more-body">{"".join(linhas)}</div></details>')
 
 
 def _mod_mercado_vs_sinal(payload, div):
@@ -2241,6 +2442,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_fadiga(payload))
     partes.append(_mod_h2h(payload))
     partes.append(_mod_cenarios(payload))
+    # Fatores detalhados (TODOS, não só o top-3/4) — colapsável, sempre que
+    # houver motor calculado, independente do estado (mesmo "eficiente"
+    # beneficia de mostrar porque é eficiente: tudo empatado/sem dados).
+    partes.append(_mod_fatores_detalhados(payload, div))
     # Veredicto (se há)
     partes.append(_mod_veredicto(result))
     partes.append('</div>')
