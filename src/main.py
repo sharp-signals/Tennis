@@ -872,8 +872,11 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         tour = html.escape(payload.get("tournament", ""))
         line = html.escape(result.get("summary_line", ""))
         href = html.escape(url)
+        div = payload.get("divergencia") or {}
+        level = (div.get("classificacao") or {}).get("nivel", -1)
+        tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
         cards.append(
-            f'<a class="idx-card" href="{href}">'
+            f'<a class="idx-card" href="{href}" data-level="{level}" data-tour="{tour_key}">'
             f'<div class="idx-flag">{flag}</div>'
             f'<div class="idx-body"><div class="idx-players">{a} <span>vs</span> {b}</div>'
             f'<div class="idx-tour">{tour}</div>'
@@ -888,6 +891,10 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
 body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',system-ui,sans-serif;margin:0;padding:0 16px 50px;}}
 .head{{max-width:760px;margin:0 auto;padding:28px 0 10px;border-bottom:2px solid {COLORS['steel']};}}
 .head h1{{font-size:22px;margin:0;}} .head p{{color:{COLORS['text_dim']};margin:6px 0 0;font-size:14px;}}
+.filters{{max-width:760px;margin:16px auto 0;display:grid;grid-template-columns:1fr 170px;gap:10px;}}
+.filters input,.filters select{{background:{COLORS['surface']};color:{COLORS['text']};border:1px solid {COLORS['line']};border-radius:8px;padding:10px 12px;font:inherit;}}
+.filters input:focus,.filters select:focus{{outline:2px solid {COLORS['steel']};outline-offset:1px;}}
+.filter-status{{max-width:760px;margin:8px auto 0;color:{COLORS['text_dim']};font-size:13px;}}
 .list{{max-width:760px;margin:20px auto;display:flex;flex-direction:column;gap:10px;}}
 .idx-card{{display:flex;gap:12px;align-items:center;background:{COLORS['surface']};border:1px solid {COLORS['line']};border-radius:10px;padding:14px;text-decoration:none;color:inherit;transition:border-color .15s;}}
 .idx-card:hover{{border-color:{COLORS['steel']};}}
@@ -895,10 +902,35 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
 .idx-players{{font-weight:700;font-size:16px;}} .idx-players span{{color:{COLORS['text_dim']};font-weight:400;font-size:13px;}}
 .idx-tour{{color:{COLORS['text_dim']};font-size:12px;margin:2px 0 4px;text-transform:uppercase;letter-spacing:.05em;}}
 .idx-line{{font-size:14px;color:{COLORS['text']};}}
+@media(max-width:600px){{.filters{{grid-template-columns:1fr;}}.idx-card{{align-items:flex-start;}}}}
 </style></head>
 <body>
 <div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p></div>
+<div class="filters">
+  <input id="search" type="search" placeholder="Pesquisar jogador ou torneio" aria-label="Pesquisar relatórios"/>
+  <select id="priority" aria-label="Filtrar por prioridade">
+    <option value="all">Todas as prioridades</option>
+    <option value="3">Prioridade alta</option><option value="2">Valor a analisar</option>
+    <option value="1">A acompanhar</option><option value="0">Sem divergência</option>
+  </select>
+</div>
+<div class="filter-status" id="filter-status" aria-live="polite"></div>
 <div class="list">{"".join(cards) if cards else "<p style='max-width:760px;margin:20px auto;color:#9aa3b2'>Sem jogos hoje.</p>"}</div>
+<script>
+const cards=[...document.querySelectorAll('.idx-card')];
+const search=document.getElementById('search'), priority=document.getElementById('priority');
+const status=document.getElementById('filter-status');
+function applyFilters(){{
+  const q=search.value.trim().toLocaleLowerCase('pt'); const level=priority.value;
+  let visible=0;
+  for(const card of cards){{
+    const show=(!q||card.textContent.toLocaleLowerCase('pt').includes(q))&&(level==='all'||card.dataset.level===level);
+    card.hidden=!show; if(show) visible++;
+  }}
+  status.textContent=`${{visible}} de ${{cards.length}} jogos visíveis`;
+}}
+search.addEventListener('input',applyFilters); priority.addEventListener('change',applyFilters); applyFilters();
+</script>
 </body></html>"""
 
     # o índice do dia e o índice-raiz (index.html na raiz do site)
