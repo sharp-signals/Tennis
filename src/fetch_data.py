@@ -54,6 +54,8 @@ from .config import (
     MAX_FIXTURE_PAGES,
     RAPIDAPI_BASE,
     RAPIDAPI_HOST,
+    RAPIDAPI_MAX_CALLS_PER_DAY,
+    RAPIDAPI_MAX_CALLS_PER_RUN,
     SURFACES,
     TOURNAMENT_CACHE_PATH,
     TOURNAMENT_FIXTURES_PAGE_SIZE,
@@ -121,22 +123,59 @@ _RAPIDAPI_HEADERS = {
 
 # Contador de chamadas à RapidAPI por execução.
 _RAPIDAPI_CALL_COUNT = {"n": 0}
+_RAPIDAPI_RECORDED_TODAY = {"n": 0}
+_RAPIDAPI_BUDGET_EXCEEDED = {"value": False}
 RAPIDAPI_MIN_INTERVAL = 0.35
 _RAPIDAPI_LAST_CALL = {"t": 0.0}
 _RAPIDAPI_LOCK = threading.Lock()
 
 
-def _rapidapi_get(url, **kwargs):
-    """Wrapper único para chamadas GET à RapidAPI, com contador, anti-429 e retry."""
-    import time
-    with _RAPIDAPI_LOCK:
-        elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
-        if elapsed < RAPIDAPI_MIN_INTERVAL:
-            time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
-        _RAPIDAPI_LAST_CALL["t"] = time.monotonic()
+class RapidAPIBudgetExceeded(RuntimeError):
+    """A execução atingiu o orçamento configurado antes do pedido seguinte."""
 
-    _RAPIDAPI_CALL_COUNT["n"] += 1
+
+def _load_recorded_today_calls() -> int:
+    path = os.path.join("data", "rapidapi_usage_log.json")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            history = json.load(handle)
+        return sum(
+            int(item.get("calls") or 0)
+            for item in history
+            if str(item.get("timestamp", "")).startswith(today)
+        )
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return 0
+
+
+def _reserve_rapidapi_call() -> None:
+    """Reserva atomicamente uma chamada real, incluindo tentativas após 429."""
+    projected_run = _RAPIDAPI_CALL_COUNT["n"] + 1
+    projected_day = _RAPIDAPI_RECORDED_TODAY["n"] + projected_run
+    if (
+        projected_run > RAPIDAPI_MAX_CALLS_PER_RUN
+        or projected_day > RAPIDAPI_MAX_CALLS_PER_DAY
+    ):
+        _RAPIDAPI_BUDGET_EXCEEDED["value"] = True
+        raise RapidAPIBudgetExceeded(
+            "Orçamento RapidAPI atingido "
+            f"(execução={_RAPIDAPI_CALL_COUNT['n']}/{RAPIDAPI_MAX_CALLS_PER_RUN}, "
+            f"dia={projected_day - 1}/{RAPIDAPI_MAX_CALLS_PER_DAY})."
+        )
+    _RAPIDAPI_CALL_COUNT["n"] = projected_run
+
+
+def _rapidapi_get(url, **kwargs):
+    """Wrapper único com orçamento, contador real, anti-429 e retry."""
+    import time
     for tentativa in range(3):
+        with _RAPIDAPI_LOCK:
+            _reserve_rapidapi_call()
+            elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
+            if elapsed < RAPIDAPI_MIN_INTERVAL:
+                time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
+            _RAPIDAPI_LAST_CALL["t"] = time.monotonic()
         resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
         if resp.status_code == 429:
             espera = 2 * (tentativa + 1)
@@ -153,6 +192,12 @@ def get_rapidapi_call_count() -> int:
 
 def reset_rapidapi_call_count() -> None:
     _RAPIDAPI_CALL_COUNT["n"] = 0
+    _RAPIDAPI_RECORDED_TODAY["n"] = _load_recorded_today_calls()
+    _RAPIDAPI_BUDGET_EXCEEDED["value"] = False
+
+
+def rapidapi_budget_exceeded() -> bool:
+    return _RAPIDAPI_BUDGET_EXCEEDED["value"]
 
 
 _BROWSER_HEADERS = {

@@ -84,7 +84,7 @@ class SelectiveLLMPolicyTests(unittest.TestCase):
         self.assertEqual(result["flag"], analyze.FLAG_ROUTINE)
         self.assertIn("A", result["summary_line"])
 
-    def test_selective_calls_provider_when_material_signals_conflict(self) -> None:
+    def test_selective_calls_provider_for_level_three_market_divergence(self) -> None:
         provider = FakeProvider()
         payload = {
             "player_a": "A",
@@ -109,6 +109,17 @@ class SelectiveLLMPolicyTests(unittest.TestCase):
                     "amostra_b": 30,
                 },
             },
+            "divergencia": {
+                "prob_mercado_a": 62.0,
+                "prob_mercado_b": 38.0,
+                "favorecido": "B",
+                "mercado_favorece": "A",
+                "tipo": "direcao",
+                "classificacao": {
+                    "nivel": 3,
+                    "texto": "Divergência forte",
+                },
+            },
         }
 
         with (
@@ -118,7 +129,8 @@ class SelectiveLLMPolicyTests(unittest.TestCase):
             result = analyze.analyze_match(payload)
 
         self.assertEqual(provider.calls, 1)
-        self.assertEqual(result["verdict"], "Resposta simulada.")
+        self.assertIn("Divergência forte a favor de B", result["verdict"])
+        self.assertIn("fallback_determinístico", result["_validacao"])
 
     def test_all_synthesis_still_calls_provider_for_aligned_game(self) -> None:
         provider = FakeProvider()

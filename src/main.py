@@ -972,6 +972,14 @@ def run() -> None:
             if res is not None:
                 analyses.append(res)
 
+    # Nunca publicar um relatório parcial como se fosse uma execução normal
+    # quando o circuit breaker de quota foi ativado.
+    if fetch_data.rapidapi_budget_exceeded():
+        raise RuntimeError(
+            "Execução interrompida pelo orçamento RapidAPI; nenhum relatório "
+            "parcial foi publicado. Consulta o contador nos logs."
+        )
+
     if not analyses:
         # A3 da auditoria (28/07/2026): terminar "verde" sem qualquer
         # análise concluída esconderia uma falha total (ex: API da
@@ -1144,6 +1152,15 @@ def run() -> None:
         prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
         send_message(prefix + chunk)
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
+
+    reports_ok = sum(1 for _, _, url in match_reports if url)
+    print(
+        "[run_summary] "
+        f"eligible={len(eligible)} processed={len(analyses)} "
+        f"analysis_failed={len(eligible) - len(analyses)} "
+        f"reports_ok={reports_ok} reports_failed={len(match_reports) - reports_ok} "
+        f"telegram_chunks={len(chunks)}"
+    )
 
     # Registo do consumo da RapidAPI nesta execução (medição de quota).
     # Imprime o total no log e guarda o histórico dia a dia num ficheiro,

@@ -12,6 +12,15 @@ import os
 RAPIDAPI_HOST = "tennis-api-atp-wta-itf.p.rapidapi.com"
 RAPIDAPI_BASE = f"https://{RAPIDAPI_HOST}/tennis/v2"
 
+# Guardas de quota. O plano atual permite 5000 chamadas/dia; reservamos 10%
+# para diagnósticos manuais e impedimos que uma execução anómala consuma uma
+# parte desproporcionada da quota. Ambos os limites podem ser reduzidos no
+# workflow sem alterar código.
+RAPIDAPI_MAX_CALLS_PER_RUN = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_RUN", "800"))
+RAPIDAPI_MAX_CALLS_PER_DAY = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_DAY", "4500"))
+if RAPIDAPI_MAX_CALLS_PER_RUN <= 0 or RAPIDAPI_MAX_CALLS_PER_DAY <= 0:
+    raise ValueError("Os limites RapidAPI têm de ser inteiros positivos.")
+
 # Tiers a incluir no bot. Confirmado manualmente: "ATP 250" é o valor exato
 # devolvido pelo campo "tier" do endpoint getTournamentInfo.
 # TODO: os valores de Grand Slam / Masters 1000 / WTA ainda não foram

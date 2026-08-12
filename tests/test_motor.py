@@ -161,13 +161,13 @@ if __name__ == "__main__":
     for t in testes:
         try:
             t()
-            print(f"  ✓ {t.__name__}")
+            print(f"  PASS {t.__name__}")
             passou += 1
         except AssertionError as e:
-            print(f"  ✗ {t.__name__} — FALHOU: {e}")
+            print(f"  FAIL {t.__name__} — FALHOU: {e}")
             falhou += 1
         except Exception as e:
-            print(f"  ✗ {t.__name__} — ERRO: {e}")
+            print(f"  ERROR {t.__name__} — ERRO: {e}")
             falhou += 1
     print(f"\n{passou} passaram, {falhou} falharam (de {len(testes)} testes)")
     sys.exit(1 if falhou else 0)
