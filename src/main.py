@@ -408,9 +408,17 @@ def _compute_features(payload: dict) -> dict:
     # Ranking (menor = melhor)
     ra = (payload.get("ranking_a") or {}).get("rank")
     rb = (payload.get("ranking_b") or {}).get("rank")
+    # CORREÇÃO (12/08/2026, feedback de teste): também guardar os PONTOS de
+    # ranking, não só a posição. #1 vs #5 é uma diferença de posição pequena
+    # (4) mas de pontos enorme; #200 vs #204 tem a mesma diferença de posição
+    # mas é irrelevante. Um limiar fixo de posições não distingue os dois
+    # casos — os pontos sim.
+    pa_pts = (payload.get("ranking_a") or {}).get("points")
+    pb_pts = (payload.get("ranking_b") or {}).get("points")
     if ra and rb:
         feats["ranking"] = {"lider": a if ra < rb else (b if rb < ra else "igual"),
-                            "diff": abs(ra - rb), "valor_a": ra, "valor_b": rb}
+                            "diff": abs(ra - rb), "valor_a": ra, "valor_b": rb,
+                            "pontos_a": pa_pts, "pontos_b": pb_pts}
 
     # Forma recente (win%)
     _edge(_pct(payload.get("recent_form_a")), _pct(payload.get("recent_form_b")),
