@@ -644,8 +644,13 @@ def _calcular_divergencia(payload):
         _reg_status("h2h", False)
 
     # Piso — com confiança de amostra (auditoria: 8 jogos não pesa como 300)
+    # CORREÇÃO (12/08/2026, feedback de teste): faltava o limiar mínimo que
+    # os outros fatores percentuais já tinham — 51% vs 49% contava como
+    # "vantagem" (força pequena, mas ainda assim contribuía e aparecia como
+    # ▲ nos Fatores Detalhados). Alinhado com o mesmo limiar de 3 p.p. já
+    # usado em recuperação de sets / matchup de mão.
     ps = feats.get("piso")
-    if isinstance(ps, dict) and ps.get("lider") not in (None, "igual"):
+    if isinstance(ps, dict) and ps.get("lider") not in (None, "igual") and abs(ps.get("diff") or 0) >= 3:
         forca = min((ps.get("diff") or 5) / 15.0, 1.0)
         # amostra: nº de jogos no piso (o menor dos dois jogadores, conservador)
         _n_piso = min(ps.get("amostra_a") or 0, ps.get("amostra_b") or 0) or ps.get("amostra") or 0
@@ -653,6 +658,9 @@ def _calcular_divergencia(payload):
         _reg_status("piso", True, ps["lider"], valor_a=ps.get("valor_a"), valor_b=ps.get("valor_b"), amostra=_n_piso)
     elif isinstance(ps, dict) and ps.get("lider") == "igual":
         _reg_status("piso", True, "igual")
+    elif isinstance(ps, dict) and ps.get("lider") is not None:
+        _reg_status("piso", True, ps["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=ps.get("valor_a"), valor_b=ps.get("valor_b"))
     else:
         _reg_status("piso", False)
 
@@ -720,49 +728,77 @@ def _calcular_divergencia(payload):
         _reg_status("matchup_maos", False)
 
     # Forma recente
+    # CORREÇÃO (12/08/2026): mesmo limiar de 3 p.p. (ver nota do piso acima).
     fr = feats.get("forma_recente")
-    if isinstance(fr, dict) and fr.get("lider") not in (None, "igual"):
+    if isinstance(fr, dict) and fr.get("lider") not in (None, "igual") and abs(fr.get("diff") or 0) >= 3:
         forca = min((fr.get("diff") or 10) / 25.0, 1.0)
         _add("forma_recente", fr["lider"], max(forca, 0.4))
         _reg_status("forma_recente", True, fr["lider"], valor_a=fr.get("valor_a"), valor_b=fr.get("valor_b"), amostra=fr.get("amostra_a"))
     elif isinstance(fr, dict) and fr.get("lider") == "igual":
         _reg_status("forma_recente", True, "igual")
+    elif isinstance(fr, dict) and fr.get("lider") is not None:
+        _reg_status("forma_recente", True, fr["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=fr.get("valor_a"), valor_b=fr.get("valor_b"))
     else:
         _reg_status("forma_recente", False)
 
-    # Ranking — só conta se a diferença for RELEVANTE (não #70 vs #72). A força
-    # cresce com o fosso: <5 lugares ~ irrelevante; 50+ ~ peso total.
+    # Ranking — só conta se a diferença for RELEVANTE. Um limiar fixo de
+    # POSIÇÕES falha nos extremos do ranking: #1 vs #5 (diferença de 4
+    # posições, "irrelevante" pelo limiar antigo) é uma queda de qualidade
+    # brutal em pontos reais; #200 vs #204 (mesma diferença de posições) é
+    # insignificante. CORREÇÃO (12/08/2026, feedback de teste): usa também
+    # a diferença RELATIVA de pontos como critério alternativo — conta se a
+    # posição OU os pontos indicarem uma diferença real.
     rk = feats.get("ranking")
     if isinstance(rk, dict) and rk.get("lider") not in (None, "igual"):
         _rk_diff = rk.get("diff", 0)
-        if _rk_diff >= 5:  # ignora rankings quase iguais
+        _pts_a, _pts_b = rk.get("pontos_a"), rk.get("pontos_b")
+        _pts_gap_rel = None
+        if _pts_a and _pts_b and max(_pts_a, _pts_b) > 0:
+            _pts_gap_rel = abs(_pts_a - _pts_b) / max(_pts_a, _pts_b) * 100
+        _relevante = _rk_diff >= 5 or (_pts_gap_rel is not None and _pts_gap_rel >= 15)
+        if _relevante:
             forca = min(_rk_diff / 50.0, 1.0)
+            if _pts_gap_rel is not None:
+                # a força também pode vir dos pontos (ex: #1 vs #5 com gap de
+                # pontos enorme, mas diferença de posições pequena)
+                forca = max(forca, min(_pts_gap_rel / 40.0, 1.0))
             _add("ranking", rk["lider"], max(forca, 0.3))
-            _reg_status("ranking", True, rk["lider"], valor_a=rk.get("valor_a"), valor_b=rk.get("valor_b"))
+            _reg_status("ranking", True, rk["lider"], valor_a=rk.get("valor_a"), valor_b=rk.get("valor_b"),
+                        pontos_a=_pts_a, pontos_b=_pts_b)
         else:
-            _reg_status("ranking", True, rk["lider"], "diferença irrelevante (<5 posições)")
+            _reg_status("ranking", True, rk["lider"], "diferença irrelevante (posições e pontos próximos)",
+                        valor_a=rk.get("valor_a"), valor_b=rk.get("valor_b"))
     elif isinstance(rk, dict) and rk.get("lider") == "igual":
         _reg_status("ranking", True, "igual")
     else:
         _reg_status("ranking", False)
 
     # Época atual
+    # CORREÇÃO (12/08/2026): mesmo limiar de 3 p.p.
     ea = feats.get("epoca_atual")
-    if isinstance(ea, dict) and ea.get("lider") not in (None, "igual"):
+    if isinstance(ea, dict) and ea.get("lider") not in (None, "igual") and abs(ea.get("diff") or 0) >= 3:
         _add("epoca_atual", ea["lider"])
         _reg_status("epoca_atual", True, ea["lider"], valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
     elif isinstance(ea, dict) and ea.get("lider") == "igual":
         _reg_status("epoca_atual", True, "igual")
+    elif isinstance(ea, dict) and ea.get("lider") is not None:
+        _reg_status("epoca_atual", True, ea["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
     else:
         _reg_status("epoca_atual", False)
 
     # Serviço
+    # CORREÇÃO (12/08/2026): mesmo limiar de 3 p.p.
     sv = feats.get("servico")
-    if isinstance(sv, dict) and sv.get("lider") not in (None, "igual"):
+    if isinstance(sv, dict) and sv.get("lider") not in (None, "igual") and abs(sv.get("diff") or 0) >= 3:
         _add("servico", sv["lider"])
         _reg_status("servico", True, sv["lider"], valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     elif isinstance(sv, dict) and sv.get("lider") == "igual":
         _reg_status("servico", True, "igual")
+    elif isinstance(sv, dict) and sv.get("lider") is not None:
+        _reg_status("servico", True, sv["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     else:
         _reg_status("servico", False)
 
@@ -1904,13 +1940,18 @@ details.more .more-body {{ padding:0 16px 16px; }}
 .merc-secundarios {{ opacity:.75; }}
 .merc-sec-tag {{ font-size:10px; color:var(--dim); margin-bottom:2px; }}
 .h2h-line {{ font-size:14px; line-height:1.6; }}
-.fd-linha {{ display:flex; justify-content:space-between; align-items:center;
-  padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; }}
+.fd-linha {{ padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; }}
 .fd-linha:last-child {{ border-bottom:none; }}
+.fd-linha-top {{ display:flex; justify-content:space-between; align-items:center; }}
 .fd-nome {{ color:var(--dim); }}
 .fd-val {{ font-weight:600; text-align:right; }}
 .fd-dim {{ color:var(--dim); font-weight:400; }}
 .fd-nota {{ color:var(--dim); font-size:11px; font-weight:400; }}
+.fd-valor-txt {{ font-size:11px; color:var(--dim); margin-top:3px; }}
+.fd-bar {{ display:flex; height:5px; border-radius:3px; overflow:hidden;
+  margin-top:6px; background:var(--surface2); }}
+.fd-bar-a {{ background:var(--a); }}
+.fd-bar-b {{ background:var(--b); }}
 .foot {{ text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }}
 """
@@ -2054,11 +2095,58 @@ _FACTOR_ORDER = [
 ]
 
 
+# Fatores onde valor_a/valor_b são percentagens diretamente comparáveis
+# (maior = melhor) — mostram "XX% – YY%" e barra proporcional direta.
+_FD_FACTORS_PCT = {"piso", "forma_recente", "epoca_atual", "servico",
+                    "recuperacao_sets", "matchup_maos"}
+# Fatores onde valor_a/valor_b são contagens de vitórias (maior = melhor)
+_FD_FACTORS_COUNT = {"h2h", "h2h_piso"}
+
+
+def _fd_valor_txt(chave, st):
+    """Texto com os números reais por trás da vantagem — a pedido (feedback
+    de teste, 12/08/2026): 'de momento indica quem favorece, mas não
+    sabemos se muito ou pouco'. Só para fatores onde os números têm
+    significado direto fora de contexto (fadiga/lesão ficam só em texto de
+    estado, para não confundir com números de unidades diferentes)."""
+    va, vb = st.get("valor_a"), st.get("valor_b")
+    if chave in _FD_FACTORS_PCT and va is not None and vb is not None:
+        return f"{va:.0f}% – {vb:.0f}%"
+    if chave in _FD_FACTORS_COUNT and va is not None and vb is not None:
+        return f"{int(va)}–{int(vb)}"
+    if chave == "ranking" and va is not None and vb is not None:
+        pa, pb = st.get("pontos_a"), st.get("pontos_b")
+        base = f"#{int(va)} – #{int(vb)}"
+        return f"{base} ({int(pa)} – {int(pb)} pts)" if pa and pb else base
+    return ""
+
+
+def _fd_bar(chave, st):
+    """Barra proporcional azul(A)/laranja(B) — mesma linguagem visual do
+    resto do relatório (--a/--b). Feedback de teste (12/08/2026): 'se calhar
+    isto via-se melhor por um gráfico de cores'. Só para fatores onde
+    'maior valor = melhor' de forma direta (percentagens, vitórias, pontos
+    de ranking) — fadiga/lesão ficam sem barra (semântica invertida/nuançada,
+    uma barra aqui enganava mais do que ajudava)."""
+    va, vb = st.get("valor_a"), st.get("valor_b")
+    if chave == "ranking":
+        va, vb = st.get("pontos_a"), st.get("pontos_b")  # pontos (maior=melhor), não posição
+    elif chave not in _FD_FACTORS_PCT and chave not in _FD_FACTORS_COUNT:
+        return ""
+    if va is None or vb is None or (va + vb) <= 0:
+        return ""
+    pct_a = max(0, min(100, round(100 * va / (va + vb))))
+    pct_b = 100 - pct_a
+    return (f'<div class="fd-bar"><span class="fd-bar-a" style="width:{pct_a}%"></span>'
+            f'<span class="fd-bar-b" style="width:{pct_b}%"></span></div>')
+
+
 def _mod_fatores_detalhados(payload, div):
     """Módulo: TODOS os fatores do motor (não só o top-3/4), com quem tem
-    vantagem em cada um — "sem dados"/"empate"/"abaixo do limiar" quando
-    aplicável. 100% Python, a partir de `fatores_status` (ver
-    _calcular_divergencia) — o Claude nunca vê nem decide isto."""
+    vantagem em cada um, OS NÚMEROS reais por trás, e uma barra proporcional
+    — "sem dados"/"empate"/"abaixo do limiar" quando aplicável. 100% Python,
+    a partir de `fatores_status` (ver _calcular_divergencia) — o Claude
+    nunca vê nem decide isto."""
     status = (div or {}).get("fatores_status") or {}
     if not status:
         return ""
@@ -2070,16 +2158,19 @@ def _mod_fatores_detalhados(payload, div):
         nome = _esc(_nome_fator(chave))
         if not st.get("disponivel"):
             linhas.append(
-                f'<div class="fd-linha"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">sem dados</span></div>')
+                f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
+                f'<span class="fd-val fd-dim">sem dados</span></div></div>')
             continue
         lider = st.get("lider")
         motivo = st.get("motivo_exclusao")
+        valor_txt = _fd_valor_txt(chave, st)
+        bar_html = _fd_bar(chave, st)
+        extra_valor = f'<div class="fd-valor-txt">{_esc(valor_txt)}</div>' if valor_txt else ""
         if lider in (None, "igual"):
             txt = "empate" if lider == "igual" else (motivo or "sem vantagem clara")
             linhas.append(
-                f'<div class="fd-linha"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>')
+                f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
+                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{extra_valor}{bar_html}</div>')
             continue
         # contribuiu de facto (sem motivo de exclusão) -> destaque; excluído
         # apesar de haver vantagem (ex: abaixo do limiar) -> tom neutro
@@ -2087,8 +2178,9 @@ def _mod_fatores_detalhados(payload, div):
         seta = "·" if motivo else "▲"
         nota = f' <span class="fd-nota">({_esc(motivo)})</span>' if motivo else ""
         linhas.append(
-            f'<div class="fd-linha"><span class="fd-nome">{nome}</span>'
-            f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>')
+            f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
+            f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
+            f'{extra_valor}{bar_html}</div>')
     if not linhas:
         return ""
     return (f'<details class="more"><summary>Fatores detalhados ({len(linhas)})</summary>'
