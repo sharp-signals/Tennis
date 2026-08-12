@@ -96,12 +96,12 @@ class AnthropicProvider(LLMProvider):
         metadata: dict[str, Any] | None = None,
     ) -> ProviderResponse:
         client = self._get_client()
-        # PREFILL (técnica padrão Anthropic): começamos a resposta do
-        # assistente já com "{" — o modelo é forçado a continuar dentro do
-        # JSON, sem preâmbulo/explicação antes. Reduz tokens desperdiçados
-        # em respostas verbosas (auditoria de custo, 11/08/2026). O "{"
-        # prefill NÃO vem incluído no response.content — é preciso
-        # reconstruí-lo manualmente ao juntar o texto (ver abaixo).
+        # REVERTIDO (11/08/2026): o prefill assistant "{" partiu 100% das
+        # chamadas reais — "This model does not support assistant message
+        # prefill. The conversation must end with a user message." (erro
+        # 400 confirmado em log real, 30/30 chamadas falharam). O modelo em
+        # uso não aceita prefill (comum em modelos com extended thinking).
+        # Mantido o resto do reforço (prompt + max_tokens menor).
         response = client.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=max_tokens,
@@ -112,10 +112,7 @@ class AnthropicProvider(LLMProvider):
                     "cache_control": {"type": "ephemeral"},
                 }
             ],
-            messages=[
-                {"role": "user", "content": user_prompt},
-                {"role": "assistant", "content": "{"},
-            ],
+            messages=[{"role": "user", "content": user_prompt}],
         )
 
         usage_obj = getattr(response, "usage", None)
@@ -129,7 +126,7 @@ class AnthropicProvider(LLMProvider):
                 getattr(usage_obj, "cache_creation_input_tokens", 0) or 0
             ),
         }
-        text = "{" + "".join(
+        text = "".join(
             block.text
             for block in response.content
             if getattr(block, "type", None) == "text"
