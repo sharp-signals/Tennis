@@ -52,7 +52,8 @@ jobs:
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
           git add data/analysis_cache/ data/cache/ data/fixtures_cache.json \
-            data/tournament_cache.json data/rapidapi_usage_log.json docs/ 2>/dev/null || true
+            data/tournament_cache.json data/rapidapi_usage_log.json \
+            data/run_metrics_log.json docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar caches e relatórios"
             # Integrar mudanças remotas antes de enviar (evita o erro
