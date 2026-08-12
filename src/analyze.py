@@ -455,7 +455,15 @@ def _evaluate_selective_policy(
     # à chave que realmente existe.
     if nivel is not None and div.get("prob_mercado_a") is not None:
         # temos motor com odds -> decidir pelo nível de divergência
-        if nivel >= 2:
+        # LIMIAR SUBIDO (12/08/2026, a pedido): só nível 3 (divergência/
+        # convicção FORTE) chama o Claude — é o único onde a interpretação
+        # paga acrescenta claramente sobre o fallback determinístico, que já
+        # está alinhado com o motor (classificação, favorecido, fatores).
+        # Nível 2 (moderado/reforçado) passou a usar só o fallback — poupa
+        # ~65% das chamadas (confirmado em log real: 28/43 chamadas eram
+        # nível 2). "Contraditórios" abaixo continua a chamar, é um caso à
+        # parte onde a interpretação vale mesmo com gap de mercado baixo.
+        if nivel >= 3:
             return (
                 True,
                 f"divergência {clf.get('texto', 'relevante')} detetada pelo motor (nível {nivel})",
@@ -476,6 +484,8 @@ def _evaluate_selective_policy(
             )
         return (
             False,
+            f"nível {nivel} (abaixo do limiar de nível 3); síntese Python suficiente"
+            if nivel == 2 else
             f"sem divergência relevante (motor nível {nivel}); síntese Python suficiente",
             signals,
         )
@@ -775,8 +785,17 @@ def analyze_match(match_data: dict) -> dict:
         provider_response = provider.generate(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=user_prompt,
-            # Teto de output: 600 (ver nota de auditoria de custo, 11/08/2026).
-            max_tokens=600,
+            # Teto de output: 1500 (revertido de 600 — 12/08/2026, log real).
+            # Descoberta: o teto só pesa no custo quando é MESMO atingido —
+            # a maioria das chamadas reais usa só 128-180 tokens de output,
+            # bem abaixo de qualquer um dos dois valores. Com 600, 2/73 jogos
+            # nesta execução esgotaram o teto e ficaram com JSON vazio
+            # (stop_reason=max_tokens, texto visível vazio — consistente com
+            # o modelo a gastar orçamento em raciocínio interno antes do JSON
+            # visível, o que também explica a rejeição do prefill). Subir o
+            # teto de volta não aumenta o custo típico, só evita esta falha
+            # nos casos-limite que precisam de mais espaço.
+            max_tokens=1500,
             metadata=match_data,
         )
     except Exception as exc:
