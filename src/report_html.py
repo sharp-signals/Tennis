@@ -987,6 +987,12 @@ def _calcular_divergencia(payload):
                                   # quando o índice bate no extremo com poucos)
         "fatores_status": status,  # TODOS os fatores (não só o top-3), para o
                                     # módulo "Fatores Detalhados" — 100% Python
+        "gap_pp": round(desalinhamento, 1),  # desalinhamento índice vs mercado,
+                # em pontos percentuais (NÃO é "% de vantagem" nem odd justa —
+                # ver nota acima: mede desalinhamento de convicção, não erro do
+                # mercado). Corrige bug: analyze.py já tentava ler esta chave
+                # (`_div.get('gap_pp', 0)`) mas nunca existiu — o prompt do
+                # Claude dizia sempre "Gap: 0 p.p.", mesmo em divergência forte.
         "player_a": a, "player_b": b,
     }
 
@@ -1915,7 +1921,7 @@ details.more .more-body {{ padding:0 16px 16px; }}
 def _mod_header(payload, div, estado):
     """Módulo 1: Matchup header (ficha de combate)."""
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
-    ra = _d(payload.get("rank_a")); rb = _d(payload.get("rank_b"))
+    ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
     rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""
     rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
@@ -1984,6 +1990,8 @@ def _mod_leitura(payload, div, estado, result):
     merc_fav = div.get("mercado_favorece")
     tipo = div.get("tipo", "")
     n_fatores = div.get("n_fatores")
+    nivel = (_d(div.get("classificacao"))).get("nivel", 0)
+    gap_pp = div.get("gap_pp")
     # Transparência (11/08/2026): quando o índice bate no extremo (todos os
     # sinais disponíveis concordam, sem nenhum contrapeso) e há poucos sinais
     # a sustentá-lo, isso é matematicamente correto mas FRÁGIL — vale a pena
@@ -1991,19 +1999,29 @@ def _mod_leitura(payload, div, estado, result):
     nota_fragil = ""
     if isinstance(n_fatores, int) and n_fatores <= 3 and idx_fav is not None and (idx_fav >= 95 or idx_fav <= 5):
         nota_fragil = (f" <span style=\"opacity:.7\">(índice construído a partir de só "
-                        f"{n_fatores} sinal{'is' if n_fatores != 1 else ''} — todos no mesmo "
+                        f"{n_fatores} {'sinal' if n_fatores == 1 else 'sinais'} — todos no mesmo "
                         f"sentido, sem contrapeso.)</span>")
+    # Gap em pontos percentuais (12/08/2026, a pedido) — NÃO é odd justa nem
+    # "% de valor": é o desalinhamento entre o índice de evidência e a
+    # probabilidade de mercado, um número já calculado internamente
+    # (`desalinhamento`) mas nunca mostrado antes. Mantém o princípio do
+    # projeto de não afirmar uma probabilidade/edge próprios — é só a
+    # magnitude do desalinhamento, não uma odd "correta".
+    gap_txt = f" (desalinhamento de {gap_pp:.0f} p.p. entre o índice e o mercado)" if gap_pp else ""
     if chave == "eficiente":
         frase = f"Os indicadores e o mercado concordam ({_esc(merc_fav)} favorito). Sem valor aparente."
     elif tipo == "conviccao":
-        # favorito subvalorizado: mercado e índice no mesmo lado, mas índice mais forte
+        # favorito subvalorizado: mercado e índice no mesmo lado, mas índice
+        # mais forte. Linguagem qualitativa escalada pelo nível (a pedido,
+        # 12/08/2026) — mais forte quanto maior o nível, sem inventar odd.
+        adj = {1: "ligeiramente", 2: "moderadamente", 3: "claramente"}.get(nivel, "")
         frase = (f"<b>{_esc(fav)}</b> é favorito do mercado <b>e</b> dos indicadores "
-                 f"(índice {idx_fav}/100) — mas os dados suportam-no mais do que a odd "
-                 f"reflete. Favorito a acompanhar.{nota_fragil}")
+                 f"(índice {idx_fav}/100) — {adj} subvalorizado pelo mercado{gap_txt}. "
+                 f"Favorito a acompanhar.{nota_fragil}")
     else:
         # divergência de direção: contra o mercado
         frase = (f"Os indicadores apontam para <b>{_esc(fav)}</b> (índice {idx_fav}/100), "
-                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>.{nota_fragil}")
+                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>.{gap_txt}{nota_fragil}")
     return f"""
 <div class="leitura" style="border-color:{cor}">
   <div class="leitura-bola">{bola}</div>
@@ -2324,15 +2342,20 @@ def _mod_mercados(payload, div):
     mk = div["market"]
     fav = div.get("favorecido")
     nivel = (_d(div.get("classificacao"))).get("nivel", 0)
+    gap_pp = div.get("gap_pp")
+    gap_sufixo = f" ({gap_pp:.0f} p.p.)" if gap_pp else ""
 
     # Mercado principal — sempre o Moneyline (é o único com odds reais)
     tipo = div.get("tipo", "")
     if nivel >= 2 and fav:
-        nota = ("favorito subvalorizado pelo mercado" if tipo == "conviccao"
-                else "indicadores divergem do mercado")
+        if tipo == "conviccao":
+            adj = "claramente" if nivel == 3 else "moderadamente"
+            nota = f"{adj} subvalorizado pelo mercado{gap_sufixo}"
+        else:
+            nota = f"indicadores divergem do mercado{gap_sufixo}"
         principal = ("🟢", f"Moneyline {_esc(fav)}", nota)
     elif nivel == 1 and fav:
-        nota = "convicção ligeira" if tipo == "conviccao" else "divergência ligeira"
+        nota = f"convicção ligeira{gap_sufixo}" if tipo == "conviccao" else f"divergência ligeira{gap_sufixo}"
         principal = ("🟡", f"Moneyline {_esc(fav)}", nota)
     else:
         principal = ("⚪", "Moneyline", "mercado alinhado com os indicadores")
@@ -2390,7 +2413,8 @@ def _normalizar_div(raw):
                 # apareciam no relatório real por causa disto (confirmado:
                 # CSS presente, secção ausente — a normalização matava os dados).
                 "n_fatores": raw.get("n_fatores"),
-                "fatores_status": raw.get("fatores_status")}
+                "fatores_status": raw.get("fatores_status"),
+                "gap_pp": raw.get("gap_pp")}
     return {
         "market": {"a": raw["prob_mercado_a"], "b": raw["prob_mercado_b"]},
         "indice_evidencia": {"a": raw["indice_evidencia_a"], "b": raw["indice_evidencia_b"]},
@@ -2402,6 +2426,7 @@ def _normalizar_div(raw):
         "fatores_chave": raw.get("fatores_chave"),
         "n_fatores": raw.get("n_fatores"),
         "fatores_status": raw.get("fatores_status"),
+        "gap_pp": raw.get("gap_pp"),
     }
 
 
