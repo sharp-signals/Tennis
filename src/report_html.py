@@ -1916,11 +1916,12 @@ body {{ background:var(--bg); color:var(--text);
 details.more {{ background:var(--surface); border:1px solid var(--line);
   border-radius:12px; margin-bottom:14px; }}
 details.more>summary {{ padding:14px 16px; cursor:pointer; font-size:13px;
-  font-weight:600; color:var(--dim); list-style:none; }}
+  font-weight:600; color:var(--text); list-style:none; }}
 details.more>summary::-webkit-details-marker {{ display:none; }}
 details.more>summary::before {{ content:"▸ "; }}
 details.more[open]>summary::before {{ content:"▾ "; }}
 details.more .more-body {{ padding:0 16px 16px; }}
+.more-hint {{ color:var(--dim); font-size:11px; font-weight:400; margin-left:6px; }}
 
 /* --- estado parcial/erro --- */
 .parcial {{ background:rgba(224,108,91,.1); border:1px solid var(--error);
@@ -1949,18 +1950,26 @@ details.more .more-body {{ padding:0 16px 16px; }}
 .merc-secundarios {{ opacity:.75; }}
 .merc-sec-tag {{ font-size:10px; color:var(--dim); margin-bottom:2px; }}
 .h2h-line {{ font-size:14px; line-height:1.6; }}
-.fd-linha {{ padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; }}
+.fd-linha {{ padding:6px 0; border-bottom:1px solid var(--line); font-size:13px; }}
 .fd-linha:last-child {{ border-bottom:none; }}
-.fd-linha-top {{ display:flex; justify-content:space-between; align-items:center; }}
-.fd-nome {{ color:var(--dim); }}
+.fd-linha-top {{ display:flex; justify-content:space-between; align-items:baseline;
+  gap:10px; margin-bottom:4px; }}
+.fd-nome {{ color:var(--text); font-weight:600; }}
 .fd-val {{ font-weight:600; text-align:right; }}
 .fd-dim {{ color:var(--dim); font-weight:400; }}
 .fd-nota {{ color:var(--dim); font-size:11px; font-weight:400; }}
-.fd-valor-txt {{ font-size:11px; color:var(--dim); margin-top:3px; }}
-.fd-bar {{ display:flex; height:9px; border-radius:4px; overflow:hidden;
-  margin-top:6px; background:var(--surface2); }}
-.fd-bar-a {{ background:var(--a); }}
-.fd-bar-b {{ background:var(--b); }}
+.fd-bar {{ display:flex; position:relative; height:22px; border-radius:5px;
+  overflow:hidden; background:var(--surface2); }}
+.fd-bar::after {{ content:""; position:absolute; left:50%; top:0; bottom:0;
+  width:1px; background:rgba(255,255,255,.3); z-index:2; }}
+.fd-bar-a {{ background:var(--a); opacity:.78; }}
+.fd-bar-b {{ background:var(--b); opacity:.78; }}
+.fd-bar-val {{ position:absolute; top:50%; transform:translateY(-50%); z-index:3;
+  color:#fff; font-size:11px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.65); }}
+.fd-bar-val.a {{ left:7px; }} .fd-bar-val.b {{ right:7px; }}
+.fd-bar.samp-low {{ opacity:.52; }}
+@media(max-width:520px){{ .more-hint {{ display:block; margin:2px 0 0 16px; }}
+  .fd-linha-top {{ align-items:flex-start; }} .fd-val {{ font-size:11px; }} }}
 .foot {{ text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }}
 """
@@ -2097,7 +2106,7 @@ def _mod_fatores(payload, div):
     return f'<div class="fatores">{"".join(chips)}</div>'
 
 
-# Ordem de exibição do módulo "Fatores Detalhados" (por peso, do motor)
+# Ordem de exibição do "Mapa de Forças" (por peso, do motor)
 _FACTOR_ORDER = [
     "h2h_piso", "piso", "recuperacao_sets", "matchup_maos", "h2h",
     "forma_recente", "ranking", "lesao", "fadiga", "epoca_atual", "servico",
@@ -2110,24 +2119,6 @@ _FD_FACTORS_PCT = {"piso", "forma_recente", "epoca_atual", "servico",
                     "recuperacao_sets", "matchup_maos"}
 # Fatores onde valor_a/valor_b são contagens de vitórias (maior = melhor)
 _FD_FACTORS_COUNT = {"h2h", "h2h_piso"}
-
-
-def _fd_valor_txt(chave, st):
-    """Texto com os números reais por trás da vantagem — a pedido (feedback
-    de teste, 12/08/2026): 'de momento indica quem favorece, mas não
-    sabemos se muito ou pouco'. Só para fatores onde os números têm
-    significado direto fora de contexto (fadiga/lesão ficam só em texto de
-    estado, para não confundir com números de unidades diferentes)."""
-    va, vb = st.get("valor_a"), st.get("valor_b")
-    if chave in _FD_FACTORS_PCT and va is not None and vb is not None:
-        return f"{va:.0f}% – {vb:.0f}%"
-    if chave in _FD_FACTORS_COUNT and va is not None and vb is not None:
-        return f"{int(va)}–{int(vb)}"
-    if chave == "ranking" and va is not None and vb is not None:
-        pa, pb = st.get("pontos_a"), st.get("pontos_b")
-        base = f"#{int(va)} – #{int(vb)}"
-        return f"{base} ({int(pa)} – {int(pb)} pts)" if pa and pb else base
-    return ""
 
 
 def _fd_bar(chave, st, forcar_meio=False):
@@ -2155,8 +2146,24 @@ def _fd_bar(chave, st, forcar_meio=False):
             return ""
     pct_a = max(0, min(100, round(100 * va / (va + vb))))
     pct_b = 100 - pct_a
-    return (f'<div class="fd-bar"><span class="fd-bar-a" style="width:{pct_a}%"></span>'
-            f'<span class="fd-bar-b" style="width:{pct_b}%"></span></div>')
+    # Os valores ficam dentro da barra para permitir uma leitura vertical
+    # compacta do conjunto. A largura continua a codificar a relação entre
+    # os jogadores; a opacidade reduzida comunica amostra pequena.
+    if chave in _FD_FACTORS_PCT:
+        label_a, label_b = f"{va:.0f}%", f"{vb:.0f}%"
+    elif chave in _FD_FACTORS_COUNT:
+        label_a, label_b = str(int(va)), str(int(vb))
+    else:  # ranking: a barra usa pontos, mas o rótulo mostra a posição
+        pos_a, pos_b = st.get("valor_a"), st.get("valor_b")
+        label_a = f"#{int(pos_a)}" if pos_a is not None else "—"
+        label_b = f"#{int(pos_b)}" if pos_b is not None else "—"
+    samples = [st.get("amostra_a"), st.get("amostra_b")]
+    low_sample = any(isinstance(n, (int, float)) and n < 10 for n in samples)
+    low_cls = " samp-low" if low_sample else ""
+    return (f'<div class="fd-bar{low_cls}"><span class="fd-bar-a" style="width:{pct_a}%"></span>'
+            f'<span class="fd-bar-b" style="width:{pct_b}%"></span>'
+            f'<span class="fd-bar-val a">{_esc(label_a)}</span>'
+            f'<span class="fd-bar-val b">{_esc(label_b)}</span></div>')
 
 
 def _mod_fatores_detalhados(payload, div):
@@ -2181,14 +2188,12 @@ def _mod_fatores_detalhados(payload, div):
             continue
         lider = st.get("lider")
         motivo = st.get("motivo_exclusao")
-        valor_txt = _fd_valor_txt(chave, st)
         bar_html = _fd_bar(chave, st, forcar_meio=(lider == "igual"))
-        extra_valor = f'<div class="fd-valor-txt">{_esc(valor_txt)}</div>' if valor_txt else ""
         if lider in (None, "igual"):
             txt = "empate" if lider == "igual" else (motivo or "sem vantagem clara")
             linhas.append(
                 f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{extra_valor}{bar_html}</div>')
+                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{bar_html}</div>')
             continue
         # contribuiu de facto (sem motivo de exclusão) -> destaque; excluído
         # apesar de haver vantagem (ex: abaixo do limiar) -> tom neutro
@@ -2198,10 +2203,11 @@ def _mod_fatores_detalhados(payload, div):
         linhas.append(
             f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
             f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
-            f'{extra_valor}{bar_html}</div>')
+            f'{bar_html}</div>')
     if not linhas:
         return ""
-    return (f'<details class="more"><summary>Fatores detalhados ({len(linhas)})</summary>'
+    return (f'<details class="more"><summary>Mapa de Forças ({len(linhas)})'
+            f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
             f'<div class="more-body">{"".join(linhas)}</div></details>')
 
 
