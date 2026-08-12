@@ -521,6 +521,15 @@ def _build_charts(payload: dict) -> str:
 
 # ===== MOTOR DE DIVERGÊNCIA PONDERADA V3 (Python puro, zero Claude) =====
 # afinam-se com o backtest e os relatórios reais.
+
+# Margem de mercado (p.p.) a partir da qual um favorito é considerado "muito
+# cotado" — usado para sugerir o Handicap como mercado alternativo ao
+# Moneyline quando o índice CONCORDA com esse favorito (convicção forte,
+# odd curta = pouca margem no Moneyline). PROVISÓRIO (12/08/2026, a pedido):
+# não há backtest ainda a validar este valor — 25 p.p. é um ponto de partida
+# razoável (odd ≈ até 1.60), fácil de ajustar aqui quando houver dados.
+MARGEM_FAVORITO_MUITO_COTADO = 25
+
 PESOS = {
     "h2h_piso": 12,             # MUITO ALTO — confronto direto NESTE piso (mais específico que o global)
     "h2h": 6,                  # MÉDIO — confronto direto na carreira toda (desceu; o piso é mais relevante)
@@ -1948,7 +1957,7 @@ details.more .more-body {{ padding:0 16px 16px; }}
 .fd-dim {{ color:var(--dim); font-weight:400; }}
 .fd-nota {{ color:var(--dim); font-size:11px; font-weight:400; }}
 .fd-valor-txt {{ font-size:11px; color:var(--dim); margin-top:3px; }}
-.fd-bar {{ display:flex; height:5px; border-radius:3px; overflow:hidden;
+.fd-bar {{ display:flex; height:9px; border-radius:4px; overflow:hidden;
   margin-top:6px; background:var(--surface2); }}
 .fd-bar-a {{ background:var(--a); }}
 .fd-bar-b {{ background:var(--b); }}
@@ -2121,20 +2130,29 @@ def _fd_valor_txt(chave, st):
     return ""
 
 
-def _fd_bar(chave, st):
+def _fd_bar(chave, st, forcar_meio=False):
     """Barra proporcional azul(A)/laranja(B) — mesma linguagem visual do
     resto do relatório (--a/--b). Feedback de teste (12/08/2026): 'se calhar
     isto via-se melhor por um gráfico de cores'. Só para fatores onde
     'maior valor = melhor' de forma direta (percentagens, vitórias, pontos
     de ranking) — fadiga/lesão ficam sem barra (semântica invertida/nuançada,
-    uma barra aqui enganava mais do que ajudava)."""
+    uma barra aqui enganava mais do que ajudava).
+
+    forcar_meio: quando é EMPATE mas não há valores numéricos guardados
+    (ex: forma_recente/época/serviço quando "igual" não guarda valor_a/b),
+    mostra a barra a 50/50 em vez de a esconder — feedback de teste
+    (12/08/2026): 'quando é empate ele que meta a barra na mesma 50/50',
+    para manter a barra sempre visível e comparável entre linhas."""
+    if chave not in _FD_FACTORS_PCT and chave not in _FD_FACTORS_COUNT and chave != "ranking":
+        return ""
     va, vb = st.get("valor_a"), st.get("valor_b")
     if chave == "ranking":
         va, vb = st.get("pontos_a"), st.get("pontos_b")  # pontos (maior=melhor), não posição
-    elif chave not in _FD_FACTORS_PCT and chave not in _FD_FACTORS_COUNT:
-        return ""
     if va is None or vb is None or (va + vb) <= 0:
-        return ""
+        if forcar_meio:
+            va, vb = 1, 1  # 50/50 explícito
+        else:
+            return ""
     pct_a = max(0, min(100, round(100 * va / (va + vb))))
     pct_b = 100 - pct_a
     return (f'<div class="fd-bar"><span class="fd-bar-a" style="width:{pct_a}%"></span>'
@@ -2164,7 +2182,7 @@ def _mod_fatores_detalhados(payload, div):
         lider = st.get("lider")
         motivo = st.get("motivo_exclusao")
         valor_txt = _fd_valor_txt(chave, st)
-        bar_html = _fd_bar(chave, st)
+        bar_html = _fd_bar(chave, st, forcar_meio=(lider == "igual"))
         extra_valor = f'<div class="fd-valor-txt">{_esc(valor_txt)}</div>' if valor_txt else ""
         if lider in (None, "igual"):
             txt = "empate" if lider == "igual" else (motivo or "sem vantagem clara")
@@ -2452,12 +2470,25 @@ def _mod_mercados(payload, div):
     else:
         principal = ("⚪", "Moneyline", "mercado alinhado com os indicadores")
 
-    # Secundários — só marcam interesse pelo equilíbrio (NÃO valor, sem odds)
+    # Secundários — só marcam interesse (NÃO valor, sem odds próprias)
     secundarios = []
     margem = abs(mk["a"] - mk["b"])
     if margem <= 12:
+        # jogo equilibrado -> handicap/total games como observação de equilíbrio
         secundarios.append(("🟡", "Total Games", "jogo equilibrado — acompanhar linhas ao vivo"))
         secundarios.append(("🟡", "Handicap Games", "equilíbrio pode dar interesse ao handicap"))
+    elif margem >= MARGEM_FAVORITO_MUITO_COTADO and tipo == "conviccao" and nivel >= 2:
+        # Favorito muito cotado (odd curta no Moneyline) MAS o índice
+        # CONCORDA com esse favorito — por definição, tipo=="conviccao" já
+        # significa "mesmo lado do mercado", não é preciso verificar outra
+        # vez. O Handicap pode ser uma forma alternativa de observar o
+        # mesmo sinal, tipicamente com mais margem de odd do que o
+        # Moneyline já curto. Feedback de teste (12/08/2026): o bot só
+        # sugeria Handicap por equilíbrio, nunca por "favorito pode ganhar
+        # folgado".
+        secundarios.append(("🟡", "Handicap Games", (
+            f"{_esc(fav)} muito cotado no Moneyline — handicap pode ser "
+            f"forma alternativa de observar o mesmo sinal")))
 
     bola_p, nome_p, nota_p = principal
     principal_html = (
