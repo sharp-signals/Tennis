@@ -140,13 +140,18 @@ details.more .more-body { padding:0 16px 16px; }
 .merc-secundarios { opacity:.75; }
 .merc-sec-tag { font-size:10px; color:var(--dim); margin-bottom:2px; }
 .h2h-line { font-size:14px; line-height:1.6; }
-.fd-linha { display:flex; justify-content:space-between; align-items:center;
-  padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.fd-linha { padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; }
 .fd-linha:last-child { border-bottom:none; }
+.fd-linha-top { display:flex; justify-content:space-between; align-items:center; }
 .fd-nome { color:var(--dim); }
 .fd-val { font-weight:600; text-align:right; }
 .fd-dim { color:var(--dim); font-weight:400; }
 .fd-nota { color:var(--dim); font-size:11px; font-weight:400; }
+.fd-valor-txt { font-size:11px; color:var(--dim); margin-top:3px; }
+.fd-bar { display:flex; height:5px; border-radius:3px; overflow:hidden;
+  margin-top:6px; background:var(--surface2); }
+.fd-bar-a { background:var(--a); }
+.fd-bar-b { background:var(--b); }
 .foot { text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }
 </style></head>
@@ -174,7 +179,7 @@ details.more .more-body { padding:0 16px 16px; }
 </div>
 <div class="leitura" style="border-color:#d9a441">
   <div class="leitura-bola">🟡</div>
-  <div class="leitura-txt"><b>A acompanhar</b><div>Os indicadores apontam para <b>Nadia Podoroska</b> (índice 87/100), mas o mercado favorece <b>Ella Seidel</b>. (desalinhamento de 55 p.p. entre o índice e o mercado)</div></div>
+  <div class="leitura-txt"><b>A acompanhar</b><div>Os indicadores apontam para <b>Nadia Podoroska</b> (índice 86/100), mas o mercado favorece <b>Ella Seidel</b>. (desalinhamento de 54 p.p. entre o índice e o mercado)</div></div>
 </div><div class="fatores">
 <div class="fator">
   <div class="fator-lbl">forma recente</div>
@@ -185,8 +190,8 @@ details.more .more-body { padding:0 16px 16px; }
   <div class="fator-fav" style="color:var(--mint)">▲ Nadia Podoroska</div>
 </div>
 <div class="fator">
-  <div class="fator-lbl">serviço</div>
-  <div class="fator-fav" style="color:var(--mint)">▲ Nadia Podoroska</div>
+  <div class="fator-lbl">resiliência em sets</div>
+  <div class="fator-fav" style="color:var(--mint)">▲ Ella Seidel</div>
 </div><div class="fator"><div class="fator-lbl">—</div></div></div>
 <div class="mvs">
   <h3>Mercado vs Sinal</h3>
@@ -203,13 +208,13 @@ details.more .more-body { padding:0 16px 16px; }
 <div class="mvs-row">
   <div class="mvs-row-lbl"><span>Nadia Podoroska</span><span>Índice de sinais</span><span>Ella Seidel</span></div>
   <div class="mvs-track">
-    <div class="mvs-fill" style="width:87%; background:#4aa3df; opacity:.7"></div>
+    <div class="mvs-fill" style="width:86%; background:#4aa3df; opacity:.7"></div>
     <div class="mvs-mid"></div>
-    <div class="mvs-val" style="left:0; color:#fff">87/100</div>
-    <div class="mvs-val" style="right:0; color:#fff">13/100</div>
+    <div class="mvs-val" style="left:0; color:#fff">86/100</div>
+    <div class="mvs-val" style="right:0; color:#fff">14/100</div>
   </div>
 </div><div class="mvs-delta" style="color:var(--mint)">Divergência moderada — indicadores a favor de Nadia Podoroska</div>
-</div><div class="card"><h3>Mercados a acompanhar</h3><div class="merc-principal"><span class="merc-principal-tag">Mercado principal</span><div class="merc-linha merc-linha-top"><span class="merc-bola">🟢</span><span class="merc-nome">Moneyline Nadia Podoroska</span><span class="merc-nota">indicadores divergem do mercado (55 p.p.)</span></div></div><div class="merc-aviso">Marcação de <b>interesse</b> para observação — não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div><div class="grid2"><div class="card"><h3>Forma</h3>
+</div><div class="card"><h3>Mercados a acompanhar</h3><div class="merc-principal"><span class="merc-principal-tag">Mercado principal</span><div class="merc-linha merc-linha-top"><span class="merc-bola">🟢</span><span class="merc-nome">Moneyline Nadia Podoroska</span><span class="merc-nota">indicadores divergem do mercado (54 p.p.)</span></div></div><div class="merc-aviso">Marcação de <b>interesse</b> para observação — não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div><div class="grid2"><div class="card"><h3>Forma</h3>
 <div class="cmp">
   <div class="cmp-lbl">Forma (últimos 10)</div>
   
@@ -263,6 +268,6 @@ details.more .more-body { padding:0 16px 16px; }
       <div class="samp-tag">0 sets · 7d descanso</div>
     </div>
   </div>
-</div><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">1 confronto apenas — amostra insuficiente para sinal relevante.</div></div><details class="more"><summary>Fatores detalhados (11)</summary><div class="more-body"><div class="fd-linha"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">superfície</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--mint)">▲ Ella Seidel</span></div><div class="fd-linha"><span class="fd-nome">matchup de mão</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">confronto direto</span><span class="fd-val" style="color:var(--dim)">· Ella Seidel <span class="fd-nota">(amostra insuficiente (1 jogo))</span></span></div><div class="fd-linha"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--mint)">▲ Nadia Podoroska</span></div><div class="fd-linha"><span class="fd-nome">ranking</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div><div class="fd-linha"><span class="fd-nome">fadiga</span><span class="fd-val fd-dim">empate</span></div><div class="fd-linha"><span class="fd-nome">época atual</span><span class="fd-val" style="color:var(--mint)">▲ Nadia Podoroska</span></div><div class="fd-linha"><span class="fd-nome">serviço</span><span class="fd-val" style="color:var(--mint)">▲ Nadia Podoroska</span></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Divergência moderada a favor de Nadia Podoroska. Mercado mantém Ella Seidel. Acompanhar Moneyline Nadia Podoroska.</div></div></div>
+</div><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">1 confronto apenas — amostra insuficiente para sinal relevante.</div></div><details class="more"><summary>Fatores detalhados (11)</summary><div class="more-body"><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">superfície</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--mint)">▲ Ella Seidel</span></div><div class="fd-valor-txt">0% – 31%</div><div class="fd-bar"><span class="fd-bar-a" style="width:0%"></span><span class="fd-bar-b" style="width:100%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">matchup de mão</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto</span><span class="fd-val" style="color:var(--dim)">· Ella Seidel <span class="fd-nota">(amostra insuficiente (1 jogo))</span></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--mint)">▲ Nadia Podoroska</span></div><div class="fd-valor-txt">50% – 20%</div><div class="fd-bar"><span class="fd-bar-a" style="width:71%"></span><span class="fd-bar-b" style="width:29%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">ranking</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">fadiga</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">época atual</span><span class="fd-val" style="color:var(--mint)">▲ Nadia Podoroska</span></div><div class="fd-valor-txt">50% – 20%</div><div class="fd-bar"><span class="fd-bar-a" style="width:71%"></span><span class="fd-bar-b" style="width:29%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">serviço</span><span class="fd-val" style="color:var(--dim)">· Nadia Podoroska <span class="fd-nota">(abaixo do limiar (&lt;3 p.p.))</span></span></div><div class="fd-valor-txt">61% – 60%</div><div class="fd-bar"><span class="fd-bar-a" style="width:50%"></span><span class="fd-bar-b" style="width:50%"></span></div></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Divergência moderada a favor de Nadia Podoroska. Mercado mantém Ella Seidel. Acompanhar Moneyline Nadia Podoroska.</div></div></div>
 <div class="wrap"><div class="foot">Gerado em 12/08/2026 · Pontos de observação para leitura pré-live e ao vivo — não são recomendações de aposta.</div></div>
 </body></html>

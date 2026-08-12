@@ -140,13 +140,18 @@ details.more .more-body { padding:0 16px 16px; }
 .merc-secundarios { opacity:.75; }
 .merc-sec-tag { font-size:10px; color:var(--dim); margin-bottom:2px; }
 .h2h-line { font-size:14px; line-height:1.6; }
-.fd-linha { display:flex; justify-content:space-between; align-items:center;
-  padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.fd-linha { padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; }
 .fd-linha:last-child { border-bottom:none; }
+.fd-linha-top { display:flex; justify-content:space-between; align-items:center; }
 .fd-nome { color:var(--dim); }
 .fd-val { font-weight:600; text-align:right; }
 .fd-dim { color:var(--dim); font-weight:400; }
 .fd-nota { color:var(--dim); font-size:11px; font-weight:400; }
+.fd-valor-txt { font-size:11px; color:var(--dim); margin-top:3px; }
+.fd-bar { display:flex; height:5px; border-radius:3px; overflow:hidden;
+  margin-top:6px; background:var(--surface2); }
+.fd-bar-a { background:var(--a); }
+.fd-bar-b { background:var(--b); }
 .foot { text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }
 </style></head>
@@ -174,18 +179,18 @@ details.more .more-body { padding:0 16px 16px; }
 </div>
 <div class="leitura" style="border-color:#d9a441">
   <div class="leitura-bola">🟡</div>
-  <div class="leitura-txt"><b>A acompanhar</b><div><b>Jacob Fearnley</b> é favorito do mercado <b>e</b> dos indicadores (índice 91/100) — moderadamente subvalorizado pelo mercado (desalinhamento de 18 p.p. entre o índice e o mercado). Favorito a acompanhar.</div></div>
+  <div class="leitura-txt"><b>A acompanhar</b><div><b>Jacob Fearnley</b> é favorito do mercado <b>e</b> dos indicadores (índice 89/100) — ligeiramente subvalorizado pelo mercado (desalinhamento de 16 p.p. entre o índice e o mercado). Favorito a acompanhar.</div></div>
 </div><div class="fatores">
 <div class="fator">
   <div class="fator-lbl">época atual</div>
   <div class="fator-fav" style="color:var(--mint)">▲ Jacob Fearnley</div>
 </div>
 <div class="fator">
-  <div class="fator-lbl">serviço</div>
+  <div class="fator-lbl">matchup de mão</div>
   <div class="fator-fav" style="color:var(--mint)">▲ Jacob Fearnley</div>
 </div>
 <div class="fator">
-  <div class="fator-lbl">matchup de mão</div>
+  <div class="fator-lbl">superfície</div>
   <div class="fator-fav" style="color:var(--mint)">▲ Jacob Fearnley</div>
 </div><div class="fator"><div class="fator-lbl">—</div></div></div>
 <div class="mvs">
@@ -203,13 +208,13 @@ details.more .more-body { padding:0 16px 16px; }
 <div class="mvs-row">
   <div class="mvs-row-lbl"><span>Nicolas Mejia</span><span>Índice de sinais</span><span>Jacob Fearnley</span></div>
   <div class="mvs-track">
-    <div class="mvs-fill" style="width:9%; background:#4aa3df; opacity:.7"></div>
+    <div class="mvs-fill" style="width:11%; background:#4aa3df; opacity:.7"></div>
     <div class="mvs-mid"></div>
-    <div class="mvs-val" style="left:0; color:#fff">9/100</div>
-    <div class="mvs-val" style="right:0; color:#fff">91/100</div>
+    <div class="mvs-val" style="left:0; color:#fff">11/100</div>
+    <div class="mvs-val" style="right:0; color:#fff">89/100</div>
   </div>
-</div><div class="mvs-delta" style="color:var(--mint)">Convicção reforçada — indicadores a favor de Jacob Fearnley</div>
-</div><div class="card"><h3>Mercados a acompanhar</h3><div class="merc-principal"><span class="merc-principal-tag">Mercado principal</span><div class="merc-linha merc-linha-top"><span class="merc-bola">🟢</span><span class="merc-nome">Moneyline Jacob Fearnley</span><span class="merc-nota">moderadamente subvalorizado pelo mercado (18 p.p.)</span></div></div><div class="merc-aviso">Marcação de <b>interesse</b> para observação — não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div><div class="grid2"><div class="card"><h3>Forma</h3>
+</div><div class="mvs-delta" style="color:var(--mint)">Convicção ligeira — indicadores a favor de Jacob Fearnley</div>
+</div><div class="card"><h3>Mercados a acompanhar</h3><div class="merc-principal"><span class="merc-principal-tag">Mercado principal</span><div class="merc-linha merc-linha-top"><span class="merc-bola">🟡</span><span class="merc-nome">Moneyline Jacob Fearnley</span><span class="merc-nota">convicção ligeira (16 p.p.)</span></div></div><div class="merc-aviso">Marcação de <b>interesse</b> para observação — não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div><div class="grid2"><div class="card"><h3>Forma</h3>
 <div class="cmp">
   <div class="cmp-lbl">Forma (últimos 10)</div>
   
@@ -263,6 +268,6 @@ details.more .more-body { padding:0 16px 16px; }
       <div class="samp-tag">3 sets · 6d descanso</div>
     </div>
   </div>
-</div><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">Sem confrontos diretos entre as duas jogadoras.</div></div><details class="more"><summary>Fatores detalhados (11)</summary><div class="more-body"><div class="fd-linha"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">superfície</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-linha"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--mint)">▲ Nicolas Mejia</span></div><div class="fd-linha"><span class="fd-nome">matchup de mão</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-linha"><span class="fd-nome">confronto direto</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-linha"><span class="fd-nome">ranking</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-linha"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div><div class="fd-linha"><span class="fd-nome">fadiga</span><span class="fd-val fd-dim">empate</span></div><div class="fd-linha"><span class="fd-nome">época atual</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-linha"><span class="fd-nome">serviço</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Convicção reforçada a favor de Jacob Fearnley. Mercado mantém Jacob Fearnley. Acompanhar Moneyline Jacob Fearnley.</div></div></div>
+</div><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">Sem confrontos diretos entre as duas jogadoras.</div></div><details class="more"><summary>Fatores detalhados (11)</summary><div class="more-body"><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">superfície</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-valor-txt">0% – 35%</div><div class="fd-bar"><span class="fd-bar-a" style="width:0%"></span><span class="fd-bar-b" style="width:100%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--mint)">▲ Nicolas Mejia</span></div><div class="fd-valor-txt">100% – 43%</div><div class="fd-bar"><span class="fd-bar-a" style="width:70%"></span><span class="fd-bar-b" style="width:30%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">matchup de mão</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-valor-txt">32% – 39%</div><div class="fd-bar"><span class="fd-bar-a" style="width:45%"></span><span class="fd-bar-b" style="width:55%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-valor-txt">70% – 80%</div><div class="fd-bar"><span class="fd-bar-a" style="width:47%"></span><span class="fd-bar-b" style="width:53%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">ranking</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-valor-txt">#165 – #159 (349 – 362 pts)</div><div class="fd-bar"><span class="fd-bar-a" style="width:49%"></span><span class="fd-bar-b" style="width:51%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">fadiga</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">época atual</span><span class="fd-val" style="color:var(--mint)">▲ Jacob Fearnley</span></div><div class="fd-valor-txt">70% – 80%</div><div class="fd-bar"><span class="fd-bar-a" style="width:47%"></span><span class="fd-bar-b" style="width:53%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">serviço</span><span class="fd-val" style="color:var(--dim)">· Jacob Fearnley <span class="fd-nota">(abaixo do limiar (&lt;3 p.p.))</span></span></div><div class="fd-valor-txt">66% – 67%</div><div class="fd-bar"><span class="fd-bar-a" style="width:50%"></span><span class="fd-bar-b" style="width:50%"></span></div></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Convicção ligeira a favor de Jacob Fearnley. Mercado mantém Jacob Fearnley. Acompanhar Moneyline Jacob Fearnley.</div></div></div>
 <div class="wrap"><div class="foot">Gerado em 12/08/2026 · Pontos de observação para leitura pré-live e ao vivo — não são recomendações de aposta.</div></div>
 </body></html>

@@ -140,13 +140,18 @@ details.more .more-body { padding:0 16px 16px; }
 .merc-secundarios { opacity:.75; }
 .merc-sec-tag { font-size:10px; color:var(--dim); margin-bottom:2px; }
 .h2h-line { font-size:14px; line-height:1.6; }
-.fd-linha { display:flex; justify-content:space-between; align-items:center;
-  padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.fd-linha { padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; }
 .fd-linha:last-child { border-bottom:none; }
+.fd-linha-top { display:flex; justify-content:space-between; align-items:center; }
 .fd-nome { color:var(--dim); }
 .fd-val { font-weight:600; text-align:right; }
 .fd-dim { color:var(--dim); font-weight:400; }
 .fd-nota { color:var(--dim); font-size:11px; font-weight:400; }
+.fd-valor-txt { font-size:11px; color:var(--dim); margin-top:3px; }
+.fd-bar { display:flex; height:5px; border-radius:3px; overflow:hidden;
+  margin-top:6px; background:var(--surface2); }
+.fd-bar-a { background:var(--a); }
+.fd-bar-b { background:var(--b); }
 .foot { text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }
 </style></head>
@@ -191,10 +196,10 @@ details.more .more-body { padding:0 16px 16px; }
 <div class="mvs-row">
   <div class="mvs-row-lbl"><span>Rebecca Sramkova</span><span>Índice de sinais</span><span>Elsa Jacquemot</span></div>
   <div class="mvs-track">
-    <div class="mvs-fill" style="width:66%; background:#4aa3df; opacity:.7"></div>
+    <div class="mvs-fill" style="width:60%; background:#4aa3df; opacity:.7"></div>
     <div class="mvs-mid"></div>
-    <div class="mvs-val" style="left:0; color:#fff">66/100</div>
-    <div class="mvs-val" style="right:0; color:#fff">34/100</div>
+    <div class="mvs-val" style="left:0; color:#fff">60/100</div>
+    <div class="mvs-val" style="right:0; color:#fff">40/100</div>
   </div>
 </div>
 </div><div class="card"><h3>Mercados a acompanhar</h3><div class="merc-principal"><span class="merc-principal-tag">Mercado principal</span><div class="merc-linha merc-linha-top"><span class="merc-bola">⚪</span><span class="merc-nome">Moneyline</span><span class="merc-nota">mercado alinhado com os indicadores</span></div></div><div class="merc-aviso">Marcação de <b>interesse</b> para observação — não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div><div class="grid2"><div class="card"><h3>Forma</h3>
@@ -251,6 +256,6 @@ details.more .more-body { padding:0 16px 16px; }
       <div class="samp-tag">0 sets · 8d descanso</div>
     </div>
   </div>
-</div><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line"><b>Elsa Jacquemot</b> lidera 2–1 nos confrontos anteriores.</div></div><details class="more"><summary>Fatores detalhados (11)</summary><div class="more-body"><div class="fd-linha"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">superfície</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--mint)">▲ Elsa Jacquemot</span></div><div class="fd-linha"><span class="fd-nome">matchup de mão</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">confronto direto</span><span class="fd-val" style="color:var(--mint)">▲ Elsa Jacquemot</span></div><div class="fd-linha"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--mint)">▲ Rebecca Sramkova</span></div><div class="fd-linha"><span class="fd-nome">ranking</span><span class="fd-val fd-dim">sem dados</span></div><div class="fd-linha"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div><div class="fd-linha"><span class="fd-nome">fadiga</span><span class="fd-val fd-dim">empate</span></div><div class="fd-linha"><span class="fd-nome">época atual</span><span class="fd-val" style="color:var(--mint)">▲ Rebecca Sramkova</span></div><div class="fd-linha"><span class="fd-nome">serviço</span><span class="fd-val" style="color:var(--mint)">▲ Rebecca Sramkova</span></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Mercado eficiente. Sem divergência relevante entre mercado e indicadores.</div></div></div>
+</div><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line"><b>Elsa Jacquemot</b> lidera 2–1 nos confrontos anteriores.</div></div><details class="more"><summary>Fatores detalhados (11)</summary><div class="more-body"><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">superfície</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--mint)">▲ Elsa Jacquemot</span></div><div class="fd-valor-txt">40% – 45%</div><div class="fd-bar"><span class="fd-bar-a" style="width:47%"></span><span class="fd-bar-b" style="width:53%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">matchup de mão</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto</span><span class="fd-val" style="color:var(--mint)">▲ Elsa Jacquemot</span></div><div class="fd-valor-txt">1–2</div><div class="fd-bar"><span class="fd-bar-a" style="width:33%"></span><span class="fd-bar-b" style="width:67%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--mint)">▲ Rebecca Sramkova</span></div><div class="fd-valor-txt">50% – 30%</div><div class="fd-bar"><span class="fd-bar-a" style="width:62%"></span><span class="fd-bar-b" style="width:38%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">ranking</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">fadiga</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">época atual</span><span class="fd-val" style="color:var(--mint)">▲ Rebecca Sramkova</span></div><div class="fd-valor-txt">50% – 30%</div><div class="fd-bar"><span class="fd-bar-a" style="width:62%"></span><span class="fd-bar-b" style="width:38%"></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">serviço</span><span class="fd-val" style="color:var(--dim)">· Rebecca Sramkova <span class="fd-nota">(abaixo do limiar (&lt;3 p.p.))</span></span></div><div class="fd-valor-txt">57% – 56%</div><div class="fd-bar"><span class="fd-bar-a" style="width:50%"></span><span class="fd-bar-b" style="width:50%"></span></div></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Mercado eficiente. Sem divergência relevante entre mercado e indicadores.</div></div></div>
 <div class="wrap"><div class="foot">Gerado em 12/08/2026 · Pontos de observação para leitura pré-live e ao vivo — não são recomendações de aposta.</div></div>
 </body></html>
