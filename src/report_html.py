@@ -2383,7 +2383,14 @@ def _normalizar_div(raw):
         return None
     if raw.get("prob_mercado_a") is None:
         return {"market": None, "indice_evidencia": None,
-                "classificacao": raw.get("classificacao"), "favorecido": raw.get("favorecido")}
+                "classificacao": raw.get("classificacao"), "favorecido": raw.get("favorecido"),
+                # CORREÇÃO (12/08/2026): estas duas chaves foram acrescentadas
+                # ao _calcular_divergencia mas esquecidas aqui — o módulo
+                # "Fatores Detalhados" e a nota de "índice frágil" nunca
+                # apareciam no relatório real por causa disto (confirmado:
+                # CSS presente, secção ausente — a normalização matava os dados).
+                "n_fatores": raw.get("n_fatores"),
+                "fatores_status": raw.get("fatores_status")}
     return {
         "market": {"a": raw["prob_mercado_a"], "b": raw["prob_mercado_b"]},
         "indice_evidencia": {"a": raw["indice_evidencia_a"], "b": raw["indice_evidencia_b"]},
@@ -2393,6 +2400,8 @@ def _normalizar_div(raw):
         "mercado_favorece": raw.get("mercado_favorece"),
         "indice_favorece": raw.get("indice_favorece"),
         "fatores_chave": raw.get("fatores_chave"),
+        "n_fatores": raw.get("n_fatores"),
+        "fatores_status": raw.get("fatores_status"),
     }
 
 
