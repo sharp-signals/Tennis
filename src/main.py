@@ -436,8 +436,22 @@ def _compute_features(payload: dict) -> dict:
         cell = bs.get(skey) if skey else None
         if cell and cell.get("matches"):
             return cell["win_pct"], cell["matches"]
-        p = _pct(basic)
-        return p, (basic or {}).get("matches")
+        # CORREÇÃO (12/08/2026): `basic` (surface_stats_a/b) é um dicionário
+        # POR PISO — {"Hard": {...}, "Clay": {...}, "Grass": {...}} — mas
+        # ia inteiro para _pct(), que espera um dict PLANO {"matches",
+        # "wins"}. _pct(basic) procurava "matches" na chave de topo (que
+        # não existe ali, só existem os nomes dos pisos) e devolvia sempre
+        # None. Ou seja: o fallback NUNCA funcionava — "piso" só tinha dados
+        # quando a fonte "rica" (limitada por orçamento) estava disponível,
+        # o que exclui a maioria dos jogadores fora do top do ranking.
+        # Corrigido para extrair primeiro a célula do piso certo.
+        basic_key = None
+        if "clay" in s: basic_key = "Clay"
+        elif "grass" in s: basic_key = "Grass"
+        elif "hard" in s: basic_key = "Hard"
+        basic_cell = (basic or {}).get(basic_key) if basic_key else None
+        p = _pct(basic_cell)
+        return p, (basic_cell or {}).get("matches")
     surf = payload.get("surface")
     pa, na = _surf_pct(payload.get("rich_stats_a"), payload.get("surface_stats_a"), surf)
     pb, nb = _surf_pct(payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf)
