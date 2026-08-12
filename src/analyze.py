@@ -282,9 +282,8 @@ LINGUAGEM (obrigatório): frases curtas e diretas. PROIBIDO narrativo como
 "tem vindo a demonstrar", "ao longo da temporada", "é conhecido por". Vai
 direto ao mercado.
 
-Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código. A
-tua resposta é injetada diretamente a seguir a um "{{" — começa logo pelo
-primeiro campo (ex: "flag": "..."), sem repetir a chaveta de abertura.
+Responde APENAS com o JSON, sem texto antes/depois, sem blocos de código.
+Começa a resposta diretamente por "{{" — primeiro caráter, sem preâmbulo.
 """
 
 
@@ -733,6 +732,7 @@ def analyze_match(match_data: dict) -> dict:
 
 
     llm_call_reason = f"política {LLM_POLICY}"
+    selective_signals: list[dict] = []  # default seguro; preenchido abaixo se LLM_POLICY="selective"
 
     if LLM_POLICY == "selective":
         should_call_llm, llm_call_reason, selective_signals = (
@@ -762,22 +762,32 @@ def analyze_match(match_data: dict) -> dict:
         f"{llm_call_reason}"
     )
 
-    provider_response = provider.generate(
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        # Teto de output: reduzido de 1500 para 600 (11/08/2026 — auditoria de
-        # custo real). O formato pede só 4 campos curtos (flag, signal_strength,
-        # executive_summary ≤200 chars, verdict ≤200 chars) — output legítimo
-        # ronda 150-250 tokens. Vimos casos reais a chegar aos 1500 (respostas
-        # verbosas que eram cortadas ANTES da poda de 200 chars, gastando
-        # tokens à toa — a poda só corta a STRING final, não impede o modelo
-        # de gerar de mais). 600 dá margem de ~2-3x sobre o esperado; combinado
-        # com o prefill "{" e o reforço "responde já, sem preâmbulo" no prompt,
-        # deve evitar tanto o desperdício como cortes reais. json_repair fica
-        # como rede de segurança se, mesmo assim, cortar a meio.
-        max_tokens=600,
-        metadata=match_data,
-    )
+    # CORREÇÃO CRÍTICA (11/08/2026 — log real): provider.generate() não tinha
+    # try/except. Quando a API falha por QUALQUER razão (rede, rate limit,
+    # incompatibilidade de parâmetros, etc.), a exceção propagava até ao
+    # main.py, que APAGA O JOGO INTEIRO do relatório (não é um fallback de
+    # texto — o jogo desaparece). Confirmado ao vivo: um bug no prefill fez
+    # TODAS as 30 chamadas falharem, e os ~30 jogos com divergência/convicção
+    # (os mais interessantes) simplesmente não saíram no relatório final,
+    # silenciosamente. Agora cai sempre no fallback determinístico (alinhado
+    # com o motor), como acontece deliberadamente quando o Claude é saltado.
+    try:
+        provider_response = provider.generate(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            # Teto de output: 600 (ver nota de auditoria de custo, 11/08/2026).
+            max_tokens=600,
+            metadata=match_data,
+        )
+    except Exception as exc:
+        print(
+            f"[aviso] falha na chamada à API do Claude para "
+            f"{match_data.get('player_a', '?')} vs {match_data.get('player_b', '?')}: "
+            f"{exc} — a usar fallback determinístico (jogo NÃO é descartado)."
+        )
+        return _build_selective_result(
+            match_data, selective_signals, f"falha na API: {exc}",
+        )
     # Logging de custo real, normalizado entre providers.
     try:
         usage = provider_response.usage
