@@ -1139,6 +1139,15 @@ def compute_fatigue(history: pd.DataFrame, player: str, match_date: datetime) ->
     if "score" in subset_7d.columns and not subset_7d.empty:
         sets_played_7d = int(subset_7d["score"].apply(_count_sets).sum())
     result["sets_played_last_7d"] = sets_played_7d
+    result["sets_last_7d"] = sets_played_7d  # alias (nome usado pelo motor)
+    # Sets do ÚLTIMO jogo especificamente (para o motor detetar "jogo
+    # longo recente" — auditoria 11/08/2026, mesmo campo em falta que na
+    # versão api_recent).
+    last_match_sets = None
+    if not past_matches.empty and "score" in past_matches.columns:
+        _last_idx = past_matches["tourney_date"].idxmax()
+        last_match_sets = _count_sets(past_matches.loc[_last_idx, "score"])
+    result["last_match_sets"] = last_match_sets
     # PARTE B (defensiva): o histórico (TennisMyLife/Sackmann) tem atraso
     # de dias — pode não incluir os jogos da 1ª/2ª ronda do próprio torneio
     # em curso. Se o "último jogo conhecido" for anterior ao início do
@@ -1572,6 +1581,33 @@ def compute_hand_from_profile(profile: dict) -> Optional[str]:
     return _extract_hand(info.get("plays") or d.get("plays"))
 
 
+def resolve_handedness_matchup(handedness_stats: Optional[dict], opponent_hand: Optional[str]) -> Optional[dict]:
+    """
+    CORREÇÃO (11/08/2026): o motor de divergência lê
+    `handedness_matchup_X.get("win_pct")`, mas compute_handedness_matchup_stats
+    nunca devolveu essa chave — só devolve {'vs_left_handed', 'vs_right_handed'}
+    aninhados, cada um com {'matches','wins','losses'}. Resultado: wa/wb no
+    motor eram SEMPRE None, e o fator "matchup de mão" (peso 8) nunca
+    contribuiu, em nenhum jogo, desde sempre.
+
+    Esta função resolve o par (stats do jogador, mão REAL do adversário
+    NESTE jogo — de `player_hands`, via perfil RapidAPI) para a taxa de
+    vitória específica contra essa mão, no formato que o motor espera.
+    None se faltar a mão do adversário ou não houver amostra nesse lado.
+    """
+    if not isinstance(handedness_stats, dict) or opponent_hand not in ("L", "R"):
+        return None
+    key = "vs_left_handed" if opponent_hand == "L" else "vs_right_handed"
+    sub = handedness_stats.get(key)
+    if not isinstance(sub, dict) or not sub.get("matches"):
+        return None
+    return {
+        "win_pct": round(100 * sub["wins"] / sub["matches"], 1),
+        "matches": sub["matches"],
+        "opponent_hand": opponent_hand,
+    }
+
+
 def compute_scenarios_from_past_matches(past_matches: list, player_id: int) -> Optional[dict]:
     """Recuperação de 1º set a partir do score set-a-set ('result')."""
     if not past_matches:
@@ -1996,6 +2032,11 @@ def compute_fatigue_from_recent(recent_matches: list, player_id: int,
         "matches_last_14d": _count_within(14),
         "matches_this_tournament": matches_tourn,
         "sets_last_7d": sets_7d,
+        # CORREÇÃO (11/08/2026): o motor lia este campo para detetar "último
+        # jogo foi longo" (escala o peso da fadiga), mas nunca existia —
+        # sempre None, essa escalada nunca disparava. Já temos o nº de sets
+        # de cada jogo em `played` (index 2); o mais recente é played[0].
+        "last_match_sets": played[0][2] if played else None,
         "fatigue_source": "api_recent",  # marca que veio da fonte fiável
     }
 
