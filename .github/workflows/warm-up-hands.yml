@@ -1,0 +1,89 @@
+name: Aquecer cache de mão (WTA)
+
+# Botão manual (Actions -> "Aquecer cache de mão (WTA)" -> Run workflow).
+# Pré-preenche a cache permanente de mão (L/R) das jogadoras do topo do
+# ranking, para o motor já ter o "matchup de mão" disponível desde o
+# primeiro jogo WTA analisado, em vez de ir descobrindo aos poucos à
+# medida que cada jogadora aparece organicamente num jogo. Opcional — o
+# bot funciona na mesma sem isto, só demora mais a "aquecer" sozinho.
+on:
+  workflow_dispatch:
+    inputs:
+      tour:
+        description: "Tour (normalmente só faz sentido 'wta' — o ATP já tem a mão embutida no histórico local, sem custo de API)"
+        required: false
+        default: "wta"
+      top_n:
+        description: "Quantas jogadoras do topo do ranking a cobrir"
+        required: false
+        default: "200"
+
+concurrency:
+  # mesmo grupo do bot principal (tennis-bot.yml) — evita que os dois
+  # escrevam no repositório ao mesmo tempo e colidam no git push.
+  group: tennis-pre-live-production
+  cancel-in-progress: false
+
+jobs:
+  warm-up:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write   # necessário para gravar a cache atualizada
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Aquecer a cache de mão
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          RAPIDAPI_MAX_CALLS_PER_RUN: "800"
+          RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
+        run: |
+          python -m src.fetch_data warm-up-hands "${{ github.event.inputs.tour }}" "${{ github.event.inputs.top_n }}"
+
+      - name: Gravar a cache, se mudou
+        run: |
+          git config user.name "tennis-bot"
+          git config user.email "actions@github.com"
+          git add data/cache/ 2>/dev/null || true
+          if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+            git commit -m "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"
+            # Mesma proteção do bot principal: rebase antes de enviar, para
+            # não colidir com alterações remotas entretanto feitas.
+            push_ok=0
+            for tentativa in 1 2 3; do
+              if ! git pull --rebase --autostash origin main; then
+                echo "Rebase falhou; não é seguro continuar para push."
+                exit 1
+              fi
+              if git push; then
+                echo "Push concluído (tentativa $tentativa)."
+                push_ok=1
+                break
+              fi
+              echo "Push falhou na tentativa $tentativa; a repetir..."
+              sleep 3
+            done
+            if [ "$push_ok" -ne 1 ]; then
+              echo "Push falhou definitivamente após 3 tentativas."
+              exit 1
+            fi
+          else
+            echo "Sem alterações a gravar (provavelmente já tudo em cache)."
+          fi
+
+      - name: Alertar no Telegram se algo falhou
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="⚠️ O aquecimento da cache de mão falhou (${{ github.run_id }}). Vê os logs em: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        continue-on-error: true
