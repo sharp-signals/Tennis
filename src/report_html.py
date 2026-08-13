@@ -666,7 +666,7 @@ def _calcular_divergencia(payload):
         _add("piso", ps["lider"], max(forca, 0.4), conf_amostra=_conf_amostra(_n_piso, 40))
         _reg_status("piso", True, ps["lider"], valor_a=ps.get("valor_a"), valor_b=ps.get("valor_b"), amostra=_n_piso)
     elif isinstance(ps, dict) and ps.get("lider") == "igual":
-        _reg_status("piso", True, "igual")
+        _reg_status("piso", True, "igual", valor_a=ps.get("valor_a"), valor_b=ps.get("valor_b"))
     elif isinstance(ps, dict) and ps.get("lider") is not None:
         _reg_status("piso", True, ps["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=ps.get("valor_a"), valor_b=ps.get("valor_b"))
@@ -744,7 +744,7 @@ def _calcular_divergencia(payload):
         _add("forma_recente", fr["lider"], max(forca, 0.4))
         _reg_status("forma_recente", True, fr["lider"], valor_a=fr.get("valor_a"), valor_b=fr.get("valor_b"), amostra=fr.get("amostra_a"))
     elif isinstance(fr, dict) and fr.get("lider") == "igual":
-        _reg_status("forma_recente", True, "igual")
+        _reg_status("forma_recente", True, "igual", valor_a=fr.get("valor_a"), valor_b=fr.get("valor_b"))
     elif isinstance(fr, dict) and fr.get("lider") is not None:
         _reg_status("forma_recente", True, fr["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=fr.get("valor_a"), valor_b=fr.get("valor_b"))
@@ -790,7 +790,7 @@ def _calcular_divergencia(payload):
         _add("epoca_atual", ea["lider"])
         _reg_status("epoca_atual", True, ea["lider"], valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
     elif isinstance(ea, dict) and ea.get("lider") == "igual":
-        _reg_status("epoca_atual", True, "igual")
+        _reg_status("epoca_atual", True, "igual", valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
     elif isinstance(ea, dict) and ea.get("lider") is not None:
         _reg_status("epoca_atual", True, ea["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
@@ -804,7 +804,7 @@ def _calcular_divergencia(payload):
         _add("servico", sv["lider"])
         _reg_status("servico", True, sv["lider"], valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     elif isinstance(sv, dict) and sv.get("lider") == "igual":
-        _reg_status("servico", True, "igual")
+        _reg_status("servico", True, "igual", valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     elif isinstance(sv, dict) and sv.get("lider") is not None:
         _reg_status("servico", True, sv["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
@@ -856,7 +856,8 @@ def _calcular_divergencia(payload):
         _add("lesao", a)
         _reg_status("lesao", True, a, valor_a=fa.get("days_since_last_match"), valor_b=fb.get("days_since_last_match"))
     elif fa.get("days_since_last_match") is not None or fb.get("days_since_last_match") is not None:
-        _reg_status("lesao", True, "igual", "nenhum em regresso claro (<60 dias parado)")
+        _reg_status("lesao", True, "igual", "nenhum em regresso claro (<60 dias parado)",
+                   valor_a=fa.get("days_since_last_match"), valor_b=fb.get("days_since_last_match"))
     else:
         _reg_status("lesao", False)
 
@@ -1923,6 +1924,15 @@ details.more[open]>summary::before {{ content:"▾ "; }}
 details.more .more-body {{ padding:0 16px 16px; }}
 .more-hint {{ color:var(--dim); font-size:11px; font-weight:400; margin-left:6px; }}
 
+/* Mapa de Forças: destaque visual (feedback de teste, 13/08/2026 —
+   "devia ter mais visibilidade, ligeiramente maior e com outra cor, para
+   mostrar que é o único elemento carregável com info relevante") */
+details.mais-forcas {{ border:1.5px solid var(--amber);
+  background:linear-gradient(180deg, rgba(217,164,65,.10), var(--surface) 45%); }}
+details.mais-forcas>summary {{ padding:16px 18px; font-size:14px; color:var(--amber); }}
+details.mais-forcas>summary::before {{ color:var(--amber); }}
+details.mais-forcas .more-hint {{ color:var(--amber); opacity:.75; }}
+
 /* --- estado parcial/erro --- */
 .parcial {{ background:rgba(224,108,91,.1); border:1px solid var(--error);
   border-radius:12px; padding:16px; margin-bottom:14px; }}
@@ -2106,10 +2116,14 @@ def _mod_fatores(payload, div):
     return f'<div class="fatores">{"".join(chips)}</div>'
 
 
-# Ordem de exibição do "Mapa de Forças" (por peso, do motor)
+# Ordem de exibição do "Mapa de Forças" — reorganizada a pedido (feedback
+# de teste, 13/08/2026): antes ia por peso puro do motor; agora começa
+# pelos fatores mais imediatos de ler (ranking, H2H) antes dos mais
+# técnicos. Os PESOS REAIS no motor não mudam — isto é só a ordem de
+# exibição, decoupled da lógica de decisão.
 _FACTOR_ORDER = [
-    "h2h_piso", "piso", "recuperacao_sets", "matchup_maos", "h2h",
-    "forma_recente", "ranking", "lesao", "fadiga", "epoca_atual", "servico",
+    "ranking", "h2h", "h2h_piso", "epoca_atual", "forma_recente",
+    "piso", "recuperacao_sets", "matchup_maos", "servico", "fadiga", "lesao",
 ]
 
 
@@ -2119,32 +2133,35 @@ _FD_FACTORS_PCT = {"piso", "forma_recente", "epoca_atual", "servico",
                     "recuperacao_sets", "matchup_maos"}
 # Fatores onde valor_a/valor_b são contagens de vitórias (maior = melhor)
 _FD_FACTORS_COUNT = {"h2h", "h2h_piso"}
+# Fatores onde valor_a/valor_b são "quanto menor, melhor" para esse jogador
+# (nº de jogos recentes, dias desde o regresso) — a barra é DESENHADA
+# INVERTIDA (troca-se qual valor alimenta a largura de cada lado) para que
+# "barra maior" continue a significar sempre "vantagem", igual aos outros
+# fatores — mas o NÚMERO mostrado dentro da barra continua a ser o real de
+# cada jogador, não o valor trocado.
+_FD_FACTORS_INVERTIDOS = {"fadiga", "lesao"}
 
 
-def _fd_bar(chave, st, forcar_meio=False):
+def _fd_bar(chave, st):
     """Barra proporcional azul(A)/laranja(B) — mesma linguagem visual do
-    resto do relatório (--a/--b). Feedback de teste (12/08/2026): 'se calhar
-    isto via-se melhor por um gráfico de cores'. Só para fatores onde
-    'maior valor = melhor' de forma direta (percentagens, vitórias, pontos
-    de ranking) — fadiga/lesão ficam sem barra (semântica invertida/nuançada,
-    uma barra aqui enganava mais do que ajudava).
-
-    forcar_meio: quando é EMPATE mas não há valores numéricos guardados
-    (ex: forma_recente/época/serviço quando "igual" não guarda valor_a/b),
-    mostra a barra a 50/50 em vez de a esconder — feedback de teste
-    (12/08/2026): 'quando é empate ele que meta a barra na mesma 50/50',
-    para manter a barra sempre visível e comparável entre linhas."""
-    if chave not in _FD_FACTORS_PCT and chave not in _FD_FACTORS_COUNT and chave != "ranking":
+    resto do relatório (--a/--b). Só desenha quando há valores REAIS
+    guardados (feedback de teste, 13/08/2026: 'põe barra em tudo que tenha
+    dados; se não houver dados, não ponhas como se fosse empate') — nunca
+    inventa um 50/50 para disfarçar a falta de dado."""
+    if (chave not in _FD_FACTORS_PCT and chave not in _FD_FACTORS_COUNT
+            and chave not in _FD_FACTORS_INVERTIDOS and chave != "ranking"):
         return ""
     va, vb = st.get("valor_a"), st.get("valor_b")
     if chave == "ranking":
         va, vb = st.get("pontos_a"), st.get("pontos_b")  # pontos (maior=melhor), não posição
-    if va is None or vb is None or (va + vb) <= 0:
-        if forcar_meio:
-            va, vb = 1, 1  # 50/50 explícito
-        else:
-            return ""
-    pct_a = max(0, min(100, round(100 * va / (va + vb))))
+    if va is None or vb is None:
+        return ""
+    # largura: para fatores invertidos, troca-se o que alimenta cada lado
+    # (ver _FD_FACTORS_INVERTIDOS) — o rótulo dentro da barra mantém-se real.
+    largura_a, largura_b = (vb, va) if chave in _FD_FACTORS_INVERTIDOS else (va, vb)
+    if (largura_a + largura_b) <= 0:
+        return ""
+    pct_a = max(0, min(100, round(100 * largura_a / (largura_a + largura_b))))
     pct_b = 100 - pct_a
     # Os valores ficam dentro da barra para permitir uma leitura vertical
     # compacta do conjunto. A largura continua a codificar a relação entre
@@ -2152,6 +2169,8 @@ def _fd_bar(chave, st, forcar_meio=False):
     if chave in _FD_FACTORS_PCT:
         label_a, label_b = f"{va:.0f}%", f"{vb:.0f}%"
     elif chave in _FD_FACTORS_COUNT:
+        label_a, label_b = str(int(va)), str(int(vb))
+    elif chave in _FD_FACTORS_INVERTIDOS:
         label_a, label_b = str(int(va)), str(int(vb))
     else:  # ranking: a barra usa pontos, mas o rótulo mostra a posição
         pos_a, pos_b = st.get("valor_a"), st.get("valor_b")
@@ -2166,14 +2185,19 @@ def _fd_bar(chave, st, forcar_meio=False):
             f'<span class="fd-bar-val b">{_esc(label_b)}</span></div>')
 
 
-def _mod_fatores_detalhados(payload, div):
+def _mod_fatores_detalhados(payload, div, extras_html=""):
     """Módulo: TODOS os fatores do motor (não só o top-3/4), com quem tem
     vantagem em cada um, OS NÚMEROS reais por trás, e uma barra proporcional
     — "sem dados"/"empate"/"abaixo do limiar" quando aplicável. 100% Python,
     a partir de `fatores_status` (ver _calcular_divergencia) — o Claude
-    nunca vê nem decide isto."""
+    nunca vê nem decide isto.
+
+    extras_html: conteúdo adicional (Serviço/Resposta, Carga, H2H) injetado
+    DENTRO do mesmo colapsável, ANTES das linhas por fator — feedback de
+    teste (13/08/2026): "acho que esta info devia estar dentro do mapa de
+    forças", em vez de cartões à parte antes dele."""
     status = (div or {}).get("fatores_status") or {}
-    if not status:
+    if not status and not extras_html:
         return ""
     linhas = []
     for chave in _FACTOR_ORDER:
@@ -2188,7 +2212,7 @@ def _mod_fatores_detalhados(payload, div):
             continue
         lider = st.get("lider")
         motivo = st.get("motivo_exclusao")
-        bar_html = _fd_bar(chave, st, forcar_meio=(lider == "igual"))
+        bar_html = _fd_bar(chave, st)
         if lider in (None, "igual"):
             txt = "empate" if lider == "igual" else (motivo or "sem vantagem clara")
             linhas.append(
@@ -2204,11 +2228,12 @@ def _mod_fatores_detalhados(payload, div):
             f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
             f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
             f'{bar_html}</div>')
-    if not linhas:
+    if not linhas and not extras_html:
         return ""
-    return (f'<details class="more"><summary>Mapa de Forças ({len(linhas)})'
+    total_tag = f" ({len(linhas)})" if linhas else ""
+    return (f'<details class="more mais-forcas" open><summary>Mapa de Forças{total_tag}'
             f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
-            f'<div class="more-body">{"".join(linhas)}</div></details>')
+            f'<div class="more-body">{extras_html}{"".join(linhas)}</div></details>')
 
 
 def _mod_mercado_vs_sinal(payload, div):
@@ -2600,15 +2625,17 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     if chave not in ("sem_odds",):
         partes.append(_mod_mercado_vs_sinal(payload, div))
         partes.append(_mod_mercados(payload, div))
-    # 5-9. Evidência (grelha 2 colunas)
-    partes.append(f'<div class="grid2">{_mod_forma(payload)}{_mod_servico(payload)}</div>')
-    partes.append(_mod_fadiga(payload))
-    partes.append(_mod_h2h(payload))
+    # 5-9. Evidência (Forma fica visível; Serviço, Carga e H2H passam a
+    # viver DENTRO do Mapa de Forças — feedback de teste, 13/08/2026: "acho
+    # que esta info devia estar dentro do mapa de forças". Cenários
+    # decisivos fica fora, não fazia parte do pedido.)
+    partes.append(_mod_forma(payload))
     partes.append(_mod_cenarios(payload))
     # Fatores detalhados (TODOS, não só o top-3/4) — colapsável, sempre que
     # houver motor calculado, independente do estado (mesmo "eficiente"
     # beneficia de mostrar porque é eficiente: tudo empatado/sem dados).
-    partes.append(_mod_fatores_detalhados(payload, div))
+    _extras_mapa = f'{_mod_servico(payload)}{_mod_fadiga(payload)}{_mod_h2h(payload)}'
+    partes.append(_mod_fatores_detalhados(payload, div, extras_html=_extras_mapa))
     # Veredicto (se há)
     partes.append(_mod_veredicto(result))
     partes.append('</div>')
