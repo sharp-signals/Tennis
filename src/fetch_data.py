@@ -39,6 +39,7 @@ import json
 import os
 import threading
 import unicodedata
+from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -123,11 +124,15 @@ _RAPIDAPI_HEADERS = {
 
 # Contador de chamadas à RapidAPI por execução.
 _RAPIDAPI_CALL_COUNT = {"n": 0}
+_RAPIDAPI_ENDPOINT_CALLS: dict[str, int] = {}
 _RAPIDAPI_RECORDED_TODAY = {"n": 0}
 _RAPIDAPI_BUDGET_EXCEEDED = {"value": False}
 RAPIDAPI_MIN_INTERVAL = 0.35
 _RAPIDAPI_LAST_CALL = {"t": 0.0}
 _RAPIDAPI_LOCK = threading.Lock()
+RAPIDAPI_USAGE_PATH = os.environ.get("RAPIDAPI_USAGE_PATH", "data/rapidapi_usage_log.json")
+RAPIDAPI_INFLIGHT_PATH = os.environ.get("RAPIDAPI_INFLIGHT_PATH", "data/rapidapi_usage_inflight.json")
+RAPIDAPI_CHECKPOINT_EVERY = 10
 
 
 class RapidAPIBudgetExceeded(RuntimeError):
@@ -135,18 +140,69 @@ class RapidAPIBudgetExceeded(RuntimeError):
 
 
 def _load_recorded_today_calls() -> int:
-    path = os.path.join("data", "rapidapi_usage_log.json")
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with open(RAPIDAPI_USAGE_PATH, "r", encoding="utf-8") as handle:
             history = json.load(handle)
-        return sum(
+        recorded = sum(
             int(item.get("calls") or 0)
             for item in history
             if str(item.get("timestamp", "")).startswith(today)
         )
     except (OSError, TypeError, ValueError, json.JSONDecodeError):
-        return 0
+        recorded = 0
+    try:
+        with open(RAPIDAPI_INFLIGHT_PATH, "r", encoding="utf-8") as handle:
+            inflight = json.load(handle)
+        if str(inflight.get("timestamp", "")).startswith(today):
+            recorded += int(inflight.get("calls") or 0)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        pass
+    return recorded
+
+
+def _write_rapidapi_checkpoint() -> None:
+    path = RAPIDAPI_INFLIGHT_PATH
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    temp = f"{path}.tmp"
+    with open(temp, "w", encoding="utf-8") as handle:
+        json.dump({"timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                   "calls": _RAPIDAPI_CALL_COUNT["n"]}, handle, ensure_ascii=False, indent=2)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp, path)
+
+
+def persist_rapidapi_usage(*, status: str, matches: int = 0) -> dict:
+    """Fecha o checkpoint numa entrada histórica, incluindo runs falhadas."""
+    entry = {"timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+             "calls": get_rapidapi_call_count(), "matches": int(matches), "status": status}
+    try:
+        with open(RAPIDAPI_USAGE_PATH, "r", encoding="utf-8") as handle:
+            history = json.load(handle)
+        if not isinstance(history, list):
+            history = []
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        history = []
+    os.makedirs(os.path.dirname(RAPIDAPI_USAGE_PATH) or ".", exist_ok=True)
+    temp = f"{RAPIDAPI_USAGE_PATH}.tmp"
+    with open(temp, "w", encoding="utf-8") as handle:
+        json.dump((history + [entry])[-365:], handle, ensure_ascii=False, indent=2)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp, RAPIDAPI_USAGE_PATH)
+    try:
+        os.remove(RAPIDAPI_INFLIGHT_PATH)
+    except FileNotFoundError:
+        pass
+    return entry
+
+
+def clear_rapidapi_checkpoint() -> None:
+    try:
+        os.remove(RAPIDAPI_INFLIGHT_PATH)
+    except FileNotFoundError:
+        pass
 
 
 def _reserve_rapidapi_call() -> None:
@@ -164,6 +220,8 @@ def _reserve_rapidapi_call() -> None:
             f"dia={projected_day - 1}/{RAPIDAPI_MAX_CALLS_PER_DAY})."
         )
     _RAPIDAPI_CALL_COUNT["n"] = projected_run
+    if projected_run == 1 or projected_run % RAPIDAPI_CHECKPOINT_EVERY == 0:
+        _write_rapidapi_checkpoint()
 
 
 def _rapidapi_get(url, **kwargs):
@@ -172,6 +230,8 @@ def _rapidapi_get(url, **kwargs):
     for tentativa in range(3):
         with _RAPIDAPI_LOCK:
             _reserve_rapidapi_call()
+            endpoint = urlparse(str(url)).path
+            _RAPIDAPI_ENDPOINT_CALLS[endpoint] = _RAPIDAPI_ENDPOINT_CALLS.get(endpoint, 0) + 1
             elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
             if elapsed < RAPIDAPI_MIN_INTERVAL:
                 time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
@@ -190,10 +250,16 @@ def get_rapidapi_call_count() -> int:
     return _RAPIDAPI_CALL_COUNT["n"]
 
 
+def get_rapidapi_endpoint_counts() -> dict[str, int]:
+    return dict(sorted(_RAPIDAPI_ENDPOINT_CALLS.items()))
+
+
 def reset_rapidapi_call_count() -> None:
     _RAPIDAPI_CALL_COUNT["n"] = 0
+    _RAPIDAPI_ENDPOINT_CALLS.clear()
     _RAPIDAPI_RECORDED_TODAY["n"] = _load_recorded_today_calls()
     _RAPIDAPI_BUDGET_EXCEEDED["value"] = False
+    _write_rapidapi_checkpoint()
 
 
 def rapidapi_budget_exceeded() -> bool:

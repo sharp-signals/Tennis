@@ -11,13 +11,11 @@ Corre via: python -m src.test_dry_run
 
 from __future__ import annotations
 
-import html
 from datetime import datetime, timedelta, timezone
 
 from . import fetch_data
 from .analyze import analyze_match
 from .config import ODDS_API_TENNIS_SPORT_KEYS
-from .telegram_bot import send_message
 
 # Dois jogadores ATP conhecidos, para testar H2H/forma/piso com dados reais
 # (se estiverem no dataset da TennisMyLife). Muda estes nomes se quiseres
