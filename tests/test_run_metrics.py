@@ -42,6 +42,27 @@ class RunMetricsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             run_metrics.increment("llm_calls", -1)
 
+    def test_context_duration_and_cost_are_persisted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "metrics.json"
+            run_metrics.update_context(status="failed", phase="analysis")
+            run_metrics.increment("llm_input_tokens", 1_000_000)
+            with patch.dict("os.environ", {"LLM_PRICE_INPUT_PER_MTOK": "2"}):
+                entry = run_metrics.append_run(path=str(path))
+        self.assertEqual(entry["status"], "failed")
+        self.assertEqual(entry["phase"], "analysis")
+        self.assertEqual(entry["llm_estimated_cost_usd"], 2.0)
+        self.assertGreaterEqual(entry["duration_seconds"], 0)
+
+    def test_health_alerts_cover_cost_fallbacks_and_failures(self) -> None:
+        alerts = run_metrics.health_alerts({
+            "status": "failed", "phase": "analysis", "rapidapi_calls": 700,
+            "llm_calls": 10, "llm_fallbacks": 3, "reports_failed": 1,
+            "llm_estimated_cost_usd": 2.0,
+        })
+        self.assertEqual(len(alerts), 5)
+        self.assertTrue(any("RapidAPI" in alert for alert in alerts))
+
 
 if __name__ == "__main__":
     unittest.main()

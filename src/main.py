@@ -886,6 +886,9 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         href = html.escape(url)
         div = payload.get("divergencia") or {}
         level = (div.get("classificacao") or {}).get("nivel", -1)
+        # Cores sem ambiguidade: verde só significa valor a analisar;
+        # mercado alinhado é neutro e prioridade alta usa vermelho.
+        flag = {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚠️")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
         cards.append(
             f'<a class="idx-card" href="{href}" data-level="{level}" data-tour="{tour_key}">'
@@ -954,12 +957,14 @@ search.addEventListener('input',applyFilters); priority.addEventListener('change
 
 def run() -> None:
     run_metrics.reset()
+    run_metrics.update_context(status="running", phase="initializing")
     # O contador RapidAPI é opcional; versões anteriores de fetch_data.py podem não expor estas funções.
     reset_calls = getattr(fetch_data, "reset_rapidapi_call_count", None)
     if callable(reset_calls):
         reset_calls()
     else:
         print("[info] contador RapidAPI local não disponível em fetch_data.py; a execução continua.")
+    run_metrics.update_context(phase="fetching_fixtures")
     raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
     print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
     raw_matches = _deduplicate_matches(raw_matches)
@@ -967,10 +972,13 @@ def run() -> None:
 
     windowed = _filter_matches_in_window(raw_matches)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
+    run_metrics.update_context(eligible=len(eligible), phase="filtering")
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
 
     if not eligible:
+        run_metrics.update_context(status="no_eligible_matches", phase="complete")
+        fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
         print("[info] Sem jogos elegíveis nesta janela (fora do tier permitido ou fora de horas). Nada a enviar.")
         return
 
@@ -1011,6 +1019,7 @@ def run() -> None:
             print(f"[aviso] falha ao analisar {p1} vs {p2}: {exc}")
             return None
 
+    run_metrics.update_context(phase="analysis")
     analyses = []
     with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
         for res in executor.map(_process_one, eligible):
@@ -1060,6 +1069,7 @@ def run() -> None:
     except Exception:
         pass
 
+    run_metrics.update_context(phase="report_generation")
     match_reports = []  # (payload, result, url_ou_None)
     generated_slugs = []
     for payload, result in analyses:
@@ -1193,12 +1203,18 @@ def run() -> None:
     if current:
         chunks.append("\n".join(current))
 
+    run_metrics.update_context(phase="telegram")
     for i, chunk in enumerate(chunks):
         prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
         send_message(prefix + chunk)
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
 
     reports_ok = sum(1 for _, _, url in match_reports if url)
+    run_metrics.update_context(
+        status="success", phase="complete", processed=len(analyses),
+        analysis_failed=len(eligible) - len(analyses), reports_ok=reports_ok,
+        reports_failed=len(match_reports) - reports_ok, telegram_chunks=len(chunks),
+    )
     print(
         "[run_summary] "
         f"eligible={len(eligible)} processed={len(analyses)} "
@@ -1242,21 +1258,45 @@ def run() -> None:
             pass
     except Exception as exc:
         print(f"[aviso] falha ao registar uso da RapidAPI: {exc}")
+    else:
+        fetch_data.clear_rapidapi_checkpoint()
 
+def main() -> None:
+    """Fronteira operacional: persiste telemetria em qualquer terminação."""
+    failure: BaseException | None = None
     try:
-        metrics = run_metrics.append_run(context={
-            "eligible": len(eligible),
-            "processed": len(analyses),
-            "analysis_failed": len(eligible) - len(analyses),
-            "reports_ok": reports_ok,
-            "reports_failed": len(match_reports) - reports_ok,
-            "telegram_chunks": len(chunks),
-            "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
-        })
-        print(f"[metrics] {json.dumps(metrics, ensure_ascii=False, sort_keys=True)}")
-    except Exception as exc:
-        print(f"[aviso] falha ao persistir métricas operacionais: {exc}")
+        run()
+    except BaseException as exc:
+        failure = exc
+        run_metrics.update_context(
+            status="failed", error_type=type(exc).__name__,
+            error_message=str(exc)[:500],
+        )
+    finally:
+        if failure is not None:
+            try:
+                fetch_data.persist_rapidapi_usage(status="failed", matches=0)
+            except Exception as usage_exc:
+                print(f"[aviso] falha ao registar uso da RapidAPI: {usage_exc}")
+        try:
+            metrics = run_metrics.append_run(context={
+                "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
+                "rapidapi_calls_by_endpoint": fetch_data.get_rapidapi_endpoint_counts(),
+            })
+            print(f"[metrics] {json.dumps(metrics, ensure_ascii=False, sort_keys=True)}")
+            alerts = run_metrics.health_alerts(metrics)
+            for alert in alerts:
+                print(f"[health_alert] {alert}")
+            if alerts and failure is None:
+                try:
+                    send_message("⚠️ Saúde do Tennis Bot:\n• " + "\n• ".join(alerts))
+                except Exception as alert_exc:
+                    print(f"[aviso] falha ao enviar alerta de saúde: {alert_exc}")
+        except Exception as metrics_exc:
+            print(f"[aviso] falha ao persistir métricas operacionais: {metrics_exc}")
+    if failure is not None:
+        raise failure
 
 
 if __name__ == "__main__":
-    run()
+    main()

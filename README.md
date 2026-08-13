@@ -326,6 +326,23 @@ Sessão longa de correções — registo para não repetir o mesmo erro:
 
 ---
 
+## Controlo operacional e validação
+
+- Produção instala `requirements.lock`; `requirements.txt` mantém os intervalos
+  aceites para atualizações deliberadas.
+- Cada execução grava estado, fase, duração, chamadas RapidAPI por endpoint,
+  tokens, custo LLM estimado e falhas. Os preços são configuráveis por variáveis
+  `LLM_PRICE_*` e devem ser confirmados contra a faturação real.
+- A quota RapidAPI tem checkpoint incremental. Em falha ou timeout, o workflow
+  preserva apenas telemetria — nunca publica relatórios parciais.
+- Alertas de consumo, fallback LLM, custo e relatórios falhados são configuráveis
+  por `ALERT_RAPIDAPI_CALLS`, `ALERT_LLM_FALLBACK_RATE` e `ALERT_LLM_COST_USD`.
+- O backtest usa apenas história anterior ao jogo e apresenta ROI flat-stake,
+  lucro em unidades, drawdown, intervalo de confiança, resultados anuais
+  walk-forward e baselines. Continua a ser validação histórica, não promessa.
+- No índice, verde significa exclusivamente “valor a analisar”; mercado alinhado
+  é neutro, amarelo é acompanhamento e vermelho é prioridade alta.
+
 ## O que falta fazer
 
 ### 🟡 A validar continuamente

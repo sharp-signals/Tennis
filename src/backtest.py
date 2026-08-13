@@ -35,6 +35,7 @@ Corre via: python -m src.backtest
 from __future__ import annotations
 
 import io
+import math
 import os
 from datetime import datetime, timezone
 
@@ -77,6 +78,33 @@ MIN_EDGE_TO_COUNT = 5.0
 # nunca o próprio torneio em avaliação. 21 dias cobre com folga a duração
 # de qualquer torneio ATP (a maioria dura 1-2 semanas).
 LEAKAGE_SAFETY_BUFFER_DAYS = 21
+
+
+def _max_drawdown(returns: list[float]) -> float:
+    equity = peak = drawdown = 0.0
+    for result in returns:
+        equity += result
+        peak = max(peak, equity)
+        drawdown = max(drawdown, peak - equity)
+    return drawdown
+
+
+def _wilson_interval(wins: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    if total <= 0:
+        return (0.0, 0.0)
+    p = wins / total
+    denominator = 1 + z * z / total
+    centre = (p + z * z / (2 * total)) / denominator
+    margin = z * math.sqrt((p * (1 - p) + z * z / (4 * total)) / total) / denominator
+    return (max(0.0, centre - margin), min(1.0, centre + margin))
+
+
+def _return_summary(returns: list[float]) -> dict:
+    total = len(returns)
+    profit = sum(returns)
+    return {"bets": total, "profit_units": profit,
+            "roi_pct": 100 * profit / total if total else 0.0,
+            "max_drawdown_units": _max_drawdown(returns)}
 
 
 def _build_surname_index(history: pd.DataFrame) -> dict:
@@ -266,9 +294,11 @@ def run() -> None:
             "agrees": 0, "disagrees": 0,
             "signal_correct_disagree": 0, "market_correct_disagree": 0,
             "sum_implied_prob_our_pick_disagree": 0.0,
+            "returns": [], "year_returns": {},
         }
         for name in signal_names
     }
+    baseline_returns = {"market_favorite": [], "ranking": []}
 
     for _, row in odds_data.iterrows():
         odds = _get_odds(row)
@@ -306,6 +336,16 @@ def run() -> None:
         odd_winner, odd_loser = odds
         implied_prob_winner = _implied_prob_winner(odd_winner, odd_loser)
         market_favors_winner = implied_prob_winner > 0.5
+        favorite_won = market_favors_winner
+        favorite_odd = odd_winner if market_favors_winner else odd_loser
+        baseline_returns["market_favorite"].append(favorite_odd - 1 if favorite_won else -1.0)
+        try:
+            winner_rank, loser_rank = float(row.get("WRank")), float(row.get("LRank"))
+            ranking_picked_winner = winner_rank < loser_rank
+            ranking_odd = odd_winner if ranking_picked_winner else odd_loser
+            baseline_returns["ranking"].append(ranking_odd - 1 if ranking_picked_winner else -1.0)
+        except (TypeError, ValueError):
+            pass
 
         # Convenção: player_a = "winner" da fonte histórica, só para
         # calcular os edges com sinal consistente — isto é só para
@@ -333,6 +373,10 @@ def run() -> None:
                 # é o número certo para comparar, não um "50%" genérico.
                 our_pick_implied_prob = implied_prob_winner if our_signal_favors_winner else (1 - implied_prob_winner)
                 s["sum_implied_prob_our_pick_disagree"] += our_pick_implied_prob
+                picked_odd = odd_winner if our_signal_favors_winner else odd_loser
+                bet_return = picked_odd - 1 if our_signal_favors_winner else -1.0
+                s["returns"].append(bet_return)
+                s["year_returns"].setdefault(match_date.year, []).append(bet_return)
                 if our_signal_favors_winner:
                     s["signal_correct_disagree"] += 1
                 else:
@@ -350,6 +394,12 @@ def run() -> None:
     log(f"  Sem correspondência de nome entre as duas fontes: {skipped_no_name_match}")
     log(f"  Sem NENHUM dos 4 sinais com edge suficiente (< {MIN_EDGE_TO_COUNT} p.p.): {skipped_no_edge}")
     log(f"  Jogos usados em pelo menos um sinal: {usable}")
+    log("\n--- BASELINES FLAT-STAKE (referência, não estratégia) ---")
+    for baseline, returns in baseline_returns.items():
+        summary = _return_summary(returns)
+        log(f"  {baseline}: n={summary['bets']} ROI={summary['roi_pct']:+.2f}% "
+            f"lucro={summary['profit_units']:+.1f}u drawdown={summary['max_drawdown_units']:.1f}u")
+    log("  no_bet: n=0 ROI=+0.00% lucro=+0.0u drawdown=0.0u")
 
     signal_labels = {
         "h2h": "H2H de carreira (sozinho)",
@@ -382,6 +432,17 @@ def run() -> None:
                 f"{s['market_correct_disagree']}/{s['disagrees']} ({pct_market:.1f}%)")
             log(f"  Probabilidade IMPLÍCITA média do nosso pick (segundo as odds): {avg_implied_prob_our_pick:.1f}%")
             edge_vs_market = pct_signal - avg_implied_prob_our_pick
+            low, high = _wilson_interval(s["signal_correct_disagree"], s["disagrees"])
+            performance = _return_summary(s["returns"])
+            log(f"  Intervalo de confiança 95% da taxa de acerto: {100*low:.1f}%–{100*high:.1f}%")
+            log(f"  Retorno flat-stake: {performance['profit_units']:+.1f} unidades | "
+                f"ROI {performance['roi_pct']:+.2f}% | drawdown máximo "
+                f"{performance['max_drawdown_units']:.1f} unidades")
+            log("  Walk-forward por ano (cada jogo usa apenas história anterior):")
+            for year, year_returns in sorted(s["year_returns"].items()):
+                yearly = _return_summary(year_returns)
+                log(f"    {year}: n={yearly['bets']} ROI={yearly['roi_pct']:+.2f}% "
+                    f"lucro={yearly['profit_units']:+.1f}u")
             if edge_vs_market > 0:
                 log(f"  >>> O nosso pick ganhou MAIS vezes ({pct_signal:.1f}%) do que a odd implicava "
                     f"({avg_implied_prob_our_pick:.1f}%) — diferença de +{edge_vs_market:.1f} p.p. "
