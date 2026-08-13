@@ -777,6 +777,17 @@ def _build_match_payload(match: dict) -> dict:
         _prof_b = fetch_data.fetch_player_profile(player_b)
         _hand_a = fetch_data.compute_hand_from_profile(_prof_a) if _prof_a else None
         _hand_b = fetch_data.compute_hand_from_profile(_prof_b) if _prof_b else None
+        # DIAGNÓSTICO (13/08/2026, a pedido — matchup de mão "sem dados" em
+        # alguns jogos WTA apesar do pré-aquecimento): há DOIS pontos onde
+        # isto pode falhar — a mão de HOJE dos dois jogadores (_hand_a/_b,
+        # perfil por nome) ou a reconstrução HISTÓRICA de cada um
+        # (handedness_a/_b, calculada mais acima a partir do histórico +
+        # cache). Esta linha diz qual dos dois, em vez de adivinhar.
+        if not (_hand_a and _hand_b) or not (handedness_a and handedness_b):
+            print(f"[diag:mao] {player_a} vs {player_b} | "
+                  f"mão hoje: A={_hand_a!r} B={_hand_b!r} | "
+                  f"reconstrução histórica: A={'OK' if handedness_a else 'None'} "
+                  f"B={'OK' if handedness_b else 'None'}")
         # guardar as mãos no payload (o motor usa para o matchup)
         if _hand_a and _hand_b:
             payload_hands = {"a": _hand_a, "b": _hand_b}
