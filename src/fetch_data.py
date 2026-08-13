@@ -1186,15 +1186,233 @@ def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[
     return result
 
 
-def compute_handedness_matchup_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+# Limite de jogos históricos processados por jogadora na reconstrução via
+# perfis (WTA) — evita picos de custo na primeira execução (cache vazio),
+# quando cada adversária nova custa 1 pedido à RapidAPI. Com o tempo, a
+# cache permanente (a mão nunca muda) faz o custo tender para zero.
+MAX_JOGOS_RECONSTRUCAO_MAO = 80
+
+
+def _hand_cache_path(tour: str, player_name: str):
+    """Caminho da cache de mão por NOME normalizado — partilhado entre
+    _get_cached_hand_by_name (consulta durante a análise) e
+    warm_up_hand_cache (pré-aquecimento pelo ranking) para garantir que os
+    DOIS escrevem/leem exatamente a mesma chave. Extraído para função
+    própria de propósito — este projeto já teve vários bugs de chaves
+    trocadas entre quem escreve e quem lê dados; partilhar a lógica evita
+    reintroduzir o mesmo problema aqui."""
+    key = (_normalize_name(player_name) or "desconhecido").replace(" ", "_")
+    tour_key = str(tour).strip().lower()
+    return _PLAYER_CACHE_STORE.entity_path("hand_by_name", tour_key, f"{key}.json")
+
+
+def _read_cached_hand(tour: str, player_name: str) -> Optional[str]:
+    """None = nunca foi tentado; "" = já tentado, sem perfil encontrado;
+    "L"/"R" = mão conhecida. Ver _hand_cache_path."""
+    try:
+        return _PLAYER_CACHE_STORE.get_entry(
+            _hand_cache_path(tour, player_name), "hand", max_age_hours=24 * 365 * 5)
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def _write_cached_hand(tour: str, player_name: str, hand: Optional[str]) -> None:
+    try:
+        _PLAYER_CACHE_STORE.set_entry(
+            _hand_cache_path(tour, player_name), "hand", hand or "",
+            metadata={"tour": str(tour).strip().lower(), "name": player_name})
+    except (OSError, TypeError, ValueError):
+        pass
+
+
+def fetch_player_profile_by_id(tour: str, player_id: int) -> Optional[dict]:
+    """Endpoint /tennis/v2/{tour}/player/profile/{id} — perfil por ID
+    (confirmado real, 13/08/2026: devolve corretamente jogador do tour
+    pedido, com a mão em data.information.plays, mesmo formato que
+    fetch_player_profile/compute_hand_from_profile já sabem ler). Ao
+    contrário de fetch_player_profile (por nome), não precisa de
+    resolver grafia — usado no pré-aquecimento a partir do ranking
+    oficial, que já dá o ID diretamente."""
+    tour_key = str(tour).strip().lower()
+    cache_key = f"{tour_key}:{player_id}"
+    cached = _PROFILE_CACHE.get(cache_key)
+    if cached is not None:
+        age = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age < 24 * 30:
+            return cached["data"]
+    if not RAPIDAPI_KEY:
+        return None
+    url = f"{RAPIDAPI_BASE}/{tour_key}/player/profile/{int(player_id)}"
+    try:
+        resp = _rapidapi_get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        _PROFILE_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter profile por ID ({tour_key}, {player_id}): {exc}")
+        return None
+
+
+def warm_up_hand_cache(tour: str = "wta", top_n: int = 200) -> dict:
+    """
+    Pré-aquecimento da cache de mão (permanente) a partir do RANKING
+    OFICIAL — em vez de esperar que cada adversária apareça organicamente
+    num jogo (e só aí gastar o pedido), resolve de uma vez a mão das
+    top_n jogadoras do ranking. Depois disto, a esmagadora maioria dos
+    jogos WTA já tem a mão das duas jogadoras em cache ANTES do primeiro
+    jogo ser analisado.
+
+    Usa o ID do ranking oficial diretamente (fetch_player_profile_by_id)
+    — não precisa de resolver nomes por grafia. Só WTA precisa disto (ATP
+    já tem a mão embutida no histórico local, sem custo de API nenhum —
+    ver compute_handedness_matchup_stats).
+
+    Pensado para correr à parte do fluxo normal do bot (manual ou
+    agendado, ex: semanal) — não faz parte de main.py. Respeita o
+    circuit breaker (rapidapi_budget_exceeded) e para mais cedo se o
+    orçamento acabar, devolvendo o que já conseguiu.
+    """
+    tour_key = str(tour).strip().lower()
+    resumo = {"total_ranking": 0, "ja_em_cache": 0, "resolvidas_agora": 0,
+              "sem_perfil": 0, "parou_por_orcamento": False}
+    ranking = fetch_official_ranking(tour_key)
+    if not ranking:
+        print(f"[aviso] pré-aquecimento {tour_key}: ranking oficial indisponível.")
+        return resumo
+
+    # ordena por posição, do #1 para baixo, até top_n
+    entradas = sorted(
+        ((info.get("rank") or 9999, key, info.get("player_id"))
+         for key, info in ranking.items() if info.get("player_id")),
+        key=lambda t: t[0],
+    )[:top_n]
+    resumo["total_ranking"] = len(entradas)
+
+    for _rank, normalized_key, player_id in entradas:
+        if rapidapi_budget_exceeded():
+            resumo["parou_por_orcamento"] = True
+            print(f"[aviso] pré-aquecimento {tour_key}: orçamento RapidAPI esgotado, "
+                  f"parado em {resumo['resolvidas_agora']} jogadoras novas.")
+            break
+        # já em cache? (reaproveita _hand_cache_path — a MESMA função usada
+        # por _get_cached_hand_by_name — para garantir que as duas leem e
+        # escrevem exatamente a mesma chave. BUG APANHADO EM TESTE
+        # 13/08/2026: a primeira versão construía o caminho aqui à parte,
+        # sem aplicar `.replace(" ", "_")` como _hand_cache_path faz —
+        # a cache escrita aqui nunca era encontrada por quem a consultava
+        # depois. Corrigido para usar sempre a função partilhada.
+        path = _hand_cache_path(tour_key, normalized_key)
+        try:
+            existente = _PLAYER_CACHE_STORE.get_entry(path, "hand", max_age_hours=24 * 365 * 5)
+        except (OSError, TypeError, ValueError):
+            existente = None
+        if existente is not None:
+            resumo["ja_em_cache"] += 1
+            continue
+        profile = fetch_player_profile_by_id(tour_key, player_id)
+        hand = compute_hand_from_profile(profile) if profile else None
+        _write_cached_hand(tour_key, normalized_key, hand)
+        if hand:
+            resumo["resolvidas_agora"] += 1
+        else:
+            resumo["sem_perfil"] += 1
+
+    print(f"[info] pré-aquecimento {tour_key}: {resumo['resolvidas_agora']} novas, "
+          f"{resumo['ja_em_cache']} já em cache, {resumo['sem_perfil']} sem perfil "
+          f"(de {resumo['total_ranking']} no ranking).")
+    return resumo
+
+
+def _get_cached_hand_by_name(tour: str, player_name: str) -> Optional[str]:
+    """Mão do jogador (L/R) com CACHE PERMANENTE por nome — a mão nunca
+    muda ao longo da carreira, ao contrário de estatísticas dinâmicas, por
+    isso esta cache não expira (max_age_hours muito alto). Usa
+    fetch_player_profile (já existente, funciona por NOME, não precisa de
+    ID) só na primeira vez que um nome aparece; depois fica gravado para
+    sempre — o custo desta função tende a zero à medida que o circuito vai
+    sendo coberto (inclusive pelo pré-aquecimento, ver warm_up_hand_cache).
+    Também grava "não encontrada" (string vazia) para não repetir pedidos
+    a nomes sem perfil disponível."""
+    cached = _read_cached_hand(tour, player_name)
+    if cached is not None:
+        return cached or None
+    if not RAPIDAPI_KEY or rapidapi_budget_exceeded():
+        return None
+    profile = fetch_player_profile(player_name)
+    hand = compute_hand_from_profile(profile) if profile else None
+    _write_cached_hand(tour, player_name, hand)
+    return hand
+
+
+def compute_handedness_matchup_stats_via_profiles(history: pd.DataFrame, player: str, tour: str) -> Optional[dict]:
+    """
+    Alternativa a compute_handedness_matchup_stats para quando o histórico
+    NÃO tem colunas winner_hand/loser_hand — o caso do WTA: a única fonte
+    (tennis-data.co.uk) nunca teve essas colunas, e o repositório
+    JeffSackmann/tennis_wta desapareceu POR COMPLETO (confirmado 13/08/2026,
+    404 no repositório inteiro, não só nos ficheiros por ano).
+
+    Em vez de pedir "mão do adversário em cada jogo" a uma API limitada
+    (past-matches só devolve ~10 jogos, sem paginação — confirmado na
+    Playground), usa o HISTÓRICO COMPLETO multi-ano que já temos, e resolve
+    a mão de cada ADVERSÁRIA por nome via fetch_player_profile — com cache
+    PERMANENTE (ver _get_cached_hand_by_name), por isso o custo tende a
+    zero com o tempo. Limitado a MAX_JOGOS_RECONSTRUCAO_MAO jogos mais
+    recentes por precaução (picos de custo na primeira execução).
+    """
+    if history.empty:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    played = history[(history["winner_name"] == resolved) | (history["loser_name"] == resolved)].copy()
+    if played.empty:
+        return None
+    if "tourney_date" in played.columns:
+        played = played.sort_values("tourney_date", ascending=False)
+    played = played.head(MAX_JOGOS_RECONSTRUCAO_MAO)
+
+    played["_opponent_name"] = played.apply(
+        lambda row: row["loser_name"] if row["winner_name"] == resolved else row["winner_name"], axis=1
+    )
+
+    tally = {"L": {"wins": 0, "matches": 0}, "R": {"wins": 0, "matches": 0}}
+    for _, row in played.iterrows():
+        if rapidapi_budget_exceeded():
+            break  # circuit breaker: para a reconstrução, devolve o que já tem
+        hand = _get_cached_hand_by_name(tour, row["_opponent_name"])
+        if hand not in ("L", "R"):
+            continue
+        tally[hand]["matches"] += 1
+        if row["winner_name"] == resolved:
+            tally[hand]["wins"] += 1
+
+    result: dict = {}
+    for hand_code, label in (("L", "vs_left_handed"), ("R", "vs_right_handed")):
+        m = tally[hand_code]["matches"]
+        result[label] = ({"matches": m, "wins": tally[hand_code]["wins"], "losses": m - tally[hand_code]["wins"]}
+                         if m > 0 else None)
+    if result.get("vs_left_handed") is None and result.get("vs_right_handed") is None:
+        return None
+    return result
+
+
+def compute_handedness_matchup_stats(history: pd.DataFrame, player: str, tour: Optional[str] = None) -> Optional[dict]:
     """
     Taxa de vitória do jogador especificamente contra adversários canhotos
     vs destros — alguns jogadores têm dificuldade estilística real contra
     canhotos, independentemente do nível geral. Usa as colunas
     'winner_hand'/'loser_hand' já presentes no histórico ('L'/'R'/'U').
+
+    Se o histórico não tiver essas colunas (caso do WTA) e `tour` for
+    passado, cai automaticamente na reconstrução via perfis
+    (compute_handedness_matchup_stats_via_profiles) — ver essa função.
     """
     required_cols = {"winner_hand", "loser_hand"}
     if history.empty or not required_cols.issubset(history.columns):
+        if tour:
+            return compute_handedness_matchup_stats_via_profiles(history, player, tour)
         return None
 
     resolved = resolve_player_name(history, player)
@@ -2651,3 +2869,28 @@ def flush_tournament_cache() -> None:
     if _tournament_cache_dirty:
         _save_tournament_cache(_tournament_cache)
         print(f"[info] cache de torneios atualizada ({len(_tournament_cache)} torneios).")
+
+
+def main() -> None:
+    """
+    Entrada CLI para tarefas de manutenção que não fazem parte do fluxo
+    normal do bot (main.py). Por agora só o pré-aquecimento da cache de
+    mão WTA — ver warm_up_hand_cache.
+
+    Uso:
+        python -m src.fetch_data warm-up-hands [tour] [top_n]
+        python -m src.fetch_data warm-up-hands wta 200   # (valores por defeito)
+    """
+    import sys as _sys
+    args = _sys.argv[1:]
+    if not args or args[0] != "warm-up-hands":
+        print(__doc__ if __doc__ else "")
+        print("Uso: python -m src.fetch_data warm-up-hands [tour=wta] [top_n=200]")
+        return
+    tour = args[1] if len(args) >= 2 else "wta"
+    top_n = int(args[2]) if len(args) >= 3 else 200
+    warm_up_hand_cache(tour, top_n)
+
+
+if __name__ == "__main__":
+    main()
