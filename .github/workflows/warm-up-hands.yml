@@ -57,8 +57,19 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/cache/ 2>/dev/null || true
-          if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+          # CORREÇÃO (13/08/2026): faltava aqui data/rapidapi_usage_inflight.json
+          # (e os outros ficheiros de telemetria) — o tennis-bot.yml principal já
+          # os inclui. Sem isto, o ficheiro ficava "untracked" mas nunca
+          # adicionado; git status via-o e entrava no "if", mas como nada
+          # tinha sido preparado (git add) para commit, o "git commit" falhava
+          # com "nothing added to commit but untracked files present".
+          git add data/cache/ data/rapidapi_usage_log.json \
+            data/rapidapi_usage_inflight.json data/run_metrics_log.json 2>/dev/null || true
+          # Verifica especificamente se há algo PREPARADO (staged) para
+          # commit — mais robusto que "git status --porcelain" (que também
+          # apanha ficheiros não-preparados/não relacionados e podia voltar
+          # a cair no mesmo erro se aparecer outro ficheiro novo no futuro).
+          if ! git diff --cached --quiet; then
             git commit -m "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"
             # Mesma proteção do bot principal: rebase antes de enviar, para
             # não colidir com alterações remotas entretanto feitas.
