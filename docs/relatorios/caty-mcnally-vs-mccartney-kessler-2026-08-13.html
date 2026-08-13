@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caty McNally vs Mccartney Kessler</title>
+<style>
+:root {
+  --bg:#0f1419; --surface:#161c23; --surface2:#1c242d;
+  --text:#e6edf3; --dim:#8896a5; --line:#2a333d;
+  --a:#4aa3df; --b:#e8935a; --mint:#3fb9a8; --amber:#d9a441;
+  --neutral:#5a6b7a; --error:#e06c5b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  line-height:1.5; font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased; padding:16px; }
+.wrap { max-width:1080px; margin:0 auto; }
+.wrap-text { max-width:720px; margin-left:auto; margin-right:auto; }
+.num { font-variant-numeric:tabular-nums; }
+
+/* --- MATCHUP HEADER (ficha de combate) --- */
+.mh { background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  padding:20px; margin-bottom:14px; }
+.mh-top { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:start; }
+.mh-name { font-size:22px; font-weight:700; letter-spacing:-.3px;
+  border-left:3px solid var(--a); padding-left:8px; }
+.mh-name.b { text-align:right; border-left:none;
+  border-right:3px solid var(--b); padding-left:0; padding-right:8px; }
+.mh-sub { font-size:13px; color:var(--dim); margin-top:3px; }
+.mh-sub.b { text-align:right; }
+.mh-vs { font-size:12px; color:var(--dim); text-align:center; padding-top:6px;
+  font-weight:600; letter-spacing:1px; }
+.mh-tourn { font-size:11px; color:var(--dim); text-align:center; margin-top:4px;
+  text-transform:uppercase; letter-spacing:.5px; }
+.mh-odds { display:grid; grid-template-columns:1fr auto 1fr; gap:12px;
+  margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+.mh-odd { font-size:20px; font-weight:700; }
+.mh-odd.b { text-align:right; }
+.mh-odd small { display:block; font-size:12px; color:var(--dim); font-weight:400; }
+.mh-mid { text-align:center; font-size:12px; color:var(--dim); }
+
+/* --- LEITURA DO JOGO (a decisão, 1 frase) --- */
+.leitura { border-radius:12px; padding:14px 16px; margin-bottom:14px;
+  border:1px solid var(--line); display:flex; gap:12px; align-items:center; }
+.leitura-bola { font-size:24px; }
+.leitura-txt b { font-size:15px; }
+.leitura-txt div { font-size:13px; color:var(--dim); margin-top:2px; }
+
+/* --- 4 FATORES (chips) --- */
+.fatores { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+@media(max-width:640px){ .fatores { grid-template-columns:repeat(2,1fr); } }
+.fator { background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:10px; text-align:center; }
+.fator-lbl { font-size:10px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.5px; margin-bottom:4px; }
+.fator-val { font-size:14px; font-weight:600; }
+.fator-fav { font-size:11px; margin-top:2px; }
+
+/* --- MERCADO vs SINAL (gráfico central) --- */
+.mvs { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin-bottom:14px; }
+.mvs h3, .card h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:14px; font-weight:600; }
+.mvs-row { margin-bottom:14px; }
+.mvs-row-lbl { display:flex; justify-content:space-between; font-size:12px;
+  color:var(--dim); margin-bottom:5px; }
+.mvs-track { position:relative; height:26px; background:var(--surface2);
+  border-radius:6px; overflow:hidden; }
+.mvs-fill { position:absolute; top:0; bottom:0; left:0; border-radius:6px; }
+.mvs-mid { position:absolute; left:50%; top:0; bottom:0; width:1px;
+  background:var(--dim); opacity:.4; }
+.mvs-val { position:absolute; top:50%; transform:translateY(-50%); font-size:12px;
+  font-weight:700; padding:0 8px; }
+.mvs-delta { text-align:center; font-size:13px; margin-top:10px; font-weight:600; }
+
+/* --- CARDS genéricos --- */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:16px; margin-bottom:14px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media(max-width:760px){ .grid2 { grid-template-columns:1fr; } }
+
+/* --- barra comparativa (forma, serviço) --- */
+.cmp { margin-bottom:12px; }
+.cmp:last-child { margin-bottom:0; }
+.cmp-lbl { font-size:12px; color:var(--dim); margin-bottom:6px; }
+.cmp-row { display:grid; grid-template-columns:90px 1fr 54px; gap:8px;
+  align-items:center; margin-bottom:4px; }
+.cmp-name { font-size:12px; color:var(--dim); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.cmp-bar { height:14px; background:var(--surface2); border-radius:4px; overflow:hidden; }
+.cmp-bar span { display:block; height:100%; border-radius:4px; }
+.cmp-num { font-size:13px; font-weight:600; text-align:right; }
+.cmp-delta { font-size:11px; text-align:center; color:var(--mint); margin-top:3px; }
+
+/* amostra (auditoria #8): esbatido se n<10 */
+.samp-low { opacity:.5; }
+.samp-tag { font-size:10px; color:var(--dim); }
+
+/* --- fadiga --- */
+.fadiga-cmp { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center; }
+.fadiga-side { font-size:13px; }
+.fadiga-side.b { text-align:right; }
+.fadiga-big { font-size:18px; font-weight:700; }
+.fadiga-delta { text-align:center; font-size:12px; color:var(--amber); font-weight:600; }
+
+/* --- details (mais estatísticas) --- */
+details.more { background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; margin-bottom:14px; }
+details.more>summary { padding:14px 16px; cursor:pointer; font-size:13px;
+  font-weight:600; color:var(--text); list-style:none; }
+details.more>summary::-webkit-details-marker { display:none; }
+details.more>summary::before { content:"▸ "; }
+details.more[open]>summary::before { content:"▾ "; }
+details.more .more-body { padding:0 16px 16px; }
+.more-hint { color:var(--dim); font-size:11px; font-weight:400; margin-left:6px; }
+
+/* --- estado parcial/erro --- */
+.parcial { background:rgba(224,108,91,.1); border:1px solid var(--error);
+  border-radius:12px; padding:16px; margin-bottom:14px; }
+.parcial b { color:var(--error); }
+
+/* --- veredicto --- */
+.veredicto { background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; padding:18px; margin-bottom:14px; }
+.veredicto h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:10px; }
+.merc-linha { display:flex; align-items:center; gap:10px; padding:7px 0;
+  border-bottom:1px solid var(--line); font-size:13px; }
+.merc-linha:last-of-type { border-bottom:none; }
+.merc-bola { font-size:14px; }
+.merc-nome { font-weight:600; min-width:130px; }
+.merc-nota { color:var(--dim); font-size:12px; }
+.merc-aviso { font-size:11px; color:var(--dim); margin-top:10px;
+  padding-top:8px; border-top:1px solid var(--line); }
+.merc-principal { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  margin-bottom:10px; background:var(--surface2); }
+.merc-principal-tag { font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--dim); font-weight:700; display:block; margin-bottom:4px; }
+.merc-linha-top { border-bottom:none; padding:2px 0; font-size:14px; }
+.merc-linha-top .merc-nome { font-size:15px; }
+.merc-secundarios { opacity:.75; }
+.merc-sec-tag { font-size:10px; color:var(--dim); margin-bottom:2px; }
+.h2h-line { font-size:14px; line-height:1.6; }
+.fd-linha { padding:6px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.fd-linha:last-child { border-bottom:none; }
+.fd-linha-top { display:flex; justify-content:space-between; align-items:baseline;
+  gap:10px; margin-bottom:4px; }
+.fd-nome { color:var(--text); font-weight:600; }
+.fd-val { font-weight:600; text-align:right; }
+.fd-dim { color:var(--dim); font-weight:400; }
+.fd-nota { color:var(--dim); font-size:11px; font-weight:400; }
+.fd-bar { display:flex; position:relative; height:22px; border-radius:5px;
+  overflow:hidden; background:var(--surface2); }
+.fd-bar::after { content:""; position:absolute; left:50%; top:0; bottom:0;
+  width:1px; background:rgba(255,255,255,.3); z-index:2; }
+.fd-bar-a { background:var(--a); opacity:.78; }
+.fd-bar-b { background:var(--b); opacity:.78; }
+.fd-bar-val { position:absolute; top:50%; transform:translateY(-50%); z-index:3;
+  color:#fff; font-size:11px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.65); }
+.fd-bar-val.a { left:7px; } .fd-bar-val.b { right:7px; }
+.fd-bar.samp-low { opacity:.52; }
+@media(max-width:520px){ .more-hint { display:block; margin:2px 0 0 16px; }
+  .fd-linha-top { align-items:flex-start; } .fd-val { font-size:11px; } }
+.foot { text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
+  padding-top:14px; border-top:1px solid var(--line); }
+</style></head>
+<body><div class="wrap">
+<div class="mh">
+  <div class="mh-top">
+    <div>
+      <div class="mh-name">Caty McNally</div>
+      <div class="mh-sub">#70 · Forma 6–4</div>
+    </div>
+    <div>
+      <div class="mh-vs">VS</div>
+      <div class="mh-tourn">Cincinnati Open - Cincinnati<br>WTA 1000 · Hard</div>
+    </div>
+    <div>
+      <div class="mh-name b">Mccartney Kessler</div>
+      <div class="mh-sub b">#48 · Forma 4–6</div>
+    </div>
+  </div>
+  <div class="mh-odds">
+    <div class="mh-odd">1.666<small>57% mercado</small></div>
+    <div class="mh-mid"></div>
+    <div class="mh-odd b">2.2<small>43% mercado</small></div>
+  </div>
+</div>
+<div class="leitura" style="border-color:#3fb9a8">
+  <div class="leitura-bola">🟢</div>
+  <div class="leitura-txt"><b>Divergência forte</b><div>Os indicadores apontam para <b>Mccartney Kessler</b> (índice 77/100), mas o mercado favorece <b>Caty McNally</b>. (desalinhamento de 34 p.p. entre o índice e o mercado)</div></div>
+</div><div class="fatores">
+<div class="fator">
+  <div class="fator-lbl">resiliência em sets</div>
+  <div class="fator-fav" style="color:var(--mint)">▲ Mccartney Kessler</div>
+</div>
+<div class="fator">
+  <div class="fator-lbl">superfície</div>
+  <div class="fator-fav" style="color:var(--mint)">▲ Mccartney Kessler</div>
+</div>
+<div class="fator">
+  <div class="fator-lbl">fadiga</div>
+  <div class="fator-fav" style="color:var(--mint)">▲ Mccartney Kessler</div>
+</div><div class="fator"><div class="fator-lbl">—</div></div></div>
+<div class="mvs">
+  <h3>Mercado vs Sinal</h3>
+  
+<div class="mvs-row">
+  <div class="mvs-row-lbl"><span>Caty McNally</span><span>Mercado</span><span>Mccartney Kessler</span></div>
+  <div class="mvs-track">
+    <div class="mvs-fill" style="width:57%; background:#4aa3df; opacity:.7"></div>
+    <div class="mvs-mid"></div>
+    <div class="mvs-val" style="left:0; color:#fff">57%</div>
+    <div class="mvs-val" style="right:0; color:#fff">43%</div>
+  </div>
+</div>
+<div class="mvs-row">
+  <div class="mvs-row-lbl"><span>Caty McNally</span><span>Índice de sinais</span><span>Mccartney Kessler</span></div>
+  <div class="mvs-track">
+    <div class="mvs-fill" style="width:23%; background:#4aa3df; opacity:.7"></div>
+    <div class="mvs-mid"></div>
+    <div class="mvs-val" style="left:0; color:#fff">23/100</div>
+    <div class="mvs-val" style="right:0; color:#fff">77/100</div>
+  </div>
+</div><div class="mvs-delta" style="color:var(--mint)">Divergência forte — indicadores a favor de Mccartney Kessler</div>
+</div><div class="card"><h3>Mercados a acompanhar</h3><div class="merc-principal"><span class="merc-principal-tag">Mercado principal</span><div class="merc-linha merc-linha-top"><span class="merc-bola">🟢</span><span class="merc-nome">Moneyline Mccartney Kessler</span><span class="merc-nota">indicadores divergem do mercado (34 p.p.)</span></div></div><div class="merc-aviso">Marcação de <b>interesse</b> para observação — não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div><div class="grid2"><div class="card"><h3>Forma</h3>
+<div class="cmp">
+  <div class="cmp-lbl">Forma (últimos 10)</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4aa3df;margin-right:5px;vertical-align:middle"></span>Caty McNally</div>
+  <div class="cmp-bar"><span style="width:60%; background:#4aa3df"></span></div>
+  <div class="cmp-num">6–4 · 60%</div>
+</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e8935a;margin-right:5px;vertical-align:middle"></span>Mccartney Kessler</div>
+  <div class="cmp-bar"><span style="width:40%; background:#e8935a"></span></div>
+  <div class="cmp-num">4–6 · 40%</div>
+</div>
+</div></div>
+<div class="card"><h3>Serviço / Resposta</h3>
+  <div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px; color:var(--dim); font-size:11px">
+    <div></div><div class="cmp-num">McNally</div>
+    <div class="cmp-delta" style="color:var(--dim)">vantagem</div>
+    <div class="cmp-num">Kessler</div>
+  </div>
+  
+<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
+  <div class="cmp-name">1º serviço ganho</div>
+  <div class="cmp-num">55.0%</div>
+  <div class="cmp-delta" style="color:#e8935a">+3.0 Kessler</div>
+  <div class="cmp-num">58.0%</div>
+</div>
+<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
+  <div class="cmp-name">BP salvos</div>
+  <div class="cmp-num">50.0%</div>
+  <div class="cmp-delta" style="color:#e8935a">+1.0 Kessler</div>
+  <div class="cmp-num">51.0%</div>
+</div>
+<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
+  <div class="cmp-name">BP convertidos</div>
+  <div class="cmp-num">43.0%</div>
+  <div class="cmp-delta" style="color:#4aa3df">+2.0 McNally</div>
+  <div class="cmp-num">41.0%</div>
+</div>
+</div></div>
+<div class="card"><h3>Carga (7 dias)</h3>
+  <div class="fadiga-cmp">
+    <div class="fadiga-side">
+      <div class="fadiga-big">1 jogos</div>
+      <div class="samp-tag">3 sets · 5d descanso</div>
+    </div>
+    <div class="fadiga-delta">Δ +3 sets Caty McNally</div>
+    <div class="fadiga-side b">
+      <div class="fadiga-big">0 jogos</div>
+      <div class="samp-tag">0 sets · 9d descanso</div>
+    </div>
+  </div>
+</div><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">1 confronto apenas — amostra insuficiente para sinal relevante.</div></div><div class="card"><h3>Cenários decisivos</h3>
+<div class="cmp">
+  <div class="cmp-lbl">Set decisivo</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4aa3df;margin-right:5px;vertical-align:middle"></span>Caty McNally</div>
+  <div class="cmp-bar"><span style="width:53%; background:#4aa3df"></span></div>
+  <div class="cmp-num">53% <span class="samp-tag">n=118</span></div>
+</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e8935a;margin-right:5px;vertical-align:middle"></span>Mccartney Kessler</div>
+  <div class="cmp-bar"><span style="width:65%; background:#e8935a"></span></div>
+  <div class="cmp-num">65% <span class="samp-tag">n=97</span></div>
+</div>
+</div>
+<div class="cmp">
+  <div class="cmp-lbl">Recupera após perder 1º set</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4aa3df;margin-right:5px;vertical-align:middle"></span>Caty McNally</div>
+  <div class="cmp-bar"><span style="width:21%; background:#4aa3df"></span></div>
+  <div class="cmp-num">21% <span class="samp-tag">n=145</span></div>
+</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e8935a;margin-right:5px;vertical-align:middle"></span>Mccartney Kessler</div>
+  <div class="cmp-bar"><span style="width:31%; background:#e8935a"></span></div>
+  <div class="cmp-num">31% <span class="samp-tag">n=141</span></div>
+</div>
+</div></div><details class="more"><summary>Mapa de Forças (11)<span class="more-hint">comparação visual de todos os fatores</span></summary><div class="more-body"><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">superfície</span><span class="fd-val" style="color:var(--mint)">▲ Mccartney Kessler</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:46%"></span><span class="fd-bar-b" style="width:54%"></span><span class="fd-bar-val a">55%</span><span class="fd-bar-val b">65%</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--mint)">▲ Mccartney Kessler</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:45%"></span><span class="fd-bar-b" style="width:55%"></span><span class="fd-bar-val a">53%</span><span class="fd-bar-val b">65%</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">matchup de mão</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">confronto direto</span><span class="fd-val" style="color:var(--dim)">· Mccartney Kessler <span class="fd-nota">(amostra insuficiente (1 jogo))</span></span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--mint)">▲ Caty McNally</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:60%"></span><span class="fd-bar-b" style="width:40%"></span><span class="fd-bar-val a">60%</span><span class="fd-bar-val b">40%</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">ranking</span><span class="fd-val" style="color:var(--mint)">▲ Mccartney Kessler</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:47%"></span><span class="fd-bar-b" style="width:53%"></span><span class="fd-bar-val a">#70</span><span class="fd-bar-val b">#48</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">fadiga</span><span class="fd-val" style="color:var(--mint)">▲ Mccartney Kessler</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">época atual</span><span class="fd-val" style="color:var(--mint)">▲ Caty McNally</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:60%"></span><span class="fd-bar-b" style="width:40%"></span><span class="fd-bar-val a">60%</span><span class="fd-bar-val b">40%</span></div></div><div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">serviço</span><span class="fd-val" style="color:var(--mint)">▲ Mccartney Kessler</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:49%"></span><span class="fd-bar-b" style="width:51%"></span><span class="fd-bar-val a">55%</span><span class="fd-bar-val b">58%</span></div></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Kessler é o lado favorecido pelos indicadores, com divergência forte face ao mercado. Acompanhar Moneyline Kessler.</div></div></div>
+<div class="wrap"><div class="foot">Gerado em 13/08/2026 · Pontos de observação para leitura pré-live e ao vivo — não são recomendações de aposta.</div></div>
+</body></html>
