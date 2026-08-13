@@ -21,6 +21,9 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write   # necessário para o commit automático da cache de torneios
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -60,7 +63,7 @@ jobs:
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: preservar telemetria de execução falhada [skip ci]"
             git pull --rebase --autostash origin main
-            git push
+            bash scripts/publish-generated-changes.sh "chore: preservar telemetria de execução falhada"
           else
             echo "Sem telemetria nova para preservar."
           fi
@@ -84,7 +87,7 @@ jobs:
                 echo "Rebase falhou; não é seguro continuar para push."
                 exit 1
               fi
-              if git push; then
+              if bash scripts/publish-generated-changes.sh "chore: atualizar caches e relatórios"; then
                 echo "Push concluído (tentativa $tentativa)."
                 push_ok=1
                 break

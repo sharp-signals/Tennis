@@ -13,6 +13,9 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write   # necessário para gravar o resultado no repo
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -34,4 +37,4 @@ jobs:
           git config user.email "actions@github.com"
           git add data/backtest_results/
           git commit -m "chore: resultado do backtest [skip ci]" || echo "Sem alterações a gravar."
-          git push
+          bash scripts/publish-generated-changes.sh "chore: resultado do backtest"

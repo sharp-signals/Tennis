@@ -30,6 +30,9 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write   # necessário para gravar a cache atualizada
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -65,7 +68,7 @@ jobs:
                 echo "Rebase falhou; não é seguro continuar para push."
                 exit 1
               fi
-              if git push; then
+              if bash scripts/publish-generated-changes.sh "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"; then
                 echo "Push concluído (tentativa $tentativa)."
                 push_ok=1
                 break
