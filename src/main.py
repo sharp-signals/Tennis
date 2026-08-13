@@ -724,8 +724,8 @@ def _build_match_payload(match: dict) -> dict:
 
     set1_comeback_a = fetch_data.compute_set1_comeback_stats(history, player_a)
     set1_comeback_b = fetch_data.compute_set1_comeback_stats(history, player_b)
-    handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a)
-    handedness_b = fetch_data.compute_handedness_matchup_stats(history, player_b)
+    handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a, tour=tour)
+    handedness_b = fetch_data.compute_handedness_matchup_stats(history, player_b, tour=tour)
     layoff_return_a = fetch_data.compute_return_from_layoff_stats(history, player_a)
     layoff_return_b = fetch_data.compute_return_from_layoff_stats(history, player_b)
     deciding_set_a = fetch_data.compute_deciding_set_stats(history, player_a)
