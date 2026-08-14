@@ -43,6 +43,8 @@ from .config import (
     LOOKAHEAD_HOURS_MIN,
     MATCH_PROCESSING_WORKERS,
     RECENT_FORM_MATCHES,
+    RECENT_FORM_WINDOW_DAYS,
+    RECENT_QUALITY_WINDOW_DAYS,
     SERVE_RETURN_STATS_MATCHES,
     SKIP_ANALYSIS_ODDS_THRESHOLD,
 )
@@ -421,17 +423,107 @@ def _compute_features(payload: dict) -> dict:
                             "diff": abs(ra - rb), "valor_a": ra, "valor_b": rb,
                             "pontos_a": pa_pts, "pontos_b": pb_pts}
 
+    # NOVO (14/08/2026, a pedido): evolução de ranking (pontos, 6m/12m) —
+    # score combinado = média das variações % disponíveis (6m e/ou 12m).
+    # Comparação direta entre os dois jogadores (não é % de 0-100, é
+    # variação relativa, por isso não usa o limiar genérico de 3 p.p. dos
+    # outros fatores — usa a sua própria escala).
+    def _evo_score(d):
+        vals = [v for v in ((d or {}).get("change_6m_pct"), (d or {}).get("change_12m_pct")) if v is not None]
+        return sum(vals) / len(vals) if vals else None
+    _re_a = payload.get("ranking_evolution_a")
+    _re_b = payload.get("ranking_evolution_b")
+    _sa_evo, _sb_evo = _evo_score(_re_a), _evo_score(_re_b)
+    if _sa_evo is not None and _sb_evo is not None:
+        feats["ranking_evolucao"] = {
+            "lider": a if _sa_evo > _sb_evo else (b if _sb_evo > _sa_evo else "igual"),
+            "diff": _sa_evo - _sb_evo, "valor_a": round(_sa_evo, 1), "valor_b": round(_sb_evo, 1),
+        }
+
     # Forma recente (win%)
     _edge(_pct(payload.get("recent_form_a")), _pct(payload.get("recent_form_b")),
           "forma_recente",
           amostra_a=(payload.get("recent_form_a") or {}).get("matches"),
           amostra_b=(payload.get("recent_form_b") or {}).get("matches"))
 
-    # Época atual (win%)
-    _edge(_pct(payload.get("current_season_a")), _pct(payload.get("current_season_b")),
-          "epoca_atual",
-          amostra_a=(payload.get("current_season_a") or {}).get("matches"),
-          amostra_b=(payload.get("current_season_b") or {}).get("matches"))
+    # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (score
+    # graduado vs top-10/20/50, ver compute_recent_quality_wins). Não usa
+    # _edge (que assume percentagens 0-100) — o "score" é uma contagem de
+    # pontos, comparado diretamente entre os dois jogadores.
+    _qa = payload.get("recent_quality_a") or {}
+    _qb = payload.get("recent_quality_b") or {}
+    if _qa.get("matches") is not None and _qb.get("matches") is not None:
+        _sa, _sb = _qa.get("score", 0), _qb.get("score", 0)
+        feats["qualidade_vitorias"] = {
+            "lider": a if _sa > _sb else (b if _sb > _sa else "igual"),
+            "valor_a": _sa, "valor_b": _sb,
+            "top10_a": _qa.get("top10_wins", 0), "top10_b": _qb.get("top10_wins", 0),
+            "top20_a": _qa.get("top20_wins", 0), "top20_b": _qb.get("top20_wins", 0),
+            "top50_a": _qa.get("top50_wins", 0), "top50_b": _qb.get("top50_wins", 0),
+        }
+
+    # REMOVIDO (14/08/2026, a pedido): "época atual" (ano civil inteiro)
+    # ficou redundante como fator do motor com a chegada de forma_recente
+    # (45 dias), qualidade_vitorias (90 dias) e forma_sazonal — media
+    # basicamente a mesma coisa de forma mais grosseira. Os dados
+    # (current_season_a/b) continuam disponíveis no payload para outros usos
+    # (ex: distinguir jogador ativo de ex-campeão parado), só deixou de
+    # entrar como fator ponderado no índice.
+
+    # NOVO (14/08/2026, a pedido): indoor vs outdoor — compara a performance
+    # de cada jogador no MESMO contexto do jogo de hoje (indoor ou outdoor),
+    # não uma média geral. Mesmo padrão do matchup de mão (comparar no
+    # contexto específico, não em bruto).
+    _surf_str = (payload.get("surface") or "").lower()
+    _hoje_indoor = "indoor" in _surf_str
+    _ctx = "indoor" if _hoje_indoor else "outdoor"
+    _io_a = (payload.get("indoor_outdoor_a") or {}).get(_ctx)
+    _io_b = (payload.get("indoor_outdoor_b") or {}).get(_ctx)
+    _edge(_pct(_io_a), _pct(_io_b), "indoor_outdoor",
+          amostra_a=(_io_a or {}).get("matches"), amostra_b=(_io_b or {}).get("matches"))
+
+    # NOVO (14/08/2026, a pedido): velocidade do piso — cobertura limitada
+    # (só Slams/Masters1000/ATP Finals). "sem dados" na maioria dos jogos.
+    _cs_a = payload.get("court_speed_a")
+    _cs_b = payload.get("court_speed_b")
+    _edge(_pct(_cs_a), _pct(_cs_b), "velocidade_piso",
+          amostra_a=(_cs_a or {}).get("matches"), amostra_b=(_cs_b or {}).get("matches"))
+
+    # NOVO (14/08/2026, a pedido): tie-break
+    _tb_a = payload.get("tiebreak_a")
+    _tb_b = payload.get("tiebreak_b")
+    _edge(_pct(_tb_a), _pct(_tb_b), "tiebreak",
+          amostra_a=(_tb_a or {}).get("matches"), amostra_b=(_tb_b or {}).get("matches"))
+
+    # NOVO (14/08/2026, a pedido): recuperação após perder o 1º set
+    # Recuperação após perder o 1º set — usa a estatística já existente
+    # (set1_comeback_stats_a/b, calculada por compute_set1_comeback_stats,
+    # separada por bo3/bo5 porque a taxa de recuperação é estruturalmente
+    # diferente nos dois formatos). Escolhe o formato certo consoante o
+    # jogo de HOJE (Slam ATP = bo5; resto = bo3, incl. toda a WTA).
+    # CORREÇÃO (14/08/2026): esta estatística já existia calculada desde
+    # antes, mas nunca tinha sido ligada ao motor como fator ponderado —
+    # ficava só guardada no payload, sem contribuir para o índice.
+    _e_bo5 = payload.get("tier") == "Grand Slam" and payload.get("tour") == "atp"
+    _fmt_bo = "bo5" if _e_bo5 else "bo3"
+    _sc_a_fmt = (payload.get("set1_comeback_stats_a") or {}).get(_fmt_bo)
+    _sc_b_fmt = (payload.get("set1_comeback_stats_b") or {}).get(_fmt_bo)
+    if _sc_a_fmt and _sc_b_fmt:
+        _pa = _sc_a_fmt.get("comeback_rate_pct")
+        _pb = _sc_b_fmt.get("comeback_rate_pct")
+        if _pa is not None and _pb is not None:
+            feats["comeback_set1"] = {
+                "lider": a if _pa > _pb else (b if _pb > _pa else "igual"),
+                "diff": _pa - _pb, "valor_a": _pa, "valor_b": _pb,
+                "amostra_a": _sc_a_fmt.get("matches_lost_set1"),
+                "amostra_b": _sc_b_fmt.get("matches_lost_set1"),
+            }
+
+    # NOVO (14/08/2026, a pedido): padrão sazonal
+    _saz_a = payload.get("sazonal_a")
+    _saz_b = payload.get("sazonal_b")
+    _edge(_pct(_saz_a), _pct(_saz_b), "sazonal",
+          amostra_a=(_saz_a or {}).get("matches"), amostra_b=(_saz_b or {}).get("matches"))
 
     # Piso (win%) — preferir o rico by_surface, senão surface_stats
     def _surf_pct(rich, basic, surface):
@@ -466,11 +558,20 @@ def _compute_features(payload: dict) -> dict:
     pb, nb = _surf_pct(payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf)
     _edge(pa, pb, "piso", amostra_a=na, amostra_b=nb)
 
-    # Serviço (1º serviço ganho %) — do serve_return_stats
+    # Serviço — CARREIRA (últimos SERVE_RETURN_STATS_MATCHES=10 jogos) e
+    # RECENTE (últimos 2 jogos) como fatores SEPARADOS, com pesos
+    # diferentes (14/08/2026, a pedido) — mesma arquitetura já usada no
+    # H2H (global vs piso): não se mistura numa média manual, deixa-se o
+    # motor pesar os dois de forma consistente com o resto.
     sa = (payload.get("serve_return_stats_a") or {}).get("avg_first_serve_won_pct")
     sb = (payload.get("serve_return_stats_b") or {}).get("avg_first_serve_won_pct")
     if sa is not None and sb is not None:
-        _edge(sa * 100 if sa <= 1 else sa, sb * 100 if sb <= 1 else sb, "servico")
+        _edge(sa * 100 if sa <= 1 else sa, sb * 100 if sb <= 1 else sb, "servico_carreira")
+
+    sa_r = (payload.get("serve_return_recent_a") or {}).get("avg_first_serve_won_pct")
+    sb_r = (payload.get("serve_return_recent_b") or {}).get("avg_first_serve_won_pct")
+    if sa_r is not None and sb_r is not None:
+        _edge(sa_r * 100 if sa_r <= 1 else sa_r, sb_r * 100 if sb_r <= 1 else sb_r, "servico_recente")
 
     # Fadiga (menos jogos recentes = mais fresco) — sinal de frescura
     fa = payload.get("fatigue_signal_a") or {}
@@ -520,7 +621,7 @@ def _factual_key_points(payload: dict) -> list:
         pts.append(f"**{rk['lider']}** superior no ranking (#{rk['valor_a']} vs #{rk['valor_b']}).")
 
     # Força geral: contar quantas dimensões correlacionadas cada um lidera
-    dims = ["forma_recente", "epoca_atual", "piso", "servico"]
+    dims = ["forma_recente", "piso", "servico_carreira"]
     lideres = [f[d]["lider"] for d in dims if f.get(d) and f[d].get("lider") not in (None, "igual")]
     if lideres:
         from collections import Counter
@@ -528,7 +629,7 @@ def _factual_key_points(payload: dict) -> list:
         dominante, n = cont.most_common(1)[0]
         if n >= 2:
             quais = []
-            nomes = {"forma_recente": "forma", "epoca_atual": "época", "piso": "piso", "servico": "serviço"}
+            nomes = {"forma_recente": "forma", "piso": "piso", "servico_carreira": "serviço"}
             for d in dims:
                 if f.get(d) and f[d].get("lider") == dominante:
                     quais.append(nomes[d])
@@ -600,12 +701,31 @@ def _build_match_payload(match: dict) -> dict:
     # sempre que o histórico não tiver o jogador — usamos a RapidAPI, que
     # cobre ambos os tours e não depende do Sackmann (que anda partido p/ WTA).
     h2h = fetch_data.compute_h2h(history, player_a, player_b, surface)
-    form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES)
-    form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES)
+    form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES,
+                                            window_days=RECENT_FORM_WINDOW_DAYS)
+    form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES,
+                                            window_days=RECENT_FORM_WINDOW_DAYS)
     season_a = fetch_data.compute_current_season_record(history, player_a)
     season_b = fetch_data.compute_current_season_record(history, player_b)
     surface_a = fetch_data.compute_surface_stats(history, player_a)
     surface_b = fetch_data.compute_surface_stats(history, player_b)
+    # NOVO (14/08/2026, a pedido): indoor vs outdoor
+    indoor_outdoor_a = fetch_data.compute_indoor_outdoor_stats(history, player_a)
+    indoor_outdoor_b = fetch_data.compute_indoor_outdoor_stats(history, player_b)
+    # NOVO (14/08/2026, a pedido): taxa de vitória em tie-breaks
+    tiebreak_a = fetch_data.compute_tiebreak_stats(history, player_a)
+    tiebreak_b = fetch_data.compute_tiebreak_stats(history, player_b)
+    # NOVO (14/08/2026, a pedido): padrão sazonal (mesma altura do ano, anos anteriores)
+    sazonal_a = fetch_data.compute_seasonal_form(history, player_a)
+    sazonal_b = fetch_data.compute_seasonal_form(history, player_b)
+    # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (vs
+    # top-10/20/50), gratuito (histórico local, sem chamadas API) — capta
+    # um jogador "em explosão" que a forma recente (win/loss simples) não
+    # mostra bem.
+    quality_a = fetch_data.compute_recent_quality_wins(history, player_a,
+                                                        window_days=RECENT_QUALITY_WINDOW_DAYS)
+    quality_b = fetch_data.compute_recent_quality_wins(history, player_b,
+                                                        window_days=RECENT_QUALITY_WINDOW_DAYS)
 
     # Guardar os valores do Sackmann ANTES de a RapidAPI os sobrepor, para
     # comparar as duas fontes e registar discrepâncias. A RapidAPI ganha
@@ -695,6 +815,11 @@ def _build_match_payload(match: dict) -> dict:
     injury_b = fetch_data.compute_injury_signal(history, player_b, INJURY_SIGNAL_LOOKBACK_MATCHES)
     serve_a = fetch_data.compute_serve_return_stats(history, player_a, SERVE_RETURN_STATS_MATCHES)
     serve_b = fetch_data.compute_serve_return_stats(history, player_b, SERVE_RETURN_STATS_MATCHES)
+    # NOVO (14/08/2026, a pedido): serviço nos ÚLTIMOS 2 JOGOS especificamente
+    # — só funciona para ATP (precisa das colunas w_ace/w_df/etc, que a WTA
+    # não tem localmente); fica "sem dados" nesse caso, sem inventar.
+    serve_recent_a = fetch_data.compute_serve_return_stats(history, player_a, 2)
+    serve_recent_b = fetch_data.compute_serve_return_stats(history, player_b, 2)
     # Ranking: preferir o oficial ao vivo (via matchstat, cache semanal),
     # que está sempre atualizado; cair para o derivado do histórico se o
     # jogador não estiver na lista oficial (ex: fora do ranking, ou nome
@@ -712,6 +837,17 @@ def _build_match_payload(match: dict) -> dict:
 
     rank_a = _resolve_ranking(player_a)
     rank_b = _resolve_ranking(player_b)
+    # NOVO (14/08/2026, a pedido): evolução de ranking (pontos, 6m/12m)
+    ranking_evo_a = fetch_data.compute_ranking_evolution(history, player_a, (rank_a or {}).get("points"))
+    ranking_evo_b = fetch_data.compute_ranking_evolution(history, player_b, (rank_b or {}).get("points"))
+
+    # NOVO (14/08/2026, a pedido): velocidade do piso — cobertura limitada
+    # (só Slams/Masters1000/ATP Finals, ver COURT_PACE_INDEX). "sem dados"
+    # é o resultado esperado na maioria dos jogos, por desenho.
+    _cpi_hoje = fetch_data.lookup_court_pace(tournament, start.year)
+    _cpi_bucket_hoje = _cpi_hoje["bucket"] if _cpi_hoje else None
+    court_speed_a = fetch_data.compute_court_speed_form(history, player_a, _cpi_bucket_hoje)
+    court_speed_b = fetch_data.compute_court_speed_form(history, player_b, _cpi_bucket_hoje)
 
     # Onda 2 (dados ricos por jogador): desempenho vs qualidade do
     # adversário (perf-breakdown) + métricas de resposta de carreira
@@ -813,6 +949,7 @@ def _build_match_payload(match: dict) -> dict:
         "player_b": player_b,
         "tournament": tournament,
         "tier": match["tier"],
+        "tour": tour,  # NOVO (14/08/2026): útil para decidir bo3/bo5 (recuperação após set1) e outras afinações por tour
         "surface": surface,
         "commence_time_utc": start.isoformat(),
         "market_odds_decimal": odds,  # None se a RapidAPI não tiver Moneyline para o evento
@@ -823,18 +960,33 @@ def _build_match_payload(match: dict) -> dict:
         "current_season_a": season_a,  # jogos/vitórias esta época — distingue ativo de ex-campeão parado
         "current_season_b": season_b,
         "recent_form_b": form_b,
+        "recent_quality_a": quality_a,  # NOVO: pontuação de vitórias vs top-10/20/50 recentes
+        "recent_quality_b": quality_b,
         "surface_stats_a": surface_a,
         "surface_stats_b": surface_b,
+        "indoor_outdoor_a": indoor_outdoor_a,  # NOVO: performance indoor vs outdoor
+        "indoor_outdoor_b": indoor_outdoor_b,
+        "tiebreak_a": tiebreak_a,  # NOVO: taxa de vitória em tie-breaks
+        "tiebreak_b": tiebreak_b,
+        "sazonal_a": sazonal_a,  # NOVO: forma na mesma altura do ano, anos anteriores
+        "sazonal_b": sazonal_b,
         "fatigue_signal_a": fatigue_a,
         "fatigue_signal_b": fatigue_b,
         "injury_signal_a": injury_a,  # baseado em RET/W-O reais, não é relatório médico
         "injury_signal_b": injury_b,
         "serve_return_stats_a": serve_a,
         "serve_return_stats_b": serve_b,
+        "serve_return_recent_a": serve_recent_a,  # NOVO: serviço nos últimos 2 jogos
+        "serve_return_recent_b": serve_recent_b,
         "rich_stats_a": rich_a,  # Onda 2: resposta de carreira + desempenho vs nível do adversário (ficha ou API)
         "rich_stats_b": rich_b,
         "ranking_a": rank_a,
         "ranking_b": rank_b,
+        "ranking_evolution_a": ranking_evo_a,  # NOVO: evolução de pontos de ranking (6m/12m)
+        "ranking_evolution_b": ranking_evo_b,
+        "court_speed_a": court_speed_a,  # NOVO: performance no mesmo balde de velocidade de piso
+        "court_speed_b": court_speed_b,
+        "court_speed_hoje": _cpi_hoje,  # {"cpi","bucket","ano_usado"} ou None
         "set1_comeback_stats_a": set1_comeback_a,  # para aplicares em live: taxa histórica de reviravolta após perder o 1º set
         "set1_comeback_stats_b": set1_comeback_b,
         "handedness_matchup_a": handedness_a,  # taxa vs canhotos/destros
