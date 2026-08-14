@@ -1029,8 +1029,89 @@ def compute_current_season_record(history: pd.DataFrame, player: str) -> Optiona
     return {"season": current_year, "matches": matches, "wins": wins, "losses": matches - wins}
 
 
-def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int) -> Optional[dict]:
-    """Últimos n_matches jogos do jogador (qualquer piso). None se não há dados."""
+def compute_indoor_outdoor_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    NOVO (14/08/2026, a pedido): performance indoor vs outdoor — alguns
+    jogadores têm diferenças reais de rendimento consoante jogam coberto
+    ou ao ar livre, mesmo dentro do MESMO tipo de piso (ex: hard indoor
+    vs hard outdoor). Devolve {"indoor": {"matches","wins"} ou None,
+    "outdoor": {...} ou None}.
+
+    ATENÇÃO (não confirmado com dados reais ainda): a coluna que marca
+    indoor/outdoor tem formato DIFERENTE consoante a fonte:
+    - TennisMyLife (ATP): coluna "indoor", esperada 0/1 ou True/False.
+    - tennis-data.co.uk (WTA): coluna "Court", esperada texto
+      "Indoor"/"Outdoor" (esquema documentado publicamente desta fonte,
+      mas nunca verificado ao vivo neste projeto — ver print de
+      diagnóstico abaixo na primeira vez que houver dados).
+    Esta função tenta as duas formas; se nenhuma bater certo, devolve
+    None em vez de arriscar um valor errado.
+    """
+    if history.empty:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    def _is_indoor(row) -> Optional[bool]:
+        if "indoor" in played.columns:
+            v = row.get("indoor")
+            if pd.isna(v):
+                return None
+            return bool(int(v)) if not isinstance(v, bool) else v
+        if "Court" in played.columns:
+            v = row.get("Court")
+            if not isinstance(v, str):
+                return None
+            v = v.strip().lower()
+            if v == "indoor":
+                return True
+            if v == "outdoor":
+                return False
+            return None
+        return None
+
+    played["_indoor"] = played.apply(_is_indoor, axis=1)
+    if played["_indoor"].isna().all():
+        # nenhuma das duas colunas deu um valor utilizável — diagnóstico
+        # para confirmar isto com dados reais, sem adivinhar mais.
+        cols_relevantes = [c for c in ("indoor", "Court") if c in played.columns]
+        print(f"[diag:indoor] {player}: colunas presentes {cols_relevantes}, "
+              f"mas nenhum valor interpretável — ver amostra: "
+              f"{played[cols_relevantes].head(3).to_dict('records') if cols_relevantes else 'nenhuma coluna'}")
+        return None
+
+    result: dict = {}
+    for chave, valor in (("indoor", True), ("outdoor", False)):
+        subset = played[played["_indoor"] == valor]
+        if subset.empty:
+            result[chave] = None
+            continue
+        wins = int((subset["winner_name"] == player).sum())
+        result[chave] = {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
+
+    if result.get("indoor") is None and result.get("outdoor") is None:
+        return None
+    return result
+
+
+def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
+                        window_days: Optional[int] = None) -> Optional[dict]:
+    """Forma recente do jogador (qualquer piso). None se não há dados.
+
+    CORREÇÃO (14/08/2026, a pedido): antes usava sempre os últimos
+    n_matches jogos (contagem), o que podia significar 3 semanas para um
+    jogador muito ativo ou 2-3 meses para um pouco ativo — não capta bem
+    "como está a jogar ULTIMAMENTE". Com `window_days` definido, usa
+    antes uma JANELA DE TEMPO (ex: últimos 45 dias); se houver poucos
+    jogos nessa janela (jogador pouco ativo), cai para os últimos
+    n_matches como rede de segurança, para nunca ficar sem dados.
+    """
     if history.empty or "winner_name" not in history.columns:
         return None
 
@@ -1039,16 +1120,86 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int) -> O
         return None
     player = resolved
 
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
     if played.empty:
         return None
 
     if "tourney_date" in played.columns:
         played = played.sort_values("tourney_date")
-    played = played.tail(n_matches)
+
+    if window_days is not None and "tourney_date" in played.columns:
+        played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=window_days)
+        janela = played[played["_date"] >= cutoff]
+        if len(janela) >= max(3, n_matches // 3):  # amostra mínima na janela
+            played = janela
+        else:
+            played = played.tail(n_matches)  # fallback: pouca atividade recente
+    else:
+        played = played.tail(n_matches)
 
     wins = int((played["winner_name"] == player).sum())
     return {"matches": len(played), "wins": wins, "losses": len(played) - wins}
+
+
+def compute_recent_quality_wins(history: pd.DataFrame, player: str,
+                                window_days: int = 90) -> Optional[dict]:
+    """
+    NOVO (14/08/2026, a pedido): pontuação de QUALIDADE das vitórias
+    recentes — capta um jogador "em explosão" (bate cabeças de série
+    mesmo com registo win/loss modesto) que a forma recente por si só
+    não mostra. Ex: Navone vs Collignon — indicadores gerais estavam
+    todos para o Collignon, mas o Navone vinha de bater vários top-20.
+
+    Para cada vitória do jogador nos últimos `window_days` dias, soma
+    pontos consoante o ranking do adversário BATIDO nessa altura:
+    top-10 = 3 pontos, top-20 = 2, top-50 = 1, resto = 0 (graduado, não
+    um limiar único — bater um #3 vale mais que bater um #45).
+
+    Gratuito — usa o histórico local que já temos (winner_rank/loser_rank),
+    sem chamadas à API. Não depende do orçamento "rich" (que é limitado
+    e às vezes indisponível).
+    """
+    if history.empty or "tourney_date" not in history.columns:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=window_days)
+    janela = played[played["_date"] >= cutoff]
+    if janela.empty:
+        return {"score": 0, "top10_wins": 0, "top20_wins": 0, "top50_wins": 0, "matches": 0}
+
+    vitorias = janela[janela["winner_name"] == player]
+    if "loser_rank" not in vitorias.columns or vitorias.empty:
+        return {"score": 0, "top10_wins": 0, "top20_wins": 0, "top50_wins": 0, "matches": len(janela)}
+
+    def _pontos(rank):
+        if pd.isna(rank):
+            return 0
+        rank = int(rank)
+        if rank <= 10:
+            return 3
+        if rank <= 20:
+            return 2
+        if rank <= 50:
+            return 1
+        return 0
+
+    ranks_batidos = vitorias["loser_rank"].dropna()
+    score = int(sum(_pontos(r) for r in ranks_batidos))
+    top10 = int((ranks_batidos <= 10).sum())
+    top20 = int((ranks_batidos <= 20).sum())
+    top50 = int((ranks_batidos <= 50).sum())
+    return {"score": score, "top10_wins": top10, "top20_wins": top20,
+            "top50_wins": top50, "matches": len(janela)}
 
 
 def compute_surface_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
@@ -1198,15 +1349,39 @@ def _first_set_winner_is_match_winner(score) -> Optional[bool]:
     return winner_games > loser_games
 
 
+def _first_set_winner_from_cols(w1, l1) -> Optional[bool]:
+    """Equivalente a _first_set_winner_is_match_winner, mas para o formato
+    de colunas separadas por set (tennis-data.co.uk/WTA: W1/L1), em vez do
+    score combinado (Sackmann/TennisMyLife/ATP). NOTA: W1/L1 é sempre do
+    lado do vencedor do JOGO (mesma convenção do score combinado)."""
+    if pd.isna(w1) or pd.isna(l1):
+        return None
+    try:
+        w1, l1 = int(w1), int(l1)
+    except (ValueError, TypeError):
+        return None
+    if w1 == l1:
+        return None
+    return w1 > l1
+
+
 def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
     """
     Entre os jogos em que o jogador PERDEU o 1º set, em quantos ainda
     assim ganhou o jogo? Separado por melhor-de-3 (Masters/500) e
     melhor-de-5 (Slams), porque a taxa de recuperação é estruturalmente
     diferente nos dois formatos. None se não houver dados suficientes.
+
+    CORREÇÃO (14/08/2026, a pedido): antes exigia a coluna 'score'
+    (só existe no formato ATP/TennisMyLife) — para WTA (tennis-data.co.uk,
+    sem 'score', só W1/L1/W2/L2/W3/L3) devolvia sempre None. Passa a
+    suportar as duas formas.
     """
-    required_cols = {"score", "best_of"}
-    if history.empty or not required_cols.issubset(history.columns):
+    if history.empty or "best_of" not in history.columns:
+        return None
+    usa_score = "score" in history.columns
+    usa_w1l1 = {"W1", "L1"}.issubset(history.columns)
+    if not usa_score and not usa_w1l1:
         return None
 
     resolved = resolve_player_name(history, player)
@@ -1225,7 +1400,10 @@ def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[
         lost_set1_won_match = 0
 
         for _, row in subset.iterrows():
-            set1_winner_is_match_winner = _first_set_winner_is_match_winner(row.get("score"))
+            if usa_score:
+                set1_winner_is_match_winner = _first_set_winner_is_match_winner(row.get("score"))
+            else:
+                set1_winner_is_match_winner = _first_set_winner_from_cols(row.get("W1"), row.get("L1"))
             if set1_winner_is_match_winner is None:
                 continue
             is_match_winner = row.get("winner_name") == player
@@ -1614,6 +1792,344 @@ def compute_deciding_set_stats(history: pd.DataFrame, player: str) -> Optional[d
     if result.get("bo3") is None and result.get("bo5") is None:
         return None
     return result
+
+
+def compute_tiebreak_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    NOVO (14/08/2026, a pedido): taxa de vitória em TIE-BREAKS especificamente
+    — competência à parte da resiliência em sets decisivos (essa mede o set
+    inteiro; esta mede só o desempate de 7 pontos, uma habilidade mais
+    estreita e distinta). Suporta as duas formas do histórico:
+    - 'score' combinado (TennisMyLife/ATP, ex: '7-6(3) 4-6 6-4').
+    - colunas separadas por set (tennis-data.co.uk/WTA: W1/L1/W2/L2/W3/L3).
+    Um set só conta como tie-break se o resultado for 7-6 ou 6-7 (não conta
+    super-tiebreaks de 3º set tipo "1-0(10)", que têm regras diferentes).
+    """
+    if history.empty:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    if played.empty:
+        return None
+
+    tb_won = tb_played = 0
+
+    if "score" in played.columns:
+        for _, row in played.iterrows():
+            is_winner = row.get("winner_name") == player
+            score = row.get("score")
+            if not isinstance(score, str):
+                continue
+            for token in score.strip().split():
+                base = token.split("(")[0]
+                parts = base.split("-")
+                if len(parts) != 2:
+                    continue
+                try:
+                    gw, gl = int(parts[0]), int(parts[1])
+                except ValueError:
+                    continue
+                if {gw, gl} != {6, 7}:
+                    continue
+                tb_played += 1
+                jogo_venceu_tb = (gw == 7)
+                if is_winner == jogo_venceu_tb:
+                    tb_won += 1
+    elif {"W1", "L1", "W2", "L2", "W3", "L3"}.issubset(played.columns):
+        for _, row in played.iterrows():
+            is_winner = row.get("winner_name") == player
+            for wc, lc in (("W1", "L1"), ("W2", "L2"), ("W3", "L3")):
+                gw, gl = row.get(wc), row.get(lc)
+                if pd.isna(gw) or pd.isna(gl):
+                    continue
+                try:
+                    gw, gl = int(gw), int(gl)
+                except (ValueError, TypeError):
+                    continue
+                if {gw, gl} != {6, 7}:
+                    continue
+                tb_played += 1
+                jogo_venceu_tb = (gw == 7)
+                if is_winner == jogo_venceu_tb:
+                    tb_won += 1
+    else:
+        return None
+
+    if tb_played == 0:
+        return None
+    return {"matches": tb_played, "wins": tb_won, "losses": tb_played - tb_won}
+
+
+def compute_seasonal_form(history: pd.DataFrame, player: str,
+                          reference_date: Optional[datetime] = None) -> Optional[dict]:
+    """
+    NOVO (14/08/2026, a pedido): como o jogador costuma jogar NESTA ALTURA
+    DO ANO, em anos anteriores — ex: um jogador pode declinar sempre no
+    final da época mas ser forte no swing de piso duro americano
+    (Indian Wells/Miami), mesmo sendo o mesmo tipo de piso o ano todo; a
+    diferença é mesmo a altura do calendário (fadiga acumulada, condições,
+    etc.). Usa uma janela de ±21 dias à volta da MESMA DATA do calendário,
+    em anos ANTERIORES ao atual (nunca o ano a decorrer — isso já é
+    coberto por forma_recente/qualidade_vitorias; misturar os dois
+    duplicava o sinal). Alarga a janela se a amostra ficar pequena.
+    """
+    if history.empty or "tourney_date" not in history.columns:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+    played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    played = played.dropna(subset=["_date"])
+    if played.empty:
+        return None
+
+    ref = reference_date or datetime.now(timezone.utc).replace(tzinfo=None)
+    ref_doy = ref.timetuple().tm_yday
+
+    def _dentro_janela(data, largura_dias):
+        doy = data.timetuple().tm_yday
+        diff = abs(doy - ref_doy)
+        diff = min(diff, 365 - diff)  # circular: dezembro está "perto" de janeiro
+        return diff <= largura_dias
+
+    subset = played.iloc[0:0]  # vazio, tipo certo
+    for largura in (21, 35, 50):
+        cand = played[played["_date"].apply(lambda d: _dentro_janela(d, largura))]
+        cand = cand[cand["_date"].dt.year < ref.year]
+        if len(cand) >= 5:
+            subset = cand
+            break
+        subset = cand  # guarda o último (mais largo) mesmo que pequeno
+
+    if subset.empty:
+        return None
+    wins = int((subset["winner_name"] == player).sum())
+    return {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
+
+
+def compute_ranking_evolution(history: pd.DataFrame, player: str,
+                              current_points: Optional[float],
+                              reference_date: Optional[datetime] = None) -> Optional[dict]:
+    """
+    NOVO (14/08/2026, a pedido): evolução do ranking em PONTOS (não
+    posição) nos últimos 6 e 12 meses — comparar posições não é linear
+    (subir de #2 para #1 é um salto de qualidade muito maior do que subir
+    de #100 para #80; os pontos captam isso, a posição não). Usa
+    winner_rank_points/loser_rank_points do histórico local (o ranking do
+    jogador NA ALTURA de cada jogo passado) para encontrar o valor mais
+    próximo de há 6 e 12 meses, e compara com os pontos ATUAIS (do
+    ranking oficial ao vivo, passado como `current_points`).
+    """
+    if not current_points or history.empty or "tourney_date" not in history.columns:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+    played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    played = played.dropna(subset=["_date"])
+    if played.empty:
+        return None
+
+    def _points_at(row):
+        return row["winner_rank_points"] if row["winner_name"] == player else row["loser_rank_points"]
+
+    if "winner_rank_points" not in played.columns or "loser_rank_points" not in played.columns:
+        return None
+    played["_points"] = played.apply(_points_at, axis=1)
+    played = played.dropna(subset=["_points"])
+    if played.empty:
+        return None
+
+    ref = reference_date or datetime.now(timezone.utc).replace(tzinfo=None)
+
+    def _pontos_ha(dias):
+        alvo = ref - timedelta(days=dias)
+        diffs = (played["_date"] - alvo).abs()
+        idx = diffs.idxmin()
+        # só aceita se o jogo mais próximo estiver razoavelmente perto da
+        # data alvo (não mais de 45 dias) — senão arrisca comparar com um
+        # valor de há muito mais tempo (jogador esteve parado nessa altura)
+        if diffs.loc[idx] > timedelta(days=45):
+            return None
+        return float(played.loc[idx, "_points"])
+
+    pontos_6m = _pontos_ha(182)
+    pontos_12m = _pontos_ha(365)
+    if pontos_6m is None and pontos_12m is None:
+        return None
+
+    result = {"current": current_points, "points_6m_ago": pontos_6m, "points_12m_ago": pontos_12m}
+    if pontos_6m and pontos_6m > 0:
+        result["change_6m_pct"] = round(100 * (current_points - pontos_6m) / pontos_6m, 1)
+    if pontos_12m and pontos_12m > 0:
+        result["change_12m_pct"] = round(100 * (current_points - pontos_12m) / pontos_12m, 1)
+    return result
+
+
+# ===== VELOCIDADE DO PISO (Court Pace Index) — 14/08/2026, a pedido =====
+#
+# Fonte: courtspeed.com (Court Pace Index, Hawk-Eye, 2012-2026). Cobertura
+# CONFIRMADA limitada a Grand Slams + Masters 1000 + ATP Finals — sem WTA
+# dedicado, sem ATP 250/500 (ver investigação 14/08/2026). A folha de
+# cálculo subjacente ("The Racquet ATP Court Speed Database") só é
+# gratuita para LEITURA na página pública do site — a exportação em massa
+# é paga (subscrição). Por isso esta tabela é MANTIDA MANUALMENTE — os
+# valores abaixo são os publicamente visíveis em courtspeed.com/hard a
+# 14/08/2026 (piso duro; terra batida e relva têm páginas próprias,
+# ainda por acrescentar aqui). Atualizar de vez em quando copiando do site.
+#
+# Categorias oficiais do CPI (courtspeed.com): <30 lento, 30-34
+# médio-lento, 35-39 médio, 40-44 médio-rápido, >44 rápido.
+COURT_PACE_INDEX: dict = {
+    "indian wells": {2016: 30, 2017: 27.4, 2018: 27.9, 2019: 32.1, 2021: 32,
+                      2023: 35.4, 2024: 36.9, 2025: 30.9, 2026: 39.3},
+    "miami": {2013: 31.5, 2014: 29.8, 2015: 31.2, 2016: 33.1, 2017: 33.8,
+              2018: 30.4, 2019: 36.5, 2023: 40.6, 2024: 35.5, 2025: 40.7, 2026: 39.2},
+    "canadian open": {2016: 35.2, 2017: 36.3, 2018: 28.8, 2019: 42.8, 2021: 42.4,
+                       2022: 39.5, 2023: 41.2, 2024: 37.8, 2025: 44.6, 2026: 35.4},
+    "cincinnati": {2016: 35.1, 2017: 33.6, 2018: 31.6, 2019: 37.4, 2021: 43,
+                    2022: 38.6, 2023: 33.2, 2024: 42.5, 2025: 43, 2026: 37.4},
+    "shanghai": {2016: 44.1, 2017: 42.9, 2018: 40, 2019: 40.9, 2023: 40.1, 2024: 40.8, 2025: 32.8},
+    "paris": {2012: 32.2, 2013: 31.2, 2014: 31.8, 2015: 29.9, 2016: 39.1, 2017: 37.5,
+              2018: 34.6, 2019: 40.6, 2021: 37.1, 2022: 37.1, 2023: 40.4, 2024: 45.5, 2025: 35.1},
+    "atp finals": {2012: 34.1, 2013: 33.9, 2014: 34, 2015: 34.6, 2016: 42.1, 2017: 42.1,
+                    2018: 40.3, 2019: 41.6, 2020: 36.7, 2021: 39.9, 2022: 43.2, 2023: 43.8,
+                    2024: 39.9, 2025: 40.1},
+    "monte carlo": {2016: 23.7, 2017: 24.9, 2018: 22.1, 2019: 30.3, 2023: 30,
+                     2024: 29.1, 2025: 29, 2026: 27.1},
+    "madrid": {2016: 22.5, 2017: 20.9, 2018: 21.6, 2019: 27.9, 2023: 26.6,
+               2024: 27, 2025: 26.1, 2026: 29.8},
+    "rome": {2016: 24, 2017: 22, 2018: 18.9, 2023: 28.6, 2024: 29.3, 2025: 28.9, 2026: 25.4},
+    "australian open": {2017: 42, 2020: 43, 2021: 50},
+    "roland garros": {2017: 21},
+    "wimbledon": {2017: 37},
+    "us open": {2017: 35.7, 2020: 43, 2024: 42.8},
+}
+
+# Nomes alternativos -> chave canónica em COURT_PACE_INDEX (para bater
+# certo com os nomes de torneio como aparecem no NOSSO histórico, que
+# podem diferir dos usados no courtspeed.com).
+_CPI_NOME_ALIASES = {
+    "bnp paribas open": "indian wells", "indian wells masters": "indian wells",
+    "miami open": "miami", "sony ericsson open": "miami",
+    "national bank open": "canadian open", "rogers cup": "canadian open",
+    "montreal": "canadian open", "toronto": "canadian open",
+    "cincinnati open": "cincinnati", "western southern open": "cincinnati",
+    "shanghai masters": "shanghai", "rolex shanghai masters": "shanghai",
+    "paris masters": "paris", "rolex paris masters": "paris", "bercy": "paris",
+    "nitto atp finals": "atp finals", "tour finals": "atp finals",
+    "monte carlo masters": "monte carlo", "rolex monte carlo masters": "monte carlo",
+    "mutua madrid open": "madrid", "madrid open": "madrid",
+    "internazionali bnl d'italia": "rome", "italian open": "rome", "rome masters": "rome",
+    "australian open": "australian open", "roland garros": "roland garros",
+    "french open": "roland garros", "wimbledon": "wimbledon", "us open": "us open",
+}
+
+
+def _normalize_tournament_name(name) -> Optional[str]:
+    if not isinstance(name, str) or not name.strip():
+        return None
+    n = _normalize_name(name)  # já existe: lowercase, sem acentos
+    if n in COURT_PACE_INDEX:
+        return n
+    if n in _CPI_NOME_ALIASES:
+        return _CPI_NOME_ALIASES[n]
+    for alias, canon in _CPI_NOME_ALIASES.items():
+        if alias in n or n in alias:
+            return canon
+    return None
+
+
+def _cpi_bucket(cpi: float) -> str:
+    if cpi < 30:
+        return "slow"
+    if cpi < 35:
+        return "medium_slow"
+    if cpi < 40:
+        return "medium"
+    if cpi < 45:
+        return "medium_fast"
+    return "fast"
+
+
+def lookup_court_pace(tournament_name, year: Optional[int]) -> Optional[dict]:
+    """Devolve {"cpi": float, "bucket": str, "ano_usado": int} para o
+    torneio/ano pedido, ou o ano mais próximo disponível na tabela (até 2
+    anos de diferença) se o exato não existir. None se o torneio não
+    estiver na tabela (a maioria — cobertura limitada, ver nota acima)."""
+    canon = _normalize_tournament_name(tournament_name)
+    if canon is None:
+        return None
+    anos = COURT_PACE_INDEX.get(canon) or {}
+    if not anos:
+        return None
+    if year is not None and year in anos:
+        cpi = anos[year]
+        return {"cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": year}
+    if year is not None:
+        proximos = sorted(anos.keys(), key=lambda y: abs(y - year))
+        for y in proximos:
+            if abs(y - year) <= 2:
+                cpi = anos[y]
+                return {"cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": y}
+        return None
+    # sem ano pedido: usa o mais recente disponível
+    y = max(anos.keys())
+    cpi = anos[y]
+    return {"cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": y}
+
+
+def compute_court_speed_form(history: pd.DataFrame, player: str, current_bucket: str) -> Optional[dict]:
+    """
+    Performance do jogador especificamente no MESMO balde de velocidade de
+    piso (lento/médio-lento/médio/médio-rápido/rápido) do jogo de HOJE —
+    dentro do mesmo tipo de superfície, courts diferentes podem jogar a
+    velocidades bem diferentes (ex: Madrid vs Cincinnati, os dois hard).
+    Cobertura limitada aos torneios em COURT_PACE_INDEX (Slams/Masters
+    1000/ATP Finals) — "sem dados" na maioria dos jogos, por desenho.
+    """
+    if history.empty or current_bucket is None:
+        return None
+    nome_col = "tourney_name" if "tourney_name" in history.columns else (
+        "Tournament" if "Tournament" in history.columns else None)
+    if nome_col is None:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+    if "tourney_date" in played.columns:
+        played["_ano"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce").dt.year
+    else:
+        played["_ano"] = None
+
+    matches = 0
+    wins = 0
+    for _, row in played.iterrows():
+        info = lookup_court_pace(row.get(nome_col), row.get("_ano"))
+        if info is None or info["bucket"] != current_bucket:
+            continue
+        matches += 1
+        if row.get("winner_name") == player:
+            wins += 1
+
+    if matches == 0:
+        return None
+    return {"matches": matches, "wins": wins, "losses": matches - wins}
 
 
 def compute_round_stage_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
