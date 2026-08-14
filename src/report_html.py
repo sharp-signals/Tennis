@@ -532,16 +532,23 @@ MARGEM_FAVORITO_MUITO_COTADO = 25
 
 PESOS = {
     "h2h_piso": 12,             # MUITO ALTO — confronto direto NESTE piso (mais específico que o global)
-    "h2h": 6,                  # MÉDIO — confronto direto na carreira toda (desceu; o piso é mais relevante)
-    "piso": 10,                # ALTO — performance na superfície
+    "piso": 8,                 # ALTO — desce ligeiramente (10->8), partilha família com velocidade_piso
+    "velocidade_piso": 10,     # ALTO — mais específico que "piso" (dentro do mesmo tipo, courts diferem em rapidez); cobertura parcial (14/08/2026, a pedido)
     "recuperacao_sets": 9,     # ALTO — recuperar 1 set abaixo / sets decisivos
-    "matchup_maos": 8,         # ALTO — canhoto vs destro
-    "forma_recente": 7,        # MÉDIO-ALTO — ritmo/confiança (inclui Challengers)
+    "qualidade_vitorias": 8,   # ALTO — vitórias vs top-10/20/50 nos últimos 90 dias (14/08/2026, a pedido)
+    "matchup_maos": 8,         # ALTO quando envolve canhoto — MÉDIO-BAIXO (×0.3) se destro vs destro
+    "forma_recente": 7,        # MÉDIO-ALTO — ritmo/confiança, janela de 45 dias (não 10 jogos)
+    "sazonal": 6,              # MÉDIO — forma na mesma altura do ano, anos anteriores (14/08/2026, a pedido)
+    "h2h": 6,                  # MÉDIO — confronto direto na carreira toda (o piso é mais relevante)
+    "indoor_outdoor": 6,       # MÉDIO — performance no mesmo contexto (indoor/outdoor) do jogo de hoje (14/08/2026, a pedido)
     "ranking": 5,              # MÉDIO — conta, mas dá falsos positivos
+    "ranking_evolucao": 6,     # MÉDIO — tendência de subida/descida em pontos, 6m/12m (14/08/2026, a pedido)
     "lesao": 5,                # MÉDIO — só ativa em regressos claros/longos
+    "tiebreak": 5,             # MÉDIO — competência estreita, distinta de "sets decisivos" (14/08/2026, a pedido)
+    "comeback_set1": 7,        # MÉDIO-ALTO — recuperação após perder o 1º set, relevante para observação em live (14/08/2026, a pedido)
     "fadiga": 4,               # MÉDIO-BAIXO — sobe se último jogo foi longo
-    "epoca_atual": 4,          # MÉDIO-BAIXO
-    "servico": 4,              # MÉDIO-BAIXO
+    "servico_recente": 5,      # MÉDIO — últimos 2 jogos (14/08/2026, a pedido)
+    "servico_carreira": 3,     # MÉDIO-BAIXO — desceu (4->3), agora coexiste com a versão recente
     "meteo": 1,                # BAIXO — raramente decisiva
 }
 
@@ -565,9 +572,11 @@ def _nome_fator(chave):
         "h2h": "confronto direto", "h2h_piso": "confronto direto (piso)",
         "piso": "superfície",
         "recuperacao_sets": "resiliência em sets", "matchup_maos": "matchup de mão",
-        "forma_recente": "forma recente", "ranking": "ranking",
+        "forma_recente": "forma recente", "qualidade_vitorias": "qualidade de vitórias (90d)",
+        "ranking": "ranking",
+        "ranking_evolucao": "evolução de ranking",
         "lesao": "regresso após paragem", "fadiga": "fadiga",
-        "epoca_atual": "época atual", "servico": "serviço", "meteo": "meteorologia",
+        "servico_recente": "serviço (2 jogos)", "servico_carreira": "serviço (carreira)", "velocidade_piso": "velocidade do piso", "indoor_outdoor": "indoor/outdoor", "tiebreak": "tie-break", "comeback_set1": "recuperação pós-1º set", "sazonal": "padrão sazonal", "meteo": "meteorologia",
     }.get(chave, chave)
 
 
@@ -722,14 +731,22 @@ def _calcular_divergencia(payload):
         _reg_status("recuperacao_sets", False)
 
     # Matchup de mão (handedness)
+    # CORREÇÃO (14/08/2026, a pedido): confrontos destro-vs-destro (a
+    # maioria) não são estilisticamente distintivos — o peso a sério deve
+    # reservar-se para quando há um canhoto envolvido (padrão real). O
+    # opponent_hand já vem guardado em resolve_handedness_matchup.
     hm = payload.get("handedness_matchup_a") or {}
     hmb = payload.get("handedness_matchup_b") or {}
     wa = hm.get("win_pct"); wb = hmb.get("win_pct")
+    _op_hand_b = hm.get("opponent_hand")   # mão de B, vista do lado de A
+    _op_hand_a = hmb.get("opponent_hand")  # mão de A, vista do lado de B
+    _envolve_canhoto = "L" in (_op_hand_a, _op_hand_b)
+    _peso_mao = PESOS["matchup_maos"] if _envolve_canhoto else round(PESOS["matchup_maos"] * 0.3, 1)
     if wa is not None and wb is not None:
         lider = a if wa > wb else (b if wb > wa else "igual")
         if lider != "igual" and abs(wa - wb) >= 3:
             forca = min(abs(wa - wb) / 15.0, 1.0)
-            _add("matchup_maos", lider, max(forca, 0.4))
+            _add("matchup_maos", lider, max(forca, 0.4), peso_override=_peso_mao)
             _reg_status("matchup_maos", True, lider, valor_a=wa, valor_b=wb)
         else:
             _reg_status("matchup_maos", True, lider, "diferença irrelevante" if lider == "igual" else "abaixo do limiar (<3 p.p.)")
@@ -750,6 +767,26 @@ def _calcular_divergencia(payload):
                     valor_a=fr.get("valor_a"), valor_b=fr.get("valor_b"))
     else:
         _reg_status("forma_recente", False)
+
+    # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (vs
+    # top-10/20/50 nos últimos 90 dias) — capta um jogador "em explosão"
+    # que a forma recente (win/loss simples) não mostra bem (ex: caso
+    # real discutido: indicadores gerais favoreciam um lado, mas o outro
+    # vinha de bater vários top-20 recentemente).
+    qv = feats.get("qualidade_vitorias")
+    if isinstance(qv, dict) and qv.get("lider") not in (None, "igual"):
+        _sa, _sb = qv.get("valor_a", 0), qv.get("valor_b", 0)
+        forca = min(abs(_sa - _sb) / 4.0, 1.0)
+        _n_qv = min(
+            (payload.get("recent_quality_a") or {}).get("matches") or 0,
+            (payload.get("recent_quality_b") or {}).get("matches") or 0,
+        )
+        _add("qualidade_vitorias", qv["lider"], max(forca, 0.4), conf_amostra=_conf_amostra(_n_qv, 8))
+        _reg_status("qualidade_vitorias", True, qv["lider"], valor_a=_sa, valor_b=_sb)
+    elif isinstance(qv, dict) and qv.get("lider") == "igual":
+        _reg_status("qualidade_vitorias", True, "igual", valor_a=qv.get("valor_a"), valor_b=qv.get("valor_b"))
+    else:
+        _reg_status("qualidade_vitorias", False)
 
     # Ranking — só conta se a diferença for RELEVANTE. Um limiar fixo de
     # POSIÇÕES falha nos extremos do ranking: #1 vs #5 (diferença de 4
@@ -783,33 +820,120 @@ def _calcular_divergencia(payload):
     else:
         _reg_status("ranking", False)
 
-    # Época atual
-    # CORREÇÃO (12/08/2026): mesmo limiar de 3 p.p.
-    ea = feats.get("epoca_atual")
-    if isinstance(ea, dict) and ea.get("lider") not in (None, "igual") and abs(ea.get("diff") or 0) >= 3:
-        _add("epoca_atual", ea["lider"])
-        _reg_status("epoca_atual", True, ea["lider"], valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
-    elif isinstance(ea, dict) and ea.get("lider") == "igual":
-        _reg_status("epoca_atual", True, "igual", valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
-    elif isinstance(ea, dict) and ea.get("lider") is not None:
-        _reg_status("epoca_atual", True, ea["lider"], "abaixo do limiar (<3 p.p.)",
-                    valor_a=ea.get("valor_a"), valor_b=ea.get("valor_b"))
+    # NOVO (14/08/2026, a pedido): evolução de ranking — escala diferente
+    # dos outros fatores (variação % relativa, não 0-100), por isso usa o
+    # seu próprio limiar (15, não 3) e escala de força (÷60, não ÷15).
+    re_ = feats.get("ranking_evolucao")
+    if isinstance(re_, dict) and re_.get("lider") not in (None, "igual") and abs(re_.get("diff") or 0) >= 15:
+        forca = min(abs(re_.get("diff") or 0) / 60.0, 1.0)
+        _add("ranking_evolucao", re_["lider"], max(forca, 0.4))
+        _reg_status("ranking_evolucao", True, re_["lider"], valor_a=re_.get("valor_a"), valor_b=re_.get("valor_b"))
+    elif isinstance(re_, dict) and re_.get("lider") == "igual":
+        _reg_status("ranking_evolucao", True, "igual", valor_a=re_.get("valor_a"), valor_b=re_.get("valor_b"))
+    elif isinstance(re_, dict) and re_.get("lider") is not None:
+        _reg_status("ranking_evolucao", True, re_["lider"], "abaixo do limiar (<15 p.p. de variação)",
+                    valor_a=re_.get("valor_a"), valor_b=re_.get("valor_b"))
     else:
-        _reg_status("epoca_atual", False)
+        _reg_status("ranking_evolucao", False)
 
-    # Serviço
+    # REMOVIDO (14/08/2026, a pedido): "época atual" ficou redundante como
+    # fator do motor (ver nota em main.py, mesma alteração).
+
+    # NOVO (14/08/2026, a pedido): indoor vs outdoor — mesmo limiar de 3 p.p.
+    io = feats.get("indoor_outdoor")
+    if isinstance(io, dict) and io.get("lider") not in (None, "igual") and abs(io.get("diff") or 0) >= 3:
+        _add("indoor_outdoor", io["lider"])
+        _reg_status("indoor_outdoor", True, io["lider"], valor_a=io.get("valor_a"), valor_b=io.get("valor_b"))
+    elif isinstance(io, dict) and io.get("lider") == "igual":
+        _reg_status("indoor_outdoor", True, "igual", valor_a=io.get("valor_a"), valor_b=io.get("valor_b"))
+    elif isinstance(io, dict) and io.get("lider") is not None:
+        _reg_status("indoor_outdoor", True, io["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=io.get("valor_a"), valor_b=io.get("valor_b"))
+    else:
+        _reg_status("indoor_outdoor", False)
+
+    # NOVO (14/08/2026, a pedido): velocidade do piso — mesmo limiar de
+    # 3 p.p. Cobertura limitada (só Slams/Masters1000/ATP Finals) — "sem
+    # dados" é o resultado esperado na maioria dos jogos, por desenho.
+    vp = feats.get("velocidade_piso")
+    if isinstance(vp, dict) and vp.get("lider") not in (None, "igual") and abs(vp.get("diff") or 0) >= 3:
+        _add("velocidade_piso", vp["lider"])
+        _reg_status("velocidade_piso", True, vp["lider"], valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"))
+    elif isinstance(vp, dict) and vp.get("lider") == "igual":
+        _reg_status("velocidade_piso", True, "igual", valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"))
+    elif isinstance(vp, dict) and vp.get("lider") is not None:
+        _reg_status("velocidade_piso", True, vp["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"))
+    else:
+        _reg_status("velocidade_piso", False)
+
+    # NOVO (14/08/2026, a pedido): tie-break — mesmo limiar de 3 p.p.
+    tb = feats.get("tiebreak")
+    if isinstance(tb, dict) and tb.get("lider") not in (None, "igual") and abs(tb.get("diff") or 0) >= 3:
+        _add("tiebreak", tb["lider"])
+        _reg_status("tiebreak", True, tb["lider"], valor_a=tb.get("valor_a"), valor_b=tb.get("valor_b"))
+    elif isinstance(tb, dict) and tb.get("lider") == "igual":
+        _reg_status("tiebreak", True, "igual", valor_a=tb.get("valor_a"), valor_b=tb.get("valor_b"))
+    elif isinstance(tb, dict) and tb.get("lider") is not None:
+        _reg_status("tiebreak", True, tb["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=tb.get("valor_a"), valor_b=tb.get("valor_b"))
+    else:
+        _reg_status("tiebreak", False)
+
+    # NOVO (14/08/2026, a pedido): recuperação após perder o 1º set —
+    # mesmo limiar de 3 p.p. Sinal relevante sobretudo para observação em
+    # live (favorito que recupera bem quando começa a perder).
+    cb = feats.get("comeback_set1")
+    if isinstance(cb, dict) and cb.get("lider") not in (None, "igual") and abs(cb.get("diff") or 0) >= 3:
+        _add("comeback_set1", cb["lider"])
+        _reg_status("comeback_set1", True, cb["lider"], valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"))
+    elif isinstance(cb, dict) and cb.get("lider") == "igual":
+        _reg_status("comeback_set1", True, "igual", valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"))
+    elif isinstance(cb, dict) and cb.get("lider") is not None:
+        _reg_status("comeback_set1", True, cb["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"))
+    else:
+        _reg_status("comeback_set1", False)
+
+    # NOVO (14/08/2026, a pedido): padrão sazonal — mesmo limiar de 3 p.p.
+    saz = feats.get("sazonal")
+    if isinstance(saz, dict) and saz.get("lider") not in (None, "igual") and abs(saz.get("diff") or 0) >= 3:
+        _add("sazonal", saz["lider"])
+        _reg_status("sazonal", True, saz["lider"], valor_a=saz.get("valor_a"), valor_b=saz.get("valor_b"))
+    elif isinstance(saz, dict) and saz.get("lider") == "igual":
+        _reg_status("sazonal", True, "igual", valor_a=saz.get("valor_a"), valor_b=saz.get("valor_b"))
+    elif isinstance(saz, dict) and saz.get("lider") is not None:
+        _reg_status("sazonal", True, saz["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=saz.get("valor_a"), valor_b=saz.get("valor_b"))
+    else:
+        _reg_status("sazonal", False)
+
+    # Serviço — CARREIRA e RECENTE como fatores separados, pesos diferentes
+    # (14/08/2026, a pedido; ver nota em main.py).
     # CORREÇÃO (12/08/2026): mesmo limiar de 3 p.p.
-    sv = feats.get("servico")
+    sv = feats.get("servico_carreira")
     if isinstance(sv, dict) and sv.get("lider") not in (None, "igual") and abs(sv.get("diff") or 0) >= 3:
-        _add("servico", sv["lider"])
-        _reg_status("servico", True, sv["lider"], valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
+        _add("servico_carreira", sv["lider"])
+        _reg_status("servico_carreira", True, sv["lider"], valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     elif isinstance(sv, dict) and sv.get("lider") == "igual":
-        _reg_status("servico", True, "igual", valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
+        _reg_status("servico_carreira", True, "igual", valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     elif isinstance(sv, dict) and sv.get("lider") is not None:
-        _reg_status("servico", True, sv["lider"], "abaixo do limiar (<3 p.p.)",
+        _reg_status("servico_carreira", True, sv["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     else:
-        _reg_status("servico", False)
+        _reg_status("servico_carreira", False)
+
+    svr = feats.get("servico_recente")
+    if isinstance(svr, dict) and svr.get("lider") not in (None, "igual") and abs(svr.get("diff") or 0) >= 3:
+        _add("servico_recente", svr["lider"])
+        _reg_status("servico_recente", True, svr["lider"], valor_a=svr.get("valor_a"), valor_b=svr.get("valor_b"))
+    elif isinstance(svr, dict) and svr.get("lider") == "igual":
+        _reg_status("servico_recente", True, "igual", valor_a=svr.get("valor_a"), valor_b=svr.get("valor_b"))
+    elif isinstance(svr, dict) and svr.get("lider") is not None:
+        _reg_status("servico_recente", True, svr["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=svr.get("valor_a"), valor_b=svr.get("valor_b"))
+    else:
+        _reg_status("servico_recente", False)
 
     # Fadiga (sobe se último jogo foi longo)
     fa = (payload.get("fatigue_signal_a") if isinstance(payload.get("fatigue_signal_a"), dict) else {})
@@ -870,15 +994,17 @@ def _calcular_divergencia(payload):
     # Agrupamos em famílias e limitamos a contribuição de cada família a um
     # teto, para que medir a qualidade de 4 formas não a inflacione 4x.
     FAMILIAS = {
-        "forca_base": {"ranking", "epoca_atual", "servico", "forma_recente"},
-        "matchup": {"piso", "matchup_maos", "h2h", "h2h_piso"},
-        "resiliencia": {"recuperacao_sets"},
+        "forca_base": {"servico_recente", "servico_carreira", "forma_recente"},
+        "matchup": {"matchup_maos", "h2h", "h2h_piso"},
+        "superficie": {"piso", "velocidade_piso", "indoor_outdoor"},
+        "resiliencia": {"recuperacao_sets", "tiebreak", "comeback_set1"},
+        "ranking_fam": {"ranking", "ranking_evolucao"},
         "contexto": {"fadiga", "lesao", "meteo"},
     }
     # teto de peso efetivo por família (a família "força base", muito
     # correlacionada, é a mais limitada; matchup/resiliência são sinais mais
     # distintos e específicos do confronto, logo teto mais alto).
-    CAP_FAMILIA = {"forca_base": 12, "matchup": 20, "resiliencia": 9, "contexto": 6}
+    CAP_FAMILIA = {"forca_base": 10, "matchup": 18, "superficie": 16, "resiliencia": 17, "ranking_fam": 9, "contexto": 6}
 
     def _familia(chave):
         for fam, membros in FAMILIAS.items():
@@ -1230,11 +1356,6 @@ def _compute_pontos_atencao(payload):
     fb = (payload.get("fatigue_signal_b") if isinstance(payload.get("fatigue_signal_b"), dict) else {})
     if (fa.get("matches_last_7d") in (0, None)) and (fb.get("matches_last_7d") in (0, None)):
         pts.append("Sem sinais de fadiga recente.")
-    ea = f.get("epoca_atual")
-    if isinstance(ea, dict):
-        amostra_ep = min(ea.get("amostra_a") or 999, ea.get("amostra_b") or 999)
-        if amostra_ep < 15:
-            pts.append(f"Poucos jogos na época atual ({amostra_ep}).")
     return pts[:5]
 
 
@@ -2122,17 +2243,17 @@ def _mod_fatores(payload, div):
 # técnicos. Os PESOS REAIS no motor não mudam — isto é só a ordem de
 # exibição, decoupled da lógica de decisão.
 _FACTOR_ORDER = [
-    "ranking", "h2h", "h2h_piso", "epoca_atual", "forma_recente",
-    "piso", "recuperacao_sets", "matchup_maos", "servico", "fadiga", "lesao",
+    "ranking", "ranking_evolucao", "h2h", "h2h_piso", "velocidade_piso", "indoor_outdoor", "forma_recente", "qualidade_vitorias", "sazonal",
+    "piso", "recuperacao_sets", "tiebreak", "comeback_set1", "matchup_maos", "servico_recente", "servico_carreira", "fadiga", "lesao",
 ]
 
 
 # Fatores onde valor_a/valor_b são percentagens diretamente comparáveis
 # (maior = melhor) — mostram "XX% – YY%" e barra proporcional direta.
-_FD_FACTORS_PCT = {"piso", "forma_recente", "epoca_atual", "servico",
+_FD_FACTORS_PCT = {"piso", "velocidade_piso", "forma_recente", "servico_recente", "servico_carreira", "indoor_outdoor", "tiebreak", "comeback_set1", "sazonal",
                     "recuperacao_sets", "matchup_maos"}
 # Fatores onde valor_a/valor_b são contagens de vitórias (maior = melhor)
-_FD_FACTORS_COUNT = {"h2h", "h2h_piso"}
+_FD_FACTORS_COUNT = {"h2h", "h2h_piso", "qualidade_vitorias"}
 # Fatores onde valor_a/valor_b são "quanto menor, melhor" para esse jogador
 # (nº de jogos recentes, dias desde o regresso) — a barra é DESENHADA
 # INVERTIDA (troca-se qual valor alimenta a largura de cada lado) para que
@@ -2148,6 +2269,24 @@ def _fd_bar(chave, st):
     guardados (feedback de teste, 13/08/2026: 'põe barra em tudo que tenha
     dados; se não houver dados, não ponhas como se fosse empate') — nunca
     inventa um 50/50 para disfarçar a falta de dado."""
+    if chave == "ranking_evolucao":
+        # CASO ESPECIAL: valores podem ser NEGATIVOS (jogador em queda de
+        # pontos) — a fórmula normal (largura_a/(largura_a+largura_b))
+        # parte-se com números negativos. Usa antes "50% = empate,
+        # desvia-se conforme a diferença", capado a +-50 p.p. de diferença
+        # para a barra ficar cheia num extremo.
+        va, vb = st.get("valor_a"), st.get("valor_b")
+        if va is None or vb is None:
+            return ""
+        diff = va - vb
+        pct_a = max(0, min(100, round(50 + (diff / 100.0) * 50)))
+        pct_b = 100 - pct_a
+        label_a = f"{va:+.0f}%"
+        label_b = f"{vb:+.0f}%"
+        return (f'<div class="fd-bar"><span class="fd-bar-a" style="width:{pct_a}%"></span>'
+                f'<span class="fd-bar-b" style="width:{pct_b}%"></span>'
+                f'<span class="fd-bar-val a">{_esc(label_a)}</span>'
+                f'<span class="fd-bar-val b">{_esc(label_b)}</span></div>')
     if (chave not in _FD_FACTORS_PCT and chave not in _FD_FACTORS_COUNT
             and chave not in _FD_FACTORS_INVERTIDOS and chave != "ranking"):
         return ""
