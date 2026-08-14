@@ -131,6 +131,16 @@ LOOKAHEAD_HOURS_MAX = 36
 SURFACES = ["Hard", "Clay", "Grass"]
 
 RECENT_FORM_MATCHES = 10
+# Janela de tempo para "forma recente" (14/08/2026, a pedido) — antes usava
+# sempre os últimos 10 jogos (contagem), o que podia significar semanas ou
+# meses consoante a atividade do jogador. Passa a privilegiar uma janela
+# de TEMPO fixa (últimos N dias), com fallback para RECENT_FORM_MATCHES se
+# o jogador tiver estado pouco ativo. Afinável com o backtest.
+RECENT_FORM_WINDOW_DAYS = 45
+# Janela para o novo sinal de "qualidade das vitórias recentes" (vs top-10/
+# 20/50) — maior que a de cima porque vitórias contra bem cotados são mais
+# raras e precisam de mais tempo para aparecer alguma amostra.
+RECENT_QUALITY_WINDOW_DAYS = 90
 SERVE_RETURN_STATS_MATCHES = 10
 INJURY_SIGNAL_LOOKBACK_MATCHES = 5
 
