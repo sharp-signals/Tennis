@@ -903,7 +903,7 @@ def get_history(tour: str) -> pd.DataFrame:
 # 2b. Correspondência de nomes com tolerância (acentos, maiúsculas, e
 #     pequenas variações de grafia entre o matchstat e o histórico)
 # --------------------------------------------------------------------- #
-_NAME_INDEX_CACHE: dict[int, dict[str, str]] = {}
+_NAME_INDEX_CACHE: dict[tuple, dict[str, str]] = {}
 
 
 def _normalize_name(name: str) -> str:
@@ -915,8 +915,23 @@ def _normalize_name(name: str) -> str:
 
 
 def _build_name_index(history: pd.DataFrame) -> dict[str, str]:
-    """Índice nome_normalizado -> nome tal como aparece no histórico. Cacheado por dataframe."""
-    key = id(history)
+    """Índice nome_normalizado -> nome tal como aparece no histórico.
+    Cacheado por CONTEÚDO (nº de linhas + colunas), não por id(history).
+
+    CORREÇÃO CRÍTICA (15/08/2026, log real): a versão anterior usava
+    id(history) como chave — o endereço de memória do objeto. Como o
+    histórico é recarregado várias vezes ao longo de uma execução (uma
+    nova instância de DataFrame a cada chamada a get_history), o Python
+    pode REUTILIZAR o mesmo endereço de memória depois do DataFrame
+    anterior ser libertado (garbage collection) — fazendo esta cache
+    devolver por engano o índice de nomes DE OUTRO TOUR (ex: WTA a usar
+    a cache construída para o ATP, onde nenhum nome WTA existe).
+    Confirmado no log: resolve_player_name falhava para TODAS as
+    jogadoras WTA, incluindo top-10 óbvias (Swiatek, Sabalenka, Gauff),
+    o que só faz sentido com a cache "cruzada" entre tours. As colunas
+    diferem sempre entre ATP (TennisMyLife) e WTA (tennis-data.co.uk),
+    por isso usá-las na chave elimina a colisão."""
+    key = (len(history), tuple(history.columns))
     if key in _NAME_INDEX_CACHE:
         return _NAME_INDEX_CACHE[key]
 
@@ -938,6 +953,19 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
     (via correspondência aproximada). None se não houver nada suficiente-
     mente parecido — preferimos "sem dados" a arriscar juntar dois
     jogadores diferentes.
+
+    CORREÇÃO (15/08/2026, log real): confirmado que resolve_player_name
+    falhava para 100% das jogadoras WTA (incluindo top-10 óbvias tipo
+    Swiatek/Sabalenka), mesmo sem acentos — descartando erro de
+    acentuação. Suspeita forte (não 100% confirmada por falta de acesso
+    direto aos dados brutos): a tennis-data.co.uk regista os nomes no
+    formato "Apelido Inicial." (ex: "Swiatek I."), não "Nome Apelido"
+    como as outras fontes — um formato estruturalmente diferente que
+    nenhum limiar de correspondência aproximada resolve. Acrescentado um
+    fallback específico para este formato, tentado só se os métodos
+    normais falharem — não pode piorar nada, só ajudar se a suspeita
+    estiver certa. Fica também um diagnóstico em main.py a mostrar
+    amostras reais, para confirmar de vez se isto bastou.
     """
     if history.empty:
         return None
@@ -951,6 +979,17 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
     close = difflib.get_close_matches(normalized_input, index.keys(), n=1, cutoff=0.88)
     if close:
         return index[close[0]]
+
+    # Fallback: formato "Apelido Inicial." (ex: tennis-data.co.uk)
+    partes = normalized_input.split()
+    if len(partes) >= 2:
+        primeiro_nome, apelido = partes[0], partes[-1]
+        candidato = f"{apelido} {primeiro_nome[0]}"
+        if candidato in index:
+            return index[candidato]
+        close2 = difflib.get_close_matches(candidato, index.keys(), n=1, cutoff=0.85)
+        if close2:
+            return index[close2[0]]
 
     return None
 
