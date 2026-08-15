@@ -9,7 +9,7 @@ from src.report_html import _fd_bar, _mod_fatores_detalhados
 
 class ForceMapTests(unittest.TestCase):
     def test_percentages_are_rendered_inside_comparison_bar(self) -> None:
-        html = _fd_bar("servico", {
+        html = _fd_bar("servico_carreira", {
             "valor_a": 66, "valor_b": 69,
             "amostra_a": 24, "amostra_b": 18,
         })
@@ -27,7 +27,7 @@ class ForceMapTests(unittest.TestCase):
     def test_module_uses_force_map_title_and_leader(self) -> None:
         html = _mod_fatores_detalhados({}, {
             "fatores_status": {
-                "servico": {
+                "servico_carreira": {
                     "disponivel": True, "lider": "Jogador B",
                     "valor_a": 66, "valor_b": 69,
                     "amostra_a": 24, "amostra_b": 18,
