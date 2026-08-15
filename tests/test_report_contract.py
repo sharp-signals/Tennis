@@ -18,17 +18,20 @@ class ReportStateTests(unittest.TestCase):
         )
         self.assertEqual(report_html.detetar_estado({}, {}, None)[0], "sem_odds")
 
-        efficient = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 0}}
-        moderate = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 2}}
+        efficient = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 0}, "tipo": "eficiente"}
+        moderate = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 2}, "tipo": "direcao"}
         strong = {
             "market": {"a": 55, "b": 45},
             "classificacao": {"nivel": 3},
-            "tipo": "conviccao",
+            "tipo": "direcao",
         }
         self.assertEqual(report_html.detetar_estado({}, {}, efficient)[0], "eficiente")
         self.assertEqual(report_html.detetar_estado({}, {}, moderate)[0], "acompanhar")
         self.assertEqual(report_html.detetar_estado({}, {}, strong)[0], "oportunidade")
-        self.assertIn("Convicção", report_html.detetar_estado({}, {}, strong)[2])
+        self.assertIn("Divergência", report_html.detetar_estado({}, {}, strong)[2])
+
+        legacy_conviction = {**strong, "tipo": "conviccao"}
+        self.assertEqual(report_html.detetar_estado({}, {}, legacy_conviction)[0], "eficiente")
 
     def test_divergence_normalization_preserves_diagnostic_fields(self):
         raw = {
@@ -121,6 +124,75 @@ class ReportRenderingTests(unittest.TestCase):
         for level in range(4):
             with self.subTest(level=level):
                 self.assertEqual(report_html._render_interesse_dots(level).count("mo-dot"), 3)
+
+    def test_aligned_report_does_not_claim_value_or_render_unsupported_markets(self):
+        payload = {
+            "player_a": "A",
+            "player_b": "B",
+            "market_odds_decimal": {"A": 1.5, "B": 2.8},
+            "features": {"ranking": {"lider": "A", "diff": 20}},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+
+        self.assertIn("Mercado e indicadores", html)
+        self.assertNotIn("subvalorizado", html.lower())
+        self.assertNotIn("p.p. entre o índice", html)
+        self.assertNotIn("Total Games", html)
+        self.assertNotIn("Handicap Games", html)
+        self.assertNotIn("Mercado observado", html)
+
+    def test_header_displays_odds_provenance_when_available(self):
+        payload = {
+            "player_a": "A",
+            "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "odds_source": "RapidAPI Moneyline",
+            "odds_captured_at_utc": "2026-08-16T09:30:00+00:00",
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+
+        self.assertIn("Fonte: RapidAPI Moneyline", html)
+        self.assertIn("captadas em 2026-08-16T09:30:00+00:00", html)
+
+    def test_form_details_live_only_inside_force_map(self):
+        payload = {
+            "player_a": "A",
+            "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "recent_form_a": {"wins": 7, "losses": 3, "matches": 10},
+            "recent_form_b": {"wins": 4, "losses": 6, "matches": 10},
+            "current_season_a": {"wins": 20, "losses": 10},
+            "current_season_b": {"wins": 14, "losses": 16},
+            "features": {"forma_recente": {"lider": "A", "diff": 30}},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+
+        self.assertEqual(html.count("<h3>Forma</h3>"), 1)
+        self.assertGreater(html.index("<h3>Forma</h3>"), html.index("Mapa de Forças"))
+
+    def test_directional_disagreement_renders_only_moneyline_observation(self):
+        payload = {
+            "player_a": "A",
+            "player_b": "B",
+            "market_odds_decimal": {"A": 2.8, "B": 1.5},
+            "features": {
+                "h2h": {"lider": "A", "diff": 3, "a_wins": 3, "b_wins": 0},
+                "piso": {"lider": "A", "diff": 18, "amostra_a": 100, "amostra_b": 100},
+                "forma_recente": {"lider": "A", "diff": 20},
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+
+        self.assertIn("Mercado observado", html)
+        self.assertIn("Moneyline", html)
+        self.assertNotIn("Moneyline · único mercado analisado", html)
+        self.assertIn("Indicadores · peso relativo", html)
+        self.assertNotIn("Total Games", html)
+        self.assertNotIn("Handicap Games", html)
+        self.assertNotIn("p.p. entre o índice", html)
+        self.assertNotIn("índice representa apenas", html)
+        self.assertNotIn("Ponto de observação", html)
 
 
 if __name__ == "__main__":

@@ -524,8 +524,8 @@ def _evaluate_selective_policy(
     # à chave que realmente existe.
     if nivel is not None and div.get("prob_mercado_a") is not None:
         # temos motor com odds -> decidir pelo nível de divergência
-        # LIMIAR SUBIDO (12/08/2026, a pedido): só nível 3 (divergência/
-        # convicção FORTE) chama o Claude — é o único onde a interpretação
+        # LIMIAR SUBIDO (12/08/2026, a pedido): só divergência de nível 3
+        # chama o Claude — é o único onde a interpretação
         # paga acrescenta claramente sobre o fallback determinístico, que já
         # está alinhado com o motor (classificação, favorecido, fatores).
         # Nível 2 (moderado/reforçado) passou a usar só o fallback — poupa
@@ -604,15 +604,15 @@ def _build_selective_result(
         fatores_txt = ", ".join(f"{nome} ({quem})" for nome, quem in fatores[:3])
 
         if nivel == 0:
-            summary = f"{player_a} vs {player_b} — mercado eficiente, sem divergência relevante face aos indicadores."
-            verdict = "Mercado eficiente. Sem divergência relevante entre mercado e indicadores."
+            summary = f"{player_a} vs {player_b} — mercado e indicadores alinhados, sem divergência direcional."
+            verdict = "Mercado e indicadores alinhados. Isto, por si só, não demonstra valor."
             key_points = [f"Mercado e indicadores alinhados a favor de {mercado_favorece}." if mercado_favorece else "Sem vantagem clara de nenhum lado."]
         else:
             summary = f"{player_a} vs {player_b} — {texto_clf.lower()} a favor de {favorecido}."
             verdict = (
                 f"{texto_clf} a favor de {favorecido}. "
-                f"Mercado mantém {mercado_favorece}. "
-                f"Acompanhar Moneyline {favorecido}."
+                f"Mercado favorece {mercado_favorece}. "
+                f"Observar Moneyline {favorecido}."
             )
             key_points = [f"Fatores que sustentam: {fatores_txt}."] if fatores_txt else [f"{texto_clf} a favor de {favorecido}."]
 
@@ -750,42 +750,28 @@ def analyze_match(match_data: dict) -> dict:
         _tipo = _div.get("tipo", "")
         _fatores = _div.get("fatores_chave") or []
         _fat_txt = ", ".join(f"{f} (favorece {q})" for f, q in _fatores) if _fatores else "n/d"
-        # REGRA DE VOCABULÁRIO (bug real observado 11/08/2026: o Claude usou
-        # "divergência forte" num caso de CONVICÇÃO, confundindo os dois
-        # conceitos apesar da classificação estar correta). São coisas
-        # diferentes e a palavra errada muda o significado:
-        #   - "conviccao": mercado E índice apontam para O MESMO jogador, só
-        #     que o índice é mais forte. NÃO é um desacordo — é um reforço.
-        #   - "direcao": mercado e índice apontam para JOGADORES DIFERENTES —
-        #     aqui sim é um desacordo genuíno.
-        if _tipo == "conviccao":
-            _regra_vocab = (
-                "ESTE É UM CASO DE CONVICÇÃO, NÃO DE DIVERGÊNCIA: o mercado e "
-                f"o índice concordam no MESMO lado ({_fav}), o índice só é mais "
-                "forte do que a odd sugere. Usa APENAS a palavra 'convicção' "
-                "(ex: 'convicção forte'). PROIBIDO escrever 'divergência' ou "
-                "'diverge' neste texto — não é o caso, e confundir os dois é "
-                "um erro grave de leitura."
-            )
-        elif _tipo == "direcao":
+        if _tipo == "direcao":
             _regra_vocab = (
                 "ESTE É UM CASO DE DIVERGÊNCIA DE DIREÇÃO: mercado e índice "
                 f"apontam para jogadores DIFERENTES (mercado favorece "
                 f"{_div.get('mercado_favorece')}, índice favorece {_fav}). "
-                "Usa a palavra 'divergência'."
+                "Usa a palavra 'divergência'. As escalas são distintas: NÃO "
+                "as subtraias nem expresses a diferença em pontos percentuais."
             )
         else:
-            _regra_vocab = "Mercado eficiente — não uses 'divergência' nem 'convicção'."
+            _regra_vocab = (
+                "Mercado e indicadores alinhados — não uses 'divergência', "
+                "'convicção', 'subvalorizado' nem afirmes que existe valor."
+            )
         _div_bloco = (
             "\n\n### CLASSIFICAÇÃO DO MOTOR (já decidida — NÃO a contradigas):\n"
             f"- Classificação: **{_clf['texto']}** (nível {_clf['nivel']}/3, tipo={_tipo})\n"
-            f"- Gap modelo vs mercado: {_div.get('gap_pp', 0)} p.p.\n"
-            f"- Modelo inclina para: {_fav or 'nenhum (mercado eficiente)'}\n"
+            f"- Modelo inclina para: {_fav or 'nenhum (mercado e indicadores alinhados)'}\n"
             f"- Fatores que sustentam: {_fat_txt}\n"
             f"- {_regra_vocab}\n"
             "REGRA GERAL: escreve o executive_summary e o verdict COERENTES com "
-            "esta classificação. Se o motor diz 'Mercado eficiente', NÃO "
-            "inventes divergência nem convicção. Interpreta, não recalcules."
+            "esta classificação. Se o motor indica alinhamento, NÃO inventes "
+            "divergência, subvalorização ou valor. Interpreta, não recalcules."
         )
 
     user_prompt = (
@@ -853,7 +839,7 @@ def analyze_match(match_data: dict) -> dict:
     # incompatibilidade de parâmetros, etc.), a exceção propagava até ao
     # main.py, que APAGA O JOGO INTEIRO do relatório (não é um fallback de
     # texto — o jogo desaparece). Confirmado ao vivo: um bug no prefill fez
-    # TODAS as 30 chamadas falharem, e os ~30 jogos com divergência/convicção
+    # TODAS as 30 chamadas falharem, e os ~30 jogos com divergência
     # (os mais interessantes) simplesmente não saíram no relatório final,
     # silenciosamente. Agora cai sempre no fallback determinístico (alinhado
     # com o motor), como acontece deliberadamente quando o Claude é saltado.
@@ -979,10 +965,10 @@ def analyze_match(match_data: dict) -> dict:
                 run_metrics.increment("llm_fallbacks")
                 # fallback determinístico curto, 100% coerente com o motor
                 if nivel == 0:
-                    fb = "Mercado eficiente. Sem divergência relevante entre mercado e indicadores."
+                    fb = "Mercado e indicadores alinhados. Isto, por si só, não demonstra valor."
                 else:
                     fb = (f"{texto_motor} a favor de {favorecido}. "
-                          f"Mercado mantém {merc_fav}. Acompanhar Moneyline {favorecido}.")
+                          f"Mercado favorece {merc_fav}. Observar Moneyline {favorecido}.")
                 res["executive_summary"] = fb
                 res["verdict"] = fb
                 res["_validacao"] = "fallback_determinístico (Claude contradizia o motor)"

@@ -42,6 +42,7 @@ class ForceMapTests(unittest.TestCase):
             },
         })
         self.assertIn("Mapa de Forças (1)", html)
+        self.assertNotIn('class="more mais-forcas" open', html)
         self.assertIn("Jogador B", html)
         self.assertIn("66%", html)
         self.assertIn("69%", html)

@@ -49,16 +49,18 @@ def test_sem_odds_devolve_none():
 # ---------- TESTES: comparação direcional ----------
 def test_mercado_e_indice_concordam_direcao():
     """Superfavorito onde os sinais também o favorecem: a DIREÇÃO concorda
-    (ambos no mesmo jogador). Pode ser 'eficiente' ou 'convicção' conforme a
-    magnitude, mas NUNCA divergência de direção contra ele."""
+    (ambos no mesmo jogador). Isso é alinhamento, não prova valor nem permite
+    comparar a magnitude das duas escalas."""
     r = _calcular_divergencia(_payload(1.15, 5.5, {
         "h2h": {"lider": "A", "diff": 2, "a_wins": 2, "b_wins": 0},
         "piso": {"lider": "A", "diff": 10, "amostra_a": 200, "amostra_b": 200},
         "forma_recente": {"lider": "A", "diff": 30},
         "ranking": {"lider": "A", "diff": 27},
     }))
-    # direção concorda: ambos favorecem A. O tipo nunca é "direcao" (oposto).
-    assert r["tipo"] in ("eficiente", "conviccao")
+    assert r["tipo"] == "eficiente"
+    assert r["classificacao"]["nivel"] == 0
+    assert r["favorecido"] is None
+    assert r["gap_pp"] is None
     assert r["indice_favorece"] == r["mercado_favorece"]
 
 
@@ -72,6 +74,8 @@ def test_divergencia_quando_discordam():
     }, rich_stats_a={"scenarios": {"deciding_set_win_pct": 63, "deciding_set_count": 30}},
        rich_stats_b={"scenarios": {"deciding_set_win_pct": 48, "deciding_set_count": 30}}))
     assert r["classificacao"]["nivel"] >= 1
+    assert r["tipo"] == "direcao"
+    assert r["gap_pp"] is None
     assert r["indice_favorece"] != r["mercado_favorece"]
 
 
