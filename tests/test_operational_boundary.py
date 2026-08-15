@@ -2,6 +2,7 @@
 
 import unittest
 import tempfile
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
@@ -84,26 +85,47 @@ class OperationalBoundaryTests(unittest.TestCase):
         matches = self._matches(10, failures=1)
         with tempfile.TemporaryDirectory() as directory:
             metrics_path = str(Path(directory) / "metrics.json")
-            with patch.object(main, "SITE_OUTPUT_DIR", directory), \
-                 patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
-                 patch.object(main.fetch_data, "fetch_tracked_tournament_fixtures", return_value=matches), \
-                 patch.object(main, "_deduplicate_matches", side_effect=lambda value: value), \
-                 patch.object(main, "_filter_matches_in_window", side_effect=lambda value: value), \
-                 patch.object(main, "_filter_and_enrich_with_tournament_info", side_effect=lambda value: value), \
-                 patch.object(main.fetch_data, "flush_tournament_cache"), \
-                 patch.object(main.fetch_data, "flush_fixtures_cache"), \
-                 patch.object(main.fetch_data, "prepare_rapidapi_odds_index"), \
-                 patch.object(main.fetch_data, "rapidapi_budget_exceeded", return_value=False), \
-                 patch.object(main, "_build_match_payload", side_effect=self._payload), \
-                 patch.object(main, "analyze_match", return_value={}), \
-                 patch.object(main, "_enforce_minimum_flag", side_effect=lambda _payload, result: result), \
-                 patch.object(main, "_factual_key_points", return_value=[]), \
-                 patch.object(main, "build_report_html", return_value="<html></html>") as build_report, \
-                 patch.object(main, "_write_site_index"), \
-                 patch.object(main, "send_message") as send, \
-                 patch.object(main.fetch_data, "get_rapidapi_call_count", return_value=5), \
-                 patch.object(main.fetch_data, "persist_rapidapi_usage") as persist_usage, \
-                 patch.object(main.fetch_data, "get_rapidapi_recorded_today_calls", return_value=5):
+            with ExitStack() as stack:
+                stack.enter_context(patch.object(main, "SITE_OUTPUT_DIR", directory))
+                stack.enter_context(patch.object(main.fetch_data, "reset_rapidapi_call_count"))
+                stack.enter_context(patch.object(
+                    main.fetch_data, "fetch_tracked_tournament_fixtures", return_value=matches,
+                ))
+                stack.enter_context(patch.object(
+                    main, "_deduplicate_matches", side_effect=lambda value: value,
+                ))
+                stack.enter_context(patch.object(
+                    main, "_filter_matches_in_window", side_effect=lambda value: value,
+                ))
+                stack.enter_context(patch.object(
+                    main, "_filter_and_enrich_with_tournament_info", side_effect=lambda value: value,
+                ))
+                stack.enter_context(patch.object(main.fetch_data, "flush_tournament_cache"))
+                stack.enter_context(patch.object(main.fetch_data, "flush_fixtures_cache"))
+                stack.enter_context(patch.object(main.fetch_data, "prepare_rapidapi_odds_index"))
+                stack.enter_context(patch.object(
+                    main.fetch_data, "rapidapi_budget_exceeded", return_value=False,
+                ))
+                stack.enter_context(patch.object(main, "_build_match_payload", side_effect=self._payload))
+                stack.enter_context(patch.object(main, "analyze_match", return_value={}))
+                stack.enter_context(patch.object(
+                    main, "_enforce_minimum_flag", side_effect=lambda _payload, result: result,
+                ))
+                stack.enter_context(patch.object(main, "_factual_key_points", return_value=[]))
+                build_report = stack.enter_context(patch.object(
+                    main, "build_report_html", return_value="<html></html>",
+                ))
+                stack.enter_context(patch.object(main, "_write_site_index"))
+                send = stack.enter_context(patch.object(main, "send_message"))
+                stack.enter_context(patch.object(
+                    main.fetch_data, "get_rapidapi_call_count", return_value=5,
+                ))
+                persist_usage = stack.enter_context(patch.object(
+                    main.fetch_data, "persist_rapidapi_usage",
+                ))
+                stack.enter_context(patch.object(
+                    main.fetch_data, "get_rapidapi_recorded_today_calls", return_value=5,
+                ))
                 main.run()
                 entry = main.run_metrics.append_run(path=metrics_path)
 
