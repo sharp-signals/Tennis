@@ -527,14 +527,6 @@ def _build_charts(payload: dict) -> str:
 # ===== MOTOR DE DIVERGÊNCIA PONDERADA V3 (Python puro, zero Claude) =====
 # afinam-se com o backtest e os relatórios reais.
 
-# Margem de mercado (p.p.) a partir da qual um favorito é considerado "muito
-# cotado" — usado para sugerir o Handicap como mercado alternativo ao
-# Moneyline quando o índice CONCORDA com esse favorito (convicção forte,
-# odd curta = pouca margem no Moneyline). PROVISÓRIO (12/08/2026, a pedido):
-# não há backtest ainda a validar este valor — 25 p.p. é um ponto de partida
-# razoável (odd ≈ até 1.60), fácil de ajustar aqui quando houver dados.
-MARGEM_FAVORITO_MUITO_COTADO = 25
-
 PESOS = {
     "h2h_piso": 12,             # MUITO ALTO — confronto direto NESTE piso (mais específico que o global)
     "piso": 8,                 # ALTO — desce ligeiramente (10->8), partilha família com velocidade_piso
@@ -557,21 +549,6 @@ PESOS = {
     "meteo": 1,                # BAIXO — raramente decisiva
 }
 
-# Escala de divergência (honesta — indicador de atenção, não vantagem garantida).
-# Baseada na sugestão do ChatGPT, ajustada por nós. Em pontos percentuais
-# da diferença entre a inclinação ponderada do modelo e o mercado.
-def _classificar_divergencia(gap_pp):
-    g = abs(gap_pp)
-    if g < 5:
-        return ("eficiente", "Mercado eficiente", 0)
-    elif g < 12:
-        return ("ligeira", "Divergência ligeira", 1)
-    elif g < 20:
-        return ("moderada", "Divergência moderada", 2)
-    else:
-        return ("forte", "Divergência forte", 3)
-
-
 def _nome_fator(chave):
     return {
         "h2h": "confronto direto", "h2h_piso": "confronto direto (piso)",
@@ -588,9 +565,8 @@ def _nome_fator(chave):
 def _calcular_divergencia(payload):
     """
     Núcleo do V3. Devolve:
-    - inclinacao_modelo: % ponderada a favor de A (0-100)
-    - prob_mercado: % do mercado a favor de A (sem margem)
-    - gap_pp: diferença em pontos percentuais
+    - indice_evidencia: distribuição ponderada dos sinais (0-100)
+    - prob_mercado: probabilidade implícita do mercado (sem margem)
     - classificacao: (chave, texto, nivel 0-3)
     - favorecido: quem o modelo favorece vs mercado (ou None)
     - fatores_chave: os fatores que MAIS pesaram na inclinação (para justificar)
@@ -1070,46 +1046,27 @@ def _calcular_divergencia(payload):
     if prob_mercado_a is None:
         return None
 
-    # --- 4. Comparação: DIREÇÃO + MAGNITUDE (Caso C) ---
-    # Dois tipos de situação interessante:
-    #  (1) DIREÇÃO: mercado num jogador, índice no outro -> "contra o mercado".
-    #  (2) CONVICÇÃO: ambos no mesmo jogador, mas o índice bem mais forte que o
-    #      mercado -> "favorito subvalorizado", os dados suportam-no mais que a
-    #      odd. É valor do lado do favorito (o que o utilizador quer apanhar).
-    # NÃO fingimos que o índice é probabilidade: a magnitude mede o
-    # "desalinhamento de convicção", não "o mercado está errado em X%".
+    # --- 4. Comparação exclusivamente DIRECIONAL ---
+    # O índice mede a quota de peso dos sinais; o mercado exprime probabilidade
+    # implícita. Como as escalas não são equivalentes, nunca se subtraem nem se
+    # usam "p.p." entre ambas. Só existe divergência quando apontam para lados
+    # opostos. Quando concordam, o resultado é alinhamento — não "valor".
     mercado_favorece = a if prob_mercado_a >= 50 else b
     indice_favorece = a if indice_evidencia_a >= 50 else b
-    forca_indice = abs(indice_evidencia_a - 50)      # 0-50
-    forca_mercado = abs(prob_mercado_a - 50)          # 0-50
-    # desalinhamento de magnitude (mesmo apontando ao mesmo lado)
-    desalinhamento = abs(indice_evidencia_a - prob_mercado_a)  # 0-100
+    forca_indice = abs(indice_evidencia_a - 50)  # força interna dos sinais, 0-50
     tipo = "eficiente"
     if indice_favorece != mercado_favorece:
-        # (1) direção oposta -> divergência clássica
+        # A severidade depende apenas da concentração dos sinais. A força do
+        # mercado continua visível nas odds, mas não é misturada nesta escala.
         tipo = "direcao"
-        conviccao = forca_indice + forca_mercado
-        if conviccao < 15:
+        if forca_indice < 10:
             nivel = 1
-        elif conviccao < 30:
-            nivel = 2
-        else:
-            nivel = 3
-    elif desalinhamento >= 12:
-        # (2) mesmo lado, mas índice bem mais forte -> convicção reforçada
-        # (favorito que os dados suportam mais do que a odd reflete). Tratamento
-        # SIMÉTRICO com a divergência de direção (auditoria ponto 9): sem
-        # limiar de odd — mostra a todos os favoritos subvalorizados e o
-        # utilizador decide o que fazer (Moneyline, handicap, etc.).
-        tipo = "conviccao"
-        if desalinhamento < 18:
-            nivel = 1
-        elif desalinhamento < 28:
+        elif forca_indice < 25:
             nivel = 2
         else:
             nivel = 3
     else:
-        # concordam em direção e magnitude -> mercado eficiente
+        # Concordância direcional não prova preço incorreto nem subvalorização.
         nivel = 0
 
     # SALVAGUARDA DE CONFIANÇA (contra falsos positivos): a divergência só pode
@@ -1120,17 +1077,10 @@ def _calcular_divergencia(payload):
         nivel = min(nivel, 1)
     elif massa_evidencia < 18 or n_fatores < 3:
         nivel = min(nivel, 2)
-    # texto conforme o TIPO (direção vs convicção) e o nível
-    if tipo == "conviccao":
-        _mapa = {0: ("eficiente", "Mercado eficiente"),
-                 1: ("ligeira", "Convicção ligeira"),
-                 2: ("moderada", "Convicção reforçada"),
-                 3: ("forte", "Convicção forte")}
-    else:
-        _mapa = {0: ("eficiente", "Mercado eficiente"),
-                 1: ("ligeira", "Divergência ligeira"),
-                 2: ("moderada", "Divergência moderada"),
-                 3: ("forte", "Divergência forte")}
+    _mapa = {0: ("eficiente", "Mercado e indicadores alinhados"),
+             1: ("ligeira", "Divergência ligeira"),
+             2: ("moderada", "Divergência moderada"),
+             3: ("forte", "Divergência forte")}
     chave, texto = _mapa[nivel]
 
     favorecido = indice_favorece if nivel >= 1 else None
@@ -1157,19 +1107,14 @@ def _calcular_divergencia(payload):
         "inclinacao_modelo_a": indice_evidencia_a,
         "inclinacao_modelo_b": 100 - indice_evidencia_a,
         "classificacao": {"chave": chave, "texto": texto, "nivel": nivel},
-        "tipo": tipo,  # "direcao" | "conviccao" | "eficiente"
+        "tipo": tipo,  # "direcao" | "eficiente"
         "favorecido": favorecido,
         "fatores_chave": fatores_chave,
         "n_fatores": n_fatores,  # nº de sinais que contribuíram (transparência
                                   # quando o índice bate no extremo com poucos)
         "fatores_status": status,  # TODOS os fatores (não só o top-3), para o
                                     # módulo "Fatores Detalhados" — 100% Python
-        "gap_pp": round(desalinhamento, 1),  # desalinhamento índice vs mercado,
-                # em pontos percentuais (NÃO é "% de vantagem" nem odd justa —
-                # ver nota acima: mede desalinhamento de convicção, não erro do
-                # mercado). Corrige bug: analyze.py já tentava ler esta chave
-                # (`_div.get('gap_pp', 0)`) mas nunca existiu — o prompt do
-                # Claude dizia sempre "Gap: 0 p.p.", mesmo em divergência forte.
+        "gap_pp": None,  # compatibilidade: escalas distintas, não subtrair
         "player_a": a, "player_b": b,
     }
 
@@ -1226,24 +1171,6 @@ def _compute_market_overview(payload, mvm):
         idx_und = idx.get("a") if und == a else idx.get("b")
         i, t = 3, f"Underdog favorecido pelos indicadores (índice {idx_und}/100)"
     linhas.append(("Moneyline Underdog", i, t))
-    # Total Games — quantificado pela margem do mercado
-    i, t = 1, "Sem sinal de equilíbrio"
-    if market:
-        margem = abs(market["a"] - market["b"])
-        if margem <= 12:
-            i, t = 3, f"Jogo renhido (mercado {market['a']}/{market['b']}) — over/under a acompanhar"
-        elif margem <= 24:
-            i, t = 2, f"Algum equilíbrio (margem {margem} p.p.) — acompanhar linhas"
-    linhas.append(("Total Games", i, t))
-    # Handicap Games
-    i, t = 1, "Favoritismo claro — handicap pouco interessante"
-    if market:
-        margem = abs(market["a"] - market["b"])
-        if margem < 15:
-            i, t = 2, f"Jogo equilibrado (margem {margem} p.p.) — handicap curto"
-        elif margem <= 40:
-            i, t = 2, f"Handicap médio a acompanhar (margem {margem} p.p.)"
-    linhas.append(("Handicap Games", i, t))
     # Tie-break — quantificado pela diferença de serviço
     i, t = 1, "Sem indicação clara"
     sv = f.get("servico")
@@ -1928,8 +1855,10 @@ def detetar_estado(payload, result, divergencia):
         return ("sem_odds", COLORS_V2["neutral"], "Sem odds — comparação indisponível", "⚪")
     nivel = (_d(divergencia.get("classificacao"))).get("nivel", 0)
     tipo = divergencia.get("tipo", "")
+    if tipo != "direcao":
+        return ("eficiente", COLORS_V2["neutral"], "Mercado e indicadores alinhados", "⚪")
     if nivel >= 3:
-        lbl = "Convicção forte" if tipo == "conviccao" else "Divergência forte"
+        lbl = "Divergência forte"
         return ("oportunidade", COLORS_V2["mint"], lbl, "🟢")
     if nivel >= 1:
         return ("acompanhar", COLORS_V2["amber"], "A acompanhar", "🟡")
@@ -1978,6 +1907,7 @@ body {{ background:var(--bg); color:var(--text);
 .mh-odd {{ font-size:20px; font-weight:700; }}
 .mh-odd.b {{ text-align:right; }}
 .mh-odd small {{ display:block; font-size:12px; color:var(--dim); font-weight:400; }}
+.mh-odds-meta {{ color:var(--dim); font-size:10px; text-align:center; margin-top:7px; }}
 .mh-mid {{ text-align:center; font-size:12px; color:var(--dim); }}
 
 /* --- LEITURA DO JOGO (a decisão, 1 frase) --- */
@@ -2080,8 +2010,6 @@ details.mais-forcas .more-hint {{ color:var(--amber); opacity:.75; }}
 .merc-bola {{ font-size:14px; }}
 .merc-nome {{ font-weight:600; min-width:130px; }}
 .merc-nota {{ color:var(--dim); font-size:12px; }}
-.merc-aviso {{ font-size:11px; color:var(--dim); margin-top:10px;
-  padding-top:8px; border-top:1px solid var(--line); }}
 .merc-principal {{ border:1px solid var(--line); border-radius:8px; padding:10px 12px;
   margin-bottom:10px; background:var(--surface2); }}
 .merc-principal-tag {{ font-size:10px; text-transform:uppercase; letter-spacing:.5px;
@@ -2129,6 +2057,12 @@ def _mod_header(payload, div, estado):
     odds = _d(payload.get("market_odds_decimal"))
     oa = _esc(odds.get(payload.get("player_a")) or "—")
     ob = _esc(odds.get(payload.get("player_b")) or "—")
+    odds_meta_parts = []
+    if payload.get("odds_source"):
+        odds_meta_parts.append(f"Fonte: {_esc(payload['odds_source'])}")
+    if payload.get("odds_captured_at_utc"):
+        odds_meta_parts.append(f"captadas em {_esc(payload['odds_captured_at_utc'])}")
+    odds_meta = " · ".join(odds_meta_parts)
     # prob mercado
     pa = pb = None
     if div and div.get("market"):
@@ -2169,6 +2103,7 @@ def _mod_header(payload, div, estado):
     <div class="mh-mid">{_esc(meteo)}</div>
     <div class="mh-odd b">{ob}<small>{f'{pb}% mercado' if pb is not None else ''}</small></div>
   </div>
+  {f'<div class="mh-odds-meta">{odds_meta}</div>' if odds_meta else ''}
 </div>"""
 
 
@@ -2191,7 +2126,6 @@ def _mod_leitura(payload, div, estado, result):
     tipo = div.get("tipo", "")
     n_fatores = div.get("n_fatores")
     nivel = (_d(div.get("classificacao"))).get("nivel", 0)
-    gap_pp = div.get("gap_pp")
     # Transparência (11/08/2026): quando o índice bate no extremo (todos os
     # sinais disponíveis concordam, sem nenhum contrapeso) e há poucos sinais
     # a sustentá-lo, isso é matematicamente correto mas FRÁGIL — vale a pena
@@ -2201,27 +2135,14 @@ def _mod_leitura(payload, div, estado, result):
         nota_fragil = (f" <span style=\"opacity:.7\">(índice construído a partir de só "
                         f"{n_fatores} {'sinal' if n_fatores == 1 else 'sinais'} — todos no mesmo "
                         f"sentido, sem contrapeso.)</span>")
-    # Gap em pontos percentuais (12/08/2026, a pedido) — NÃO é odd justa nem
-    # "% de valor": é o desalinhamento entre o índice de evidência e a
-    # probabilidade de mercado, um número já calculado internamente
-    # (`desalinhamento`) mas nunca mostrado antes. Mantém o princípio do
-    # projeto de não afirmar uma probabilidade/edge próprios — é só a
-    # magnitude do desalinhamento, não uma odd "correta".
-    gap_txt = f" (desalinhamento de {gap_pp:.0f} p.p. entre o índice e o mercado)" if gap_pp else ""
     if chave == "eficiente":
-        frase = f"Os indicadores e o mercado concordam ({_esc(merc_fav)} favorito). Sem valor aparente."
-    elif tipo == "conviccao":
-        # favorito subvalorizado: mercado e índice no mesmo lado, mas índice
-        # mais forte. Linguagem qualitativa escalada pelo nível (a pedido,
-        # 12/08/2026) — mais forte quanto maior o nível, sem inventar odd.
-        adj = {1: "ligeiramente", 2: "moderadamente", 3: "claramente"}.get(nivel, "")
-        frase = (f"<b>{_esc(fav)}</b> é favorito do mercado <b>e</b> dos indicadores "
-                 f"(índice {idx_fav}/100) — {adj} subvalorizado pelo mercado{gap_txt}. "
-                 f"Favorito a acompanhar.{nota_fragil}")
+        frase = (f"Mercado e indicadores apontam para <b>{_esc(merc_fav)}</b>. "
+                 "Este alinhamento não permite concluir que a odd tem valor.")
     else:
         # divergência de direção: contra o mercado
         frase = (f"Os indicadores apontam para <b>{_esc(fav)}</b> (índice {idx_fav}/100), "
-                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>.{gap_txt}{nota_fragil}")
+                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>. "
+                 f"As duas escalas são distintas e não são subtraídas.{nota_fragil}")
     return f"""
 <div class="leitura" style="border-color:{cor}">
   <div class="leitura-bola">{bola}</div>
@@ -2242,8 +2163,6 @@ def _mod_fatores(payload, div):
   <div class="fator-lbl">{_esc(nome)}</div>
   <div class="fator-fav" style="color:var(--mint)">▲ {quem_esc}</div>
 </div>""")
-    while len(chips) < 4:
-        chips.append('<div class="fator"><div class="fator-lbl">—</div></div>')
     return f'<div class="fatores">{"".join(chips)}</div>'
 
 
@@ -2380,14 +2299,16 @@ def _mod_fatores_detalhados(payload, div, extras_html=""):
     if not linhas and not extras_html:
         return ""
     total_tag = f" ({len(linhas)})" if linhas else ""
-    return (f'<details class="more mais-forcas" open><summary>Mapa de Forças{total_tag}'
+    return (f'<details class="more mais-forcas"><summary>Mapa de Forças{total_tag}'
             f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
             f'<div class="more-body">{extras_html}{"".join(linhas)}</div></details>')
 
 
 def _mod_mercado_vs_sinal(payload, div):
-    """Módulo 4: Mercado vs Sinal — o gráfico central. Índice de evidência,
-    não pseudo-probabilidade (auditoria #15)."""
+    """Módulo 4: mercado e indicadores em duas escalas lado a lado.
+
+    O índice de evidência não é uma pseudo-probabilidade.
+    """
     if not div or not div.get("market"):
         return ""
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
@@ -2407,16 +2328,11 @@ def _mod_mercado_vs_sinal(payload, div):
 </div>"""
 
     merc = barra("Mercado", mk["a"], mk["b"], "%")
-    sinal = barra("Índice de sinais", idx.get("a", 50), idx.get("b", 50), "/100")
-    fav = div.get("favorecido")
-    clf = (_d(div.get("classificacao"))).get("texto", "")
-    delta = ""
-    if fav:
-        delta = f'<div class="mvs-delta" style="color:var(--mint)">{clf} — indicadores a favor de {_esc(fav)}</div>'
+    sinal = barra("Indicadores · peso relativo", idx.get("a", 50), idx.get("b", 50), "/100")
     return f"""
 <div class="mvs">
-  <h3>Mercado vs Sinal</h3>
-  {merc}{sinal}{delta}
+  <h3>Mercado e indicadores</h3>
+  {merc}{sinal}
 </div>"""
 
 
@@ -2618,80 +2534,26 @@ def _mod_h2h(payload):
 
 
 def _mod_mercados(payload, div):
-    """Mercados a acompanhar (auditoria pontos 7, 16): marca INTERESSE, nunca
-    'valor' (só temos odds de Moneyline). 'acompanhar' ≠ 'apostar'.
+    """Mostra apenas Moneyline quando existe divergência direcional real.
 
-    CORREÇÃO: quando há Moneyline com sinal (nível>=1), esse é sempre o
-    MERCADO PRINCIPAL e é destacado visualmente à parte — os extras
-    (Total Games/Handicap, que não têm odds próprias) aparecem por baixo,
-    claramente secundários, para não ficarem 2-3 bolas coloridas ao mesmo
-    nível sem se perceber qual merece mais atenção."""
+    Total/Handicap não são apresentados: não existem odds nem modelo próprio
+    para esses mercados, logo qualquer indicação seria especulativa."""
     if not div or not div.get("market"):
         return ""
-    a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
-    mk = div["market"]
     fav = div.get("favorecido")
     nivel = (_d(div.get("classificacao"))).get("nivel", 0)
-    gap_pp = div.get("gap_pp")
-    gap_sufixo = f" ({gap_pp:.0f} p.p.)" if gap_pp else ""
-
-    # Mercado principal — sempre o Moneyline (é o único com odds reais)
     tipo = div.get("tipo", "")
-    if nivel >= 2 and fav:
-        if tipo == "conviccao":
-            adj = "claramente" if nivel == 3 else "moderadamente"
-            nota = f"{adj} subvalorizado pelo mercado{gap_sufixo}"
-        else:
-            nota = f"indicadores divergem do mercado{gap_sufixo}"
-        principal = ("🟢", f"Moneyline {_esc(fav)}", nota)
-    elif nivel == 1 and fav:
-        nota = f"convicção ligeira{gap_sufixo}" if tipo == "conviccao" else f"divergência ligeira{gap_sufixo}"
-        principal = ("🟡", f"Moneyline {_esc(fav)}", nota)
-    else:
-        principal = ("⚪", "Moneyline", "mercado alinhado com os indicadores")
-
-    # Secundários — só marcam interesse (NÃO valor, sem odds próprias)
-    secundarios = []
-    margem = abs(mk["a"] - mk["b"])
-    if margem <= 12:
-        # jogo equilibrado -> handicap/total games como observação de equilíbrio
-        secundarios.append(("🟡", "Total Games", "jogo equilibrado — acompanhar linhas ao vivo"))
-        secundarios.append(("🟡", "Handicap Games", "equilíbrio pode dar interesse ao handicap"))
-    elif margem >= MARGEM_FAVORITO_MUITO_COTADO and tipo == "conviccao" and nivel >= 2:
-        # Favorito muito cotado (odd curta no Moneyline) MAS o índice
-        # CONCORDA com esse favorito — por definição, tipo=="conviccao" já
-        # significa "mesmo lado do mercado", não é preciso verificar outra
-        # vez. O Handicap pode ser uma forma alternativa de observar o
-        # mesmo sinal, tipicamente com mais margem de odd do que o
-        # Moneyline já curto. Feedback de teste (12/08/2026): o bot só
-        # sugeria Handicap por equilíbrio, nunca por "favorito pode ganhar
-        # folgado".
-        secundarios.append(("🟡", "Handicap Games", (
-            f"{_esc(fav)} muito cotado no Moneyline — handicap pode ser "
-            f"forma alternativa de observar o mesmo sinal")))
-
-    bola_p, nome_p, nota_p = principal
-    principal_html = (
-        f'<div class="merc-principal">'
-        f'<span class="merc-principal-tag">Mercado principal</span>'
-        f'<div class="merc-linha merc-linha-top">'
-        f'<span class="merc-bola">{bola_p}</span>'
-        f'<span class="merc-nome">{nome_p}</span>'
-        f'<span class="merc-nota">{_esc(nota_p)}</span></div></div>'
+    if tipo != "direcao" or nivel < 1 or not fav:
+        return ""
+    bola = "🟢" if nivel >= 2 else "🟡"
+    return (
+        '<div class="card"><h3>Mercado observado</h3>'
+        '<div class="merc-principal">'
+        '<div class="merc-linha merc-linha-top">'
+        f'<span class="merc-bola">{bola}</span>'
+        f'<span class="merc-nome">Moneyline {_esc(fav)}</span>'
+        '<span class="merc-nota">indicadores apontam na direção oposta ao mercado</span></div></div></div>'
     )
-    sec_html = ""
-    if secundarios:
-        itens_sec = "".join(
-            f'<div class="merc-linha"><span class="merc-bola">{bola}</span>'
-            f'<span class="merc-nome">{nome}</span>'
-            f'<span class="merc-nota">{_esc(nota)}</span></div>'
-            for bola, nome, nota in secundarios
-        )
-        sec_html = f'<div class="merc-secundarios"><div class="merc-sec-tag">Também de interesse (sem odds próprias)</div>{itens_sec}</div>'
-
-    return (f'<div class="card"><h3>Mercados a acompanhar</h3>{principal_html}{sec_html}'
-            f'<div class="merc-aviso">Marcação de <b>interesse</b> para observação — '
-            f'não indica valor nem sugere aposta. Só o Moneyline tem odds.</div></div>')
 
 
 def _mod_veredicto(result):
@@ -2767,23 +2629,24 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         partes.append('</div>')
         return _pagina(a, b, "".join(partes))
 
-    # 3. 4 fatores (se há divergência)
+    # 3. Fatores principais (se há divergência)
     if chave in ("acompanhar", "oportunidade"):
         partes.append(_mod_fatores(payload, div))
-    # 4. Mercado vs Sinal (só com odds)
+    # 4. Mercado e indicadores (só com odds)
     if chave not in ("sem_odds",):
         partes.append(_mod_mercado_vs_sinal(payload, div))
         partes.append(_mod_mercados(payload, div))
-    # 5-9. Evidência (Forma fica visível; Serviço, Carga e H2H passam a
-    # viver DENTRO do Mapa de Forças — feedback de teste, 13/08/2026: "acho
-    # que esta info devia estar dentro do mapa de forças". Cenários
-    # decisivos fica fora, não fazia parte do pedido.)
-    partes.append(_mod_forma(payload))
+    # 5-9. Evidência. Forma, Serviço, Carga e H2H vivem dentro do Mapa de
+    # Forças, evitando duplicar na página principal fatores já resumidos nos
+    # chips do topo. Cenários decisivos mantém-se visível quando diferencia.
     partes.append(_mod_cenarios(payload))
     # Fatores detalhados (TODOS, não só o top-3/4) — colapsável, sempre que
     # houver motor calculado, independente do estado (mesmo "eficiente"
     # beneficia de mostrar porque é eficiente: tudo empatado/sem dados).
-    _extras_mapa = f'{_mod_servico(payload)}{_mod_fadiga(payload)}{_mod_h2h(payload)}'
+    _extras_mapa = (
+        f'{_mod_forma(payload)}{_mod_servico(payload)}'
+        f'{_mod_fadiga(payload)}{_mod_h2h(payload)}'
+    )
     partes.append(_mod_fatores_detalhados(payload, div, extras_html=_extras_mapa))
     # Veredicto (se há)
     partes.append(_mod_veredicto(result))
@@ -2805,6 +2668,6 @@ def _pagina(a, b, corpo):
 <main>
 <h1 class="sr-only">{_esc(a)} vs {_esc(b)}</h1>
 {corpo}
-<div class="wrap"><div class="foot">Gerado em {hoje} · Pontos de observação para leitura pré-live e ao vivo — não são recomendações de aposta.</div></div>
+<div class="wrap"><div class="foot">Gerado em {hoje} · Análise informativa, não recomendação de aposta.</div></div>
 </main>
 </body></html>"""

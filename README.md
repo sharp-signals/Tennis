@@ -112,22 +112,21 @@ Fatores correlacionados (H2H, piso, matchup de mão) ficam na mesma "família"
 com um teto conjunto, para não contar a mesma informação várias vezes.
 
 ### Classificação (nível 0-3)
-- **Nível 0** — Mercado eficiente (mercado e índice concordam).
-- **Nível 1** — Divergência/convicção ligeira.
-- **Nível 2** — Divergência/convicção moderada-reforçada.
-- **Nível 3** — Divergência/convicção forte.
+- **Nível 0** — Mercado e indicadores apontam para o mesmo jogador.
+- **Nível 1** — Divergência direcional ligeira.
+- **Nível 2** — Divergência direcional moderada.
+- **Nível 3** — Divergência direcional forte.
 
-**"Divergência" vs "convicção"** são conceitos diferentes e o motor + prompt
-distinguem-nos explicitamente:
-- *Divergência* (`tipo="direcao"`) — mercado e índice apontam para **jogadores
-  diferentes**. Desacordo genuíno.
-- *Convicção* (`tipo="conviccao"`) — mercado e índice apontam para o **mesmo**
-  jogador, só que o índice é mais forte do que a odd sugere. Não há desacordo.
+O índice interno (0-100) mede concentração dos sinais e **não é uma
+probabilidade prevista**. Por isso, nunca se subtrai à probabilidade implícita
+do mercado, nunca produz um “gap em pontos percentuais” e o alinhamento entre
+ambos não prova subvalorização ou valor. Só existe divergência
+(`tipo="direcao"`) quando apontam para jogadores diferentes.
 
 ### Quando o Claude é chamado
 Só nos casos onde a interpretação paga acrescenta valor sobre o texto
 determinístico (que já usa a classificação do motor):
-- **Nível 3** (divergência/convicção forte).
+- **Nível 3** (divergência direcional forte).
 - **"Sinais fortemente contraditórios"** — os fatores internos discordam muito
   entre si (≥2 líderes diferentes, ≥4 sinais), mesmo com nível de mercado
   baixo — vale a interpretação porque é difícil de resumir com um template.
@@ -141,7 +140,7 @@ Quando o Claude é chamado, a resposta é validada contra o motor
 (`_save_and_return` em `analyze.py`) antes de ser aceite:
 - Favorece o jogador errado? → rejeitado, cai no fallback.
 - Diz "eficiente" quando há divergência (ou vice-versa)? → rejeitado.
-- Confunde "divergência" com "convicção"? → rejeitado.
+- Apresenta alinhamento como divergência, valor ou subvalorização? → rejeitado.
 
 ### "Fatores Detalhados"
 Módulo no relatório (colapsável) que mostra **todos** os ~11 fatores, não só
@@ -193,19 +192,21 @@ os 3-4 que mais pesaram — incluindo os que não contribuíram, com o motivo
 
 Estrutura, de cima para baixo:
 
-1. **Cabeçalho** — jogadores, forma, torneio, odds e probabilidade de mercado.
+1. **Cabeçalho** — jogadores, forma, torneio, odds, probabilidade de mercado e,
+   quando disponíveis, fonte e instante de captura das odds.
 2. **Leitura** — 1 frase, sempre gerada por Python, com a bola de estado
    (🟢 forte / 🟡 ligeiro / ⚪ eficiente).
-3. **4 fatores** (chips) — os que mais pesaram na classificação.
-4. **Mercado vs Sinal** — barras comparativas mercado vs índice de evidência.
-5. **Mercados a acompanhar** — **um mercado principal** em destaque (Moneyline,
-   com nota que distingue "indicadores divergem" de "favorito subvalorizado"
-   consoante o tipo), com Total Games/Handicap como secundários (sem odds
-   próprias, só marcam interesse por equilíbrio).
-6. **Forma, Serviço/Resposta, Carga (fadiga), H2H, Cenários decisivos** —
-   secções factuais, sempre em Python.
-7. **Fatores Detalhados** (colapsável) — todos os ~11 fatores do motor, com
-   quem tem vantagem em cada um, ou o motivo de exclusão.
+3. **Fatores principais** (chips) — apenas os fatores existentes que mais
+   pesaram na classificação; não são criados cartões vazios para completar uma grelha.
+4. **Mercado e indicadores** — barras lado a lado, identificadas como escalas
+   diferentes e não subtraíveis.
+5. **Mercado observado** — aparece apenas quando existe divergência direcional
+   e mostra somente Moneyline. Total Games e Handicap não são apresentados sem
+   odds e modelos próprios.
+6. **Cenários decisivos** — secção factual visível quando diferencia os jogadores.
+7. **Mapa de Forças** (colapsável) — todos os ~11 fatores do motor, incluindo
+   os detalhes de forma, época, serviço/resposta, carga e H2H. Começa fechado
+   para não dominar nem duplicar a leitura inicial.
 8. **Veredicto/Leitura final** — texto do Claude (nível 3 / contraditórios) ou
    o fallback determinístico (nível 0-2), sempre coerente com a classificação.
 
@@ -320,9 +321,9 @@ Sessão longa de correções — registo para não repetir o mesmo erro:
 12. **Falha da API apagava o jogo do relatório** — `provider.generate()` sem
     `try/except`; uma exceção propagava até ao `main.py` e o jogo
     desaparecia silenciosamente. Agora cai sempre no fallback determinístico.
-13. **Vocabulário "divergência" vs "convicção" trocado pelo Claude** — texto
-    dizia "divergência forte" num caso de convicção (mesmo lado, magnitude
-    diferente). Prompt reforçado + validação nova que rejeita a confusão.
+13. **Índice interno tratado como probabilidade** — a comparação de magnitudes
+    criava falsos gaps em p.p. e “convicção” no mesmo lado do mercado. Agora a
+    comparação é apenas direcional; alinhamento não é apresentado como valor.
 
 ---
 

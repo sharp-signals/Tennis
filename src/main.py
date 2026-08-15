@@ -719,6 +719,7 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes}")
 
     odds = fetch_data.fetch_rapidapi_moneyline(match)
+    odds_captured_at_utc = datetime.now(timezone.utc).isoformat() if odds else None
 
     _pid_a = match.get("player1Id")
     _pid_b = match.get("player2Id")
@@ -1008,6 +1009,8 @@ def _build_match_payload(match: dict) -> dict:
         "surface": surface,
         "commence_time_utc": start.isoformat(),
         "market_odds_decimal": odds,  # None se a RapidAPI não tiver Moneyline para o evento
+        "odds_source": "RapidAPI Moneyline" if odds else None,
+        "odds_captured_at_utc": odds_captured_at_utc,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
         "h2h_rich_stats": h2h_rich_stats,  # só WTA: stats de serviço/resposta/sets decisivos específicas deste confronto, via matchstat
