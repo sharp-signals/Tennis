@@ -114,7 +114,8 @@ def build_player_profile_markdown(history: pd.DataFrame, player: str, tour: str,
     ranking = fetch_data.get_player_ranking(history, player)
     if ranking:
         pts = f", {ranking['points']} pts" if ranking.get("points") else ""
-        lines.append(f"**Ranking:** #{ranking['rank']}{pts} (à data de {ranking.get('as_of', '?')[:10]})")
+        as_of = str(ranking.get("as_of") or "?")[:10]
+        lines.append(f"**Ranking:** #{ranking['rank']}{pts} (à data de {as_of})")
         lines.append("")
 
     # --- Forma recente (várias janelas, para mostrar estabilidade) ---

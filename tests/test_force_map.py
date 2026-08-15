@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import unittest
 
-from src.report_html import _fd_bar, _mod_fatores_detalhados
+from src.report_html import _fd_bar, _mod_fatores_detalhados, _pagina
 
 
 class ForceMapTests(unittest.TestCase):
+    def test_report_page_has_semantic_structure_and_back_link(self) -> None:
+        html = _pagina("Jogador A", "Jogador B", '<div class="wrap">conteúdo</div>')
+        self.assertIn("<main>", html)
+        self.assertIn('<h1 class="sr-only">Jogador A vs Jogador B</h1>', html)
+        self.assertIn('aria-label="Navegação do relatório"', html)
+        self.assertIn("← Todos os relatórios", html)
+
     def test_percentages_are_rendered_inside_comparison_bar(self) -> None:
         html = _fd_bar("servico_carreira", {
             "valor_a": 66, "valor_b": 69,

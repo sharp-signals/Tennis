@@ -21,9 +21,10 @@ class LLMProviderTests(unittest.TestCase):
 
         self.assertEqual(provider.name, "mock")
         self.assertFalse(provider.persist_cache)
-        self.assertIn("signal_strength", result)
-        self.assertNotIn("confidence_score", result)
-        self.assertEqual(result["discrepancies"], [])
+        self.assertEqual(
+            set(result),
+            {"flag", "signal_strength", "executive_summary", "verdict"},
+        )
 
     def test_anthropic_is_blocked_without_explicit_paid_authorization(self) -> None:
         provider = get_llm_provider("anthropic", allow_paid=False)

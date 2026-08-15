@@ -208,6 +208,26 @@ SITE_REPORTS_SUBDIR = "relatorios"
 # velocidade/segurança; baixar se aparecerem 429, subir se estiver lento.
 MATCH_PROCESSING_WORKERS = 4
 
+# --- Saude da execucao --------------------------------------------------
+# Uma execucao parcial nunca deve parecer totalmente saudavel. Acima do
+# primeiro limiar a run e normal; entre os dois e degradada; abaixo do minimo
+# falha antes de publicar qualquer relatorio parcial.
+PROCESSING_SUCCESS_MIN_RATIO = float(
+    os.environ.get("PROCESSING_SUCCESS_MIN_RATIO", "0.95")
+)
+PROCESSING_FAILURE_BELOW_RATIO = float(
+    os.environ.get("PROCESSING_FAILURE_BELOW_RATIO", "0.80")
+)
+if not (
+    0 <= PROCESSING_FAILURE_BELOW_RATIO
+    <= PROCESSING_SUCCESS_MIN_RATIO
+    <= 1
+):
+    raise ValueError(
+        "Os limiares de processamento devem cumprir "
+        "0 <= FAILURE_BELOW <= SUCCESS_MIN <= 1."
+    )
+
 # Superfavoritos com odd igual ou abaixo deste valor saltam a análise do
 # Claude (a esse preço não há valor de mercado a observar). O jogo continua
 # a sair no relatório com os dados factuais, apenas sem leitura de mercado.

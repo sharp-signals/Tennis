@@ -37,8 +37,11 @@ import difflib
 import io
 import json
 import os
+import random
 import threading
+import time
 import unicodedata
+from email.utils import parsedate_to_datetime
 from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -133,6 +136,8 @@ _RAPIDAPI_LOCK = threading.Lock()
 RAPIDAPI_USAGE_PATH = os.environ.get("RAPIDAPI_USAGE_PATH", "data/rapidapi_usage_log.json")
 RAPIDAPI_INFLIGHT_PATH = os.environ.get("RAPIDAPI_INFLIGHT_PATH", "data/rapidapi_usage_inflight.json")
 RAPIDAPI_CHECKPOINT_EVERY = 10
+RAPIDAPI_MAX_ATTEMPTS = 3
+RAPIDAPI_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
 
 class RapidAPIBudgetExceeded(RuntimeError):
@@ -159,6 +164,11 @@ def _load_recorded_today_calls() -> int:
     except (OSError, TypeError, ValueError, json.JSONDecodeError):
         pass
     return recorded
+
+
+def get_rapidapi_recorded_today_calls() -> int:
+    """Total conhecido do dia, incluindo um checkpoint ainda em curso."""
+    return _load_recorded_today_calls()
 
 
 def _write_rapidapi_checkpoint() -> None:
@@ -224,10 +234,27 @@ def _reserve_rapidapi_call() -> None:
         _write_rapidapi_checkpoint()
 
 
+def _rapidapi_retry_delay(response, attempt: int) -> float:
+    """Calcula a espera, preferindo Retry-After quando o servidor o envia."""
+    retry_after = str((getattr(response, "headers", {}) or {}).get("Retry-After", "")).strip()
+    if retry_after:
+        try:
+            return max(0.0, min(float(retry_after), 60.0))
+        except ValueError:
+            try:
+                target = parsedate_to_datetime(retry_after)
+                if target.tzinfo is None:
+                    target = target.replace(tzinfo=timezone.utc)
+                seconds = (target - datetime.now(timezone.utc)).total_seconds()
+                return max(0.0, min(seconds, 60.0))
+            except (TypeError, ValueError, OverflowError):
+                pass
+    return min(2.0 * (attempt + 1) + random.uniform(0, 0.5), 10.0)
+
+
 def _rapidapi_get(url, **kwargs):
-    """Wrapper único com orçamento, contador real, anti-429 e retry."""
-    import time
-    for tentativa in range(3):
+    """Wrapper único com orçamento, contador, rate limiting e retries seguros."""
+    for tentativa in range(RAPIDAPI_MAX_ATTEMPTS):
         with _RAPIDAPI_LOCK:
             _reserve_rapidapi_call()
             endpoint = urlparse(str(url)).path
@@ -236,10 +263,29 @@ def _rapidapi_get(url, **kwargs):
             if elapsed < RAPIDAPI_MIN_INTERVAL:
                 time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
             _RAPIDAPI_LAST_CALL["t"] = time.monotonic()
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
-        if resp.status_code == 429:
-            espera = 2 * (tentativa + 1)
-            print(f"[aviso] RapidAPI 429 (rate limit) — a aguardar {espera}s e a repetir...")
+        try:
+            resp = requests.get(
+                url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs
+            )
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            if tentativa + 1 >= RAPIDAPI_MAX_ATTEMPTS:
+                raise
+            espera = _rapidapi_retry_delay(None, tentativa)
+            print(
+                f"[aviso] RapidAPI {type(exc).__name__} — a aguardar "
+                f"{espera:.1f}s e a repetir ({tentativa + 1}/{RAPIDAPI_MAX_ATTEMPTS})..."
+            )
+            time.sleep(espera)
+            continue
+        if (
+            resp.status_code in RAPIDAPI_RETRYABLE_STATUS_CODES
+            and tentativa + 1 < RAPIDAPI_MAX_ATTEMPTS
+        ):
+            espera = _rapidapi_retry_delay(resp, tentativa)
+            print(
+                f"[aviso] RapidAPI HTTP {resp.status_code} — a aguardar "
+                f"{espera:.1f}s e a repetir ({tentativa + 1}/{RAPIDAPI_MAX_ATTEMPTS})..."
+            )
             time.sleep(espera)
             continue
         return resp
@@ -628,7 +674,7 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
         else:
             print(f"[aviso] RapidAPI sem Moneyline para {player_a} vs {player_b} (event {event_id}).")
         return odds
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
         print(f"[aviso] falha a obter odds RapidAPI para event {event_id}: {exc}")
         _RAPIDAPI_ODDS_CACHE[event_id] = None
         return None
@@ -1528,6 +1574,23 @@ def _write_cached_hand(tour: str, player_name: str, hand: Optional[str]) -> None
             metadata={"tour": str(tour).strip().lower(), "name": player_name})
     except (OSError, TypeError, ValueError):
         pass
+
+
+def fetch_player_hand(tour: str, player_id: int, player_name: str) -> Optional[str]:
+    """Resolve a mão cache-first, preferindo o perfil por ID ao endpoint por nome."""
+    cached = _read_cached_hand(tour, player_name)
+    if cached is not None:
+        return cached or None
+    if not RAPIDAPI_KEY or rapidapi_budget_exceeded():
+        return None
+
+    profile = fetch_player_profile_by_id(tour, player_id)
+    hand = compute_hand_from_profile(profile) if profile else None
+    if hand is None:
+        profile = fetch_player_profile(player_name)
+        hand = compute_hand_from_profile(profile) if profile else None
+    _write_cached_hand(tour, player_name, hand)
+    return hand
 
 
 def fetch_player_profile_by_id(tour: str, player_id: int) -> Optional[dict]:
@@ -3209,7 +3272,7 @@ def geocode_location(place_name: str) -> Optional[dict]:
         coords = {"lat": results[0]["latitude"], "lon": results[0]["longitude"]} if results else None
         _GEOCODE_CACHE[place_name] = coords
         return coords
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
         print(f"[aviso] falha a geocodificar '{place_name}': {exc}")
         # não cacheamos falhas — pode ser um timeout pontual, vale a pena tentar outra vez no próximo jogo
         return None
@@ -3255,7 +3318,7 @@ def get_weather_forecast(lat: float, lon: float, match_date: "datetime") -> Opti
             }
             _WEATHER_CACHE[cache_key] = result
             return result
-        except (requests.RequestException, KeyError, IndexError) as exc:
+        except (requests.RequestException, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
             print(f"[aviso] falha a obter meteorologia, tentativa {attempt}: {exc}")
     return None
 
@@ -3310,11 +3373,16 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
 
     cached = _fixtures_cache.get(cache_key)
     if cached is not None:
-        fetched_at = datetime.fromisoformat(cached["fetched_at"])
-        age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
-        if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
-            print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
-            return cached["data"]
+        try:
+            fetched_at = datetime.fromisoformat(cached["fetched_at"])
+            if fetched_at.tzinfo is None:
+                fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
+            if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS and isinstance(cached.get("data"), list):
+                print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
+                return cached["data"]
+        except (KeyError, TypeError, ValueError):
+            pass
 
     if not RAPIDAPI_KEY:
         print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
@@ -3331,7 +3399,11 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
             resp.raise_for_status()
             pages_fetched += 1
             payload = resp.json()
+            if not isinstance(payload, dict):
+                raise ValueError("resposta de fixtures inválida")
             page_data = payload.get("data", [])
+            if not isinstance(page_data, list):
+                raise ValueError("lista de fixtures inválida")
             all_data.extend(page_data)
 
             if not payload.get("hasNextPage"):
@@ -3355,7 +3427,7 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
         if len(all_data) > 0:
             print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) em {pages_fetched} pedido(s).")
         return all_data
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError, TypeError) as exc:
         print(f"[aviso] falha a obter fixtures ({tour}, {date_str}): {exc}")
         return []
 
@@ -3383,11 +3455,16 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
 
     cached = _fixtures_cache.get(cache_key)
     if cached is not None:
-        fetched_at = datetime.fromisoformat(cached["fetched_at"])
-        age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
-        if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
-            print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
-            return cached["data"]
+        try:
+            fetched_at = datetime.fromisoformat(cached["fetched_at"])
+            if fetched_at.tzinfo is None:
+                fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
+            if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS and isinstance(cached.get("data"), list):
+                print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
+                return cached["data"]
+        except (KeyError, TypeError, ValueError):
+            pass
 
     if not RAPIDAPI_KEY:
         print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
@@ -3406,7 +3483,11 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
             resp = _rapidapi_get(url, params=params)
             resp.raise_for_status()
             payload = resp.json()
+            if not isinstance(payload, dict):
+                raise ValueError("resposta de fixtures inválida")
             page_data = payload.get("data", [])
+            if not isinstance(page_data, list):
+                raise ValueError("lista de fixtures inválida")
 
             # Filtrar pares (nomes com "/") e jogos ainda sem data marcada —
             # não fazem parte da análise (só singles) nem são "elegíveis"
@@ -3435,7 +3516,7 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
         _fixtures_cache_dirty = True
         print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) de singles com data marcada.")
         return all_data
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError, TypeError, AttributeError) as exc:
         print(f"[aviso] falha a obter fixtures do torneio {tournament_id}: {exc}")
         return []
 
@@ -3552,7 +3633,12 @@ def get_tournament_info(tournament_id: int, tour: str) -> Optional[dict]:
     try:
         resp = _rapidapi_get(url)
         resp.raise_for_status()
-        data = resp.json().get("data", {})
+        payload = resp.json()
+        if not isinstance(payload, dict):
+            raise ValueError("resposta de torneio inválida")
+        data = payload.get("data", {})
+        if not isinstance(data, dict):
+            raise ValueError("dados de torneio inválidos")
         info = {
             "name": data.get("name"),
             "tier": data.get("tier"),
@@ -3562,7 +3648,7 @@ def get_tournament_info(tournament_id: int, tour: str) -> Optional[dict]:
         _tournament_cache[key] = info
         _tournament_cache_dirty = True
         return info
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError, TypeError, AttributeError) as exc:
         print(f"[aviso] falha a obter info do torneio {tournament_id}: {exc}")
         return None
 

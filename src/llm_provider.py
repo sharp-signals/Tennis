@@ -158,15 +158,7 @@ class MockProvider(LLMProvider):
         result = {
             "flag": FLAG_UNCERTAIN,
             "signal_strength": 0,
-            "confidence_reason": (
-                "Resultado MOCK: nenhuma chamada à API da Anthropic foi efetuada."
-            ),
-            "summary_line": f"[MOCK] {player_a} vs {player_b} — análise sem API.",
-            "key_points": [
-                "Resultado gerado pelo provider mock para validar o pipeline sem custos.",
-                "Os dados factuais do relatório mantêm-se separados desta síntese simulada.",
-            ],
-            "discrepancies": [],
+            "executive_summary": f"[MOCK] {player_a} vs {player_b} — análise sem API.",
             "verdict": (
                 "Modo de desenvolvimento ativo; não foi produzida interpretação de mercado."
             ),
@@ -194,12 +186,7 @@ class DisabledProvider(LLMProvider):
         result = {
             "flag": FLAG_UNCERTAIN,
             "signal_strength": 0,
-            "confidence_reason": "Geração narrativa desativada por configuração.",
-            "summary_line": f"{player_a} vs {player_b} — síntese LLM desativada.",
-            "key_points": [
-                "A análise narrativa não foi executada; consultar os dados factuais."
-            ],
-            "discrepancies": [],
+            "executive_summary": f"{player_a} vs {player_b} — síntese LLM desativada.",
             "verdict": "Síntese indisponível porque LLM_MODE=disabled.",
         }
         return ProviderResponse(text=json.dumps(result, ensure_ascii=False))

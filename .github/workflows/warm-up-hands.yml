@@ -98,7 +98,7 @@ jobs:
       - name: Alertar no Telegram se algo falhou
         if: failure()
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          curl --fail-with-body --show-error --silent --retry 2 -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="⚠️ O aquecimento da cache de mão falhou (${{ github.run_id }}). Vê os logs em: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         continue-on-error: true

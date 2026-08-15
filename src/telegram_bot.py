@@ -16,14 +16,22 @@ def send_message(text: str) -> None:
         return
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    resp = requests.post(
-        url,
-        data={
-            "chat_id": chat_id,
-            "text": text,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": True,
-        },
-        timeout=REQUEST_TIMEOUT,
-    )
-    resp.raise_for_status()
+    try:
+        resp = requests.post(
+            url,
+            data={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except (requests.RequestException, ValueError):
+        # Exceções do requests podem incluir o URL, que contém o token.
+        raise RuntimeError("Falha ao enviar mensagem para o Telegram.") from None
+
+    if not isinstance(data, dict) or not data.get("ok"):
+        raise RuntimeError("Telegram recusou a mensagem.")

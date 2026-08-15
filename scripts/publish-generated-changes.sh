@@ -17,4 +17,23 @@ if [ -z "$pr_url" ]; then
     --body "Atualização automática gerada por \`${GITHUB_WORKFLOW:-workflow}\`, execução \`${GITHUB_RUN_ID:-local}\`. O CI deve passar antes da integração.")"
 fi
 gh pr merge "$pr_url" --auto --squash --delete-branch
-echo "PR automático criado: $pr_url"
+
+# Não libertar o grupo de concorrência enquanto a telemetria/caches ainda
+# estiverem apenas no branch do PR. Sem esta confirmação, a execução seguinte
+# poderia arrancar de main desatualizada e subcontar a quota diária.
+for tentativa in $(seq 1 30); do
+  state="$(gh pr view "$pr_url" --json state --jq '.state')"
+  if [ "$state" = "MERGED" ]; then
+    echo "PR automático integrado: $pr_url"
+    exit 0
+  fi
+  if [ "$state" = "CLOSED" ]; then
+    echo "PR automático fechado sem merge: $pr_url"
+    exit 1
+  fi
+  echo "PR ainda $state; a aguardar integração ($tentativa/30)..."
+  sleep 10
+done
+
+echo "PR automático não foi integrado dentro de 5 minutos: $pr_url"
+exit 1

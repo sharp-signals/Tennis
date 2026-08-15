@@ -33,13 +33,19 @@ def _get_or_create_access_token() -> str:
         _TOKEN_CACHE["token"] = token
         return token
 
-    resp = requests.post(
-        f"{TELEGRAPH_API}/createAccount",
-        data={"short_name": "TennisPreLiveBot", "author_name": "Tennis Pre-Live Bot"},
-        timeout=REQUEST_TIMEOUT,
-    )
-    resp.raise_for_status()
-    result = resp.json()["result"]
+    try:
+        resp = requests.post(
+            f"{TELEGRAPH_API}/createAccount",
+            data={"short_name": "TennisPreLiveBot", "author_name": "Tennis Pre-Live Bot"},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except (requests.RequestException, ValueError):
+        raise RuntimeError("Falha ao criar conta Telegra.ph.") from None
+    result = data.get("result") if isinstance(data, dict) and data.get("ok") else None
+    if not isinstance(result, dict) or not result.get("access_token"):
+        raise RuntimeError("Telegra.ph respondeu sem access token.")
     print(
         "[info] Conta Telegra.ph criada sem token guardado. "
         "Para reutilizar entre execuções, guarda o access_token desta conta "
@@ -138,23 +144,27 @@ def publish_report(title: str, markdown_text: str) -> str:
     if not content:
         content = [{"tag": "p", "children": [title]}]
 
-    resp = requests.post(
-        f"{TELEGRAPH_API}/createPage",
-        json={
+    try:
+        resp = requests.post(
+            f"{TELEGRAPH_API}/createPage",
+            json={
             "access_token": access_token,
             "title": title[:256],  # o Telegra.ph limita o título a 256 chars
             "content": content,
             "author_name": "Tennis Pre-Live Bot",
             "return_content": False,
         },
-        timeout=REQUEST_TIMEOUT,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    if not data.get("ok"):
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except (requests.RequestException, ValueError):
+        raise RuntimeError("Falha ao publicar página no Telegra.ph.") from None
+    if not isinstance(data, dict) or not data.get("ok"):
         # Erro da API (ex: CONTENT_TEXT_REQUIRED, TITLE_TOO_LONG). Damos a
         # mensagem real do Telegra.ph, em vez de deixar um KeyError opaco.
-        raise RuntimeError(f"Telegra.ph recusou a página: {data.get('error', data)}")
+        error = data.get("error", data) if isinstance(data, dict) else data
+        raise RuntimeError(f"Telegra.ph recusou a página: {error}")
     result = data.get("result")
     if not result or "url" not in result:
         raise RuntimeError(f"Telegra.ph respondeu sem URL: {data}")
