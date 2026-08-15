@@ -1629,6 +1629,37 @@ def warm_up_hand_cache(tour: str = "wta", top_n: int = 200) -> dict:
     return resumo
 
 
+def _match_abbreviated_name_to_ranking(name: str, ranking: dict) -> Optional[dict]:
+    """
+    NOVO (15/08/2026, log real): o histórico WTA (tennis-data.co.uk) grava
+    os nomes em formato "Apelido Inicial." (ex: "Sabalenka A."), mas o
+    ranking oficial (fetch_official_ranking) tem nomes completos
+    ("Aryna Sabalenka") — sem esta ponte, qualquer adversária vinda do
+    histórico nunca batia certo com o ranking, e a chamada por nome à
+    RapidAPI falhava sempre (o endpoint não reconhece o formato abreviado).
+    Procura por apelido + inicial do primeiro nome. Devolve a entrada do
+    ranking (com "player_id") ou None.
+    """
+    if not ranking:
+        return None
+    normalized = _normalize_name(name)
+    if normalized in ranking:
+        return ranking[normalized]
+    partes_abrev = normalized.split()
+    if len(partes_abrev) == 2:
+        apelido_abrev = partes_abrev[0]
+        inicial_abrev = partes_abrev[1].rstrip(".")  # "a." -> "a" (_normalize_name não remove o ponto)
+        if len(inicial_abrev) == 1:
+            for chave_completa, info in ranking.items():
+                partes_completa = chave_completa.split()
+                if len(partes_completa) >= 2:
+                    apelido_completo = partes_completa[-1]
+                    inicial_completo = partes_completa[0][0]
+                    if apelido_completo == apelido_abrev and inicial_completo == inicial_abrev:
+                        return info
+    return None
+
+
 def _get_cached_hand_by_name(tour: str, player_name: str) -> Optional[str]:
     """Mão do jogador (L/R) com CACHE PERMANENTE por nome — a mão nunca
     muda ao longo da carreira, ao contrário de estatísticas dinâmicas, por
@@ -1638,14 +1669,31 @@ def _get_cached_hand_by_name(tour: str, player_name: str) -> Optional[str]:
     sempre — o custo desta função tende a zero à medida que o circuito vai
     sendo coberto (inclusive pelo pré-aquecimento, ver warm_up_hand_cache).
     Também grava "não encontrada" (string vazia) para não repetir pedidos
-    a nomes sem perfil disponível."""
+    a nomes sem perfil disponível.
+
+    CORREÇÃO (15/08/2026, log real): confirmado que a reconstrução WTA
+    falhava 100% das vezes — o nome do adversário vem do histórico local
+    em formato abreviado ("Sabalenka A."), que a RapidAPI não reconhece
+    por nome. Agora tenta primeiro traduzir esse formato para o nome
+    completo via ranking oficial (que tem ID), e só cai para a busca por
+    nome se isso falhar (ex: jogadora fora do ranking carregado)."""
     cached = _read_cached_hand(tour, player_name)
     if cached is not None:
         return cached or None
     if not RAPIDAPI_KEY or rapidapi_budget_exceeded():
         return None
-    profile = fetch_player_profile(player_name)
-    hand = compute_hand_from_profile(profile) if profile else None
+
+    hand = None
+    ranking = fetch_official_ranking(tour)
+    match = _match_abbreviated_name_to_ranking(player_name, ranking) if ranking else None
+    if match and match.get("player_id"):
+        profile = fetch_player_profile_by_id(tour, match["player_id"])
+        hand = compute_hand_from_profile(profile) if profile else None
+
+    if hand is None:
+        profile = fetch_player_profile(player_name)
+        hand = compute_hand_from_profile(profile) if profile else None
+
     _write_cached_hand(tour, player_name, hand)
     return hand
 
@@ -1683,15 +1731,27 @@ def compute_handedness_matchup_stats_via_profiles(history: pd.DataFrame, player:
     )
 
     tally = {"L": {"wins": 0, "matches": 0}, "R": {"wins": 0, "matches": 0}}
+    _tentados = 0
+    _resolvidos = 0
     for _, row in played.iterrows():
         if rapidapi_budget_exceeded():
             break  # circuit breaker: para a reconstrução, devolve o que já tem
+        _tentados += 1
         hand = _get_cached_hand_by_name(tour, row["_opponent_name"])
         if hand not in ("L", "R"):
             continue
+        _resolvidos += 1
         tally[hand]["matches"] += 1
         if row["winner_name"] == resolved:
             tally[hand]["wins"] += 1
+
+    # DIAGNÓSTICO (15/08/2026, a pedido — matchup de mão continua a falhar
+    # muito no WTA mesmo depois da tradução via ranking). Mostra um nome
+    # real que foi tentado e falhou, para ver exatamente o formato.
+    if _tentados > 0 and _resolvidos == 0:
+        _exemplo = played["_opponent_name"].iloc[0] if not played.empty else None
+        print(f"[diag:mao-detalhe] {player} ({tour}): {_tentados} adversárias "
+              f"tentadas, 0 resolvidas — exemplo de nome tentado: {_exemplo!r}")
 
     result: dict = {}
     for hand_code, label in (("L", "vs_left_handed"), ("R", "vs_right_handed")):
