@@ -693,9 +693,16 @@ def _build_match_payload(match: dict) -> dict:
     _resolved_a = fetch_data.resolve_player_name(history, player_a) if not history.empty else None
     _resolved_b = fetch_data.resolve_player_name(history, player_b) if not history.empty else None
     if _resolved_a is None or _resolved_b is None:
+        # Amostra de nomes REAIS da coluna, para confirmar de vez o formato
+        # exato (suspeita: "Apelido I." em vez de "Nome Apelido" — comum
+        # nesta fonte, mas nunca confirmado com dados reais deste projeto).
+        _amostra_nomes = []
+        if not history.empty and "winner_name" in history.columns:
+            _amostra_nomes = history["winner_name"].dropna().unique()[:5].tolist()
         print(f"[diag:nome] {player_a} vs {player_b} | histórico tem "
               f"{len(history)} linhas | A resolvido: {_resolved_a!r} | "
-              f"B resolvido: {_resolved_b!r}")
+              f"B resolvido: {_resolved_b!r} | amostra de nomes na coluna: "
+              f"{_amostra_nomes}")
 
     odds = fetch_data.fetch_rapidapi_moneyline(match)
 
