@@ -42,6 +42,8 @@ from .config import (
     LOOKAHEAD_HOURS_MAX,
     LOOKAHEAD_HOURS_MIN,
     MATCH_PROCESSING_WORKERS,
+    PROCESSING_FAILURE_BELOW_RATIO,
+    PROCESSING_SUCCESS_MIN_RATIO,
     RECENT_FORM_MATCHES,
     RECENT_FORM_WINDOW_DAYS,
     RECENT_QUALITY_WINDOW_DAYS,
@@ -54,6 +56,18 @@ from .analyze import analyze_match
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
+
+
+def _classify_processing_status(eligible: int, processed: int) -> tuple[str, float]:
+    """Classifica a saude da run a partir da cobertura de processamento."""
+    if eligible <= 0:
+        return "no_eligible_matches", 1.0
+    ratio = processed / eligible
+    if ratio < PROCESSING_FAILURE_BELOW_RATIO:
+        return "failed", ratio
+    if ratio < PROCESSING_SUCCESS_MIN_RATIO:
+        return "degraded", ratio
+    return "success", ratio
 
 
 def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dict]:
@@ -951,11 +965,9 @@ def _build_match_payload(match: dict) -> dict:
             layoff_return_a = _lay_a
         if _lay_b:
             layoff_return_b = _lay_b
-        # -- Matchup de mão (perfil por nome) --
-        _prof_a = fetch_data.fetch_player_profile(player_a)
-        _prof_b = fetch_data.fetch_player_profile(player_b)
-        _hand_a = fetch_data.compute_hand_from_profile(_prof_a) if _prof_a else None
-        _hand_b = fetch_data.compute_hand_from_profile(_prof_b) if _prof_b else None
+        # -- Matchup de mão (cache permanente; perfil por ID antes do nome) --
+        _hand_a = fetch_data.fetch_player_hand(tour, _pid_a, player_a)
+        _hand_b = fetch_data.fetch_player_hand(tour, _pid_b, player_b)
         # DIAGNÓSTICO (13/08/2026, a pedido — matchup de mão "sem dados" em
         # alguns jogos WTA apesar do pré-aquecimento): há DOIS pontos onde
         # isto pode falhar — a mão de HOJE dos dois jogadores (_hand_a/_b,
@@ -1190,6 +1202,7 @@ def run() -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     def _process_one(match):
+        stage = "payload"
         try:
             payload = _build_match_payload(match)
             # Saltar a análise do Claude para SUPERFAVORITOS (odd <= 1.09):
@@ -1201,25 +1214,49 @@ def run() -> None:
             odds_vals = [v for v in odds.values() if isinstance(v, (int, float)) and v > 1]
             if odds_vals and min(odds_vals) <= SKIP_ANALYSIS_ODDS_THRESHOLD:
                 result = _factual_only_result(payload)
-                return (payload, result)
+                return (payload, result), None
+            stage = "analysis"
             result = analyze_match(payload)
+            stage = "post_processing"
             result = _enforce_minimum_flag(payload, result)
             # Opção B: os pontos-chave factuais são gerados pelo BOT (não pelo
             # Claude, que já não os escreve). Injetamos aqui a partir das features.
             result["key_points"] = _factual_key_points(payload)
-            return (payload, result)
+            return (payload, result), None
         except Exception as exc:
             p1 = (match.get("player1") or {}).get("name", "?")
             p2 = (match.get("player2") or {}).get("name", "?")
             print(f"[aviso] falha ao analisar {p1} vs {p2}: {exc}")
-            return None
+            return None, {
+                "category": f"{stage}:{type(exc).__name__}",
+                "match": f"{p1} vs {p2}",
+                "message": str(exc)[:200],
+            }
 
     run_metrics.update_context(phase="analysis")
     analyses = []
+    analysis_errors = []
     with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
-        for res in executor.map(_process_one, eligible):
+        for res, error in executor.map(_process_one, eligible):
             if res is not None:
                 analyses.append(res)
+            if error is not None:
+                analysis_errors.append(error)
+
+    error_counts: dict[str, int] = {}
+    for error in analysis_errors:
+        category = error["category"]
+        error_counts[category] = error_counts.get(category, 0) + 1
+    processing_status, processing_ratio = _classify_processing_status(
+        len(eligible), len(analyses)
+    )
+    run_metrics.update_context(
+        processed=len(analyses),
+        analysis_failed=len(analysis_errors),
+        processing_ratio=round(processing_ratio, 4),
+        analysis_error_counts=dict(sorted(error_counts.items())),
+        analysis_error_samples=analysis_errors[:5],
+    )
 
     # Nunca publicar um relatório parcial como se fosse uma execução normal
     # quando o circuit breaker de quota foi ativado.
@@ -1245,6 +1282,15 @@ def run() -> None:
         except Exception as exc:
             print(f"[aviso] também falhou o envio do alerta ao Telegram: {exc}")
         raise SystemExit(1)
+
+    if processing_status == "failed":
+        raise RuntimeError(
+            "Execucao com cobertura insuficiente: "
+            f"{len(analyses)}/{len(eligible)} jogos processados "
+            f"({processing_ratio:.1%}; minimo "
+            f"{PROCESSING_FAILURE_BELOW_RATIO:.0%}). Nenhum relatorio parcial "
+            "foi publicado."
+        )
 
     # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
     # (Antes era uma única página com todos os jogos — com muitos jogos
@@ -1406,7 +1452,7 @@ def run() -> None:
 
     reports_ok = sum(1 for _, _, url in match_reports if url)
     run_metrics.update_context(
-        status="success", phase="complete", processed=len(analyses),
+        status=processing_status, phase="complete", processed=len(analyses),
         analysis_failed=len(eligible) - len(analyses), reports_ok=reports_ok,
         reports_failed=len(match_reports) - reports_ok, telegram_chunks=len(chunks),
     )
@@ -1414,47 +1460,26 @@ def run() -> None:
         "[run_summary] "
         f"eligible={len(eligible)} processed={len(analyses)} "
         f"analysis_failed={len(eligible) - len(analyses)} "
+        f"status={processing_status} processing_ratio={processing_ratio:.1%} "
         f"reports_ok={reports_ok} reports_failed={len(match_reports) - reports_ok} "
         f"telegram_chunks={len(chunks)}"
     )
 
-    # Registo do consumo da RapidAPI nesta execução (medição de quota).
-    # Imprime o total no log e guarda o histórico dia a dia num ficheiro,
-    # para se poder decidir com dados reais qual o plano necessário.
+    # Usa a mesma escrita atómica e limitada usada nas runs falhadas. O método
+    # fecha também o checkpoint inflight, evitando dois formatos/caminhos de
+    # persistência diferentes para sucesso e falha.
     try:
-        get_calls = getattr(fetch_data, "get_rapidapi_call_count", None)
-        n_calls = get_calls() if callable(get_calls) else None
+        n_calls = fetch_data.get_rapidapi_call_count()
         print(f"[rapidapi_usage] Total desta execução: {n_calls} chamadas ({len(analyses)} jogo(s)).")
-
-        usage_path = os.path.join("data", "rapidapi_usage_log.json")
-        history = []
-        try:
-            if os.path.exists(usage_path):
-                with open(usage_path, "r", encoding="utf-8") as f:
-                    history = json.load(f)
-        except Exception:
-            history = []
-
-        history.append({
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "calls": n_calls,
-            "matches": len(analyses),
-        })
-        # média das últimas execuções do mesmo dia (informativo)
+        fetch_data.persist_rapidapi_usage(
+            status=processing_status,
+            matches=len(analyses),
+        )
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        today_calls = sum(e["calls"] for e in history if e["timestamp"].startswith(today))
+        today_calls = fetch_data.get_rapidapi_recorded_today_calls()
         print(f"[rapidapi_usage] Acumulado hoje ({today}): {today_calls} chamadas.")
-
-        try:
-            os.makedirs("data", exist_ok=True)
-            with open(usage_path, "w", encoding="utf-8") as f:
-                json.dump(history, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
     except Exception as exc:
         print(f"[aviso] falha ao registar uso da RapidAPI: {exc}")
-    else:
-        fetch_data.clear_rapidapi_checkpoint()
 
 def main() -> None:
     """Fronteira operacional: persiste telemetria em qualquer terminação."""

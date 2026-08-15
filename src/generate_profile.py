@@ -16,6 +16,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+import tempfile
+import unicodedata
 
 from . import fetch_data
 from .player_profile import build_player_profile_markdown
@@ -29,7 +31,8 @@ EXEMPLOS = [
 
 
 def _slug(name: str) -> str:
-    s = name.lower().strip()
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+    s = s.lower().strip()
     s = re.sub(r"[^a-z0-9]+", "_", s)
     return s.strip("_")
 
@@ -53,8 +56,18 @@ def generate_one(player: str, tour: str) -> str | None:
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     path = os.path.join(OUTPUT_DIR, f"{_slug(player)}.md")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(md)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=OUTPUT_DIR,
+            prefix=".profile-", suffix=".tmp", delete=False,
+        ) as temp_file:
+            temp_file.write(md)
+            temp_path = temp_file.name
+        os.replace(temp_path, path)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
     career_note = " (com stats de carreira matchstat)" if career_stats else " (só histórico)"
     print(f"[info] Ficha gerada: {path}{career_note}")
     return path

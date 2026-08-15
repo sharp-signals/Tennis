@@ -36,7 +36,7 @@ class RapidAPIBudgetTests(unittest.TestCase):
                 fetch_data._reserve_rapidapi_call()
 
     def test_retry_attempts_each_consume_budget(self) -> None:
-        response = unittest.mock.Mock(status_code=429)
+        response = unittest.mock.Mock(status_code=429, headers={})
         with patch.object(fetch_data, "RAPIDAPI_MIN_INTERVAL", 0), \
              patch.object(fetch_data, "_write_rapidapi_checkpoint"):
             with patch.object(fetch_data.requests, "get", return_value=response):
@@ -44,6 +44,45 @@ class RapidAPIBudgetTests(unittest.TestCase):
                     fetch_data._rapidapi_get("https://example.invalid")
         self.assertEqual(fetch_data.get_rapidapi_call_count(), 3)
         self.assertEqual(fetch_data.get_rapidapi_endpoint_counts(), {"": 3})
+
+    def test_transient_http_error_is_retried_then_succeeds(self) -> None:
+        unavailable = unittest.mock.Mock(status_code=503, headers={})
+        success = unittest.mock.Mock(status_code=200, headers={})
+        with patch.object(fetch_data, "RAPIDAPI_MIN_INTERVAL", 0), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"), \
+             patch.object(fetch_data.requests, "get", side_effect=[unavailable, success]) as request, \
+             patch.object(fetch_data.time, "sleep"):
+            actual = fetch_data._rapidapi_get("https://example.invalid")
+        self.assertIs(actual, success)
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(fetch_data.get_rapidapi_call_count(), 2)
+
+    def test_timeout_is_retried_but_client_error_is_not(self) -> None:
+        success = unittest.mock.Mock(status_code=200, headers={})
+        with patch.object(fetch_data, "RAPIDAPI_MIN_INTERVAL", 0), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"), \
+             patch.object(fetch_data.requests, "get", side_effect=[fetch_data.requests.Timeout(), success]) as request, \
+             patch.object(fetch_data.time, "sleep"):
+            self.assertIs(fetch_data._rapidapi_get("https://example.invalid"), success)
+        self.assertEqual(request.call_count, 2)
+
+        self.setUp()
+        bad_request = unittest.mock.Mock(status_code=400, headers={})
+        with patch.object(fetch_data, "RAPIDAPI_MIN_INTERVAL", 0), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"), \
+             patch.object(fetch_data.requests, "get", return_value=bad_request) as request:
+            self.assertIs(fetch_data._rapidapi_get("https://example.invalid"), bad_request)
+        request.assert_called_once()
+
+    def test_retry_after_header_is_respected(self) -> None:
+        limited = unittest.mock.Mock(status_code=429, headers={"Retry-After": "7"})
+        success = unittest.mock.Mock(status_code=200, headers={})
+        with patch.object(fetch_data, "RAPIDAPI_MIN_INTERVAL", 0), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"), \
+             patch.object(fetch_data.requests, "get", side_effect=[limited, success]), \
+             patch.object(fetch_data.time, "sleep") as sleeper:
+            fetch_data._rapidapi_get("https://example.invalid")
+        sleeper.assert_called_once_with(7.0)
 
     def test_inflight_checkpoint_survives_crash_and_is_finalized(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -63,6 +102,25 @@ class RapidAPIBudgetTests(unittest.TestCase):
                 self.assertEqual(entry["status"], "failed")
                 self.assertFalse(inflight.exists())
                 self.assertEqual(json.loads(usage.read_text(encoding="utf-8"))[-1]["calls"], 2)
+
+    def test_success_usage_is_atomic_bounded_and_includes_status(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            usage = Path(directory) / "usage.json"
+            inflight = Path(directory) / "inflight.json"
+            usage.write_text(
+                json.dumps([{"timestamp": "old", "calls": i} for i in range(365)]),
+                encoding="utf-8",
+            )
+            inflight.write_text("{}", encoding="utf-8")
+            fetch_data._RAPIDAPI_CALL_COUNT["n"] = 12
+            with patch.object(fetch_data, "RAPIDAPI_USAGE_PATH", str(usage)), \
+                 patch.object(fetch_data, "RAPIDAPI_INFLIGHT_PATH", str(inflight)):
+                entry = fetch_data.persist_rapidapi_usage(status="degraded", matches=9)
+            history = json.loads(usage.read_text(encoding="utf-8"))
+        self.assertEqual(len(history), 365)
+        self.assertEqual(entry["status"], "degraded")
+        self.assertEqual(entry["matches"], 9)
+        self.assertEqual(entry["calls"], 12)
 
 
 if __name__ == "__main__":

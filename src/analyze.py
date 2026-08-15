@@ -10,7 +10,10 @@ em silêncio — isso evita que o modelo assuma e "invente" com naturalidade.
 from __future__ import annotations
 
 import json
+import os
 import re
+import tempfile
+from pathlib import Path
 
 
 def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
@@ -45,6 +48,10 @@ def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
     key_points = _find_str_list("key_points")
     verdict = _find_str("verdict")
     strength = _find_int("signal_strength")
+    if flag not in {FLAG_HIGH_SIGNAL, FLAG_UNCERTAIN, FLAG_ROUTINE}:
+        flag = None
+    if strength is not None and not 0 <= strength <= 100:
+        strength = None
 
     # discrepâncias: extrair objetos {weight, text} que estejam completos
     discrepancies = []
@@ -68,8 +75,6 @@ def _extract_partial_fields(raw_text: str, match_data: dict) -> dict | None:
         "verdict": verdict or "Veredicto não disponível (resposta cortada) — consultar pontos-chave e dados.",
     }
 import hashlib
-import os
-
 from json_repair import repair_json
 
 from .config import (
@@ -83,6 +88,69 @@ from .config import (
 )
 from .llm_provider import get_llm_provider
 from . import run_metrics
+
+
+def _validate_llm_response(value: object) -> dict:
+    """Valida o contrato mínimo do output pago antes de o publicar/cachear."""
+    if not isinstance(value, dict):
+        raise ValueError("a resposta LLM tem de ser um objeto JSON")
+
+    if value.get("flag") not in {FLAG_HIGH_SIGNAL, FLAG_UNCERTAIN, FLAG_ROUTINE}:
+        raise ValueError("flag LLM inválida")
+
+    strength = value.get("signal_strength")
+    if isinstance(strength, bool) or not isinstance(strength, int) or not 0 <= strength <= 100:
+        raise ValueError("signal_strength LLM tem de ser um inteiro entre 0 e 100")
+
+    for field in ("executive_summary", "verdict"):
+        if not isinstance(value.get(field), str) or not value[field].strip():
+            raise ValueError(f"{field} LLM tem de ser texto não vazio")
+
+    return value
+
+
+def _validate_cached_analysis(value: object) -> dict:
+    """Aceita apenas contratos de análise conhecidos e seguros para relatório."""
+    if not isinstance(value, dict):
+        raise ValueError("cache de análise não contém um objeto")
+    if value.get("flag") not in {FLAG_HIGH_SIGNAL, FLAG_UNCERTAIN, FLAG_ROUTINE}:
+        raise ValueError("flag inválida na cache de análise")
+    strength = value.get("signal_strength")
+    if isinstance(strength, bool) or not isinstance(strength, int) or not 0 <= strength <= 100:
+        raise ValueError("signal_strength inválido na cache de análise")
+    if not isinstance(value.get("verdict"), str) or not value["verdict"].strip():
+        raise ValueError("verdict inválido na cache de análise")
+    summaries = (value.get("executive_summary"), value.get("summary_line"))
+    if not any(isinstance(item, str) and item.strip() for item in summaries):
+        raise ValueError("resumo ausente na cache de análise")
+    return value
+
+
+def _atomic_write_json(path: str | os.PathLike[str], value: object) -> None:
+    """Grava JSON no mesmo diretório e só depois substitui o destino."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temp_path = Path(handle.name)
+            json.dump(value, handle, ensure_ascii=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, target)
+    finally:
+        if temp_path is not None:
+            try:
+                temp_path.unlink()
+            except FileNotFoundError:
+                pass
 
 # Cache de análises por hash (medida de poupança, 30/07): evita repagar a
 # análise de um jogo cujos dados não mudaram (o workflow corre 2x/dia e há
@@ -735,12 +803,16 @@ def analyze_match(match_data: dict) -> dict:
     try:
         if provider.persist_cache and os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
-                cached = json.load(f)
+                cached = _validate_cached_analysis(json.load(f))
+            cached_level = ((match_data.get("divergencia") or {}).get("classificacao") or {}).get("nivel")
+            if cached_level is not None and cached_level >= 3 and cached.get("flag") != FLAG_HIGH_SIGNAL:
+                raise ValueError("cache contradiz a classificação forte atual do motor")
             run_metrics.increment("llm_cache_hits")
             print(f"[cache_hit] {match_data.get('player_a','?')} vs {match_data.get('player_b','?')} — análise reutilizada (sem custo).")
             return cached
-    except Exception:
-        pass  # se a cache falhar, segue para a chamada normal
+    except Exception as exc:
+        run_metrics.increment("llm_cache_invalid")
+        print(f"[aviso] cache LLM ignorada ({type(exc).__name__}); será regenerada.")
 
 
     llm_call_reason = f"política {LLM_POLICY}"
@@ -829,7 +901,7 @@ def analyze_match(match_data: dict) -> dict:
             )
     except Exception:
         pass
-    raw_text = provider_response.text.strip()
+    raw_text = str(getattr(provider_response, "text", "") or "").strip()
 
     if provider_response.stop_reason == "max_tokens":
         print(
@@ -851,6 +923,9 @@ def analyze_match(match_data: dict) -> dict:
         """Grava o resultado na cache persistente apenas quando aplicável.
         Aplica limites por código aos textos do Claude (garante output curto)
         e VALIDA a coerência com o motor (auditoria 2, ponto 6)."""
+        if not isinstance(res, dict):
+            raise ValueError("a resposta LLM tem de ser um objeto JSON")
+
         def _cut(s, n):
             s = str(s or "")
             return s if len(s) <= n else s[:n].rstrip() + "…"
@@ -879,6 +954,11 @@ def analyze_match(match_data: dict) -> dict:
                     contradiz = True
             # (b) motor diz divergência, mas o Claude diz "eficiente/rotina/sem divergência"
             if nivel >= 2 and any(t in blob for t in ["eficiente", "rotina", "sem divergência", "sem divergencia", "alinhad"]):
+                contradiz = True
+            # (b2) a classificação forte do motor exige a bandeira forte;
+            # texto válido com uma bandeira de rotina/incerteza não pode
+            # reduzir silenciosamente a prioridade do jogo no relatório.
+            if nivel >= 3 and res.get("flag") != FLAG_HIGH_SIGNAL:
                 contradiz = True
             # (c) motor é CONVICÇÃO (mercado e índice concordam, só magnitude
             # difere), mas o Claude escreve "divergência"/"diverge" — confusão
@@ -913,24 +993,24 @@ def analyze_match(match_data: dict) -> dict:
             res["verdict"] = _cut(res["verdict"], 200)
         if provider.persist_cache:
             try:
-                os.makedirs(_ANALYSIS_CACHE_DIR, exist_ok=True)
-                with open(cache_path, "w", encoding="utf-8") as f:
-                    json.dump(res, f, ensure_ascii=False)
-            except Exception:
-                pass
+                _atomic_write_json(cache_path, res)
+            except Exception as exc:
+                run_metrics.increment("llm_cache_write_failures")
+                print(f"[aviso] não foi possível gravar a cache LLM ({type(exc).__name__}).")
         return res
     try:
         # strict=False: tolera caracteres de controlo literais (ex: quebras
         # de linha não escapadas) dentro de strings do JSON — já vimos o
         # Claude fazer isto ocasionalmente num relatório longo, apesar da
         # instrução para não o fazer. Mais barato do que rejeitar a resposta.
-        return _save_and_return(json.loads(raw_text, strict=False))
-    except json.JSONDecodeError as exc:
+        parsed = json.loads(raw_text, strict=False)
+        return _save_and_return(_validate_llm_response(parsed))
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
         print(f"[aviso] resposta do Claude não era JSON válido: {exc}")
         print("[info] a tentar reparar automaticamente com json_repair...")
         try:
             repaired = repair_json(raw_text)
-            result = json.loads(repaired, strict=False)
+            result = _validate_llm_response(json.loads(repaired, strict=False))
             run_metrics.increment("llm_json_repairs")
             print("[info] reparação de JSON bem-sucedida — a análise não foi perdida.")
             return _save_and_return(result)

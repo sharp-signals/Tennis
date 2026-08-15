@@ -21,6 +21,11 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
+try:  # também suporta tests/test_motor.py, que importa este módulo diretamente
+    from .config import SITE_BASE_URL
+except ImportError:  # pragma: no cover - caminho de compatibilidade legado
+    from config import SITE_BASE_URL
+
 
 # --- paleta (tokens de cor) ---------------------------------------------
 COLORS = {
@@ -1947,6 +1952,11 @@ body {{ background:var(--bg); color:var(--text);
   -webkit-font-smoothing:antialiased; padding:16px; }}
 .wrap {{ max-width:1080px; margin:0 auto; }}
 .wrap-text {{ max-width:720px; margin-left:auto; margin-right:auto; }}
+.report-nav {{ max-width:1080px; margin:0 auto 10px; }}
+.report-nav a {{ color:var(--dim); text-decoration:none; font-size:14px; }}
+.report-nav a:hover, .report-nav a:focus {{ color:var(--text); text-decoration:underline; }}
+.sr-only {{ position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }}
 .num {{ font-variant-numeric:tabular-nums; }}
 
 /* --- MATCHUP HEADER (ficha de combate) --- */
@@ -2112,21 +2122,21 @@ def _mod_header(payload, div, estado):
     """Módulo 1: Matchup header (ficha de combate)."""
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
     ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
-    rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""
-    rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
+    rank_a = f"#{_esc(ra.get('rank'))}" if ra.get("rank") else ""
+    rank_b = f"#{_esc(rb.get('rank'))}" if rb.get("rank") else ""
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
     surf = _esc(payload.get("surface", ""))
     odds = _d(payload.get("market_odds_decimal"))
-    oa = odds.get(payload.get("player_a")) or "—"
-    ob = odds.get(payload.get("player_b")) or "—"
+    oa = _esc(odds.get(payload.get("player_a")) or "—")
+    ob = _esc(odds.get(payload.get("player_b")) or "—")
     # prob mercado
     pa = pb = None
     if div and div.get("market"):
         pa = div["market"]["a"]; pb = div["market"]["b"]
     # forma resumida
     fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
-    forma_a = f"Forma {fa.get('wins','?')}–{fa.get('losses','?')}" if fa else ""
-    forma_b = f"Forma {fb.get('wins','?')}–{fb.get('losses','?')}" if fb else ""
+    forma_a = _esc(f"Forma {fa.get('wins','?')}–{fa.get('losses','?')}") if fa else ""
+    forma_b = _esc(f"Forma {fb.get('wins','?')}–{fb.get('losses','?')}") if fb else ""
     # meteo à hora do jogo (contextual)
     w = _d(payload.get("weather"))
     meteo = ""
@@ -2727,7 +2737,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     """Monta a página V2 completa. Recebe a função do motor (índice de
     evidência) de fora, para reaproveitar o report_html original.
     Arquitetura: Decisão -> explicação -> evidência -> detalhe."""
-    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    a = payload.get("player_a", "?"); b = payload.get("player_b", "?")
     # usar o wrapper (tem market/model/indice_evidencia estruturados) se dado,
     # senão o motor direto (e normalizamos as chaves)
     if mvm_fn is not None:
@@ -2786,8 +2796,15 @@ def _pagina(a, b, corpo):
     return f"""<!DOCTYPE html>
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{a} vs {b}</title>
+<title>{_esc(a)} vs {_esc(b)}</title>
 <style>{_css()}</style></head>
-<body>{corpo}
+<body>
+<nav class="report-nav" aria-label="Navegação do relatório">
+  <a href="{_esc(SITE_BASE_URL)}/">← Todos os relatórios</a>
+</nav>
+<main>
+<h1 class="sr-only">{_esc(a)} vs {_esc(b)}</h1>
+{corpo}
 <div class="wrap"><div class="foot">Gerado em {hoje} · Pontos de observação para leitura pré-live e ao vivo — não são recomendações de aposta.</div></div>
+</main>
 </body></html>"""

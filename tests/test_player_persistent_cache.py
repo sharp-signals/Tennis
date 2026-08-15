@@ -32,6 +32,7 @@ class PlayerPersistentCacheTests(unittest.TestCase):
         fetch_data._CAREER_STATS_CACHE.clear()
         fetch_data._PERF_BREAKDOWN_CACHE.clear()
         fetch_data._RECENT_MATCHES_CACHE.clear()
+        fetch_data._PROFILE_CACHE.clear()
 
     def tearDown(self) -> None:
         fetch_data._PLAYER_CACHE_STORE = self.original_store
@@ -39,6 +40,23 @@ class PlayerPersistentCacheTests(unittest.TestCase):
         fetch_data._CAREER_STATS_CACHE.clear()
         fetch_data._PERF_BREAKDOWN_CACHE.clear()
         fetch_data._RECENT_MATCHES_CACHE.clear()
+        fetch_data._PROFILE_CACHE.clear()
+
+    def test_player_hand_prefers_id_and_persists_by_name(self) -> None:
+        fetch_data.RAPIDAPI_KEY = "offline-test"
+        profile = {"data": {"information": {"plays": "Right-handed"}}}
+        with patch.object(fetch_data, "fetch_player_profile_by_id", return_value=profile) as by_id, \
+             patch.object(fetch_data, "fetch_player_profile") as by_name:
+            first = fetch_data.fetch_player_hand("wta", 123, "Example Player")
+        self.assertEqual(first, "R")
+        by_id.assert_called_once_with("wta", 123)
+        by_name.assert_not_called()
+
+        fetch_data.RAPIDAPI_KEY = ""
+        with patch.object(fetch_data, "fetch_player_profile_by_id") as blocked:
+            second = fetch_data.fetch_player_hand("wta", 123, "Example Player")
+        self.assertEqual(second, "R")
+        blocked.assert_not_called()
 
     def test_career_stats_persists_and_is_reused_without_api_key(self) -> None:
         payload = {"data": {"playerStats": {"statMatchesPlayed": 42}}}

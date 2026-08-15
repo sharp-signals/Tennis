@@ -30,12 +30,7 @@ class FakeProvider:
         result = {
             "flag": analyze.FLAG_ROUTINE,
             "signal_strength": 50,
-            "confidence_reason": "Resposta simulada para teste.",
-            "summary_line": "A vs B — resposta simulada.",
-            "key_points": ["Provider executado durante o teste."],
-            "discrepancies": [],
-            "risks": [],
-            "markets": [],
+            "executive_summary": "A vs B — resposta simulada.",
             "verdict": "Resposta simulada.",
         }
 

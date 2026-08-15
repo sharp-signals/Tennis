@@ -87,18 +87,6 @@ def run() -> None:
           f"Discrepâncias: {len(result.get('discrepancies', []))} | "
           f"Veredicto: {'sim' if result.get('verdict') else 'não'}")
     print("\n[teste concluído — a publicação foi omitida nesta versão de teste]")
-    return
-
-    print("\n--- A enviar para o Telegram ---")
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    message = (
-        f"<b>🧪 TESTE — Resumo Pré-Live — {today_str}</b>\n"
-        "<i>(mensagem de teste, não é um jogo real)</i>\n\n"
-        f"{html.escape(result['flag'])} {html.escape(result['summary_line'])}\n"
-        f"\n📄 Relatório completo: {html.escape(telegraph_url)}"
-    )
-    send_message(message)
-    print("\nTeste concluído com sucesso — verifica o Telegram.")
 
 
 if __name__ == "__main__":
