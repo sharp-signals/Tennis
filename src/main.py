@@ -686,6 +686,17 @@ def _build_match_payload(match: dict) -> dict:
     surface = match["surface"]
     start = _parse_utc(match["date"])
 
+    # DIAGNÓSTICO (15/08/2026, a pedido — muitos fatores "sem dados" em
+    # jogos WTA que não deviam faltar). Se resolve_player_name falhar aqui,
+    # explica em bloco h2h/forma/sazonal/tiebreak/etc — todos dependem
+    # desta resolução de nome contra o histórico.
+    _resolved_a = fetch_data.resolve_player_name(history, player_a) if not history.empty else None
+    _resolved_b = fetch_data.resolve_player_name(history, player_b) if not history.empty else None
+    if _resolved_a is None or _resolved_b is None:
+        print(f"[diag:nome] {player_a} vs {player_b} | histórico tem "
+              f"{len(history)} linhas | A resolvido: {_resolved_a!r} | "
+              f"B resolvido: {_resolved_b!r}")
+
     odds = fetch_data.fetch_rapidapi_moneyline(match)
 
     _pid_a = match.get("player1Id")
@@ -837,6 +848,18 @@ def _build_match_payload(match: dict) -> dict:
 
     rank_a = _resolve_ranking(player_a)
     rank_b = _resolve_ranking(player_b)
+    # DIAGNÓSTICO (15/08/2026, a pedido — "ranking: sem dados" em jogos WTA
+    # onde as jogadoras são claramente top-100, o que não devia acontecer).
+    # Diz-nos se o problema é o ranking oficial não ter a jogadora, ou a
+    # correspondência de nomes a falhar, sem adivinhar.
+    if not rank_a or not rank_b:
+        print(f"[diag:ranking] {player_a} vs {player_b} | "
+              f"oficial carregado: {'sim' if official else 'não'} "
+              f"({len(official) if official else 0} jogadores) | "
+              f"A resolvido: {'sim' if rank_a else 'NÃO'} | "
+              f"B resolvido: {'sim' if rank_b else 'NÃO'} | "
+              f"chave normalizada A: {fetch_data._normalize_name(player_a)!r} | "
+              f"chave normalizada B: {fetch_data._normalize_name(player_b)!r}")
     # NOVO (14/08/2026, a pedido): evolução de ranking (pontos, 6m/12m)
     ranking_evo_a = fetch_data.compute_ranking_evolution(history, player_a, (rank_a or {}).get("points"))
     ranking_evo_b = fetch_data.compute_ranking_evolution(history, player_b, (rank_b or {}).get("points"))
