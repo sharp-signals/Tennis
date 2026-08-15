@@ -890,6 +890,19 @@ def _build_match_payload(match: dict) -> dict:
 
     set1_comeback_a = fetch_data.compute_set1_comeback_stats(history, player_a)
     set1_comeback_b = fetch_data.compute_set1_comeback_stats(history, player_b)
+    # DIAGNÓSTICO (15/08/2026, a pedido — "recuperação pós-1º set" não
+    # aparece no WTA, e falha às vezes no ATP). Mostra o tipo real da
+    # coluna best_of (pode estar como texto "3" em vez de número 3, o que
+    # faria a comparação falhar silenciosamente) e se score/W1-L1 existem.
+    if set1_comeback_a is None or set1_comeback_b is None:
+        _bo_dtype = str(history["best_of"].dtype) if "best_of" in history.columns else "coluna ausente"
+        _bo_amostra = history["best_of"].dropna().unique()[:5].tolist() if "best_of" in history.columns else []
+        _tem_w1l1 = {"W1", "L1"}.issubset(history.columns)
+        print(f"[diag:comeback] {player_a} vs {player_b} | tour={tour} | "
+              f"A={set1_comeback_a!r} B={set1_comeback_b!r} | "
+              f"best_of dtype={_bo_dtype} amostra={_bo_amostra} | "
+              f"tem 'score': {'score' in history.columns} | "
+              f"tem 'W1'/'L1': {_tem_w1l1}")
     handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a, tour=tour)
     handedness_b = fetch_data.compute_handedness_matchup_stats(history, player_b, tour=tour)
     layoff_return_a = fetch_data.compute_return_from_layoff_stats(history, player_a)
