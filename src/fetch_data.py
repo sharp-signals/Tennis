@@ -1059,21 +1059,43 @@ def compute_indoor_outdoor_stats(history: pd.DataFrame, player: str) -> Optional
         return None
 
     def _is_indoor(row) -> Optional[bool]:
-        if "indoor" in played.columns:
-            v = row.get("indoor")
-            if pd.isna(v):
+        # CORREÇÃO CRÍTICA (15/08/2026, log real): a coluna 'indoor' da
+        # TennisMyLife guarda LETRAS ("I"/"O"), não 0/1 como eu tinha
+        # assumido sem confirmar. O int("O") rebentava com
+        # "invalid literal for int() with base 10: 'O'" — e como isto
+        # corre dentro do cálculo de fatores, DERRUBAVA A ANÁLISE DO JOGO
+        # INTEIRO (confirmado: 32/32 jogos ATP falharam nesta execução).
+        # Agora trata letras, texto e números, e nunca deixa uma surpresa
+        # nos dados derrubar o jogo — no pior caso devolve None
+        # ("sem dados"), nunca uma exceção.
+        try:
+            if "indoor" in played.columns:
+                v = row.get("indoor")
+                if pd.isna(v):
+                    return None
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, str):
+                    s = v.strip().upper()
+                    if s in ("I", "INDOOR", "1", "TRUE"):
+                        return True
+                    if s in ("O", "OUTDOOR", "0", "FALSE"):
+                        return False
+                    return None
+                return bool(int(v))
+            if "Court" in played.columns:
+                v = row.get("Court")
+                if not isinstance(v, str):
+                    return None
+                v = v.strip().lower()
+                if v == "indoor":
+                    return True
+                if v == "outdoor":
+                    return False
                 return None
-            return bool(int(v)) if not isinstance(v, bool) else v
-        if "Court" in played.columns:
-            v = row.get("Court")
-            if not isinstance(v, str):
-                return None
-            v = v.strip().lower()
-            if v == "indoor":
-                return True
-            if v == "outdoor":
-                return False
+        except (ValueError, TypeError):
             return None
+        return None
         return None
 
     played["_indoor"] = played.apply(_is_indoor, axis=1)
