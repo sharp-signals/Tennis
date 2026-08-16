@@ -182,7 +182,13 @@ def main() -> None:
     parser.add_argument("--delay", type=float, default=0.08)
     args = parser.parse_args()
     tours = ("atp", "wta") if args.tour == "all" else (args.tour,)
-    print(json.dumps(sync(args.limit, tours, args.delay), ensure_ascii=False))
+    try:
+        summary = sync(args.limit, tours, args.delay)
+    except BaseException:
+        fetch_data.persist_rapidapi_usage(status="player_images_failed", matches=0)
+        raise
+    fetch_data.persist_rapidapi_usage(status="player_images_synced", matches=0)
+    print(json.dumps(summary, ensure_ascii=False))
 
 
 if __name__ == "__main__":

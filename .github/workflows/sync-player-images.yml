@@ -39,7 +39,9 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/player_images.json data/player_images_review.json docs/assets/players/
+          git add data/player_images.json data/player_images_review.json \
+            data/rapidapi_usage_log.json data/rapidapi_usage_inflight.json \
+            docs/assets/players/
           if [ -n "$(git status --porcelain)" ]; then
             git commit -m "chore: sincronizar fotografias top 200 ATP/WTA [skip ci]"
             git pull --rebase origin main
