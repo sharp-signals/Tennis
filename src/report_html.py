@@ -2316,7 +2316,14 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
             continue
         # contribuiu de facto (sem motivo de exclusão) -> destaque; excluído
         # apesar de haver vantagem (ex: abaixo do limiar) -> tom neutro
-        cor = "var(--dim)" if motivo else "var(--mint)"
+        if motivo:
+            cor = "var(--dim)"
+        elif lider == payload.get("player_a"):
+            cor = "var(--a)"
+        elif lider == payload.get("player_b"):
+            cor = "var(--b)"
+        else:
+            cor = "var(--mint)"
         seta = "·" if motivo else "▲"
         nota = f' <span class="fd-nota">({_esc(motivo)})</span>' if motivo else ""
         linhas.append(
@@ -2731,6 +2738,7 @@ def _css_editorial():
 .factor-bars-card .fd-linha{padding:9px 11px;background:rgba(74,163,223,.055);border-bottom-color:rgba(120,207,255,.14)}.factor-bars-card .fd-linha:first-of-type{border-radius:8px 8px 0 0}.factor-bars-card .fd-linha:last-child{border-radius:0 0 8px 8px}
 .factor-bars-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}.factor-bars-head h3{color:var(--a);margin:0}.impact-toggle{display:flex;align-items:center;gap:7px;color:var(--dim);font-size:10px}.impact-switch{position:relative;width:42px;height:24px;flex:0 0 auto}.impact-switch input{position:absolute;opacity:0;pointer-events:none}.impact-slider{position:absolute;inset:0;border-radius:999px;background:var(--surface2);border:1px solid var(--line);cursor:pointer;transition:.2s}.impact-slider::before{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.impact-switch input:checked+.impact-slider{background:rgba(74,163,223,.55);border-color:var(--a)}.impact-switch input:checked+.impact-slider::before{transform:translateX(18px)}.impact-switch input:focus-visible+.impact-slider{outline:2px solid var(--a);outline-offset:2px}
 .factor-lines{position:relative}.fd-impact-bar,.impact-trace{display:none}.factor-bars-card.impact-mode{background:#090e13;border-color:#213445}.factor-bars-card.impact-mode .factor-lines{background:#070b0f;border-radius:9px}.factor-bars-card.impact-mode .fd-linha{background:rgba(8,16,23,.82);border-bottom-color:rgba(110,145,168,.12)}.factor-bars-card.impact-mode .fd-nome,.factor-bars-card.impact-mode .fd-val{color:#748493!important}.factor-bars-card.impact-mode .fd-nota{color:#586875}.factor-bars-card.impact-mode .fd-bar{display:none}.factor-bars-card.impact-mode .fd-impact-bar{display:block;position:relative;height:22px;border-radius:5px;overflow:hidden;background:#111a22}.fd-impact-bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.32);z-index:2}.fd-impact-fill{position:absolute;top:0;bottom:0;z-index:1}.fd-impact-fill.a{right:50%;background:var(--a)}.fd-impact-fill.b{left:50%;background:var(--b)}.fd-impact-value{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;color:#dce8f0;font-size:10px;font-weight:700;background:rgba(5,9,12,.68);padding:1px 5px;border-radius:4px}.factor-bars-card.impact-mode .impact-trace{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:5}.impact-trace path{fill:none;stroke:#d5f4ff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(120,207,255,.8))}.impact-trace circle{fill:#f3fbff;stroke:#20394a;stroke-width:1.5}.factor-bars-card.impact-mode .fd-linha[data-impact-side=""]{opacity:.42}
+.factor-bars-card.impact-mode .fd-linha[data-impact-side="a"] .fd-val{color:#78cfff!important}.factor-bars-card.impact-mode .fd-linha[data-impact-side="b"] .fd-val{color:#ffb47f!important}.factor-bars-card.impact-mode .fd-nota{color:#586875!important}
 @media(max-width:640px){.factor-bars-head{align-items:flex-start;flex-direction:column}.impact-toggle{width:100%;justify-content:flex-end}}
 .history-score{padding:0 0 12px;margin-bottom:2px}.history-score-names{display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:11px;margin-bottom:5px}
 @media(max-width:640px){.mh{padding:18px 14px}.mh-name{font-size:20px}.mh-top{gap:7px}.mh-tourn{font-size:9px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}}

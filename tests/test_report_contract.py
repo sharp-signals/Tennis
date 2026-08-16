@@ -314,6 +314,9 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn('class="impact-switch"', html)
         self.assertIn("Impacto no matchup", html)
         self.assertIn('data-impact-side="a"', html)
+        self.assertIn('style="color:var(--a)"', html)
+        self.assertIn('[data-impact-side="a"] .fd-val{color:#78cfff!important}', html)
+        self.assertIn('[data-impact-side="b"] .fd-val{color:#ffb47f!important}', html)
         self.assertIn('class="impact-trace"', html)
         self.assertIn("drawTrace", html)
         factor_card = html[html.index('class="card factor-bars-card"'):html.index('class="force-map-tail"')]
