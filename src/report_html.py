@@ -2755,6 +2755,44 @@ def _mod_market_provenance(payload):
     return f'<div class="mh-odds-meta">{" Â· ".join(parts)}</div>' if parts else ""
 
 
+def _mod_header_editorial_clean(payload):
+    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
+    rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""; rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
+    fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
+    form_a = f"Forma {fa.get('wins')}-{fa.get('losses')}" if fa else ""; form_b = f"Forma {fb.get('wins')}-{fb.get('losses')}" if fb else ""
+    tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", "")); surf = _esc(payload.get("surface", ""))
+    h = _d(payload.get("h2h")); overall = _d(h.get("overall")) or h
+    h2h = f"H2H {overall.get('a_wins',0)}-{overall.get('b_wins',0)}" if overall.get("total_matches") else "H2H -"
+    when = ""
+    try:
+        when = datetime.fromisoformat(str(payload.get("commence_time_utc", "")).replace("Z", "+00:00")).strftime("%d/%m | %H:%M UTC")
+    except (TypeError, ValueError):
+        pass
+    w = _d(payload.get("weather")); weather = []
+    if w.get("temp_c") is not None: weather.append(f"{w['temp_c']:.0f} C")
+    if w.get("humidity") is not None: weather.append(f"{w['humidity']:.0f}% HR")
+    if w.get("wind_kmh") is not None: weather.append(f"vento {w['wind_kmh']:.0f} km/h")
+    meta_a = " | ".join(str(x) for x in (payload.get("player_a_country"), rank_a, form_a) if x); meta_b = " | ".join(str(x) for x in (payload.get("player_b_country"), rank_b, form_b) if x)
+    return f'<div class="mh"><div class="mh-kicker">Match Preview | {_esc(when)}</div><div class="mh-top"><div><div class="mh-name">{a}</div><div class="mh-sub">{_esc(meta_a)}</div></div><div><div class="mh-vs">VS</div><div class="mh-tourn">{tourn}<br>{tier} | {surf}</div></div><div><div class="mh-name b">{b}</div><div class="mh-sub b">{_esc(meta_b)}</div></div></div><div class="mh-context"><div>{_esc(" | ".join(weather))}</div><div class="mh-h2h">{h2h}</div><div class="b">{tier} | {surf}</div></div></div>'
+
+
+def _mod_at_glance_clean(payload):
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B")); rows = []
+    def add(label, va, vb, higher=True, fmt=str):
+        if va is None or vb is None: return
+        winner = "a" if (va > vb if higher else va < vb) else "b" if va != vb else None; rows.append((label,fmt(va),fmt(vb),winner))
+    ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{v}")
+    fa,fb=_d(payload.get("recent_form_a")),_d(payload.get("recent_form_b")); add("Forma recente",100*fa.get("wins",0)/fa.get("matches") if fa.get("matches") else None,100*fb.get("wins",0)/fb.get("matches") if fb.get("matches") else None,True,lambda v:f"{v:.0f}%")
+    surface=payload.get("surface"); sa=_d(_d(payload.get("surface_stats_a")).get(surface)); sb=_d(_d(payload.get("surface_stats_b")).get(surface)); add(f"Em {surface}" if surface else "Superficie",100*sa.get("wins",0)/sa.get("matches") if sa.get("matches") else None,100*sb.get("wins",0)/sb.get("matches") if sb.get("matches") else None,True,lambda v:f"{v:.0f}%")
+    fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga | sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
+    pa,pb=_d(payload.get("pressure_profile_a")),_d(payload.get("pressure_profile_b")); add("1st servico ganho",pa.get("first_serve_won_pct"),pb.get("first_serve_won_pct"),True,lambda v:f"{v:.0f}%")
+    da,db=_d(payload.get("deciding_set_stats_a")),_d(payload.get("deciding_set_stats_b")); add("Sets decisivos",da.get("deciding_set_win_pct"),db.get("deciding_set_win_pct"),True,lambda v:f"{v:.0f}%")
+    if not rows: return ""
+    rendered="".join(f'<div class="glance-row"><div class="glance-a {"glance-win" if w=="a" else ""}">{_esc(va)}</div><div class="glance-label">{_esc(label)}</div><div class="glance-b {"glance-win" if w=="b" else ""}">{_esc(vb)}</div></div>' for label,va,vb,w in rows[:7])
+    return f'<div class="section-title">O jogo num relance</div><div class="glance"><div class="glance-head"><span>{a}</span><span></span><span>{b}</span></div>{rendered}</div>'
+
+
 def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     """Monta a página V2 completa. Recebe a função do motor (índice de
     evidência) de fora, para reaproveitar o report_html original.
@@ -2772,10 +2810,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
 
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
-    partes.append(_mod_header_editorial(payload))
+    partes.append(_mod_header_editorial_clean(payload))
     # 2. Leitura do jogo (sempre — muda conforme estado)
     partes.append(_mod_match_intro(result))
-    partes.append(_mod_at_glance(payload))
+    partes.append(_mod_at_glance_clean(payload))
     partes.append(_mod_match_keys(result))
     if chave == "sem_odds":
         partes.append(_mod_leitura(payload, div, estado, result))

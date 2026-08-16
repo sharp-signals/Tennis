@@ -188,6 +188,7 @@ class ReportRenderingTests(unittest.TestCase):
         hero = html[html.index('<div class="mh">'):html.index('<div class="match-intro">')]
         self.assertNotIn("2.1", hero)
         self.assertNotIn("1.8", hero)
+        self.assertNotIn("Â", hero)
 
     def test_form_details_live_only_inside_force_map(self):
         payload = {
