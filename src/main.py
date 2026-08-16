@@ -53,6 +53,7 @@ from .config import (
 from . import fetch_data
 from . import run_metrics
 from . import calibration_store
+from . import player_images
 from .analyze import analyze_match
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
@@ -774,6 +775,13 @@ def _build_match_payload(match: dict) -> dict:
     _pid_a = match.get("player1Id")
     _pid_b = match.get("player2Id")
     _tournament_id = match.get("tournamentId") or match.get("tournament_id")
+    _image_registry = player_images.load_registry()
+    _player_image_a = player_images.find_player_image(
+        tour, _pid_a, player_a, registry=_image_registry,
+    )
+    _player_image_b = player_images.find_player_image(
+        tour, _pid_b, player_b, registry=_image_registry,
+    )
 
     # H2H rico via matchstat (stats de serviço/resposta específicas do confronto)
     h2h_rich_stats = None
@@ -1072,6 +1080,8 @@ def _build_match_payload(match: dict) -> dict:
         "tournament_id": _tournament_id,
         "player_a_id": _pid_a,
         "player_b_id": _pid_b,
+        "player_image_a": _player_image_a,
+        "player_image_b": _player_image_b,
         "player_a_country": (match.get("player1") or {}).get("countryAcr"),
         "player_b_country": (match.get("player2") or {}).get("countryAcr"),
         "round_id": match.get("roundId") or match.get("round_id"),

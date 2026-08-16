@@ -1923,6 +1923,16 @@ body {{ background:var(--bg); color:var(--text);
 .mh {{ background:var(--surface); border:1px solid var(--line); border-radius:14px;
   padding:20px; margin-bottom:14px; }}
 .mh-top {{ display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:start; }}
+.mh-player {{ display:flex; align-items:center; gap:12px; min-width:0; }}
+.mh-player.b {{ flex-direction:row-reverse; }}
+.mh-player-photo {{ width:76px; height:76px; flex:0 0 76px; border-radius:50%;
+  object-fit:cover; object-position:center 22%; border:2px solid var(--a);
+  background:var(--surface2); box-shadow:0 5px 18px rgba(0,0,0,.28); }}
+.mh-player.b .mh-player-photo {{ border-color:var(--b); }}
+.mh-player-avatar {{ display:grid; place-items:center; color:var(--a); font-size:20px;
+  font-weight:800; letter-spacing:.5px; }}
+.mh-player.b .mh-player-avatar {{ color:var(--b); }}
+.mh-player-info {{ min-width:0; flex:1; }}
 .mh-name {{ font-size:22px; font-weight:700; letter-spacing:-.3px;
   border-left:3px solid var(--a); padding-left:8px; }}
 .mh-name.b {{ text-align:right; border-left:none;
@@ -2072,6 +2082,14 @@ details.mais-forcas .more-hint {{ color:var(--amber); opacity:.75; }}
   .fd-linha-top {{ align-items:flex-start; }} .fd-val {{ font-size:11px; }} }}
 .foot {{ text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
   padding-top:14px; border-top:1px solid var(--line); }}
+.photo-credits {{ margin-top:18px; color:var(--dim); font-size:10px; line-height:1.6; }}
+.photo-credits summary {{ cursor:pointer; width:max-content; max-width:100%; }}
+.photo-credits a {{ color:var(--dim); text-decoration:underline; }}
+@media(max-width:640px) {{
+  .mh-player {{ gap:7px; align-items:flex-start; }}
+  .mh-player-photo {{ width:52px; height:52px; flex-basis:52px; }}
+  .mh-player-avatar {{ font-size:15px; }}
+}}
 """
 
 
@@ -2102,6 +2120,14 @@ def _mod_header(payload, div, estado):
     fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
     forma_a = _esc(f"Forma {fa.get('wins','?')}–{fa.get('losses','?')}") if fa else ""
     forma_b = _esc(f"Forma {fb.get('wins','?')}–{fb.get('losses','?')}") if fb else ""
+    def portrait(side, name):
+        image = _d(payload.get(f"player_image_{side}"))
+        if image.get("path"):
+            return (f'<img class="mh-player-photo" src="{_esc(image["path"])}" '
+                    f'alt="Fotografia de {_esc(name)}" loading="eager">')
+        initials = "".join(part[:1] for part in str(name).split()[:2]).upper() or "?"
+        return (f'<div class="mh-player-photo mh-player-avatar" role="img" '
+                f'aria-label="Sem fotografia de {_esc(name)}">{_esc(initials)}</div>')
     # meteo à hora do jogo (contextual)
     w = _d(payload.get("weather"))
     meteo = ""
@@ -2116,17 +2142,19 @@ def _mod_header(payload, div, estado):
     return f"""
 <div class="mh">
   <div class="mh-top">
-    <div>
-      <div class="mh-name">{a}</div>
-      <div class="mh-sub">{rank_a} · {forma_a}</div>
+    <div class="mh-player a">
+      {portrait("a", payload.get("player_a", "?"))}
+      <div class="mh-player-info"><div class="mh-name">{a}</div>
+      <div class="mh-sub">{rank_a} · {forma_a}</div></div>
     </div>
     <div>
       <div class="mh-vs">VS</div>
       <div class="mh-tourn">{tourn}<br>{tier} · {surf}</div>
     </div>
-    <div>
-      <div class="mh-name b">{b}</div>
-      <div class="mh-sub b">{rank_b} · {forma_b}</div>
+    <div class="mh-player b">
+      {portrait("b", payload.get("player_b", "?"))}
+      <div class="mh-player-info"><div class="mh-name b">{b}</div>
+      <div class="mh-sub b">{rank_b} · {forma_b}</div></div>
     </div>
   </div>
   <div class="mh-odds">
@@ -2136,6 +2164,24 @@ def _mod_header(payload, div, estado):
   </div>
   {f'<div class="mh-odds-meta">{odds_meta}</div>' if odds_meta else ''}
 </div>"""
+
+
+def _mod_photo_credits(payload):
+    credits = []
+    for side in ("a", "b"):
+        image = _d(payload.get(f"player_image_{side}"))
+        if not image.get("path"):
+            continue
+        name = payload.get(f"player_{side}", "Jogador")
+        modified = "; miniatura/enquadramento adaptado" if image.get("modified") else ""
+        credits.append(
+            f'{_esc(name)}: <a href="{_esc(image.get("source_url", "#"))}">{_esc(image.get("author", "autor desconhecido"))}</a>, '
+            f'<a href="{_esc(image.get("license_url", "#"))}">{_esc(image.get("license", "licença na origem"))}</a>{modified}'
+        )
+    if not credits:
+        return ""
+    return ('<details class="photo-credits"><summary>Créditos das fotografias</summary>'
+            f'<div>{"<br>".join(credits)}</div></details>')
 
 
 def _mod_leitura(payload, div, estado, result):
@@ -3078,6 +3124,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         # só dados factuais, sem mercado/sinal/veredicto
         partes.append(f'<div class="grid2">{_mod_forma(payload)}{_mod_servico(payload)}</div>')
         partes.append(_mod_fadiga(payload))
+        partes.append(_mod_photo_credits(payload))
         partes.append('</div>')
         return _pagina(a, b, "".join(partes))
 
@@ -3104,6 +3151,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     ))
     # Veredicto (se há)
     partes.append(_mod_veredicto(result))
+    partes.append(_mod_photo_credits(payload))
     partes.append('</div>')
     return _pagina(a, b, "".join(partes))
 

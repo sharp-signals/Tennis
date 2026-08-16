@@ -2749,6 +2749,7 @@ def fetch_official_ranking(tour: str) -> Optional[dict]:
                 continue
             key = _normalize_name(name)
             ranking_map[key] = {
+                "name": name,
                 "rank": row.get("position"),
                 "points": row.get("point") or row.get("rankingPoints"),
                 "player_id": player.get("id"),

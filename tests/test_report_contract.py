@@ -182,6 +182,27 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Fonte: RapidAPI Moneyline", html)
         self.assertIn("captadas em 2026-08-16T09:30:00+00:00", html)
 
+    def test_header_renders_local_portraits_fallback_and_credits(self):
+        payload = {
+            "player_a": "Xinyu Wang", "player_b": "Unknown Player",
+            "market_odds_decimal": {"Xinyu Wang": 1.8, "Unknown Player": 2.1},
+            "features": {"ranking": {"lider": "Xinyu Wang", "diff": 10}},
+            "player_image_a": {
+                "path": "../assets/players/xinyu-wang.jpg", "author": "Hameltion",
+                "license": "CC BY-SA 4.0", "license_url": "https://license.test",
+                "source_url": "https://source.test", "modified": True,
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+
+        self.assertIn('src="../assets/players/xinyu-wang.jpg"', html)
+        self.assertIn("Fotografia de Xinyu Wang", html)
+        self.assertIn("Sem fotografia de Unknown Player", html)
+        self.assertIn(">UP</div>", html)
+        self.assertIn("Créditos das fotografias", html)
+        self.assertIn("Hameltion", html)
+        self.assertIn("miniatura/enquadramento adaptado", html)
+
     def test_header_keeps_odds_and_divergence_before_sport_detail(self):
         payload = {
             "player_a": "Alexandra Eala", "player_b": "Belinda Bencic",
