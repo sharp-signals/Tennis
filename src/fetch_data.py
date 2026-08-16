@@ -37,11 +37,8 @@ import difflib
 import io
 import json
 import os
-import random
 import threading
-import time
 import unicodedata
-from email.utils import parsedate_to_datetime
 from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -136,8 +133,6 @@ _RAPIDAPI_LOCK = threading.Lock()
 RAPIDAPI_USAGE_PATH = os.environ.get("RAPIDAPI_USAGE_PATH", "data/rapidapi_usage_log.json")
 RAPIDAPI_INFLIGHT_PATH = os.environ.get("RAPIDAPI_INFLIGHT_PATH", "data/rapidapi_usage_inflight.json")
 RAPIDAPI_CHECKPOINT_EVERY = 10
-RAPIDAPI_MAX_ATTEMPTS = 3
-RAPIDAPI_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
 
 class RapidAPIBudgetExceeded(RuntimeError):
@@ -164,11 +159,6 @@ def _load_recorded_today_calls() -> int:
     except (OSError, TypeError, ValueError, json.JSONDecodeError):
         pass
     return recorded
-
-
-def get_rapidapi_recorded_today_calls() -> int:
-    """Total conhecido do dia, incluindo um checkpoint ainda em curso."""
-    return _load_recorded_today_calls()
 
 
 def _write_rapidapi_checkpoint() -> None:
@@ -234,27 +224,10 @@ def _reserve_rapidapi_call() -> None:
         _write_rapidapi_checkpoint()
 
 
-def _rapidapi_retry_delay(response, attempt: int) -> float:
-    """Calcula a espera, preferindo Retry-After quando o servidor o envia."""
-    retry_after = str((getattr(response, "headers", {}) or {}).get("Retry-After", "")).strip()
-    if retry_after:
-        try:
-            return max(0.0, min(float(retry_after), 60.0))
-        except ValueError:
-            try:
-                target = parsedate_to_datetime(retry_after)
-                if target.tzinfo is None:
-                    target = target.replace(tzinfo=timezone.utc)
-                seconds = (target - datetime.now(timezone.utc)).total_seconds()
-                return max(0.0, min(seconds, 60.0))
-            except (TypeError, ValueError, OverflowError):
-                pass
-    return min(2.0 * (attempt + 1) + random.uniform(0, 0.5), 10.0)
-
-
 def _rapidapi_get(url, **kwargs):
-    """Wrapper único com orçamento, contador, rate limiting e retries seguros."""
-    for tentativa in range(RAPIDAPI_MAX_ATTEMPTS):
+    """Wrapper único com orçamento, contador real, anti-429 e retry."""
+    import time
+    for tentativa in range(3):
         with _RAPIDAPI_LOCK:
             _reserve_rapidapi_call()
             endpoint = urlparse(str(url)).path
@@ -263,29 +236,10 @@ def _rapidapi_get(url, **kwargs):
             if elapsed < RAPIDAPI_MIN_INTERVAL:
                 time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
             _RAPIDAPI_LAST_CALL["t"] = time.monotonic()
-        try:
-            resp = requests.get(
-                url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs
-            )
-        except (requests.Timeout, requests.ConnectionError) as exc:
-            if tentativa + 1 >= RAPIDAPI_MAX_ATTEMPTS:
-                raise
-            espera = _rapidapi_retry_delay(None, tentativa)
-            print(
-                f"[aviso] RapidAPI {type(exc).__name__} — a aguardar "
-                f"{espera:.1f}s e a repetir ({tentativa + 1}/{RAPIDAPI_MAX_ATTEMPTS})..."
-            )
-            time.sleep(espera)
-            continue
-        if (
-            resp.status_code in RAPIDAPI_RETRYABLE_STATUS_CODES
-            and tentativa + 1 < RAPIDAPI_MAX_ATTEMPTS
-        ):
-            espera = _rapidapi_retry_delay(resp, tentativa)
-            print(
-                f"[aviso] RapidAPI HTTP {resp.status_code} — a aguardar "
-                f"{espera:.1f}s e a repetir ({tentativa + 1}/{RAPIDAPI_MAX_ATTEMPTS})..."
-            )
+        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
+        if resp.status_code == 429:
+            espera = 2 * (tentativa + 1)
+            print(f"[aviso] RapidAPI 429 (rate limit) — a aguardar {espera}s e a repetir...")
             time.sleep(espera)
             continue
         return resp
@@ -674,7 +628,7 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
         else:
             print(f"[aviso] RapidAPI sem Moneyline para {player_a} vs {player_b} (event {event_id}).")
         return odds
-    except (requests.RequestException, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+    except requests.RequestException as exc:
         print(f"[aviso] falha a obter odds RapidAPI para event {event_id}: {exc}")
         _RAPIDAPI_ODDS_CACHE[event_id] = None
         return None
@@ -1027,9 +981,15 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
         return index[close[0]]
 
     # Fallback: formato "Apelido Inicial." (ex: tennis-data.co.uk)
+    # CORREÇÃO (16/08/2026, log real): antes assumia "apelido = última
+    # palavra", o que falhava sistematicamente em apelidos compostos de
+    # 2+ palavras (ex: "Jessica Bouzas Maneiro" — via só "Maneiro",
+    # nunca batia com "Bouzas Maneiro J." no histórico). Agora usa
+    # "apelido = tudo depois do primeiro nome", que lida com os dois casos.
     partes = normalized_input.split()
     if len(partes) >= 2:
-        primeiro_nome, apelido = partes[0], partes[-1]
+        primeiro_nome = partes[0]
+        apelido = " ".join(partes[1:])
         candidato = f"{apelido} {primeiro_nome[0]}"
         if candidato in index:
             return index[candidato]
@@ -1551,10 +1511,24 @@ def _hand_cache_path(tour: str, player_name: str):
     DOIS escrevem/leem exatamente a mesma chave. Extraído para função
     própria de propósito — este projeto já teve vários bugs de chaves
     trocadas entre quem escreve e quem lê dados; partilhar a lógica evita
-    reintroduzir o mesmo problema aqui."""
+    reintroduzir o mesmo problema aqui.
+
+    CORREÇÃO CRÍTICA (16/08/2026, log real): a cache de "não encontrada"
+    nunca expira (a mão não muda) — mas isso significa que qualquer nome
+    marcado como "não encontrado" ANTES de melhorarmos a lógica de
+    correspondência (formato "Apelido I." -> ranking oficial) ficava
+    PRESO nesse estado para sempre, mesmo depois da lógica melhorar.
+    Confirmado no log: 0/80 adversárias resolvidas para TODAS as
+    jogadoras WTA, incluindo casos óbvios (Swiatek, Sabalenka) que a
+    lógica nova resolveria sem problema — só não chegavam lá porque a
+    cache antiga "envenenada" respondia primeiro. O prefixo da cache
+    mudou de "hand_by_name" para "hand_by_name_v2": invalida
+    automaticamente todas as entradas antigas (ficam simplesmente por
+    usar, sem precisar de as apagar à mão), e esta execução recomeça do
+    zero com a lógica corrigida."""
     key = (_normalize_name(player_name) or "desconhecido").replace(" ", "_")
     tour_key = str(tour).strip().lower()
-    return _PLAYER_CACHE_STORE.entity_path("hand_by_name", tour_key, f"{key}.json")
+    return _PLAYER_CACHE_STORE.entity_path("hand_by_name_v2", tour_key, f"{key}.json")
 
 
 def _read_cached_hand(tour: str, player_name: str) -> Optional[str]:
@@ -1574,23 +1548,6 @@ def _write_cached_hand(tour: str, player_name: str, hand: Optional[str]) -> None
             metadata={"tour": str(tour).strip().lower(), "name": player_name})
     except (OSError, TypeError, ValueError):
         pass
-
-
-def fetch_player_hand(tour: str, player_id: int, player_name: str) -> Optional[str]:
-    """Resolve a mão cache-first, preferindo o perfil por ID ao endpoint por nome."""
-    cached = _read_cached_hand(tour, player_name)
-    if cached is not None:
-        return cached or None
-    if not RAPIDAPI_KEY or rapidapi_budget_exceeded():
-        return None
-
-    profile = fetch_player_profile_by_id(tour, player_id)
-    hand = compute_hand_from_profile(profile) if profile else None
-    if hand is None:
-        profile = fetch_player_profile(player_name)
-        hand = compute_hand_from_profile(profile) if profile else None
-    _write_cached_hand(tour, player_name, hand)
-    return hand
 
 
 def fetch_player_profile_by_id(tour: str, player_id: int) -> Optional[dict]:
@@ -1708,16 +1665,21 @@ def _match_abbreviated_name_to_ranking(name: str, ranking: dict) -> Optional[dic
     normalized = _normalize_name(name)
     if normalized in ranking:
         return ranking[normalized]
+    # CORREÇÃO (16/08/2026, log real): só tratava exatamente 2 palavras
+    # ("Sabalenka A."), falhando sempre em apelidos compostos de 3+
+    # palavras ("Bouzas Maneiro J."). Agora: a última palavra é sempre a
+    # inicial, tudo antes é o apelido (pode ter várias palavras) — e o
+    # mesmo do lado do nome completo (tudo depois da primeira palavra).
     partes_abrev = normalized.split()
-    if len(partes_abrev) == 2:
-        apelido_abrev = partes_abrev[0]
-        inicial_abrev = partes_abrev[1].rstrip(".")  # "a." -> "a" (_normalize_name não remove o ponto)
+    if len(partes_abrev) >= 2:
+        inicial_abrev = partes_abrev[-1].rstrip(".")  # "a." -> "a" (_normalize_name não remove o ponto)
         if len(inicial_abrev) == 1:
+            apelido_abrev = " ".join(partes_abrev[:-1])
             for chave_completa, info in ranking.items():
                 partes_completa = chave_completa.split()
                 if len(partes_completa) >= 2:
-                    apelido_completo = partes_completa[-1]
                     inicial_completo = partes_completa[0][0]
+                    apelido_completo = " ".join(partes_completa[1:])
                     if apelido_completo == apelido_abrev and inicial_completo == inicial_abrev:
                         return info
     return None
@@ -2584,161 +2546,6 @@ def compute_scenarios_from_past_matches(past_matches: list, player_id: int) -> O
     return out or None
 
 
-def compute_market_adjusted_form(
-    past_matches: list,
-    player_id: int,
-    n_matches: int = 10,
-) -> Optional[dict]:
-    """Compara vitórias reais com as esperadas pelas odds históricas.
-
-    Remove a margem proporcionalmente entre as duas odds. Só usa jogos
-    terminados que envolvem o jogador e tenham duas odds decimais válidas.
-    O resultado é uma diferença em vitórias, não uma previsão futura.
-    """
-    usable = []
-    for match in past_matches or []:
-        if not isinstance(match, dict) or player_id not in (
-            match.get("player1Id"), match.get("player2Id")
-        ):
-            continue
-        try:
-            odd1, odd2 = float(match.get("odd1")), float(match.get("odd2"))
-        except (TypeError, ValueError):
-            continue
-        if odd1 <= 1 or odd2 <= 1 or match.get("match_winner") is None:
-            continue
-        p1_raw, p2_raw = 1 / odd1, 1 / odd2
-        total = p1_raw + p2_raw
-        player_probability = p1_raw / total if player_id == match.get("player1Id") else p2_raw / total
-        date = str(match.get("date") or "")
-        usable.append((date, player_probability, match.get("match_winner") == player_id))
-
-    if not usable:
-        return None
-    usable.sort(key=lambda row: row[0], reverse=True)
-    sample = usable[:n_matches]
-    expected = sum(row[1] for row in sample)
-    actual = sum(1 for row in sample if row[2])
-    return {
-        "matches": len(sample),
-        "actual_wins": actual,
-        "expected_wins": round(expected, 2),
-        "performance_vs_market": round(actual - expected, 2),
-        "sample_status": "robusto" if len(sample) >= 8 else "limitado",
-    }
-
-
-def compute_opposition_quality(recent_stats: dict) -> Optional[dict]:
-    """Extrai a dificuldade observada dos adversários, sem criar score arbitrário."""
-    if not isinstance(recent_stats, dict):
-        return None
-    year = recent_stats.get("yearStats") or {}
-    try:
-        avg_rank = float(year.get("avgOppRank"))
-        matches = int(year.get("matchesPlayed"))
-    except (TypeError, ValueError):
-        return None
-    if avg_rank <= 0 or matches <= 0:
-        return None
-    return {
-        "avg_opponent_rank": round(avg_rank, 1),
-        "matches": matches,
-        "sample_status": "robusto" if matches >= 20 else "limitado",
-    }
-
-
-def compute_recent_pressure_profile(recent_stats: dict) -> Optional[dict]:
-    """Agrupa serviço e resposta recentes sem os comprimir num score opaco."""
-    if not isinstance(recent_stats, dict):
-        return None
-    recent = recent_stats.get("recentStats") or {}
-    player = recent.get("playerStats") or {}
-    opponent = recent.get("opponentStats") or {}
-    try:
-        matches = int(player.get("statMatchesPlayed") or 0)
-    except (TypeError, ValueError):
-        matches = 0
-    if matches <= 0:
-        return None
-
-    def number(source, key):
-        try:
-            return round(float(source[key]), 1) if source.get(key) is not None else None
-        except (TypeError, ValueError):
-            return None
-
-    profile = {
-        "matches": matches,
-        "first_serve_won_pct": number(recent, "firstServeWinPer"),
-        "second_serve_won_pct": number(recent, "secondServeWinPer"),
-        "break_points_saved_pct": number(recent, "bpSavedPer"),
-        "break_points_converted_pct": number(recent, "bpConvertedPer"),
-        "opponent_first_serve_won_pct": number(recent, "oppFirstServeWinPer"),
-        "opponent_second_serve_won_pct": number(recent, "oppSecondServeWinPer"),
-        "sample_status": "robusto" if matches >= 10 else "limitado",
-    }
-    useful = [value for key, value in profile.items() if key.endswith("_pct") and value is not None]
-    return profile if useful else None
-
-
-def compute_surface_momentum(
-    perf_breakdown: dict,
-    surface: str,
-    current_year: int,
-    years: int = 2,
-) -> Optional[dict]:
-    """Compara carreira com os anos recentes no piso atual.
-
-    Requer o novo ``by_year`` preservado pelo perf-breakdown. Não tenta
-    reconstruir anos que caches antigas já descartaram.
-    """
-    if not isinstance(perf_breakdown, dict):
-        return None
-    normalized = str(surface or "").lower().replace(" ", "_")
-    surface_key = {
-        "hard": "hard", "clay": "clay", "grass": "grass",
-        "i.hard": "hard_indoor", "hard_indoor": "hard_indoor",
-        "carpet": "carpet",
-    }.get(normalized)
-    career = (perf_breakdown.get("by_surface") or {}).get(surface_key or "") or {}
-    if not career.get("matches"):
-        return None
-
-    court_index = {"hard": "1", "clay": "2", "hard_indoor": "3", "carpet": "4", "grass": "5"}.get(surface_key)
-    if not court_index:
-        return None
-    wins = losses = 0
-    years_used = []
-    for year, year_data in (perf_breakdown.get("by_year") or {}).items():
-        try:
-            year_number = int(year)
-        except (TypeError, ValueError):
-            continue
-        if year_number < current_year - years + 1 or year_number > current_year:
-            continue
-        cell = ((year_data or {}).get("court") or {}).get(court_index) or {}
-        w, l = cell.get("aw", 0) or 0, cell.get("al", 0) or 0
-        if w + l:
-            wins += w
-            losses += l
-            years_used.append(year_number)
-    recent_matches = wins + losses
-    if recent_matches < 5:
-        return None
-    recent_pct = round(100 * wins / recent_matches, 1)
-    career_pct = float(career.get("win_pct"))
-    return {
-        "surface": surface_key,
-        "career_win_pct": career_pct,
-        "career_matches": career.get("matches"),
-        "recent_win_pct": recent_pct,
-        "recent_matches": recent_matches,
-        "delta_pp": round(recent_pct - career_pct, 1),
-        "years": sorted(years_used),
-        "sample_status": "robusto" if recent_matches >= 15 else "limitado",
-    }
-
-
 def compute_layoff_from_past_matches(past_matches: list, player_id: int, match_date) -> Optional[dict]:
     """Regresso de lesão: maior gap entre jogos + dias desde o último."""
     if not past_matches:
@@ -3329,33 +3136,6 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
                 by_level[name] = {"wins": w, "losses": l, "matches": total,
                                   "win_pct": round(100 * w / total, 1)}
 
-        # Preservar o eixo temporal em vez de guardar apenas o agregado. O
-        # formato original fica disponível para novas métricas sem nova chamada.
-        by_year = {}
-        if isinstance(raw, dict):
-            for year, year_data in raw.items():
-                if isinstance(year_data, dict):
-                    by_year[str(year)] = {
-                        key: value for key, value in year_data.items()
-                        if key in {"rank", "court", "level", "round"}
-                        and isinstance(value, dict)
-                    }
-
-        round_agg = {}
-        for year_data in (raw.values() if isinstance(raw, dict) else []):
-            for round_name, cell in ((year_data or {}).get("round") or {}).items():
-                if not isinstance(cell, dict):
-                    continue
-                rec = round_agg.setdefault(str(round_name), {"wins": 0, "losses": 0})
-                rec["wins"] += cell.get("aw", 0) or 0
-                rec["losses"] += cell.get("al", 0) or 0
-        by_round = {}
-        for name, rec in round_agg.items():
-            total = rec["wins"] + rec["losses"]
-            if total:
-                by_round[name] = {**rec, "matches": total,
-                                  "win_pct": round(100 * rec["wins"] / total, 1)}
-
         data = {}
         if summary:
             data["vs_rank_level"] = summary
@@ -3363,11 +3143,6 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
             data["by_surface"] = by_surface
         if by_level:
             data["by_level"] = by_level
-        if by_year:
-            data["by_year"] = by_year
-            data["raw"] = raw
-        if by_round:
-            data["by_round"] = by_round
         data = data or None
         _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
         _write_player_cache_entry(tour, player_id, "perf_breakdown", data)
@@ -3459,7 +3234,7 @@ def geocode_location(place_name: str) -> Optional[dict]:
         coords = {"lat": results[0]["latitude"], "lon": results[0]["longitude"]} if results else None
         _GEOCODE_CACHE[place_name] = coords
         return coords
-    except (requests.RequestException, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+    except requests.RequestException as exc:
         print(f"[aviso] falha a geocodificar '{place_name}': {exc}")
         # não cacheamos falhas — pode ser um timeout pontual, vale a pena tentar outra vez no próximo jogo
         return None
@@ -3505,7 +3280,7 @@ def get_weather_forecast(lat: float, lon: float, match_date: "datetime") -> Opti
             }
             _WEATHER_CACHE[cache_key] = result
             return result
-        except (requests.RequestException, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+        except (requests.RequestException, KeyError, IndexError) as exc:
             print(f"[aviso] falha a obter meteorologia, tentativa {attempt}: {exc}")
     return None
 
@@ -3560,16 +3335,11 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
 
     cached = _fixtures_cache.get(cache_key)
     if cached is not None:
-        try:
-            fetched_at = datetime.fromisoformat(cached["fetched_at"])
-            if fetched_at.tzinfo is None:
-                fetched_at = fetched_at.replace(tzinfo=timezone.utc)
-            age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
-            if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS and isinstance(cached.get("data"), list):
-                print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
-                return cached["data"]
-        except (KeyError, TypeError, ValueError):
-            pass
+        fetched_at = datetime.fromisoformat(cached["fetched_at"])
+        age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
+        if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
+            print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
+            return cached["data"]
 
     if not RAPIDAPI_KEY:
         print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
@@ -3586,11 +3356,7 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
             resp.raise_for_status()
             pages_fetched += 1
             payload = resp.json()
-            if not isinstance(payload, dict):
-                raise ValueError("resposta de fixtures inválida")
             page_data = payload.get("data", [])
-            if not isinstance(page_data, list):
-                raise ValueError("lista de fixtures inválida")
             all_data.extend(page_data)
 
             if not payload.get("hasNextPage"):
@@ -3614,7 +3380,7 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
         if len(all_data) > 0:
             print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) em {pages_fetched} pedido(s).")
         return all_data
-    except (requests.RequestException, ValueError, TypeError) as exc:
+    except requests.RequestException as exc:
         print(f"[aviso] falha a obter fixtures ({tour}, {date_str}): {exc}")
         return []
 
@@ -3642,16 +3408,11 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
 
     cached = _fixtures_cache.get(cache_key)
     if cached is not None:
-        try:
-            fetched_at = datetime.fromisoformat(cached["fetched_at"])
-            if fetched_at.tzinfo is None:
-                fetched_at = fetched_at.replace(tzinfo=timezone.utc)
-            age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
-            if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS and isinstance(cached.get("data"), list):
-                print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
-                return cached["data"]
-        except (KeyError, TypeError, ValueError):
-            pass
+        fetched_at = datetime.fromisoformat(cached["fetched_at"])
+        age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
+        if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
+            print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
+            return cached["data"]
 
     if not RAPIDAPI_KEY:
         print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
@@ -3670,11 +3431,7 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
             resp = _rapidapi_get(url, params=params)
             resp.raise_for_status()
             payload = resp.json()
-            if not isinstance(payload, dict):
-                raise ValueError("resposta de fixtures inválida")
             page_data = payload.get("data", [])
-            if not isinstance(page_data, list):
-                raise ValueError("lista de fixtures inválida")
 
             # Filtrar pares (nomes com "/") e jogos ainda sem data marcada —
             # não fazem parte da análise (só singles) nem são "elegíveis"
@@ -3703,7 +3460,7 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
         _fixtures_cache_dirty = True
         print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) de singles com data marcada.")
         return all_data
-    except (requests.RequestException, ValueError, TypeError, AttributeError) as exc:
+    except requests.RequestException as exc:
         print(f"[aviso] falha a obter fixtures do torneio {tournament_id}: {exc}")
         return []
 
@@ -3820,12 +3577,7 @@ def get_tournament_info(tournament_id: int, tour: str) -> Optional[dict]:
     try:
         resp = _rapidapi_get(url)
         resp.raise_for_status()
-        payload = resp.json()
-        if not isinstance(payload, dict):
-            raise ValueError("resposta de torneio inválida")
-        data = payload.get("data", {})
-        if not isinstance(data, dict):
-            raise ValueError("dados de torneio inválidos")
+        data = resp.json().get("data", {})
         info = {
             "name": data.get("name"),
             "tier": data.get("tier"),
@@ -3835,7 +3587,7 @@ def get_tournament_info(tournament_id: int, tour: str) -> Optional[dict]:
         _tournament_cache[key] = info
         _tournament_cache_dirty = True
         return info
-    except (requests.RequestException, ValueError, TypeError, AttributeError) as exc:
+    except requests.RequestException as exc:
         print(f"[aviso] falha a obter info do torneio {tournament_id}: {exc}")
         return None
 
