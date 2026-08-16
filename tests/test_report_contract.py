@@ -171,6 +171,49 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertEqual(html.count("<h3>Forma</h3>"), 1)
         self.assertGreater(html.index("<h3>Forma</h3>"), html.index("Mapa de Forças"))
 
+    def test_market_adjusted_form_is_explained_inside_force_map(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "features": {"forma_recente": {"lider": "A", "diff": 10}},
+            "market_adjusted_form_a": {
+                "matches": 8, "actual_wins": 6, "expected_wins": 4.7,
+                "performance_vs_market": 1.3, "sample_status": "robusto",
+            },
+            "opposition_quality_a": {
+                "avg_opponent_rank": 42.5, "matches": 24, "sample_status": "robusto",
+            },
+            "surface_momentum_a": {
+                "career_win_pct": 60.0, "career_matches": 100,
+                "recent_win_pct": 70.0, "recent_matches": 20,
+                "delta_pp": 10.0, "years": [2025, 2026],
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Forma ajustada ao mercado", html)
+        self.assertIn("6 vitórias reais vs 4.7 esperadas (+1.3)", html)
+        self.assertIn("ranking médio dos adversários #42.5", html)
+        self.assertIn("piso: 70.0% recente vs 60.0% carreira (+10.0 p.p.; n=20)", html)
+
+    def test_pressure_profile_shows_components_not_composite_score(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "features": {"servico": {"lider": "A", "diff": 5}},
+            "pressure_profile_a": {
+                "matches": 12, "first_serve_won_pct": 72,
+                "opponent_first_serve_won_pct": 64,
+            },
+            "pressure_profile_b": {
+                "matches": 10, "first_serve_won_pct": 68,
+                "opponent_first_serve_won_pct": 69,
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Pressão de serviço e resposta", html)
+        self.assertIn("1.º serviço ganho", html)
+        self.assertNotIn("Serve Pressure Index", html)
+
     def test_directional_disagreement_renders_only_moneyline_observation(self):
         payload = {
             "player_a": "A",

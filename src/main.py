@@ -52,6 +52,7 @@ from .config import (
 )
 from . import fetch_data
 from . import run_metrics
+from . import calibration_store
 from .analyze import analyze_match
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
@@ -299,6 +300,8 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
         "vs_rank_level": (perf or {}).get("vs_rank_level"),
         "by_surface": (perf or {}).get("by_surface"),
         "by_level": (perf or {}).get("by_level"),
+        "by_year": (perf or {}).get("by_year"),
+        "by_round": (perf or {}).get("by_round"),
         "scenarios": {k: v for k, v in scenarios.items() if v is not None} or None,
         "style": {k: v for k, v in style.items() if v is not None} or None,
         "domination": domination or None,
@@ -772,6 +775,9 @@ def _build_match_payload(match: dict) -> dict:
 
     # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
     _recent_a_cache = _recent_b_cache = None
+    market_form_a = market_form_b = None
+    opposition_quality_a = opposition_quality_b = None
+    pressure_profile_a = pressure_profile_b = None
     if _pid_a is not None and _pid_b is not None:
         # RapidAPI é agora a fonte PRINCIPAL de forma/época/piso (o Sackmann
         # anda partido e dava valores errados — ex: 20% quando o real era 40%).
@@ -934,6 +940,10 @@ def _build_match_payload(match: dict) -> dict:
     if _pid_a is not None and _pid_b is not None:
         _rs_a = fetch_data.fetch_recent_stats(tour, _pid_a)
         _rs_b = fetch_data.fetch_recent_stats(tour, _pid_b)
+        opposition_quality_a = fetch_data.compute_opposition_quality(_rs_a)
+        opposition_quality_b = fetch_data.compute_opposition_quality(_rs_b)
+        pressure_profile_a = fetch_data.compute_recent_pressure_profile(_rs_a)
+        pressure_profile_b = fetch_data.compute_recent_pressure_profile(_rs_b)
         # -- Serviço/resposta --
         _srv_a = fetch_data.compute_serve_return_from_recent_stats(_rs_a) if _rs_a else None
         _srv_b = fetch_data.compute_serve_return_from_recent_stats(_rs_b) if _rs_b else None
@@ -953,6 +963,8 @@ def _build_match_payload(match: dict) -> dict:
         # -- Recuperação de 1º set (past-matches, reaproveita cache) --
         _pm_a = _recent_a_cache if _recent_a_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_a)
         _pm_b = _recent_b_cache if _recent_b_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_b)
+        market_form_a = fetch_data.compute_market_adjusted_form(_pm_a, _pid_a)
+        market_form_b = fetch_data.compute_market_adjusted_form(_pm_b, _pid_b)
         _sc_a = fetch_data.compute_scenarios_from_past_matches(_pm_a, _pid_a) if _pm_a else None
         _sc_b = fetch_data.compute_scenarios_from_past_matches(_pm_b, _pid_b) if _pm_b else None
         if _sc_a:
@@ -999,8 +1011,14 @@ def _build_match_payload(match: dict) -> dict:
         payload_hands = None
 
     weather = _get_weather_for_match(match, start)
+    surface_momentum_a = fetch_data.compute_surface_momentum(rich_a, surface, start.year)
+    surface_momentum_b = fetch_data.compute_surface_momentum(rich_b, surface, start.year)
 
     payload = {
+        "match_id": match.get("id"),
+        "tournament_id": _tournament_id,
+        "player_a_id": _pid_a,
+        "player_b_id": _pid_b,
         "player_a": player_a,
         "player_b": player_b,
         "tournament": tournament,
@@ -1018,6 +1036,14 @@ def _build_match_payload(match: dict) -> dict:
         "current_season_a": season_a,  # jogos/vitórias esta época — distingue ativo de ex-campeão parado
         "current_season_b": season_b,
         "recent_form_b": form_b,
+        "market_adjusted_form_a": market_form_a,
+        "market_adjusted_form_b": market_form_b,
+        "opposition_quality_a": opposition_quality_a,
+        "opposition_quality_b": opposition_quality_b,
+        "pressure_profile_a": pressure_profile_a,
+        "pressure_profile_b": pressure_profile_b,
+        "surface_momentum_a": surface_momentum_a,
+        "surface_momentum_b": surface_momentum_b,
         "recent_quality_a": quality_a,  # NOVO: pontuação de vitórias vs top-10/20/50 recentes
         "recent_quality_b": quality_b,
         "surface_stats_a": surface_a,
@@ -1294,6 +1320,13 @@ def run() -> None:
             f"{PROCESSING_FAILURE_BELOW_RATIO:.0%}). Nenhum relatorio parcial "
             "foi publicado."
         )
+
+    # Guardar a fotografia factual antes do jogo para calibracao futura.
+    # E feita apenas depois de a execucao atingir cobertura publicavel; uma
+    # repeticao do bot nao reescreve a fotografia original.
+    snapshots = [calibration_store.build_snapshot(payload, result) for payload, result in analyses]
+    added_snapshots = calibration_store.upsert_snapshots(snapshots)
+    print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
 
     # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
     # (Antes era uma única página com todos os jogos — com muitos jogos

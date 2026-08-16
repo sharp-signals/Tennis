@@ -51,6 +51,10 @@ jobs:
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
         run: python -m src.main
 
+      - name: Atualizar resultados para calibracao
+        if: success()
+        run: python scripts/update_calibration_outcomes.py
+
       # Corre mesmo quando o Python falha ou é interrompido. Publica apenas
       # telemetria; nunca inclui docs/, evitando relatórios parciais.
       - name: Preservar telemetria se o bot falhar
@@ -74,7 +78,7 @@ jobs:
           git config user.email "actions@github.com"
           git add data/analysis_cache/ data/cache/ data/fixtures_cache.json \
             data/tournament_cache.json data/rapidapi_usage_log.json \
-            data/run_metrics_log.json docs/ 2>/dev/null || true
+            data/run_metrics_log.json data/calibration_snapshots.json docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar caches e relatórios"
             # Integrar mudanças remotas antes de enviar (evita o erro

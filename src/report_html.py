@@ -2385,6 +2385,91 @@ def _mod_forma(payload):
     return f'<div class="card"><h3>Forma</h3>{forma_bloc}{epoca_bloc}</div>'
 
 
+def _mod_forma_ajustada(payload):
+    """Forma face às expectativas históricas e nível dos adversários."""
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+    ma = _d(payload.get("market_adjusted_form_a"))
+    mb = _d(payload.get("market_adjusted_form_b"))
+    qa = _d(payload.get("opposition_quality_a"))
+    qb = _d(payload.get("opposition_quality_b"))
+    sa = _d(payload.get("surface_momentum_a"))
+    sb = _d(payload.get("surface_momentum_b"))
+    if not (ma or mb or qa or qb or sa or sb):
+        return ""
+
+    def linha(nome, market, quality, momentum):
+        bits = []
+        if market:
+            delta = market.get("performance_vs_market")
+            sinal = "+" if isinstance(delta, (int, float)) and delta > 0 else ""
+            bits.append(
+                f"{market.get('actual_wins')} vitórias reais vs "
+                f"{market.get('expected_wins')} esperadas ({sinal}{delta}) · "
+                f"n={market.get('matches')}"
+            )
+        if quality:
+            bits.append(
+                f"ranking médio dos adversários #{quality.get('avg_opponent_rank')} · "
+                f"n={quality.get('matches')}"
+            )
+        if momentum:
+            delta = momentum.get("delta_pp")
+            sinal = "+" if isinstance(delta, (int, float)) and delta > 0 else ""
+            bits.append(
+                f"piso: {momentum.get('recent_win_pct')}% recente "
+                f"vs {momentum.get('career_win_pct')}% carreira "
+                f"({sinal}{delta} p.p.; n={momentum.get('recent_matches')})"
+            )
+        return (f'<div class="cmp-row"><div class="cmp-name">{nome}</div>'
+                f'<div style="grid-column:2 / -1;color:var(--dim);font-size:12px">'
+                f'{_esc(" · ".join(bits))}</div></div>') if bits else ""
+
+    return (
+        '<div class="card"><h3>Forma ajustada ao mercado</h3>'
+        '<div class="cmp-lbl">Resultados históricos comparados com as odds disponíveis</div>'
+        f'{linha(a, ma, qa, sa)}{linha(b, mb, qb, sb)}</div>'
+    )
+
+
+def _mod_pressao(payload):
+    """Perfil recente de serviço e resposta com métricas observáveis."""
+    pa = _d(payload.get("pressure_profile_a")); pb = _d(payload.get("pressure_profile_b"))
+    if not (pa or pb):
+        return ""
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+    metrics = (
+        ("1.º serviço ganho", "first_serve_won_pct", False),
+        ("2.º serviço ganho", "second_serve_won_pct", False),
+        ("BP salvos", "break_points_saved_pct", False),
+        ("BP convertidos", "break_points_converted_pct", False),
+        ("1.º serviço permitido ao adversário", "opponent_first_serve_won_pct", True),
+        ("2.º serviço permitido ao adversário", "opponent_second_serve_won_pct", True),
+    )
+    rows = []
+    for label, key, lower_is_better in metrics:
+        va, vb = pa.get(key), pb.get(key)
+        if va is None or vb is None:
+            continue
+        diff = va - vb
+        if abs(diff) < 0.5:
+            edge = "="
+        else:
+            a_leads = diff < 0 if lower_is_better else diff > 0
+            edge = a if a_leads else b
+        rows.append(
+            f'<div class="cmp-row" style="grid-template-columns:1fr 60px 110px 60px">'
+            f'<div class="cmp-name">{_esc(label)}</div><div class="cmp-num">{va}%</div>'
+            f'<div class="cmp-delta">{edge}</div><div class="cmp-num">{vb}%</div></div>'
+        )
+    if not rows:
+        return ""
+    return (
+        '<div class="card"><h3>Pressão de serviço e resposta</h3>'
+        f'<div class="cmp-lbl">{a} · n={pa.get("matches", "?")} &nbsp;|&nbsp; '
+        f'{b} · n={pb.get("matches", "?")}</div>{"".join(rows)}</div>'
+    )
+
+
 def _mod_servico(payload):
     """Módulo 6: Serviço/resposta com DELTAS explícitos (auditoria #7)."""
     sa = _d(payload.get("serve_return_stats_a"))
@@ -2644,7 +2729,8 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # houver motor calculado, independente do estado (mesmo "eficiente"
     # beneficia de mostrar porque é eficiente: tudo empatado/sem dados).
     _extras_mapa = (
-        f'{_mod_forma(payload)}{_mod_servico(payload)}'
+        f'{_mod_forma(payload)}{_mod_forma_ajustada(payload)}{_mod_pressao(payload)}'
+        f'{_mod_servico(payload)}'
         f'{_mod_fadiga(payload)}{_mod_h2h(payload)}'
     )
     partes.append(_mod_fatores_detalhados(payload, div, extras_html=_extras_mapa))

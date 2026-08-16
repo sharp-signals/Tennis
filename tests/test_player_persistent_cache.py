@@ -104,7 +104,8 @@ class PlayerPersistentCacheTests(unittest.TestCase):
                 "2026": {
                     "rank": {
                         "top10": {"aw": 2, "al": 1},
-                    }
+                    },
+                    "round": {"QF": {"aw": 1, "al": 1}},
                 }
             }
         }
@@ -117,19 +118,11 @@ class PlayerPersistentCacheTests(unittest.TestCase):
         ) as request:
             first = fetch_data.fetch_player_perf_breakdown("atp", 321)
 
-        self.assertEqual(
-            {
-                "vs_rank_level": {
-                    "top10": {
-                        "wins": 2,
-                        "losses": 1,
-                        "matches": 3,
-                        "win_pct": 66.7,
-                    }
-                }
-            },
-            first,
-        )
+        self.assertEqual(first["vs_rank_level"]["top10"]["win_pct"], 66.7)
+        self.assertEqual(first["by_year"]["2026"]["rank"]["top10"], {"aw": 2, "al": 1})
+        self.assertEqual(first["by_year"]["2026"]["round"]["QF"], {"aw": 1, "al": 1})
+        self.assertEqual(first["raw"], payload["data"])
+        self.assertEqual(first["by_round"]["QF"]["win_pct"], 50.0)
         self.assertEqual(1, request.call_count)
 
         fetch_data._PERF_BREAKDOWN_CACHE.clear()

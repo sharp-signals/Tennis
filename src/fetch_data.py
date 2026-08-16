@@ -2584,6 +2584,161 @@ def compute_scenarios_from_past_matches(past_matches: list, player_id: int) -> O
     return out or None
 
 
+def compute_market_adjusted_form(
+    past_matches: list,
+    player_id: int,
+    n_matches: int = 10,
+) -> Optional[dict]:
+    """Compara vitórias reais com as esperadas pelas odds históricas.
+
+    Remove a margem proporcionalmente entre as duas odds. Só usa jogos
+    terminados que envolvem o jogador e tenham duas odds decimais válidas.
+    O resultado é uma diferença em vitórias, não uma previsão futura.
+    """
+    usable = []
+    for match in past_matches or []:
+        if not isinstance(match, dict) or player_id not in (
+            match.get("player1Id"), match.get("player2Id")
+        ):
+            continue
+        try:
+            odd1, odd2 = float(match.get("odd1")), float(match.get("odd2"))
+        except (TypeError, ValueError):
+            continue
+        if odd1 <= 1 or odd2 <= 1 or match.get("match_winner") is None:
+            continue
+        p1_raw, p2_raw = 1 / odd1, 1 / odd2
+        total = p1_raw + p2_raw
+        player_probability = p1_raw / total if player_id == match.get("player1Id") else p2_raw / total
+        date = str(match.get("date") or "")
+        usable.append((date, player_probability, match.get("match_winner") == player_id))
+
+    if not usable:
+        return None
+    usable.sort(key=lambda row: row[0], reverse=True)
+    sample = usable[:n_matches]
+    expected = sum(row[1] for row in sample)
+    actual = sum(1 for row in sample if row[2])
+    return {
+        "matches": len(sample),
+        "actual_wins": actual,
+        "expected_wins": round(expected, 2),
+        "performance_vs_market": round(actual - expected, 2),
+        "sample_status": "robusto" if len(sample) >= 8 else "limitado",
+    }
+
+
+def compute_opposition_quality(recent_stats: dict) -> Optional[dict]:
+    """Extrai a dificuldade observada dos adversários, sem criar score arbitrário."""
+    if not isinstance(recent_stats, dict):
+        return None
+    year = recent_stats.get("yearStats") or {}
+    try:
+        avg_rank = float(year.get("avgOppRank"))
+        matches = int(year.get("matchesPlayed"))
+    except (TypeError, ValueError):
+        return None
+    if avg_rank <= 0 or matches <= 0:
+        return None
+    return {
+        "avg_opponent_rank": round(avg_rank, 1),
+        "matches": matches,
+        "sample_status": "robusto" if matches >= 20 else "limitado",
+    }
+
+
+def compute_recent_pressure_profile(recent_stats: dict) -> Optional[dict]:
+    """Agrupa serviço e resposta recentes sem os comprimir num score opaco."""
+    if not isinstance(recent_stats, dict):
+        return None
+    recent = recent_stats.get("recentStats") or {}
+    player = recent.get("playerStats") or {}
+    opponent = recent.get("opponentStats") or {}
+    try:
+        matches = int(player.get("statMatchesPlayed") or 0)
+    except (TypeError, ValueError):
+        matches = 0
+    if matches <= 0:
+        return None
+
+    def number(source, key):
+        try:
+            return round(float(source[key]), 1) if source.get(key) is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    profile = {
+        "matches": matches,
+        "first_serve_won_pct": number(recent, "firstServeWinPer"),
+        "second_serve_won_pct": number(recent, "secondServeWinPer"),
+        "break_points_saved_pct": number(recent, "bpSavedPer"),
+        "break_points_converted_pct": number(recent, "bpConvertedPer"),
+        "opponent_first_serve_won_pct": number(recent, "oppFirstServeWinPer"),
+        "opponent_second_serve_won_pct": number(recent, "oppSecondServeWinPer"),
+        "sample_status": "robusto" if matches >= 10 else "limitado",
+    }
+    useful = [value for key, value in profile.items() if key.endswith("_pct") and value is not None]
+    return profile if useful else None
+
+
+def compute_surface_momentum(
+    perf_breakdown: dict,
+    surface: str,
+    current_year: int,
+    years: int = 2,
+) -> Optional[dict]:
+    """Compara carreira com os anos recentes no piso atual.
+
+    Requer o novo ``by_year`` preservado pelo perf-breakdown. Não tenta
+    reconstruir anos que caches antigas já descartaram.
+    """
+    if not isinstance(perf_breakdown, dict):
+        return None
+    normalized = str(surface or "").lower().replace(" ", "_")
+    surface_key = {
+        "hard": "hard", "clay": "clay", "grass": "grass",
+        "i.hard": "hard_indoor", "hard_indoor": "hard_indoor",
+        "carpet": "carpet",
+    }.get(normalized)
+    career = (perf_breakdown.get("by_surface") or {}).get(surface_key or "") or {}
+    if not career.get("matches"):
+        return None
+
+    court_index = {"hard": "1", "clay": "2", "hard_indoor": "3", "carpet": "4", "grass": "5"}.get(surface_key)
+    if not court_index:
+        return None
+    wins = losses = 0
+    years_used = []
+    for year, year_data in (perf_breakdown.get("by_year") or {}).items():
+        try:
+            year_number = int(year)
+        except (TypeError, ValueError):
+            continue
+        if year_number < current_year - years + 1 or year_number > current_year:
+            continue
+        cell = ((year_data or {}).get("court") or {}).get(court_index) or {}
+        w, l = cell.get("aw", 0) or 0, cell.get("al", 0) or 0
+        if w + l:
+            wins += w
+            losses += l
+            years_used.append(year_number)
+    recent_matches = wins + losses
+    if recent_matches < 5:
+        return None
+    recent_pct = round(100 * wins / recent_matches, 1)
+    career_pct = float(career.get("win_pct"))
+    return {
+        "surface": surface_key,
+        "career_win_pct": career_pct,
+        "career_matches": career.get("matches"),
+        "recent_win_pct": recent_pct,
+        "recent_matches": recent_matches,
+        "delta_pp": round(recent_pct - career_pct, 1),
+        "years": sorted(years_used),
+        "sample_status": "robusto" if recent_matches >= 15 else "limitado",
+    }
+
+
 def compute_layoff_from_past_matches(past_matches: list, player_id: int, match_date) -> Optional[dict]:
     """Regresso de lesão: maior gap entre jogos + dias desde o último."""
     if not past_matches:
@@ -3174,6 +3329,33 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
                 by_level[name] = {"wins": w, "losses": l, "matches": total,
                                   "win_pct": round(100 * w / total, 1)}
 
+        # Preservar o eixo temporal em vez de guardar apenas o agregado. O
+        # formato original fica disponível para novas métricas sem nova chamada.
+        by_year = {}
+        if isinstance(raw, dict):
+            for year, year_data in raw.items():
+                if isinstance(year_data, dict):
+                    by_year[str(year)] = {
+                        key: value for key, value in year_data.items()
+                        if key in {"rank", "court", "level", "round"}
+                        and isinstance(value, dict)
+                    }
+
+        round_agg = {}
+        for year_data in (raw.values() if isinstance(raw, dict) else []):
+            for round_name, cell in ((year_data or {}).get("round") or {}).items():
+                if not isinstance(cell, dict):
+                    continue
+                rec = round_agg.setdefault(str(round_name), {"wins": 0, "losses": 0})
+                rec["wins"] += cell.get("aw", 0) or 0
+                rec["losses"] += cell.get("al", 0) or 0
+        by_round = {}
+        for name, rec in round_agg.items():
+            total = rec["wins"] + rec["losses"]
+            if total:
+                by_round[name] = {**rec, "matches": total,
+                                  "win_pct": round(100 * rec["wins"] / total, 1)}
+
         data = {}
         if summary:
             data["vs_rank_level"] = summary
@@ -3181,6 +3363,11 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
             data["by_surface"] = by_surface
         if by_level:
             data["by_level"] = by_level
+        if by_year:
+            data["by_year"] = by_year
+            data["raw"] = raw
+        if by_round:
+            data["by_round"] = by_round
         data = data or None
         _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
         _write_player_cache_entry(tour, player_id, "perf_breakdown", data)

@@ -112,6 +112,9 @@ class OperationalBoundaryTests(unittest.TestCase):
                     main, "_enforce_minimum_flag", side_effect=lambda _payload, result: result,
                 ))
                 stack.enter_context(patch.object(main, "_factual_key_points", return_value=[]))
+                stack.enter_context(patch.object(
+                    main.calibration_store, "upsert_snapshots", return_value=9,
+                ))
                 build_report = stack.enter_context(patch.object(
                     main, "build_report_html", return_value="<html></html>",
                 ))

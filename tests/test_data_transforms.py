@@ -122,6 +122,63 @@ class DeterministicStatisticTests(unittest.TestCase):
 
         self.assertEqual(actual, {"days_since_last_match": 5, "days_out": 40})
 
+    def test_market_adjusted_form_removes_margin_and_uses_player_side(self):
+        matches = [
+            {"date": "2026-08-03", "player1Id": 1, "player2Id": 2,
+             "match_winner": 1, "odd1": "2.0", "odd2": "2.0"},
+            {"date": "2026-08-02", "player1Id": 3, "player2Id": 1,
+             "match_winner": 3, "odd1": "1.5", "odd2": "3.0"},
+            {"date": "2026-08-01", "player1Id": 1, "player2Id": 4,
+             "match_winner": 1, "odd1": None, "odd2": "2.0"},
+        ]
+
+        actual = fetch_data.compute_market_adjusted_form(matches, 1)
+
+        self.assertEqual(actual["matches"], 2)
+        self.assertEqual(actual["actual_wins"], 1)
+        self.assertEqual(actual["expected_wins"], 0.83)
+        self.assertEqual(actual["performance_vs_market"], 0.17)
+        self.assertEqual(actual["sample_status"], "limitado")
+
+    def test_opposition_quality_preserves_rank_and_sample(self):
+        stats = {"yearStats": {"avgOppRank": "42.5", "matchesPlayed": "24"}}
+        self.assertEqual(
+            fetch_data.compute_opposition_quality(stats),
+            {"avg_opponent_rank": 42.5, "matches": 24, "sample_status": "robusto"},
+        )
+        self.assertIsNone(fetch_data.compute_opposition_quality({"yearStats": {}}))
+
+    def test_recent_pressure_profile_preserves_components_without_fake_score(self):
+        stats = {"recentStats": {
+            "firstServeWinPer": 72, "secondServeWinPer": 51,
+            "bpSavedPer": 64, "bpConvertedPer": 42,
+            "oppFirstServeWinPer": 66, "oppSecondServeWinPer": 45,
+            "playerStats": {"statMatchesPlayed": 12},
+            "opponentStats": {"statMatchesPlayed": 12},
+        }}
+        actual = fetch_data.compute_recent_pressure_profile(stats)
+        self.assertEqual(actual["matches"], 12)
+        self.assertEqual(actual["first_serve_won_pct"], 72.0)
+        self.assertEqual(actual["opponent_second_serve_won_pct"], 45.0)
+        self.assertNotIn("score", actual)
+        self.assertEqual(actual["sample_status"], "robusto")
+
+    def test_surface_momentum_compares_recent_years_with_career(self):
+        perf = {
+            "by_surface": {"hard": {"matches": 100, "win_pct": 60.0}},
+            "by_year": {
+                "2025": {"court": {"1": {"aw": 6, "al": 4}}},
+                "2026": {"court": {"1": {"aw": 8, "al": 2}}},
+                "2024": {"court": {"1": {"aw": 1, "al": 9}}},
+            },
+        }
+        actual = fetch_data.compute_surface_momentum(perf, "Hard", 2026)
+        self.assertEqual(actual["recent_win_pct"], 70.0)
+        self.assertEqual(actual["delta_pp"], 10.0)
+        self.assertEqual(actual["years"], [2025, 2026])
+        self.assertEqual(actual["sample_status"], "robusto")
+        self.assertIsNone(fetch_data.compute_surface_momentum(perf, "Grass", 2026))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -149,6 +149,41 @@ os 3-4 que mais pesaram — incluindo os que não contribuíram, com o motivo
 100% em Python a partir de `fatores_status` (devolvido por
 `_calcular_divergencia`, propagado por `_normalizar_div`).
 
+### Aproveitamento dos dados já recolhidos
+
+- **Forma ajustada ao mercado** — nos jogos históricos com duas odds válidas,
+  remove a margem proporcionalmente e compara vitórias reais com vitórias
+  esperadas. É uma medida retrospetiva em unidades de vitória, não uma previsão.
+- **Qualidade da oposição** — mostra o ranking médio dos adversários da época e
+  a respetiva amostra, sem o converter num score arbitrário.
+- **Pressão de serviço e resposta** — agrupa primeiro/segundo serviço, break
+  points e eficácia permitida aos adversários numa comparação direta, mantendo
+  as percentagens e amostras originais em vez de fabricar um índice opaco.
+- **Perf-breakdown temporal** — novas respostas preservam `raw` e `by_year`
+  (ranking, piso, nível e ronda), além dos agregados existentes, permitindo
+  calcular evolução e momentum sem nova chamada à API.
+- **Surface Momentum** — compara a taxa de vitória de carreira no piso atual
+  com os dois anos mais recentes, mostrando diferença, anos e amostra; só
+  aparece quando existem pelo menos cinco jogos recentes nesse piso.
+- **Desempenho por ronda** — as novas respostas também preservam um agregado
+  `by_round`, além da divisão anual original.
+
+Estas métricas aparecem dentro do Mapa de Forças e, nesta fase, não alteram o
+motor nem a prioridade dos jogos. Índices compostos de serviço, resposta,
+domínio, estilo e clutch só devem receber peso após calibração/backtest; um
+score 0-100 não calibrado criaria falsa precisão semelhante ao problema já
+corrigido no índice de sinais.
+
+A cobertura pode ser acompanhada sem rede nem custos com:
+`python scripts/analyze_advanced_metric_coverage.py`.
+
+Cada execução publicável guarda ainda em `data/calibration_snapshots.json` uma
+fotografia compacta das odds, métricas e sinal disponíveis antes do jogo. Uma
+repetição não substitui a primeira fotografia. O workflow reconcilia depois o
+vencedor usando apenas as caches locais de jogos terminados, sem chamadas
+adicionais à RapidAPI. Assim, futuros índices compostos podem ser validados
+fora da amostra antes de influenciarem o relatório.
+
 ---
 
 ## Fontes de dados
