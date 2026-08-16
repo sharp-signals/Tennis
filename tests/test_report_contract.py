@@ -299,6 +299,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("pulse-loss", html)
         self.assertLess(html.index("Duelo Direto"), html.index("Pulso Recente"))
         self.assertLess(html.index("Pulso Recente"), html.index("Raio-X Anal&#237;tico"))
+        self.assertIn('class="card factor-bars-card"', html)
         self.assertGreater(html.index('class="force-map-tail"'), html.rindex('class="fd-linha"'))
         tail = html[html.index('class="force-map-tail"'):]
         self.assertLess(tail.index('class="pressure-tail"'), tail.index('class="load-tail"'))

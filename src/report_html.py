@@ -2299,9 +2299,13 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
     if not linhas and not extras_html and not tail_html:
         return ""
     total_tag = f" ({len(linhas)})" if linhas else ""
+    factor_bars = (
+        f'<div class="card factor-bars-card">{"".join(linhas)}</div>'
+        if linhas else ""
+    )
     return (f'<details class="more mais-forcas"><summary>Mapa de Forças{total_tag}'
             f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
-            f'<div class="more-body">{extras_html}{"".join(linhas)}{tail_html}</div></details>')
+            f'<div class="more-body">{extras_html}{factor_bars}{tail_html}</div></details>')
 
 
 def _mod_mercado_vs_sinal(payload, div):
