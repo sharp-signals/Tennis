@@ -722,6 +722,8 @@ def analyze_match(match_data: dict) -> dict:
         "handedness_matchup_a", "handedness_matchup_b",
         "layoff_return_stats_a", "layoff_return_stats_b",
         "round_stage_stats_a", "round_stage_stats_b",
+        # listas compactas existem apenas para os módulos visuais do HTML
+        "h2h_history", "recent_history_a", "recent_history_b",
     )
     llm_data = {k: v for k, v in match_data.items() if k not in _REDUNDANT_FOR_LLM and k != "divergencia"}
     provider = get_llm_provider()

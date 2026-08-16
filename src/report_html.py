@@ -2688,6 +2688,8 @@ def _css_editorial():
 .section-title{font-size:11px;color:var(--b);text-transform:uppercase;letter-spacing:1.5px;margin:22px 2px 9px}.match-intro{border-left:3px solid var(--b);padding:12px 15px;background:rgba(52,200,255,.06);border-radius:0 10px 10px 0;margin-bottom:14px;color:var(--text);font-size:15px}
 .glance{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}.glance-head,.glance-row{display:grid;grid-template-columns:1fr minmax(120px,.8fr) 1fr;gap:10px;align-items:center}.glance-head{padding-bottom:9px;color:var(--dim);font-size:11px}.glance-head span:last-child,.glance-b{text-align:right}.glance-row{padding:9px 0;border-top:1px solid var(--line)}.glance-label{text-align:center;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.glance-a,.glance-b{font-size:15px;font-weight:700}.glance-win{color:var(--mint)}
 .keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
+.history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}
+.pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) 1fr;gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
 @media(max-width:640px){.mh{padding:18px 14px}.mh-name{font-size:20px}.mh-top{gap:7px}.mh-tourn{font-size:9px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}}
 """
 
@@ -2773,6 +2775,44 @@ def _mod_market_provenance(payload):
     if payload.get("odds_captured_at_utc"):
         parts.append(f"captadas em {_esc(payload['odds_captured_at_utc'])}")
     return f'<div class="mh-odds-meta">{" Â· ".join(parts)}</div>' if parts else ""
+
+
+def _mod_h2h_timeline(payload):
+    matches = payload.get("h2h_history") or []
+    if not matches:
+        return _mod_h2h(payload)
+    rows = []
+    for match in matches:
+        year = str(match.get("date") or "")[:4] or "-"
+        tournament = match.get("tournament") or "Torneio nao identificado"
+        result = match.get("result") or "resultado indisponivel"
+        winner = match.get("winner_name") or "Vencedor nao identificado"
+        surface = f" | {match['surface']}" if match.get("surface") else ""
+        rows.append(
+            f'<div class="history-row"><div class="history-meta">{_esc(year)} | {_esc(tournament)}{_esc(surface)}</div>'
+            f'<div class="history-result"><b>{_esc(winner)}</b><span>{_esc(result)}</span></div></div>'
+        )
+    return f'<div class="card history-card"><h3>Duelo Direto</h3>{"".join(rows)}</div>'
+
+
+def _mod_recent_pulse(payload):
+    def sequence(items):
+        letters = []
+        for match in items or []:
+            won = match.get("won")
+            if won is None:
+                continue
+            letter = "W" if won else "L"
+            cls = "win" if won else "loss"
+            letters.append(f'<span class="pulse-{cls}">{letter}</span>')
+        return "".join(letters) or '<span class="pulse-empty">Sem dados</span>'
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+    seq_a = sequence(payload.get("recent_history_a")); seq_b = sequence(payload.get("recent_history_b"))
+    if "pulse-empty" in seq_a and "pulse-empty" in seq_b:
+        return ""
+    return (f'<div class="card pulse-card"><h3>Pulso Recente | &#218;ltimos 10</h3>'
+            f'<div class="pulse-player"><span>{a}</span><div class="pulse-seq">{seq_a}</div></div>'
+            f'<div class="pulse-player"><span>{b}</span><div class="pulse-seq">{seq_b}</div></div></div>')
 
 
 def _mod_header_editorial_clean(payload):
@@ -2868,9 +2908,11 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # houver motor calculado, independente do estado (mesmo "eficiente"
     # beneficia de mostrar porque é eficiente: tudo empatado/sem dados).
     _extras_mapa = (
+        f'{_mod_h2h_timeline(payload)}{_mod_recent_pulse(payload)}'
+        '<div class="analytics-title">Raio-X Anal&#237;tico</div>'
         f'{_mod_forma(payload)}{_mod_forma_ajustada(payload)}{_mod_pressao(payload)}'
         f'{_mod_servico(payload)}'
-        f'{_mod_fadiga(payload)}{_mod_h2h(payload)}'
+        f'{_mod_fadiga(payload)}'
     )
     partes.append(_mod_fatores_detalhados(payload, div, extras_html=_extras_mapa))
     # Veredicto (se há)

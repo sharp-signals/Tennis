@@ -10,6 +10,20 @@ from src import main
 
 
 class OperationalBoundaryTests(unittest.TestCase):
+    def test_compact_match_history_builds_player_win_loss_and_sorts(self):
+        matches = [
+            {"id": 1, "date": "2026-01-01", "player1Id": 10, "player2Id": 20,
+             "player1": {"name": "A"}, "player2": {"name": "B"},
+             "match_winner": 20, "result": "4-6 3-6", "tournamentId": 99},
+            {"id": 2, "date": "2026-02-01", "player1Id": 10, "player2Id": 30,
+             "player1": {"name": "A"}, "player2": {"name": "C"},
+             "match_winner": 10, "result": "6-2 6-2", "tournamentName": "Dubai"},
+        ]
+        actual = main._compact_match_history(matches, player_id=10)
+        self.assertEqual([item["won"] for item in actual], [True, False])
+        self.assertEqual(actual[0]["tournament"], "Dubai")
+        self.assertEqual(actual[1]["winner_name"], "B")
+
     @staticmethod
     def _matches(total: int, failures: int) -> list[dict]:
         return [

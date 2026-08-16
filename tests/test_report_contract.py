@@ -274,5 +274,28 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn("Ponto de observação", html)
 
 
+    def test_force_map_orders_h2h_recent_pulse_before_analytical_metrics(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "surface": "Hard",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+            "h2h_history": [{
+                "date": "2025-03-18T10:00:00Z", "tournament": "Miami",
+                "surface": "Hard", "winner_name": "A", "result": "6-4 6-3",
+            }],
+            "recent_history_a": [{"won": True}, {"won": False}, {"won": True}],
+            "recent_history_b": [{"won": False}, {"won": False}, {"won": True}],
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Duelo Direto", html)
+        self.assertIn("Miami", html)
+        self.assertIn("6-4 6-3", html)
+        self.assertIn("Pulso Recente", html)
+        self.assertIn("pulse-win", html)
+        self.assertIn("pulse-loss", html)
+        self.assertLess(html.index("Duelo Direto"), html.index("Pulso Recente"))
+        self.assertLess(html.index("Pulso Recente"), html.index("Raio-X Anal&#237;tico"))
+
+
 if __name__ == "__main__":
     unittest.main()

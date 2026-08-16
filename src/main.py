@@ -693,6 +693,39 @@ def _factual_only_result(payload: dict) -> dict:
     }
 
 
+def _compact_match_history(matches, player_id=None, limit=10):
+    """Resumo visual de jogos; evita transportar respostas API completas."""
+    compact = []
+    for match in matches or []:
+        p1 = match.get("player1") or {}
+        p2 = match.get("player2") or {}
+        p1_id = match.get("player1Id") or p1.get("id")
+        p2_id = match.get("player2Id") or p2.get("id")
+        winner_id = match.get("match_winner")
+        tournament_id = match.get("tournamentId")
+        cached_tournament = getattr(fetch_data, "_tournament_cache", {}).get(
+            str(tournament_id), {}
+        )
+        tournament = (
+            match.get("tournament_name") or match.get("tournamentName")
+            or (match.get("tournament") or {}).get("name")
+            or cached_tournament.get("name")
+            or (f"Torneio {tournament_id}" if tournament_id else None)
+        )
+        won = None
+        if player_id is not None and winner_id is not None:
+            won = str(winner_id) == str(player_id)
+        winner_name = p1.get("name") if str(winner_id) == str(p1_id) else p2.get("name") if str(winner_id) == str(p2_id) else None
+        compact.append({
+            "id": match.get("id"), "date": match.get("date"),
+            "tournament": tournament, "surface": match.get("surface"),
+            "result": match.get("result"), "winner_name": winner_name,
+            "won": won,
+        })
+    compact.sort(key=lambda item: item.get("date") or "", reverse=True)
+    return compact[:limit]
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -775,6 +808,7 @@ def _build_match_payload(match: dict) -> dict:
 
     # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
     _recent_a_cache = _recent_b_cache = None
+    h2h_history = recent_history_a = recent_history_b = None
     market_form_a = market_form_b = None
     opposition_quality_a = opposition_quality_b = None
     pressure_profile_a = pressure_profile_b = None
@@ -789,6 +823,7 @@ def _build_match_payload(match: dict) -> dict:
             # forma: o Sackmann partido pode dar H2H errados). Só fica o
             # Sackmann se a RapidAPI não devolver H2H.
             _h2h_matches = fetch_data.fetch_h2h_matches(tour, _pid_a, _pid_b)
+            h2h_history = _compact_match_history(_h2h_matches, limit=10)
             _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface)
             if _h2h_api:
                 h2h = _h2h_api
@@ -963,6 +998,8 @@ def _build_match_payload(match: dict) -> dict:
         # -- Recuperação de 1º set (past-matches, reaproveita cache) --
         _pm_a = _recent_a_cache if _recent_a_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_a)
         _pm_b = _recent_b_cache if _recent_b_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_b)
+        recent_history_a = _compact_match_history(_pm_a, _pid_a, 10)
+        recent_history_b = _compact_match_history(_pm_b, _pid_b, 10)
         market_form_a = fetch_data.compute_market_adjusted_form(_pm_a, _pid_a)
         market_form_b = fetch_data.compute_market_adjusted_form(_pm_b, _pid_b)
         _sc_a = fetch_data.compute_scenarios_from_past_matches(_pm_a, _pid_a) if _pm_a else None
@@ -1034,6 +1071,9 @@ def _build_match_payload(match: dict) -> dict:
         "odds_captured_at_utc": odds_captured_at_utc,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
+        "h2h_history": h2h_history,
+        "recent_history_a": recent_history_a,
+        "recent_history_b": recent_history_b,
         "h2h_rich_stats": h2h_rich_stats,  # só WTA: stats de serviço/resposta/sets decisivos específicas deste confronto, via matchstat
         "recent_form_a": form_a,
         "current_season_a": season_a,  # jogos/vitórias esta época — distingue ativo de ex-campeão parado
