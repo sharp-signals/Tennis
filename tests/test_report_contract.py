@@ -309,6 +309,8 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertLess(html.index('class="history-score"'), html.index("Miami"))
         self.assertLess(html.index("Forma Recente | &#218;ltimos 10"), html.index("Raio-X Anal&#237;tico"))
         self.assertIn('class="card factor-bars-card"', html)
+        self.assertIn('.factor-bars-card{border-color:var(--line);background:', html)
+        self.assertIn('.factor-bars-card>h3{color:var(--a)}', html)
         factor_card = html[html.index('class="card factor-bars-card"'):html.index('class="force-map-tail"')]
         self.assertEqual(factor_card.count("Raio-X Anal&#237;tico"), 1)
         self.assertGreater(html.index('class="force-map-tail"'), html.rindex('class="fd-linha"'))
