@@ -155,6 +155,40 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Fonte: RapidAPI Moneyline", html)
         self.assertIn("captadas em 2026-08-16T09:30:00+00:00", html)
 
+    def test_editorial_hierarchy_puts_matchup_and_sport_before_market(self):
+        payload = {
+            "player_a": "Alexandra Eala", "player_b": "Belinda Bencic",
+            "player_a_country": "PHI", "player_b_country": "SUI",
+            "tournament": "Toronto", "tier": "WTA 1000", "surface": "Hard",
+            "commence_time_utc": "2026-08-17T20:30:00+00:00",
+            "ranking_a": {"rank": 20}, "ranking_b": {"rank": 14},
+            "recent_form_a": {"wins": 9, "losses": 1, "matches": 10},
+            "recent_form_b": {"wins": 8, "losses": 2, "matches": 10},
+            "surface_stats_a": {"Hard": {"wins": 20, "losses": 10, "matches": 30}},
+            "surface_stats_b": {"Hard": {"wins": 22, "losses": 8, "matches": 30}},
+            "fatigue_signal_a": {"sets_last_7d": 9},
+            "fatigue_signal_b": {"sets_last_7d": 5},
+            "pressure_profile_a": {"first_serve_won_pct": 58},
+            "pressure_profile_b": {"first_serve_won_pct": 60},
+            "h2h": {"total_matches": 2, "a_wins": 1, "b_wins": 1},
+            "market_odds_decimal": {"Alexandra Eala": 2.1, "Belinda Bencic": 1.8},
+            "features": {"ranking": {"lider": "Belinda Bencic", "diff": 6}},
+        }
+        result = {"key_points": ["**Eala** chega em melhor forma.", "**Bencic** chega mais fresca."]}
+
+        html = report_html.build_report_html_v2(payload, result, report_html._calcular_divergencia)
+
+        self.assertIn("Match Preview", html)
+        self.assertIn("O jogo num relance", html)
+        self.assertIn("Chaves do confronto", html)
+        self.assertIn("PHI", html)
+        self.assertNotIn("**Eala**", html)
+        self.assertLess(html.index("O jogo num relance"), html.index("Leitura do mercado"))
+        self.assertLess(html.index("Chaves do confronto"), html.index("Mercado e indicadores"))
+        hero = html[html.index('<div class="mh">'):html.index('<div class="match-intro">')]
+        self.assertNotIn("2.1", hero)
+        self.assertNotIn("1.8", hero)
+
     def test_form_details_live_only_inside_force_map(self):
         payload = {
             "player_a": "A",

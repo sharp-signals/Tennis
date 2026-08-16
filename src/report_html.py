@@ -1826,8 +1826,8 @@ def _pct_str(v, casas=0):
 
 # ---- PALETA V2 (cada cor com um só significado) ----
 COLORS_V2 = {
-    "bg": "#0f1419", "surface": "#161c23", "surface2": "#1c242d",
-    "text": "#e6edf3", "dim": "#8896a5", "line": "#2a333d",
+    "bg": "#071426", "surface": "#0d2038", "surface2": "#122a47",
+    "text": "#f4f7fb", "dim": "#91a5bc", "line": "#23415f",
     "a": "#4aa3df",        # jogador A — azul-ciano (frio)
     "b": "#e8935a",        # jogador B — laranja-âmbar (quente, contrasta com A)
     "mint": "#3fb9a8",     # divergência relevante / oportunidade
@@ -2680,6 +2680,81 @@ def _normalizar_div(raw):
     }
 
 
+def _css_editorial():
+    return """
+.mh{position:relative;overflow:hidden;border-radius:18px;padding:24px}.mh::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:linear-gradient(90deg,transparent 49.8%,var(--b) 50%,transparent 50.2%)}
+.mh-kicker{text-align:center;color:var(--b);text-transform:uppercase;letter-spacing:1.8px;font-size:10px;font-weight:700;margin-bottom:18px}.mh-name{font-size:28px;letter-spacing:-.7px}.mh-vs{font-size:18px;color:var(--text);font-weight:800;letter-spacing:2px}
+.mh-context{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);align-items:center;font-size:12px;color:var(--dim)}.mh-context .b{text-align:right}.mh-h2h{color:var(--text);font-weight:700;text-align:center;white-space:nowrap}
+.section-title{font-size:11px;color:var(--b);text-transform:uppercase;letter-spacing:1.5px;margin:22px 2px 9px}.match-intro{border-left:3px solid var(--b);padding:12px 15px;background:rgba(52,200,255,.06);border-radius:0 10px 10px 0;margin-bottom:14px;color:var(--text);font-size:15px}
+.glance{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}.glance-head,.glance-row{display:grid;grid-template-columns:1fr minmax(120px,.8fr) 1fr;gap:10px;align-items:center}.glance-head{padding-bottom:9px;color:var(--dim);font-size:11px}.glance-head span:last-child,.glance-b{text-align:right}.glance-row{padding:9px 0;border-top:1px solid var(--line)}.glance-label{text-align:center;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.glance-a,.glance-b{font-size:15px;font-weight:700}.glance-win{color:var(--mint)}
+.keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
+@media(max-width:640px){.mh{padding:18px 14px}.mh-name{font-size:20px}.mh-top{gap:7px}.mh-tourn{font-size:9px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}}
+"""
+
+
+def _plain_fact(value):
+    return re.sub(r"\*\*", "", str(value or "")).strip()
+
+
+def _mod_header_editorial(payload):
+    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
+    ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
+    rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""; rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
+    fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
+    form_a = f"Forma {fa.get('wins')}â€“{fa.get('losses')}" if fa else ""; form_b = f"Forma {fb.get('wins')}â€“{fb.get('losses')}" if fb else ""
+    tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", "")); surf = _esc(payload.get("surface", ""))
+    h = _d(payload.get("h2h")); overall = _d(h.get("overall")) or h
+    h2h = f"H2H {overall.get('a_wins',0)}â€“{overall.get('b_wins',0)}" if overall.get("total_matches") else "H2H â€”"
+    when = ""
+    try:
+        when = datetime.fromisoformat(str(payload.get("commence_time_utc", "")).replace("Z", "+00:00")).strftime("%d/%m Â· %H:%M UTC")
+    except (TypeError, ValueError):
+        pass
+    w = _d(payload.get("weather")); weather = []
+    if w.get("temp_c") is not None: weather.append(f"{w['temp_c']:.0f}Â°C")
+    if w.get("humidity") is not None: weather.append(f"{w['humidity']:.0f}% HR")
+    if w.get("wind_kmh") is not None: weather.append(f"vento {w['wind_kmh']:.0f} km/h")
+    meta_a = " Â· ".join(str(x) for x in (payload.get("player_a_country"), rank_a, form_a) if x); meta_b = " Â· ".join(str(x) for x in (payload.get("player_b_country"), rank_b, form_b) if x)
+    return f'<div class="mh"><div class="mh-kicker">Match Preview Â· {_esc(when)}</div><div class="mh-top"><div><div class="mh-name">{a}</div><div class="mh-sub">{_esc(meta_a)}</div></div><div><div class="mh-vs">VS</div><div class="mh-tourn">{tourn}<br>{tier} Â· {surf}</div></div><div><div class="mh-name b">{b}</div><div class="mh-sub b">{_esc(meta_b)}</div></div></div><div class="mh-context"><div>{_esc(" Â· ".join(weather))}</div><div class="mh-h2h">{h2h}</div><div class="b">{tier} Â· {surf}</div></div></div>'
+
+
+def _mod_match_intro(result):
+    points = [_plain_fact(point) for point in (result.get("key_points") or []) if point]
+    return f'<div class="match-intro">{_esc(" ".join(points[:2]))}</div>' if points else ""
+
+
+def _mod_at_glance(payload):
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B")); rows = []
+    def add(label, va, vb, higher=True, fmt=str):
+        if va is None or vb is None: return
+        winner = "a" if (va > vb if higher else va < vb) else "b" if va != vb else None; rows.append((label,fmt(va),fmt(vb),winner))
+    ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{v}")
+    fa,fb=_d(payload.get("recent_form_a")),_d(payload.get("recent_form_b")); add("Forma recente",100*fa.get("wins",0)/fa.get("matches") if fa.get("matches") else None,100*fb.get("wins",0)/fb.get("matches") if fb.get("matches") else None,True,lambda v:f"{v:.0f}%")
+    surface=payload.get("surface"); sa=_d(_d(payload.get("surface_stats_a")).get(surface)); sb=_d(_d(payload.get("surface_stats_b")).get(surface)); add(f"Em {surface}" if surface else "SuperfÃ­cie",100*sa.get("wins",0)/sa.get("matches") if sa.get("matches") else None,100*sb.get("wins",0)/sb.get("matches") if sb.get("matches") else None,True,lambda v:f"{v:.0f}%")
+    fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga Â· sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
+    pa,pb=_d(payload.get("pressure_profile_a")),_d(payload.get("pressure_profile_b")); add("1.Âº serviÃ§o ganho",pa.get("first_serve_won_pct"),pb.get("first_serve_won_pct"),True,lambda v:f"{v:.0f}%")
+    da,db=_d(payload.get("deciding_set_stats_a")),_d(payload.get("deciding_set_stats_b")); add("Sets decisivos",da.get("deciding_set_win_pct"),db.get("deciding_set_win_pct"),True,lambda v:f"{v:.0f}%")
+    if not rows: return ""
+    rendered="".join(f'<div class="glance-row"><div class="glance-a {"glance-win" if w=="a" else ""}">{_esc(va)}</div><div class="glance-label">{_esc(label)}</div><div class="glance-b {"glance-win" if w=="b" else ""}">{_esc(vb)}</div></div>' for label,va,vb,w in rows[:7])
+    return f'<div class="section-title">O jogo num relance</div><div class="glance"><div class="glance-head"><span>{a}</span><span></span><span>{b}</span></div>{rendered}</div>'
+
+
+def _mod_match_keys(result):
+    points=[_plain_fact(point) for point in (result.get("key_points") or []) if point][:4]
+    if not points: return ""
+    cards="".join(f'<div class="key"><div class="key-num">{i:02d}</div><div class="key-text">{_esc(point)}</div></div>' for i,point in enumerate(points,1))
+    return f'<div class="section-title">Chaves do confronto</div><div class="keys">{cards}</div>'
+
+
+def _mod_market_provenance(payload):
+    parts = []
+    if payload.get("odds_source"):
+        parts.append(f"Fonte: {_esc(payload['odds_source'])}")
+    if payload.get("odds_captured_at_utc"):
+        parts.append(f"captadas em {_esc(payload['odds_captured_at_utc'])}")
+    return f'<div class="mh-odds-meta">{" Â· ".join(parts)}</div>' if parts else ""
+
+
 def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     """Monta a página V2 completa. Recebe a função do motor (índice de
     evidência) de fora, para reaproveitar o report_html original.
@@ -2697,9 +2772,13 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
 
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
-    partes.append(_mod_header(payload, div, estado))
+    partes.append(_mod_header_editorial(payload))
     # 2. Leitura do jogo (sempre — muda conforme estado)
-    partes.append(_mod_leitura(payload, div, estado, result))
+    partes.append(_mod_match_intro(result))
+    partes.append(_mod_at_glance(payload))
+    partes.append(_mod_match_keys(result))
+    if chave == "sem_odds":
+        partes.append(_mod_leitura(payload, div, estado, result))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":
@@ -2715,16 +2794,20 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         return _pagina(a, b, "".join(partes))
 
     # 3. Fatores principais (se há divergência)
-    if chave in ("acompanhar", "oportunidade"):
-        partes.append(_mod_fatores(payload, div))
+    partes.append(_mod_cenarios(payload))
     # 4. Mercado e indicadores (só com odds)
     if chave not in ("sem_odds",):
+        partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
+        partes.append(_mod_leitura(payload, div, estado, result))
+        if chave in ("acompanhar", "oportunidade"):
+            partes.append(_mod_fatores(payload, div))
         partes.append(_mod_mercado_vs_sinal(payload, div))
+        partes.append(_mod_market_provenance(payload))
         partes.append(_mod_mercados(payload, div))
+        partes.append('</div>')
     # 5-9. Evidência. Forma, Serviço, Carga e H2H vivem dentro do Mapa de
     # Forças, evitando duplicar na página principal fatores já resumidos nos
     # chips do topo. Cenários decisivos mantém-se visível quando diferencia.
-    partes.append(_mod_cenarios(payload))
     # Fatores detalhados (TODOS, não só o top-3/4) — colapsável, sempre que
     # houver motor calculado, independente do estado (mesmo "eficiente"
     # beneficia de mostrar porque é eficiente: tudo empatado/sem dados).
@@ -2746,7 +2829,7 @@ def _pagina(a, b, corpo):
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{_esc(a)} vs {_esc(b)}</title>
-<style>{_css()}</style></head>
+<style>{_css()}{_css_editorial()}</style></head>
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">
   <a href="{_esc(SITE_BASE_URL)}/">← Todos os relatórios</a>
