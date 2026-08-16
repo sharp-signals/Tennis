@@ -310,7 +310,12 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertLess(html.index("Forma Recente | &#218;ltimos 10"), html.index("Raio-X Anal&#237;tico"))
         self.assertIn('class="card factor-bars-card"', html)
         self.assertIn('.factor-bars-card{border-color:var(--line);background:', html)
-        self.assertIn('.factor-bars-card>h3{color:var(--a)}', html)
+        self.assertIn('.factor-bars-head h3{color:var(--a)', html)
+        self.assertIn('class="impact-switch"', html)
+        self.assertIn("Impacto no matchup", html)
+        self.assertIn('data-impact-side="a"', html)
+        self.assertIn('class="impact-trace"', html)
+        self.assertIn("drawTrace", html)
         factor_card = html[html.index('class="card factor-bars-card"'):html.index('class="force-map-tail"')]
         self.assertEqual(factor_card.count("Raio-X Anal&#237;tico"), 1)
         self.assertGreater(html.index('class="force-map-tail"'), html.rindex('class="fd-linha"'))

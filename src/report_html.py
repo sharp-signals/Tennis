@@ -1008,6 +1008,13 @@ def _calcular_divergencia(payload):
             items = [(c, s, p * escala) for c, s, p in items]
         contribuicoes_capadas.extend(items)
     contribuicoes = contribuicoes_capadas
+    # Guardar no estado de cada fator o impacto efetivo usado pelo motor,
+    # depois dos ajustes de forca, confianca da amostra e caps por familia.
+    # O relatorio usa estes valores no modo "Impacto no matchup".
+    for chave_f, sinal, peso in contribuicoes:
+        if chave_f in status:
+            status[chave_f]["peso_efetivo"] = round(abs(peso), 3)
+            status[chave_f]["direcao_impacto"] = "a" if sinal > 0 else "b"
 
     # --- 2. Calcular inclinação ponderada do modelo (índice a favor de A) ---
     peso_total = sum(abs(p) for _, _, p in contribuicoes)
@@ -2267,16 +2274,36 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
     status = (div or {}).get("fatores_status") or {}
     if not status and not extras_html and not tail_html:
         return ""
+    max_impact = max(
+        (float(st.get("peso_efetivo") or 0) for st in status.values()),
+        default=0,
+    )
+
+    def impact_markup(st):
+        impact = float(st.get("peso_efetivo") or 0)
+        side = st.get("direcao_impacto") if impact > 0 else ""
+        pct = round(100 * impact / max_impact) if max_impact else 0
+        attrs = f' data-impact="{impact:.3f}" data-impact-pct="{pct}" data-impact-side="{side}"'
+        if not side:
+            return attrs, ""
+        bar = (
+            f'<div class="fd-impact-bar"><span class="fd-impact-fill {side}" '
+            f'style="width:{pct / 2:.1f}%"></span>'
+            f'<span class="fd-impact-value">peso {impact:.1f}</span></div>'
+        )
+        return attrs, bar
+
     linhas = []
     for chave in _FACTOR_ORDER:
         st = status.get(chave)
         if st is None:
             continue
         nome = _esc(_nome_fator(chave))
+        impact_attrs, impact_bar = impact_markup(st)
         if not st.get("disponivel"):
             linhas.append(
-                f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">sem dados</span></div></div>')
+                f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
+                f'<span class="fd-val fd-dim">sem dados</span></div>{impact_bar}</div>')
             continue
         lider = st.get("lider")
         motivo = st.get("motivo_exclusao")
@@ -2284,8 +2311,8 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
         if lider in (None, "igual"):
             txt = "empate" if lider == "igual" else (motivo or "sem vantagem clara")
             linhas.append(
-                f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{bar_html}</div>')
+                f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
+                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{bar_html}{impact_bar}</div>')
             continue
         # contribuiu de facto (sem motivo de exclusão) -> destaque; excluído
         # apesar de haver vantagem (ex: abaixo do limiar) -> tom neutro
@@ -2293,15 +2320,19 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
         seta = "·" if motivo else "▲"
         nota = f' <span class="fd-nota">({_esc(motivo)})</span>' if motivo else ""
         linhas.append(
-            f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
+            f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
             f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
-            f'{bar_html}</div>')
+            f'{bar_html}{impact_bar}</div>')
     if not linhas and not extras_html and not tail_html:
         return ""
     total_tag = f" ({len(linhas)})" if linhas else ""
     factor_bars = (
-        f'<div class="card factor-bars-card"><h3>Raio-X Anal&#237;tico</h3>'
-        f'{"".join(linhas)}</div>'
+        f'<div class="card factor-bars-card"><div class="factor-bars-head"><h3>Raio-X Anal&#237;tico</h3>'
+        f'<div class="impact-toggle"><span>Valores reais</span><label class="impact-switch">'
+        f'<input type="checkbox" aria-label="Alternar para impacto no matchup">'
+        f'<span class="impact-slider"></span></label><span>Impacto no matchup</span></div></div>'
+        f'<div class="factor-lines">{"".join(linhas)}'
+        f'<svg class="impact-trace" aria-hidden="true"><path></path><g></g></svg></div></div>'
         if linhas else ""
     )
     return (f'<details class="more mais-forcas"><summary>Mapa de Forças{total_tag}'
@@ -2696,8 +2727,11 @@ def _css_editorial():
 .history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}
 .pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) 1fr;gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
 .pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
-.factor-bars-card{border-color:var(--line);background:linear-gradient(180deg,rgba(74,163,223,.08),var(--surface) 30%)}.factor-bars-card>h3{color:var(--a)}
+.factor-bars-card{border-color:var(--line);background:linear-gradient(180deg,rgba(74,163,223,.08),var(--surface) 30%)}
 .factor-bars-card .fd-linha{padding:9px 11px;background:rgba(74,163,223,.055);border-bottom-color:rgba(120,207,255,.14)}.factor-bars-card .fd-linha:first-of-type{border-radius:8px 8px 0 0}.factor-bars-card .fd-linha:last-child{border-radius:0 0 8px 8px}
+.factor-bars-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}.factor-bars-head h3{color:var(--a);margin:0}.impact-toggle{display:flex;align-items:center;gap:7px;color:var(--dim);font-size:10px}.impact-switch{position:relative;width:42px;height:24px;flex:0 0 auto}.impact-switch input{position:absolute;opacity:0;pointer-events:none}.impact-slider{position:absolute;inset:0;border-radius:999px;background:var(--surface2);border:1px solid var(--line);cursor:pointer;transition:.2s}.impact-slider::before{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.impact-switch input:checked+.impact-slider{background:rgba(74,163,223,.55);border-color:var(--a)}.impact-switch input:checked+.impact-slider::before{transform:translateX(18px)}.impact-switch input:focus-visible+.impact-slider{outline:2px solid var(--a);outline-offset:2px}
+.factor-lines{position:relative}.fd-impact-bar,.impact-trace{display:none}.factor-bars-card.impact-mode{background:#090e13;border-color:#213445}.factor-bars-card.impact-mode .factor-lines{background:#070b0f;border-radius:9px}.factor-bars-card.impact-mode .fd-linha{background:rgba(8,16,23,.82);border-bottom-color:rgba(110,145,168,.12)}.factor-bars-card.impact-mode .fd-nome,.factor-bars-card.impact-mode .fd-val{color:#748493!important}.factor-bars-card.impact-mode .fd-nota{color:#586875}.factor-bars-card.impact-mode .fd-bar{display:none}.factor-bars-card.impact-mode .fd-impact-bar{display:block;position:relative;height:22px;border-radius:5px;overflow:hidden;background:#111a22}.fd-impact-bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.32);z-index:2}.fd-impact-fill{position:absolute;top:0;bottom:0;z-index:1}.fd-impact-fill.a{right:50%;background:var(--a)}.fd-impact-fill.b{left:50%;background:var(--b)}.fd-impact-value{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;color:#dce8f0;font-size:10px;font-weight:700;background:rgba(5,9,12,.68);padding:1px 5px;border-radius:4px}.factor-bars-card.impact-mode .impact-trace{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:5}.impact-trace path{fill:none;stroke:#d5f4ff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(120,207,255,.8))}.impact-trace circle{fill:#f3fbff;stroke:#20394a;stroke-width:1.5}.factor-bars-card.impact-mode .fd-linha[data-impact-side=""]{opacity:.42}
+@media(max-width:640px){.factor-bars-head{align-items:flex-start;flex-direction:column}.impact-toggle{width:100%;justify-content:flex-end}}
 .history-score{padding:0 0 12px;margin-bottom:2px}.history-score-names{display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:11px;margin-bottom:5px}
 @media(max-width:640px){.mh{padding:18px 14px}.mh-name{font-size:20px}.mh-top{gap:7px}.mh-tourn{font-size:9px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}}
 """
@@ -2996,6 +3030,57 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     return _pagina(a, b, "".join(partes))
 
 
+def _impact_toggle_script():
+    return """
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  function drawTrace(card) {
+    const box = card.querySelector(".factor-lines");
+    const svg = card.querySelector(".impact-trace");
+    if (!box || !svg || !card.classList.contains("impact-mode")) return;
+    const rect = box.getBoundingClientRect();
+    const rows = [...box.querySelectorAll(".fd-linha[data-impact-side]")]
+      .filter(row => row.dataset.impactSide && Number(row.dataset.impactPct) > 0);
+    const points = rows.map(row => {
+      const rr = row.getBoundingClientRect();
+      const direction = row.dataset.impactSide === "a" ? -1 : 1;
+      return {
+        x: rect.width * (.5 + direction * .42 * Number(row.dataset.impactPct) / 100),
+        y: rr.top - rect.top + rr.height / 2
+      };
+    });
+    svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+    const path = svg.querySelector("path");
+    const dots = svg.querySelector("g");
+    if (!points.length) { path.setAttribute("d", ""); dots.replaceChildren(); return; }
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1], cur = points[i], midY = (prev.y + cur.y) / 2;
+      d += ` C ${prev.x} ${midY}, ${cur.x} ${midY}, ${cur.x} ${cur.y}`;
+    }
+    path.setAttribute("d", d);
+    dots.replaceChildren(...points.map(point => {
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("cx", point.x); dot.setAttribute("cy", point.y); dot.setAttribute("r", 3.5);
+      return dot;
+    }));
+  }
+  document.querySelectorAll(".factor-bars-card").forEach(card => {
+    const toggle = card.querySelector(".impact-switch input");
+    if (!toggle) return;
+    toggle.addEventListener("change", () => {
+      card.classList.toggle("impact-mode", toggle.checked);
+      requestAnimationFrame(() => drawTrace(card));
+    });
+  });
+  window.addEventListener("resize", () => {
+    document.querySelectorAll(".factor-bars-card.impact-mode").forEach(drawTrace);
+  });
+})();
+</script>"""
+
+
 def _pagina(a, b, corpo):
     hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     return f"""<!DOCTYPE html>
@@ -3012,4 +3097,5 @@ def _pagina(a, b, corpo):
 {corpo}
 <div class="wrap"><div class="foot">Gerado em {hoje} · Análise informativa, não recomendação de aposta.</div></div>
 </main>
+{_impact_toggle_script()}
 </body></html>"""
