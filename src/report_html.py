@@ -2941,13 +2941,12 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
 
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
-    partes.append(_mod_header_editorial_clean(payload))
+    partes.append(_mod_header(payload, div, estado))
+    partes.append(_mod_leitura(payload, div, estado, result))
     # 2. Leitura do jogo (sempre — muda conforme estado)
     partes.append(_mod_match_intro(result))
     partes.append(_mod_at_glance_clean(payload))
     partes.append(_mod_match_keys(payload, div))
-    if chave == "sem_odds":
-        partes.append(_mod_leitura(payload, div, estado, result))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":
@@ -2967,7 +2966,6 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 4. Mercado e indicadores (só com odds)
     if chave not in ("sem_odds",):
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
-        partes.append(_mod_leitura(payload, div, estado, result))
         partes.append(_mod_mercado_vs_sinal(payload, div))
         partes.append(_mod_market_provenance(payload))
         partes.append(_mod_mercados(payload, div))

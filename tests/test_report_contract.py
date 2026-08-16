@@ -155,7 +155,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Fonte: RapidAPI Moneyline", html)
         self.assertIn("captadas em 2026-08-16T09:30:00+00:00", html)
 
-    def test_editorial_hierarchy_puts_matchup_and_sport_before_market(self):
+    def test_header_keeps_odds_and_divergence_before_sport_detail(self):
         payload = {
             "player_a": "Alexandra Eala", "player_b": "Belinda Bencic",
             "player_a_country": "PHI", "player_b_country": "SUI",
@@ -178,17 +178,20 @@ class ReportRenderingTests(unittest.TestCase):
 
         html = report_html.build_report_html_v2(payload, result, report_html._calcular_divergencia)
 
-        self.assertIn("Match Preview", html)
         self.assertIn("O jogo num relance", html)
         self.assertIn("Chaves do confronto", html)
         self.assertIn("▲ Belinda Bencic", html)
-        self.assertIn("PHI", html)
         self.assertNotIn("**Eala**", html)
+        self.assertIn('class="mh-odds"', html)
+        self.assertIn("2.1", html)
+        self.assertIn("1.8", html)
+        self.assertLess(html.index('class="mh-odds"'), html.index('class="leitura"'))
+        self.assertLess(html.index('class="leitura"'), html.index("O jogo num relance"))
         self.assertLess(html.index("O jogo num relance"), html.index("Leitura do mercado"))
-        self.assertLess(html.index("Chaves do confronto"), html.index("Mercado e indicadores"))
+        self.assertLess(html.index("Mercado e indicadores"), html.index("O jogo num relance"))
         hero = html[html.index('<div class="mh">'):html.index('<div class="match-intro">')]
-        self.assertNotIn("2.1", hero)
-        self.assertNotIn("1.8", hero)
+        self.assertIn("2.1", hero)
+        self.assertIn("1.8", hero)
         self.assertNotIn("Â", hero)
 
     def test_form_details_live_only_inside_force_map(self):
