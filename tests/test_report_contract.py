@@ -181,6 +181,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Match Preview", html)
         self.assertIn("O jogo num relance", html)
         self.assertIn("Chaves do confronto", html)
+        self.assertIn("▲ Belinda Bencic", html)
         self.assertIn("PHI", html)
         self.assertNotIn("**Eala**", html)
         self.assertLess(html.index("O jogo num relance"), html.index("Leitura do mercado"))

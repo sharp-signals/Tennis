@@ -2739,11 +2739,31 @@ def _mod_at_glance(payload):
     return f'<div class="section-title">O jogo num relance</div><div class="glance"><div class="glance-head"><span>{a}</span><span></span><span>{b}</span></div>{rendered}</div>'
 
 
-def _mod_match_keys(result):
-    points=[_plain_fact(point) for point in (result.get("key_points") or []) if point][:4]
-    if not points: return ""
-    cards="".join(f'<div class="key"><div class="key-num">{i:02d}</div><div class="key-text">{_esc(point)}</div></div>' for i,point in enumerate(points,1))
-    return f'<div class="section-title">Chaves do confronto</div><div class="keys">{cards}</div>'
+def _mod_match_keys(payload, div):
+    """Fatores-chave sintéticos: dimensão + jogador com ascendente."""
+    fatores = (div or {}).get("fatores_chave") or []
+    if not fatores:
+        # Fallback factual para relatórios sem mercado/divergência calculada.
+        nomes = {
+            "ranking": "Ranking", "forma_recente": "Forma recente",
+            "piso": "Superfície", "h2h": "Confronto direto",
+            "h2h_piso": "H2H no piso", "frescura": "Frescura",
+            "servico_carreira": "Serviço", "servico_recente": "Serviço recente",
+        }
+        for key, feature in (payload.get("features") or {}).items():
+            if key not in nomes or not isinstance(feature, dict):
+                continue
+            leader = feature.get("lider") or feature.get("mais_fresco")
+            if leader not in (None, "igual"):
+                fatores.append((nomes[key], leader))
+    if not fatores:
+        return ""
+    cards = "".join(
+        f'<div class="fator"><div class="fator-lbl">{_esc(name)}</div>'
+        f'<div class="fator-fav">▲ {_esc(leader)}</div></div>'
+        for name, leader in fatores[:4]
+    )
+    return f'<div class="section-title">Chaves do confronto</div><div class="fatores">{cards}</div>'
 
 
 def _mod_market_provenance(payload):
@@ -2814,7 +2834,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 2. Leitura do jogo (sempre — muda conforme estado)
     partes.append(_mod_match_intro(result))
     partes.append(_mod_at_glance_clean(payload))
-    partes.append(_mod_match_keys(result))
+    partes.append(_mod_match_keys(payload, div))
     if chave == "sem_odds":
         partes.append(_mod_leitura(payload, div, estado, result))
 
@@ -2837,8 +2857,6 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     if chave not in ("sem_odds",):
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
         partes.append(_mod_leitura(payload, div, estado, result))
-        if chave in ("acompanhar", "oportunidade"):
-            partes.append(_mod_fatores(payload, div))
         partes.append(_mod_mercado_vs_sinal(payload, div))
         partes.append(_mod_market_provenance(payload))
         partes.append(_mod_mercados(payload, div))
