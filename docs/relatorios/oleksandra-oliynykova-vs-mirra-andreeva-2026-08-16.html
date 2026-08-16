@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oleksandra Oliynykova vs Mirra Andreeva</title>
+<style>
+:root {
+  --bg:#071426; --surface:#0d2038; --surface2:#122a47;
+  --text:#f4f7fb; --dim:#91a5bc; --line:#23415f;
+  --a:#4aa3df; --b:#e8935a; --mint:#3fb9a8; --amber:#d9a441;
+  --neutral:#5a6b7a; --error:#e06c5b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  line-height:1.5; font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased; padding:16px; }
+.wrap { max-width:1080px; margin:0 auto; }
+.wrap-text { max-width:720px; margin-left:auto; margin-right:auto; }
+.report-nav { max-width:1080px; margin:0 auto 10px; }
+.report-nav a { color:var(--dim); text-decoration:none; font-size:14px; }
+.report-nav a:hover, .report-nav a:focus { color:var(--text); text-decoration:underline; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.num { font-variant-numeric:tabular-nums; }
+
+/* --- MATCHUP HEADER (ficha de combate) --- */
+.mh { background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  padding:20px; margin-bottom:14px; }
+.mh-top { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:start; }
+.mh-name { font-size:22px; font-weight:700; letter-spacing:-.3px;
+  border-left:3px solid var(--a); padding-left:8px; }
+.mh-name.b { text-align:right; border-left:none;
+  border-right:3px solid var(--b); padding-left:0; padding-right:8px; }
+.mh-sub { font-size:13px; color:var(--dim); margin-top:3px; }
+.mh-sub.b { text-align:right; }
+.mh-vs { font-size:12px; color:var(--dim); text-align:center; padding-top:6px;
+  font-weight:600; letter-spacing:1px; }
+.mh-tourn { font-size:11px; color:var(--dim); text-align:center; margin-top:4px;
+  text-transform:uppercase; letter-spacing:.5px; }
+.mh-odds { display:grid; grid-template-columns:1fr auto 1fr; gap:12px;
+  margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+.mh-odd { font-size:20px; font-weight:700; }
+.mh-odd.b { text-align:right; }
+.mh-odd small { display:block; font-size:12px; color:var(--dim); font-weight:400; }
+.mh-odds-meta { color:var(--dim); font-size:10px; text-align:center; margin-top:7px; }
+.mh-mid { text-align:center; font-size:12px; color:var(--dim); }
+
+/* --- LEITURA DO JOGO (a decisão, 1 frase) --- */
+.leitura { border-radius:12px; padding:14px 16px; margin-bottom:14px;
+  border:1px solid var(--line); display:flex; gap:12px; align-items:center; }
+.leitura-bola { font-size:24px; }
+.leitura-txt b { font-size:15px; }
+.leitura-txt div { font-size:13px; color:var(--dim); margin-top:2px; }
+
+/* --- 4 FATORES (chips) --- */
+.fatores { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+@media(max-width:640px){ .fatores { grid-template-columns:repeat(2,1fr); } }
+.fator { background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:10px; text-align:center; }
+.fator-lbl { font-size:10px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.5px; margin-bottom:4px; }
+.fator-val { font-size:14px; font-weight:600; }
+.fator-fav { font-size:11px; margin-top:2px; }
+
+/* --- MERCADO vs SINAL (gráfico central) --- */
+.mvs { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin-bottom:14px; }
+.mvs h3, .card h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:14px; font-weight:600; }
+.mvs-row { margin-bottom:14px; }
+.mvs-row-lbl { display:flex; justify-content:space-between; font-size:12px;
+  color:var(--dim); margin-bottom:5px; }
+.mvs-track { position:relative; height:26px; background:var(--surface2);
+  border-radius:6px; overflow:hidden; }
+.mvs-fill { position:absolute; top:0; bottom:0; left:0; border-radius:6px; }
+.mvs-mid { position:absolute; left:50%; top:0; bottom:0; width:1px;
+  background:var(--dim); opacity:.4; }
+.mvs-val { position:absolute; top:50%; transform:translateY(-50%); font-size:12px;
+  font-weight:700; padding:0 8px; }
+.mvs-delta { text-align:center; font-size:13px; margin-top:10px; font-weight:600; }
+
+/* --- CARDS genéricos --- */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:16px; margin-bottom:14px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media(max-width:760px){ .grid2 { grid-template-columns:1fr; } }
+
+/* --- barra comparativa (forma, serviço) --- */
+.cmp { margin-bottom:12px; }
+.cmp:last-child { margin-bottom:0; }
+.cmp-lbl { font-size:12px; color:var(--dim); margin-bottom:6px; }
+.cmp-row { display:grid; grid-template-columns:90px 1fr 54px; gap:8px;
+  align-items:center; margin-bottom:4px; }
+.cmp-name { font-size:12px; color:var(--dim); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.cmp-bar { height:14px; background:var(--surface2); border-radius:4px; overflow:hidden; }
+.cmp-bar span { display:block; height:100%; border-radius:4px; }
+.cmp-num { font-size:13px; font-weight:600; text-align:right; }
+.cmp-delta { font-size:11px; text-align:center; color:var(--mint); margin-top:3px; }
+
+/* amostra (auditoria #8): esbatido se n<10 */
+.samp-low { opacity:.5; }
+.samp-tag { font-size:10px; color:var(--dim); }
+
+/* --- fadiga --- */
+.fadiga-cmp { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center; }
+.fadiga-side { font-size:13px; }
+.fadiga-side.b { text-align:right; }
+.fadiga-big { font-size:18px; font-weight:700; }
+.fadiga-delta { text-align:center; font-size:12px; color:var(--amber); font-weight:600; }
+
+/* --- details (mais estatísticas) --- */
+details.more { background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; margin-bottom:14px; }
+details.more>summary { padding:14px 16px; cursor:pointer; font-size:13px;
+  font-weight:600; color:var(--text); list-style:none; }
+details.more>summary::-webkit-details-marker { display:none; }
+details.more>summary::before { content:"▸ "; }
+details.more[open]>summary::before { content:"▾ "; }
+details.more .more-body { padding:0 16px 16px; }
+.more-hint { color:var(--dim); font-size:11px; font-weight:400; margin-left:6px; }
+
+/* Mapa de Forças: destaque visual (feedback de teste, 13/08/2026 —
+   "devia ter mais visibilidade, ligeiramente maior e com outra cor, para
+   mostrar que é o único elemento carregável com info relevante") */
+details.mais-forcas { border:1.5px solid var(--amber);
+  background:linear-gradient(180deg, rgba(217,164,65,.10), var(--surface) 45%); }
+details.mais-forcas>summary { padding:16px 18px; font-size:14px; color:var(--amber); }
+details.mais-forcas>summary::before { color:var(--amber); }
+details.mais-forcas .more-hint { color:var(--amber); opacity:.75; }
+
+/* --- estado parcial/erro --- */
+.parcial { background:rgba(224,108,91,.1); border:1px solid var(--error);
+  border-radius:12px; padding:16px; margin-bottom:14px; }
+.parcial b { color:var(--error); }
+
+/* --- veredicto --- */
+.veredicto { background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; padding:18px; margin-bottom:14px; }
+.veredicto h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:10px; }
+.merc-linha { display:flex; align-items:center; gap:10px; padding:7px 0;
+  border-bottom:1px solid var(--line); font-size:13px; }
+.merc-linha:last-of-type { border-bottom:none; }
+.merc-bola { font-size:14px; }
+.merc-nome { font-weight:600; min-width:130px; }
+.merc-nota { color:var(--dim); font-size:12px; }
+.merc-principal { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  margin-bottom:10px; background:var(--surface2); }
+.merc-principal-tag { font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--dim); font-weight:700; display:block; margin-bottom:4px; }
+.merc-linha-top { border-bottom:none; padding:2px 0; font-size:14px; }
+.merc-linha-top .merc-nome { font-size:15px; }
+.merc-secundarios { opacity:.75; }
+.merc-sec-tag { font-size:10px; color:var(--dim); margin-bottom:2px; }
+.h2h-line { font-size:14px; line-height:1.6; }
+.fd-linha { padding:6px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.fd-linha:last-child { border-bottom:none; }
+.fd-linha-top { display:flex; justify-content:space-between; align-items:baseline;
+  gap:10px; margin-bottom:4px; }
+.fd-nome { color:var(--text); font-weight:600; }
+.fd-val { font-weight:600; text-align:right; }
+.fd-dim { color:var(--dim); font-weight:400; }
+.fd-nota { color:var(--dim); font-size:11px; font-weight:400; }
+.fd-bar { display:flex; position:relative; height:22px; border-radius:5px;
+  overflow:hidden; background:var(--surface2); }
+.fd-bar::after { content:""; position:absolute; left:50%; top:0; bottom:0;
+  width:1px; background:rgba(255,255,255,.3); z-index:2; }
+.fd-bar-a { background:var(--a); opacity:.78; }
+.fd-bar-b { background:var(--b); opacity:.78; }
+.fd-bar-val { position:absolute; top:50%; transform:translateY(-50%); z-index:3;
+  color:#fff; font-size:11px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.65); }
+.fd-bar-val.a { left:7px; } .fd-bar-val.b { right:7px; }
+.fd-bar.samp-low { opacity:.52; }
+@media(max-width:520px){ .more-hint { display:block; margin:2px 0 0 16px; }
+  .fd-linha-top { align-items:flex-start; } .fd-val { font-size:11px; } }
+.foot { text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
+  padding-top:14px; border-top:1px solid var(--line); }
+
+.mh{position:relative;overflow:hidden;border-radius:18px;padding:24px}.mh::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:linear-gradient(90deg,transparent 49.8%,var(--b) 50%,transparent 50.2%)}
+.mh-kicker{text-align:center;color:var(--b);text-transform:uppercase;letter-spacing:1.8px;font-size:10px;font-weight:700;margin-bottom:18px}.mh-name{font-size:28px;letter-spacing:-.7px}.mh-vs{font-size:18px;color:var(--text);font-weight:800;letter-spacing:2px}
+.mh-context{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);align-items:center;font-size:12px;color:var(--dim)}.mh-context .b{text-align:right}.mh-h2h{color:var(--text);font-weight:700;text-align:center;white-space:nowrap}
+.section-title{font-size:11px;color:var(--b);text-transform:uppercase;letter-spacing:1.5px;margin:22px 2px 9px}.match-intro{border-left:3px solid var(--b);padding:12px 15px;background:rgba(52,200,255,.06);border-radius:0 10px 10px 0;margin-bottom:14px;color:var(--text);font-size:15px}
+.glance{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}.glance-head,.glance-row{display:grid;grid-template-columns:1fr minmax(120px,.8fr) 1fr;gap:10px;align-items:center}.glance-head{padding-bottom:9px;color:var(--dim);font-size:11px}.glance-head span:last-child,.glance-b{text-align:right}.glance-row{padding:9px 0;border-top:1px solid var(--line)}.glance-label{text-align:center;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.glance-a,.glance-b{font-size:15px;font-weight:700}.glance-win{color:var(--mint)}
+.keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
+.history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}
+.pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) 1fr;gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
+.pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
+.factor-bars-card{border-color:var(--line);background:linear-gradient(180deg,rgba(74,163,223,.08),var(--surface) 30%)}
+.factor-bars-card .fd-linha{padding:9px 11px;background:rgba(74,163,223,.055);border-bottom-color:rgba(120,207,255,.14)}.factor-bars-card .fd-linha:first-of-type{border-radius:8px 8px 0 0}.factor-bars-card .fd-linha:last-child{border-radius:0 0 8px 8px}
+.factor-bars-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}.factor-bars-head h3{color:var(--a);margin:0}.impact-toggle{display:flex;align-items:center;gap:7px;color:var(--dim);font-size:10px}.impact-switch{position:relative;width:42px;height:24px;flex:0 0 auto}.impact-switch input{position:absolute;opacity:0;pointer-events:none}.impact-slider{position:absolute;inset:0;border-radius:999px;background:var(--surface2);border:1px solid var(--line);cursor:pointer;transition:.2s}.impact-slider::before{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.impact-switch input:checked+.impact-slider{background:rgba(74,163,223,.55);border-color:var(--a)}.impact-switch input:checked+.impact-slider::before{transform:translateX(18px)}.impact-switch input:focus-visible+.impact-slider{outline:2px solid var(--a);outline-offset:2px}
+.factor-lines{position:relative}.fd-impact-bar,.impact-trace{display:none}.factor-bars-card.impact-mode{background:#090e13;border-color:#213445}.factor-bars-card.impact-mode .factor-lines{background:#070b0f;border-radius:9px}.factor-bars-card.impact-mode .fd-linha{background:rgba(8,16,23,.82);border-bottom-color:rgba(110,145,168,.12)}.factor-bars-card.impact-mode .fd-nome,.factor-bars-card.impact-mode .fd-val{color:#748493!important}.factor-bars-card.impact-mode .fd-nota{color:#586875}.factor-bars-card.impact-mode .fd-bar{display:none}.factor-bars-card.impact-mode .fd-impact-bar{display:block;position:relative;height:22px;border-radius:5px;overflow:hidden;background:#111a22}.fd-impact-bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.32);z-index:2}.fd-impact-fill{position:absolute;top:0;bottom:0;z-index:1}.fd-impact-fill.a{right:50%;background:var(--a)}.fd-impact-fill.b{left:50%;background:var(--b)}.fd-impact-value{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;color:#dce8f0;font-size:10px;font-weight:700;background:rgba(5,9,12,.68);padding:1px 5px;border-radius:4px}.factor-bars-card.impact-mode .impact-trace{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:5}.impact-trace path{fill:none;stroke:#d5f4ff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(120,207,255,.8))}.impact-trace circle{fill:#f3fbff;stroke:#20394a;stroke-width:1.5}.factor-bars-card.impact-mode .fd-linha[data-impact-side=""]{opacity:.42}
+.factor-bars-card.impact-mode .fd-linha[data-impact-side="a"] .fd-val{color:#78cfff!important}.factor-bars-card.impact-mode .fd-linha[data-impact-side="b"] .fd-val{color:#ffb47f!important}.factor-bars-card.impact-mode .fd-nota{color:#586875!important}
+@media(max-width:640px){.factor-bars-head{align-items:flex-start;flex-direction:column}.impact-toggle{width:100%;justify-content:flex-end}}
+.history-score{padding:0 0 12px;margin-bottom:2px}.history-score-names{display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:11px;margin-bottom:5px}
+@media(max-width:640px){.mh{padding:18px 14px}.mh-name{font-size:20px}.mh-top{gap:7px}.mh-tourn{font-size:9px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}}
+</style></head>
+<body>
+<nav class="report-nav" aria-label="Navegação do relatório">
+  <a href="https://sharp-signals.github.io/Tennis/">← Todos os relatórios</a>
+</nav>
+<main>
+<h1 class="sr-only">Oleksandra Oliynykova vs Mirra Andreeva</h1>
+<div class="wrap">
+<div class="mh">
+  <div class="mh-top">
+    <div>
+      <div class="mh-name">Oleksandra Oliynykova</div>
+      <div class="mh-sub">#46 · Forma 6–4</div>
+    </div>
+    <div>
+      <div class="mh-vs">VS</div>
+      <div class="mh-tourn">Cincinnati Open - Cincinnati<br>WTA 1000 · Hard</div>
+    </div>
+    <div>
+      <div class="mh-name b">Mirra Andreeva</div>
+      <div class="mh-sub b">#6 · Forma 7–3</div>
+    </div>
+  </div>
+  <div class="mh-odds">
+    <div class="mh-odd">6.25<small>15% mercado</small></div>
+    <div class="mh-mid"></div>
+    <div class="mh-odd b">1.118<small>85% mercado</small></div>
+  </div>
+  <div class="mh-odds-meta">Fonte: RapidAPI Moneyline · captadas em 2026-08-16T14:35:59.558759+00:00</div>
+</div>
+<div class="leitura" style="border-color:#5a6b7a">
+  <div class="leitura-bola">⚪</div>
+  <div class="leitura-txt"><b>Mercado e indicadores alinhados</b><div>Mercado e indicadores apontam para <b>Mirra Andreeva</b>. Este alinhamento não permite concluir que a odd tem valor.</div></div>
+</div><div class="market-section"><div class="section-title">Leitura do mercado</div>
+<div class="mvs">
+  <h3>Mercado e indicadores</h3>
+  
+<div class="mvs-row">
+  <div class="mvs-row-lbl"><span>Oleksandra Oliynykova</span><span>Mercado</span><span>Mirra Andreeva</span></div>
+  <div class="mvs-track">
+    <div class="mvs-fill" style="width:15%; background:#4aa3df; opacity:.7"></div>
+    <div class="mvs-mid"></div>
+    <div class="mvs-val" style="left:0; color:#fff">15%</div>
+    <div class="mvs-val" style="right:0; color:#fff">85%</div>
+  </div>
+</div>
+<div class="mvs-row">
+  <div class="mvs-row-lbl"><span>Oleksandra Oliynykova</span><span>Indicadores · peso relativo</span><span>Mirra Andreeva</span></div>
+  <div class="mvs-track">
+    <div class="mvs-fill" style="width:8%; background:#4aa3df; opacity:.7"></div>
+    <div class="mvs-mid"></div>
+    <div class="mvs-val" style="left:0; color:#fff">8/100</div>
+    <div class="mvs-val" style="right:0; color:#fff">92/100</div>
+  </div>
+</div>
+</div><div class="mh-odds-meta">Fonte: RapidAPI Moneyline Â· captadas em 2026-08-16T14:35:59.558759+00:00</div></div><div class="match-intro">Mirra Andreeva superior no ranking (#46 vs #6). Mirra Andreeva melhor em forma, piso, serviço (força geral a favor).</div><div class="section-title">O jogo num relance</div><div class="glance"><div class="glance-head"><span>Oleksandra Oliynykova</span><span></span><span>Mirra Andreeva</span></div><div class="glance-row"><div class="glance-a ">#46</div><div class="glance-label">Ranking</div><div class="glance-b glance-win">#6</div></div><div class="glance-row"><div class="glance-a ">60%</div><div class="glance-label">Forma recente</div><div class="glance-b glance-win">70%</div></div><div class="glance-row"><div class="glance-a ">50%</div><div class="glance-label">Em Hard</div><div class="glance-b glance-win">68%</div></div><div class="glance-row"><div class="glance-a ">2</div><div class="glance-label">Carga | sets 7d</div><div class="glance-b glance-win">0</div></div><div class="glance-row"><div class="glance-a ">52%</div><div class="glance-label">1st servico ganho</div><div class="glance-b glance-win">58%</div></div><div class="glance-row"><div class="glance-a glance-win">67%</div><div class="glance-label">Sets decisivos</div><div class="glance-b ">55%</div></div></div><div class="section-title">Chaves do confronto</div><div class="fatores"><div class="fator"><div class="fator-lbl">velocidade do piso</div><div class="fator-fav">▲ Mirra Andreeva</div></div><div class="fator"><div class="fator-lbl">ranking</div><div class="fator-fav">▲ Mirra Andreeva</div></div><div class="fator"><div class="fator-lbl">indoor/outdoor</div><div class="fator-fav">▲ Mirra Andreeva</div></div></div><div class="card"><h3>Cenários decisivos</h3>
+<div class="cmp">
+  <div class="cmp-lbl">Recupera após perder 1º set</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4aa3df;margin-right:5px;vertical-align:middle"></span>Oleksandra Oliynykova</div>
+  <div class="cmp-bar"><span style="width:28%; background:#4aa3df"></span></div>
+  <div class="cmp-num">28% <span class="samp-tag">n=174</span></div>
+</div>
+  
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e8935a;margin-right:5px;vertical-align:middle"></span>Mirra Andreeva</div>
+  <div class="cmp-bar"><span style="width:40%; background:#e8935a"></span></div>
+  <div class="cmp-num">40% <span class="samp-tag">n=72</span></div>
+</div>
+</div></div><details class="more mais-forcas"><summary>Mapa de Forças (18)<span class="more-hint">comparação visual de todos os fatores</span></summary><div class="more-body"><div class="card"><h3>Confronto direto (H2H)</h3><div class="h2h-line">Sem confrontos diretos entre os dois jogadores.</div></div><div class="card pulse-card merged-form-card"><h3>Forma Recente | &#218;ltimos 10</h3><div class="pulse-player"><span>Oleksandra Oliynykova</span><div class="pulse-seq"><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-loss">L</span></div></div><div class="pulse-player"><span>Mirra Andreeva</span><div class="pulse-seq"><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-win">W</span></div></div><div class="pulse-form-bars">
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4aa3df;margin-right:5px;vertical-align:middle"></span>Oleksandra Oliynykova</div>
+  <div class="cmp-bar"><span style="width:60%; background:#4aa3df"></span></div>
+  <div class="cmp-num">6-4 | 60%</div>
+</div>
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e8935a;margin-right:5px;vertical-align:middle"></span>Mirra Andreeva</div>
+  <div class="cmp-bar"><span style="width:70%; background:#e8935a"></span></div>
+  <div class="cmp-num">7-3 | 70%</div>
+</div></div></div><div class="card"><h3>Forma ajustada ao mercado</h3><div class="cmp-lbl">Resultados históricos comparados com as odds disponíveis</div><div class="cmp-row"><div class="cmp-name">Oleksandra Oliynykova</div><div style="grid-column:2 / -1;color:var(--dim);font-size:12px">5 vitórias reais vs 3.76 esperadas (+1.24) · n=6 · ranking médio dos adversários #111.6 · n=27</div></div><div class="cmp-row"><div class="cmp-name">Mirra Andreeva</div><div style="grid-column:2 / -1;color:var(--dim);font-size:12px">4 vitórias reais vs 4.38 esperadas (-0.38) · n=6 · ranking médio dos adversários #59.6 · n=58</div></div></div>
+<div class="card"><h3>Serviço / Resposta</h3>
+  <div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px; color:var(--dim); font-size:11px">
+    <div></div><div class="cmp-num">Oliynykova</div>
+    <div class="cmp-delta" style="color:var(--dim)">vantagem</div>
+    <div class="cmp-num">Andreeva</div>
+  </div>
+  
+<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
+  <div class="cmp-name">1º serviço ganho</div>
+  <div class="cmp-num">52.0%</div>
+  <div class="cmp-delta" style="color:#e8935a">+6.0 Andreeva</div>
+  <div class="cmp-num">58.0%</div>
+</div>
+<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
+  <div class="cmp-name">BP salvos</div>
+  <div class="cmp-num">46.0%</div>
+  <div class="cmp-delta" style="color:#e8935a">+2.0 Andreeva</div>
+  <div class="cmp-num">48.0%</div>
+</div>
+<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
+  <div class="cmp-name">BP convertidos</div>
+  <div class="cmp-num">40.0%</div>
+  <div class="cmp-delta" style="color:#4aa3df">+3.0 Oliynykova</div>
+  <div class="cmp-num">37.0%</div>
+</div>
+</div><div class="card factor-bars-card"><div class="factor-bars-head"><h3>Raio-X Anal&#237;tico</h3><div class="impact-toggle"><span>Valores reais</span><label class="impact-switch"><input type="checkbox" aria-label="Alternar para impacto no matchup"><span class="impact-slider"></span></label><span>Impacto no matchup</span></div></div><div class="factor-lines"><div class="fd-linha" data-impact="5.000" data-impact-pct="63" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">ranking</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:18%"></span><span class="fd-bar-b" style="width:82%"></span><span class="fd-bar-val a">#46</span><span class="fd-bar-val b">#6</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:31.5%"></span><span class="fd-impact-value">peso 5.0</span></div></div><div class="fd-linha" data-impact="3.155" data-impact-pct="40" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">evolução de ranking</span><span class="fd-val" style="color:var(--a)">▲ Oleksandra Oliynykova</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:66%"></span><span class="fd-bar-b" style="width:34%"></span><span class="fd-bar-val a">+43%</span><span class="fd-bar-val b">+12%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:20.0%"></span><span class="fd-impact-value">peso 3.2</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">confronto direto</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha" data-impact="7.921" data-impact-pct="100" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">velocidade do piso</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:0%"></span><span class="fd-bar-b" style="width:100%"></span><span class="fd-bar-val a">0%</span><span class="fd-bar-val b">50%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:50.0%"></span><span class="fd-impact-value">peso 7.9</span></div></div><div class="fd-linha" data-impact="4.752" data-impact-pct="60" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">indoor/outdoor</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:41%"></span><span class="fd-bar-b" style="width:59%"></span><span class="fd-bar-val a">50%</span><span class="fd-bar-val b">71%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:30.0%"></span><span class="fd-impact-value">peso 4.8</span></div></div><div class="fd-linha" data-impact="2.800" data-impact-pct="35" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:46%"></span><span class="fd-bar-b" style="width:54%"></span><span class="fd-bar-val a">60%</span><span class="fd-bar-val b">70%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:17.5%"></span><span class="fd-impact-value">peso 2.8</span></div></div><div class="fd-linha" data-impact="4.000" data-impact-pct="50" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">qualidade de vitórias (90d)</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:0%"></span><span class="fd-bar-b" style="width:100%"></span><span class="fd-bar-val a">0</span><span class="fd-bar-val b">5</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:25.0%"></span><span class="fd-impact-value">peso 4.0</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">padrão sazonal</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha" data-impact="3.327" data-impact-pct="42" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">superfície</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:32%"></span><span class="fd-bar-b" style="width:68%"></span><span class="fd-bar-val a">33%</span><span class="fd-bar-val b">71%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:21.0%"></span><span class="fd-impact-value">peso 3.3</span></div></div><div class="fd-linha" data-impact="4.200" data-impact-pct="53" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:47%"></span><span class="fd-bar-b" style="width:53%"></span><span class="fd-bar-val a">54%</span><span class="fd-bar-val b">61%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:26.5%"></span><span class="fd-impact-value">peso 4.2</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">tie-break</span><span class="fd-val" style="color:var(--dim)">· Mirra Andreeva <span class="fd-nota">(abaixo do limiar (&lt;3 p.p.))</span></span></div><div class="fd-bar"><span class="fd-bar-a" style="width:50%"></span><span class="fd-bar-b" style="width:50%"></span><span class="fd-bar-val a">57%</span><span class="fd-bar-val b">58%</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">recuperação pós-1º set</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">matchup de mão</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">serviço (2 jogos)</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha" data-impact="3.000" data-impact-pct="38" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">serviço (carreira)</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:47%"></span><span class="fd-bar-b" style="width:53%"></span><span class="fd-bar-val a">52%</span><span class="fd-bar-val b">58%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:19.0%"></span><span class="fd-impact-value">peso 3.0</span></div></div><div class="fd-linha" data-impact="2.000" data-impact-pct="25" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">fadiga</span><span class="fd-val" style="color:var(--b)">▲ Mirra Andreeva</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:0%"></span><span class="fd-bar-b" style="width:100%"></span><span class="fd-bar-val a">1</span><span class="fd-bar-val b">0</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:12.5%"></span><span class="fd-impact-value">peso 2.0</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:89%"></span><span class="fd-bar-b" style="width:11%"></span><span class="fd-bar-val a">1</span><span class="fd-bar-val b">8</span></div></div><svg class="impact-trace" aria-hidden="true"><path></path><g></g></svg></div></div><div class="force-map-tail"><div class="pressure-tail"><div class="card"><h3>Pressão de serviço e resposta</h3><div class="cmp-lbl">Oleksandra Oliynykova · n=22 &nbsp;|&nbsp; Mirra Andreeva · n=37</div><div class="cmp-row" style="grid-template-columns:1fr 60px 110px 60px"><div class="cmp-name">1.º serviço ganho</div><div class="cmp-num">52.0%</div><div class="cmp-delta">Mirra Andreeva</div><div class="cmp-num">58.0%</div></div><div class="cmp-row" style="grid-template-columns:1fr 60px 110px 60px"><div class="cmp-name">2.º serviço ganho</div><div class="cmp-num">40.0%</div><div class="cmp-delta">Mirra Andreeva</div><div class="cmp-num">41.0%</div></div><div class="cmp-row" style="grid-template-columns:1fr 60px 110px 60px"><div class="cmp-name">BP salvos</div><div class="cmp-num">46.0%</div><div class="cmp-delta">Mirra Andreeva</div><div class="cmp-num">48.0%</div></div><div class="cmp-row" style="grid-template-columns:1fr 60px 110px 60px"><div class="cmp-name">BP convertidos</div><div class="cmp-num">40.0%</div><div class="cmp-delta">Oleksandra Oliynykova</div><div class="cmp-num">37.0%</div></div><div class="cmp-row" style="grid-template-columns:1fr 60px 110px 60px"><div class="cmp-name">1.º serviço permitido ao adversário</div><div class="cmp-num">38.0%</div><div class="cmp-delta">Mirra Andreeva</div><div class="cmp-num">32.0%</div></div><div class="cmp-row" style="grid-template-columns:1fr 60px 110px 60px"><div class="cmp-name">2.º serviço permitido ao adversário</div><div class="cmp-num">51.0%</div><div class="cmp-delta">Mirra Andreeva</div><div class="cmp-num">50.0%</div></div></div></div><div class="load-tail">
+<div class="card"><h3>Carga (7 dias)</h3>
+  <div class="fadiga-cmp">
+    <div class="fadiga-side">
+      <div class="fadiga-big">1 jogos</div>
+      <div class="samp-tag">2 sets · 1d descanso</div>
+    </div>
+    <div class="fadiga-delta">Δ +2 sets Oleksandra Oliynykova</div>
+    <div class="fadiga-side b">
+      <div class="fadiga-big">0 jogos</div>
+      <div class="samp-tag">0 sets · 8d descanso</div>
+    </div>
+  </div>
+</div></div></div></div></details><div class="veredicto"><h3>Leitura</h3><div>Mercado e indicadores alinhados. Isto, por si só, não demonstra valor.</div></div></div>
+<div class="wrap"><div class="foot">Gerado em 16/08/2026 · Análise informativa, não recomendação de aposta.</div></div>
+</main>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  function drawTrace(card) {
+    const box = card.querySelector(".factor-lines");
+    const svg = card.querySelector(".impact-trace");
+    if (!box || !svg || !card.classList.contains("impact-mode")) return;
+    const rect = box.getBoundingClientRect();
+    const rows = [...box.querySelectorAll(".fd-linha[data-impact-side]")]
+      .filter(row => row.dataset.impactSide && Number(row.dataset.impactPct) > 0);
+    const points = rows.map(row => {
+      const rr = row.getBoundingClientRect();
+      const direction = row.dataset.impactSide === "a" ? -1 : 1;
+      return {
+        x: rect.width * (.5 + direction * .42 * Number(row.dataset.impactPct) / 100),
+        y: rr.top - rect.top + rr.height / 2
+      };
+    });
+    svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+    const path = svg.querySelector("path");
+    const dots = svg.querySelector("g");
+    if (!points.length) { path.setAttribute("d", ""); dots.replaceChildren(); return; }
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1], cur = points[i], midY = (prev.y + cur.y) / 2;
+      d += ` C ${prev.x} ${midY}, ${cur.x} ${midY}, ${cur.x} ${cur.y}`;
+    }
+    path.setAttribute("d", d);
+    dots.replaceChildren(...points.map(point => {
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("cx", point.x); dot.setAttribute("cy", point.y); dot.setAttribute("r", 3.5);
+      return dot;
+    }));
+  }
+  document.querySelectorAll(".factor-bars-card").forEach(card => {
+    const toggle = card.querySelector(".impact-switch input");
+    if (!toggle) return;
+    toggle.addEventListener("change", () => {
+      card.classList.toggle("impact-mode", toggle.checked);
+      requestAnimationFrame(() => drawTrace(card));
+    });
+  });
+  window.addEventListener("resize", () => {
+    document.querySelectorAll(".factor-bars-card.impact-mode").forEach(drawTrace);
+  });
+})();
+</script>
+</body></html>
