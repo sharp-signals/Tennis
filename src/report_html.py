@@ -2695,7 +2695,7 @@ def _css_editorial():
 .keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
 .history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}
 .pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) 1fr;gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
-.factor-bars-card{border-color:var(--amber)}.factor-bars-card>h3{color:var(--amber)}
+.pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}.factor-bars-card{border-color:var(--amber)}.factor-bars-card>h3{color:var(--amber)}
 @media(max-width:640px){.mh{padding:18px 14px}.mh-name{font-size:20px}.mh-top{gap:7px}.mh-tourn{font-size:9px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}}
 """
 
@@ -2821,6 +2821,49 @@ def _mod_recent_pulse(payload):
             f'<div class="pulse-player"><span>{b}</span><div class="pulse-seq">{seq_b}</div></div></div>')
 
 
+def _mod_recent_form_merged(payload):
+    """Sequencia W/L e resumo percentual numa unica bubble de forma."""
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+
+    def sequence(items):
+        letters = []
+        for match in items or []:
+            won = match.get("won")
+            if won is None:
+                continue
+            letter = "W" if won else "L"
+            cls = "win" if won else "loss"
+            letters.append(f'<span class="pulse-{cls}">{letter}</span>')
+        return "".join(letters)
+
+    seq_a = sequence(payload.get("recent_history_a"))
+    seq_b = sequence(payload.get("recent_history_b"))
+    sequence_html = ""
+    if seq_a or seq_b:
+        sequence_html = (
+            f'<div class="pulse-player"><span>{a}</span><div class="pulse-seq">{seq_a}</div></div>'
+            f'<div class="pulse-player"><span>{b}</span><div class="pulse-seq">{seq_b}</div></div>'
+        )
+
+    fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
+    bars = ""
+    if fa.get("matches") and fb.get("matches"):
+        pca = round(100 * fa.get("wins", 0) / fa["matches"])
+        pcb = round(100 * fb.get("wins", 0) / fb["matches"])
+        label_a = f"{fa.get('wins')}-{fa.get('losses')} | {pca}"
+        label_b = f"{fb.get('wins')}-{fb.get('losses')} | {pcb}"
+        bars = (
+            '<div class="pulse-form-bars">'
+            f'{_barra_cmp(a, label_a, COLORS_V2["a"], pca, "%")}'
+            f'{_barra_cmp(b, label_b, COLORS_V2["b"], pcb, "%")}'
+            '</div>'
+        )
+    if not sequence_html and not bars:
+        return ""
+    return (f'<div class="card pulse-card merged-form-card">'
+            f'<h3>Forma Recente | &#218;ltimos 10</h3>{sequence_html}{bars}</div>')
+
+
 def _mod_header_editorial_clean(payload):
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
     ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
@@ -2914,8 +2957,8 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # houver motor calculado, independente do estado (mesmo "eficiente"
     # beneficia de mostrar porque é eficiente: tudo empatado/sem dados).
     _extras_mapa = (
-        f'{_mod_h2h_timeline(payload)}{_mod_recent_pulse(payload)}'
-        f'{_mod_forma(payload)}{_mod_forma_ajustada(payload)}'
+        f'{_mod_h2h_timeline(payload)}{_mod_recent_form_merged(payload)}'
+        f'{_mod_forma_ajustada(payload)}'
         f'{_mod_servico(payload)}'
     )
     _tail_mapa = (

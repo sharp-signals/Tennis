@@ -204,8 +204,9 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertEqual(html.count("<h3>Forma</h3>"), 1)
-        self.assertGreater(html.index("<h3>Forma</h3>"), html.index("Mapa de Forças"))
+        self.assertNotIn("<h3>Forma</h3>", html)
+        self.assertIn("Forma Recente | &#218;ltimos 10", html)
+        self.assertGreater(html.index("Forma Recente | &#218;ltimos 10"), html.index("Mapa de Forças"))
 
     def test_market_adjusted_form_is_explained_inside_force_map(self):
         payload = {
@@ -295,11 +296,12 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn("Duelo Direto", html)
         self.assertIn("Miami", html)
         self.assertIn("6-4 6-3", html)
-        self.assertIn("Pulso Recente", html)
+        self.assertIn("Forma Recente | &#218;ltimos 10", html)
+        self.assertNotIn("Pulso Recente", html)
         self.assertIn("pulse-win", html)
         self.assertIn("pulse-loss", html)
-        self.assertLess(html.index("Confronto Direto"), html.index("Pulso Recente"))
-        self.assertLess(html.index("Pulso Recente"), html.index("Raio-X Anal&#237;tico"))
+        self.assertLess(html.index("Confronto Direto"), html.index("Forma Recente | &#218;ltimos 10"))
+        self.assertLess(html.index("Forma Recente | &#218;ltimos 10"), html.index("Raio-X Anal&#237;tico"))
         self.assertIn('class="card factor-bars-card"', html)
         factor_card = html[html.index('class="card factor-bars-card"'):html.index('class="force-map-tail"')]
         self.assertEqual(factor_card.count("Raio-X Anal&#237;tico"), 1)
