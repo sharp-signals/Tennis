@@ -390,6 +390,27 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn('style="color:var(--a)">▲ Xinyu Wang', html)
         self.assertIn('style="color:var(--b)">▲ Donna Vekic', html)
 
+    def test_analytical_xray_places_insufficient_data_factors_last(self):
+        payload = {"player_a": "A", "player_b": "B"}
+        div = {"fatores_status": {
+            "h2h": {"disponivel": True, "lider": "A",
+                    "motivo_exclusao": "amostra insuficiente (1 jogo)",
+                    "valor_a": 1, "valor_b": 0},
+            "piso": {"disponivel": True, "lider": "B", "motivo_exclusao": None,
+                     "valor_a": 45, "valor_b": 55},
+            "ranking": {"disponivel": False, "lider": None,
+                        "motivo_exclusao": None},
+            "forma_recente": {"disponivel": True, "lider": "igual",
+                               "motivo_exclusao": "diferença irrelevante",
+                               "valor_a": 50, "valor_b": 50},
+        }}
+
+        html = report_html._mod_fatores_detalhados(payload, div)
+
+        self.assertLess(html.index("forma recente"), html.index("superfície"))
+        self.assertLess(html.index("superfície"), html.index("confronto direto"))
+        self.assertLess(html.index("superfície"), html.index("ranking"))
+
 
 if __name__ == "__main__":
     unittest.main()

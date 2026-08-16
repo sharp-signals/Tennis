@@ -2326,8 +2326,21 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
         )
         return attrs, bar
 
+    def dados_insuficientes(st):
+        if not st.get("disponivel"):
+            return True
+        motivo = str(st.get("motivo_exclusao") or "").casefold()
+        return "amostra insuficiente" in motivo or "fonte não fiável" in motivo
+
+    # Ordenação estável: preserva a sequência editorial dentro de cada grupo,
+    # mas empurra para o fim apenas ausência/insuficiência de dados. Empates e
+    # diferenças abaixo do limiar continuam junto dos fatores válidos, pois
+    # nesses casos há dados — apenas não há vantagem material.
+    chaves_presentes = [chave for chave in _FACTOR_ORDER if status.get(chave) is not None]
+    chaves_ordenadas = sorted(chaves_presentes, key=lambda chave: dados_insuficientes(status[chave]))
+
     linhas = []
-    for chave in _FACTOR_ORDER:
+    for chave in chaves_ordenadas:
         st = status.get(chave)
         if st is None:
             continue
