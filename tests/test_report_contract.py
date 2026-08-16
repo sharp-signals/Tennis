@@ -294,6 +294,8 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
         self.assertIn("Confronto Direto", html)
         self.assertNotIn("Duelo Direto", html)
+        self.assertIn('class="history-score"', html)
+        self.assertIn('class="fd-bar', html)
         self.assertIn("Miami", html)
         self.assertIn("6-4 6-3", html)
         self.assertIn("Forma Recente | &#218;ltimos 10", html)
@@ -301,6 +303,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("pulse-win", html)
         self.assertIn("pulse-loss", html)
         self.assertLess(html.index("Confronto Direto"), html.index("Forma Recente | &#218;ltimos 10"))
+        self.assertLess(html.index('class="history-score"'), html.index("Miami"))
         self.assertLess(html.index("Forma Recente | &#218;ltimos 10"), html.index("Raio-X Anal&#237;tico"))
         self.assertIn('class="card factor-bars-card"', html)
         factor_card = html[html.index('class="card factor-bars-card"'):html.index('class="force-map-tail"')]

@@ -2696,6 +2696,7 @@ def _css_editorial():
 .history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}
 .pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) 1fr;gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
 .pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}.factor-bars-card{border-color:var(--amber)}.factor-bars-card>h3{color:var(--amber)}
+.history-score{padding:0 0 12px;margin-bottom:2px}.history-score-names{display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:11px;margin-bottom:5px}
 @media(max-width:640px){.mh{padding:18px 14px}.mh-name{font-size:20px}.mh-top{gap:7px}.mh-tourn{font-size:9px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}}
 """
 
@@ -2798,7 +2799,28 @@ def _mod_h2h_timeline(payload):
             f'<div class="history-row"><div class="history-meta">{_esc(year)} | {_esc(tournament)}{_esc(surface)}</div>'
             f'<div class="history-result"><b>{_esc(winner)}</b><span>{_esc(result)}</span></div></div>'
         )
-    return f'<div class="card history-card"><h3>Confronto Direto</h3>{"".join(rows)}</div>'
+    h2h = _d(payload.get("h2h")); overall = _d(h2h.get("overall")) or h2h
+    aw = overall.get("a_wins", 0); bw = overall.get("b_wins", 0)
+    total = overall.get("total_matches", aw + bw)
+    if not total:
+        player_a = str(payload.get("player_a") or "").strip().casefold()
+        player_b = str(payload.get("player_b") or "").strip().casefold()
+        winners = [str(match.get("winner_name") or "").strip().casefold() for match in matches]
+        aw = sum(winner == player_a for winner in winners)
+        bw = sum(winner == player_b for winner in winners)
+        total = aw + bw
+    score_bar = _fd_bar("h2h", {
+        "valor_a": aw, "valor_b": bw, "amostra_a": total, "amostra_b": total,
+    })
+    score = ""
+    if score_bar:
+        score = (
+            f'<div class="history-score"><div class="history-score-names">'
+            f'<span>{_esc(payload.get("player_a", "A"))}</span>'
+            f'<span>{_esc(payload.get("player_b", "B"))}</span></div>{score_bar}</div>'
+        )
+    return (f'<div class="card history-card"><h3>Confronto Direto</h3>'
+            f'{score}{"".join(rows)}</div>')
 
 
 def _mod_recent_pulse(payload):
