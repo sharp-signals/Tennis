@@ -119,6 +119,70 @@ def _extension(content_type: str, url: str) -> str:
     return ".jpg"
 
 
+def _write_registry(registry: dict[str, dict]) -> None:
+    document = {"schema_version": 1, "players": dict(sorted(registry.items()))}
+    player_images.REGISTRY_PATH.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+    )
+
+
+def _record_review(item: dict) -> None:
+    try:
+        document = json.loads(REVIEW_PATH.read_text(encoding="utf-8"))
+        review = document.get("players", []) if isinstance(document, dict) else []
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        review = []
+    key = (str(item.get("tour")), str(item.get("player_id")))
+    review = [entry for entry in review
+              if (str(entry.get("tour")), str(entry.get("player_id"))) != key]
+    review.append(item)
+    REVIEW_PATH.write_text(
+        json.dumps({"players": review}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+    )
+
+
+def ensure_player_image(tour: str, player_id, name: str, *, rank=None,
+                        registry: dict[str, dict] | None = None,
+                        session: requests.Session | None = None) -> dict | None:
+    """Procura e guarda uma fotografia licenciada quando ainda não existe."""
+    entries = registry if registry is not None else player_images.load_registry()
+    existing = player_images.find_player_image(tour, player_id, name, entries)
+    if existing:
+        return existing
+    if player_id is None or not name:
+        return None
+
+    client = session or requests.Session()
+    client.headers.update({"User-Agent": USER_AGENT})
+    key = f"{str(tour).casefold()}:{player_id}"
+    try:
+        wikidata_id, reason = _find_wikidata_item(client, name)
+        filename = _wikidata_image(client, wikidata_id) if wikidata_id else None
+        if not filename:
+            raise ValueError(reason or "jogador sem fotografia P18 no Wikidata")
+        metadata, reason = _commons_metadata(client, filename)
+        if not metadata or not metadata.get("download_url"):
+            raise ValueError(reason or "fotografia sem URL de download")
+        response = _get(client, metadata.pop("download_url"))
+        extension = _extension(response.headers.get("Content-Type", ""), response.url)
+        asset_name = f"{str(tour).casefold()}-{player_id}-{_slug(name)}{extension}"
+        ASSET_DIR.mkdir(parents=True, exist_ok=True)
+        (ASSET_DIR / asset_name).write_bytes(response.content)
+        entries[key] = {
+            "name": name, "rank_at_import": rank,
+            "path": f"../assets/players/{asset_name}",
+            "wikidata_id": wikidata_id, "commons_file": filename,
+            "modified": True, **metadata,
+        }
+        _write_registry(entries)
+        return dict(entries[key])
+    except (requests.RequestException, ValueError, OSError) as exc:
+        _record_review({"tour": str(tour).casefold(), "player_id": player_id,
+                        "name": name, "rank": rank, "reason": str(exc)})
+        print(f"[aviso:foto] {name}: {exc}")
+        return None
+
+
 def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
     registry = player_images.load_registry()
     review = []
@@ -165,10 +229,7 @@ def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
                 summary["review"] += 1
             time.sleep(delay)
 
-    document = {"schema_version": 1, "players": dict(sorted(registry.items()))}
-    player_images.REGISTRY_PATH.write_text(
-        json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
-    )
+    _write_registry(registry)
     REVIEW_PATH.write_text(
         json.dumps({"players": review}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
     )

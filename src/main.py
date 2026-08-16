@@ -782,6 +782,19 @@ def _build_match_payload(match: dict) -> dict:
     _player_image_b = player_images.find_player_image(
         tour, _pid_b, player_b, registry=_image_registry,
     )
+    if not _player_image_a or not _player_image_b:
+        # A procura é deliberadamente conservadora: só aceita uma correspondência
+        # inequívoca no Wikidata e uma licença reutilizável no Commons. Falhar a
+        # fotografia nunca impede a análise; o HTML usa o avatar de iniciais.
+        from scripts.sync_player_images import ensure_player_image
+        if not _player_image_a:
+            _player_image_a = ensure_player_image(
+                tour, _pid_a, player_a, registry=_image_registry,
+            )
+        if not _player_image_b:
+            _player_image_b = ensure_player_image(
+                tour, _pid_b, player_b, registry=_image_registry,
+            )
 
     # H2H rico via matchstat (stats de serviço/resposta específicas do confronto)
     h2h_rich_stats = None
