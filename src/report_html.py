@@ -1053,15 +1053,21 @@ def _calcular_divergencia(payload):
     if prob_mercado_a is None:
         return None
 
-    # --- 4. Comparação exclusivamente DIRECIONAL ---
+    # --- 4. Direção e intensidade (escalas mantidas separadas) ---
     # O índice mede a quota de peso dos sinais; o mercado exprime probabilidade
     # implícita. Como as escalas não são equivalentes, nunca se subtraem nem se
     # usam "p.p." entre ambas. Só existe divergência quando apontam para lados
-    # opostos. Quando concordam, o resultado é alinhamento — não "valor".
+    # opostos. Quando concordam, registamos também a intensidade interna para
+    # não perder alinhamentos fortes — sem a converter em probabilidade, odd
+    # justa ou valor de mercado.
     mercado_favorece = a if prob_mercado_a >= 50 else b
     indice_favorece = a if indice_evidencia_a >= 50 else b
     forca_indice = abs(indice_evidencia_a - 50)  # força interna dos sinais, 0-50
-    tipo = "eficiente"
+    intensidade_nivel = (0 if forca_indice < 5 else
+                          1 if forca_indice < 10 else
+                          2 if forca_indice < 25 else 3)
+    intensidade_chave = ("neutra", "ligeira", "moderada", "forte")[intensidade_nivel]
+    tipo = "inconclusivo" if intensidade_nivel == 0 else "alinhamento"
     if indice_favorece != mercado_favorece:
         # A severidade depende apenas da concentração dos sinais. A força do
         # mercado continua visível nas odds, mas não é misturada nesta escala.
@@ -1082,9 +1088,16 @@ def _calcular_divergencia(payload):
     n_fatores = len([c for c in contribuicoes if abs(c[2]) > 0])
     if massa_evidencia < 8 or n_fatores < 2:
         nivel = min(nivel, 1)
+        intensidade_nivel = min(intensidade_nivel, 1)
     elif massa_evidencia < 18 or n_fatores < 3:
         nivel = min(nivel, 2)
-    _mapa = {0: ("eficiente", "Mercado e indicadores alinhados"),
+        intensidade_nivel = min(intensidade_nivel, 2)
+    intensidade_chave = ("neutra", "ligeira", "moderada", "forte")[intensidade_nivel]
+    if tipo != "direcao":
+        tipo = "inconclusivo" if intensidade_nivel == 0 else "alinhamento"
+    _mapa = {0: (("inconclusivo", "Indicadores inconclusivos")
+                 if tipo == "inconclusivo" else
+                 (f"alinhamento_{intensidade_chave}", f"Alinhamento {intensidade_chave}")),
              1: ("ligeira", "Divergência ligeira"),
              2: ("moderada", "Divergência moderada"),
              3: ("forte", "Divergência forte")}
@@ -1114,7 +1127,10 @@ def _calcular_divergencia(payload):
         "inclinacao_modelo_a": indice_evidencia_a,
         "inclinacao_modelo_b": 100 - indice_evidencia_a,
         "classificacao": {"chave": chave, "texto": texto, "nivel": nivel},
-        "tipo": tipo,  # "direcao" | "eficiente"
+        "tipo": tipo,  # "direcao" | "alinhamento" | "inconclusivo"
+        "intensidade_indicadores": intensidade_chave,
+        "intensidade_nivel": intensidade_nivel,
+        "forca_indice": forca_indice,
         "favorecido": favorecido,
         "fatores_chave": fatores_chave,
         "n_fatores": n_fatores,  # nº de sinais que contribuíram (transparência
@@ -1850,7 +1866,9 @@ def detetar_estado(payload, result, divergencia):
     Devolve: (chave, cor, label, bola)
       - 'erro': sem análise E/ou dados corrompidos -> layout parcial
       - 'sem_odds': sem mercado -> não avalia eficiência, sem sinal
-      - 'eficiente': mercado alinhado com indicadores
+      - 'inconclusivo': indicadores sem direção clara
+      - 'alinhado': mercado e indicadores concordam
+      - 'alinhado_forte': concordância com sinais internos fortes
       - 'acompanhar': divergência ligeira/moderada
       - 'oportunidade': divergência forte
     """
@@ -1862,8 +1880,14 @@ def detetar_estado(payload, result, divergencia):
         return ("sem_odds", COLORS_V2["neutral"], "Sem odds — comparação indisponível", "⚪")
     nivel = (_d(divergencia.get("classificacao"))).get("nivel", 0)
     tipo = divergencia.get("tipo", "")
+    if tipo == "inconclusivo":
+        return ("inconclusivo", COLORS_V2["neutral"], "Indicadores inconclusivos", "⚪")
     if tipo != "direcao":
-        return ("eficiente", COLORS_V2["neutral"], "Mercado e indicadores alinhados", "⚪")
+        intensidade = divergencia.get("intensidade_nivel", 1)
+        if intensidade >= 3:
+            return ("alinhado_forte", COLORS_V2["amber"], "Alinhamento forte", "🔵")
+        return ("alinhado", COLORS_V2["neutral"],
+                f"Alinhamento {divergencia.get('intensidade_indicadores', 'ligeiro')}", "⚪")
     if nivel >= 3:
         lbl = "Divergência forte"
         return ("oportunidade", COLORS_V2["mint"], lbl, "🟢")
@@ -2126,7 +2150,7 @@ def _mod_leitura(payload, div, estado, result):
   <div class="leitura-bola">{bola}</div>
   <div class="leitura-txt"><b>{label}</b><div>{sub}</div></div>
 </div>"""
-    fav = div.get("favorecido")
+    fav = div.get("favorecido") or div.get("indice_favorece")
     idx = _d(div.get("indice_evidencia"))
     idx_fav = idx.get("a") if fav == payload.get("player_a") else idx.get("b")
     merc_fav = div.get("mercado_favorece")
@@ -2142,9 +2166,18 @@ def _mod_leitura(payload, div, estado, result):
         nota_fragil = (f" <span style=\"opacity:.7\">(índice construído a partir de só "
                         f"{n_fatores} {'sinal' if n_fatores == 1 else 'sinais'} — todos no mesmo "
                         f"sentido, sem contrapeso.)</span>")
-    if chave == "eficiente":
-        frase = (f"Mercado e indicadores apontam para <b>{_esc(merc_fav)}</b>. "
-                 "Este alinhamento não permite concluir que a odd tem valor.")
+    if chave == "inconclusivo":
+        frase = (f"O mercado favorece <b>{_esc(merc_fav)}</b>, mas os indicadores "
+                 "estão demasiado equilibrados para indicar uma direção clara.")
+    elif chave in ("alinhado", "alinhado_forte", "eficiente"):
+        intensidade = div.get("intensidade_indicadores", "ligeira")
+        frase = (f"Mercado e indicadores apontam para <b>{_esc(merc_fav)}</b>; "
+                 f"a concentração dos indicadores é <b>{_esc(intensidade)}</b>. ")
+        if chave == "alinhado_forte":
+            frase += ("A odd merece acompanhamento, mas o índice ainda não é uma "
+                      f"probabilidade calibrada nem permite calcular uma odd justa.{nota_fragil}")
+        else:
+            frase += "Este alinhamento, por si só, não demonstra valor."
     else:
         # divergência de direção: contra o mercado
         frase = (f"Os indicadores apontam para <b>{_esc(fav)}</b> (índice {idx_fav}/100), "
@@ -2662,7 +2695,7 @@ def _mod_h2h(payload):
 
 
 def _mod_mercados(payload, div):
-    """Mostra apenas Moneyline quando existe divergência direcional real.
+    """Mostra Moneyline em divergência ou alinhamento interno forte.
 
     Total/Handicap não são apresentados: não existem odds nem modelo próprio
     para esses mercados, logo qualquer indicação seria especulativa."""
@@ -2671,16 +2704,24 @@ def _mod_mercados(payload, div):
     fav = div.get("favorecido")
     nivel = (_d(div.get("classificacao"))).get("nivel", 0)
     tipo = div.get("tipo", "")
-    if tipo != "direcao" or nivel < 1 or not fav:
+    alinhamento_forte = tipo == "alinhamento" and div.get("intensidade_nivel", 0) >= 3
+    if alinhamento_forte:
+        fav = div.get("indice_favorece")
+        bola = "🔵"
+        nota = ("mercado e indicadores concordam com intensidade forte; acompanhar o preço, "
+                "sem inferir odd justa")
+    elif tipo == "direcao" and nivel >= 1 and fav:
+        bola = "🟢" if nivel >= 2 else "🟡"
+        nota = "indicadores apontam na direção oposta ao mercado"
+    else:
         return ""
-    bola = "🟢" if nivel >= 2 else "🟡"
     return (
         '<div class="card"><h3>Mercado observado</h3>'
         '<div class="merc-principal">'
         '<div class="merc-linha merc-linha-top">'
         f'<span class="merc-bola">{bola}</span>'
         f'<span class="merc-nome">Moneyline {_esc(fav)}</span>'
-        '<span class="merc-nota">indicadores apontam na direção oposta ao mercado</span></div></div></div>'
+        f'<span class="merc-nota">{nota}</span></div></div></div>'
     )
 
 
@@ -2714,6 +2755,9 @@ def _normalizar_div(raw):
         "classificacao": raw.get("classificacao"),
         "favorecido": raw.get("favorecido"),
         "tipo": raw.get("tipo"),
+        "intensidade_indicadores": raw.get("intensidade_indicadores"),
+        "intensidade_nivel": raw.get("intensidade_nivel"),
+        "forca_indice": raw.get("forca_indice"),
         "mercado_favorece": raw.get("mercado_favorece"),
         "indice_favorece": raw.get("indice_favorece"),
         "fatores_chave": raw.get("fatores_chave"),

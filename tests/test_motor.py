@@ -57,7 +57,9 @@ def test_mercado_e_indice_concordam_direcao():
         "forma_recente": {"lider": "A", "diff": 30},
         "ranking": {"lider": "A", "diff": 27},
     }))
-    assert r["tipo"] == "eficiente"
+    assert r["tipo"] == "alinhamento"
+    assert r["intensidade_indicadores"] == "forte"
+    assert r["intensidade_nivel"] == 3
     assert r["classificacao"]["nivel"] == 0
     assert r["favorecido"] is None
     assert r["gap_pp"] is None

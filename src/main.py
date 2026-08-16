@@ -1167,7 +1167,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         level = (div.get("classificacao") or {}).get("nivel", -1)
         # Cores sem ambiguidade: verde só significa valor a analisar;
         # mercado alinhado é neutro e prioridade alta usa vermelho.
-        flag = {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚠️")
+        aligned_strong = div.get("tipo") == "alinhamento" and div.get("intensidade_nivel", 0) >= 3
+        flag = "🔵" if level == 0 and aligned_strong else {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚠️")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
         cards.append(
             f'<a class="idx-card" href="{href}" data-level="{level}" data-tour="{tour_key}">'
@@ -1445,9 +1446,10 @@ def run() -> None:
 
         # Cores do Telegram = nível determinístico do Python (auditoria p.17):
         # 🟢 forte, 🟡 acompanhar, ⚪ sem sinal, ⚠️ sem odds/dados.
-        bola = {3: "🟢", 2: "🟢", 1: "🟡", 0: "⚪"}.get(nivel, "⚪")
-
         tipo = div.get("tipo", "")
+        alinhamento_forte = tipo == "alinhamento" and div.get("intensidade_nivel", 0) >= 3
+        bola = ("🔵" if nivel == 0 and alinhamento_forte else
+                {3: "🟢", 2: "🟢", 1: "🟡", 0: "⚪"}.get(nivel, "⚪"))
         # rótulo do lado (favorito/underdog) a partir das odds
         lado = "Moneyline"
         try:
@@ -1460,6 +1462,12 @@ def run() -> None:
         _txt_motor = (clf.get("texto") or "").lower()
         if nivel >= 1 and fav:
             txt = f"{a} vs {b} — <b>{lado}: {_txt_motor}</b> a favor de {html.escape(str(fav))}"
+        elif alinhamento_forte:
+            indice_fav = html.escape(str(div.get("indice_favorece") or "favorito do mercado"))
+            txt = (f"{a} vs {b} — <b>alinhamento forte</b> a favor de {indice_fav} "
+                   "· acompanhar preço, sem odd justa")
+        elif tipo == "inconclusivo":
+            txt = f"{a} vs {b} — indicadores inconclusivos"
         else:
             txt = f"{a} vs {b} — sem divergência relevante"
         return (nivel, bola, txt)

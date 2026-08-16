@@ -18,20 +18,27 @@ class ReportStateTests(unittest.TestCase):
         )
         self.assertEqual(report_html.detetar_estado({}, {}, None)[0], "sem_odds")
 
-        efficient = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 0}, "tipo": "eficiente"}
+        efficient = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 0}, "tipo": "alinhamento",
+                     "intensidade_nivel": 1, "intensidade_indicadores": "ligeira"}
+        inconclusive = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 0}, "tipo": "inconclusivo",
+                        "intensidade_nivel": 0, "intensidade_indicadores": "neutra"}
+        aligned_strong = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 0}, "tipo": "alinhamento",
+                          "intensidade_nivel": 3, "intensidade_indicadores": "forte"}
         moderate = {"market": {"a": 55, "b": 45}, "classificacao": {"nivel": 2}, "tipo": "direcao"}
         strong = {
             "market": {"a": 55, "b": 45},
             "classificacao": {"nivel": 3},
             "tipo": "direcao",
         }
-        self.assertEqual(report_html.detetar_estado({}, {}, efficient)[0], "eficiente")
+        self.assertEqual(report_html.detetar_estado({}, {}, efficient)[0], "alinhado")
+        self.assertEqual(report_html.detetar_estado({}, {}, inconclusive)[0], "inconclusivo")
+        self.assertEqual(report_html.detetar_estado({}, {}, aligned_strong)[0], "alinhado_forte")
         self.assertEqual(report_html.detetar_estado({}, {}, moderate)[0], "acompanhar")
         self.assertEqual(report_html.detetar_estado({}, {}, strong)[0], "oportunidade")
         self.assertIn("Divergência", report_html.detetar_estado({}, {}, strong)[2])
 
         legacy_conviction = {**strong, "tipo": "conviccao"}
-        self.assertEqual(report_html.detetar_estado({}, {}, legacy_conviction)[0], "eficiente")
+        self.assertEqual(report_html.detetar_estado({}, {}, legacy_conviction)[0], "alinhado")
 
     def test_divergence_normalization_preserves_diagnostic_fields(self):
         raw = {
@@ -140,6 +147,26 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn("Total Games", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Mercado observado", html)
+
+    def test_strong_alignment_is_observed_without_claiming_fair_odds_or_handicap(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.55, "B": 2.6},
+            "features": {
+                "h2h": {"lider": "A", "diff": 4, "a_wins": 4, "b_wins": 0},
+                "piso": {"lider": "A", "diff": 20, "amostra_a": 100, "amostra_b": 100},
+                "forma_recente": {"lider": "A", "diff": 30},
+                "ranking": {"lider": "A", "diff": 40},
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+
+        self.assertIn("Alinhamento forte", html)
+        self.assertIn("Mercado observado", html)
+        self.assertIn("Moneyline A", html)
+        self.assertIn("sem inferir odd justa", html)
+        self.assertNotIn("Handicap Games", html)
+        self.assertNotIn("Total Games", html)
 
     def test_header_displays_odds_provenance_when_available(self):
         payload = {

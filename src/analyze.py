@@ -604,9 +604,18 @@ def _build_selective_result(
         fatores_txt = ", ".join(f"{nome} ({quem})" for nome, quem in fatores[:3])
 
         if nivel == 0:
-            summary = f"{player_a} vs {player_b} — mercado e indicadores alinhados, sem divergência direcional."
-            verdict = "Mercado e indicadores alinhados. Isto, por si só, não demonstra valor."
-            key_points = [f"Mercado e indicadores alinhados a favor de {mercado_favorece}." if mercado_favorece else "Sem vantagem clara de nenhum lado."]
+            tipo = div.get("tipo")
+            intensidade = div.get("intensidade_indicadores", "ligeira")
+            if tipo == "inconclusivo":
+                summary = f"{player_a} vs {player_b} — indicadores inconclusivos."
+                verdict = "Os indicadores não apresentam direção suficientemente clara para avaliar o preço."
+                key_points = ["O mercado tem um favorito, mas o índice interno está próximo do equilíbrio."]
+            else:
+                summary = (f"{player_a} vs {player_b} — mercado e indicadores alinhados "
+                           f"com intensidade {intensidade}, sem divergência direcional.")
+                verdict = ("Mercado e indicadores alinhados. A intensidade interna ajuda a priorizar "
+                           "a observação, mas não demonstra valor nem produz uma odd justa.")
+                key_points = [f"Mercado e indicadores alinhados a favor de {mercado_favorece}." if mercado_favorece else "Sem vantagem clara de nenhum lado."]
         else:
             summary = f"{player_a} vs {player_b} — {texto_clf.lower()} a favor de {favorecido}."
             verdict = (
@@ -762,8 +771,9 @@ def analyze_match(match_data: dict) -> dict:
             )
         else:
             _regra_vocab = (
-                "Mercado e indicadores alinhados — não uses 'divergência', "
-                "'convicção', 'subvalorizado' nem afirmes que existe valor."
+                "Mercado e indicadores não divergem na direção. Podes descrever a "
+                "intensidade interna, mas não uses 'divergência', 'subvalorizado', "
+                "não afirmes que existe valor e não transformes o índice em odd justa."
             )
         _div_bloco = (
             "\n\n### CLASSIFICAÇÃO DO MOTOR (já decidida — NÃO a contradigas):\n"
