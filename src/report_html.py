@@ -2775,7 +2775,7 @@ def _css_editorial():
 .section-title{font-size:11px;color:var(--b);text-transform:uppercase;letter-spacing:1.5px;margin:22px 2px 9px}.match-intro{border-left:3px solid var(--b);padding:12px 15px;background:rgba(52,200,255,.06);border-radius:0 10px 10px 0;margin-bottom:14px;color:var(--text);font-size:15px}
 .glance{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}.glance-head,.glance-row{display:grid;grid-template-columns:1fr minmax(120px,.8fr) 1fr;gap:10px;align-items:center}.glance-head{padding-bottom:9px;color:var(--dim);font-size:11px}.glance-head span:last-child,.glance-b{text-align:right}.glance-row{padding:9px 0;border-top:1px solid var(--line)}.glance-label{text-align:center;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.glance-a,.glance-b{font-size:15px;font-weight:700}.glance-win{color:var(--mint)}
 .keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
-.history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}
+.history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}.history-winner.a{color:var(--a)}.history-winner.b{color:var(--b)}
 .pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) 1fr;gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
 .pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
 .factor-bars-card{border-color:var(--line);background:linear-gradient(180deg,rgba(74,163,223,.08),var(--surface) 30%)}
@@ -2877,28 +2877,35 @@ def _mod_h2h_timeline(payload):
     if not matches:
         return _mod_h2h(payload)
     rows = []
+    player_a = str(payload.get("player_a") or "").strip()
+    player_b = str(payload.get("player_b") or "").strip()
     for match in matches:
         year = str(match.get("date") or "")[:4] or "-"
         tournament = match.get("tournament") or "Torneio nao identificado"
         result = match.get("result") or "resultado indisponivel"
         winner = match.get("winner_name") or "Vencedor nao identificado"
+        winner_key = str(winner).strip().casefold()
+        winner_cls = "a" if winner_key == player_a.casefold() else "b" if winner_key == player_b.casefold() else ""
         surface = f" | {match['surface']}" if match.get("surface") else ""
         rows.append(
             f'<div class="history-row"><div class="history-meta">{_esc(year)} | {_esc(tournament)}{_esc(surface)}</div>'
-            f'<div class="history-result"><b>{_esc(winner)}</b><span>{_esc(result)}</span></div></div>'
+            f'<div class="history-result"><b class="history-winner {winner_cls}">{_esc(winner)}</b>'
+            f'<span>{_esc(result)}</span></div></div>'
         )
     h2h = _d(payload.get("h2h")); overall = _d(h2h.get("overall")) or h2h
     aw = overall.get("a_wins", 0); bw = overall.get("b_wins", 0)
     total = overall.get("total_matches", aw + bw)
     if not total:
-        player_a = str(payload.get("player_a") or "").strip().casefold()
-        player_b = str(payload.get("player_b") or "").strip().casefold()
+        player_a = player_a.casefold()
+        player_b = player_b.casefold()
         winners = [str(match.get("winner_name") or "").strip().casefold() for match in matches]
         aw = sum(winner == player_a for winner in winners)
         bw = sum(winner == player_b for winner in winners)
         total = aw + bw
     score_bar = _fd_bar("h2h", {
-        "valor_a": aw, "valor_b": bw, "amostra_a": total, "amostra_b": total,
+        # Não esbater a cor por amostra pequena: a contagem e a lista de
+        # encontros já tornam o tamanho da amostra explícito.
+        "valor_a": aw, "valor_b": bw,
     })
     score = ""
     if score_bar:

@@ -693,9 +693,11 @@ def _factual_only_result(payload: dict) -> dict:
     }
 
 
-def _compact_match_history(matches, player_id=None, limit=10):
+def _compact_match_history(matches, player_id=None, limit=10, *, tour=None,
+                           resolve_tournaments=False):
     """Resumo visual de jogos; evita transportar respostas API completas."""
     compact = []
+    resolved_tournaments = {}
     for match in matches or []:
         p1 = match.get("player1") or {}
         p2 = match.get("player2") or {}
@@ -710,15 +712,27 @@ def _compact_match_history(matches, player_id=None, limit=10):
             match.get("tournament_name") or match.get("tournamentName")
             or (match.get("tournament") or {}).get("name")
             or cached_tournament.get("name")
-            or (f"Torneio {tournament_id}" if tournament_id else None)
         )
+        # O endpoint de H2H traz frequentemente apenas tournamentId. Nesse
+        # caso resolvemos uma vez cada torneio (get_tournament_info já usa
+        # cache persistente), em vez de expor o identificador técnico no HTML.
+        placeholder = bool(tournament and re.fullmatch(r"Torneio\s+\d+", str(tournament), re.I))
+        if resolve_tournaments and tournament_id is not None and (not tournament or placeholder):
+            if tournament_id not in resolved_tournaments:
+                try:
+                    info = fetch_data.get_tournament_info(tournament_id, tour) if tour else None
+                except Exception as exc:
+                    print(f"[aviso] nome do torneio H2H {tournament_id} indisponível: {exc}")
+                    info = None
+                resolved_tournaments[tournament_id] = (info or {}).get("name")
+            tournament = resolved_tournaments[tournament_id]
         won = None
         if player_id is not None and winner_id is not None:
             won = str(winner_id) == str(player_id)
         winner_name = p1.get("name") if str(winner_id) == str(p1_id) else p2.get("name") if str(winner_id) == str(p2_id) else None
         compact.append({
             "id": match.get("id"), "date": match.get("date"),
-            "tournament": tournament, "surface": match.get("surface"),
+            "tournament": tournament or "Torneio não identificado", "surface": match.get("surface"),
             "result": match.get("result"), "winner_name": winner_name,
             "won": won,
         })
@@ -823,7 +837,9 @@ def _build_match_payload(match: dict) -> dict:
             # forma: o Sackmann partido pode dar H2H errados). Só fica o
             # Sackmann se a RapidAPI não devolver H2H.
             _h2h_matches = fetch_data.fetch_h2h_matches(tour, _pid_a, _pid_b)
-            h2h_history = _compact_match_history(_h2h_matches, limit=10)
+            h2h_history = _compact_match_history(
+                _h2h_matches, limit=10, tour=tour, resolve_tournaments=True,
+            )
             _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface)
             if _h2h_api:
                 h2h = _h2h_api

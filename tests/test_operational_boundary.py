@@ -24,6 +24,21 @@ class OperationalBoundaryTests(unittest.TestCase):
         self.assertEqual(actual[0]["tournament"], "Dubai")
         self.assertEqual(actual[1]["winner_name"], "B")
 
+    def test_h2h_history_resolves_tournament_name_instead_of_exposing_id(self):
+        matches = [{
+            "id": 1, "date": "2024-01-01", "player1Id": 10, "player2Id": 20,
+            "player1": {"name": "A"}, "player2": {"name": "B"},
+            "match_winner": 20, "result": "4-6 3-6", "tournamentId": 15213,
+        }]
+        with patch.object(main.fetch_data, "get_tournament_info",
+                          return_value={"name": "Bad Homburg Open"}) as lookup:
+            actual = main._compact_match_history(
+                matches, tour="wta", resolve_tournaments=True,
+            )
+
+        self.assertEqual(actual[0]["tournament"], "Bad Homburg Open")
+        lookup.assert_called_once_with(15213, "wta")
+
     @staticmethod
     def _matches(total: int, failures: int) -> list[dict]:
         return [

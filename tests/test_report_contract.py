@@ -352,6 +352,29 @@ class ReportRenderingTests(unittest.TestCase):
         tail = html[html.index('class="force-map-tail"'):]
         self.assertLess(tail.index('class="pressure-tail"'), tail.index('class="load-tail"'))
 
+    def test_h2h_uses_player_colours_for_bar_and_match_winners(self):
+        payload = {
+            "player_a": "Xinyu Wang", "player_b": "Donna Vekic",
+            "market_odds_decimal": {"Xinyu Wang": 2.1, "Donna Vekic": 1.7},
+            "h2h": {"total_matches": 2, "a_wins": 0, "b_wins": 2},
+            "h2h_history": [
+                {"date": "2024-06-01", "tournament": "Bad Homburg Open",
+                 "winner_name": "Donna Vekic", "result": "6-2 6-4"},
+                {"date": "2021-03-01", "tournament": "Courmayeur Open",
+                 "winner_name": "Donna Vekic", "result": "6-4 6-4"},
+            ],
+            "features": {"h2h": {"lider": "Donna Vekic", "diff": 2,
+                                     "a_wins": 0, "b_wins": 2}},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        h2h = html[html.index("Confronto Direto"):html.index("Raio-X Anal&#237;tico")]
+
+        self.assertIn('class="fd-bar-b" style="width:100%"', h2h)
+        self.assertNotIn('class="fd-bar samp-low"', h2h)
+        self.assertEqual(h2h.count('class="history-winner b"'), 2)
+        self.assertIn("Bad Homburg Open", h2h)
+        self.assertNotIn("Torneio 15213", h2h)
+
 
 if __name__ == "__main__":
     unittest.main()
