@@ -285,6 +285,10 @@ class ReportRenderingTests(unittest.TestCase):
             }],
             "recent_history_a": [{"won": True}, {"won": False}, {"won": True}],
             "recent_history_b": [{"won": False}, {"won": False}, {"won": True}],
+            "pressure_profile_a": {"matches": 10, "first_serve_won_pct": 60},
+            "pressure_profile_b": {"matches": 10, "first_serve_won_pct": 58},
+            "fatigue_signal_a": {"matches_last_7d": 2, "sets_last_7d": 5},
+            "fatigue_signal_b": {"matches_last_7d": 3, "sets_last_7d": 8},
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
         self.assertIn("Duelo Direto", html)
@@ -295,6 +299,9 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("pulse-loss", html)
         self.assertLess(html.index("Duelo Direto"), html.index("Pulso Recente"))
         self.assertLess(html.index("Pulso Recente"), html.index("Raio-X Anal&#237;tico"))
+        self.assertGreater(html.index('class="force-map-tail"'), html.rindex('class="fd-linha"'))
+        tail = html[html.index('class="force-map-tail"'):]
+        self.assertLess(tail.index('class="pressure-tail"'), tail.index('class="load-tail"'))
 
 
 if __name__ == "__main__":

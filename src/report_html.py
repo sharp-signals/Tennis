@@ -2253,7 +2253,7 @@ def _fd_bar(chave, st):
             f'<span class="fd-bar-val b">{_esc(label_b)}</span></div>')
 
 
-def _mod_fatores_detalhados(payload, div, extras_html=""):
+def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
     """Módulo: TODOS os fatores do motor (não só o top-3/4), com quem tem
     vantagem em cada um, OS NÚMEROS reais por trás, e uma barra proporcional
     — "sem dados"/"empate"/"abaixo do limiar" quando aplicável. 100% Python,
@@ -2265,7 +2265,7 @@ def _mod_fatores_detalhados(payload, div, extras_html=""):
     teste (13/08/2026): "acho que esta info devia estar dentro do mapa de
     forças", em vez de cartões à parte antes dele."""
     status = (div or {}).get("fatores_status") or {}
-    if not status and not extras_html:
+    if not status and not extras_html and not tail_html:
         return ""
     linhas = []
     for chave in _FACTOR_ORDER:
@@ -2296,12 +2296,12 @@ def _mod_fatores_detalhados(payload, div, extras_html=""):
             f'<div class="fd-linha"><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
             f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
             f'{bar_html}</div>')
-    if not linhas and not extras_html:
+    if not linhas and not extras_html and not tail_html:
         return ""
     total_tag = f" ({len(linhas)})" if linhas else ""
     return (f'<details class="more mais-forcas"><summary>Mapa de Forças{total_tag}'
             f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
-            f'<div class="more-body">{extras_html}{"".join(linhas)}</div></details>')
+            f'<div class="more-body">{extras_html}{"".join(linhas)}{tail_html}</div></details>')
 
 
 def _mod_mercado_vs_sinal(payload, div):
@@ -2910,11 +2910,16 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     _extras_mapa = (
         f'{_mod_h2h_timeline(payload)}{_mod_recent_pulse(payload)}'
         '<div class="analytics-title">Raio-X Anal&#237;tico</div>'
-        f'{_mod_forma(payload)}{_mod_forma_ajustada(payload)}{_mod_pressao(payload)}'
+        f'{_mod_forma(payload)}{_mod_forma_ajustada(payload)}'
         f'{_mod_servico(payload)}'
-        f'{_mod_fadiga(payload)}'
     )
-    partes.append(_mod_fatores_detalhados(payload, div, extras_html=_extras_mapa))
+    _tail_mapa = (
+        f'<div class="force-map-tail"><div class="pressure-tail">{_mod_pressao(payload)}</div>'
+        f'<div class="load-tail">{_mod_fadiga(payload)}</div></div>'
+    )
+    partes.append(_mod_fatores_detalhados(
+        payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
+    ))
     # Veredicto (se há)
     partes.append(_mod_veredicto(result))
     partes.append('</div>')
