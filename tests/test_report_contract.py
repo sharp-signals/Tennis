@@ -208,6 +208,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("O jogo num relance", html)
         self.assertIn("Chaves do confronto", html)
         self.assertIn("▲ Belinda Bencic", html)
+        self.assertIn('style="color:var(--b)">▲ Belinda Bencic', html)
         self.assertNotIn("**Eala**", html)
         self.assertIn('class="mh-odds"', html)
         self.assertIn("2.1", html)
@@ -374,6 +375,20 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertEqual(h2h.count('class="history-winner b"'), 2)
         self.assertIn("Bad Homburg Open", h2h)
         self.assertNotIn("Torneio 15213", h2h)
+
+    def test_match_keys_colour_each_leader_by_player_side(self):
+        payload = {
+            "player_a": "Xinyu Wang", "player_b": "Donna Vekic",
+            "market_odds_decimal": {"Xinyu Wang": 2.15, "Donna Vekic": 1.68},
+            "features": {
+                "ranking": {"lider": "Xinyu Wang", "diff": 18},
+                "h2h": {"lider": "Donna Vekic", "diff": 2,
+                         "a_wins": 0, "b_wins": 2},
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn('style="color:var(--a)">▲ Xinyu Wang', html)
+        self.assertIn('style="color:var(--b)">▲ Donna Vekic', html)
 
 
 if __name__ == "__main__":

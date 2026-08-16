@@ -2855,12 +2855,18 @@ def _mod_match_keys(payload, div):
                 fatores.append((nomes[key], leader))
     if not fatores:
         return ""
-    cards = "".join(
-        f'<div class="fator"><div class="fator-lbl">{_esc(name)}</div>'
-        f'<div class="fator-fav">▲ {_esc(leader)}</div></div>'
-        for name, leader in fatores[:4]
-    )
-    return f'<div class="section-title">Chaves do confronto</div><div class="fatores">{cards}</div>'
+    player_a = str(payload.get("player_a") or "").strip().casefold()
+    player_b = str(payload.get("player_b") or "").strip().casefold()
+    cards = []
+    for name, leader in fatores[:4]:
+        leader_key = str(leader or "").strip().casefold()
+        side = "a" if leader_key == player_a else "b" if leader_key == player_b else ""
+        colour = f' style="color:var(--{side})"' if side else ""
+        cards.append(
+            f'<div class="fator"><div class="fator-lbl">{_esc(name)}</div>'
+            f'<div class="fator-fav"{colour}>▲ {_esc(leader)}</div></div>'
+        )
+    return f'<div class="section-title">Chaves do confronto</div><div class="fatores">{"".join(cards)}</div>'
 
 
 def _mod_market_provenance(payload):
