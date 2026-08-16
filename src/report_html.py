@@ -2943,6 +2943,12 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
     partes.append(_mod_leitura(payload, div, estado, result))
+    if chave not in ("sem_odds", "erro"):
+        partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
+        partes.append(_mod_mercado_vs_sinal(payload, div))
+        partes.append(_mod_market_provenance(payload))
+        partes.append(_mod_mercados(payload, div))
+        partes.append('</div>')
     # 2. Leitura do jogo (sempre — muda conforme estado)
     partes.append(_mod_match_intro(result))
     partes.append(_mod_at_glance_clean(payload))
@@ -2964,12 +2970,6 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 3. Fatores principais (se há divergência)
     partes.append(_mod_cenarios(payload))
     # 4. Mercado e indicadores (só com odds)
-    if chave not in ("sem_odds",):
-        partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
-        partes.append(_mod_mercado_vs_sinal(payload, div))
-        partes.append(_mod_market_provenance(payload))
-        partes.append(_mod_mercados(payload, div))
-        partes.append('</div>')
     # 5-9. Evidência. Forma, Serviço, Carga e H2H vivem dentro do Mapa de
     # Forças, evitando duplicar na página principal fatores já resumidos nos
     # chips do topo. Cenários decisivos mantém-se visível quando diferencia.
