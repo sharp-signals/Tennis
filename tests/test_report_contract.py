@@ -291,15 +291,18 @@ class ReportRenderingTests(unittest.TestCase):
             "fatigue_signal_b": {"matches_last_7d": 3, "sets_last_7d": 8},
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("Duelo Direto", html)
+        self.assertIn("Confronto Direto", html)
+        self.assertNotIn("Duelo Direto", html)
         self.assertIn("Miami", html)
         self.assertIn("6-4 6-3", html)
         self.assertIn("Pulso Recente", html)
         self.assertIn("pulse-win", html)
         self.assertIn("pulse-loss", html)
-        self.assertLess(html.index("Duelo Direto"), html.index("Pulso Recente"))
+        self.assertLess(html.index("Confronto Direto"), html.index("Pulso Recente"))
         self.assertLess(html.index("Pulso Recente"), html.index("Raio-X Anal&#237;tico"))
         self.assertIn('class="card factor-bars-card"', html)
+        factor_card = html[html.index('class="card factor-bars-card"'):html.index('class="force-map-tail"')]
+        self.assertEqual(factor_card.count("Raio-X Anal&#237;tico"), 1)
         self.assertGreater(html.index('class="force-map-tail"'), html.rindex('class="fd-linha"'))
         tail = html[html.index('class="force-map-tail"'):]
         self.assertLess(tail.index('class="pressure-tail"'), tail.index('class="load-tail"'))
