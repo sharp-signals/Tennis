@@ -1521,13 +1521,21 @@ def run() -> None:
     n_high = sum(1 for n, _, _, _ in linhas_dados if n >= 3)
     n_value = sum(1 for n, _, _, _ in linhas_dados if n == 2)
     n_watch = sum(1 for n, _, _, _ in linhas_dados if n == 1)
-    n_none = sum(1 for n, _, _, _ in linhas_dados if n == 0)
+    # CORREÇÃO (17/08/2026, log real): "alinhamento forte" (bola 🔵) tem
+    # nível 0 por definição (mercado e índice concordam no lado), por isso
+    # ficava sempre contado dentro de "sem edge" no cabeçalho — mesmo
+    # aparecendo na lista detalhada como categoria própria, com texto e
+    # cor diferentes. Agora tem a sua própria contagem, separada do "sem
+    # edge" a sério (sem sinal nenhum).
+    n_alinhamento_forte = sum(1 for n, b, _, _ in linhas_dados if n == 0 and b == "🔵")
+    n_none = sum(1 for n, b, _, _ in linhas_dados if n == 0 and b != "🔵")
     n_no_odds = sum(1 for n, _, _, _ in linhas_dados if n < 0)
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
         f"🔴 {n_high} prioridade alta · 🟢 {n_value} valor a analisar · "
-        f"🟡 {n_watch} acompanhar · ⚪ {n_none} sem edge"
+        f"🟡 {n_watch} acompanhar · 🔵 {n_alinhamento_forte} alinhamento forte · "
+        f"⚪ {n_none} sem edge"
     )
     if n_no_odds:
         cabecalho += f"\n⚠️ {n_no_odds} sem odds"
