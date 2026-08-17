@@ -38,6 +38,7 @@ import io
 import json
 import os
 import threading
+import time
 import unicodedata
 from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
@@ -225,8 +226,15 @@ def _reserve_rapidapi_call() -> None:
 
 
 def _rapidapi_get(url, **kwargs):
-    """Wrapper único com orçamento, contador real, anti-429 e retry."""
-    import time
+    """Wrapper único com orçamento, contador real, anti-429 e retry.
+
+    CORREÇÃO (16/08/2026): reconstruído a partir dos testes do Hugo depois
+    de um conflito de fusão ter substituído este ficheiro por uma versão
+    mais antiga. Agora também repete em 503 (indisponível) e em timeout
+    (antes só repetia em 429), e respeita o cabeçalho "Retry-After" do
+    429 quando presente (antes ignorava-o sempre, usando um tempo fixo).
+    """
+    resp = None
     for tentativa in range(3):
         with _RAPIDAPI_LOCK:
             _reserve_rapidapi_call()
@@ -236,10 +244,28 @@ def _rapidapi_get(url, **kwargs):
             if elapsed < RAPIDAPI_MIN_INTERVAL:
                 time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
             _RAPIDAPI_LAST_CALL["t"] = time.monotonic()
-        resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
+        try:
+            resp = requests.get(url, headers=_RAPIDAPI_HEADERS, timeout=REQUEST_TIMEOUT, **kwargs)
+        except requests.Timeout:
+            if tentativa < 2:
+                print(f"[aviso] RapidAPI timeout — a repetir (tentativa {tentativa + 1})...")
+                continue
+            raise
         if resp.status_code == 429:
-            espera = 2 * (tentativa + 1)
+            retry_after = resp.headers.get("Retry-After")
+            if retry_after is not None:
+                try:
+                    espera = float(retry_after)
+                except (TypeError, ValueError):
+                    espera = 2 * (tentativa + 1)
+            else:
+                espera = 2 * (tentativa + 1)
             print(f"[aviso] RapidAPI 429 (rate limit) — a aguardar {espera}s e a repetir...")
+            time.sleep(espera)
+            continue
+        if resp.status_code == 503:
+            espera = 2 * (tentativa + 1)
+            print(f"[aviso] RapidAPI 503 (indisponível) — a aguardar {espera}s e a repetir...")
             time.sleep(espera)
             continue
         return resp
@@ -248,6 +274,10 @@ def _rapidapi_get(url, **kwargs):
 
 def get_rapidapi_call_count() -> int:
     return _RAPIDAPI_CALL_COUNT["n"]
+
+
+def get_rapidapi_recorded_today_calls() -> int:
+    return _RAPIDAPI_RECORDED_TODAY["n"]
 
 
 def get_rapidapi_endpoint_counts() -> dict[str, int]:
@@ -1683,6 +1713,170 @@ def _match_abbreviated_name_to_ranking(name: str, ranking: dict) -> Optional[dic
                     if apelido_completo == apelido_abrev and inicial_completo == inicial_abrev:
                         return info
     return None
+
+
+# ===== NOVOS DADOS DO HUGO (16/08/2026) — RECONSTRUÍDOS a partir dos
+# testes depois do conflito de fusão (ver nota em fetch_player_hand).
+# Verificados um a um contra os números exatos dos testes antes de
+# integrar — mas continuam a ser uma RECONSTRUÇÃO, não o código original
+# dele; se o comportamento real diferir nalgum canto não coberto pelos
+# testes, precisa de confirmação com ele.
+
+_SURFACE_CODE_HUGO = {"hard": "1", "clay": "2", "hard_indoor": "3", "carpet": "4", "grass": "5"}
+
+
+def compute_market_adjusted_form(matches: list, player_id) -> Optional[dict]:
+    """
+    Vitórias reais comparadas com vitórias esperadas a partir das odds
+    históricas, com a margem da casa removida (probabilidades
+    normalizadas para somarem 100% antes de comparar).
+    """
+    total = 0
+    actual_wins = 0
+    expected_wins = 0.0
+    for m in matches or []:
+        p1, p2 = m.get("player1Id"), m.get("player2Id")
+        if player_id not in (p1, p2):
+            continue
+        odd1, odd2 = m.get("odd1"), m.get("odd2")
+        if odd1 is None or odd2 is None:
+            continue
+        try:
+            odd1, odd2 = float(odd1), float(odd2)
+        except (TypeError, ValueError):
+            continue
+        if odd1 <= 1 or odd2 <= 1:
+            continue
+        prob1, prob2 = 1.0 / odd1, 1.0 / odd2
+        overround = prob1 + prob2
+        if overround <= 0:
+            continue
+        prob_player = (prob1 if p1 == player_id else prob2) / overround
+        total += 1
+        expected_wins += prob_player
+        if m.get("match_winner") == player_id:
+            actual_wins += 1
+    if total == 0:
+        return None
+    return {
+        "matches": total,
+        "actual_wins": actual_wins,
+        "expected_wins": round(expected_wins, 2),
+        "performance_vs_market": round(actual_wins - expected_wins, 2),
+        "sample_status": "robusto" if total >= 10 else "limitado",
+    }
+
+
+def compute_opposition_quality(stats: dict) -> Optional[dict]:
+    """Ranking médio dos adversários enfrentados (qualidade da oposição)."""
+    year_stats = (stats or {}).get("yearStats") or {}
+    avg_rank = year_stats.get("avgOppRank")
+    matches = year_stats.get("matchesPlayed")
+    if avg_rank is None or matches is None:
+        return None
+    try:
+        avg_rank = float(avg_rank)
+        matches = int(matches)
+    except (TypeError, ValueError):
+        return None
+    return {
+        "avg_opponent_rank": avg_rank,
+        "matches": matches,
+        "sample_status": "robusto" if matches >= 10 else "limitado",
+    }
+
+
+def compute_recent_pressure_profile(stats: dict) -> Optional[dict]:
+    """Percentagens de serviço/resposta recentes, sem combinar num score sintético."""
+    recent = (stats or {}).get("recentStats") or {}
+    if not recent:
+        return None
+    matches = (recent.get("playerStats") or {}).get("statMatchesPlayed")
+    if matches is None:
+        return None
+    try:
+        matches = int(matches)
+    except (TypeError, ValueError):
+        return None
+
+    def _f(key):
+        v = recent.get(key)
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    return {
+        "matches": matches,
+        "first_serve_won_pct": _f("firstServeWinPer"),
+        "second_serve_won_pct": _f("secondServeWinPer"),
+        "bp_saved_pct": _f("bpSavedPer"),
+        "bp_converted_pct": _f("bpConvertedPer"),
+        "opponent_first_serve_won_pct": _f("oppFirstServeWinPer"),
+        "opponent_second_serve_won_pct": _f("oppSecondServeWinPer"),
+        "sample_status": "robusto" if matches >= 10 else "limitado",
+    }
+
+
+def compute_surface_momentum(perf: dict, surface: str, year: int) -> Optional[dict]:
+    """Compara o desempenho nos últimos 2 anos (este + anterior) neste piso
+    com o registo de carreira no mesmo piso."""
+    if not perf:
+        return None
+    surface_key = (surface or "").strip().lower()
+    by_surface = (perf.get("by_surface") or {}).get(surface_key)
+    if not by_surface or by_surface.get("win_pct") is None:
+        return None
+    career_win_pct = by_surface["win_pct"]
+    codigo = _SURFACE_CODE_HUGO.get(surface_key)
+    by_year = perf.get("by_year") or {}
+    wins = losses = 0
+    anos_usados = []
+    for y in (year - 1, year):
+        year_data = by_year.get(str(y))
+        if not year_data:
+            continue
+        court_data = (year_data.get("court") or {}).get(codigo) if codigo else None
+        if not court_data:
+            continue
+        wins += court_data.get("aw", 0) or 0
+        losses += court_data.get("al", 0) or 0
+        anos_usados.append(y)
+    total = wins + losses
+    if total == 0:
+        return None
+    recent_win_pct = round(100 * wins / total, 1)
+    return {
+        "recent_win_pct": recent_win_pct,
+        "delta_pp": round(recent_win_pct - career_win_pct, 1),
+        "years": sorted(anos_usados),
+        "sample_status": "robusto" if total >= 10 else "limitado",
+    }
+
+
+def fetch_player_hand(tour: str, player_id, player_name: str) -> Optional[str]:
+    """
+    Mão do jogador (L/R) — prioriza o ID quando já o temos (ex: vindo do
+    ranking oficial, que já dá o ID diretamente), evitando toda a
+    tradução/correspondência de nomes que _get_cached_hand_by_name precisa
+    quando só tem o nome (possivelmente abreviado). Cache PERMANENTE por
+    NOME (a mão nunca muda), partilhada com _get_cached_hand_by_name via
+    _hand_cache_path — as duas lêem/escrevem a mesma entrada.
+
+    RECONSTRUÍDO (16/08/2026) a partir dos testes de
+    test_player_persistent_cache.py, depois de um conflito de fusão ter
+    substituído este ficheiro por uma versão sem esta função (ver nota em
+    _hand_cache_path sobre o mesmo incidente).
+    """
+    cached = _read_cached_hand(tour, player_name)
+    if cached is not None:
+        return cached or None
+    if not RAPIDAPI_KEY or rapidapi_budget_exceeded():
+        return None
+    profile = fetch_player_profile_by_id(tour, player_id)
+    hand = compute_hand_from_profile(profile) if profile else None
+    _write_cached_hand(tour, player_name, hand)
+    return hand
 
 
 def _get_cached_hand_by_name(tour: str, player_name: str) -> Optional[str]:
@@ -3137,6 +3331,29 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
                 by_level[name] = {"wins": w, "losses": l, "matches": total,
                                   "win_pct": round(100 * w / total, 1)}
 
+        # Agregado por RONDA (chave "round" por ano) — mantém os nomes reais
+        # das rondas tal como vêm da API (QF, SF, F, R32, etc.). Reconstruído
+        # (16/08/2026) a partir dos testes, ver nota em fetch_player_hand.
+        round_agg: dict = {}
+        for year_data in (raw.values() if isinstance(raw, dict) else []):
+            round_block = (year_data or {}).get("round", {})
+            if not isinstance(round_block, dict):
+                continue
+            for rnd, cell in round_block.items():
+                if not isinstance(cell, dict):
+                    continue
+                acc = round_agg.setdefault(rnd, {"wins": 0, "losses": 0})
+                acc["wins"] += cell.get("aw", 0) or 0
+                acc["losses"] += cell.get("al", 0) or 0
+
+        by_round = {}
+        for rnd, rec in round_agg.items():
+            w, l = rec["wins"], rec["losses"]
+            total = w + l
+            if total > 0:
+                by_round[rnd] = {"wins": w, "losses": l, "matches": total,
+                                 "win_pct": round(100 * w / total, 1)}
+
         data = {}
         if summary:
             data["vs_rank_level"] = summary
@@ -3144,6 +3361,11 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
             data["by_surface"] = by_surface
         if by_level:
             data["by_level"] = by_level
+        if by_round:
+            data["by_round"] = by_round
+        if isinstance(raw, dict) and raw:
+            data["by_year"] = raw  # dados brutos preservados por ano (não agregados)
+            data["raw"] = raw
         data = data or None
         _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
         _write_player_cache_entry(tour, player_id, "perf_breakdown", data)
@@ -3232,7 +3454,15 @@ def geocode_location(place_name: str) -> Optional[dict]:
         resp = requests.get(url, params={"name": place_name, "count": 1}, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         results = resp.json().get("results")
-        coords = {"lat": results[0]["latitude"], "lon": results[0]["longitude"]} if results else None
+        if not results:
+            return None
+        lat = results[0].get("latitude")
+        lon = results[0].get("longitude")
+        if lat is None or lon is None:
+            # resposta malformada (sem lat/lon) — não cachear, pode ser
+            # transitório; reconstruído (16/08/2026, ver fetch_player_hand)
+            return None
+        coords = {"lat": lat, "lon": lon}
         _GEOCODE_CACHE[place_name] = coords
         return coords
     except requests.RequestException as exc:
@@ -3336,9 +3566,14 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
 
     cached = _fixtures_cache.get(cache_key)
     if cached is not None:
-        fetched_at = datetime.fromisoformat(cached["fetched_at"])
-        age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
-        if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
+        try:
+            fetched_at = datetime.fromisoformat(cached["fetched_at"])
+            age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
+        except (TypeError, ValueError, KeyError):
+            # entrada de cache corrompida — trata como cache miss em vez de
+            # rebentar (16/08/2026, ver nota em fetch_player_hand)
+            age_hours = None
+        if age_hours is not None and age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
             print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
             return cached["data"]
 
@@ -3409,9 +3644,14 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
 
     cached = _fixtures_cache.get(cache_key)
     if cached is not None:
-        fetched_at = datetime.fromisoformat(cached["fetched_at"])
-        age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
-        if age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
+        try:
+            fetched_at = datetime.fromisoformat(cached["fetched_at"])
+            age_hours = (datetime.now(timezone.utc) - fetched_at).total_seconds() / 3600
+        except (TypeError, ValueError, KeyError):
+            # entrada de cache corrompida — trata como cache miss em vez de
+            # rebentar (16/08/2026, ver nota em fetch_player_hand)
+            age_hours = None
+        if age_hours is not None and age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
             print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
             return cached["data"]
 
@@ -3432,6 +3672,11 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
             resp = _rapidapi_get(url, params=params)
             resp.raise_for_status()
             payload = resp.json()
+            if not isinstance(payload, dict):
+                # resposta com forma inesperada (ex: lista em vez de objeto)
+                # — reconstruído (16/08/2026, ver nota em fetch_player_hand)
+                print(f"[aviso] fixtures {cache_key}: resposta com forma inesperada, a ignorar.")
+                return []
             page_data = payload.get("data", [])
 
             # Filtrar pares (nomes com "/") e jogos ainda sem data marcada —
@@ -3579,6 +3824,10 @@ def get_tournament_info(tournament_id: int, tour: str) -> Optional[dict]:
         resp = _rapidapi_get(url)
         resp.raise_for_status()
         data = resp.json().get("data", {})
+        if not isinstance(data, dict) or not data:
+            # resposta com forma inesperada ou vazia — reconstruído
+            # (16/08/2026, ver nota em fetch_player_hand)
+            return None
         info = {
             "name": data.get("name"),
             "tier": data.get("tier"),
