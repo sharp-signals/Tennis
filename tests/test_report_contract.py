@@ -354,6 +354,8 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn("Pulso Recente", html)
         self.assertIn("pulse-win", html)
         self.assertIn("pulse-loss", html)
+        self.assertIn(".pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:nowrap", html)
+        self.assertIn(".pulse-player{grid-template-columns:1fr;gap:7px}", html)
         self.assertLess(html.index("Confronto Direto"), html.index("Forma Recente | &#218;ltimos 10"))
         self.assertLess(html.index('class="history-score"'), html.index("Miami"))
         self.assertLess(html.index("Forma Recente | &#218;ltimos 10"), html.index("Raio-X Anal&#237;tico"))
