@@ -202,6 +202,9 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Créditos das fotografias", html)
         self.assertIn("Hameltion", html)
         self.assertIn("miniatura/enquadramento adaptado", html)
+        self.assertIn('grid-template-areas:"center center center" "player-a . player-b"', html)
+        self.assertIn(".mh-player,.mh-player.b{flex-direction:column;gap:8px}", html)
+        self.assertIn(".mh-player-photo{width:60px;height:60px;flex-basis:60px}", html)
 
     def test_header_keeps_odds_and_divergence_before_sport_detail(self):
         payload = {
