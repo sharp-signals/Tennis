@@ -1177,6 +1177,9 @@ def _build_match_payload(match: dict) -> dict:
         payload["divergencia"] = calcular_divergencia_publico(payload)
     except Exception:
         payload["divergencia"] = None
+    payload["indicative_odds"] = calibration_store.estimate_indicative_odds(
+        payload["divergencia"]
+    )
     return payload
 
 

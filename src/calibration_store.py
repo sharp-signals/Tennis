@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import threading
 from datetime import datetime, timezone
@@ -115,14 +116,44 @@ def upsert_snapshots(snapshots: Iterable[Mapping[str, Any]], path: Path = DEFAUL
 def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:
     """Preenche resultados usando jogos terminados; nao altera dados pre-match."""
     completed = {}
+    completed_by_players: dict[frozenset[str], list[Mapping[str, Any]]] = {}
     for match in matches:
         match_id = match.get("id")
         winner_id = match.get("match_winner")
-        if match_id is None or winner_id is None:
+        if winner_id is None:
             continue
         if str(match.get("result_type") or "").lower() not in {"completed", "finished"}:
             continue
-        completed[str(match_id)] = match
+        if match_id is not None:
+            completed[str(match_id)] = match
+        p1 = match.get("player1Id") or (match.get("player1") or {}).get("id")
+        p2 = match.get("player2Id") or (match.get("player2") or {}).get("id")
+        if p1 is not None and p2 is not None:
+            completed_by_players.setdefault(frozenset((str(p1), str(p2))), []).append(match)
+
+    def parse_time(value):
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+
+    def fallback_match(snapshot):
+        a_id = (snapshot.get("player_a") or {}).get("id")
+        b_id = (snapshot.get("player_b") or {}).get("id")
+        if a_id is None or b_id is None:
+            return None
+        candidates = completed_by_players.get(frozenset((str(a_id), str(b_id))), [])
+        scheduled = parse_time(snapshot.get("commence_time_utc"))
+        if scheduled is None:
+            return None
+        dated = []
+        for candidate in candidates:
+            played = parse_time(candidate.get("date"))
+            if played is not None:
+                delta = abs((played - scheduled).total_seconds())
+                if delta <= 48 * 3600:
+                    dated.append((delta, candidate))
+        return min(dated, key=lambda item: item[0])[1] if dated else None
 
     with _LOCK:
         document = _read(path)
@@ -130,7 +161,7 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
         for snapshot in document["snapshots"]:
             if snapshot.get("outcome") is not None:
                 continue
-            match = completed.get(str(snapshot.get("match_id")))
+            match = completed.get(str(snapshot.get("match_id"))) or fallback_match(snapshot)
             if not match:
                 continue
             winner_id = match.get("match_winner")
@@ -153,3 +184,82 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
             document["updated_at_utc"] = _utc_now()
             _write(path, document)
         return settled
+
+
+def _wilson_interval(wins: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    if total <= 0:
+        return 0.0, 1.0
+    observed = wins / total
+    denominator = 1 + z * z / total
+    centre = (observed + z * z / (2 * total)) / denominator
+    margin = z * math.sqrt(observed * (1 - observed) / total + z * z / (4 * total * total)) / denominator
+    return max(0.0, centre - margin), min(1.0, centre + margin)
+
+
+def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
+                             path: Path = DEFAULT_PATH, min_samples: int = 30,
+                             bucket_width: int = 10) -> dict[str, Any] | None:
+    """Converte evidência em odds apenas através de resultados já liquidados.
+
+    A calibração usa o lado com maior índice em cada encontro, uma observação
+    por jogo, e um intervalo de Wilson de 95%. Nunca interpreta diretamente o
+    índice 0-100 como probabilidade.
+    """
+    if not isinstance(divergence, Mapping):
+        return None
+    try:
+        index_a = float(divergence["indice_evidencia_a"])
+        index_b = float(divergence["indice_evidencia_b"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    target_favourite = max(index_a, index_b)
+    if target_favourite <= 50:
+        return None
+    bucket_low = int(target_favourite // bucket_width) * bucket_width
+    bucket_high = min(100, bucket_low + bucket_width - 1)
+    if target_favourite == 100:
+        bucket_low, bucket_high = 90, 100
+
+    observations: list[bool] = []
+    for snapshot in _read(path)["snapshots"]:
+        outcome = snapshot.get("outcome") or {}
+        metrics = snapshot.get("metrics") or {}
+        historical = metrics.get("divergencia") or {}
+        try:
+            hist_a = float(historical["indice_evidencia_a"])
+            hist_b = float(historical["indice_evidencia_b"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        hist_favourite = max(hist_a, hist_b)
+        if not bucket_low <= hist_favourite <= bucket_high or hist_a == hist_b:
+            continue
+        winner_side = outcome.get("winner_side")
+        if winner_side not in {"a", "b"}:
+            continue
+        favourite_side = "a" if hist_a > hist_b else "b"
+        observations.append(winner_side == favourite_side)
+
+    total = len(observations)
+    result: dict[str, Any] = {
+        "available": total >= min_samples,
+        "sample_size": total,
+        "minimum_sample": min_samples,
+        "evidence_bucket": [bucket_low, bucket_high],
+        "confidence_level_pct": 95,
+        "method": "calibração histórica; intervalo de Wilson",
+    }
+    if total < min_samples:
+        return result
+
+    low, high = _wilson_interval(sum(observations), total)
+    side_ranges = {}
+    for side, index in (("a", index_a), ("b", index_b)):
+        prob_low, prob_high = (low, high) if index > 50 else (1 - high, 1 - low)
+        side_ranges[side] = {
+            "probability_low_pct": round(prob_low * 100, 1),
+            "probability_high_pct": round(prob_high * 100, 1),
+            "odds_low": round(1 / prob_high, 2),
+            "odds_high": round(1 / prob_low, 2),
+        }
+    result["players"] = side_ranges
+    return result

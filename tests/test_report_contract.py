@@ -182,6 +182,37 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Fonte: RapidAPI Moneyline", html)
         self.assertIn("captadas em 2026-08-16T09:30:00+00:00", html)
 
+    def test_calibrated_odds_range_is_labelled_and_compared_with_market(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 2.1, "B": 1.8},
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+            "indicative_odds": {
+                "available": True, "sample_size": 48, "minimum_sample": 30,
+                "confidence_level_pct": 95, "evidence_bucket": [70, 79],
+                "players": {
+                    "a": {"odds_low": 1.65, "odds_high": 1.95},
+                    "b": {"odds_low": 2.05, "odds_high": 2.55},
+                },
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Faixa indicativa calibrada", html)
+        self.assertIn("1.65–1.95", html)
+        self.assertIn("mercado acima da faixa", html)
+        self.assertIn("Intervalo de 95% · n=48 · índice 70–79", html)
+        self.assertIn("não garantia nem odd justa exata", html)
+
+    def test_uncalibrated_odds_range_is_not_rendered(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 2.1, "B": 1.8},
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+            "indicative_odds": {"available": False, "sample_size": 12, "minimum_sample": 30},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertNotIn("Faixa indicativa calibrada", html)
+
     def test_header_renders_local_portraits_fallback_and_credits(self):
         payload = {
             "player_a": "Xinyu Wang", "player_b": "Unknown Player",

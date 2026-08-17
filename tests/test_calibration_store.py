@@ -41,12 +41,68 @@ class CalibrationStoreTests(unittest.TestCase):
             self.assertEqual(saved["metrics"], snapshot["metrics"])
             self.assertEqual(calibration_store.settle_from_matches([match], path), 0)
 
+    def test_settlement_falls_back_to_players_and_date_when_api_ids_differ(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            snapshot = calibration_store.build_snapshot(
+                self._payload(), analyzed_at_utc="2026-08-16T08:00:00+00:00",
+            )
+            calibration_store.upsert_snapshots([snapshot], path)
+            match = {
+                "id": "a-different-endpoint-id", "player1Id": 10, "player2Id": 20,
+                "match_winner": 20, "result_type": "completed", "result": "4-6 4-6",
+                "date": "2026-08-17T11:00:00Z",
+            }
+            self.assertEqual(calibration_store.settle_from_matches([match], path), 1)
+            saved = json.loads(path.read_text(encoding="utf-8"))["snapshots"][0]
+            self.assertEqual(saved["outcome"]["winner_side"], "b")
+
     def test_incomplete_match_is_not_settled(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "snapshots.json"
             calibration_store.upsert_snapshots([calibration_store.build_snapshot(self._payload())], path)
             match = {"id": "m1", "match_winner": 10, "result_type": "scheduled"}
             self.assertEqual(calibration_store.settle_from_matches([match], path), 0)
+
+    def test_indicative_odds_require_minimum_settled_sample(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            document = {
+                "schema_version": 1,
+                "snapshots": [{
+                    "metrics": {"divergencia": {
+                        "indice_evidencia_a": 72, "indice_evidencia_b": 28,
+                    }},
+                    "outcome": {"winner_side": "a"},
+                }],
+            }
+            path.write_text(json.dumps(document), encoding="utf-8")
+            actual = calibration_store.estimate_indicative_odds(
+                {"indice_evidencia_a": 72, "indice_evidencia_b": 28}, path, min_samples=3,
+            )
+            self.assertFalse(actual["available"])
+            self.assertEqual(actual["sample_size"], 1)
+            self.assertNotIn("players", actual)
+
+    def test_indicative_odds_use_settled_results_and_uncertainty(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            snapshots = []
+            for winner in ("a", "a", "b"):
+                snapshots.append({
+                    "metrics": {"divergencia": {
+                        "indice_evidencia_a": 72, "indice_evidencia_b": 28,
+                    }},
+                    "outcome": {"winner_side": winner},
+                })
+            path.write_text(json.dumps({"schema_version": 1, "snapshots": snapshots}), encoding="utf-8")
+            actual = calibration_store.estimate_indicative_odds(
+                {"indice_evidencia_a": 74, "indice_evidencia_b": 26}, path, min_samples=3,
+            )
+            self.assertTrue(actual["available"])
+            self.assertEqual(actual["sample_size"], 3)
+            self.assertLess(actual["players"]["a"]["odds_low"], actual["players"]["a"]["odds_high"])
+            self.assertGreater(actual["players"]["b"]["odds_low"], 1)
 
 
 if __name__ == "__main__":

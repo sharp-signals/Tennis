@@ -1984,6 +1984,17 @@ body {{ background:var(--bg); color:var(--text);
 .mvs-val {{ position:absolute; top:50%; transform:translateY(-50%); font-size:12px;
   font-weight:700; padding:0 8px; }}
 .mvs-delta {{ text-align:center; font-size:13px; margin-top:10px; font-weight:600; }}
+.odds-range {{ background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:16px 18px; margin:-4px 0 14px; }}
+.odds-range h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:11px; font-weight:600; }}
+.odds-range-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
+.odds-range-player {{ background:var(--surface2); border-radius:9px; padding:11px 12px; }}
+.odds-range-player.b {{ text-align:right; }}
+.odds-range-name {{ color:var(--dim); font-size:11px; }}
+.odds-range-value {{ font-size:18px; font-weight:750; margin:2px 0; }}
+.odds-range-read {{ color:var(--dim); font-size:10px; }}
+.odds-range-note {{ color:var(--dim); font-size:10px; margin-top:9px; }}
 
 /* --- CARDS genéricos --- */
 .card {{ background:var(--surface); border:1px solid var(--line); border-radius:12px;
@@ -2469,6 +2480,51 @@ def _mod_mercado_vs_sinal(payload, div):
   <h3>Mercado e indicadores</h3>
   {merc}{sinal}
 </div>"""
+
+
+def _mod_indicative_odds(payload):
+    """Faixa calibrada; nunca converte diretamente o índice em probabilidade."""
+    estimate = _d(payload.get("indicative_odds"))
+    players = _d(estimate.get("players"))
+    if not estimate.get("available") or not players:
+        return ""
+    market = _d(payload.get("market_odds_decimal"))
+
+    def market_odd(side, name):
+        direct = market.get(name)
+        return direct if direct is not None else market.get(f"player_{side}")
+
+    def card(side):
+        name = payload.get(f"player_{side}", "?")
+        values = _d(players.get(side))
+        low, high = values.get("odds_low"), values.get("odds_high")
+        if low is None or high is None:
+            return ""
+        observed = market_odd(side, name)
+        reading = ""
+        try:
+            observed_num = float(observed)
+            if observed_num > float(high):
+                reading = "mercado acima da faixa"
+            elif observed_num < float(low):
+                reading = "mercado abaixo da faixa"
+            else:
+                reading = "mercado dentro da faixa"
+        except (TypeError, ValueError):
+            pass
+        market_text = f" · mercado {_esc(observed)}" if observed is not None else ""
+        return (f'<div class="odds-range-player {side}"><div class="odds-range-name">{_esc(name)}</div>'
+                f'<div class="odds-range-value">{float(low):.2f}–{float(high):.2f}</div>'
+                f'<div class="odds-range-read">{_esc(reading)}{market_text}</div></div>')
+
+    confidence = estimate.get("confidence_level_pct", 95)
+    sample = estimate.get("sample_size", 0)
+    bucket = estimate.get("evidence_bucket") or []
+    bucket_text = f" · índice {bucket[0]}–{bucket[1]}" if len(bucket) == 2 else ""
+    return (f'<div class="odds-range"><h3>Faixa indicativa calibrada</h3>'
+            f'<div class="odds-range-grid">{card("a")}{card("b")}</div>'
+            f'<div class="odds-range-note">Intervalo de {confidence}% · n={sample}{bucket_text}. '
+            'Estimativa histórica, não garantia nem odd justa exata.</div></div>')
 
 
 def _barra_cmp(nome, valor, cor, largura_pct, sufixo="%", amostra=None):
@@ -3106,6 +3162,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     if chave not in ("sem_odds", "erro"):
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
         partes.append(_mod_mercado_vs_sinal(payload, div))
+        partes.append(_mod_indicative_odds(payload))
         partes.append(_mod_market_provenance(payload))
         partes.append(_mod_mercados(payload, div))
         partes.append('</div>')
