@@ -524,8 +524,21 @@ def _compute_features(payload: dict) -> dict:
     # ficava só guardada no payload, sem contribuir para o índice.
     _e_bo5 = payload.get("tier") == "Grand Slam" and payload.get("tour") == "atp"
     _fmt_bo = "bo5" if _e_bo5 else "bo3"
-    _sc_a_fmt = (payload.get("set1_comeback_stats_a") or {}).get(_fmt_bo)
-    _sc_b_fmt = (payload.get("set1_comeback_stats_b") or {}).get(_fmt_bo)
+    _raw_a = payload.get("set1_comeback_stats_a")
+    _raw_b = payload.get("set1_comeback_stats_b")
+    _sc_a_fmt = (_raw_a or {}).get(_fmt_bo)
+    _sc_b_fmt = (_raw_b or {}).get(_fmt_bo)
+    # DIAGNÓSTICO MAIS PRECISO (17/08/2026, log real): o diagnóstico
+    # anterior só disparava quando o resultado bruto era None por
+    # completo — mas em pelo menos 2 casos reais (Zverev/Paul,
+    # Bouzkova/Jovic) o bruto não era None para nenhum dos dois, e mesmo
+    # assim o fator não apareceu no relatório. Isto mostra exatamente
+    # onde falha: na seleção do formato certo (bo3/bo5) a partir do
+    # bruto, não no cálculo em si.
+    if (_raw_a is not None and _raw_b is not None) and (_sc_a_fmt is None or _sc_b_fmt is None):
+        print(f"[diag:comeback-formato] {a} vs {b} | "
+              f"tier={payload.get('tier')!r} tour={payload.get('tour')!r} formato_escolhido={_fmt_bo!r} | "
+              f"bruto_A={_raw_a!r} | bruto_B={_raw_b!r}")
     if _sc_a_fmt and _sc_b_fmt:
         _pa = _sc_a_fmt.get("comeback_rate_pct")
         _pb = _sc_b_fmt.get("comeback_rate_pct")
@@ -1177,9 +1190,6 @@ def _build_match_payload(match: dict) -> dict:
         payload["divergencia"] = calcular_divergencia_publico(payload)
     except Exception:
         payload["divergencia"] = None
-    payload["indicative_odds"] = calibration_store.estimate_indicative_odds(
-        payload["divergencia"]
-    )
     return payload
 
 
