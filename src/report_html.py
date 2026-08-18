@@ -3608,6 +3608,12 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
     partes.append(_mod_leitura(payload, div, estado, result))
+    # NOVO (18/08/2026, a pedido): Mapa de Ações movido para logo a seguir
+    # à Leitura (onde aparece "Alinhamento Forte") — é o que deve chamar a
+    # atenção primeiro; o resto do relatório (mercado, fatores detalhados)
+    # fica disponível a seguir para quem quiser aprofundar. Antes vinha
+    # muito mais abaixo, depois de toda a análise detalhada.
+    partes.append(_mod_action_map(payload, div, result))
     if chave not in ("sem_odds", "erro"):
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
         partes.append(_mod_mercado_vs_sinal(payload, div))
@@ -3656,7 +3662,6 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_fatores_detalhados(
         payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
     ))
-    partes.append(_mod_action_map(payload, div, result))
     partes.append(_mod_photo_credits(payload))
     partes.append('</div>')
     return _pagina(a, b, "".join(partes))
