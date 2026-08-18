@@ -1995,6 +1995,13 @@ body {{ background:var(--bg); color:var(--text);
 .odds-range-value {{ font-size:18px; font-weight:750; margin:2px 0; }}
 .odds-range-read {{ color:var(--dim); font-size:10px; }}
 .odds-range-note {{ color:var(--dim); font-size:10px; margin-top:9px; }}
+.data-quality {{ margin:12px 0 16px; padding:12px 14px; border:1px solid rgba(217,164,65,.45);
+  border-left:3px solid var(--amber); border-radius:10px; background:rgba(217,164,65,.07); }}
+.data-quality-title {{ color:var(--amber); font-size:11px; font-weight:750; text-transform:uppercase;
+  letter-spacing:.65px; margin-bottom:5px; }}
+.data-quality ul {{ padding-left:17px; color:var(--text); font-size:11px; }}
+.data-quality li+li {{ margin-top:3px; }}
+.data-quality-note {{ color:var(--dim); font-size:10px; margin-top:6px; }}
 
 /* --- CARDS genéricos --- */
 .card {{ background:var(--surface); border:1px solid var(--line); border-radius:12px;
@@ -2534,7 +2541,7 @@ def _mod_mercado_vs_sinal(payload, div):
 
 
 def _mod_indicative_odds(payload):
-    """Faixa calibrada; nunca converte diretamente o índice em probabilidade."""
+    """Faixa calibrada ou, enquanto amadurece, provisória e bem identificada."""
     estimate = _d(payload.get("indicative_odds"))
     players = _d(estimate.get("players"))
     if not estimate.get("available") or not players:
@@ -2570,12 +2577,62 @@ def _mod_indicative_odds(payload):
 
     confidence = estimate.get("confidence_level_pct", 95)
     sample = estimate.get("sample_size", 0)
+    minimum = estimate.get("minimum_sample", 30)
     bucket = estimate.get("evidence_bucket") or []
     bucket_text = f" · índice {bucket[0]}–{bucket[1]}" if len(bucket) == 2 else ""
-    return (f'<div class="odds-range"><h3>Faixa indicativa calibrada</h3>'
+    calibrated = bool(estimate.get("calibrated", sample >= minimum))
+    basis = estimate.get("basis", "historical")
+    if not calibrated:
+        # O comparativo continua útil, mas o próprio texto nunca o apresenta
+        # como uma fronteira de valor já estabelecida.
+        range_word = "faixa experimental" if basis == "heuristic" else "faixa em calibração"
+        original_card = card
+
+        def card(side):
+            return original_card(side).replace("da faixa", f"da {range_word}").replace(
+                "dentro da faixa", f"dentro da {range_word}"
+            )
+    if calibrated:
+        title = "Faixa indicativa calibrada"
+        note = (f"Intervalo de {confidence}% · n={sample}{bucket_text}. "
+                "Estimativa histórica, não garantia nem odd justa exata.")
+    elif basis == "historical":
+        title = "Faixa indicativa em calibração"
+        note = (f"Intervalo experimental de {confidence}% · n={sample}/{minimum}{bucket_text}. "
+                "Amostra ainda reduzida; a faixa pode mudar materialmente com novos resultados.")
+    else:
+        title = "Faixa indicativa experimental"
+        note = (f"Sem resultados liquidados neste intervalo{bucket_text}. Heurística provisória, "
+                "deliberadamente larga e não calibrada; não representa uma odd justa.")
+    return (f'<div class="odds-range"><h3>{title}</h3>'
             f'<div class="odds-range-grid">{card("a")}{card("b")}</div>'
-            f'<div class="odds-range-note">Intervalo de {confidence}% · n={sample}{bucket_text}. '
-            'Estimativa histórica, não garantia nem odd justa exata.</div></div>')
+            f'<div class="odds-range-note">{note}</div></div>')
+
+
+def _mod_data_quality_notice(payload):
+    """Um único aviso de causa-raiz, evitando vários rodapés 'sem dados'."""
+    issues = _d(payload.get("data_quality")).get("issues") or []
+    if not issues:
+        return ""
+    lines = []
+    for issue in issues:
+        if issue.get("type") == "name_resolution":
+            names = [item.get("player") for item in issue.get("players", []) if item.get("player")]
+            if names:
+                lines.append(
+                    f"Não foi possível associar {_esc(', '.join(names))} com segurança à base histórica; "
+                    "os fatores que dependem desse histórico podem aparecer sem dados."
+                )
+        elif issue.get("type") == "set1_comeback":
+            lines.append(
+                "A recuperação após perder o 1.º set não pôde ser calculada com os dados históricos disponíveis."
+            )
+    if not lines:
+        return ""
+    rendered = "".join(f"<li>{line}</li>" for line in dict.fromkeys(lines))
+    return (f'<div class="data-quality"><div class="data-quality-title">Cobertura histórica limitada</div>'
+            f'<ul>{rendered}</ul><div class="data-quality-note">As odds e os restantes dados independentes '
+            'continuam visíveis; este aviso identifica apenas as áreas afetadas.</div></div>')
 
 
 def _barra_cmp(nome, valor, cor, largura_pct, sufixo="%", amostra=None):
@@ -3275,6 +3332,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_match_intro(result))
     partes.append(_mod_at_glance_clean(payload))
     partes.append(_mod_match_keys(payload, div))
+    partes.append(_mod_data_quality_notice(payload))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":

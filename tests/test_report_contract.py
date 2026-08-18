@@ -203,15 +203,39 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Intervalo de 95% · n=48 · índice 70–79", html)
         self.assertIn("não garantia nem odd justa exata", html)
 
-    def test_uncalibrated_odds_range_is_not_rendered(self):
+    def test_uncalibrated_odds_range_is_rendered_as_experimental(self):
         payload = {
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 2.1, "B": 1.8},
             "features": {"ranking": {"lider": "A", "diff": 10}},
-            "indicative_odds": {"available": False, "sample_size": 12, "minimum_sample": 30},
+            "indicative_odds": {
+                "available": True, "calibrated": False, "provisional": True,
+                "basis": "historical", "sample_size": 12, "minimum_sample": 30,
+                "confidence_level_pct": 95, "evidence_bucket": [70, 79],
+                "players": {
+                    "a": {"odds_low": 1.3, "odds_high": 2.4},
+                    "b": {"odds_low": 1.7, "odds_high": 4.3},
+                },
+            },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertNotIn("Faixa indicativa calibrada", html)
+        self.assertIn("Faixa indicativa em calibração", html)
+        self.assertIn("n=12/30", html)
+        self.assertIn("pode mudar materialmente", html)
+
+    def test_data_quality_uses_one_root_cause_notice(self):
+        payload = {
+            "player_a": "Daniel Merida Aguilar", "player_b": "B",
+            "features": {"ranking": {"lider": "B", "diff": 10}},
+            "data_quality": {"history_rows": 20000, "issues": [{
+                "type": "name_resolution", "severity": "warning",
+                "players": [{"side": "a", "player": "Daniel Merida Aguilar"}],
+            }]},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertEqual(html.count("Cobertura histórica limitada"), 1)
+        self.assertIn("Daniel Merida Aguilar", html)
+        self.assertIn("fatores que dependem desse histórico", html)
 
     def test_header_renders_local_portraits_fallback_and_credits(self):
         payload = {

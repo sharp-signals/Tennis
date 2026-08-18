@@ -941,7 +941,46 @@ def _normalize_name(name: str) -> str:
         return ""
     nfkd = unicodedata.normalize("NFKD", name)
     ascii_name = "".join(c for c in nfkd if not unicodedata.combining(c))
-    return ascii_name.lower().strip()
+    # Pontuação varia entre fontes ("Merida D." vs "Merida D"). Mantemos
+    # apenas letras/números e colapsamos espaços, sem tornar o fuzzy matching
+    # mais permissivo.
+    clean = "".join(c if c.isalnum() else " " for c in ascii_name)
+    return " ".join(clean.lower().split())
+
+
+def _normalize_surface_family(surface: object) -> Optional[str]:
+    """Reduz variantes das fontes à família física do piso.
+
+    Indoor/outdoor é uma dimensão separada: ``Indoor Hard``, ``Hardcourt`` e
+    ``Outdoor Hard`` pertencem todos à família ``hard``.
+    """
+    if surface is None or pd.isna(surface):
+        return None
+    value = _normalize_name(str(surface)).replace("-", " ").replace("_", " ")
+    aliases = (
+        ("hard", ("hard", "hardcourt", "cimento")),
+        ("clay", ("clay", "saibro", "terra batida")),
+        ("grass", ("grass", "relva", "grama")),
+        ("carpet", ("carpet", "alcatifa")),
+    )
+    for family, terms in aliases:
+        if any(term in value for term in terms):
+            return family
+    return None
+
+
+def _structural_name_candidates(normalized_name: str) -> list[str]:
+    """Variantes exatas e conservadoras para fontes no formato Apelido I."""
+    parts = normalized_name.split()
+    if len(parts) < 2:
+        return []
+    initial = parts[0][0]
+    surnames = parts[1:]
+    candidates = [f"{' '.join(surnames)} {initial}"]
+    # Algumas fontes descartam um dos apelidos. Aceitamos apenas igualdade
+    # exata nestas variantes curtas para não aproximar jogadores diferentes.
+    candidates.extend(f"{surname} {initial}" for surname in surnames)
+    return list(dict.fromkeys(candidates))
 
 
 def _build_name_index(history: pd.DataFrame) -> dict[str, str]:
@@ -1006,6 +1045,10 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
     if normalized_input in index:
         return index[normalized_input]
 
+    for candidate in _structural_name_candidates(normalized_input):
+        if candidate in index:
+            return index[candidate]
+
     close = difflib.get_close_matches(normalized_input, index.keys(), n=1, cutoff=0.88)
     if close:
         return index[close[0]]
@@ -1016,11 +1059,9 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
     # 2+ palavras (ex: "Jessica Bouzas Maneiro" — via só "Maneiro",
     # nunca batia com "Bouzas Maneiro J." no histórico). Agora usa
     # "apelido = tudo depois do primeiro nome", que lida com os dois casos.
-    partes = normalized_input.split()
-    if len(partes) >= 2:
-        primeiro_nome = partes[0]
-        apelido = " ".join(partes[1:])
-        candidato = f"{apelido} {primeiro_nome[0]}"
+    candidates = _structural_name_candidates(normalized_input)
+    if candidates:
+        candidato = candidates[0]
         if candidato in index:
             return index[candidato]
         close2 = difflib.get_close_matches(candidato, index.keys(), n=1, cutoff=0.85)
@@ -1028,6 +1069,28 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
             return index[close2[0]]
 
     return None
+
+
+def diagnose_player_name_resolution(history: pd.DataFrame, name: str,
+                                    limit: int = 3) -> dict:
+    """Explica uma falha de resolução sem alterar o limiar de segurança."""
+    if history.empty:
+        return {"resolved": None, "reason": "historico_vazio", "candidates": []}
+    index = _build_name_index(history)
+    resolved = resolve_player_name(history, name)
+    normalized = _normalize_name(name)
+    probes = [normalized, *_structural_name_candidates(normalized)]
+    nearby: list[str] = []
+    for probe in probes:
+        for match in difflib.get_close_matches(probe, index.keys(), n=limit, cutoff=0.55):
+            original = index[match]
+            if original not in nearby:
+                nearby.append(original)
+    return {
+        "resolved": resolved,
+        "reason": None if resolved else "sem_correspondencia_segura",
+        "candidates": nearby[:limit],
+    }
 
 
 # --------------------------------------------------------------------- #
@@ -1068,12 +1131,15 @@ def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Op
     overall = _tally(subset)
 
     on_surface = None
-    if surface and "surface" in history.columns:
-        subset_surface = subset[subset["surface"].str.lower() == surface.lower()]
+    surface_family = _normalize_surface_family(surface)
+    if surface_family and "surface" in history.columns:
+        historical_families = subset["surface"].map(_normalize_surface_family)
+        subset_surface = subset[historical_families == surface_family]
         if not subset_surface.empty:
             on_surface = _tally(subset_surface)
 
-    return {"overall": overall, "on_surface": on_surface, "surface": surface}
+    return {"overall": overall, "on_surface": on_surface, "surface": surface,
+            "surface_family": surface_family}
 
 
 def compute_current_season_record(history: pd.DataFrame, player: str) -> Optional[dict]:
@@ -1462,7 +1528,7 @@ def _first_set_winner_from_cols(w1, l1) -> Optional[bool]:
     return w1 > l1
 
 
-def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+def _analyse_set1_comeback(history: pd.DataFrame, player: str) -> tuple[Optional[dict], dict]:
     """
     Entre os jogos em que o jogador PERDEU o 1º set, em quantos ainda
     assim ganhou o jogo? Separado por melhor-de-3 (Masters/500) e
@@ -1474,35 +1540,51 @@ def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[
     sem 'score', só W1/L1/W2/L2/W3/L3) devolvia sempre None. Passa a
     suportar as duas formas.
     """
+    diagnostics = {
+        "player": player, "resolved_name": None, "matches": 0,
+        "parseable_first_sets": 0, "best_of_values": [], "by_format": {},
+    }
     if history.empty or "best_of" not in history.columns:
-        return None
+        diagnostics["reason"] = "historico_ou_best_of_indisponivel"
+        return None, diagnostics
     usa_score = "score" in history.columns
     usa_w1l1 = {"W1", "L1"}.issubset(history.columns)
     if not usa_score and not usa_w1l1:
-        return None
+        diagnostics["reason"] = "resultado_por_set_indisponivel"
+        return None, diagnostics
 
     resolved = resolve_player_name(history, player)
     if resolved is None:
-        return None
+        diagnostics["reason"] = "jogador_nao_resolvido"
+        return None, diagnostics
     player = resolved
+    diagnostics["resolved_name"] = resolved
 
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
     if played.empty:
-        return None
+        diagnostics["reason"] = "sem_jogos"
+        return None, diagnostics
+    diagnostics["matches"] = len(played)
+    diagnostics["best_of_values"] = [str(value) for value in played["best_of"].dropna().unique()[:8]]
+    played["_best_of_normalized"] = pd.to_numeric(played["best_of"], errors="coerce")
 
     result: dict = {}
     for best_of, label in ((3, "bo3"), (5, "bo5")):
-        subset = played[played["best_of"] == best_of]
+        subset = played[played["_best_of_normalized"] == best_of]
         lost_set1 = 0
         lost_set1_won_match = 0
 
         for _, row in subset.iterrows():
+            set1_winner_is_match_winner = None
             if usa_score:
                 set1_winner_is_match_winner = _first_set_winner_is_match_winner(row.get("score"))
-            else:
+            # DataFrames combinados podem ter a coluna score vazia numa fonte
+            # e W1/L1 preenchido noutra; a decisão tem de ser feita por linha.
+            if set1_winner_is_match_winner is None and usa_w1l1:
                 set1_winner_is_match_winner = _first_set_winner_from_cols(row.get("W1"), row.get("L1"))
             if set1_winner_is_match_winner is None:
                 continue
+            diagnostics["parseable_first_sets"] += 1
             is_match_winner = row.get("winner_name") == player
             player_lost_set1 = (
                 (is_match_winner and not set1_winner_is_match_winner)
@@ -1521,10 +1603,36 @@ def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[
             }
         else:
             result[label] = None
+        diagnostics["by_format"][label] = {
+            "rows": len(subset), "lost_first_set": lost_set1,
+            "comebacks": lost_set1_won_match,
+        }
 
     if result.get("bo3") is None and result.get("bo5") is None:
-        return None
+        diagnostics["reason"] = (
+            "primeiro_set_ilegivel" if diagnostics["parseable_first_sets"] == 0
+            else "sem_derrotas_no_primeiro_set"
+        )
+        return None, diagnostics
+    diagnostics["reason"] = None
+    return result, diagnostics
+
+
+def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """Estatística pública; aceita best_of numérico ou textual e dois esquemas de sets."""
+    result, _ = _analyse_set1_comeback(history, player)
     return result
+
+
+def compute_set1_comeback_with_diagnostics(history: pd.DataFrame, player: str) -> tuple[Optional[dict], dict]:
+    """Calcula a estatística e o diagnóstico numa só passagem pelo histórico."""
+    return _analyse_set1_comeback(history, player)
+
+
+def diagnose_set1_comeback(history: pd.DataFrame, player: str) -> dict:
+    """Diagnóstico estruturado para logs e avisos agregados de cobertura."""
+    _, diagnostics = _analyse_set1_comeback(history, player)
+    return diagnostics
 
 
 # Limite de jogos históricos processados por jogadora na reconstrução via

@@ -199,11 +199,14 @@ def _wilson_interval(wins: int, total: int, z: float = 1.96) -> tuple[float, flo
 def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
                              path: Path = DEFAULT_PATH, min_samples: int = 30,
                              bucket_width: int = 10) -> dict[str, Any] | None:
-    """Converte evidência em odds apenas através de resultados já liquidados.
+    """Estima uma faixa de odds, preferindo resultados já liquidados.
 
     A calibração usa o lado com maior índice em cada encontro, uma observação
-    por jogo, e um intervalo de Wilson de 95%. Nunca interpreta diretamente o
-    índice 0-100 como probabilidade.
+    por jogo, e um intervalo de Wilson de 95%. Antes da amostra mínima, a faixa
+    continua visível e é marcada como provisória. Sem qualquer observação,
+    usa-se uma heurística deliberadamente larga e explicitamente não calibrada;
+    o índice é suavizado para metade da distância a 50, em vez de ser tratado
+    diretamente como probabilidade.
     """
     if not isinstance(divergence, Mapping):
         return None
@@ -241,20 +244,35 @@ def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
 
     total = len(observations)
     result: dict[str, Any] = {
-        "available": total >= min_samples,
+        "available": True,
+        "calibrated": total >= min_samples,
+        "provisional": total < min_samples,
         "sample_size": total,
         "minimum_sample": min_samples,
         "evidence_bucket": [bucket_low, bucket_high],
         "confidence_level_pct": 95,
-        "method": "calibração histórica; intervalo de Wilson",
     }
-    if total < min_samples:
-        return result
+    if total:
+        low, high = _wilson_interval(sum(observations), total)
+        result["method"] = "calibração histórica; intervalo de Wilson"
+        result["basis"] = "historical"
+    else:
+        # O índice de evidência não é uma probabilidade. Para permitir a
+        # evolução visual do relatório desde já, aproximamos apenas METADE da
+        # distância a 50% e abrimos uma margem de ±20 p.p. Esta faixa é um
+        # andaime de produto, não uma odd justa, e desaparece automaticamente
+        # assim que existirem resultados liquidados neste balde.
+        centre = 0.5 + (target_favourite - 50.0) / 200.0
+        low, high = max(0.05, centre - 0.20), min(0.95, centre + 0.20)
+        result["method"] = "heurística experimental; índice suavizado e margem larga"
+        result["basis"] = "heuristic"
 
-    low, high = _wilson_interval(sum(observations), total)
     side_ranges = {}
     for side, index in (("a", index_a), ("b", index_b)):
         prob_low, prob_high = (low, high) if index > 50 else (1 - high, 1 - low)
+        # Evita odds infinitas em amostras iniciais com 0%/100% observado.
+        prob_low = max(0.01, min(0.99, prob_low))
+        prob_high = max(prob_low, min(0.99, prob_high))
         side_ranges[side] = {
             "probability_low_pct": round(prob_low * 100, 1),
             "probability_high_pct": round(prob_high * 100, 1),

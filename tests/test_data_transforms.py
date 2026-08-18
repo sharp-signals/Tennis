@@ -2,6 +2,8 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
+import pandas as pd
+
 from src import fetch_data, main
 
 
@@ -52,6 +54,42 @@ class MatchInputTests(unittest.TestCase):
 
 
 class DeterministicStatisticTests(unittest.TestCase):
+    def test_h2h_normalizes_surface_family(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "surface": "Hardcourt"},
+            {"winner_name": "B", "loser_name": "A", "surface": "Indoor Hard"},
+            {"winner_name": "A", "loser_name": "B", "surface": "Clay"},
+        ])
+        actual = fetch_data.compute_h2h(history, "A", "B", "Outdoor Hard")
+        self.assertEqual(actual["overall"]["total_matches"], 3)
+        self.assertEqual(actual["on_surface"], {"a_wins": 1, "b_wins": 1, "total_matches": 2})
+        self.assertEqual(actual["surface_family"], "hard")
+
+    def test_name_resolution_handles_compound_surname_variants_exactly(self):
+        history = pd.DataFrame([
+            {"winner_name": "Merida D.", "loser_name": "Other P."},
+            {"winner_name": "Other P.", "loser_name": "Merida D."},
+        ])
+        self.assertEqual(
+            fetch_data.resolve_player_name(history, "Daniel Merida Aguilar"),
+            "Merida D.",
+        )
+
+    def test_comeback_normalizes_text_best_of_and_falls_back_to_set_columns(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "best_of": "3", "score": None, "W1": 4, "L1": 6},
+            {"winner_name": "C", "loser_name": "A", "best_of": "3.0", "score": None, "W1": 6, "L1": 4},
+            {"winner_name": "A", "loser_name": "D", "best_of": 5, "score": "4-6 6-3 6-2 6-4", "W1": None, "L1": None},
+        ])
+        actual = fetch_data.compute_set1_comeback_stats(history, "A")
+        self.assertEqual(actual["bo3"]["matches_lost_set1"], 2)
+        self.assertEqual(actual["bo3"]["matches_lost_set1_won_overall"], 1)
+        self.assertEqual(actual["bo3"]["comeback_rate_pct"], 50.0)
+        self.assertEqual(actual["bo5"]["comeback_rate_pct"], 100.0)
+        diagnostics = fetch_data.diagnose_set1_comeback(history, "A")
+        self.assertEqual(diagnostics["parseable_first_sets"], 3)
+        self.assertIsNone(diagnostics["reason"])
+
     def test_first_set_parsers_reject_invalid_scores(self):
         self.assertTrue(fetch_data._first_set_winner_is_match_winner("7-6(4) 4-6 6-3"))
         self.assertFalse(fetch_data._first_set_winner_is_match_winner("4-6 6-3 6-2"))

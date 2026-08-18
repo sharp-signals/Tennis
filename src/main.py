@@ -770,6 +770,7 @@ def _build_match_payload(match: dict) -> dict:
     # desta resolução de nome contra o histórico.
     _resolved_a = fetch_data.resolve_player_name(history, player_a) if not history.empty else None
     _resolved_b = fetch_data.resolve_player_name(history, player_b) if not history.empty else None
+    _data_quality_issues = []
     if _resolved_a is None or _resolved_b is None:
         # Amostra de nomes REAIS da coluna, para confirmar de vez o formato
         # exato (suspeita: "Apelido I." em vez de "Nome Apelido" — comum
@@ -777,10 +778,22 @@ def _build_match_payload(match: dict) -> dict:
         _amostra_nomes = []
         if not history.empty and "winner_name" in history.columns:
             _amostra_nomes = history["winner_name"].dropna().unique()[:5].tolist()
+        unresolved = []
+        for side, original, resolved in (("a", player_a, _resolved_a), ("b", player_b, _resolved_b)):
+            if resolved is not None:
+                continue
+            detail = fetch_data.diagnose_player_name_resolution(history, original)
+            unresolved.append({"side": side, "player": original, **detail})
+        _data_quality_issues.append({
+            "type": "name_resolution", "severity": "warning",
+            "players": unresolved,
+            "message": "Correspondência histórica de jogador indisponível",
+        })
         print(f"[diag:nome] {player_a} vs {player_b} | histórico tem "
               f"{len(history)} linhas | A resolvido: {_resolved_a!r} | "
               f"B resolvido: {_resolved_b!r} | amostra de nomes na coluna: "
-              f"{_amostra_nomes}")
+              f"{_amostra_nomes} | candidatos próximos: "
+              f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
     odds = fetch_data.fetch_rapidapi_moneyline(match)
     odds_captured_at_utc = datetime.now(timezone.utc).isoformat() if odds else None
@@ -994,8 +1007,12 @@ def _build_match_payload(match: dict) -> dict:
     rich_a = _get_rich_player_data(tour, player_a, official)
     rich_b = _get_rich_player_data(tour, player_b, official)
 
-    set1_comeback_a = fetch_data.compute_set1_comeback_stats(history, player_a)
-    set1_comeback_b = fetch_data.compute_set1_comeback_stats(history, player_b)
+    set1_comeback_a, _comeback_diag_a = fetch_data.compute_set1_comeback_with_diagnostics(
+        history, player_a
+    )
+    set1_comeback_b, _comeback_diag_b = fetch_data.compute_set1_comeback_with_diagnostics(
+        history, player_b
+    )
     # DIAGNÓSTICO (15/08/2026, a pedido — "recuperação pós-1º set" não
     # aparece no WTA, e falha às vezes no ATP). Mostra o tipo real da
     # coluna best_of (pode estar como texto "3" em vez de número 3, o que
@@ -1008,7 +1025,25 @@ def _build_match_payload(match: dict) -> dict:
               f"A={set1_comeback_a!r} B={set1_comeback_b!r} | "
               f"best_of dtype={_bo_dtype} amostra={_bo_amostra} | "
               f"tem 'score': {'score' in history.columns} | "
-              f"tem 'W1'/'L1': {_tem_w1l1}")
+              f"tem 'W1'/'L1': {_tem_w1l1} | "
+              f"detalhe A={_comeback_diag_a!r} | detalhe B={_comeback_diag_b!r}")
+        _problematic_reasons = {
+            "historico_ou_best_of_indisponivel", "resultado_por_set_indisponivel",
+            "primeiro_set_ilegivel",
+        }
+        relevant = []
+        for side, detail, stats in (
+            ("a", _comeback_diag_a, set1_comeback_a),
+            ("b", _comeback_diag_b, set1_comeback_b),
+        ):
+            if stats is None:
+                relevant.append({"side": side, **detail})
+        if any(item.get("reason") in _problematic_reasons for item in relevant):
+            _data_quality_issues.append({
+                "type": "set1_comeback", "severity": "warning",
+                "players": relevant,
+                "message": "Recuperação após perder o 1.º set sem dados legíveis",
+            })
     handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a, tour=tour)
     handedness_b = fetch_data.compute_handedness_matchup_stats(history, player_b, tour=tour)
     layoff_return_a = fetch_data.compute_return_from_layoff_stats(history, player_a)
@@ -1178,6 +1213,10 @@ def _build_match_payload(match: dict) -> dict:
         "round_stage_stats_a": round_stage_a,  # rondas iniciais vs finais
         "round_stage_stats_b": round_stage_b,
         "weather": weather,  # None para indoor ou se a geocodificação/previsão falhar
+        "data_quality": {
+            "history_rows": len(history),
+            "issues": _data_quality_issues,
+        },
     }
     # Frente 4/5: pré-calcular sinais comparativos (o bot compara, o Claude
     # interpreta). Adiciona 'features' com quem lidera cada dimensão e a
@@ -1367,6 +1406,33 @@ def run() -> None:
                 analyses.append(res)
             if error is not None:
                 analysis_errors.append(error)
+
+    unresolved_players: dict[str, dict] = {}
+    affected_matches = 0
+    for payload, _ in analyses:
+        match_has_unresolved = False
+        for issue in (payload.get("data_quality") or {}).get("issues", []):
+            if issue.get("type") != "name_resolution":
+                continue
+            match_has_unresolved = True
+            for item in issue.get("players", []):
+                name = item.get("player")
+                if not name:
+                    continue
+                entry = unresolved_players.setdefault(name, {
+                    "matches": 0, "candidates": item.get("candidates") or [],
+                })
+                entry["matches"] += 1
+        affected_matches += int(match_has_unresolved)
+    if unresolved_players:
+        print(f"[qualidade-dados] {len(unresolved_players)} jogador(es) sem "
+              f"correspondência histórica segura em {affected_matches} jogo(s): "
+              f"{unresolved_players}")
+    run_metrics.update_context(
+        unresolved_historical_players=len(unresolved_players),
+        unresolved_historical_matches=affected_matches,
+        unresolved_historical_samples=list(unresolved_players)[:10],
+    )
 
     error_counts: dict[str, int] = {}
     for error in analysis_errors:

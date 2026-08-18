@@ -64,7 +64,7 @@ class CalibrationStoreTests(unittest.TestCase):
             match = {"id": "m1", "match_winner": 10, "result_type": "scheduled"}
             self.assertEqual(calibration_store.settle_from_matches([match], path), 0)
 
-    def test_indicative_odds_require_minimum_settled_sample(self):
+    def test_indicative_odds_are_provisional_below_minimum_sample(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "snapshots.json"
             document = {
@@ -80,9 +80,25 @@ class CalibrationStoreTests(unittest.TestCase):
             actual = calibration_store.estimate_indicative_odds(
                 {"indice_evidencia_a": 72, "indice_evidencia_b": 28}, path, min_samples=3,
             )
-            self.assertFalse(actual["available"])
+            self.assertTrue(actual["available"])
+            self.assertFalse(actual["calibrated"])
+            self.assertTrue(actual["provisional"])
+            self.assertEqual(actual["basis"], "historical")
             self.assertEqual(actual["sample_size"], 1)
-            self.assertNotIn("players", actual)
+            self.assertIn("players", actual)
+
+    def test_indicative_odds_have_wide_heuristic_before_first_settlement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            path.write_text(json.dumps({"schema_version": 1, "snapshots": []}), encoding="utf-8")
+            actual = calibration_store.estimate_indicative_odds(
+                {"indice_evidencia_a": 90, "indice_evidencia_b": 10}, path,
+            )
+            self.assertTrue(actual["available"])
+            self.assertFalse(actual["calibrated"])
+            self.assertEqual(actual["basis"], "heuristic")
+            self.assertEqual(actual["sample_size"], 0)
+            self.assertGreater(actual["players"]["a"]["odds_high"] - actual["players"]["a"]["odds_low"], 0.5)
 
     def test_indicative_odds_use_settled_results_and_uncertainty(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -100,6 +116,7 @@ class CalibrationStoreTests(unittest.TestCase):
                 {"indice_evidencia_a": 74, "indice_evidencia_b": 26}, path, min_samples=3,
             )
             self.assertTrue(actual["available"])
+            self.assertTrue(actual["calibrated"])
             self.assertEqual(actual["sample_size"], 3)
             self.assertLess(actual["players"]["a"]["odds_low"], actual["players"]["a"]["odds_high"])
             self.assertGreater(actual["players"]["b"]["odds_low"], 1)
