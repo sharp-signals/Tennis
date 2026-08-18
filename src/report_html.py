@@ -3171,6 +3171,14 @@ def _mod_action_map(payload, div, result):
         return market.get(name, market.get(f"player_{side}"))
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios.
+    # NOVO (18/08/2026): verifica ANTES se a faixa indicativa existe mesmo
+    # para este jogador, para não escrever "dentro da faixa indicada"
+    # quando não há faixa nenhuma para mostrar (texto ficava a apontar
+    # para algo que não existia no relatório).
+    _estimate_alinhamento = _d(payload.get("indicative_odds"))
+    _ranges_alinhamento = _d(_estimate_alinhamento.get("players"))
+    _tem_faixa_alinhamento = bool(fav_side and _d(_ranges_alinhamento.get(fav_side)))
+
     if not div.get("market"):
         add("Pré-jogo", "Esperar por odds",
             "Sem preço de mercado não existe decisão pré-jogo comparável. Manter apenas os cenários ao vivo em observação.")
@@ -3180,8 +3188,12 @@ def _mod_action_map(payload, div, result):
             f"Divergência {strength}: os indicadores apontam para {fav}, contra a direção do mercado. Confirmar o preço; a divergência isolada não é uma entrada.",
             "Motor de divergência")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
-        add("Mercado principal", f"Moneyline {fav}",
-            "Mercado e indicadores estão fortemente alinhados. Acompanhar apenas se o preço oferecer margem dentro da faixa indicada.",
+        _nota_alinhamento = (
+            "Mercado e indicadores estão fortemente alinhados. Acompanhar apenas se o preço oferecer margem dentro da faixa indicada."
+            if _tem_faixa_alinhamento else
+            "Mercado e indicadores estão fortemente alinhados. Ainda sem faixa indicativa calculada para comparar o preço."
+        )
+        add("Mercado principal", f"Moneyline {fav}", _nota_alinhamento,
             "Mercado + índice de sinais")
     else:
         add("Pré-jogo", "Sem ação clara",
