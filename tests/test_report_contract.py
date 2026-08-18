@@ -313,10 +313,37 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("Forma ajustada ao mercado", html)
-        self.assertIn("6 vitórias reais vs 4.7 esperadas (+1.3)", html)
-        self.assertIn("ranking médio dos adversários #42.5", html)
-        self.assertIn("piso: 70.0% recente vs 60.0% carreira (+10.0 p.p.; n=20)", html)
+        self.assertIn("Desempenho face ao esperado", html)
+        self.assertIn("A barra mostra as vitórias reais", html)
+        self.assertIn("<b>6</b> vitórias em 8", html)
+        self.assertIn("esperado: <b>4.7</b> · diferença +1.3", html)
+        self.assertIn("Acima do esperado", html)
+        self.assertIn("Adversários: ranking médio #42.5 (24 jogos)", html)
+        self.assertIn("Neste piso: 70% recente vs 60% carreira (melhorou 10 p.p.)", html)
+        self.assertIn('class="expect-marker"', html)
+
+    def test_service_and_return_use_plain_labels_and_visual_comparisons(self):
+        payload = {
+            "player_a": "Adam Walton", "player_b": "Ignacio Buse",
+            "market_odds_decimal": {"Adam Walton": 1.8, "Ignacio Buse": 2.1},
+            "features": {"servico": {"lider": "Ignacio Buse", "diff": 2}},
+            "serve_return_stats_a": {
+                "avg_first_serve_won_pct": 65, "avg_break_points_saved_pct": 58,
+                "avg_break_points_converted_pct": 23,
+            },
+            "serve_return_stats_b": {
+                "avg_first_serve_won_pct": 67, "avg_break_points_saved_pct": 53,
+                "avg_break_points_converted_pct": 33,
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Serviço e resposta · quem leva vantagem", html)
+        self.assertIn("Pontos ganhos no 1.º serviço", html)
+        self.assertIn("Break points salvos sob pressão", html)
+        self.assertIn("Break points convertidos na resposta", html)
+        self.assertIn("Vantagem Buse · +2.0 p.p.", html)
+        self.assertIn('class="service-fill" style="width:65.0%;background:var(--a)"', html)
+        self.assertNotIn(">BP salvos<", html)
 
     def test_pressure_profile_shows_components_not_composite_score(self):
         payload = {

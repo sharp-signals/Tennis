@@ -2014,6 +2014,36 @@ body {{ background:var(--bg); color:var(--text);
 .cmp-bar span {{ display:block; height:100%; border-radius:4px; }}
 .cmp-num {{ font-size:13px; font-weight:600; text-align:right; }}
 .cmp-delta {{ font-size:11px; text-align:center; color:var(--mint); margin-top:3px; }}
+.expect-intro {{ color:var(--dim); font-size:11px; margin:-5px 0 12px; }}
+.expect-player {{ padding:12px; border:1px solid var(--line); border-radius:10px;
+  background:var(--surface2); margin-top:9px; }}
+.expect-head {{ display:flex; justify-content:space-between; gap:10px; align-items:center; }}
+.expect-name {{ font-size:13px; font-weight:700; }}
+.expect-badge {{ border-radius:999px; padding:3px 8px; font-size:10px; font-weight:700;
+  background:rgba(255,255,255,.05); white-space:nowrap; }}
+.expect-main {{ display:flex; justify-content:space-between; gap:10px; margin:8px 0 5px;
+  font-size:12px; color:var(--dim); }}
+.expect-main b {{ color:var(--text); font-size:14px; }}
+.expect-track {{ position:relative; height:12px; border-radius:999px; background:var(--surface);
+  overflow:visible; margin:7px 2px 9px; }}
+.expect-fill {{ display:block; height:100%; border-radius:999px; }}
+.expect-marker {{ position:absolute; top:-4px; width:2px; height:20px; background:#fff;
+  box-shadow:0 0 0 2px rgba(0,0,0,.35); border-radius:2px; }}
+.expect-detail {{ display:flex; flex-wrap:wrap; gap:6px 12px; color:var(--dim); font-size:10px; }}
+.service-intro {{ color:var(--dim); font-size:11px; margin:-5px 0 12px; }}
+.service-metric {{ padding:11px 0; border-top:1px solid var(--line); }}
+.service-metric:first-of-type {{ border-top:0; padding-top:0; }}
+.service-head {{ display:flex; justify-content:space-between; gap:10px; margin-bottom:8px;
+  align-items:baseline; }}
+.service-title {{ font-size:12px; font-weight:650; }}
+.service-edge {{ font-size:10px; font-weight:700; text-align:right; }}
+.service-player {{ display:grid; grid-template-columns:minmax(76px,auto) 1fr 44px; gap:8px;
+  align-items:center; margin-top:5px; }}
+.service-player-name {{ color:var(--dim); font-size:10px; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }}
+.service-track {{ height:9px; border-radius:999px; background:var(--surface2); overflow:hidden; }}
+.service-fill {{ display:block; height:100%; border-radius:999px; }}
+.service-value {{ font-size:11px; font-weight:750; text-align:right; }}
 
 /* amostra (auditoria #8): esbatido se n<10 */
 .samp-low {{ opacity:.5; }}
@@ -2588,37 +2618,50 @@ def _mod_forma_ajustada(payload):
     if not (ma or mb or qa or qb or sa or sb):
         return ""
 
-    def linha(nome, market, quality, momentum):
-        bits = []
-        if market:
-            delta = market.get("performance_vs_market")
-            sinal = "+" if isinstance(delta, (int, float)) and delta > 0 else ""
-            bits.append(
-                f"{market.get('actual_wins')} vitórias reais vs "
-                f"{market.get('expected_wins')} esperadas ({sinal}{delta}) · "
-                f"n={market.get('matches')}"
+    def linha(nome, side, market, quality, momentum):
+        if not market or not market.get("matches"):
+            return ""
+        matches = max(1, int(market["matches"]))
+        actual = float(market.get("actual_wins") or 0)
+        expected = float(market.get("expected_wins") or 0)
+        delta = actual - expected
+        if delta >= .5:
+            status, status_color = "Acima do esperado", f"var(--{side})"
+        elif delta <= -.5:
+            status, status_color = "Abaixo do esperado", "var(--error)"
+        else:
+            status, status_color = "Dentro do esperado", "var(--dim)"
+        details = []
+        if quality and quality.get("avg_opponent_rank") is not None:
+            details.append(
+                f'Adversários: ranking médio #{quality["avg_opponent_rank"]} '
+                f'({quality.get("matches", "?")} jogos)'
             )
-        if quality:
-            bits.append(
-                f"ranking médio dos adversários #{quality.get('avg_opponent_rank')} · "
-                f"n={quality.get('matches')}"
+        if momentum and momentum.get("recent_win_pct") is not None:
+            change = momentum.get("delta_pp")
+            trend = "melhorou" if isinstance(change, (int, float)) and change > 0 else "piorou" if isinstance(change, (int, float)) and change < 0 else "estável"
+            change_text = f" {abs(change):.0f} p.p." if isinstance(change, (int, float)) else ""
+            details.append(
+                f'Neste piso: {momentum["recent_win_pct"]:.0f}% recente vs '
+                f'{momentum.get("career_win_pct", 0):.0f}% carreira ({trend}{change_text})'
             )
-        if momentum:
-            delta = momentum.get("delta_pp")
-            sinal = "+" if isinstance(delta, (int, float)) and delta > 0 else ""
-            bits.append(
-                f"piso: {momentum.get('recent_win_pct')}% recente "
-                f"vs {momentum.get('career_win_pct')}% carreira "
-                f"({sinal}{delta} p.p.; n={momentum.get('recent_matches')})"
-            )
-        return (f'<div class="cmp-row"><div class="cmp-name">{nome}</div>'
-                f'<div style="grid-column:2 / -1;color:var(--dim);font-size:12px">'
-                f'{_esc(" · ".join(bits))}</div></div>') if bits else ""
+        actual_pct = min(100, 100 * actual / matches)
+        expected_pct = min(100, 100 * expected / matches)
+        delta_text = f"+{delta:.1f}" if delta > 0 else f"{delta:.1f}"
+        return (
+            f'<div class="expect-player"><div class="expect-head"><span class="expect-name">{nome}</span>'
+            f'<span class="expect-badge" style="color:{status_color}">{status}</span></div>'
+            f'<div class="expect-main"><span><b>{actual:g}</b> vitórias em {matches}</span>'
+            f'<span>esperado: <b>{expected:.1f}</b> · diferença {delta_text}</span></div>'
+            f'<div class="expect-track"><span class="expect-fill" style="width:{actual_pct:.1f}%;background:var(--{side})"></span>'
+            f'<span class="expect-marker" style="left:{expected_pct:.1f}%" title="Vitórias esperadas"></span></div>'
+            f'<div class="expect-detail">{"".join(f"<span>{_esc(detail)}</span>" for detail in details)}</div></div>'
+        )
 
     return (
-        '<div class="card"><h3>Forma ajustada ao mercado</h3>'
-        '<div class="cmp-lbl">Resultados históricos comparados com as odds disponíveis</div>'
-        f'{linha(a, ma, qa, sa)}{linha(b, mb, qb, sb)}</div>'
+        '<div class="card"><h3>Desempenho face ao esperado</h3>'
+        '<div class="expect-intro">A barra mostra as vitórias reais; o traço branco marca quantas eram esperadas pelas odds.</div>'
+        f'{linha(a, "a", ma, qa, sa)}{linha(b, "b", mb, qb, sb)}</div>'
     )
 
 
@@ -2669,10 +2712,10 @@ def _mod_servico(payload):
         return ""
     a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
     metricas = [
-        ("1º serviço ganho", "avg_first_serve_won_pct"),
-        ("BP salvos", "avg_break_points_saved_pct"),
-        ("Resposta ganha", "avg_return_points_won_pct"),
-        ("BP convertidos", "avg_break_points_converted_pct"),
+        ("Pontos ganhos no 1.º serviço", "avg_first_serve_won_pct"),
+        ("Break points salvos sob pressão", "avg_break_points_saved_pct"),
+        ("Pontos ganhos na resposta", "avg_return_points_won_pct"),
+        ("Break points convertidos na resposta", "avg_break_points_converted_pct"),
     ]
     linhas = []
     for label, key in metricas:
@@ -2681,30 +2724,25 @@ def _mod_servico(payload):
             continue
         delta = va - vb
         if abs(delta) < 0.5:
-            vant = "="
+            vant = "Equilíbrio"
             cor_d = COLORS_V2["dim"]
         elif delta > 0:
-            vant = f"+{delta:.1f} {_esc(a.split()[-1])}"
+            vant = f"Vantagem {_esc(a.split()[-1])} · +{delta:.1f} p.p."
             cor_d = COLORS_V2["a"]
         else:
-            vant = f"+{abs(delta):.1f} {_esc(b.split()[-1])}"
+            vant = f"Vantagem {_esc(b.split()[-1])} · +{abs(delta):.1f} p.p."
             cor_d = COLORS_V2["b"]
         linhas.append(f"""
-<div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px">
-  <div class="cmp-name">{_esc(label)}</div>
-  <div class="cmp-num">{va:.1f}%</div>
-  <div class="cmp-delta" style="color:{cor_d}">{vant}</div>
-  <div class="cmp-num">{vb:.1f}%</div>
+<div class="service-metric">
+  <div class="service-head"><span class="service-title">{_esc(label)}</span><span class="service-edge" style="color:{cor_d}">{vant}</span></div>
+  <div class="service-player"><span class="service-player-name">{_esc(a)}</span><span class="service-track"><span class="service-fill" style="width:{va:.1f}%;background:var(--a)"></span></span><span class="service-value">{va:.1f}%</span></div>
+  <div class="service-player"><span class="service-player-name">{_esc(b)}</span><span class="service-track"><span class="service-fill" style="width:{vb:.1f}%;background:var(--b)"></span></span><span class="service-value">{vb:.1f}%</span></div>
 </div>""")
     if not linhas:
         return ""
     return f"""
-<div class="card"><h3>Serviço / Resposta</h3>
-  <div class="cmp-row" style="grid-template-columns:1fr 70px 90px 70px; color:var(--dim); font-size:11px">
-    <div></div><div class="cmp-num">{_esc(a.split()[-1])}</div>
-    <div class="cmp-delta" style="color:var(--dim)">vantagem</div>
-    <div class="cmp-num">{_esc(b.split()[-1])}</div>
-  </div>
+<div class="card"><h3>Serviço e resposta · quem leva vantagem</h3>
+  <div class="service-intro">Barras mais longas representam melhor desempenho. A diferença é mostrada em pontos percentuais.</div>
   {"".join(linhas)}
 </div>"""
 
