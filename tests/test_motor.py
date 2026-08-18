@@ -142,6 +142,22 @@ def test_fatores_chave_presentes():
     assert len(r["fatores_chave"]) >= 1
 
 
+def test_estado_expoe_a_composicao_do_peso_aplicado():
+    """O relatório deve conseguir auditar cada etapa do peso sem recalcular."""
+    r = _calcular_divergencia(_payload(2.6, 1.5, {
+        "piso": {"lider": "A", "diff": 15, "amostra_a": 20, "amostra_b": 20},
+    }))
+    assert r is not None
+    st = r["fatores_status"]["piso"]
+    assert st["peso_base_configurado"] == PESOS["piso"]
+    assert st["peso_base_aplicado"] == PESOS["piso"]
+    assert st["multiplicador_forca"] == 1.0
+    assert st["confianca_amostra"] == 0.5
+    assert st["peso_antes_cap"] == 4.0
+    assert st["peso_efetivo"] == 4.0
+    assert st["direcao_impacto"] == "a"
+
+
 # ---------- runner standalone ----------
 def test_double_counting_cap_familia():
     """A família 'força base' (ranking+época+forma+serviço) não deve dominar só

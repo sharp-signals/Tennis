@@ -549,6 +549,23 @@ PESOS = {
     "meteo": 1,                # BAIXO — raramente decisiva
 }
 
+# Fatores correlacionados partilham um teto conjunto. Além de evitar dupla
+# contagem no motor, estas constantes alimentam a área de transparência do
+# relatório: o leitor consegue ver não só o peso-base, mas também o limite
+# aplicado à família a que o fator pertence.
+FAMILIAS_PESOS = {
+    "forca_base": {"servico_recente", "servico_carreira", "forma_recente"},
+    "matchup": {"matchup_maos", "h2h", "h2h_piso"},
+    "superficie": {"piso", "velocidade_piso", "indoor_outdoor"},
+    "resiliencia": {"recuperacao_sets", "tiebreak", "comeback_set1"},
+    "ranking_fam": {"ranking", "ranking_evolucao"},
+    "contexto": {"fadiga", "lesao", "meteo"},
+}
+CAPS_FAMILIAS_PESOS = {
+    "forca_base": 10, "matchup": 18, "superficie": 16,
+    "resiliencia": 17, "ranking_fam": 9, "contexto": 6,
+}
+
 def _nome_fator(chave):
     return {
         "h2h": "confronto direto", "h2h_piso": "confronto direto (piso)",
@@ -579,6 +596,7 @@ def _calcular_divergencia(payload):
     # Para cada fator disponível: +peso se lidera A, -peso se lidera B,
     # escalado pela força relativa (diff) E pela CONFIANÇA DA AMOSTRA.
     contribuicoes = []  # (chave, sinal_para_A, peso_efetivo)
+    componentes_peso = {}
     # ESTADO DE TODOS OS FATORES (11/08/2026) — para o módulo "Fatores
     # Detalhados" do relatório: ao contrário de `contribuicoes` (só os que
     # pesaram na decisão), isto regista TODOS os fatores aplicáveis, mesmo
@@ -608,6 +626,15 @@ def _calcular_divergencia(payload):
             contribuicoes.append((chave, +1, peso))
         elif lider == b:
             contribuicoes.append((chave, -1, peso))
+        else:
+            return
+        componentes_peso[chave] = {
+            "peso_base_configurado": round(float(PESOS.get(chave, 0)), 3),
+            "peso_base_aplicado": round(float(base), 3),
+            "multiplicador_forca": round(float(forca_rel), 3),
+            "confianca_amostra": round(float(conf_amostra), 3),
+            "peso_antes_cap": round(abs(float(peso)), 3),
+        }
 
     # H2H NO PISO — peso mais alto do motor (auditoria 11/08/2026: dado que
     # já existia em compute_h2h [on_surface] mas nunca era usado por
@@ -974,21 +1001,8 @@ def _calcular_divergencia(payload):
     # geral"). Somá-los como independentes conta a mesma variável várias vezes.
     # Agrupamos em famílias e limitamos a contribuição de cada família a um
     # teto, para que medir a qualidade de 4 formas não a inflacione 4x.
-    FAMILIAS = {
-        "forca_base": {"servico_recente", "servico_carreira", "forma_recente"},
-        "matchup": {"matchup_maos", "h2h", "h2h_piso"},
-        "superficie": {"piso", "velocidade_piso", "indoor_outdoor"},
-        "resiliencia": {"recuperacao_sets", "tiebreak", "comeback_set1"},
-        "ranking_fam": {"ranking", "ranking_evolucao"},
-        "contexto": {"fadiga", "lesao", "meteo"},
-    }
-    # teto de peso efetivo por família (a família "força base", muito
-    # correlacionada, é a mais limitada; matchup/resiliência são sinais mais
-    # distintos e específicos do confronto, logo teto mais alto).
-    CAP_FAMILIA = {"forca_base": 10, "matchup": 18, "superficie": 16, "resiliencia": 17, "ranking_fam": 9, "contexto": 6}
-
     def _familia(chave):
-        for fam, membros in FAMILIAS.items():
+        for fam, membros in FAMILIAS_PESOS.items():
             if chave in membros:
                 return fam
         return "contexto"
@@ -1001,7 +1015,7 @@ def _calcular_divergencia(payload):
     contribuicoes_capadas = []
     for fam, items in _por_familia.items():
         soma_peso = sum(abs(p) for _, _, p in items)
-        cap = CAP_FAMILIA.get(fam, 10)
+        cap = CAPS_FAMILIAS_PESOS.get(fam, 10)
         if soma_peso > cap and soma_peso > 0:
             # reduzir proporcionalmente todos os fatores da família
             escala = cap / soma_peso
@@ -1011,6 +1025,11 @@ def _calcular_divergencia(payload):
     # Guardar no estado de cada fator o impacto efetivo usado pelo motor,
     # depois dos ajustes de forca, confianca da amostra e caps por familia.
     # O relatorio usa estes valores no modo "Impacto no matchup".
+    for chave_f, st in status.items():
+        st["peso_base_configurado"] = PESOS.get(chave_f, 0)
+        if chave_f in componentes_peso:
+            st.update(componentes_peso[chave_f])
+            st["familia_peso"] = _familia(chave_f)
     for chave_f, sinal, peso in contribuicoes:
         if chave_f in status:
             status[chave_f]["peso_efetivo"] = round(abs(peso), 3)
@@ -2073,6 +2092,36 @@ body {{ background:var(--bg); color:var(--text);
 @media(max-width:520px) {{ .load-grid {{ grid-template-columns:1fr; }} .load-player.b {{ text-align:left; }}
   .load-player.b .load-head {{ flex-direction:row; }} }}
 
+/* --- transparência dos pesos --- */
+.weight-intro {{ color:var(--dim); font-size:11px; line-height:1.5; margin:-5px 0 12px; }}
+.weight-summary {{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }}
+.weight-chip {{ padding:5px 8px; border:1px solid var(--line); border-radius:999px;
+  background:var(--surface2); color:var(--dim); font-size:9px; }}
+.weight-chip b {{ color:var(--text); }}
+.weight-list {{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }}
+.weight-row {{ min-width:0; padding:9px 10px; border:1px solid var(--line); border-radius:9px;
+  background:var(--surface2); }}
+.weight-row.inactive {{ opacity:.62; }}
+.weight-row-head {{ display:flex; justify-content:space-between; gap:8px; align-items:baseline;
+  margin-bottom:7px; }}
+.weight-name {{ color:var(--text); font-size:10px; font-weight:700; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }}
+.weight-state {{ color:var(--dim); font-size:8px; white-space:nowrap; }}
+.weight-state.a {{ color:var(--a); }} .weight-state.b {{ color:var(--b); }}
+.weight-scale {{ display:grid; grid-template-columns:44px 1fr 38px; gap:6px; align-items:center;
+  margin-top:4px; }}
+.weight-scale-label {{ color:var(--dim); font-size:8px; text-transform:uppercase; letter-spacing:.35px; }}
+.weight-track {{ height:6px; border-radius:999px; background:var(--surface); overflow:hidden; }}
+.weight-fill {{ display:block; height:100%; border-radius:999px; }}
+.weight-fill.base {{ background:#657586; }} .weight-fill.a {{ background:var(--a); }}
+.weight-fill.b {{ background:var(--b); }} .weight-fill.zero {{ background:transparent; }}
+.weight-number {{ color:var(--dim); font-size:9px; text-align:right; font-variant-numeric:tabular-nums; }}
+.weight-number.used {{ color:var(--text); font-weight:750; }}
+.weight-formula {{ margin-top:12px; padding:9px 11px; border-left:3px solid var(--a);
+  background:rgba(74,163,223,.06); border-radius:0 8px 8px 0; color:var(--dim);
+  font-size:9px; line-height:1.5; }}
+@media(max-width:680px) {{ .weight-list {{ grid-template-columns:1fr; }} }}
+
 /* amostra (auditoria #8): esbatido se n<10 */
 .samp-low {{ opacity:.5; }}
 .samp-tag {{ font-size:10px; color:var(--dim); }}
@@ -2921,6 +2970,76 @@ def _mod_fadiga(payload):
 </div>"""
 
 
+def _mod_transparencia_pesos(payload, div):
+    """Expõe, sem LLM, a passagem do peso configurado ao peso efetivo.
+
+    É uma bubble autónoma do Mapa de Forças: não pertence à análise de carga
+    e não altera o cálculo. A escala é comum a todas as barras, permitindo
+    comparar pesos-base e contribuições reais entre fatores.
+    """
+    status = _d((div or {}).get("fatores_status"))
+    a = str(payload.get("player_a") or "A")
+    b = str(payload.get("player_b") or "B")
+    ordem = list(dict.fromkeys([*_FACTOR_ORDER, *PESOS.keys()]))
+    max_peso = max(
+        [float(v) for v in PESOS.values()]
+        + [float(_d(st).get("peso_efetivo") or 0) for st in status.values()],
+        default=1,
+    ) or 1
+    ativos = sum(1 for st in status.values() if float(_d(st).get("peso_efetivo") or 0) > 0)
+    total_aplicado = sum(float(_d(st).get("peso_efetivo") or 0) for st in status.values())
+    linhas = []
+    for chave in ordem:
+        st = _d(status.get(chave))
+        base = float(st.get("peso_base_configurado", PESOS.get(chave, 0)) or 0)
+        usado = float(st.get("peso_efetivo") or 0)
+        side = st.get("direcao_impacto") if usado > 0 else ""
+        lider = a if side == "a" else b if side == "b" else ""
+        if usado > 0:
+            estado = f"→ {lider}"
+        elif not st or not st.get("disponivel"):
+            estado = "sem dados"
+        elif st.get("lider") == "igual":
+            estado = "equilíbrio"
+        else:
+            estado = st.get("motivo_exclusao") or "não ativado"
+        base_pct = min(100, 100 * base / max_peso)
+        usado_pct = min(100, 100 * usado / max_peso)
+        inactive = " inactive" if usado <= 0 else ""
+        state_cls = f" {side}" if side else ""
+        used_cls = side if side else "zero"
+        linhas.append(
+            f'<div class="weight-row{inactive}" data-weight-factor="{_esc(chave)}"><div class="weight-row-head">'
+            f'<span class="weight-name">{_esc(_nome_fator(chave))}</span>'
+            f'<span class="weight-state{state_cls}">{_esc(estado)}</span></div>'
+            f'<div class="weight-scale"><span class="weight-scale-label">base</span>'
+            f'<span class="weight-track"><span class="weight-fill base" style="width:{base_pct:.1f}%"></span></span>'
+            f'<span class="weight-number">{base:g}</span></div>'
+            f'<div class="weight-scale"><span class="weight-scale-label">aplicado</span>'
+            f'<span class="weight-track"><span class="weight-fill {used_cls}" style="width:{usado_pct:.1f}%"></span></span>'
+            f'<span class="weight-number used">{usado:.1f}</span></div></div>'
+        )
+    caps_labels = {
+        "forca_base": "força base", "matchup": "matchup", "superficie": "superfície",
+        "resiliencia": "resiliência", "ranking_fam": "ranking", "contexto": "contexto",
+    }
+    caps = " · ".join(
+        f'{caps_labels.get(fam, fam)} ≤ {cap:g}' for fam, cap in CAPS_FAMILIAS_PESOS.items()
+    )
+    return (
+        '<div class="card weight-transparency-card"><h3>Transparência dos Pesos</h3>'
+        '<div class="weight-intro">Cada fator começa com um peso-base. O peso aplicado mostra '
+        'quanto entrou realmente na avaliação deste confronto e para que jogador apontou.</div>'
+        f'<div class="weight-summary"><span class="weight-chip"><b>{ativos}</b> fatores ativos</span>'
+        f'<span class="weight-chip"><b>{total_aplicado:.1f}</b> peso total aplicado</span>'
+        f'<span class="weight-chip"><b>{len(PESOS)}</b> fatores auditados</span></div>'
+        f'<div class="weight-list">{"".join(linhas)}</div>'
+        '<div class="weight-formula"><b>Como é calculado:</b> peso aplicado = peso-base × intensidade '
+        'da diferença × confiança da amostra; no fim, fatores relacionados partilham limites para '
+        f'evitar contar duas vezes a mesma vantagem. Limites por família: {_esc(caps)}.</div></div>'
+    )
+
+
 def _mod_cenarios(payload):
     """Módulo 9: cenários — só os DIFERENCIADORES (auditoria)."""
     ra = _d(_d(payload.get("rich_stats_a")).get("scenarios"))
@@ -3509,7 +3628,11 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         f'{_mod_forma_ajustada(payload)}'
         f'{_mod_servico(payload)}'
     )
-    _tail_mapa = f'<div class="force-map-tail"><div class="load-tail">{_mod_fadiga(payload)}</div></div>'
+    _tail_mapa = (
+        '<div class="force-map-tail"><div class="load-tail">'
+        f'{_mod_fadiga(payload)}{_mod_transparencia_pesos(payload, div)}'
+        '</div></div>'
+    )
     partes.append(_mod_fatores_detalhados(
         payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
     ))

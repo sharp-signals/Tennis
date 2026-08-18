@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.report_html import _fd_bar, _mod_fatores_detalhados, _pagina
+from src.report_html import PESOS, _fd_bar, _mod_fatores_detalhados, _mod_transparencia_pesos, _pagina
 
 
 class ForceMapTests(unittest.TestCase):
@@ -52,6 +52,25 @@ class ForceMapTests(unittest.TestCase):
         html = _pagina("A", "B", '<details class="more report-map mais-forcas"></details>')
         self.assertIn("details.report-map>summary", html)
         self.assertIn("min-height:78px", html)
+
+    def test_weight_transparency_lists_every_factor_and_effective_weight(self) -> None:
+        html = _mod_transparencia_pesos(
+            {"player_a": "Jogador A", "player_b": "Jogador B"},
+            {"fatores_status": {
+                "ranking": {
+                    "disponivel": True, "lider": "Jogador A",
+                    "peso_base_configurado": 5, "peso_efetivo": 3.5,
+                    "direcao_impacto": "a",
+                },
+                "h2h": {"disponivel": False, "peso_base_configurado": 6},
+            }},
+        )
+        self.assertIn("Transparência dos Pesos", html)
+        self.assertEqual(html.count('data-weight-factor="'), len(PESOS))
+        self.assertIn("→ Jogador A", html)
+        self.assertIn("3.5", html)
+        self.assertIn("sem dados", html)
+        self.assertIn("peso aplicado = peso-base", html)
 
 
 if __name__ == "__main__":
