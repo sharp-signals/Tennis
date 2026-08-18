@@ -346,7 +346,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Neste piso: 70% recente vs 60% carreira (melhorou 10 p.p.)", html)
         self.assertIn('class="expect-marker"', html)
 
-    def test_action_map_is_collapsible_and_builds_conditional_market_ideas(self):
+    def test_action_map_is_always_open_and_builds_conditional_market_ideas(self):
         payload = {
             "player_a": "A", "player_b": "B", "tour": "wta", "tier": "WTA 1000",
             "market_odds_decimal": {"A": 2.2, "B": 1.7},
@@ -377,8 +377,10 @@ class ReportRenderingTests(unittest.TestCase):
             payload, div, {"verdict": "Síntese do confronto."},
         )
 
-        self.assertIn('class="more report-map action-map"', html)
-        self.assertNotIn('class="more report-map action-map" open', html)
+        self.assertIn('class="action-map-static"', html)
+        self.assertNotIn('<details class="more report-map action-map"', html)
+        self.assertNotIn("<summary>Mapa de Ações", html)
+        self.assertIn('class="action-map-body"', html)
         self.assertIn("Mapa de Ações (5)", html)
         self.assertIn("Moneyline A", html)
         self.assertIn("Se B perder o 1.º set", html)

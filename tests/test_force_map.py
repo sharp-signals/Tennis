@@ -66,6 +66,9 @@ class ForceMapTests(unittest.TestCase):
             }},
         )
         self.assertIn("Transparência dos Pesos", html)
+        self.assertIn('<details class="more weight-transparency-card">', html)
+        self.assertNotIn('<details class="more weight-transparency-card" open>', html)
+        self.assertIn("peso-base e contributo aplicado", html)
         self.assertEqual(html.count('data-weight-factor="'), len(PESOS))
         self.assertIn("→ Jogador A", html)
         self.assertIn("3.5", html)

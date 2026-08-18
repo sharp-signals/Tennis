@@ -2093,7 +2093,7 @@ body {{ background:var(--bg); color:var(--text);
   .load-player.b .load-head {{ flex-direction:row; }} }}
 
 /* --- transparência dos pesos --- */
-.weight-intro {{ color:var(--dim); font-size:11px; line-height:1.5; margin:-5px 0 12px; }}
+.weight-intro {{ color:var(--dim); font-size:11px; line-height:1.5; margin:0 0 12px; }}
 .weight-summary {{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }}
 .weight-chip {{ padding:5px 8px; border:1px solid var(--line); border-radius:999px;
   background:var(--surface2); color:var(--dim); font-size:9px; }}
@@ -2154,11 +2154,18 @@ details.mais-forcas {{ border:1.5px solid var(--amber);
 details.mais-forcas>summary {{ color:var(--amber); }}
 details.mais-forcas>summary::before {{ color:var(--amber); }}
 details.mais-forcas .more-hint {{ color:var(--amber); opacity:.75; }}
-details.action-map {{ border:1.5px solid var(--mint);
+details.weight-transparency-card {{ border:1.5px solid var(--a);
+  background:linear-gradient(180deg, rgba(74,163,223,.10), var(--surface) 45%); }}
+details.weight-transparency-card>summary {{ min-height:64px; display:flex; align-items:center;
+  flex-wrap:wrap; color:var(--a); padding:14px 16px; }}
+details.weight-transparency-card>summary::before {{ color:var(--a); }}
+details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
+.action-map-static {{ border:1.5px solid var(--mint); border-radius:12px; margin-bottom:14px;
   background:linear-gradient(180deg, rgba(63,185,168,.10), var(--surface) 45%); }}
-details.action-map>summary {{ color:var(--mint); }}
-details.action-map>summary::before {{ color:var(--mint); }}
-details.action-map .more-hint {{ color:var(--mint); opacity:.78; }}
+.action-map-head {{ min-height:78px; display:flex; align-items:center; flex-wrap:wrap;
+  padding:16px 18px; color:var(--mint); font-size:14px; font-weight:600; }}
+.action-map-head .more-hint {{ color:var(--mint); opacity:.78; }}
+.action-map-body {{ padding:0 16px 16px; }}
 .action-summary {{ color:var(--text); font-size:13px; padding:12px 14px;
   border-left:3px solid var(--mint); background:rgba(63,185,168,.07);
   border-radius:0 9px 9px 0; margin-bottom:12px; }}
@@ -2171,7 +2178,7 @@ details.action-map .more-hint {{ color:var(--mint); opacity:.78; }}
 .action-text {{ color:var(--dim); font-size:11px; line-height:1.5; }}
 .action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
 @media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
-  details.report-map>summary {{ min-height:78px; }} }}
+  details.report-map>summary, .action-map-head {{ min-height:78px; }} }}
 
 /* --- estado parcial/erro --- */
 .parcial {{ background:rgba(224,108,91,.1); border:1px solid var(--error);
@@ -3027,8 +3034,9 @@ def _mod_transparencia_pesos(payload, div):
         f'{caps_labels.get(fam, fam)} ≤ {cap:g}' for fam, cap in CAPS_FAMILIAS_PESOS.items()
     )
     return (
-        '<div class="card weight-transparency-card"><h3>Transparência dos Pesos</h3>'
-        '<div class="weight-intro">Cada fator começa com um peso-base. O peso aplicado mostra '
+        f'<details class="more weight-transparency-card"><summary>Transparência dos Pesos ({len(PESOS)})'
+        '<span class="more-hint">peso-base e contributo aplicado</span></summary>'
+        '<div class="more-body"><div class="weight-intro">Cada fator começa com um peso-base. O peso aplicado mostra '
         'quanto entrou realmente na avaliação deste confronto e para que jogador apontou.</div>'
         f'<div class="weight-summary"><span class="weight-chip"><b>{ativos}</b> fatores ativos</span>'
         f'<span class="weight-chip"><b>{total_aplicado:.1f}</b> peso total aplicado</span>'
@@ -3036,7 +3044,7 @@ def _mod_transparencia_pesos(payload, div):
         f'<div class="weight-list">{"".join(linhas)}</div>'
         '<div class="weight-formula"><b>Como é calculado:</b> peso aplicado = peso-base × intensidade '
         'da diferença × confiança da amostra; no fim, fatores relacionados partilham limites para '
-        f'evitar contar duas vezes a mesma vantagem. Limites por família: {_esc(caps)}.</div></div>'
+        f'evitar contar duas vezes a mesma vantagem. Limites por família: {_esc(caps)}.</div></div></details>'
     )
 
 
@@ -3272,9 +3280,9 @@ def _mod_action_map(payload, div, result):
         for item in actions[:6]
     )
     count = min(len(actions), 6)
-    return (f'<details class="more report-map action-map"><summary>Mapa de Ações ({count})'
-            '<span class="more-hint">mercados, gatilhos e cenários a acompanhar</span></summary>'
-            f'<div class="more-body">{summary_html}<div class="action-list">{rendered}</div></div></details>')
+    return (f'<section class="action-map-static"><div class="action-map-head">Mapa de Ações ({count})'
+            '<span class="more-hint">mercados, gatilhos e cenários a acompanhar</span></div>'
+            f'<div class="action-map-body">{summary_html}<div class="action-list">{rendered}</div></div></section>')
 
 
 def _normalizar_div(raw):
