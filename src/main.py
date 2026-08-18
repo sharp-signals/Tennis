@@ -1229,6 +1229,17 @@ def _build_match_payload(match: dict) -> dict:
         payload["divergencia"] = calcular_divergencia_publico(payload)
     except Exception:
         payload["divergencia"] = None
+
+    # NOVO (18/08/2026): liga o cálculo da faixa indicativa de odds (já
+    # existente em calibration_store.py, mas nunca chamado a partir daqui)
+    # ao payload, para o relatório poder mostrá-la. Mesmo padrão de
+    # segurança do cálculo da divergência — uma falha aqui nunca derruba
+    # a análise do jogo, só fica sem a faixa.
+    try:
+        payload["indicative_odds"] = calibration_store.estimate_indicative_odds(payload.get("divergencia"))
+    except Exception:
+        payload["indicative_odds"] = None
+
     return payload
 
 
