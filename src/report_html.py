@@ -2044,6 +2044,27 @@ body {{ background:var(--bg); color:var(--text);
 .service-track {{ height:9px; border-radius:999px; background:var(--surface2); overflow:hidden; }}
 .service-fill {{ display:block; height:100%; border-radius:999px; }}
 .service-value {{ font-size:11px; font-weight:750; text-align:right; }}
+.service-section {{ margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }}
+.service-section:first-of-type {{ margin-top:0; padding-top:0; border-top:0; }}
+.service-section-title {{ display:flex; justify-content:space-between; gap:10px; color:var(--dim);
+  font-size:10px; text-transform:uppercase; letter-spacing:.7px; margin-bottom:8px; }}
+.load-intro {{ color:var(--dim); font-size:11px; margin:-5px 0 12px; }}
+.load-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
+.load-player {{ border:1px solid var(--line); border-radius:10px; background:var(--surface2); padding:12px; }}
+.load-player.b {{ text-align:right; }}
+.load-head {{ display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:10px; }}
+.load-player.b .load-head {{ flex-direction:row-reverse; }}
+.load-name {{ font-size:12px; font-weight:700; }}
+.load-status {{ font-size:9px; font-weight:750; border-radius:999px; padding:3px 7px;
+  background:rgba(255,255,255,.05); white-space:nowrap; }}
+.load-stats {{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }}
+.load-stat {{ background:var(--surface); border-radius:7px; padding:7px; }}
+.load-stat b {{ display:block; font-size:15px; }}
+.load-stat span {{ display:block; color:var(--dim); font-size:9px; line-height:1.25; }}
+.load-reading {{ margin-top:10px; padding:9px 11px; border-left:3px solid var(--amber);
+  background:rgba(217,164,65,.07); border-radius:0 8px 8px 0; font-size:11px; color:var(--dim); }}
+@media(max-width:520px) {{ .load-grid {{ grid-template-columns:1fr; }} .load-player.b {{ text-align:left; }}
+  .load-player.b .load-head {{ flex-direction:row; }} }}
 
 /* amostra (auditoria #8): esbatido se n<10 */
 .samp-low {{ opacity:.5; }}
@@ -2705,75 +2726,121 @@ def _mod_pressao(payload):
 
 
 def _mod_servico(payload):
-    """Módulo 6: Serviço/resposta com DELTAS explícitos (auditoria #7)."""
+    """Base histórica e momento recente numa única leitura, sem duplicação."""
     sa = _d(payload.get("serve_return_stats_a"))
     sb = _d(payload.get("serve_return_stats_b"))
-    if not (sa and sb):
+    pa = _d(payload.get("pressure_profile_a"))
+    pb = _d(payload.get("pressure_profile_b"))
+    if not ((sa and sb) or (pa and pb)):
         return ""
     a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
-    metricas = [
+    career_metrics = [
         ("Pontos ganhos no 1.º serviço", "avg_first_serve_won_pct"),
         ("Break points salvos sob pressão", "avg_break_points_saved_pct"),
         ("Pontos ganhos na resposta", "avg_return_points_won_pct"),
         ("Break points convertidos na resposta", "avg_break_points_converted_pct"),
     ]
-    linhas = []
-    for label, key in metricas:
-        va, vb = _pct(sa.get(key)), _pct(sb.get(key))
-        if va is None or vb is None:
-            continue
-        delta = va - vb
-        if abs(delta) < 0.5:
-            vant = "Equilíbrio"
-            cor_d = COLORS_V2["dim"]
-        elif delta > 0:
-            vant = f"Vantagem {_esc(a.split()[-1])} · +{delta:.1f} p.p."
-            cor_d = COLORS_V2["a"]
-        else:
-            vant = f"Vantagem {_esc(b.split()[-1])} · +{abs(delta):.1f} p.p."
-            cor_d = COLORS_V2["b"]
-        linhas.append(f"""
+    recent_metrics = [
+        ("Pontos ganhos no 1.º serviço", "first_serve_won_pct"),
+        ("Pontos ganhos no 2.º serviço", "second_serve_won_pct"),
+        ("Break points salvos sob pressão", "break_points_saved_pct"),
+        ("Break points convertidos na resposta", "break_points_converted_pct"),
+    ]
+
+    def section(title, left, right, metrics, sample_text=""):
+        rows = []
+        for label, key in metrics:
+            va, vb = _pct(left.get(key)), _pct(right.get(key))
+            if va is None or vb is None:
+                continue
+            delta = va - vb
+            if abs(delta) < 0.5:
+                advantage, colour = "Equilíbrio", COLORS_V2["dim"]
+            elif delta > 0:
+                advantage = f"Vantagem {_esc(a.split()[-1])} · +{delta:.1f} p.p."
+                colour = COLORS_V2["a"]
+            else:
+                advantage = f"Vantagem {_esc(b.split()[-1])} · +{abs(delta):.1f} p.p."
+                colour = COLORS_V2["b"]
+            rows.append(f"""
 <div class="service-metric">
-  <div class="service-head"><span class="service-title">{_esc(label)}</span><span class="service-edge" style="color:{cor_d}">{vant}</span></div>
+  <div class="service-head"><span class="service-title">{_esc(label)}</span><span class="service-edge" style="color:{colour}">{advantage}</span></div>
   <div class="service-player"><span class="service-player-name">{_esc(a)}</span><span class="service-track"><span class="service-fill" style="width:{va:.1f}%;background:var(--a)"></span></span><span class="service-value">{va:.1f}%</span></div>
   <div class="service-player"><span class="service-player-name">{_esc(b)}</span><span class="service-track"><span class="service-fill" style="width:{vb:.1f}%;background:var(--b)"></span></span><span class="service-value">{vb:.1f}%</span></div>
 </div>""")
-    if not linhas:
+        if not rows:
+            return ""
+        return (f'<div class="service-section"><div class="service-section-title"><span>{_esc(title)}</span>'
+                f'<span>{_esc(sample_text)}</span></div>{"".join(rows)}</div>')
+
+    career = section("Base histórica", sa, sb, career_metrics) if sa and sb else ""
+    recent_sample = f"{a}: n={pa.get('matches', '?')} · {b}: n={pb.get('matches', '?')}" if pa and pb else ""
+    recent = section("Momento recente sob pressão", pa, pb, recent_metrics, recent_sample) if pa and pb else ""
+    if not (career or recent):
         return ""
     return f"""
 <div class="card"><h3>Serviço e resposta · quem leva vantagem</h3>
-  <div class="service-intro">Barras mais longas representam melhor desempenho. A diferença é mostrada em pontos percentuais.</div>
-  {"".join(linhas)}
+  <div class="service-intro">A base histórica mostra o nível estrutural; o momento recente revela como cada jogador tem respondido sob pressão.</div>
+  {career}{recent}
 </div>"""
 
 
 def _mod_fadiga(payload):
-    """Módulo 7: Fadiga como comparador em destaque (auditoria — sobe muito)."""
+    """Carga multidimensional: descanso, densidade, volume e torneio atual."""
     fa = _d(payload.get("fatigue_signal_a"))
     fb = _d(payload.get("fatigue_signal_b"))
     if not (fa.get("matches_last_7d") is not None and fb.get("matches_last_7d") is not None):
         return ""
     a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
-    ja, jb = fa.get("matches_last_7d", 0), fb.get("matches_last_7d", 0)
-    seta, setb = fa.get("sets_last_7d", 0), fb.get("sets_last_7d", 0)
-    delta_sets = seta - setb
-    delta_txt = ""
-    if delta_sets != 0:
-        mais = a if delta_sets > 0 else b
-        delta_txt = f"Δ +{abs(delta_sets)} sets {_esc(mais)}"
+    def status(data):
+        rest = data.get("days_since_last_match")
+        sets = data.get("sets_last_7d", 0) or 0
+        dense = data.get("matches_last_3d", 0) or 0
+        if sets >= 9 or (rest is not None and rest <= 1 and (sets >= 7 or dense >= 2)):
+            return "Carga elevada", "var(--error)"
+        if sets >= 5 or dense >= 1 or (rest is not None and rest <= 2):
+            return "Carga moderada", "var(--amber)"
+        return "Carga leve", "var(--mint)"
+
+    def player_card(name, side, data):
+        label, colour = status(data)
+        rest = data.get("days_since_last_match")
+        rest_text = "?" if rest is None else str(rest)
+        stats = (
+            (rest_text, "dias de descanso"),
+            (data.get("matches_last_3d", "?"), "jogos em 3 dias"),
+            (data.get("sets_last_7d", "?"), "sets em 7 dias"),
+            (data.get("matches_this_tournament", "?"), "jogos no torneio"),
+            (data.get("last_match_sets", "?"), "sets no último jogo"),
+            (data.get("matches_last_14d", "?"), "jogos em 14 dias"),
+        )
+        cells = "".join(f'<div class="load-stat"><b>{_esc(value)}</b><span>{_esc(label_)}</span></div>' for value, label_ in stats)
+        return (f'<div class="load-player {side}"><div class="load-head"><span class="load-name">{name}</span>'
+                f'<span class="load-status" style="color:{colour}">{label}</span></div>'
+                f'<div class="load-stats">{cells}</div></div>')
+
+    observations = []
+    comparisons = (
+        ("sets_last_7d", "sets nos últimos 7 dias"),
+        ("matches_last_3d", "jogos nos últimos 3 dias"),
+        ("matches_this_tournament", "jogos neste torneio"),
+        ("last_match_sets", "sets no último jogo"),
+    )
+    for key, label in comparisons:
+        va, vb = fa.get(key), fb.get(key)
+        if isinstance(va, (int, float)) and isinstance(vb, (int, float)) and va != vb:
+            heavier = a if va > vb else b
+            observations.append(f"{heavier} tem +{abs(va-vb):g} {label}")
+    ra, rb = fa.get("days_since_last_match"), fb.get("days_since_last_match")
+    if isinstance(ra, (int, float)) and isinstance(rb, (int, float)) and ra != rb:
+        less_rested = a if ra < rb else b
+        observations.append(f"{less_rested} tem {abs(ra-rb):g} dia(s) menos de recuperação")
+    reading = "; ".join(observations[:3]) if observations else "Perfis de carga semelhantes nos dados disponíveis"
     return f"""
-<div class="card"><h3>Carga (7 dias)</h3>
-  <div class="fadiga-cmp">
-    <div class="fadiga-side">
-      <div class="fadiga-big">{ja} jogos</div>
-      <div class="samp-tag">{seta} sets · {fa.get('days_since_last_match','?')}d descanso</div>
-    </div>
-    <div class="fadiga-delta">{delta_txt}</div>
-    <div class="fadiga-side b">
-      <div class="fadiga-big">{jb} jogos</div>
-      <div class="samp-tag">{setb} sets · {fb.get('days_since_last_match','?')}d descanso</div>
-    </div>
-  </div>
+<div class="card"><h3>Carga e recuperação</h3>
+  <div class="load-intro">Leitura combinada do descanso, densidade competitiva e volume acumulado — não apenas do número de jogos.</div>
+  <div class="load-grid">{player_card(a, "a", fa)}{player_card(b, "b", fb)}</div>
+  <div class="load-reading"><b>Leitura combinada:</b> {_esc(reading)}.</div>
 </div>"""
 
 
@@ -3237,10 +3304,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         f'{_mod_forma_ajustada(payload)}'
         f'{_mod_servico(payload)}'
     )
-    _tail_mapa = (
-        f'<div class="force-map-tail"><div class="pressure-tail">{_mod_pressao(payload)}</div>'
-        f'<div class="load-tail">{_mod_fadiga(payload)}</div></div>'
-    )
+    _tail_mapa = f'<div class="force-map-tail"><div class="load-tail">{_mod_fadiga(payload)}</div></div>'
     partes.append(_mod_fatores_detalhados(
         payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
     ))

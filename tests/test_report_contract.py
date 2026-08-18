@@ -360,9 +360,39 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("Pressão de serviço e resposta", html)
-        self.assertIn("1.º serviço ganho", html)
+        self.assertIn("Serviço e resposta · quem leva vantagem", html)
+        self.assertIn("Momento recente sob pressão", html)
+        self.assertIn("Pontos ganhos no 1.º serviço", html)
+        self.assertEqual(html.count("Serviço e resposta · quem leva vantagem"), 1)
+        self.assertNotIn("Pressão de serviço e resposta", html)
         self.assertNotIn("Serve Pressure Index", html)
+
+    def test_load_combines_recovery_density_volume_and_tournament(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "features": {"ranking": {"lider": "A", "diff": 5}},
+            "fatigue_signal_a": {
+                "days_since_last_match": 3, "matches_last_3d": 0,
+                "matches_last_7d": 1, "matches_last_14d": 3,
+                "matches_this_tournament": 1, "sets_last_7d": 2, "last_match_sets": 2,
+            },
+            "fatigue_signal_b": {
+                "days_since_last_match": 1, "matches_last_3d": 2,
+                "matches_last_7d": 3, "matches_last_14d": 5,
+                "matches_this_tournament": 3, "sets_last_7d": 8, "last_match_sets": 3,
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Carga e recuperação", html)
+        self.assertIn("descanso, densidade competitiva e volume acumulado", html)
+        self.assertIn("Carga elevada", html)
+        self.assertIn("jogos em 3 dias", html)
+        self.assertIn("sets em 7 dias", html)
+        self.assertIn("jogos no torneio", html)
+        self.assertIn("sets no último jogo", html)
+        self.assertIn("B tem +6 sets nos últimos 7 dias", html)
+        self.assertNotIn("Carga (7 dias)", html)
 
     def test_directional_disagreement_renders_only_moneyline_observation(self):
         payload = {
@@ -434,8 +464,10 @@ class ReportRenderingTests(unittest.TestCase):
         factor_card = html[html.index('class="card factor-bars-card"'):html.index('class="force-map-tail"')]
         self.assertEqual(factor_card.count("Raio-X Anal&#237;tico"), 1)
         self.assertGreater(html.index('class="force-map-tail"'), html.rindex('class="fd-linha"'))
+        self.assertLess(html.index("Momento recente sob pressão"), html.index("Raio-X Anal&#237;tico"))
         tail = html[html.index('class="force-map-tail"'):]
-        self.assertLess(tail.index('class="pressure-tail"'), tail.index('class="load-tail"'))
+        self.assertIn('class="load-tail"', tail)
+        self.assertNotIn('class="pressure-tail"', tail)
 
     def test_h2h_uses_player_colours_for_bar_and_match_winners(self):
         payload = {
