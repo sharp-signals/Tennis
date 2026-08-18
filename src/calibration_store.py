@@ -252,9 +252,30 @@ def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
         "evidence_bucket": [bucket_low, bucket_high],
         "confidence_level_pct": 95,
     }
+    # Heurística (usada sozinha sem observações, ou misturada com dados
+    # reais quando a amostra ainda é pequena — ver blend abaixo).
+    strength = (target_favourite - 50.0) / 50.0  # 0 (neutro) .. 1 (índice 100)
+    strength_sq = strength ** 2  # aperta só perceptivelmente perto do extremo (100)
+    heur_centre = 0.5 + strength_sq * 0.35
+    heur_margin = 0.20 - strength_sq * 0.10
+    heur_low = max(0.05, heur_centre - heur_margin)
+    heur_high = min(0.95, heur_centre + heur_margin)
+
     if total:
         low, high = _wilson_interval(sum(observations), total)
-        result["method"] = "calibração histórica; intervalo de Wilson"
+        # CORREÇÃO (18/08/2026, log real): com amostra pequena (ex: n=6),
+        # o intervalo de Wilson isolado pode ficar absurdamente largo
+        # (visto na prática: 1.77–33.28) — matematicamente correto, mas
+        # inútil. Mistura-se com a heurística, ponderado pela amostra:
+        # quase só heurística com poucos jogos, cada vez mais dados reais
+        # conforme a amostra cresce até à amostra mínima.
+        peso_historico = min(1.0, total / min_samples)
+        low = peso_historico * low + (1 - peso_historico) * heur_low
+        high = peso_historico * high + (1 - peso_historico) * heur_high
+        if peso_historico < 1.0:
+            result["method"] = "calibração histórica combinada com heurística (amostra ainda pequena)"
+        else:
+            result["method"] = "calibração histórica; intervalo de Wilson"
         result["basis"] = "historical"
     else:
         # O índice de evidência não é uma probabilidade. Para permitir a
@@ -267,11 +288,7 @@ def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
         # a ser um andaime de produto, não uma odd justa, e desaparece
         # automaticamente assim que existirem resultados liquidados neste
         # balde (ver ramo `if total:` acima).
-        strength = (target_favourite - 50.0) / 50.0  # 0 (neutro) .. 1 (índice 100)
-        strength_sq = strength ** 2  # narrows only noticeably near o extremo (100), não já aos 90
-        centre = 0.5 + strength_sq * 0.35
-        margin = 0.20 - strength_sq * 0.10
-        low, high = max(0.05, centre - margin), min(0.95, centre + margin)
+        low, high = heur_low, heur_high
         result["method"] = "heurística experimental; margem encolhe com a força da convicção"
         result["basis"] = "heuristic"
 
