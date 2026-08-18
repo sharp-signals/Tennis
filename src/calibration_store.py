@@ -258,13 +258,21 @@ def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
         result["basis"] = "historical"
     else:
         # O índice de evidência não é uma probabilidade. Para permitir a
-        # evolução visual do relatório desde já, aproximamos apenas METADE da
-        # distância a 50% e abrimos uma margem de ±20 p.p. Esta faixa é um
-        # andaime de produto, não uma odd justa, e desaparece automaticamente
-        # assim que existirem resultados liquidados neste balde.
-        centre = 0.5 + (target_favourite - 50.0) / 200.0
-        low, high = max(0.05, centre - 0.20), min(0.95, centre + 0.20)
-        result["method"] = "heurística experimental; índice suavizado e margem larga"
+        # evolução visual do relatório desde já, aproximamos com uma curva
+        # que ainda é deliberadamente larga em sinais fracos, mas encolhe
+        # com a força da convicção — em vez de uma margem fixa de ±20 p.p.
+        # que mantinha a faixa quase tão larga em índice 100 como em
+        # índice 55 (18/08/2026, a pedido: "o Zverev tem quase tudo a
+        # favor e o intervalo máximo é só até 2.00"). Esta faixa continua
+        # a ser um andaime de produto, não uma odd justa, e desaparece
+        # automaticamente assim que existirem resultados liquidados neste
+        # balde (ver ramo `if total:` acima).
+        strength = (target_favourite - 50.0) / 50.0  # 0 (neutro) .. 1 (índice 100)
+        strength_sq = strength ** 2  # narrows only noticeably near o extremo (100), não já aos 90
+        centre = 0.5 + strength_sq * 0.35
+        margin = 0.20 - strength_sq * 0.10
+        low, high = max(0.05, centre - margin), min(0.95, centre + margin)
+        result["method"] = "heurística experimental; margem encolhe com a força da convicção"
         result["basis"] = "heuristic"
 
     side_ranges = {}
