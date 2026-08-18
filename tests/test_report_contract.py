@@ -346,6 +346,59 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Neste piso: 70% recente vs 60% carreira (melhorou 10 p.p.)", html)
         self.assertIn('class="expect-marker"', html)
 
+    def test_action_map_is_collapsible_and_builds_conditional_market_ideas(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "tour": "wta", "tier": "WTA 1000",
+            "market_odds_decimal": {"A": 2.2, "B": 1.7},
+            "indicative_odds": {
+                "available": True, "calibrated": False, "sample_size": 12,
+                "players": {
+                    "a": {"odds_low": 1.9, "odds_high": 2.8},
+                    "b": {"odds_low": 1.4, "odds_high": 2.1},
+                },
+            },
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 38, "first_set_lose_count": 20,
+                "deciding_set_win_pct": 42, "deciding_set_count": 20,
+            }},
+            "rich_stats_b": {"scenarios": {
+                "first_set_lose_then_win_pct": 45, "first_set_lose_count": 22,
+                "deciding_set_win_pct": 61, "deciding_set_count": 21,
+            }},
+            "fatigue_signal_a": {"sets_last_7d": 2},
+            "fatigue_signal_b": {"sets_last_7d": 7},
+        }
+        div = {
+            "market": {"a": 44, "b": 56}, "tipo": "direcao",
+            "favorecido": "A", "indice_favorece": "A",
+            "classificacao": {"nivel": 3},
+        }
+        html = report_html._mod_action_map(
+            payload, div, {"verdict": "Síntese do confronto."},
+        )
+
+        self.assertIn('class="more report-map action-map"', html)
+        self.assertNotIn('class="more report-map action-map" open', html)
+        self.assertIn("Mapa de Ações (5)", html)
+        self.assertIn("Moneyline A", html)
+        self.assertIn("Se B perder o 1.º set", html)
+        self.assertIn("Se o jogo chegar ao set decisivo", html)
+        self.assertIn("Handicap ou total de jogos", html)
+        self.assertIn("ainda não calcula linha nem odd justa", html)
+        self.assertIn("Síntese do confronto.", html)
+
+    def test_static_reading_card_is_replaced_by_action_map(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+        }
+        html = report_html.build_report_html_v2(
+            payload, {"verdict": "Leitura antiga."}, report_html._calcular_divergencia,
+        )
+        self.assertIn("Mapa de Ações", html)
+        self.assertNotIn('<div class="veredicto"><h3>Leitura</h3>', html)
+
     def test_service_and_return_use_plain_labels_and_visual_comparisons(self):
         payload = {
             "player_a": "Adam Walton", "player_b": "Ignacio Buse",

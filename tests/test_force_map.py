@@ -42,10 +42,16 @@ class ForceMapTests(unittest.TestCase):
             },
         })
         self.assertIn("Mapa de Forças (1)", html)
-        self.assertNotIn('class="more mais-forcas" open', html)
+        self.assertIn('class="more report-map mais-forcas"', html)
+        self.assertNotIn('class="more report-map mais-forcas" open', html)
         self.assertIn("Jogador B", html)
         self.assertIn("66%", html)
         self.assertIn("69%", html)
+
+    def test_force_and_action_maps_share_collapsed_height(self) -> None:
+        html = _pagina("A", "B", '<details class="more report-map mais-forcas"></details>')
+        self.assertIn("details.report-map>summary", html)
+        self.assertIn("min-height:78px", html)
 
 
 if __name__ == "__main__":

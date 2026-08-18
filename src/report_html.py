@@ -2098,11 +2098,31 @@ details.more .more-body {{ padding:0 16px 16px; }}
 /* Mapa de Forças: destaque visual (feedback de teste, 13/08/2026 —
    "devia ter mais visibilidade, ligeiramente maior e com outra cor, para
    mostrar que é o único elemento carregável com info relevante") */
+details.report-map>summary {{ min-height:78px; display:flex; align-items:center;
+  flex-wrap:wrap; gap:0; padding:16px 18px; font-size:14px; }}
 details.mais-forcas {{ border:1.5px solid var(--amber);
   background:linear-gradient(180deg, rgba(217,164,65,.10), var(--surface) 45%); }}
-details.mais-forcas>summary {{ padding:16px 18px; font-size:14px; color:var(--amber); }}
+details.mais-forcas>summary {{ color:var(--amber); }}
 details.mais-forcas>summary::before {{ color:var(--amber); }}
 details.mais-forcas .more-hint {{ color:var(--amber); opacity:.75; }}
+details.action-map {{ border:1.5px solid var(--mint);
+  background:linear-gradient(180deg, rgba(63,185,168,.10), var(--surface) 45%); }}
+details.action-map>summary {{ color:var(--mint); }}
+details.action-map>summary::before {{ color:var(--mint); }}
+details.action-map .more-hint {{ color:var(--mint); opacity:.78; }}
+.action-summary {{ color:var(--text); font-size:13px; padding:12px 14px;
+  border-left:3px solid var(--mint); background:rgba(63,185,168,.07);
+  border-radius:0 9px 9px 0; margin-bottom:12px; }}
+.action-list {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
+.action-item {{ border:1px solid var(--line); border-radius:10px; padding:12px;
+  background:var(--surface2); min-width:0; }}
+.action-kind {{ color:var(--dim); font-size:9px; font-weight:750; text-transform:uppercase;
+  letter-spacing:.7px; margin-bottom:4px; }}
+.action-title {{ font-size:13px; font-weight:750; margin-bottom:5px; }}
+.action-text {{ color:var(--dim); font-size:11px; line-height:1.5; }}
+.action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
+@media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
+  details.report-map>summary {{ min-height:78px; }} }}
 
 /* --- estado parcial/erro --- */
 .parcial {{ background:rgba(224,108,91,.1); border:1px solid var(--error);
@@ -2503,7 +2523,7 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
         f'<svg class="impact-trace" aria-hidden="true"><path></path><g></g></svg></div></div>'
         if linhas else ""
     )
-    return (f'<details class="more mais-forcas"><summary>Mapa de Forças{total_tag}'
+    return (f'<details class="more report-map mais-forcas"><summary>Mapa de Forças{total_tag}'
             f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
             f'<div class="more-body">{extras_html}{factor_bars}{tail_html}</div></details>')
 
@@ -3002,12 +3022,140 @@ def _mod_mercados(payload, div):
     )
 
 
-def _mod_veredicto(result):
-    """Veredicto do Claude (quando existe)."""
-    verd = result.get("verdict") or result.get("executive_summary")
-    if not verd:
-        return ""
-    return f'<div class="veredicto"><h3>Leitura</h3><div>{_esc(verd)}</div></div>'
+def _mod_action_map(payload, div, result):
+    """Plano condicional determinístico, sem inventar linhas ou odds."""
+    a = payload.get("player_a", "A")
+    b = payload.get("player_b", "B")
+    names = {"a": a, "b": b}
+    actions = []
+
+    def add(kind, title, text, source=""):
+        actions.append({"kind": kind, "title": title, "text": text, "source": source})
+
+    div = _d(div)
+    level = _d(div.get("classificacao")).get("nivel", 0) or 0
+    signal_type = div.get("tipo", "")
+    fav = div.get("favorecido") if signal_type == "direcao" else div.get("indice_favorece")
+    fav_side = "a" if fav == a else "b" if fav == b else None
+    market = _d(payload.get("market_odds_decimal"))
+
+    def observed_odd(side):
+        name = names.get(side)
+        return market.get(name, market.get(f"player_{side}"))
+
+    # Só Moneyline dispõe simultaneamente de odds e modelo próprios.
+    if not div.get("market"):
+        add("Pré-jogo", "Esperar por odds",
+            "Sem preço de mercado não existe decisão pré-jogo comparável. Manter apenas os cenários ao vivo em observação.")
+    elif signal_type == "direcao" and fav_side and level >= 1:
+        strength = "forte" if level >= 3 else "moderada" if level >= 2 else "ligeira"
+        add("Mercado principal", f"Moneyline {fav}",
+            f"Divergência {strength}: os indicadores apontam para {fav}, contra a direção do mercado. Confirmar o preço; a divergência isolada não é uma entrada.",
+            "Motor de divergência")
+    elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
+        add("Mercado principal", f"Moneyline {fav}",
+            "Mercado e indicadores estão fortemente alinhados. Acompanhar apenas se o preço oferecer margem dentro da faixa indicada.",
+            "Mercado + índice de sinais")
+    else:
+        add("Pré-jogo", "Sem ação clara",
+            "O mercado e os indicadores não criam uma discrepância suficientemente clara. Esperar por informação ao vivo em vez de forçar uma leitura pré-jogo.")
+
+    # Usa a faixa já mostrada no relatório como gatilho, não como garantia.
+    estimate = _d(payload.get("indicative_odds"))
+    ranges = _d(estimate.get("players"))
+    price_side = fav_side
+    if price_side is None and div.get("indice_favorece") in (a, b):
+        price_side = "a" if div.get("indice_favorece") == a else "b"
+    if price_side and _d(ranges.get(price_side)):
+        values = _d(ranges.get(price_side))
+        low, high = values.get("odds_low"), values.get("odds_high")
+        current = observed_odd(price_side)
+        try:
+            low_f, high_f = float(low), float(high)
+            current_f = float(current) if current is not None else None
+        except (TypeError, ValueError):
+            low_f = high_f = current_f = None
+        if low_f is not None and high_f is not None:
+            status = "calibrada" if estimate.get("calibrated") else "em calibração"
+            current_text = f"A odd atual é {current_f:.2f}. " if current_f is not None else ""
+            add("Gatilho de preço", f"Faixa {status} · {names[price_side]}",
+                f"{current_text}Se descer abaixo de {low_f:.2f}, a margem indicada enfraquece; se subir acima de {high_f:.2f}, revalidar notícias e dados antes de considerar o preço — não é uma entrada automática.",
+                f"Faixa {low_f:.2f}–{high_f:.2f} · n={estimate.get('sample_size', 0)}")
+
+    def scenario(side, rate_key, count_key):
+        rich = _d(_d(payload.get(f"rich_stats_{side}")).get("scenarios"))
+        return rich.get(rate_key), rich.get(count_key)
+
+    # Recuperação depois do primeiro set: gatilho condicional live.
+    comeback = {}
+    for side in ("a", "b"):
+        rate, count = scenario(side, "first_set_lose_then_win_pct", "first_set_lose_count")
+        if rate is None:
+            is_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
+            fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo5" if is_bo5 else "bo3"))
+            rate, count = fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+        if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 5:
+            comeback[side] = (float(rate), int(count))
+    if comeback:
+        side = max(comeback, key=lambda key: comeback[key][0])
+        rate, count = comeback[side]
+        if rate >= 30:
+            add("Cenário ao vivo", f"Se {names[side]} perder o 1.º set",
+                f"Acompanhar a Moneyline ao vivo apenas se o serviço e a mobilidade se mantiverem estáveis: recuperou {rate:.0f}% destes jogos. Uma quebra física invalida o cenário.",
+                f"Histórico de recuperações · n={count}")
+
+    # Set decisivo: só quando a diferença é material e tem amostra.
+    deciding = {}
+    for side in ("a", "b"):
+        rate, count = scenario(side, "deciding_set_win_pct", "deciding_set_count")
+        if rate is None:
+            is_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
+            fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo5" if is_bo5 else "bo3"))
+            rate, count = fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
+        if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 8:
+            deciding[side] = (float(rate), int(count))
+    if len(deciding) == 2:
+        sa, sb = deciding["a"], deciding["b"]
+        if abs(sa[0] - sb[0]) >= 8:
+            side = "a" if sa[0] > sb[0] else "b"
+            rate, count = deciding[side]
+            add("Cenário ao vivo", "Se o jogo chegar ao set decisivo",
+                f"O histórico favorece {names[side]} ({rate:.0f}%). Observar o preço live e confirmar que não há quebra de serviço ou carga antes de agir.",
+                f"Sets decisivos · n={count}")
+
+    # Carga abre hipóteses live, explicitamente sem modelo de linha/odd.
+    fa, fb = _d(payload.get("fatigue_signal_a")), _d(payload.get("fatigue_signal_b"))
+    sets_a, sets_b = fa.get("sets_last_7d"), fb.get("sets_last_7d")
+    if isinstance(sets_a, (int, float)) and isinstance(sets_b, (int, float)) and abs(sets_a - sets_b) >= 4:
+        heavy = "a" if sets_a > sets_b else "b"
+        fresh = "b" if heavy == "a" else "a"
+        add("Mercados ao vivo", "Handicap ou total de jogos · observar",
+            f"{names[heavy]} traz +{abs(sets_a-sets_b):g} sets em 7 dias. Se aparecer quebra clara de deslocação ou serviço, acompanhar handicap a favor de {names[fresh]} e total de jogos; o sistema ainda não calcula linha nem odd justa para estes mercados.",
+            "Carga acumulada")
+
+    # Serviços fortes e equilibrados sugerem observação, não previsão certa.
+    pa, pb = _d(payload.get("pressure_profile_a")), _d(payload.get("pressure_profile_b"))
+    serve_a, serve_b = pa.get("first_serve_won_pct"), pb.get("first_serve_won_pct")
+    if (isinstance(serve_a, (int, float)) and isinstance(serve_b, (int, float))
+            and min(serve_a, serve_b) >= 65 and abs(serve_a - serve_b) <= 5):
+        add("Mercados ao vivo", "Tie-break / total acima · observar",
+            "Se ambos confirmarem elevada proteção do serviço nos primeiros jogos, acompanhar linhas de tie-break e total acima. Sem confirmação ao vivo, o equilíbrio histórico não basta.",
+            "Pressão de serviço")
+
+    summary = result.get("verdict") or result.get("executive_summary")
+    summary_html = f'<div class="action-summary">{_esc(summary)}</div>' if summary else ""
+    rendered = "".join(
+        f'<div class="action-item"><div class="action-kind">{_esc(item["kind"])}</div>'
+        f'<div class="action-title">{_esc(item["title"])}</div>'
+        f'<div class="action-text">{_esc(item["text"])}</div>'
+        + (f'<div class="action-source">{_esc(item["source"])}</div>' if item["source"] else "")
+        + '</div>'
+        for item in actions[:6]
+    )
+    count = min(len(actions), 6)
+    return (f'<details class="more report-map action-map"><summary>Mapa de Ações ({count})'
+            '<span class="more-hint">mercados, gatilhos e cenários a acompanhar</span></summary>'
+            f'<div class="more-body">{summary_html}<div class="action-list">{rendered}</div></div></details>')
 
 
 def _normalizar_div(raw):
@@ -3348,8 +3496,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         partes.append('</div>')
         return _pagina(a, b, "".join(partes))
 
-    # 3. Fatores principais (se há divergência)
-    partes.append(_mod_cenarios(payload))
+    # Os cenários vivem no Mapa de Ações como gatilhos condicionais.
     # 4. Mercado e indicadores (só com odds)
     # 5-9. Evidência. Forma, Serviço, Carga e H2H vivem dentro do Mapa de
     # Forças, evitando duplicar na página principal fatores já resumidos nos
@@ -3366,8 +3513,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_fatores_detalhados(
         payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
     ))
-    # Veredicto (se há)
-    partes.append(_mod_veredicto(result))
+    partes.append(_mod_action_map(payload, div, result))
     partes.append(_mod_photo_credits(payload))
     partes.append('</div>')
     return _pagina(a, b, "".join(partes))
