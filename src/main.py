@@ -515,40 +515,44 @@ def _compute_features(payload: dict) -> dict:
 
     # NOVO (14/08/2026, a pedido): recuperação após perder o 1º set
     # Recuperação após perder o 1º set — usa a estatística já existente
-    # (set1_comeback_stats_a/b, calculada por compute_set1_comeback_stats,
-    # separada por bo3/bo5 porque a taxa de recuperação é estruturalmente
-    # diferente nos dois formatos). Escolhe o formato certo consoante o
-    # jogo de HOJE (Slam ATP = bo5; resto = bo3, incl. toda a WTA).
-    # CORREÇÃO (14/08/2026): esta estatística já existia calculada desde
-    # antes, mas nunca tinha sido ligada ao motor como fator ponderado —
-    # ficava só guardada no payload, sem contribuir para o índice.
-    _e_bo5 = payload.get("tier") == "Grand Slam" and payload.get("tour") == "atp"
+    # CORREÇÃO (18/08/2026, a pedido): o Mapa de Forças só olhava para o
+    # histórico local (bo3/bo5), nunca para os dados "ricos" da RapidAPI
+    # (rich_stats.scenarios) — a mesma fonte que o "Cenário ao vivo" já usa
+    # e que muitas vezes tem dado real (confirmado: caso real com 40% no
+    # Cenário ao vivo, mas "sem dados" no Mapa de Forças). Passa a usar a
+    # MESMA ordem de prioridade nos dois sítios: dados ricos primeiro,
+    # histórico local como reserva.
+    _e_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
     _fmt_bo = "bo5" if _e_bo5 else "bo3"
-    _raw_a = payload.get("set1_comeback_stats_a")
-    _raw_b = payload.get("set1_comeback_stats_b")
-    _sc_a_fmt = (_raw_a or {}).get(_fmt_bo)
-    _sc_b_fmt = (_raw_b or {}).get(_fmt_bo)
-    # DIAGNÓSTICO MAIS PRECISO (17/08/2026, log real): o diagnóstico
-    # anterior só disparava quando o resultado bruto era None por
-    # completo — mas em pelo menos 2 casos reais (Zverev/Paul,
-    # Bouzkova/Jovic) o bruto não era None para nenhum dos dois, e mesmo
-    # assim o fator não apareceu no relatório. Isto mostra exatamente
-    # onde falha: na seleção do formato certo (bo3/bo5) a partir do
-    # bruto, não no cálculo em si.
-    if (_raw_a is not None and _raw_b is not None) and (_sc_a_fmt is None or _sc_b_fmt is None):
+
+    def _comeback_rate_amostra(side):
+        rich = (payload.get(f"rich_stats_{side}") or {}).get("scenarios") or {}
+        rate = rich.get("first_set_lose_then_win_pct")
+        amostra = rich.get("first_set_lose_count")
+        if rate is not None:
+            return rate, amostra
+        raw = payload.get(f"set1_comeback_stats_{side}") or {}
+        fallback = raw.get(_fmt_bo) or {}
+        return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+
+    _pa, _amostra_a = _comeback_rate_amostra("a")
+    _pb, _amostra_b = _comeback_rate_amostra("b")
+
+    if _pa is None or _pb is None:
+        _raw_a = payload.get("set1_comeback_stats_a")
+        _raw_b = payload.get("set1_comeback_stats_b")
         print(f"[diag:comeback-formato] {a} vs {b} | "
               f"tier={payload.get('tier')!r} tour={payload.get('tour')!r} formato_escolhido={_fmt_bo!r} | "
+              f"rico_A_tem_scenarios={bool((payload.get('rich_stats_a') or {}).get('scenarios'))} "
+              f"rico_B_tem_scenarios={bool((payload.get('rich_stats_b') or {}).get('scenarios'))} | "
               f"bruto_A={_raw_a!r} | bruto_B={_raw_b!r}")
-    if _sc_a_fmt and _sc_b_fmt:
-        _pa = _sc_a_fmt.get("comeback_rate_pct")
-        _pb = _sc_b_fmt.get("comeback_rate_pct")
-        if _pa is not None and _pb is not None:
-            feats["comeback_set1"] = {
-                "lider": a if _pa > _pb else (b if _pb > _pa else "igual"),
-                "diff": _pa - _pb, "valor_a": _pa, "valor_b": _pb,
-                "amostra_a": _sc_a_fmt.get("matches_lost_set1"),
-                "amostra_b": _sc_b_fmt.get("matches_lost_set1"),
-            }
+
+    if _pa is not None and _pb is not None:
+        feats["comeback_set1"] = {
+            "lider": a if _pa > _pb else (b if _pb > _pa else "igual"),
+            "diff": _pa - _pb, "valor_a": _pa, "valor_b": _pb,
+            "amostra_a": _amostra_a, "amostra_b": _amostra_b,
+        }
 
     # NOVO (14/08/2026, a pedido): padrão sazonal
     _saz_a = payload.get("sazonal_a")
@@ -1239,6 +1243,35 @@ def _build_match_payload(match: dict) -> dict:
         payload["indicative_odds"] = calibration_store.estimate_indicative_odds(payload.get("divergencia"))
     except Exception:
         payload["indicative_odds"] = None
+
+    # NOVO (18/08/2026, a pedido): quando é alinhamento forte E a odd atual
+    # do favorito excede o topo da faixa indicativa (o mercado está a pagar
+    # mais do que a análise sugere), conta como "valor a analisar"
+    # (nivel 2) — mesma categoria já usada para divergência moderada, só
+    # que por um caminho diferente (preço, não direção). Feito DEPOIS do
+    # cálculo da divergência e da faixa, porque a faixa depende da
+    # divergência já calculada — não dá para fazer os três de uma vez só.
+    try:
+        div = payload.get("divergencia")
+        est = payload.get("indicative_odds")
+        if div and est and div.get("tipo") == "alinhamento" and div.get("intensidade_nivel", 0) >= 3:
+            fav = div.get("favorecido")
+            side = "a" if fav == payload.get("player_a") else ("b" if fav == payload.get("player_b") else None)
+            faixa = (est.get("players") or {}).get(side) if side else None
+            if faixa and faixa.get("odds_high") is not None:
+                odds_map = payload.get("market_odds_decimal") or {}
+                odd_observada = odds_map.get(fav)
+                try:
+                    odd_observada = float(odd_observada) if odd_observada is not None else None
+                except (TypeError, ValueError):
+                    odd_observada = None
+                if odd_observada is not None and odd_observada > faixa["odds_high"]:
+                    classif = dict(div.get("classificacao") or {})
+                    classif["nivel"] = max(classif.get("nivel", 0), 2)
+                    div["classificacao"] = classif
+                    div["valor_por_preco"] = True  # marcador explícito, para o relatório saber a razão
+    except Exception:
+        pass
 
     return payload
 
