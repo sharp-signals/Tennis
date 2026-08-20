@@ -1905,6 +1905,7 @@ COLORS_V2 = {
     "amber": "#d9a441",    # a acompanhar
     "neutral": "#5a6b7a",  # mercado eficiente / sem divergência
     "error": "#e06c5b",    # SÓ erro / dados indisponíveis
+    "red": "#e0554b",      # NOVO (18/08/2026): divergência forte — distinto de "error"
 }
 
 
@@ -1917,8 +1918,22 @@ def detetar_estado(payload, result, divergencia):
       - 'inconclusivo': indicadores sem direção clara
       - 'alinhado': mercado e indicadores concordam
       - 'alinhado_forte': concordância com sinais internos fortes
-      - 'acompanhar': divergência ligeira/moderada
-      - 'oportunidade': divergência forte
+      - 'valor_preco': alinhamento forte + mercado paga acima da faixa indicativa
+      - 'acompanhar': divergência ligeira ou moderada (nivel 1 ou 2)
+      - 'oportunidade': divergência forte (nivel 3)
+
+    CORREÇÃO (18/08/2026, log real + a pedido): esta função usava uma
+    escala de cores DIFERENTE e incompatível com a do cabeçalho do
+    Telegram (aqui nivel>=3 dava verde/"oportunidade"; no Telegram o
+    mesmo nivel dava vermelho/"prioridade alta") — o mesmo jogo podia
+    aparecer com bola verde no Telegram e amarela no relatório. Agora usa
+    a MESMA escala nos dois sítios. Também passa a tratar
+    "valor_por_preco" (antes ignorado por completo aqui, só afetava o
+    Telegram). Importante: os níveis (1/2/3) só valem quando
+    tipo=="direcao" — para qualquer outro tipo (incluindo o legado
+    "conviccao"), a leitura cai sempre em alinhado/alinhado_forte,
+    exatamente como no código original (perdido numa tentativa anterior
+    de correção, apanhado pelos testes já existentes).
     """
     tem_odds = bool(divergencia and divergencia.get("market"))
     analise_falhou = bool(result.get("analysis_error") or result.get("llm_error"))
@@ -1926,22 +1941,27 @@ def detetar_estado(payload, result, divergencia):
         return ("erro", COLORS_V2["error"], "Análise parcial", "⚠️")
     if not tem_odds:
         return ("sem_odds", COLORS_V2["neutral"], "Sem odds — comparação indisponível", "⚪")
-    nivel = (_d(divergencia.get("classificacao"))).get("nivel", 0)
+    clf = _d(divergencia.get("classificacao"))
+    nivel = clf.get("nivel", 0)
     tipo = divergencia.get("tipo", "")
+    intensidade = divergencia.get("intensidade_nivel", 0)
     if tipo == "inconclusivo":
         return ("inconclusivo", COLORS_V2["neutral"], "Indicadores inconclusivos", "⚪")
-    if tipo != "direcao":
-        intensidade = divergencia.get("intensidade_nivel", 1)
-        if intensidade >= 3:
-            return ("alinhado_forte", COLORS_V2["amber"], "Alinhamento forte", "🔵")
-        return ("alinhado", COLORS_V2["neutral"],
-                f"Alinhamento {divergencia.get('intensidade_indicadores', 'ligeiro')}", "⚪")
-    if nivel >= 3:
-        lbl = "Divergência forte"
-        return ("oportunidade", COLORS_V2["mint"], lbl, "🟢")
-    if nivel >= 1:
-        return ("acompanhar", COLORS_V2["amber"], "A acompanhar", "🟡")
-    return ("eficiente", COLORS_V2["neutral"], "Mercado eficiente", "⚪")
+    if tipo == "direcao":
+        if nivel >= 3:
+            return ("oportunidade", COLORS_V2["red"], "Divergência forte", "🔴")
+        if nivel == 2:
+            return ("acompanhar", COLORS_V2["mint"], "A acompanhar", "🟢")
+        if nivel == 1:
+            return ("acompanhar", COLORS_V2["amber"], "A acompanhar", "🟡")
+        return ("eficiente", COLORS_V2["neutral"], "Mercado eficiente", "⚪")
+    # tipo != "direcao" (inclui "alinhamento" e o legado "conviccao")
+    if divergencia.get("valor_por_preco"):
+        return ("valor_preco", COLORS_V2["mint"], "Valor no preço", "🟢")
+    if intensidade >= 3:
+        return ("alinhado_forte", COLORS_V2["amber"], "Alinhamento forte", "🔵")
+    return ("alinhado", COLORS_V2["neutral"],
+            f"Alinhamento {divergencia.get('intensidade_indicadores', 'ligeiro')}", "⚪")
 
 
 def _css():
@@ -2192,12 +2212,12 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .market-verdict {{ background:var(--surface); border-radius:12px; padding:16px 18px;
   margin-bottom:14px; }}
 .market-verdict-title {{ font-size:11px; color:var(--dim); text-transform:uppercase;
-  letter-spacing:.05em; margin-bottom:4px; }}
-.market-verdict-player {{ font-size:17px; font-weight:700; margin-bottom:10px; }}
-.market-verdict-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
-  margin-bottom:10px; }}
+  letter-spacing:.05em; margin-bottom:10px; }}
+.mv-cards {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }}
+.mv-card {{ background:var(--surface2); border-radius:10px; padding:10px 12px; }}
+.mv-card-name {{ font-size:14px; font-weight:700; margin-bottom:8px; }}
 .mv-label {{ display:block; font-size:11px; color:var(--dim); }}
-.mv-value {{ display:block; font-size:15px; font-weight:600; }}
+.mv-value {{ display:block; font-size:14px; font-weight:600; margin-bottom:6px; }}
 .market-verdict-tag {{ font-size:15px; font-weight:800; letter-spacing:.03em;
   margin-bottom:4px; }}
 .market-verdict-note {{ font-size:12px; color:var(--dim); line-height:1.4; }}
@@ -2290,8 +2310,20 @@ def _mod_header(payload, div, estado):
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
     surf = _esc(payload.get("surface", ""))
     odds = _d(payload.get("market_odds_decimal"))
-    oa = _esc(odds.get(payload.get("player_a")) or "—")
-    ob = _esc(odds.get(payload.get("player_b")) or "—")
+
+    def _odd_fmt(v):
+        # CORREÇÃO (18/08/2026, a pedido): odds apareciam com o número de
+        # casas decimais tal como vinham da fonte (ex: "1.909") — agora
+        # sempre arredondadas a 2 casas ("1.91"), como o resto do relatório.
+        if v is None:
+            return "—"
+        try:
+            return f"{float(v):.2f}"
+        except (TypeError, ValueError):
+            return _esc(v)
+
+    oa = _esc(_odd_fmt(odds.get(payload.get("player_a"))))
+    ob = _esc(_odd_fmt(odds.get(payload.get("player_b"))))
     odds_meta_parts = []
     if payload.get("odds_source"):
         odds_meta_parts.append(f"Fonte: {_esc(payload['odds_source'])}")
@@ -2401,6 +2433,15 @@ def _mod_leitura(payload, div, estado, result):
     if chave == "inconclusivo":
         frase = (f"O mercado favorece <b>{_esc(merc_fav)}</b>, mas os indicadores "
                  "estão demasiado equilibrados para indicar uma direção clara.")
+    elif chave == "valor_preco":
+        # NOVO (18/08/2026, a pedido): alinhamento forte + mercado a pagar
+        # acima da faixa indicativa estimada. Distinto de "alinhado_forte"
+        # (sem essa margem de preço) e distinto de divergência de direção
+        # (aqui mercado e indicadores concordam no lado, só discordam se o
+        # preço está "caro" o suficiente para ter interesse).
+        frase = (f"Mercado e indicadores concordam em <b>{_esc(merc_fav)}</b>, e o mercado está "
+                 "a pagar acima da faixa indicativa estimada para esse resultado — "
+                 f"potencial valor no preço.{nota_fragil}")
     elif chave in ("alinhado", "alinhado_forte", "eficiente"):
         intensidade = div.get("intensidade_indicadores", "ligeira")
         frase = (f"Mercado e indicadores apontam para <b>{_esc(merc_fav)}</b>; "
@@ -2636,19 +2677,25 @@ def _mod_mercado_vs_sinal(payload, div):
     mk = div["market"]; idx = _d(div.get("indice_evidencia"))
     ca, cb = COLORS_V2["a"], COLORS_V2["b"]
 
-    def barra(titulo, va, vb, sufixo=""):
+    def barra(titulo, va, vb, sufixo="", destaque=False):
+        # CORREÇÃO (18/08/2026, a pedido): a linha do "Mercado" devia ficar
+        # mais visível/destacada do que a dos indicadores, para facilitar a
+        # leitura — antes as duas usavam exatamente o mesmo estilo (opacidade
+        # .7), tornando a referência do mercado pouco saliente.
+        opacidade = "1" if destaque else ".7"
+        estilo_extra = "box-shadow:0 0 0 1px rgba(255,255,255,.25) inset;" if destaque else ""
         return f"""
 <div class="mvs-row">
   <div class="mvs-row-lbl"><span>{a}</span><span>{titulo}</span><span>{b}</span></div>
-  <div class="mvs-track">
-    <div class="mvs-fill" style="width:{va}%; background:{ca}; opacity:.7"></div>
+  <div class="mvs-track" style="{estilo_extra}">
+    <div class="mvs-fill" style="width:{va}%; background:{ca}; opacity:{opacidade}"></div>
     <div class="mvs-mid"></div>
     <div class="mvs-val" style="left:0; color:#fff">{va}{sufixo}</div>
     <div class="mvs-val" style="right:0; color:#fff">{vb}{sufixo}</div>
   </div>
 </div>"""
 
-    merc = barra("Mercado", mk["a"], mk["b"], "%")
+    merc = barra("Mercado", mk["a"], mk["b"], "%", destaque=True)
     sinal = barra("Indicadores · peso relativo", idx.get("a", 50), idx.get("b", 50), "/100")
     return f"""
 <div class="mvs">
@@ -2659,13 +2706,18 @@ def _mod_mercado_vs_sinal(payload, div):
 
 def _mod_market_verdict(payload, div):
     """
-    Bloco compacto no topo: quem, probabilidade (faixa), odd justa (faixa),
-    odd de mercado, e veredicto direto — ALINHADO / VALOR / DIVERGÊNCIA /
-    SEM SINAL. Construído a pedido (18/08/2026, feedback do ChatGPT do
-    Hugo — "objetividade, não subjetividade"), reaproveitando
-    indicative_odds e divergencia já calculados noutro sítio — não
-    inventa nenhum mecanismo novo, só resume de forma mais direta o que
-    já lá estava, muitas vezes escondido a meio do relatório.
+    Bloco compacto no topo: os DOIS jogadores lado a lado — probabilidade
+    (faixa), odd justa (faixa), odd de mercado — e um veredicto direto no
+    fim: ALINHADO / VALOR / DIVERGÊNCIA / SEM SINAL. Construído a pedido
+    (18/08/2026, feedback do ChatGPT do Hugo — "objetividade, não
+    subjetividade"), reaproveitando indicative_odds e divergencia já
+    calculados noutro sítio — não inventa nenhum mecanismo novo, só
+    resume de forma mais direta o que já lá estava.
+
+    CORREÇÃO (18/08/2026, a pedido): mostrava só o favorito; o intervalo
+    de probabilidade/odd justa é igualmente relevante para os dois lados,
+    para se poder avaliar qualquer um dos dois preços de mercado, não só
+    o do favorito.
     """
     if not div:
         return ""
@@ -2674,15 +2726,39 @@ def _mod_market_verdict(payload, div):
     tipo = div.get("tipo")
     fav = div.get("favorecido")
     if not fav or not players:
+        # DIAGNÓSTICO (18/08/2026, a pedido — "só aparece num jogo, não sei
+        # porquê"): mostra exatamente qual das duas condições falhou, em
+        # vez de ficar silenciosamente vazio sem explicação.
+        print(f"[diag:veredicto] {payload.get('player_a')} vs {payload.get('player_b')} | "
+              f"vazio — fav={fav!r} | indicative_odds disponível={bool(payload.get('indicative_odds'))} | "
+              f"players={players!r}")
         return ""
-    side = "a" if fav == payload.get("player_a") else ("b" if fav == payload.get("player_b") else None)
-    if side is None:
-        return ""
-    faixa = _d(players.get(side))
-    prob_low, prob_high = faixa.get("probability_low_pct"), faixa.get("probability_high_pct")
-    odds_low, odds_high = faixa.get("odds_low"), faixa.get("odds_high")
+
+    def _fmt(v, casas=2):
+        try:
+            return f"{float(v):.{casas}f}"
+        except (TypeError, ValueError):
+            return "—"
+
     market = _d(payload.get("market_odds_decimal"))
-    odd_mercado = market.get(fav) or market.get(f"player_{side}")
+    a_nome, b_nome = payload.get("player_a", "?"), payload.get("player_b", "?")
+
+    def _cartao(nome, side):
+        faixa = _d(players.get(side))
+        prob_low, prob_high = faixa.get("probability_low_pct"), faixa.get("probability_high_pct")
+        odds_low, odds_high = faixa.get("odds_low"), faixa.get("odds_high")
+        odd_mercado = market.get(nome)
+        prob_txt = f"{_fmt(prob_low, 0)}–{_fmt(prob_high, 0)}%" if prob_low is not None else "—"
+        odd_justa_txt = f"{_fmt(odds_low)}–{_fmt(odds_high)}" if odds_low is not None else "—"
+        odd_mercado_txt = _fmt(odd_mercado) if odd_mercado is not None else "—"
+        return (
+            f'<div class="mv-card">'
+            f'<div class="mv-card-name">{_esc(nome)}</div>'
+            f'<div><span class="mv-label">Probabilidade (faixa)</span><span class="mv-value">{prob_txt}</span></div>'
+            f'<div><span class="mv-label">Odd justa (faixa)</span><span class="mv-value">{odd_justa_txt}</span></div>'
+            f'<div><span class="mv-label">Mercado</span><span class="mv-value">{odd_mercado_txt}</span></div>'
+            f'</div>'
+        )
 
     if tipo == "direcao":
         veredicto, cor, texto = "DIVERGÊNCIA", "var(--red)", (
@@ -2697,27 +2773,13 @@ def _mod_market_verdict(payload, div):
         veredicto, cor, texto = "SEM SINAL", "var(--dim)", (
             "Sinal insuficiente para uma leitura de mercado clara.")
 
-    def _fmt(v, casas=2):
-        try:
-            return f"{float(v):.{casas}f}"
-        except (TypeError, ValueError):
-            return "—"
-
-    prob_txt = f"{_fmt(prob_low, 0)}–{_fmt(prob_high, 0)}%" if prob_low is not None else "—"
-    odd_justa_txt = f"{_fmt(odds_low)}–{_fmt(odds_high)}" if odds_low is not None else "—"
-    odd_mercado_txt = _fmt(odd_mercado) if odd_mercado is not None else "—"
     calibrada = bool(estimate.get("calibrated"))
     aviso = "" if calibrada else '<div class="market-verdict-note" style="opacity:.7">Faixa ainda não calibrada — ver nota completa mais abaixo.</div>'
 
     return (
         f'<div class="market-verdict" style="border-left:4px solid {cor}">'
         f'<div class="market-verdict-title">Veredicto de mercado</div>'
-        f'<div class="market-verdict-player">{_esc(fav)}</div>'
-        f'<div class="market-verdict-grid">'
-        f'<div><span class="mv-label">Probabilidade (faixa)</span><span class="mv-value">{prob_txt}</span></div>'
-        f'<div><span class="mv-label">Odd justa (faixa)</span><span class="mv-value">{odd_justa_txt}</span></div>'
-        f'<div><span class="mv-label">Mercado</span><span class="mv-value">{odd_mercado_txt}</span></div>'
-        f'</div>'
+        f'<div class="mv-cards">{_cartao(a_nome, "a")}{_cartao(b_nome, "b")}</div>'
         f'<div class="market-verdict-tag" style="color:{cor}">{veredicto}</div>'
         f'<div class="market-verdict-note">{texto}</div>{aviso}'
         f'</div>'
@@ -2737,11 +2799,11 @@ def _mod_indicative_odds(payload):
         return direct if direct is not None else market.get(f"player_{side}")
 
     def card(side):
-        name = payload.get(f"player_{side}", "?")
         values = _d(players.get(side))
         low, high = values.get("odds_low"), values.get("odds_high")
         if low is None or high is None:
             return ""
+        name = payload.get(f"player_{side}", "?")
         observed = market_odd(side, name)
         reading = ""
         try:
@@ -2754,8 +2816,17 @@ def _mod_indicative_odds(payload):
                 reading = "mercado dentro da faixa"
         except (TypeError, ValueError):
             pass
-        market_text = f" · mercado {_esc(observed)}" if observed is not None else ""
-        return (f'<div class="odds-range-player {side}"><div class="odds-range-name">{_esc(name)}</div>'
+        # CORREÇÃO (18/08/2026, a pedido): mesma correção do cabeçalho —
+        # odds sempre a 2 casas decimais, nunca o que vier bruto da fonte.
+        try:
+            observed_txt = f"{float(observed):.2f}"
+        except (TypeError, ValueError):
+            observed_txt = observed
+        market_text = f" · mercado {_esc(observed_txt)}" if observed is not None else ""
+        # CORREÇÃO (18/08/2026, a pedido): o nome do jogador já aparece
+        # acima (barra "Mercado e Indicadores"), repetir aqui só juntava
+        # ruído — removido para o cartão ficar mais limpo.
+        return (f'<div class="odds-range-player {side}">'
                 f'<div class="odds-range-value">{float(low):.2f}–{float(high):.2f}</div>'
                 f'<div class="odds-range-read">{_esc(reading)}{market_text}</div></div>')
 
@@ -2772,10 +2843,14 @@ def _mod_indicative_odds(payload):
         range_word = "faixa experimental" if basis == "heuristic" else "faixa em calibração"
         original_card = card
 
+        # CORREÇÃO (18/08/2026, log real): os dois .replace() encadeados
+        # aplicavam-se ao MESMO texto — o segundo ("dentro da faixa")
+        # voltava a encontrar a substituição já feita pelo primeiro ("da
+        # faixa", que já cobre "dentro da faixa" como substring), duplicando
+        # "em calibração em calibração". Só o primeiro replace já cobre os
+        # três casos (dentro/acima/abaixo da faixa).
         def card(side):
-            return original_card(side).replace("da faixa", f"da {range_word}").replace(
-                "dentro da faixa", f"dentro da {range_word}"
-            )
+            return original_card(side).replace("da faixa", f"da {range_word}")
     if calibrated:
         title = "Faixa indicativa calibrada"
         note = (f"Intervalo de {confidence}% · n={sample}{bucket_text}. "
@@ -3407,7 +3482,13 @@ def _mod_action_map(payload, div, result):
 
 def _normalizar_div(raw):
     """Converte o output do _calcular_divergencia (chaves prob_mercado_a etc.)
-    no formato que o V2 usa (market/indice_evidencia estruturados)."""
+    no formato que o V2 usa (market/indice_evidencia estruturados).
+
+    CORREÇÃO (18/08/2026, a pedido): "valor_por_preco" (marcado em
+    main.py quando o mercado paga acima da faixa indicativa, mesmo em
+    alinhamento) nunca era copiado para aqui — o Veredicto de Mercado e
+    o detetar_estado nunca conseguiam ver esse marcador, mesmo quando já
+    tinha sido calculado corretamente a montante."""
     if not raw:
         return None
     if raw.get("prob_mercado_a") is None:
@@ -3420,7 +3501,8 @@ def _normalizar_div(raw):
                 # CSS presente, secção ausente — a normalização matava os dados).
                 "n_fatores": raw.get("n_fatores"),
                 "fatores_status": raw.get("fatores_status"),
-                "gap_pp": raw.get("gap_pp")}
+                "gap_pp": raw.get("gap_pp"),
+                "valor_por_preco": raw.get("valor_por_preco")}
     return {
         "market": {"a": raw["prob_mercado_a"], "b": raw["prob_mercado_b"]},
         "indice_evidencia": {"a": raw["indice_evidencia_a"], "b": raw["indice_evidencia_b"]},
@@ -3436,6 +3518,7 @@ def _normalizar_div(raw):
         "n_fatores": raw.get("n_fatores"),
         "fatores_status": raw.get("fatores_status"),
         "gap_pp": raw.get("gap_pp"),
+        "valor_por_preco": raw.get("valor_por_preco"),
     }
 
 
@@ -3457,7 +3540,7 @@ def _css_editorial():
 .factor-bars-card.impact-mode .fd-linha[data-impact-side="a"] .fd-val{color:#78cfff!important}.factor-bars-card.impact-mode .fd-linha[data-impact-side="b"] .fd-val{color:#ffb47f!important}.factor-bars-card.impact-mode .fd-nota{color:#586875!important}
 @media(max-width:640px){.factor-bars-head{align-items:flex-start;flex-direction:column}.impact-toggle{width:100%;justify-content:flex-end}}
 .history-score{padding:0 0 12px;margin-bottom:2px}.history-score-names{display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:11px;margin-bottom:5px}
-@media(max-width:640px){.mh{padding:18px 14px}.mh-top{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);grid-template-areas:"center center center" "player-a . player-b";gap:12px 5px}.mh-top>.mh-player.a{grid-area:player-a}.mh-top>.mh-player.b{grid-area:player-b}.mh-top>div:nth-child(2){grid-area:center}.mh-player,.mh-player.b{flex-direction:column;gap:8px}.mh-player{align-items:flex-start}.mh-player.b{align-items:flex-end}.mh-player-photo{width:60px;height:60px;flex-basis:60px}.mh-player-info{width:100%}.mh-name{font-size:17px;line-height:1.18;overflow-wrap:anywhere}.mh-sub{font-size:11px}.mh-tourn{font-size:9px}.mh-odds{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:7px}.mh-odd{font-size:18px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}.pulse-player{grid-template-columns:1fr;gap:7px}.pulse-seq{justify-content:flex-start;width:100%}}
+@media(max-width:640px){.mh{padding:18px 14px}.mh-top{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);grid-template-areas:"player-a . player-b" "center center center";gap:12px 5px}.mh-top>.mh-player.a{grid-area:player-a}.mh-top>.mh-player.b{grid-area:player-b}.mh-top>div:nth-child(2){grid-area:center}.mh-player,.mh-player.b{flex-direction:column;gap:8px}.mh-player{align-items:flex-start}.mh-player.b{align-items:flex-end}.mh-player-photo{width:60px;height:60px;flex-basis:60px}.mh-player-info{width:100%}.mh-name{font-size:17px;line-height:1.18;overflow-wrap:anywhere}.mh-sub{font-size:11px}.mh-tourn{font-size:9px}.mh-odds{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:7px}.mh-odd{font-size:18px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}.pulse-player{grid-template-columns:1fr;gap:7px}.pulse-seq{justify-content:flex-start;width:100%}}
 """
 
 
