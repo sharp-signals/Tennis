@@ -1673,12 +1673,17 @@ def run() -> None:
         if not numeric:
             return (-1, "⚠️", f"{a} vs {b} — <b>SEM ODDS</b> · análise limitada")
 
-        # Cores do Telegram = nível determinístico do Python (auditoria p.17):
-        # 🟢 forte, 🟡 acompanhar, ⚪ sem sinal, ⚠️ sem odds/dados.
+        # Cores do Telegram = nível determinístico do Python (auditoria p.17).
+        # CORREÇÃO (18/08/2026, log real): esta bola usava {3,2}->🟢, não
+        # distinguindo nível 3 (prioridade alta) de nível 2 (valor a
+        # analisar) — e não batia certo com a contagem do cabeçalho
+        # (n_high conta só nivel>=3, n_value só nivel==2), nem com a
+        # escala agora usada no relatório (detetar_estado). Unificado:
+        # 🔴 nivel 3 · 🟢 nivel 2 (inclui "valor por preço") · 🟡 nivel 1.
         tipo = div.get("tipo", "")
         alinhamento_forte = tipo == "alinhamento" and div.get("intensidade_nivel", 0) >= 3
         bola = ("🔵" if nivel == 0 and alinhamento_forte else
-                {3: "🟢", 2: "🟢", 1: "🟡", 0: "⚪"}.get(nivel, "⚪"))
+                {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(nivel, "⚪"))
         # rótulo do lado (favorito/underdog) a partir das odds
         lado = "Moneyline"
         try:
