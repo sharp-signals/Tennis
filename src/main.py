@@ -634,6 +634,73 @@ def _compute_features(payload: dict) -> dict:
         feats["h2h_piso"] = {"lider": a if aw_s > bw_s else (b if bw_s > aw_s else "igual"),
                              "a_wins": aw_s, "b_wins": bw_s, "total": h2h_surf["total_matches"]}
 
+    # NOVO (18/08/2026, a pedido): desempenho em rondas decisivas (QF+),
+    # carreira toda — não condicionado à ronda de hoje (não temos o nome
+    # da ronda de hoje como texto, só um ID numérico sem mapeamento
+    # conhecido; não adivinhamos essa correspondência). Fonte: by_round
+    # dos dados "ricos" (já pagos à RapidAPI, nunca antes ligados a nada
+    # — só existia a agregação, sem consumidor).
+    _RONDAS_DECISIVAS = {"F", "SF", "QF", "FINAL", "SEMIFINAL", "QUARTERFINAL"}
+
+    def _pressao_ronda(side):
+        by_round = (payload.get(f"rich_stats_{side}") or {}).get("by_round") or {}
+        wins = losses = 0
+        for rnd, cell in by_round.items():
+            if str(rnd).strip().upper() in _RONDAS_DECISIVAS:
+                wins += cell.get("wins", 0) or 0
+                losses += cell.get("losses", 0) or 0
+        total = wins + losses
+        if total == 0:
+            return None, None
+        return round(100 * wins / total, 1), total
+
+    _pra, _amostra_ronda_a = _pressao_ronda("a")
+    _prb, _amostra_ronda_b = _pressao_ronda("b")
+    if _pra is not None and _prb is not None:
+        feats["pressao_ronda"] = {
+            "lider": a if _pra > _prb else (b if _prb > _pra else "igual"),
+            "diff": _pra - _prb, "valor_a": _pra, "valor_b": _prb,
+            "amostra_a": _amostra_ronda_a, "amostra_b": _amostra_ronda_b,
+        }
+
+    # NOVO (18/08/2026, a pedido): desempenho vs o NÍVEL do adversário de
+    # HOJE (top10/20/50/100), carreira toda. Fonte: vs_rank_level dos
+    # dados "ricos" — já existia, só alimentava um gráfico visual, nunca
+    # um fator do motor.
+    def _bucket_ranking(rank):
+        if rank is None:
+            return None
+        if rank <= 10:
+            return "top10"
+        if rank <= 20:
+            return "top20"
+        if rank <= 50:
+            return "top50"
+        if rank <= 100:
+            return "top100"
+        return None
+
+    _rank_a_val = (payload.get("ranking_a") or {}).get("rank")
+    _rank_b_val = (payload.get("ranking_b") or {}).get("rank")
+    _bucket_para_a = _bucket_ranking(_rank_b_val)  # A joga CONTRA B -> usa o nível de B
+    _bucket_para_b = _bucket_ranking(_rank_a_val)  # B joga CONTRA A -> usa o nível de A
+
+    def _nivel_adversario(side, bucket):
+        if bucket is None:
+            return None, None
+        vs_rank = (payload.get(f"rich_stats_{side}") or {}).get("vs_rank_level") or {}
+        cell = vs_rank.get(bucket) or {}
+        return cell.get("win_pct"), cell.get("matches")
+
+    _nva, _amostra_nivel_a = _nivel_adversario("a", _bucket_para_a)
+    _nvb, _amostra_nivel_b = _nivel_adversario("b", _bucket_para_b)
+    if _nva is not None and _nvb is not None:
+        feats["nivel_adversario"] = {
+            "lider": a if _nva > _nvb else (b if _nvb > _nva else "igual"),
+            "diff": _nva - _nvb, "valor_a": _nva, "valor_b": _nvb,
+            "amostra_a": _amostra_nivel_a, "amostra_b": _amostra_nivel_b,
+        }
+
     return feats or None
 
 
