@@ -199,9 +199,9 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
         self.assertIn("Faixa indicativa calibrada", html)
         self.assertIn("1.65–1.95", html)
-        self.assertIn("mercado acima da faixa", html)
-        self.assertIn("Intervalo de 95% · n=48 · índice 70–79", html)
-        self.assertIn("não garantia nem odd justa exata", html)
+        self.assertIn("n=48/30", html)
+        self.assertIn("índice 70–79", html)
+        self.assertIn("não é garantia nem odd justa exata", html)
 
     def test_uncalibrated_odds_range_is_rendered_as_experimental(self):
         payload = {
@@ -221,7 +221,7 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
         self.assertIn("Faixa indicativa em calibração", html)
         self.assertIn("n=12/30", html)
-        self.assertIn("pode mudar materialmente", html)
+        self.assertIn("não é garantia nem odd justa exata", html)
 
     def test_data_quality_uses_one_root_cause_notice(self):
         payload = {
