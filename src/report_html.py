@@ -2042,6 +2042,11 @@ body {{ background:var(--bg); color:var(--text);
 .mvs h3, .card h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:1px;
   color:var(--dim); margin-bottom:14px; font-weight:600; }}
 .mvs-row {{ margin-bottom:14px; }}
+.mvs-names {{ display:flex; justify-content:space-between; font-size:13px;
+  font-weight:700; margin-bottom:10px; }}
+.mvs-names span:first-child {{ color:var(--a); }}
+.mvs-names span:last-child {{ color:var(--b); }}
+.mvs-row-lbl-single {{ font-size:12px; color:var(--dim); margin-bottom:5px; }}
 .mvs-row-lbl {{ display:flex; justify-content:space-between; font-size:12px;
   color:var(--dim); margin-bottom:5px; }}
 .mvs-track {{ position:relative; height:26px; background:var(--surface2);
@@ -2049,6 +2054,7 @@ body {{ background:var(--bg); color:var(--text);
 .mvs-fill {{ position:absolute; top:0; bottom:0; left:0; border-radius:6px; }}
 .mvs-mid {{ position:absolute; left:50%; top:0; bottom:0; width:1px;
   background:var(--dim); opacity:.4; }}
+.mvs-track-destaque {{ box-shadow:0 0 0 2px rgba(217,164,65,.35); }}
 .mvs-val {{ position:absolute; top:50%; transform:translateY(-50%); font-size:12px;
   font-weight:700; padding:0 8px; }}
 .mvs-delta {{ text-align:center; font-size:13px; margin-top:10px; font-weight:600; }}
@@ -2211,6 +2217,10 @@ details.weight-transparency-card>summary::before {{ color:var(--a); }}
 details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .market-verdict {{ background:var(--surface); border-radius:12px; padding:16px 18px;
   margin-bottom:14px; }}
+.market-verdict-highlight {{ background:linear-gradient(180deg, var(--surface2), var(--surface));
+  box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 4px 20px rgba(0,0,0,.35); padding:20px 22px; }}
+.market-verdict-highlight .market-verdict-title {{ font-size:12px; letter-spacing:.08em; }}
+.market-verdict-highlight .market-verdict-tag {{ font-size:18px; }}
 .market-verdict-title {{ font-size:11px; color:var(--dim); text-transform:uppercase;
   letter-spacing:.05em; margin-bottom:10px; }}
 .mv-cards {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }}
@@ -2678,20 +2688,36 @@ def _mod_mercado_vs_sinal(payload, div):
     ca, cb = COLORS_V2["a"], COLORS_V2["b"]
 
     def barra(titulo, va, vb, sufixo="", destaque=False):
-        # CORREÇÃO (18/08/2026, a pedido): a linha do "Mercado" devia ficar
-        # mais visível/destacada do que a dos indicadores, para facilitar a
-        # leitura — antes as duas usavam exatamente o mesmo estilo (opacidade
-        # .7), tornando a referência do mercado pouco saliente.
-        opacidade = "1" if destaque else ".7"
-        estilo_extra = "box-shadow:0 0 0 1px rgba(255,255,255,.25) inset;" if destaque else ""
+        # CORREÇÃO (18/08/2026, a pedido 2x): a linha do "Mercado" continuava
+        # pouco visível mesmo depois da 1ª tentativa (opacidade+contorno
+        # subtil não bastou). Agora usa uma cor própria e bem saturada
+        # (âmbar, não o azul do jogador A — evita confundir "linha de
+        # referência do mercado" com "vantagem do jogador A"), pista mais
+        # alta, e rótulo em maiúsculas com mais peso.
+        if destaque:
+            cor_barra = "var(--amber)"
+            altura = "height:32px;"
+            classe_extra = " mvs-track-destaque"
+            estilo_titulo = "font-weight:700; letter-spacing:.04em; text-transform:uppercase;"
+            cor_texto = "#0d1622"
+        else:
+            cor_barra = ca
+            altura = ""
+            classe_extra = ""
+            estilo_titulo = ""
+            cor_texto = "#fff"
+        # CORREÇÃO (18/08/2026, a pedido 3x): os nomes dos jogadores
+        # apareciam em CADA linha (Mercado e Indicadores), repetidos —
+        # agora só o título da linha fica aqui; os nomes passam a um
+        # cabeçalho único, partilhado pelas duas barras.
         return f"""
 <div class="mvs-row">
-  <div class="mvs-row-lbl"><span>{a}</span><span>{titulo}</span><span>{b}</span></div>
-  <div class="mvs-track" style="{estilo_extra}">
-    <div class="mvs-fill" style="width:{va}%; background:{ca}; opacity:{opacidade}"></div>
+  <div class="mvs-row-lbl-single" style="{estilo_titulo}">{titulo}</div>
+  <div class="mvs-track{classe_extra}" style="{altura}">
+    <div class="mvs-fill" style="width:{va}%; background:{cor_barra}"></div>
     <div class="mvs-mid"></div>
-    <div class="mvs-val" style="left:0; color:#fff">{va}{sufixo}</div>
-    <div class="mvs-val" style="right:0; color:#fff">{vb}{sufixo}</div>
+    <div class="mvs-val" style="left:0; color:{cor_texto}; font-weight:700">{va}{sufixo}</div>
+    <div class="mvs-val" style="right:0; color:{cor_texto}; font-weight:700">{vb}{sufixo}</div>
   </div>
 </div>"""
 
@@ -2700,6 +2726,7 @@ def _mod_mercado_vs_sinal(payload, div):
     return f"""
 <div class="mvs">
   <h3>Mercado e indicadores</h3>
+  <div class="mvs-names"><span>{a}</span><span>{b}</span></div>
   {merc}{sinal}
 </div>"""
 
@@ -2773,11 +2800,26 @@ def _mod_market_verdict(payload, div):
         veredicto, cor, texto = "SEM SINAL", "var(--dim)", (
             "Sinal insuficiente para uma leitura de mercado clara.")
 
-    calibrada = bool(estimate.get("calibrated"))
-    aviso = "" if calibrada else '<div class="market-verdict-note" style="opacity:.7">Faixa ainda não calibrada — ver nota completa mais abaixo.</div>'
+    sample = estimate.get("sample_size", 0)
+    minimum = estimate.get("minimum_sample", 30)
+    calibrada = bool(estimate.get("calibrated", sample >= minimum))
+    bucket = estimate.get("evidence_bucket") or []
+    bucket_txt = f" · índice {bucket[0]}–{bucket[1]}" if len(bucket) == 2 else ""
+    # NOVO (18/08/2026, a pedido): esta secção passou a ser a ÚNICA a
+    # mostrar a faixa indicativa (a antiga "Faixa indicativa em
+    # calibração", mais abaixo no relatório, foi removida por ser
+    # redundante) — por isso herda também o rótulo calibrada/em
+    # calibração + amostra, e o aviso permanente de que não é garantia
+    # nem odd justa exata (antes só existia na secção removida).
+    status_faixa = "Faixa indicativa calibrada" if calibrada else "Faixa indicativa em calibração"
+    aviso = (f'<div class="market-verdict-note" style="opacity:.75">{_esc(status_faixa)} · '
+             f'n={sample}/{minimum}{_esc(bucket_txt)} — não é garantia nem odd justa exata.</div>')
 
     return (
-        f'<div class="market-verdict" style="border-left:4px solid {cor}">'
+        # NOVO (18/08/2026, a pedido): destaque visual forte — é a secção
+        # mais importante do relatório, tem de se distinguir claramente
+        # do resto (brilho subtil + fundo ligeiramente elevado).
+        f'<div class="market-verdict market-verdict-highlight" style="border-left:5px solid {cor}">'
         f'<div class="market-verdict-title">Veredicto de mercado</div>'
         f'<div class="mv-cards">{_cartao(a_nome, "a")}{_cartao(b_nome, "b")}</div>'
         f'<div class="market-verdict-tag" style="color:{cor}">{veredicto}</div>'
@@ -3811,7 +3853,13 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     if chave not in ("sem_odds", "erro"):
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
         partes.append(_mod_mercado_vs_sinal(payload, div))
-        partes.append(_mod_indicative_odds(payload))
+        # REMOVIDO (18/08/2026, a pedido): a "Faixa indicativa em
+        # calibração" (_mod_indicative_odds) ficou redundante — a mesma
+        # informação (probabilidade/odd justa em faixa, para os dois
+        # jogadores) já aparece no "Veredicto de Mercado", agora no topo
+        # do relatório. Duas secções a repetir os mesmos números só
+        # confundia. A função continua definida (não usada), caso volte a
+        # fazer sentido isolá-la no futuro.
         partes.append(_mod_market_provenance(payload))
         partes.append(_mod_mercados(payload, div))
         partes.append('</div>')
