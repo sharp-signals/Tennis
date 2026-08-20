@@ -542,6 +542,8 @@ PESOS = {
     "ranking_evolucao": 6,     # MÉDIO — tendência de subida/descida em pontos, 6m/12m (14/08/2026, a pedido)
     "lesao": 5,                # MÉDIO — só ativa em regressos claros/longos
     "tiebreak": 5,             # MÉDIO — competência estreita, distinta de "sets decisivos" (14/08/2026, a pedido)
+    "pressao_ronda": 6,        # MÉDIO — desempenho em rondas decisivas (QF+), carreira toda (18/08/2026, a pedido)
+    "nivel_adversario": 7,     # MÉDIO-ALTO — desempenho vs nível do adversário de hoje, carreira toda (18/08/2026, a pedido)
     "comeback_set1": 7,        # MÉDIO-ALTO — recuperação após perder o 1º set, relevante para observação em live (14/08/2026, a pedido)
     "fadiga": 4,               # MÉDIO-BAIXO — sobe se último jogo foi longo
     "servico_recente": 5,      # MÉDIO — últimos 2 jogos (14/08/2026, a pedido)
@@ -557,13 +559,13 @@ FAMILIAS_PESOS = {
     "forca_base": {"servico_recente", "servico_carreira", "forma_recente"},
     "matchup": {"matchup_maos", "h2h", "h2h_piso"},
     "superficie": {"piso", "velocidade_piso", "indoor_outdoor"},
-    "resiliencia": {"recuperacao_sets", "tiebreak", "comeback_set1"},
+    "resiliencia": {"recuperacao_sets", "tiebreak", "comeback_set1", "pressao_ronda"},
     "ranking_fam": {"ranking", "ranking_evolucao"},
     "contexto": {"fadiga", "lesao", "meteo"},
 }
 CAPS_FAMILIAS_PESOS = {
     "forca_base": 10, "matchup": 18, "superficie": 16,
-    "resiliencia": 17, "ranking_fam": 9, "contexto": 6,
+    "resiliencia": 19, "ranking_fam": 9, "contexto": 6,
 }
 
 def _nome_fator(chave):
@@ -575,7 +577,7 @@ def _nome_fator(chave):
         "ranking": "ranking",
         "ranking_evolucao": "evolução de ranking",
         "lesao": "regresso após paragem", "fadiga": "fadiga",
-        "servico_recente": "serviço (2 jogos)", "servico_carreira": "serviço (carreira)", "velocidade_piso": "velocidade do piso", "indoor_outdoor": "indoor/outdoor", "tiebreak": "tie-break", "comeback_set1": "recuperação pós-1º set", "sazonal": "padrão sazonal", "meteo": "meteorologia",
+        "servico_recente": "serviço (2 jogos)", "servico_carreira": "serviço (carreira)", "velocidade_piso": "velocidade do piso", "indoor_outdoor": "indoor/outdoor", "tiebreak": "tie-break", "pressao_ronda": "pressão de ronda decisiva", "nivel_adversario": "nível do adversário", "comeback_set1": "recuperação pós-1º set", "sazonal": "padrão sazonal", "meteo": "meteorologia",
     }.get(chave, chave)
 
 
@@ -887,6 +889,33 @@ def _calcular_divergencia(payload):
                     valor_a=tb.get("valor_a"), valor_b=tb.get("valor_b"))
     else:
         _reg_status("tiebreak", False)
+
+    # NOVO (18/08/2026, a pedido): pressão de ronda decisiva — mesmo
+    # limiar de 3 p.p. já usado nos outros fatores percentuais.
+    pr = feats.get("pressao_ronda")
+    if isinstance(pr, dict) and pr.get("lider") not in (None, "igual") and abs(pr.get("diff") or 0) >= 3:
+        _add("pressao_ronda", pr["lider"])
+        _reg_status("pressao_ronda", True, pr["lider"], valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"))
+    elif isinstance(pr, dict) and pr.get("lider") == "igual":
+        _reg_status("pressao_ronda", True, "igual", valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"))
+    elif isinstance(pr, dict) and pr.get("lider") is not None:
+        _reg_status("pressao_ronda", True, pr["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"))
+    else:
+        _reg_status("pressao_ronda", False)
+
+    # NOVO (18/08/2026, a pedido): desempenho vs nível do adversário de hoje
+    nv = feats.get("nivel_adversario")
+    if isinstance(nv, dict) and nv.get("lider") not in (None, "igual") and abs(nv.get("diff") or 0) >= 3:
+        _add("nivel_adversario", nv["lider"])
+        _reg_status("nivel_adversario", True, nv["lider"], valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"))
+    elif isinstance(nv, dict) and nv.get("lider") == "igual":
+        _reg_status("nivel_adversario", True, "igual", valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"))
+    elif isinstance(nv, dict) and nv.get("lider") is not None:
+        _reg_status("nivel_adversario", True, nv["lider"], "abaixo do limiar (<3 p.p.)",
+                    valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"))
+    else:
+        _reg_status("nivel_adversario", False)
 
     # NOVO (14/08/2026, a pedido): recuperação após perder o 1º set —
     # mesmo limiar de 3 p.p. Sinal relevante sobretudo para observação em
@@ -2160,6 +2189,18 @@ details.weight-transparency-card>summary {{ min-height:64px; display:flex; align
   flex-wrap:wrap; color:var(--a); padding:14px 16px; }}
 details.weight-transparency-card>summary::before {{ color:var(--a); }}
 details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
+.market-verdict {{ background:var(--surface); border-radius:12px; padding:16px 18px;
+  margin-bottom:14px; }}
+.market-verdict-title {{ font-size:11px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.05em; margin-bottom:4px; }}
+.market-verdict-player {{ font-size:17px; font-weight:700; margin-bottom:10px; }}
+.market-verdict-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+  margin-bottom:10px; }}
+.mv-label {{ display:block; font-size:11px; color:var(--dim); }}
+.mv-value {{ display:block; font-size:15px; font-weight:600; }}
+.market-verdict-tag {{ font-size:15px; font-weight:800; letter-spacing:.03em;
+  margin-bottom:4px; }}
+.market-verdict-note {{ font-size:12px; color:var(--dim); line-height:1.4; }}
 .action-map-static {{ border:1.5px solid var(--mint); border-radius:12px; margin-bottom:14px;
   background:linear-gradient(180deg, rgba(63,185,168,.10), var(--surface) 45%); }}
 .action-map-head {{ min-height:78px; display:flex; align-items:center; flex-wrap:wrap;
@@ -2404,13 +2445,13 @@ def _mod_fatores(payload, div):
 # exibição, decoupled da lógica de decisão.
 _FACTOR_ORDER = [
     "ranking", "ranking_evolucao", "h2h", "h2h_piso", "velocidade_piso", "indoor_outdoor", "forma_recente", "qualidade_vitorias", "sazonal",
-    "piso", "recuperacao_sets", "tiebreak", "comeback_set1", "matchup_maos", "servico_recente", "servico_carreira", "fadiga", "lesao",
+    "piso", "recuperacao_sets", "tiebreak", "pressao_ronda", "nivel_adversario", "comeback_set1", "matchup_maos", "servico_recente", "servico_carreira", "fadiga", "lesao",
 ]
 
 
 # Fatores onde valor_a/valor_b são percentagens diretamente comparáveis
 # (maior = melhor) — mostram "XX% – YY%" e barra proporcional direta.
-_FD_FACTORS_PCT = {"piso", "velocidade_piso", "forma_recente", "servico_recente", "servico_carreira", "indoor_outdoor", "tiebreak", "comeback_set1", "sazonal",
+_FD_FACTORS_PCT = {"piso", "velocidade_piso", "forma_recente", "servico_recente", "servico_carreira", "indoor_outdoor", "tiebreak", "pressao_ronda", "nivel_adversario", "comeback_set1", "sazonal",
                     "recuperacao_sets", "matchup_maos"}
 # Fatores onde valor_a/valor_b são contagens de vitórias (maior = melhor)
 _FD_FACTORS_COUNT = {"h2h", "h2h_piso", "qualidade_vitorias"}
@@ -2614,6 +2655,73 @@ def _mod_mercado_vs_sinal(payload, div):
   <h3>Mercado e indicadores</h3>
   {merc}{sinal}
 </div>"""
+
+
+def _mod_market_verdict(payload, div):
+    """
+    Bloco compacto no topo: quem, probabilidade (faixa), odd justa (faixa),
+    odd de mercado, e veredicto direto — ALINHADO / VALOR / DIVERGÊNCIA /
+    SEM SINAL. Construído a pedido (18/08/2026, feedback do ChatGPT do
+    Hugo — "objetividade, não subjetividade"), reaproveitando
+    indicative_odds e divergencia já calculados noutro sítio — não
+    inventa nenhum mecanismo novo, só resume de forma mais direta o que
+    já lá estava, muitas vezes escondido a meio do relatório.
+    """
+    if not div:
+        return ""
+    estimate = _d(payload.get("indicative_odds"))
+    players = _d(estimate.get("players"))
+    tipo = div.get("tipo")
+    fav = div.get("favorecido")
+    if not fav or not players:
+        return ""
+    side = "a" if fav == payload.get("player_a") else ("b" if fav == payload.get("player_b") else None)
+    if side is None:
+        return ""
+    faixa = _d(players.get(side))
+    prob_low, prob_high = faixa.get("probability_low_pct"), faixa.get("probability_high_pct")
+    odds_low, odds_high = faixa.get("odds_low"), faixa.get("odds_high")
+    market = _d(payload.get("market_odds_decimal"))
+    odd_mercado = market.get(fav) or market.get(f"player_{side}")
+
+    if tipo == "direcao":
+        veredicto, cor, texto = "DIVERGÊNCIA", "var(--red)", (
+            f"O mercado favorece o outro lado, enquanto os indicadores apontam para {_esc(fav)}.")
+    elif div.get("valor_por_preco"):
+        veredicto, cor, texto = "VALOR", "var(--mint)", (
+            "O mercado está a oferecer uma odd acima da faixa indicativa estimada.")
+    elif tipo == "alinhamento" and div.get("intensidade_nivel", 0) >= 3:
+        veredicto, cor, texto = "ALINHADO", "var(--dim)", (
+            "O mercado e os indicadores estão alinhados; sem discrepância relevante de preço.")
+    else:
+        veredicto, cor, texto = "SEM SINAL", "var(--dim)", (
+            "Sinal insuficiente para uma leitura de mercado clara.")
+
+    def _fmt(v, casas=2):
+        try:
+            return f"{float(v):.{casas}f}"
+        except (TypeError, ValueError):
+            return "—"
+
+    prob_txt = f"{_fmt(prob_low, 0)}–{_fmt(prob_high, 0)}%" if prob_low is not None else "—"
+    odd_justa_txt = f"{_fmt(odds_low)}–{_fmt(odds_high)}" if odds_low is not None else "—"
+    odd_mercado_txt = _fmt(odd_mercado) if odd_mercado is not None else "—"
+    calibrada = bool(estimate.get("calibrated"))
+    aviso = "" if calibrada else '<div class="market-verdict-note" style="opacity:.7">Faixa ainda não calibrada — ver nota completa mais abaixo.</div>'
+
+    return (
+        f'<div class="market-verdict" style="border-left:4px solid {cor}">'
+        f'<div class="market-verdict-title">Veredicto de mercado</div>'
+        f'<div class="market-verdict-player">{_esc(fav)}</div>'
+        f'<div class="market-verdict-grid">'
+        f'<div><span class="mv-label">Probabilidade (faixa)</span><span class="mv-value">{prob_txt}</span></div>'
+        f'<div><span class="mv-label">Odd justa (faixa)</span><span class="mv-value">{odd_justa_txt}</span></div>'
+        f'<div><span class="mv-label">Mercado</span><span class="mv-value">{odd_mercado_txt}</span></div>'
+        f'</div>'
+        f'<div class="market-verdict-tag" style="color:{cor}">{veredicto}</div>'
+        f'<div class="market-verdict-note">{texto}</div>{aviso}'
+        f'</div>'
+    )
 
 
 def _mod_indicative_odds(payload):
@@ -3608,6 +3716,9 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
     partes.append(_mod_leitura(payload, div, estado, result))
+    # NOVO (18/08/2026, a pedido): Veredicto de mercado — bloco compacto e
+    # objetivo, logo a seguir à Leitura, antes de tudo o resto.
+    partes.append(_mod_market_verdict(payload, div))
     # NOVO (18/08/2026, a pedido): Mapa de Ações movido para logo a seguir
     # à Leitura (onde aparece "Alinhamento Forte") — é o que deve chamar a
     # atenção primeiro; o resto do relatório (mercado, fatores detalhados)
