@@ -381,7 +381,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn('<details class="more report-map action-map"', html)
         self.assertNotIn("<summary>Mapa de Ações", html)
         self.assertIn('class="action-map-body"', html)
-        self.assertIn("Mapa de Ações (5)", html)
+        self.assertIn("Mapa de Ações (7)", html)
         self.assertIn("Moneyline A", html)
         self.assertIn("Se B perder o 1.º set", html)
         self.assertIn("Se o jogo chegar ao set decisivo", html)
