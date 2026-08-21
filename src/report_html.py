@@ -2751,7 +2751,13 @@ def _mod_market_verdict(payload, div):
     estimate = _d(payload.get("indicative_odds"))
     players = _d(estimate.get("players"))
     tipo = div.get("tipo")
-    fav = div.get("favorecido")
+    # CORREÇÃO CRÍTICA (21/08/2026, log real — Veredicto de Mercado vazio
+    # em 100% dos jogos): "favorecido" só é definido quando nivel>=1, que
+    # só acontece em casos de tipo=="direcao" — em "alinhamento" (a
+    # maioria dos jogos) fica sempre None por desenho. Usa o mesmo
+    # fallback já usado noutro sítio deste ficheiro (indice_favorece,
+    # que está sempre calculado, independente do nivel).
+    fav = div.get("favorecido") or div.get("indice_favorece")
     if not fav or not players:
         # DIAGNÓSTICO (18/08/2026, a pedido — "só aparece num jogo, não sei
         # porquê"): mostra exatamente qual das duas condições falhou, em
