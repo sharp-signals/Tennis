@@ -429,6 +429,21 @@ def _compute_features(payload: dict) -> dict:
     # Ranking (menor = melhor)
     ra = (payload.get("ranking_a") or {}).get("rank")
     rb = (payload.get("ranking_b") or {}).get("rank")
+    # CORREÇÃO CRÍTICA (20/08/2026, log real): "rank" pode vir como texto
+    # da RapidAPI (fetch_official_ranking guarda row.get("position") sem
+    # converter) — "ra < rb" com strings não rebenta sempre, mas quando
+    # rebenta é porque um lado é texto e o outro número; quando NÃO
+    # rebenta (os dois texto), compara alfabeticamente ("15" < "9" é
+    # True), dando um resultado silenciosamente ERRADO. Converte com
+    # segurança antes de comparar.
+    try:
+        ra = float(ra) if ra is not None else None
+    except (TypeError, ValueError):
+        ra = None
+    try:
+        rb = float(rb) if rb is not None else None
+    except (TypeError, ValueError):
+        rb = None
     # CORREÇÃO (12/08/2026, feedback de teste): também guardar os PONTOS de
     # ranking, não só a posição. #1 vs #5 é uma diferença de posição pequena
     # (4) mas de pontos enorme; #200 vs #204 tem a mesma diferença de posição
@@ -668,7 +683,19 @@ def _compute_features(payload: dict) -> dict:
     # dados "ricos" — já existia, só alimentava um gráfico visual, nunca
     # um fator do motor.
     def _bucket_ranking(rank):
+        # CORREÇÃO CRÍTICA (20/08/2026, log real — falha real em produção,
+        # 2 jogos WTA rebentados): "rank" pode vir como texto da RapidAPI
+        # (fetch_official_ranking guarda row.get("position") sem
+        # converter), e "rank <= 10" com uma string rebenta com
+        # TypeError. Nunca confirmei isto com dados reais antes de expor
+        # a função a uma comparação numérica direta — converte com
+        # segurança agora, falha graciosamente (None) em vez de rebentar
+        # a análise do jogo inteiro.
         if rank is None:
+            return None
+        try:
+            rank = float(rank)
+        except (TypeError, ValueError):
             return None
         if rank <= 10:
             return "top10"
