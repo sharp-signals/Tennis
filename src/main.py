@@ -1528,7 +1528,15 @@ def run() -> None:
         except Exception as exc:
             p1 = (match.get("player1") or {}).get("name", "?")
             p2 = (match.get("player2") or {}).get("name", "?")
+            # CORREÇÃO (21/08/2026, log real): só se guardava a mensagem do
+            # erro, nunca o traceback — por isso a correção anterior visou
+            # o sítio errado (a categoria "payload" já dizia que a falha era
+            # ANTES da fase de análise, mas sem traceback não dava para
+            # confirmar a linha exata). Agora imprime o traceback completo
+            # sempre que isto acontece, para nunca mais precisar de adivinhar.
+            import traceback
             print(f"[aviso] falha ao analisar {p1} vs {p2}: {exc}")
+            print(f"[traceback] {p1} vs {p2}:\n{traceback.format_exc()}")
             return None, {
                 "category": f"{stage}:{type(exc).__name__}",
                 "match": f"{p1} vs {p2}",
