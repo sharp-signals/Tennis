@@ -1288,7 +1288,17 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
         return None
 
     if "tourney_date" in played.columns:
-        played = played.sort_values("tourney_date")
+        # CORREÇÃO CRÍTICA (21/08/2026, log real — 3 jogos WTA rebentados
+        # em produção): "tourney_date" pode ter tipos misturados (texto e
+        # número) nalgumas linhas da fonte tennis-data.co.uk —
+        # sort_values direto sobre a coluna bruta rebentava com TypeError
+        # sempre que isso acontecia, derrubando a análise do jogo inteiro
+        # (não só este fator). Ordena antes pela data já CONVERTIDA (mesma
+        # conversão robusta já usada mais abaixo para a janela temporal) —
+        # valores não interpretáveis viram NaT e ficam apenas no fim da
+        # ordenação, nunca rebentam nada.
+        played["_sort_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+        played = played.sort_values("_sort_date")
 
     if window_days is not None and "tourney_date" in played.columns:
         played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
