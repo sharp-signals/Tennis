@@ -18,6 +18,14 @@ from __future__ import annotations
 
 import html
 import re
+
+try:
+    from .config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
+except ImportError:
+    # Alguns testes carregam este módulo sem o pacote "src" (sys.path
+    # aponta direto para a pasta), o que quebra o import relativo — cai
+    # para o import absoluto nesse caso.
+    from config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -235,8 +243,15 @@ def _build_data_sections(payload: dict) -> str:
     def _rank_num(r):
         """ranking vem como {"rank": N, ...} ou às vezes None/int."""
         if isinstance(r, dict):
-            return r.get("rank")
-        return r
+            r = r.get("rank")
+        # CORREÇÃO (21/08/2026, a pedido — "#15.0" em vez de "#15"): a
+        # RapidAPI pode devolver a posição como float; mostra sempre como
+        # inteiro quando o valor é um número inteiro.
+        try:
+            r_float = float(r)
+            return int(r_float) if r_float == int(r_float) else r_float
+        except (TypeError, ValueError):
+            return r
 
     # H2H
     h2h = payload.get("h2h") or {}
@@ -1581,8 +1596,17 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
     # H2H e meteorologia numa linha central compacta. Tudo Python.
     _rank_a = (payload.get("ranking_a") or {}).get("rank")
     _rank_b = (payload.get("ranking_b") or {}).get("rank")
-    _rank_a_txt = f'<div class="sb-rank">#{_rank_a}</div>' if _rank_a else ""
-    _rank_b_txt = f'<div class="sb-rank">#{_rank_b}</div>' if _rank_b else ""
+
+    def _rank_fmt_sb(v):
+        # CORREÇÃO (21/08/2026, a pedido — "#15.0" em vez de "#15").
+        try:
+            v_float = float(v)
+            return str(int(v_float)) if v_float == int(v_float) else str(v_float)
+        except (TypeError, ValueError):
+            return v
+
+    _rank_a_txt = f'<div class="sb-rank">#{_rank_fmt_sb(_rank_a)}</div>' if _rank_a else ""
+    _rank_b_txt = f'<div class="sb-rank">#{_rank_fmt_sb(_rank_b)}</div>' if _rank_b else ""
     # H2H central
     _h2h = (payload.get("h2h") or {}).get("overall") or {}
     _h2h_txt = ""
@@ -1896,6 +1920,46 @@ def _pct_str(v, casas=0):
 
 
 # ---- PALETA V2 (cada cor com um só significado) ----
+# ===== Referência de handicap (21/08/2026, a pedido) =====
+#
+# Estimativa GENÉRICA de como o mercado tipicamente estrutura handicaps de
+# jogos para uma dada odd Moneyline — fornecida pelo utilizador a partir
+# da experiência de mercado, NÃO calculada pelo motor. Serve só de
+# orientação aproximada para o "Mapa de Ações"; nunca se apresenta como um
+# dado próprio, sempre claramente rotulada como estimativa.
+_HANDICAP_REF_FAVORITO = [
+    (1.50, ("-2", "-2.5")),
+    (1.40, ("-3", "-3.5")),
+    (1.30, ("-3.5", "-4")),
+]
+_HANDICAP_REF_UNDERDOG = [
+    (2.50, ("+2", "+2.5")),
+    (3.00, ("+3", "+3.5")),
+    (3.50, ("+3.5", "+4")),
+]
+_HANDICAP_REF_AO_PAR = (1.75, 1.90)
+
+
+def estimate_typical_handicap(odd):
+    """Devolve a referência genérica de handicap para uma odd Moneyline
+    observada, ou None se a odd não permitir estimar (ausente/inválida).
+    "ao_par" quando a odd está na faixa 1.75-1.90 (handicap tipicamente
+    não se aplica); "favorito"/"underdog" com o par de handicaps típico
+    mais próximo, escolhido pela âncora mais próxima da odd observada."""
+    try:
+        odd = float(odd)
+    except (TypeError, ValueError):
+        return None
+    if _HANDICAP_REF_AO_PAR[0] <= odd <= _HANDICAP_REF_AO_PAR[1]:
+        return {"tipo": "ao_par", "handicap": None}
+    if odd < _HANDICAP_REF_AO_PAR[0]:
+        tabela, tipo = _HANDICAP_REF_FAVORITO, "favorito"
+    else:
+        tabela, tipo = _HANDICAP_REF_UNDERDOG, "underdog"
+    ancora, handicap = min(tabela, key=lambda par: abs(par[0] - odd))
+    return {"tipo": tipo, "handicap": handicap, "odd_ancora": ancora}
+
+
 COLORS_V2 = {
     "bg": "#071426", "surface": "#0d2038", "surface2": "#122a47",
     "text": "#f4f7fb", "dim": "#91a5bc", "line": "#23415f",
@@ -2228,6 +2292,18 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .mv-card-name {{ font-size:14px; font-weight:700; margin-bottom:8px; }}
 .mv-label {{ display:block; font-size:11px; color:var(--dim); }}
 .mv-value {{ display:block; font-size:14px; font-weight:600; margin-bottom:6px; }}
+.mv-grau-label {{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }}
+.mv-grau-label .mv-value {{ margin-bottom:0; font-size:12px; }}
+.mv-grau-caption {{ font-size:10px; color:var(--dim); margin-bottom:14px; }}
+.mv-grau-track {{ position:relative; height:2px; background:var(--line); margin:0 22px 20px 22px; }}
+.mv-grau-line {{ position:absolute; inset:0; }}
+.mv-grau-marker {{ position:absolute; top:-3px; width:8px; height:8px; border-radius:50%;
+  transform:translateX(-50%); }}
+.mv-grau-marker-val {{ position:absolute; top:-18px; left:50%; transform:translateX(-50%);
+  font-size:12px; font-weight:700; white-space:nowrap; }}
+.mv-grau-end {{ position:absolute; top:-6px; font-size:11px; color:var(--dim); white-space:nowrap; }}
+.mv-grau-end.left {{ left:-22px; }}
+.mv-grau-end.right {{ right:-22px; }}
 .market-verdict-tag {{ font-size:15px; font-weight:800; letter-spacing:.03em;
   margin-bottom:4px; }}
 .market-verdict-note {{ font-size:12px; color:var(--dim); line-height:1.4; }}
@@ -2243,6 +2319,8 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .action-list {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
 .action-item {{ border:1px solid var(--line); border-radius:10px; padding:12px;
   background:var(--surface2); min-width:0; }}
+.action-item-perfil {{ border-color:var(--mint); box-shadow:0 0 0 1px var(--mint) inset; }}
+.action-perfil-tag {{ color:var(--mint); text-transform:none; letter-spacing:0; font-weight:700; }}
 .action-kind {{ color:var(--dim); font-size:9px; font-weight:750; text-transform:uppercase;
   letter-spacing:.7px; margin-bottom:4px; }}
 .action-title {{ font-size:13px; font-weight:750; margin-bottom:5px; }}
@@ -2305,6 +2383,10 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
   .mh-player {{ gap:7px; align-items:flex-start; }}
   .mh-player-photo {{ width:52px; height:52px; flex-basis:52px; }}
   .mh-player-avatar {{ font-size:15px; }}
+  .mv-cards {{ grid-template-columns:1fr; }}
+  .mv-grau-track {{ margin:0 16px 20px 16px; }}
+  .mv-grau-end.left {{ left:-16px; }}
+  .mv-grau-end.right {{ right:-16px; }}
 }}
 """
 
@@ -2315,8 +2397,17 @@ def _mod_header(payload, div, estado):
     """Módulo 1: Matchup header (ficha de combate)."""
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
     ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
-    rank_a = f"#{_esc(ra.get('rank'))}" if ra.get("rank") else ""
-    rank_b = f"#{_esc(rb.get('rank'))}" if rb.get("rank") else ""
+
+    def _rank_fmt_hdr(v):
+        # CORREÇÃO (21/08/2026, a pedido — "#15.0" em vez de "#15").
+        try:
+            v_float = float(v)
+            return str(int(v_float)) if v_float == int(v_float) else str(v_float)
+        except (TypeError, ValueError):
+            return v
+
+    rank_a = f"#{_esc(_rank_fmt_hdr(ra.get('rank')))}" if ra.get("rank") else ""
+    rank_b = f"#{_esc(_rank_fmt_hdr(rb.get('rank')))}" if rb.get("rank") else ""
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
     surf = _esc(payload.get("surface", ""))
     odds = _d(payload.get("market_odds_decimal"))
@@ -2344,10 +2435,10 @@ def _mod_header(payload, div, estado):
     pa = pb = None
     if div and div.get("market"):
         pa = div["market"]["a"]; pb = div["market"]["b"]
-    # forma resumida
-    fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
-    forma_a = _esc(f"Forma {fa.get('wins','?')}–{fa.get('losses','?')}") if fa else ""
-    forma_b = _esc(f"Forma {fb.get('wins','?')}–{fb.get('losses','?')}") if fb else ""
+    # REMOVIDO (21/08/2026, a pedido do Hugo — "Tirava o Forma, não está
+    # ali a fazer nada"): o resumo "Forma X-Y" no cabeçalho não acrescen-
+    # tava nada de útil ali (a forma recente já está desenvolvida a sério
+    # dentro do Mapa de Forças). O ranking sozinho fica mais limpo.
     def portrait(side, name):
         image = _d(payload.get(f"player_image_{side}"))
         if image.get("path"):
@@ -2373,7 +2464,7 @@ def _mod_header(payload, div, estado):
     <div class="mh-player a">
       {portrait("a", payload.get("player_a", "?"))}
       <div class="mh-player-info"><div class="mh-name">{a}</div>
-      <div class="mh-sub">{rank_a} · {forma_a}</div></div>
+      <div class="mh-sub">{rank_a}</div></div>
     </div>
     <div>
       <div class="mh-vs">VS</div>
@@ -2382,7 +2473,7 @@ def _mod_header(payload, div, estado):
     <div class="mh-player b">
       {portrait("b", payload.get("player_b", "?"))}
       <div class="mh-player-info"><div class="mh-name b">{b}</div>
-      <div class="mh-sub b">{rank_b} · {forma_b}</div></div>
+      <div class="mh-sub b">{rank_b}</div></div>
     </div>
   </div>
   <div class="mh-odds">
@@ -2688,24 +2779,23 @@ def _mod_mercado_vs_sinal(payload, div):
     ca, cb = COLORS_V2["a"], COLORS_V2["b"]
 
     def barra(titulo, va, vb, sufixo="", destaque=False):
-        # CORREÇÃO (18/08/2026, a pedido 2x): a linha do "Mercado" continuava
-        # pouco visível mesmo depois da 1ª tentativa (opacidade+contorno
-        # subtil não bastou). Agora usa uma cor própria e bem saturada
-        # (âmbar, não o azul do jogador A — evita confundir "linha de
-        # referência do mercado" com "vantagem do jogador A"), pista mais
-        # alta, e rótulo em maiúsculas com mais peso.
+        # CORREÇÃO (21/08/2026, a pedido — "gajo trocou-se todo no leitura
+        # do mercado"): a cor âmbar sólida quebrava a consistência visual
+        # do resto do relatório (onde azul/laranja representam sempre os
+        # jogadores A/B) — em vez de dar destaque, criava confusão. Usa a
+        # cor do jogador A nas duas barras; o destaque da linha do
+        # Mercado fica só pela altura maior e pelo rótulo em maiúsculas.
         if destaque:
-            cor_barra = "var(--amber)"
+            cor_barra = ca
             altura = "height:32px;"
             classe_extra = " mvs-track-destaque"
             estilo_titulo = "font-weight:700; letter-spacing:.04em; text-transform:uppercase;"
-            cor_texto = "#0d1622"
         else:
             cor_barra = ca
             altura = ""
             classe_extra = ""
             estilo_titulo = ""
-            cor_texto = "#fff"
+        cor_texto = "#fff"
         # CORREÇÃO (18/08/2026, a pedido 3x): os nomes dos jogadores
         # apareciam em CADA linha (Mercado e Indicadores), repetidos —
         # agora só o título da linha fica aqui; os nomes passam a um
@@ -2776,6 +2866,25 @@ def _mod_market_verdict(payload, div):
     market = _d(payload.get("market_odds_decimal"))
     a_nome, b_nome = payload.get("player_a", "?"), payload.get("player_b", "?")
 
+    def _grau_de_valor(odd_observada, odds_low, odds_high):
+        """NOVO (21/08/2026, a pedido): percentil da odd de mercado dentro
+        da faixa [odds_low, odds_high] — >100 significa acima da faixa
+        (valor forte, mercado a pagar mais do que toda a nossa estimativa
+        prevê), <0 significa abaixo (sem valor), 0-100 é uma posição
+        gradual dentro da própria incerteza. Sinal contínuo, em vez de só
+        "dentro/fora" — útil sobretudo enquanto as faixas ainda estão
+        largas (pouca amostra de calibração), onde "fora da faixa"
+        raramente acontece mas a posição relativa já diz alguma coisa."""
+        try:
+            odd_observada = float(odd_observada)
+            odds_low = float(odds_low)
+            odds_high = float(odds_high)
+        except (TypeError, ValueError):
+            return None
+        if odds_high == odds_low:
+            return None
+        return round((odd_observada - odds_low) / (odds_high - odds_low) * 100, 1)
+
     def _cartao(nome, side):
         faixa = _d(players.get(side))
         prob_low, prob_high = faixa.get("probability_low_pct"), faixa.get("probability_high_pct")
@@ -2784,12 +2893,40 @@ def _mod_market_verdict(payload, div):
         prob_txt = f"{_fmt(prob_low, 0)}–{_fmt(prob_high, 0)}%" if prob_low is not None else "—"
         odd_justa_txt = f"{_fmt(odds_low)}–{_fmt(odds_high)}" if odds_low is not None else "—"
         odd_mercado_txt = _fmt(odd_mercado) if odd_mercado is not None else "—"
+
+        # REDESENHADO (21/08/2026, a pedido — "continuo sem perceber o
+        # objetivo da barra"): a versão anterior (barra preenchida +
+        # legenda à parte) obrigava a interpretar uma percentagem. Agora é
+        # uma linha simples entre os dois extremos da faixa, com um
+        # marcador que mostra o PRÓPRIO VALOR da odd de mercado escrito
+        # em cima dele — não é preciso decifrar nada, só ler "onde está
+        # o número". Também mais compacto para mobile (uma linha, não um
+        # bloco de barra + legenda separada).
+        grau_html = ""
+        if odd_mercado is not None and odds_low is not None and odds_high is not None:
+            pct = _grau_de_valor(odd_mercado, odds_low, odds_high)
+            if pct is not None:
+                pct_clamped = max(4, min(96, pct))
+                cor_grau = "var(--mint)" if pct >= 85 else "var(--dim)"
+                seta = " →" if pct > 100 else (" ←" if pct < 0 else "")
+                grau_html = (
+                    f'<div class="mv-grau-caption">Odd de mercado face à nossa faixa</div>'
+                    f'<div class="mv-grau-track">'
+                    f'<span class="mv-grau-end left">{_fmt(odds_low)}</span>'
+                    f'<div class="mv-grau-line"></div>'
+                    f'<div class="mv-grau-marker" style="left:{pct_clamped:.0f}%; background:{cor_grau}">'
+                    f'<span class="mv-grau-marker-val" style="color:{cor_grau}">{_fmt(odd_mercado)}{seta}</span></div>'
+                    f'<span class="mv-grau-end right">{_fmt(odds_high)}</span>'
+                    f'</div>'
+                )
+
         return (
             f'<div class="mv-card">'
             f'<div class="mv-card-name">{_esc(nome)}</div>'
             f'<div><span class="mv-label">Probabilidade (faixa)</span><span class="mv-value">{prob_txt}</span></div>'
             f'<div><span class="mv-label">Odd justa (faixa)</span><span class="mv-value">{odd_justa_txt}</span></div>'
             f'<div><span class="mv-label">Mercado</span><span class="mv-value">{odd_mercado_txt}</span></div>'
+            f'{grau_html}'
             f'</div>'
         )
 
@@ -3387,8 +3524,9 @@ def _mod_action_map(payload, div, result):
     names = {"a": a, "b": b}
     actions = []
 
-    def add(kind, title, text, source=""):
-        actions.append({"kind": kind, "title": title, "text": text, "source": source})
+    def add(kind, title, text, source="", odd_justa=None):
+        actions.append({"kind": kind, "title": title, "text": text, "source": source,
+                        "odd_justa": odd_justa})
 
     div = _d(div)
     level = _d(div.get("classificacao")).get("nivel", 0) or 0
@@ -3452,6 +3590,37 @@ def _mod_action_map(payload, div, result):
                 f"{current_text}Se descer abaixo de {low_f:.2f}, a margem indicada enfraquece; se subir acima de {high_f:.2f}, revalidar notícias e dados antes de considerar o preço — não é uma entrada automática.",
                 f"Faixa {low_f:.2f}–{high_f:.2f} · n={estimate.get('sample_size', 0)}")
 
+    # NOVO (21/08/2026, a pedido): referência de handicap — ESTIMATIVA
+    # GENÉRICA de mercado (não calculada pelo motor), só para orientação.
+    # Mostra-se para o lado favorecido pelo MERCADO (maior probabilidade
+    # implícita), com base na odd observada desse lado.
+    _mkt = _d(div.get("market"))
+    _lado_fav_mercado = "a" if (_mkt.get("a", 50) or 50) >= (_mkt.get("b", 50) or 50) else "b"
+    _odd_fav_mercado = observed_odd(_lado_fav_mercado)
+    _ref_handicap = estimate_typical_handicap(_odd_fav_mercado)
+    if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
+        _h_baixo, _h_alto = _ref_handicap["handicap"]
+        add("Referência de handicap", f"{names[_lado_fav_mercado]}",
+            f"Handicap típico {_h_baixo} a {_h_alto} jogos.",
+            "Estimativa genérica de mercado, não calculada por nós")
+    elif _ref_handicap and _ref_handicap["tipo"] == "ao_par":
+        add("Referência de handicap", f"{names[_lado_fav_mercado]} · odds ao par",
+            "Sem handicap típico — comparar diretamente o Moneyline.",
+            "Estimativa genérica de mercado, não calculada por nós")
+
+    # NOVO (21/08/2026, a pedido): odd justa = 1/taxa, para cada cenário
+    # condicional — transforma a taxa histórica numa referência direta e
+    # comparável com o que se vir no mercado ao vivo/pré-jogo. Nunca uma
+    # recomendação, só o número que resulta da taxa já calculada.
+    def _odd_justa(rate_pct):
+        try:
+            rate_pct = float(rate_pct)
+        except (TypeError, ValueError):
+            return None
+        if rate_pct <= 0 or rate_pct >= 100:
+            return None
+        return round(100.0 / rate_pct, 2)
+
     def scenario(side, rate_key, count_key):
         rich = _d(_d(payload.get(f"rich_stats_{side}")).get("scenarios"))
         return rich.get(rate_key), rich.get(count_key)
@@ -3470,9 +3639,66 @@ def _mod_action_map(payload, div, result):
         side = max(comeback, key=lambda key: comeback[key][0])
         rate, count = comeback[side]
         if rate >= 30:
+            _odd_cb = _odd_justa(rate)
+            _odd_txt = f" → odd justa ~{_odd_cb:.2f}" if _odd_cb else ""
+            # SIMPLIFICADO (21/08/2026, a pedido — "demasiado texto, mais
+            # direto"): número primeiro, sem ressalvas óbvias.
             add("Cenário ao vivo", f"Se {names[side]} perder o 1.º set",
-                f"Acompanhar a Moneyline ao vivo apenas se o serviço e a mobilidade se mantiverem estáveis: recuperou {rate:.0f}% destes jogos. Uma quebra física invalida o cenário.",
-                f"Histórico de recuperações · n={count}")
+                f"Recuperou {rate:.0f}% (n={count}){_odd_txt}.",
+                "Moneyline", odd_justa=_odd_cb)
+            # CORREÇÃO (21/08/2026, a pedido — "falar em linhas de
+            # handicap se o histórico justificar"): antes usava um valor
+            # fixo (+2.5/+3.5) sem ligação aos dados; agora usa a odd
+            # justa já calculada para indicar a linha típica real.
+            _ref_hc_cb = estimate_typical_handicap(_odd_cb) if _odd_cb else None
+            if _ref_hc_cb and _ref_hc_cb["tipo"] != "ao_par":
+                _hb_cb, _ha_cb = _ref_hc_cb["handicap"]
+                add("Cenário ao vivo", f"Handicap {_hb_cb}/{_ha_cb} para {names[side]} após perder o 1.º set",
+                    f"Recupera {rate:.0f}% dos jogos — cobrir por poucos jogos é ainda mais frequente do que vencer.",
+                    f"Histórico de recuperações · n={count}")
+
+    # NOVO (21/08/2026, a pedido): caso especial — favoritos com odd
+    # pré-jogo entre 1.25 e 1.40. Se perderem o 1.º set, a odd ao vivo
+    # tipicamente sobe para 1.80-2.40 (estimativa GENÉRICA de mercado,
+    # fornecida pelo utilizador — não calculada por nós). Compara essa
+    # faixa típica com a taxa REAL de recuperação deste jogador (já
+    # calculada pelo motor, reaproveitada do bloco anterior) — se a taxa
+    # real implica uma odd justa mais baixa do que a faixa típica de
+    # mercado, é um sinal de valor a assinalar.
+    _FAVORITO_ESPECIAL_RANGE = (1.25, 1.40)
+    _ODD_AO_VIVO_TIPICA_RANGE = (1.80, 2.40)
+    for side in ("a", "b"):
+        try:
+            _odd_pre_jogo_f = float(observed_odd(side))
+        except (TypeError, ValueError):
+            continue
+        if not (_FAVORITO_ESPECIAL_RANGE[0] <= _odd_pre_jogo_f <= _FAVORITO_ESPECIAL_RANGE[1]):
+            continue
+        if side not in comeback:
+            continue
+        _rate_esp, _count_esp = comeback[side]
+        _odd_justa_real = _odd_justa(_rate_esp)
+        if _odd_justa_real is None:
+            continue
+        if _odd_justa_real < _ODD_AO_VIVO_TIPICA_RANGE[0]:
+            # NOVO (21/08/2026, a pedido — "falar em linhas de handicap se
+            # o histórico justificar"): a odd justa deste cenário já
+            # aponta para valor; mostra também a que handicap isso
+            # tipicamente corresponde, para ligar diretamente ao mercado.
+            _ref_hc_esp = estimate_typical_handicap(_odd_justa_real)
+            _hc_txt = ""
+            if _ref_hc_esp and _ref_hc_esp["tipo"] != "ao_par":
+                _hb, _ha = _ref_hc_esp["handicap"]
+                _hc_txt = f" Handicap típico: {_hb} a {_ha}."
+            add("Caso especial", f"{names[side]} · valor se perder o 1.º set",
+                f"Odd pré-jogo ~{_odd_pre_jogo_f:.2f}. Mercado ao vivo típico: {_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}. "
+                f"Recuperação real: {_rate_esp:.0f}% (n={_count_esp}) → odd justa ~{_odd_justa_real:.2f}. Abaixo do típico de mercado.{_hc_txt}",
+                "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real)
+        else:
+            add("Caso especial", f"{names[side]} · sem sinal extra se perder o 1.º set",
+                f"Recuperação real ({_rate_esp:.0f}%, n={_count_esp}) → odd justa ~{_odd_justa_real:.2f}, "
+                f"dentro do típico de mercado ({_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}).",
+                "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real)
 
     # Set decisivo: só quando a diferença é material e tem amostra.
     deciding = {}
@@ -3489,9 +3715,37 @@ def _mod_action_map(payload, div, result):
         if abs(sa[0] - sb[0]) >= 8:
             side = "a" if sa[0] > sb[0] else "b"
             rate, count = deciding[side]
+            _odd_ds = _odd_justa(rate)
+            _odd_txt = f" → odd justa ~{_odd_ds:.2f}" if _odd_ds else ""
             add("Cenário ao vivo", "Se o jogo chegar ao set decisivo",
-                f"O histórico favorece {names[side]} ({rate:.0f}%). Observar o preço live e confirmar que não há quebra de serviço ou carga antes de agir.",
-                f"Sets decisivos · n={count}")
+                f"{names[side]} vence {rate:.0f}% (n={count}){_odd_txt}.",
+                "Set decisivo", odd_justa=_odd_ds)
+
+    # NOVO (21/08/2026, a pedido): tie-break com odd justa — mesma
+    # estrutura dos outros cenários condicionais, fonte rica com reserva
+    # no histórico local (compute_tiebreak_stats, já existente).
+    tiebreak_scenario = {}
+    for side in ("a", "b"):
+        rate, count = scenario(side, "tiebreak_win_pct", "tiebreak_count")
+        if rate is None:
+            local = _d(payload.get(f"tiebreak_{side}"))
+            matches = local.get("matches")
+            wins = local.get("wins")
+            if isinstance(matches, (int, float)) and matches:
+                rate = 100.0 * wins / matches
+                count = matches
+        if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 8:
+            tiebreak_scenario[side] = (float(rate), int(count))
+    if len(tiebreak_scenario) == 2:
+        sa, sb = tiebreak_scenario["a"], tiebreak_scenario["b"]
+        if abs(sa[0] - sb[0]) >= 8:
+            side = "a" if sa[0] > sb[0] else "b"
+            rate, count = tiebreak_scenario[side]
+            _odd_tb = _odd_justa(rate)
+            _odd_txt = f" → odd justa ~{_odd_tb:.2f}" if _odd_tb else ""
+            add("Cenário ao vivo", "Se um set chegar a tie-break",
+                f"{names[side]} vence {rate:.0f}% (n={count}){_odd_txt}.",
+                "Tie-break", odd_justa=_odd_tb)
 
     # Carga abre hipóteses live, explicitamente sem modelo de linha/odd.
     fa, fb = _d(payload.get("fatigue_signal_a")), _d(payload.get("fatigue_signal_b"))
@@ -3502,6 +3756,20 @@ def _mod_action_map(payload, div, result):
         add("Mercados ao vivo", "Handicap ou total de jogos · observar",
             f"{names[heavy]} traz +{abs(sets_a-sets_b):g} sets em 7 dias. Se aparecer quebra clara de deslocação ou serviço, acompanhar handicap a favor de {names[fresh]} e total de jogos; o sistema ainda não calcula linha nem odd justa para estes mercados.",
             "Carga acumulada")
+
+    # NOVO (21/08/2026, a pedido): margem média de jogos (bo3) — só quando
+    # há amostra em ambas as vertentes (vitórias E derrotas), para avaliar
+    # cobertura de handicap negativo mesmo em derrota.
+    gm_a, gm_b = _d(payload.get("game_margin_a")), _d(payload.get("game_margin_b"))
+    for _side_gm, _gm, _nome_gm in (("a", gm_a, a), ("b", gm_b, b)):
+        _mv, _nv = _gm.get("media_margem_vitoria"), _gm.get("n_vitorias")
+        _md, _nd = _gm.get("media_margem_derrota"), _gm.get("n_derrotas")
+        if _mv is None or _md is None or not _nv or not _nd or _nv < 5 or _nd < 5:
+            continue
+        add("Margem de jogos (bo3)", f"{_nome_gm}",
+            f"Vitória: +{_mv:.1f} jogos (n={_nv}). Derrota: -{abs(_md):.1f} jogos (n={_nd})"
+            f"{' — margem apertada, cobre handicap negativo ligeiro' if abs(_md) <= 3.5 else ''}.",
+            f"n={_nv}/{_nd}")
 
     # Serviços fortes e equilibrados sugerem observação, não previsão certa.
     pa, pb = _d(payload.get("pressure_profile_a")), _d(payload.get("pressure_profile_b"))
@@ -3514,15 +3782,29 @@ def _mod_action_map(payload, div, result):
 
     summary = result.get("verdict") or result.get("executive_summary")
     summary_html = f'<div class="action-summary">{_esc(summary)}</div>' if summary else ""
+
+    # NOVO (21/08/2026, a pedido): filtro por perfil de investidor — destaca
+    # (nunca esconde) os cenários cuja odd justa cai dentro da faixa
+    # preferida do utilizador, reordenando-os para o topo. Faixa
+    # configurável em config.py (INVESTOR_PROFILE_ODDS_LOW/HIGH); os
+    # restantes cenários continuam todos visíveis, só depois na lista.
+    def _no_perfil(item):
+        oj = item.get("odd_justa")
+        return oj is not None and INVESTOR_PROFILE_ODDS_LOW <= oj <= INVESTOR_PROFILE_ODDS_HIGH
+    actions.sort(key=lambda item: 0 if _no_perfil(item) else 1)
+
     rendered = "".join(
-        f'<div class="action-item"><div class="action-kind">{_esc(item["kind"])}</div>'
+        f'<div class="action-item{" action-item-perfil" if _no_perfil(item) else ""}">'
+        f'<div class="action-kind">{_esc(item["kind"])}'
+        + (f' <span class="action-perfil-tag">★ odd na faixa preferida ({INVESTOR_PROFILE_ODDS_LOW:.2f}–{INVESTOR_PROFILE_ODDS_HIGH:.2f})</span>' if _no_perfil(item) else "")
+        + '</div>'
         f'<div class="action-title">{_esc(item["title"])}</div>'
         f'<div class="action-text">{_esc(item["text"])}</div>'
         + (f'<div class="action-source">{_esc(item["source"])}</div>' if item["source"] else "")
         + '</div>'
-        for item in actions[:6]
+        for item in actions[:10]
     )
-    count = min(len(actions), 6)
+    count = min(len(actions), 10)
     return (f'<section class="action-map-static"><div class="action-map-head">Mapa de Ações ({count})'
             '<span class="more-hint">mercados, gatilhos e cenários a acompanhar</span></div>'
             f'<div class="action-map-body">{summary_html}<div class="action-list">{rendered}</div></div></section>')
@@ -3550,7 +3832,8 @@ def _normalizar_div(raw):
                 "n_fatores": raw.get("n_fatores"),
                 "fatores_status": raw.get("fatores_status"),
                 "gap_pp": raw.get("gap_pp"),
-                "valor_por_preco": raw.get("valor_por_preco")}
+                "valor_por_preco": raw.get("valor_por_preco"),
+                "grau_de_valor_pct": raw.get("grau_de_valor_pct")}
     return {
         "market": {"a": raw["prob_mercado_a"], "b": raw["prob_mercado_b"]},
         "indice_evidencia": {"a": raw["indice_evidencia_a"], "b": raw["indice_evidencia_b"]},
@@ -3567,6 +3850,7 @@ def _normalizar_div(raw):
         "fatores_status": raw.get("fatores_status"),
         "gap_pp": raw.get("gap_pp"),
         "valor_por_preco": raw.get("valor_por_preco"),
+        "grau_de_valor_pct": raw.get("grau_de_valor_pct"),
     }
 
 
@@ -3628,7 +3912,7 @@ def _mod_at_glance(payload):
     def add(label, va, vb, higher=True, fmt=str):
         if va is None or vb is None: return
         winner = "a" if (va > vb if higher else va < vb) else "b" if va != vb else None; rows.append((label,fmt(va),fmt(vb),winner))
-    ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{v}")
+    ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{int(v) if float(v)==int(v) else v}")
     fa,fb=_d(payload.get("recent_form_a")),_d(payload.get("recent_form_b")); add("Forma recente",100*fa.get("wins",0)/fa.get("matches") if fa.get("matches") else None,100*fb.get("wins",0)/fb.get("matches") if fb.get("matches") else None,True,lambda v:f"{v:.0f}%")
     surface=payload.get("surface"); sa=_d(_d(payload.get("surface_stats_a")).get(surface)); sb=_d(_d(payload.get("surface_stats_b")).get(surface)); add(f"Em {surface}" if surface else "SuperfÃ­cie",100*sa.get("wins",0)/sa.get("matches") if sa.get("matches") else None,100*sb.get("wins",0)/sb.get("matches") if sb.get("matches") else None,True,lambda v:f"{v:.0f}%")
     fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga Â· sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
@@ -3817,7 +4101,7 @@ def _mod_at_glance_clean(payload):
     def add(label, va, vb, higher=True, fmt=str):
         if va is None or vb is None: return
         winner = "a" if (va > vb if higher else va < vb) else "b" if va != vb else None; rows.append((label,fmt(va),fmt(vb),winner))
-    ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{v}")
+    ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{int(v) if float(v)==int(v) else v}")
     fa,fb=_d(payload.get("recent_form_a")),_d(payload.get("recent_form_b")); add("Forma recente",100*fa.get("wins",0)/fa.get("matches") if fa.get("matches") else None,100*fb.get("wins",0)/fb.get("matches") if fb.get("matches") else None,True,lambda v:f"{v:.0f}%")
     surface=payload.get("surface"); sa=_d(_d(payload.get("surface_stats_a")).get(surface)); sb=_d(_d(payload.get("surface_stats_b")).get(surface)); add(f"Em {surface}" if surface else "Superficie",100*sa.get("wins",0)/sa.get("matches") if sa.get("matches") else None,100*sb.get("wins",0)/sb.get("matches") if sb.get("matches") else None,True,lambda v:f"{v:.0f}%")
     fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga | sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
@@ -3850,12 +4134,6 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # NOVO (18/08/2026, a pedido): Veredicto de mercado — bloco compacto e
     # objetivo, logo a seguir à Leitura, antes de tudo o resto.
     partes.append(_mod_market_verdict(payload, div))
-    # NOVO (18/08/2026, a pedido): Mapa de Ações movido para logo a seguir
-    # à Leitura (onde aparece "Alinhamento Forte") — é o que deve chamar a
-    # atenção primeiro; o resto do relatório (mercado, fatores detalhados)
-    # fica disponível a seguir para quem quiser aprofundar. Antes vinha
-    # muito mais abaixo, depois de toda a análise detalhada.
-    partes.append(_mod_action_map(payload, div, result))
     if chave not in ("sem_odds", "erro"):
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
         partes.append(_mod_mercado_vs_sinal(payload, div))
@@ -3910,6 +4188,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_fatores_detalhados(
         payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
     ))
+    # REVERTIDO (21/08/2026, a pedido do Hugo): Mapa de Ações volta para o
+    # fim, depois de toda a análise detalhada — "Match-up -> Análise ->
+    # Ações".
+    partes.append(_mod_action_map(payload, div, result))
     partes.append(_mod_photo_credits(payload))
     partes.append('</div>')
     return _pagina(a, b, "".join(partes))
