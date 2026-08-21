@@ -1111,6 +1111,10 @@ def _build_match_payload(match: dict) -> dict:
     set1_comeback_b, _comeback_diag_b = fetch_data.compute_set1_comeback_with_diagnostics(
         history, player_b
     )
+    # NOVO (21/08/2026, a pedido): margem média de jogos ganhos/perdidos
+    # (bo3), para avaliar cobertura de handicap negativo mesmo em derrota.
+    game_margin_a = fetch_data.compute_game_margin_stats(history, player_a)
+    game_margin_b = fetch_data.compute_game_margin_stats(history, player_b)
     # DIAGNÓSTICO (15/08/2026, a pedido — "recuperação pós-1º set" não
     # aparece no WTA, e falha às vezes no ATP). Mostra o tipo real da
     # coluna best_of (pode estar como texto "3" em vez de número 3, o que
@@ -1301,6 +1305,8 @@ def _build_match_payload(match: dict) -> dict:
         "court_speed_hoje": _cpi_hoje,  # {"cpi","bucket","ano_usado"} ou None
         "set1_comeback_stats_a": set1_comeback_a,  # para aplicares em live: taxa histórica de reviravolta após perder o 1º set
         "set1_comeback_stats_b": set1_comeback_b,
+        "game_margin_a": game_margin_a,  # NOVO: margem média de jogos ganhos/perdidos (bo3)
+        "game_margin_b": game_margin_b,
         "handedness_matchup_a": handedness_a,  # taxa vs canhotos/destros
         "handedness_matchup_b": handedness_b,
         "player_hands": payload_hands,  # {"a":"R","b":"L"} da RapidAPI (mão real)
@@ -1349,21 +1355,36 @@ def _build_match_payload(match: dict) -> dict:
         div = payload.get("divergencia")
         est = payload.get("indicative_odds")
         if div and est and div.get("tipo") == "alinhamento" and div.get("intensidade_nivel", 0) >= 3:
-            fav = div.get("favorecido")
+            # CORREÇÃO CRÍTICA (21/08/2026, log real — investigação do
+            # "grau de valor"): "favorecido" só é definido quando
+            # nivel>=1, mas este bloco só corre quando tipo=="alinhamento"
+            # — nesse tipo, nivel está SEMPRE em 0 neste ponto (é
+            # precisamente isto que o bloco tentava mudar). Ou seja,
+            # "favorecido" era estruturalmente sempre None aqui, e este
+            # mecanismo nunca disparou desde que foi criado (18/08/2026).
+            # Mesmo fallback já usado no Veredicto de Mercado.
+            fav = div.get("favorecido") or div.get("indice_favorece")
             side = "a" if fav == payload.get("player_a") else ("b" if fav == payload.get("player_b") else None)
             faixa = (est.get("players") or {}).get(side) if side else None
-            if faixa and faixa.get("odds_high") is not None:
-                odds_map = payload.get("market_odds_decimal") or {}
-                odd_observada = odds_map.get(fav)
-                try:
-                    odd_observada = float(odd_observada) if odd_observada is not None else None
-                except (TypeError, ValueError):
-                    odd_observada = None
-                if odd_observada is not None and odd_observada > faixa["odds_high"]:
+            odds_map = payload.get("market_odds_decimal") or {}
+            odd_observada = odds_map.get(fav)
+            try:
+                odd_observada = float(odd_observada) if odd_observada is not None else None
+            except (TypeError, ValueError):
+                odd_observada = None
+            # NOVO (21/08/2026, a pedido — "grau de valor"): dispara VALOR
+            # não só quando a odd sai completamente da faixa, mas também
+            # quando fica no topo dela (percentil >=85%) — antes, com
+            # faixas ainda largas, "sair da faixa" raramente acontecia.
+            if faixa and faixa.get("odds_high") is not None and faixa.get("odds_low") is not None and odd_observada is not None:
+                _low, _high = faixa["odds_low"], faixa["odds_high"]
+                _pct = ((odd_observada - _low) / (_high - _low) * 100) if _high != _low else None
+                if _pct is not None and _pct >= 85:
                     classif = dict(div.get("classificacao") or {})
                     classif["nivel"] = max(classif.get("nivel", 0), 2)
                     div["classificacao"] = classif
                     div["valor_por_preco"] = True  # marcador explícito, para o relatório saber a razão
+                    div["grau_de_valor_pct"] = round(_pct, 1)
     except Exception:
         pass
 
