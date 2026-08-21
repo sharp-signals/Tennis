@@ -2060,7 +2060,15 @@ def compute_handedness_matchup_stats_via_profiles(history: pd.DataFrame, player:
     if played.empty:
         return None
     if "tourney_date" in played.columns:
-        played = played.sort_values("tourney_date", ascending=False)
+        # CORREÇÃO CRÍTICA (21/08/2026, log real — 2ª ocorrência do mesmo
+        # bug, desta vez em compute_handedness_matchup_stats_via_profiles):
+        # mesma causa de sempre, "tourney_date" com tipos misturados na
+        # fonte WTA rebentava o sort_values direto. A pesquisa anterior por
+        # este padrão não apanhou esta ocorrência porque tinha um argumento
+        # extra (ascending=False) que o texto procurado não previa —
+        # converte para data antes de ordenar, como as outras já seguras.
+        played["_sort_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+        played = played.sort_values("_sort_date", ascending=False)
     played = played.head(MAX_JOGOS_RECONSTRUCAO_MAO)
 
     played["_opponent_name"] = played.apply(
