@@ -232,3 +232,11 @@ if not (
 # Claude (a esse preço não há valor de mercado a observar). O jogo continua
 # a sair no relatório com os dados factuais, apenas sem leitura de mercado.
 SKIP_ANALYSIS_ODDS_THRESHOLD = 1.09
+
+# NOVO (21/08/2026, a pedido): faixa de odd preferida do utilizador, para
+# destacar no Mapa de Ações os cenários cuja odd justa cai dentro dela —
+# sem esconder os restantes, só reordenar por relevância para este
+# perfil. Valor por omissão é o exemplo dado pelo próprio utilizador
+# (1.75-1.90); ajustável por variável de ambiente sem mexer no código.
+INVESTOR_PROFILE_ODDS_LOW = float(os.environ.get("INVESTOR_PROFILE_ODDS_LOW", "1.75"))
+INVESTOR_PROFILE_ODDS_HIGH = float(os.environ.get("INVESTOR_PROFILE_ODDS_HIGH", "1.90"))
