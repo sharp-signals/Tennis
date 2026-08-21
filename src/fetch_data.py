@@ -3506,11 +3506,26 @@ def get_player_id_from_ranking(tour: str, player_name: str) -> Optional[int]:
     Resolve o ID matchstat de um jogador a partir do ranking oficial (que
     já traz o player_id de cada um). Necessário para chamar endpoints que
     funcionam por ID (career stats, h2h). None se não encontrar.
+
+    CORREÇÃO (21/08/2026, a pedido — "pressão de ronda" e "nível do
+    adversário" sempre sem dados no WTA): só fazia correspondência EXATA
+    de nome — qualquer diferença de grafia entre o nome vindo da RapidAPI
+    e o nome tal como está no ranking oficial (acentos, espaços, etc.)
+    fazia falhar TODOS os dados ricos de uma vez, não só um fator. Agora
+    tenta também correspondência aproximada (mesma técnica já usada em
+    resolve_player_name), antes de desistir. Não ajuda se a jogadora
+    estiver simplesmente fora das 101 posições carregadas — isso continua
+    a ser uma limitação real de cobertura, não um bug de nome.
     """
     official = fetch_official_ranking(tour)
     if not official:
         return None
-    entry = official.get(_normalize_name(player_name))
+    normalized = _normalize_name(player_name)
+    entry = official.get(normalized)
+    if not entry:
+        close = difflib.get_close_matches(normalized, official.keys(), n=1, cutoff=0.88)
+        if close:
+            entry = official.get(close[0])
     return entry.get("player_id") if entry else None
 
 
