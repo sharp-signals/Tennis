@@ -1628,6 +1628,99 @@ def _analyse_set1_comeback(history: pd.DataFrame, player: str) -> tuple[Optional
     return result, diagnostics
 
 
+def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """
+    NOVO (21/08/2026, a pedido): margem média de jogos (games) ganhos ou
+    perdidos ao longo do confronto inteiro, separada por vitórias e
+    derrotas — só melhor-de-3 sets. Serve para avaliar se um handicap
+    negativo pode ser coberto mesmo perdendo o encontro (ex: perde
+    6-4 6-7 4-6, mas a margem de jogos ao longo do confronto não foi tão
+    negativa como o resultado final por sets sugere). Suporta as duas
+    formas do histórico (score combinado ou W1/L1/W2/L2/W3/L3), mesma
+    convenção já usada nas outras funções deste ficheiro: os números
+    estão sempre do lado do VENCEDOR do jogo.
+    """
+    if history.empty or "best_of" not in history.columns:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+    played = history[((history["winner_name"] == player) | (history["loser_name"] == player))
+                      & (history["best_of"] == 3)]
+    if played.empty:
+        return None
+
+    usa_score = "score" in played.columns
+    usa_w1l1 = {"W1", "L1"}.issubset(played.columns)
+    if not usa_score and not usa_w1l1:
+        return None
+
+    margens_vitoria, margens_derrota = [], []
+
+    for _, row in played.iterrows():
+        is_match_winner = row.get("winner_name") == player
+        games_jogador = games_adversario = 0
+        valido = False
+
+        if usa_score:
+            score = row.get("score")
+            if not isinstance(score, str) or not score.strip():
+                continue
+            upper = score.upper()
+            if "RET" in upper or "W/O" in upper or "DEF" in upper:
+                continue  # jogo não completado — não conta para a margem
+            for token in score.strip().split():
+                base = token.split("(")[0]
+                parts = base.split("-")
+                if len(parts) != 2:
+                    continue
+                try:
+                    gw, gl = int(parts[0]), int(parts[1])
+                except ValueError:
+                    continue
+                if is_match_winner:
+                    games_jogador += gw
+                    games_adversario += gl
+                else:
+                    games_jogador += gl
+                    games_adversario += gw
+                valido = True
+        else:
+            for wc, lc in (("W1", "L1"), ("W2", "L2"), ("W3", "L3")):
+                gw, gl = row.get(wc), row.get(lc)
+                if pd.isna(gw) or pd.isna(gl):
+                    continue
+                try:
+                    gw, gl = int(gw), int(gl)
+                except (ValueError, TypeError):
+                    continue
+                if is_match_winner:
+                    games_jogador += gw
+                    games_adversario += gl
+                else:
+                    games_jogador += gl
+                    games_adversario += gw
+                valido = True
+
+        if not valido:
+            continue
+        margem = games_jogador - games_adversario
+        (margens_vitoria if is_match_winner else margens_derrota).append(margem)
+
+    if not margens_vitoria and not margens_derrota:
+        return None
+
+    result: dict = {}
+    if margens_vitoria:
+        result["media_margem_vitoria"] = round(sum(margens_vitoria) / len(margens_vitoria), 1)
+        result["n_vitorias"] = len(margens_vitoria)
+    if margens_derrota:
+        result["media_margem_derrota"] = round(sum(margens_derrota) / len(margens_derrota), 1)
+        result["n_derrotas"] = len(margens_derrota)
+    return result
+
+
 def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
     """Estatística pública; aceita best_of numérico ou textual e dois esquemas de sets."""
     result, _ = _analyse_set1_comeback(history, player)
