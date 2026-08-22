@@ -2324,6 +2324,8 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .action-kind {{ color:var(--dim); font-size:9px; font-weight:750; text-transform:uppercase;
   letter-spacing:.7px; margin-bottom:4px; }}
 .action-title {{ font-size:13px; font-weight:750; margin-bottom:5px; }}
+.action-headline {{ display:inline-block; font-size:18px; font-weight:800; color:var(--mint);
+  background:rgba(63,185,168,.12); border-radius:7px; padding:2px 10px; margin-bottom:7px; }}
 .action-text {{ color:var(--dim); font-size:11px; line-height:1.5; }}
 .action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
 @media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
@@ -2408,6 +2410,13 @@ def _mod_header(payload, div, estado):
 
     rank_a = f"#{_esc(_rank_fmt_hdr(ra.get('rank')))}" if ra.get("rank") else ""
     rank_b = f"#{_esc(_rank_fmt_hdr(rb.get('rank')))}" if rb.get("rank") else ""
+    # NOVO (22/08/2026, a pedido): mostrar o circuito (ATP/WTA) junto ao
+    # ranking — "#9" sozinho não dizia a que circuito pertence.
+    _tour_lbl = _esc((payload.get("tour") or "").upper())
+    if rank_a and _tour_lbl:
+        rank_a = f"{_tour_lbl} {rank_a}"
+    if rank_b and _tour_lbl:
+        rank_b = f"{_tour_lbl} {rank_b}"
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
     surf = _esc(payload.get("surface", ""))
     odds = _d(payload.get("market_odds_decimal"))
@@ -2920,9 +2929,12 @@ def _mod_market_verdict(payload, div):
                     f'</div>'
                 )
 
+        # NOVO (22/08/2026, a pedido): nome do jogador com a cor
+        # correspondente (azul/laranja), como no resto do relatório.
+        _cor_nome = "var(--a)" if side == "a" else "var(--b)"
         return (
             f'<div class="mv-card">'
-            f'<div class="mv-card-name">{_esc(nome)}</div>'
+            f'<div class="mv-card-name" style="color:{_cor_nome}">{_esc(nome)}</div>'
             f'<div><span class="mv-label">Probabilidade (faixa)</span><span class="mv-value">{prob_txt}</span></div>'
             f'<div><span class="mv-label">Odd justa (faixa)</span><span class="mv-value">{odd_justa_txt}</span></div>'
             f'<div><span class="mv-label">Mercado</span><span class="mv-value">{odd_mercado_txt}</span></div>'
@@ -3524,9 +3536,14 @@ def _mod_action_map(payload, div, result):
     names = {"a": a, "b": b}
     actions = []
 
-    def add(kind, title, text, source="", odd_justa=None):
+    def add(kind, title, text, source="", odd_justa=None, headline=None):
+        # NOVO (22/08/2026, a pedido): "headline" é só para destaque
+        # visual (número grande e colorido no topo do cartão) — separado
+        # de "odd_justa", que continua a controlar SÓ o destaque por
+        # perfil de investidor (correção anterior: nem todo número
+        # merece contar como "valor").
         actions.append({"kind": kind, "title": title, "text": text, "source": source,
-                        "odd_justa": odd_justa})
+                        "odd_justa": odd_justa, "headline": headline})
 
     div = _d(div)
     level = _d(div.get("classificacao")).get("nivel", 0) or 0
@@ -3549,24 +3566,24 @@ def _mod_action_map(payload, div, result):
     _tem_faixa_alinhamento = bool(fav_side and _d(_ranges_alinhamento.get(fav_side)))
 
     if not div.get("market"):
-        add("Pré-jogo", "Esperar por odds",
-            "Sem preço de mercado não existe decisão pré-jogo comparável. Manter apenas os cenários ao vivo em observação.")
+        add("Pré-jogo", "Ainda sem odds",
+            "Sem preço de mercado ainda. Só dá para acompanhar os cenários ao vivo, mais abaixo.")
     elif signal_type == "direcao" and fav_side and level >= 1:
         strength = "forte" if level >= 3 else "moderada" if level >= 2 else "ligeira"
         add("Mercado principal", f"Moneyline {fav}",
-            f"Divergência {strength}: os indicadores apontam para {fav}, contra a direção do mercado. Confirmar o preço; a divergência isolada não é uma entrada.",
-            "Motor de divergência")
+            f"O mercado acha que ganha o outro, os indicadores acham que ganha {fav}. Vale a pena confirmar o preço antes de decidir.",
+            "Motor de divergência", headline=f"Divergência {strength}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
         _nota_alinhamento = (
-            "Mercado e indicadores estão fortemente alinhados. Acompanhar apenas se o preço oferecer margem dentro da faixa indicada."
+            "Mercado e indicadores concordam. Só vale a pena se o preço estiver dentro da faixa indicada acima."
             if _tem_faixa_alinhamento else
-            "Mercado e indicadores estão fortemente alinhados. Ainda sem faixa indicativa calculada para comparar o preço."
+            "Mercado e indicadores concordam, mas ainda não há faixa calculada para comparar o preço."
         )
         add("Mercado principal", f"Moneyline {fav}", _nota_alinhamento,
             "Mercado + índice de sinais")
     else:
-        add("Pré-jogo", "Sem ação clara",
-            "O mercado e os indicadores não criam uma discrepância suficientemente clara. Esperar por informação ao vivo em vez de forçar uma leitura pré-jogo.")
+        add("Pré-jogo", "Sem sinal claro",
+            "Mercado e indicadores estão demasiado próximos. Melhor esperar por informação ao vivo.")
 
     # Usa a faixa já mostrada no relatório como gatilho, não como garantia.
     estimate = _d(payload.get("indicative_odds"))
@@ -3585,10 +3602,10 @@ def _mod_action_map(payload, div, result):
             low_f = high_f = current_f = None
         if low_f is not None and high_f is not None:
             status = "calibrada" if estimate.get("calibrated") else "em calibração"
-            current_text = f"A odd atual é {current_f:.2f}. " if current_f is not None else ""
+            current_text = f"Está em {current_f:.2f}. " if current_f is not None else ""
             add("Gatilho de preço", f"Faixa {status} · {names[price_side]}",
-                f"{current_text}Se descer abaixo de {low_f:.2f}, a margem indicada enfraquece; se subir acima de {high_f:.2f}, revalidar notícias e dados antes de considerar o preço — não é uma entrada automática.",
-                f"Faixa {low_f:.2f}–{high_f:.2f} · n={estimate.get('sample_size', 0)}")
+                f"{current_text}Abaixo de {low_f:.2f} o sinal enfraquece. Acima de {high_f:.2f}, confirma notícias antes de decidir.",
+                f"n={estimate.get('sample_size', 0)}", headline=f"Moneyline {low_f:.2f}–{high_f:.2f}")
 
     # NOVO (21/08/2026, a pedido): referência de handicap — ESTIMATIVA
     # GENÉRICA de mercado (não calculada pelo motor), só para orientação.
@@ -3601,8 +3618,9 @@ def _mod_action_map(payload, div, result):
     if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
         _h_baixo, _h_alto = _ref_handicap["handicap"]
         add("Referência de handicap", f"{names[_lado_fav_mercado]}",
-            f"Handicap típico {_h_baixo} a {_h_alto} jogos.",
-            "Estimativa genérica de mercado, não calculada por nós")
+            "O mercado costuma usar esta linha para este preço.",
+            "Estimativa genérica de mercado, não calculada por nós",
+            headline=f"Handicap {_h_baixo}/{_h_alto}")
     elif _ref_handicap and _ref_handicap["tipo"] == "ao_par":
         add("Referência de handicap", f"{names[_lado_fav_mercado]} · odds ao par",
             "Sem handicap típico — comparar diretamente o Moneyline.",
@@ -3640,12 +3658,11 @@ def _mod_action_map(payload, div, result):
         rate, count = comeback[side]
         if rate >= 30:
             _odd_cb = _odd_justa(rate)
-            _odd_txt = f" → odd justa ~{_odd_cb:.2f}" if _odd_cb else ""
-            # SIMPLIFICADO (21/08/2026, a pedido — "demasiado texto, mais
-            # direto"): número primeiro, sem ressalvas óbvias.
-            add("Cenário ao vivo", f"Se {names[side]} perder o 1.º set",
-                f"Recuperou {rate:.0f}% (n={count}){_odd_txt}.",
-                "Moneyline", odd_justa=_odd_cb)
+            # SIMPLIFICADO (22/08/2026, a pedido — linguagem simples,
+            # número em destaque separado do texto).
+            add("Cenário ao vivo", f"{names[side]} perde o 1.º set",
+                f"Recupera e ganha o jogo {rate:.0f}% das vezes (em {count} jogos assim).",
+                "Moneyline", headline=(f"Moneyline ~{_odd_cb:.2f}" if _odd_cb else None))
             # CORREÇÃO (21/08/2026, a pedido — "falar em linhas de
             # handicap se o histórico justificar"): antes usava um valor
             # fixo (+2.5/+3.5) sem ligação aos dados; agora usa a odd
@@ -3653,9 +3670,9 @@ def _mod_action_map(payload, div, result):
             _ref_hc_cb = estimate_typical_handicap(_odd_cb) if _odd_cb else None
             if _ref_hc_cb and _ref_hc_cb["tipo"] != "ao_par":
                 _hb_cb, _ha_cb = _ref_hc_cb["handicap"]
-                add("Cenário ao vivo", f"Handicap {_hb_cb}/{_ha_cb} para {names[side]} após perder o 1.º set",
-                    f"Recupera {rate:.0f}% dos jogos — cobrir por poucos jogos é ainda mais frequente do que vencer.",
-                    f"Histórico de recuperações · n={count}")
+                add("Cenário ao vivo", f"Alternativa: handicap para {names[side]}",
+                    "Perder por poucos jogos é mais fácil de acontecer do que ganhar o jogo todo.",
+                    f"Histórico de recuperações · n={count}", headline=f"Handicap {_hb_cb}/{_ha_cb}")
 
     # NOVO (21/08/2026, a pedido): caso especial — favoritos com odd
     # pré-jogo entre 1.25 e 1.40. Se perderem o 1.º set, a odd ao vivo
@@ -3681,24 +3698,22 @@ def _mod_action_map(payload, div, result):
         if _odd_justa_real is None:
             continue
         if _odd_justa_real < _ODD_AO_VIVO_TIPICA_RANGE[0]:
-            # NOVO (21/08/2026, a pedido — "falar em linhas de handicap se
-            # o histórico justificar"): a odd justa deste cenário já
-            # aponta para valor; mostra também a que handicap isso
-            # tipicamente corresponde, para ligar diretamente ao mercado.
             _ref_hc_esp = estimate_typical_handicap(_odd_justa_real)
             _hc_txt = ""
             if _ref_hc_esp and _ref_hc_esp["tipo"] != "ao_par":
                 _hb, _ha = _ref_hc_esp["handicap"]
                 _hc_txt = f" Handicap típico: {_hb} a {_ha}."
-            add("Caso especial", f"{names[side]} · valor se perder o 1.º set",
-                f"Odd pré-jogo ~{_odd_pre_jogo_f:.2f}. Mercado ao vivo típico: {_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}. "
-                f"Recuperação real: {_rate_esp:.0f}% (n={_count_esp}) → odd justa ~{_odd_justa_real:.2f}. Abaixo do típico de mercado.{_hc_txt}",
-                "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real)
+            # SIMPLIFICADO (22/08/2026, a pedido): linguagem direta,
+            # número em destaque no topo do cartão.
+            add("Caso especial", f"{names[side]} · favorito, valor se perder o 1.º set",
+                f"{names[side]} recupera {_rate_esp:.0f}% dos jogos assim (n={_count_esp}) — melhor do que o mercado "
+                f"costuma oferecer nesse momento ({_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}).{_hc_txt}",
+                "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real,
+                headline=f"Moneyline ~{_odd_justa_real:.2f}")
         else:
             add("Caso especial", f"{names[side]} · sem sinal extra se perder o 1.º set",
-                f"Recuperação real ({_rate_esp:.0f}%, n={_count_esp}) → odd justa ~{_odd_justa_real:.2f}, "
-                f"dentro do típico de mercado ({_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}).",
-                "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real)
+                f"Recupera {_rate_esp:.0f}% dos jogos (n={_count_esp}) — dentro do que o mercado já costuma oferecer.",
+                "Estimativa genérica + histórico próprio")
 
     # Set decisivo: só quando a diferença é material e tem amostra.
     deciding = {}
@@ -3716,10 +3731,9 @@ def _mod_action_map(payload, div, result):
             side = "a" if sa[0] > sb[0] else "b"
             rate, count = deciding[side]
             _odd_ds = _odd_justa(rate)
-            _odd_txt = f" → odd justa ~{_odd_ds:.2f}" if _odd_ds else ""
-            add("Cenário ao vivo", "Se o jogo chegar ao set decisivo",
-                f"{names[side]} vence {rate:.0f}% (n={count}){_odd_txt}.",
-                "Set decisivo", odd_justa=_odd_ds)
+            add("Cenário ao vivo", f"{names[side]} · se chegar ao set decisivo",
+                f"Vence {rate:.0f}% das vezes (em {count} jogos assim).",
+                "Set decisivo", headline=(f"Moneyline ~{_odd_ds:.2f}" if _odd_ds else None))
 
     # NOVO (21/08/2026, a pedido): tie-break com odd justa — mesma
     # estrutura dos outros cenários condicionais, fonte rica com reserva
@@ -3742,10 +3756,9 @@ def _mod_action_map(payload, div, result):
             side = "a" if sa[0] > sb[0] else "b"
             rate, count = tiebreak_scenario[side]
             _odd_tb = _odd_justa(rate)
-            _odd_txt = f" → odd justa ~{_odd_tb:.2f}" if _odd_tb else ""
-            add("Cenário ao vivo", "Se um set chegar a tie-break",
-                f"{names[side]} vence {rate:.0f}% (n={count}){_odd_txt}.",
-                "Tie-break", odd_justa=_odd_tb)
+            add("Cenário ao vivo", f"{names[side]} · se houver tie-break",
+                f"Vence {rate:.0f}% das vezes (em {count} jogos assim).",
+                "Tie-break", headline=(f"Moneyline ~{_odd_tb:.2f}" if _odd_tb else None))
 
     # Carga abre hipóteses live, explicitamente sem modelo de linha/odd.
     fa, fb = _d(payload.get("fatigue_signal_a")), _d(payload.get("fatigue_signal_b"))
@@ -3767,9 +3780,9 @@ def _mod_action_map(payload, div, result):
         if _mv is None or _md is None or not _nv or not _nd or _nv < 5 or _nd < 5:
             continue
         add("Margem de jogos (bo3)", f"{_nome_gm}",
-            f"Vitória: +{_mv:.1f} jogos (n={_nv}). Derrota: -{abs(_md):.1f} jogos (n={_nd})"
-            f"{' — margem apertada, cobre handicap negativo ligeiro' if abs(_md) <= 3.5 else ''}.",
-            f"n={_nv}/{_nd}")
+            f"Quando ganha, ganha por muitos jogos. Quando perde, perde por poucos"
+            f"{' — pode cobrir um handicap negativo ligeiro mesmo perdendo' if abs(_md) <= 3.5 else ''}.",
+            f"vitórias n={_nv}, derrotas n={_nd}", headline=f"Jogos: +{_mv:.1f} / -{abs(_md):.1f}")
 
     # Serviços fortes e equilibrados sugerem observação, não previsão certa.
     pa, pb = _d(payload.get("pressure_profile_a")), _d(payload.get("pressure_profile_b"))
@@ -3799,7 +3812,8 @@ def _mod_action_map(payload, div, result):
         + (f' <span class="action-perfil-tag">★ odd na faixa preferida ({INVESTOR_PROFILE_ODDS_LOW:.2f}–{INVESTOR_PROFILE_ODDS_HIGH:.2f})</span>' if _no_perfil(item) else "")
         + '</div>'
         f'<div class="action-title">{_esc(item["title"])}</div>'
-        f'<div class="action-text">{_esc(item["text"])}</div>'
+        + (f'<div class="action-headline">{_esc(item["headline"])}</div>' if item.get("headline") else "")
+        + f'<div class="action-text">{_esc(item["text"])}</div>'
         + (f'<div class="action-source">{_esc(item["source"])}</div>' if item["source"] else "")
         + '</div>'
         for item in actions[:10]
