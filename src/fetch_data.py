@@ -1130,6 +1130,40 @@ def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Op
 
     overall = _tally(subset)
 
+    # NOVO (22/08/2026, a pedido): H2H PONDERADO PELA RECÊNCIA. Um 3-0 de
+    # há 5 anos diz muito menos sobre hoje do que um 2-1 dos últimos 18
+    # meses — jogadores mudam de nível ano a ano. Além do contador cru
+    # (que continua a servir para "4-3 na carreira"), calcula-se uma
+    # quota ponderada em que cada confronto vale mais quanto mais recente
+    # for. Decaimento exponencial suave: meia-vida de ~2 anos (um jogo de
+    # há 2 anos pesa metade de um de agora), nunca zero (o passado conta
+    # sempre alguma coisa). Só se calcula se houver datas utilizáveis.
+    weighted = None
+    if "tourney_date" in subset.columns:
+        dates = pd.to_datetime(subset["tourney_date"], format="%Y%m%d", errors="coerce")
+        if dates.notna().any():
+            mais_recente = dates.max()
+            HALF_LIFE_DIAS = 730.0  # ~2 anos
+            wa = wb = 0.0
+            for idx, row in subset.iterrows():
+                data = dates.get(idx)
+                if pd.isna(data):
+                    peso = 0.5  # sem data -> peso neutro reduzido
+                else:
+                    idade_dias = (mais_recente - data).days
+                    peso = 0.5 ** (idade_dias / HALF_LIFE_DIAS)
+                if row["winner_name"] == player_a:
+                    wa += peso
+                elif row["winner_name"] == player_b:
+                    wb += peso
+            total_peso = wa + wb
+            if total_peso > 0:
+                weighted = {
+                    "a_share_pct": round(100.0 * wa / total_peso, 1),
+                    "b_share_pct": round(100.0 * wb / total_peso, 1),
+                    "lider": player_a if wa > wb else (player_b if wb > wa else "igual"),
+                }
+
     on_surface = None
     surface_family = _normalize_surface_family(surface)
     if surface_family and "surface" in history.columns:
@@ -1139,7 +1173,7 @@ def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Op
             on_surface = _tally(subset_surface)
 
     return {"overall": overall, "on_surface": on_surface, "surface": surface,
-            "surface_family": surface_family}
+            "surface_family": surface_family, "weighted_recency": weighted}
 
 
 def compute_current_season_record(history: pd.DataFrame, player: str) -> Optional[dict]:
@@ -1261,6 +1295,81 @@ def compute_indoor_outdoor_stats(history: pd.DataFrame, player: str) -> Optional
     if result.get("indoor") is None and result.get("outdoor") is None:
         return None
     return result
+
+
+def compute_surface_transition(history: pd.DataFrame, player: str, current_surface: str,
+                               recent_window_days: int = 35) -> Optional[dict]:
+    """
+    NOVO (22/08/2026, a pedido): efeito de MUDANÇA DE PISO. Um jogador que
+    vem de várias semanas noutro piso (ex: época de terra batida) e entra
+    agora num piso diferente (ex: relva) está em transição — um fator que
+    nenhum outro capta. Devolve:
+      - "em_transicao": True se os jogos recentes foram maioritariamente
+        NOUTRA família de piso, diferente da de hoje
+      - "piso_recente_dominante": a família onde jogou mais ultimamente
+      - "dias_desde_ultimo_no_piso_atual": há quanto tempo não joga no piso
+        de hoje (None se nunca, dentro do histórico disponível)
+      - "jogos_recentes_no_piso_atual": quantos dos jogos recentes já foram
+        no piso de hoje (0 = mudança fresca, sem rodagem)
+    None se não houver dados de piso/data utilizáveis.
+    """
+    if history.empty or "winner_name" not in history.columns:
+        return None
+    if "surface" not in history.columns or "tourney_date" not in history.columns:
+        return None
+    current_family = _normalize_surface_family(current_surface)
+    if not current_family:
+        return None
+
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    player = resolved
+
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    if played.empty:
+        return None
+
+    played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+    played = played.dropna(subset=["_date"]).sort_values("_date")
+    if played.empty:
+        return None
+
+    played["_family"] = played["surface"].map(_normalize_surface_family)
+    hoje = played["_date"].max()
+
+    # Janela recente (as últimas semanas antes do jogo de hoje)
+    cutoff = hoje - pd.Timedelta(days=recent_window_days)
+    recentes = played[played["_date"] >= cutoff]
+    if recentes.empty:
+        recentes = played.tail(5)  # fallback: últimos jogos se a janela vier vazia
+
+    # Piso dominante nos jogos recentes
+    contagem_familias = recentes["_family"].value_counts()
+    if contagem_familias.empty:
+        return None
+    piso_recente_dominante = contagem_familias.idxmax()
+
+    jogos_recentes_no_piso_atual = int((recentes["_family"] == current_family).sum())
+
+    # Há quanto tempo não joga no piso de hoje
+    no_piso_atual = played[played["_family"] == current_family]
+    dias_desde = None
+    if not no_piso_atual.empty:
+        ultimo = no_piso_atual["_date"].max()
+        dias_desde = int((hoje - ultimo).days)
+
+    em_transicao = (piso_recente_dominante != current_family
+                    and jogos_recentes_no_piso_atual == 0)
+
+    return {
+        "em_transicao": bool(em_transicao),
+        "piso_recente_dominante": piso_recente_dominante,
+        "piso_atual": current_family,
+        "dias_desde_ultimo_no_piso_atual": dias_desde,
+        "jogos_recentes_no_piso_atual": jogos_recentes_no_piso_atual,
+        "jogos_recentes_total": int(len(recentes)),
+    }
 
 
 def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
@@ -3591,6 +3700,101 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
         return data
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter perf-breakdown ({tour}, id {player_id}): {exc}")
+        return None
+
+
+TOURNAMENT_RECORD_CACHE_MAX_AGE_HOURS = 24 * 7  # 7 dias (histórico muda só 1x/ano)
+_TOURNAMENT_RECORD_CACHE: dict = {}
+
+
+def fetch_tournament_record(tour: str, player_id: int, tournament_id: int) -> Optional[dict]:
+    """
+    NOVO (22/08/2026, a pedido): histórico de um jogador NUM torneio
+    específico, ano a ano (endpoint tournament-record, confirmado no plano
+    Pro). Capta afinidade com as condições de um evento concreto (piso,
+    bolas, altitude, clima, apoio) que o ranking geral não capta.
+
+    Devolve um resumo AGREGADO com peso pela recência (anos recentes
+    contam mais), ou None. Cache 7 dias.
+    Estrutura de resposta da API: {"data": [{year, wins, losses, bestRound,
+    ...}, ...]}.
+    """
+    cache_key = f"{tour}:{player_id}:{tournament_id}"
+    cached = _TOURNAMENT_RECORD_CACHE.get(cache_key)
+    if cached is not None:
+        age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
+        if age_hours < TOURNAMENT_RECORD_CACHE_MAX_AGE_HOURS:
+            return cached["data"]
+
+    persistent = _read_player_cache_entry(
+        tour, player_id, f"tournament_record_{tournament_id}",
+        TOURNAMENT_RECORD_CACHE_MAX_AGE_HOURS,
+    )
+    if persistent is not None:
+        _TOURNAMENT_RECORD_CACHE[cache_key] = {
+            "fetched_at": datetime.now(timezone.utc),
+            "data": persistent,
+        }
+        return persistent
+
+    if not RAPIDAPI_KEY:
+        return None
+
+    url = f"{RAPIDAPI_BASE}/{tour}/player/tournament-record/{player_id}/{tournament_id}"
+    try:
+        resp = _rapidapi_get(url)
+        resp.raise_for_status()
+        rows = resp.json().get("data", [])
+        if not isinstance(rows, list) or not rows:
+            return None
+
+        # Agregado cru + agregado ponderado pela recência. Meia-vida de 3
+        # anos (mais longa que o H2H: as condições de um torneio são
+        # estáveis, mas o jogador evolui). O ano mais recente é a âncora.
+        anos = [r.get("year") for r in rows if isinstance(r.get("year"), (int, float))]
+        if not anos:
+            return None
+        ano_recente = max(anos)
+        HALF_LIFE_ANOS = 3.0
+        wins_cru = losses_cru = 0
+        w_pond = l_pond = 0.0
+        melhor_ronda_recente = None
+        for r in rows:
+            w = r.get("wins", 0) or 0
+            l = r.get("losses", 0) or 0
+            wins_cru += w
+            losses_cru += l
+            ano = r.get("year")
+            if isinstance(ano, (int, float)):
+                peso = 0.5 ** ((ano_recente - ano) / HALF_LIFE_ANOS)
+                if ano == ano_recente:
+                    melhor_ronda_recente = r.get("bestRound")
+            else:
+                peso = 0.5
+            w_pond += w * peso
+            l_pond += l * peso
+
+        total_cru = wins_cru + losses_cru
+        total_pond = w_pond + l_pond
+        if total_cru == 0 or total_pond == 0:
+            return None
+
+        data = {
+            "edicoes": len(rows),
+            "wins": wins_cru,
+            "losses": losses_cru,
+            "win_pct_cru": round(100 * wins_cru / total_cru, 1),
+            "win_pct_ponderado": round(100 * w_pond / total_pond, 1),
+            "melhor_ronda_recente": melhor_ronda_recente,
+            "ano_recente": ano_recente,
+        }
+        _TOURNAMENT_RECORD_CACHE[cache_key] = {
+            "fetched_at": datetime.now(timezone.utc), "data": data,
+        }
+        _write_player_cache_entry(tour, player_id, f"tournament_record_{tournament_id}", data)
+        return data
+    except requests.RequestException as exc:
+        print(f"[aviso] falha a obter tournament-record ({tour}, id {player_id}, torneio {tournament_id}): {exc}")
         return None
 
 
