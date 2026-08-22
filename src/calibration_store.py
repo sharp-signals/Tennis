@@ -186,6 +186,73 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
         return settled
 
 
+def compute_system_accuracy(path: Path = DEFAULT_PATH) -> dict[str, Any] | None:
+    """
+    NOVO (22/08/2026, a pedido): histórico de acerto do PRÓPRIO sistema, a
+    partir dos snapshots já resolvidos. Não é opinião — é o registo real do
+    que aconteceu. Devolve, quando há amostra mínima:
+      - alinhamento_forte: em jogos onde mercado e indicadores concordavam
+        fortemente (nível 0 mas índice muito concentrado), quantas vezes o
+        favorecido confirmou.
+      - divergencia: em jogos onde os indicadores apontavam contra o
+        mercado (nível >= 2), quantas vezes o lado dos INDICADORES ganhou.
+    Cada um só é devolvido com um mínimo de 10 casos resolvidos (abaixo
+    disso a taxa é ruído). None se não houver dados de todo.
+    """
+    document = _read(path)
+    snaps = [s for s in document.get("snapshots", []) if s.get("outcome")]
+    if not snaps:
+        return None
+
+    MIN_CASOS = 10
+
+    alinhamento_ok = alinhamento_total = 0
+    diverg_ok = diverg_total = 0
+
+    for s in snaps:
+        div = (s.get("metrics") or {}).get("divergencia") or {}
+        outcome = s.get("outcome") or {}
+        winner_side = outcome.get("winner_side")  # 'a' ou 'b'
+        if winner_side not in ("a", "b"):
+            continue
+
+        nivel = (div.get("classificacao") or {}).get("nivel", 0) or 0
+        mercado_favorece = div.get("mercado_favorece")
+        indice_favorece = div.get("indice_favorece")
+        nome_a = div.get("player_a") or s.get("player_a")
+        nome_b = div.get("player_b") or s.get("player_b")
+        vencedor_nome = nome_a if winner_side == "a" else nome_b
+
+        if nivel >= 2 and indice_favorece and indice_favorece != mercado_favorece:
+            # Divergência real: os indicadores apontaram contra o mercado.
+            diverg_total += 1
+            if vencedor_nome == indice_favorece:
+                diverg_ok += 1
+        elif nivel == 0 and mercado_favorece:
+            # Alinhado: mercado e indicadores concordam. Conta se o
+            # favorecido confirmou.
+            alinhamento_total += 1
+            if vencedor_nome == mercado_favorece:
+                alinhamento_ok += 1
+
+    resultado: dict[str, Any] = {}
+    if alinhamento_total >= MIN_CASOS:
+        lo, hi = _wilson_interval(alinhamento_ok, alinhamento_total)
+        resultado["alinhamento_forte"] = {
+            "acertos": alinhamento_ok, "total": alinhamento_total,
+            "taxa_pct": round(100 * alinhamento_ok / alinhamento_total, 1),
+            "intervalo_pct": [round(lo * 100, 1), round(hi * 100, 1)],
+        }
+    if diverg_total >= MIN_CASOS:
+        lo, hi = _wilson_interval(diverg_ok, diverg_total)
+        resultado["divergencia"] = {
+            "acertos": diverg_ok, "total": diverg_total,
+            "taxa_pct": round(100 * diverg_ok / diverg_total, 1),
+            "intervalo_pct": [round(lo * 100, 1), round(hi * 100, 1)],
+        }
+    return resultado or None
+
+
 def _wilson_interval(wins: int, total: int, z: float = 1.96) -> tuple[float, float]:
     if total <= 0:
         return 0.0, 1.0
