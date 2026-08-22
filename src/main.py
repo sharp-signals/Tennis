@@ -643,6 +643,19 @@ def _compute_features(payload: dict) -> dict:
         aw, bw = h2h.get("a_wins", 0), h2h.get("b_wins", 0)
         feats["h2h"] = {"lider": a if aw > bw else (b if bw > aw else "igual"),
                         "a_wins": aw, "b_wins": bw, "total": h2h["total_matches"]}
+        # NOVO (22/08/2026, a pedido): expor também o H2H ponderado pela
+        # recência (calculado em compute_h2h). "lider" ali vem como o nome
+        # resolvido do jogador; traduz-se para os rótulos a/b deste
+        # relatório. O motor decide o que fazer com isto (report_html.py).
+        _wr = h2h_obj.get("weighted_recency")
+        if isinstance(_wr, dict) and _wr.get("lider") not in (None, "igual"):
+            # o líder ponderado vem como nome do jogador; mapear para a/b
+            _lider_wr = a if _wr["lider"] == payload.get("player_a") else (
+                b if _wr["lider"] == payload.get("player_b") else None)
+            if _lider_wr:
+                feats["h2h"]["lider_recente"] = _lider_wr
+                feats["h2h"]["a_share_pct"] = _wr.get("a_share_pct")
+                feats["h2h"]["b_share_pct"] = _wr.get("b_share_pct")
     h2h_surf = h2h_obj.get("on_surface") or {}
     if h2h_surf.get("total_matches"):
         aw_s, bw_s = h2h_surf.get("a_wins", 0), h2h_surf.get("b_wins", 0)
@@ -1115,6 +1128,19 @@ def _build_match_payload(match: dict) -> dict:
     # (bo3), para avaliar cobertura de handicap negativo mesmo em derrota.
     game_margin_a = fetch_data.compute_game_margin_stats(history, player_a)
     game_margin_b = fetch_data.compute_game_margin_stats(history, player_b)
+    # NOVO (22/08/2026, a pedido): efeito de mudança de piso — jogador que
+    # vem de outra superfície e entra fresco no piso de hoje.
+    surface_transition_a = fetch_data.compute_surface_transition(history, player_a, surface)
+    surface_transition_b = fetch_data.compute_surface_transition(history, player_b, surface)
+    # NOVO (22/08/2026, a pedido): histórico de cada jogador NESTE torneio
+    # específico (tournament-record). Só se houver ID de jogador E do
+    # torneio — sem isso, salta sem gastar chamada.
+    tournament_record_a = tournament_record_b = None
+    if _tournament_id is not None:
+        if _pid_a is not None:
+            tournament_record_a = fetch_data.fetch_tournament_record(tour, _pid_a, _tournament_id)
+        if _pid_b is not None:
+            tournament_record_b = fetch_data.fetch_tournament_record(tour, _pid_b, _tournament_id)
     # DIAGNÓSTICO (15/08/2026, a pedido — "recuperação pós-1º set" não
     # aparece no WTA, e falha às vezes no ATP). Mostra o tipo real da
     # coluna best_of (pode estar como texto "3" em vez de número 3, o que
@@ -1307,6 +1333,10 @@ def _build_match_payload(match: dict) -> dict:
         "set1_comeback_stats_b": set1_comeback_b,
         "game_margin_a": game_margin_a,  # NOVO: margem média de jogos ganhos/perdidos (bo3)
         "game_margin_b": game_margin_b,
+        "surface_transition_a": surface_transition_a,  # NOVO: efeito mudança de piso
+        "surface_transition_b": surface_transition_b,
+        "tournament_record_a": tournament_record_a,  # NOVO: histórico neste torneio
+        "tournament_record_b": tournament_record_b,
         "handedness_matchup_a": handedness_a,  # taxa vs canhotos/destros
         "handedness_matchup_b": handedness_b,
         "player_hands": payload_hands,  # {"a":"R","b":"L"} da RapidAPI (mão real)
@@ -1678,7 +1708,19 @@ def run() -> None:
     run_metrics.update_context(phase="report_generation")
     match_reports = []  # (payload, result, url_ou_None)
     generated_slugs = []
+    # NOVO (22/08/2026, a pedido): histórico de acerto do próprio sistema,
+    # calculado uma vez a partir dos snapshots já resolvidos e mostrado em
+    # todos os relatórios (é o mesmo número global para todos). Falha
+    # graciosamente — se não houver amostra, fica None e o relatório
+    # simplesmente não mostra a secção.
+    try:
+        _system_accuracy = calibration_store.compute_system_accuracy()
+    except Exception as exc:
+        print(f"[aviso] falha a calcular histórico de acerto do sistema: {exc}")
+        _system_accuracy = None
     for payload, result in analyses:
+        if _system_accuracy:
+            payload["system_accuracy"] = _system_accuracy
         # nome de ficheiro único e estável por jogo+dia
         slug = _slugify(f"{payload['player_a']}-vs-{payload['player_b']}-{today_str}")
         filename = f"{slug}.html"
