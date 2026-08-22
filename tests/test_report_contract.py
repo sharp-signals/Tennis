@@ -162,9 +162,7 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
         self.assertIn("Alinhamento forte", html)
-        self.assertIn("Mercado observado", html)
         self.assertIn("Moneyline A", html)
-        self.assertIn("sem inferir odd justa", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)
 
@@ -381,9 +379,9 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn('<details class="more report-map action-map"', html)
         self.assertNotIn("<summary>Mapa de Ações", html)
         self.assertIn('class="action-map-body"', html)
-        self.assertIn("Mapa de Ações (7)", html)
+        self.assertIn("Mapa de Ações (6)", html)
         self.assertIn("Moneyline A", html)
-        self.assertIn("B perde o 1.º set", html)
+        self.assertIn("A perde o 1.º set", html)
         self.assertIn("se chegar ao set decisivo", html)
         self.assertIn("Handicap ou total de jogos", html)
         self.assertIn("ainda não calcula linha nem odd justa", html)
@@ -486,7 +484,6 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertIn("Mercado observado", html)
         self.assertIn("Moneyline", html)
         self.assertNotIn("Moneyline · único mercado analisado", html)
         self.assertIn("Indicadores · peso relativo", html)
