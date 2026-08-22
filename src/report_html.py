@@ -17,6 +17,7 @@ Filosofia de design (ver frontend-design skill):
 from __future__ import annotations
 
 import html
+import math
 import re
 
 try:
@@ -559,8 +560,10 @@ PESOS = {
     "tiebreak": 5,             # MÉDIO — competência estreita, distinta de "sets decisivos" (14/08/2026, a pedido)
     "pressao_ronda": 6,        # MÉDIO — desempenho em rondas decisivas (QF+), carreira toda (18/08/2026, a pedido)
     "nivel_adversario": 7,     # MÉDIO-ALTO — desempenho vs nível do adversário de hoje, carreira toda (18/08/2026, a pedido)
+    "historico_torneio": 6,    # MÉDIO — afinidade com ESTE torneio específico, ano a ano, ponderado pela recência (22/08/2026, a pedido)
     "comeback_set1": 7,        # MÉDIO-ALTO — recuperação após perder o 1º set, relevante para observação em live (14/08/2026, a pedido)
     "fadiga": 4,               # MÉDIO-BAIXO — sobe se último jogo foi longo
+    "mudanca_piso": 5,         # MÉDIO-BAIXO — jogador entra fresco num piso diferente do que vinha a jogar (22/08/2026, a pedido)
     "servico_recente": 5,      # MÉDIO — últimos 2 jogos (14/08/2026, a pedido)
     "servico_carreira": 3,     # MÉDIO-BAIXO — desceu (4->3), agora coexiste com a versão recente
     "meteo": 1,                # BAIXO — raramente decisiva
@@ -576,11 +579,12 @@ FAMILIAS_PESOS = {
     "superficie": {"piso", "velocidade_piso", "indoor_outdoor"},
     "resiliencia": {"recuperacao_sets", "tiebreak", "comeback_set1", "pressao_ronda"},
     "ranking_fam": {"ranking", "ranking_evolucao"},
-    "contexto": {"fadiga", "lesao", "meteo"},
+    "contexto": {"fadiga", "lesao", "meteo", "mudanca_piso"},
+    "historial": {"historico_torneio"},
 }
 CAPS_FAMILIAS_PESOS = {
     "forca_base": 10, "matchup": 18, "superficie": 16,
-    "resiliencia": 19, "ranking_fam": 9, "contexto": 6,
+    "resiliencia": 19, "ranking_fam": 9, "contexto": 8, "historial": 6,
 }
 
 def _nome_fator(chave):
@@ -592,7 +596,8 @@ def _nome_fator(chave):
         "ranking": "ranking",
         "ranking_evolucao": "evolução de ranking",
         "lesao": "regresso após paragem", "fadiga": "fadiga",
-        "servico_recente": "serviço (2 jogos)", "servico_carreira": "serviço (carreira)", "velocidade_piso": "velocidade do piso", "indoor_outdoor": "indoor/outdoor", "tiebreak": "tie-break", "pressao_ronda": "pressão de ronda decisiva", "nivel_adversario": "nível do adversário", "comeback_set1": "recuperação pós-1º set", "sazonal": "padrão sazonal", "meteo": "meteorologia",
+        "mudanca_piso": "mudança de piso",
+        "servico_recente": "serviço (2 jogos)", "servico_carreira": "serviço (carreira)", "velocidade_piso": "velocidade do piso", "indoor_outdoor": "indoor/outdoor", "tiebreak": "tie-break", "pressao_ronda": "pressão de ronda decisiva", "nivel_adversario": "nível do adversário", "historico_torneio": "histórico no torneio", "comeback_set1": "recuperação pós-1º set", "sazonal": "padrão sazonal", "meteo": "meteorologia",
     }.get(chave, chave)
 
 
@@ -630,10 +635,23 @@ def _calcular_divergencia(payload):
         """Confiança da amostra (0.2 a 1.0). Auditoria P0 #3: um fator com
         poucos jogos (ex: 8 num piso) não deve entrar com peso quase total.
         Cresce com a amostra; satura em n_pleno jogos. Nunca zero (mínimo 0.2)
-        para não anular fatores com amostra pequena mas legítima."""
+        para não anular fatores com amostra pequena mas legítima.
+
+        MODELO (22/08/2026, a pedido — "deve haver modelos matemáticos
+        próprios"): a incerteza de uma proporção encolhe com a RAIZ
+        QUADRADA da amostra (erro padrão de uma proporção), não de forma
+        linear — a mesma base estatística do intervalo de Wilson já usado
+        em calibration_store. Antes usava uma rampa linear (n/n_pleno),
+        demasiado conservadora com amostras pequenas: n=5 dava só 0.20,
+        quando estatisticamente já justifica ~0.41. Agora usa
+        sqrt(n/n_pleno), que dá mais confiança cedo e satura na mesma aos
+        n_pleno jogos. Tabela comparativa (n_pleno=30):
+          n=5  -> 0.41 (antes 0.20)   n=20 -> 0.82 (antes 0.67)
+          n=10 -> 0.58 (antes 0.33)   n=30 -> 1.00 (antes 1.00)
+        """
         if not n_jogos or n_jogos <= 0:
             return 0.5  # amostra desconhecida -> confiança média (neutra)
-        return max(0.2, min(n_jogos / n_pleno, 1.0))
+        return max(0.2, min(math.sqrt(n_jogos / n_pleno), 1.0))
 
     def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
         # peso efetivo = peso base × força da diferença × confiança da amostra
@@ -677,8 +695,19 @@ def _calcular_divergencia(payload):
         _h_total = (h.get("a_wins", 0) + h.get("b_wins", 0)) or h.get("diff", 0)
         if _h_total >= 2:  # ignora H2H de 1 só jogo
             forca = min(_h_total / 4.0, 1.0)  # 4+ jogos = peso total
-            _add("h2h", h["lider"], max(forca, 0.5))
-            _reg_status("h2h", True, h["lider"], valor_a=h.get("a_wins"), valor_b=h.get("b_wins"), amostra=_h_total)
+            # NOVO (22/08/2026, a pedido): se o H2H ponderado pela recência
+            # aponta para o OUTRO jogador (ex: liderava na carreira mas
+            # perdeu os últimos confrontos), o confronto está dividido no
+            # tempo — a direção segue o quadro RECENTE (mais informativo
+            # sobre hoje) e a força é reduzida (menos conclusivo do que um
+            # domínio consistente). Se concordam, mantém tudo como estava.
+            _lider_final = h["lider"]
+            _lider_recente = h.get("lider_recente")
+            if _lider_recente and _lider_recente != h["lider"]:
+                _lider_final = _lider_recente
+                forca *= 0.5  # confronto contraditório no tempo -> metade da força
+            _add("h2h", _lider_final, max(forca, 0.5))
+            _reg_status("h2h", True, _lider_final, valor_a=h.get("a_wins"), valor_b=h.get("b_wins"), amostra=_h_total)
         else:
             _reg_status("h2h", True, h["lider"], "amostra insuficiente (1 jogo)")
     elif isinstance(h, dict) and h.get("lider") == "igual":
@@ -932,6 +961,33 @@ def _calcular_divergencia(payload):
     else:
         _reg_status("nivel_adversario", False)
 
+    # NOVO (22/08/2026, a pedido): histórico NESTE torneio específico.
+    # Compara a taxa de vitória ponderada pela recência de cada jogador
+    # no evento; líder é quem tem melhor registo. Força proporcional à
+    # diferença; confiança de amostra pelo nº de edições disputadas (a
+    # mesma _conf_amostra, mas saturando a 5 edições — 5 anos no mesmo
+    # torneio já é um historial sólido). Só conta com diferença material
+    # (>=8 p.p.) e pelo menos 2 edições de cada lado.
+    tr_a = payload.get("tournament_record_a") if isinstance(payload.get("tournament_record_a"), dict) else None
+    tr_b = payload.get("tournament_record_b") if isinstance(payload.get("tournament_record_b"), dict) else None
+    if tr_a and tr_b and tr_a.get("edicoes", 0) >= 2 and tr_b.get("edicoes", 0) >= 2:
+        pct_a = tr_a.get("win_pct_ponderado")
+        pct_b = tr_b.get("win_pct_ponderado")
+        if pct_a is not None and pct_b is not None and abs(pct_a - pct_b) >= 8:
+            lider_tr = a if pct_a > pct_b else b
+            forca_tr = min(abs(pct_a - pct_b) / 30.0, 1.0)  # 30+ p.p. = força total
+            edicoes_min = min(tr_a.get("edicoes", 0), tr_b.get("edicoes", 0))
+            _add("historico_torneio", lider_tr, max(forca_tr, 0.4),
+                 conf_amostra=_conf_amostra(edicoes_min, n_pleno=5))
+            _reg_status("historico_torneio", True, lider_tr,
+                        valor_a=f"{pct_a:.0f}%", valor_b=f"{pct_b:.0f}%",
+                        amostra=f"{tr_a.get('edicoes')}/{tr_b.get('edicoes')} edições")
+        else:
+            _reg_status("historico_torneio", True, "igual" if pct_a == pct_b else None,
+                        "abaixo do limiar (<8 p.p.)")
+    else:
+        _reg_status("historico_torneio", False, motivo_exclusao="sem histórico suficiente no torneio (min. 2 edições cada)")
+
     # NOVO (14/08/2026, a pedido): recuperação após perder o 1º set —
     # mesmo limiar de 3 p.p. Sinal relevante sobretudo para observação em
     # live (favorito que recupera bem quando começa a perder).
@@ -1012,6 +1068,28 @@ def _calcular_divergencia(payload):
             _reg_status("fadiga", True, "igual" if ja == jb else None, "sem diferença nos jogos recentes")
     else:
         _reg_status("fadiga", False, motivo_exclusao="fonte não fiável (histórico, não api_recent)")
+
+    # Mudança de piso (22/08/2026, a pedido): quem entra fresco num piso
+    # diferente do que vinha a jogar tem desvantagem vs quem já tem
+    # rodagem no piso de hoje. O líder do fator é quem NÃO está em
+    # transição. Só conta quando exatamente um dos dois está em transição
+    # (se ambos ou nenhum, não há vantagem relativa a assinalar).
+    st_a = payload.get("surface_transition_a") if isinstance(payload.get("surface_transition_a"), dict) else {}
+    st_b = payload.get("surface_transition_b") if isinstance(payload.get("surface_transition_b"), dict) else {}
+    trans_a = bool(st_a.get("em_transicao"))
+    trans_b = bool(st_b.get("em_transicao"))
+    if trans_a != trans_b:
+        # o que NÃO está em transição leva a vantagem
+        lider_mp = b if trans_a else a
+        _add("mudanca_piso", lider_mp, 1.0)
+        _reg_status("mudanca_piso", True, lider_mp,
+                    valor_a=st_a.get("piso_recente_dominante"),
+                    valor_b=st_b.get("piso_recente_dominante"),
+                    detalhe=f"{'A' if trans_a else 'B'} vem de outro piso sem rodagem")
+    elif trans_a and trans_b:
+        _reg_status("mudanca_piso", True, "igual", "ambos em transição de piso")
+    else:
+        _reg_status("mudanca_piso", False, motivo_exclusao="nenhum em transição de piso")
 
     # Lesão (só ativa em regresso claro/longo)
     # CORREÇÃO (11/08/2026): lia layoff_return_stats.days_out, que só existe
@@ -2285,28 +2363,51 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
   box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 4px 20px rgba(0,0,0,.35); padding:20px 22px; }}
 .market-verdict-highlight .market-verdict-title {{ font-size:12px; letter-spacing:.08em; }}
 .market-verdict-highlight .market-verdict-tag {{ font-size:18px; }}
+.rh-box {{ background:var(--surface2); border-radius:10px; padding:14px 16px; margin:16px 0; }}
+.rh-title {{ font-size:10px; font-weight:750; text-transform:uppercase; letter-spacing:.7px;
+  color:var(--dim); margin-bottom:10px; }}
+.rh-cols {{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; }}
+.rh-side {{ text-align:center; }}
+.rh-name {{ font-size:14px; font-weight:700; margin-bottom:3px; }}
+.rh-rank {{ font-size:13px; color:var(--text); }}
+.rh-vs {{ font-size:11px; color:var(--dim); }}
+.rh-h2h {{ text-align:center; font-size:12px; color:var(--dim); margin-top:10px;
+  padding-top:10px; border-top:1px solid var(--line); }}
 .market-verdict-title {{ font-size:11px; color:var(--dim); text-transform:uppercase;
   letter-spacing:.05em; margin-bottom:10px; }}
 .mv-cards {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }}
-.mv-card {{ background:var(--surface2); border-radius:10px; padding:10px 12px; }}
+.mv-card {{ background:var(--surface2); border-radius:10px; padding:10px 12px;
+  display:flex; gap:10px; align-items:stretch; }}
+.mv-card-body {{ flex:1; min-width:0; }}
 .mv-card-name {{ font-size:14px; font-weight:700; margin-bottom:8px; }}
 .mv-label {{ display:block; font-size:11px; color:var(--dim); }}
 .mv-value {{ display:block; font-size:14px; font-weight:600; margin-bottom:6px; }}
-.mv-grau-label {{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }}
-.mv-grau-label .mv-value {{ margin-bottom:0; font-size:12px; }}
-.mv-grau-caption {{ font-size:10px; color:var(--dim); margin-bottom:14px; }}
-.mv-grau-track {{ position:relative; height:2px; background:var(--line); margin:0 22px 20px 22px; }}
-.mv-grau-line {{ position:absolute; inset:0; }}
-.mv-grau-marker {{ position:absolute; top:-3px; width:8px; height:8px; border-radius:50%;
-  transform:translateX(-50%); }}
-.mv-grau-marker-val {{ position:absolute; top:-18px; left:50%; transform:translateX(-50%);
-  font-size:12px; font-weight:700; white-space:nowrap; }}
-.mv-grau-end {{ position:absolute; top:-6px; font-size:11px; color:var(--dim); white-space:nowrap; }}
-.mv-grau-end.left {{ left:-22px; }}
-.mv-grau-end.right {{ right:-22px; }}
+.mv-fora-selo {{ font-size:10px; font-weight:700; color:var(--mint); margin-bottom:6px; }}
+/* Barra de intervalo VERTICAL (a pedido) — à direita de cada bubble */
+.mv-vbar-wrap {{ display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-width:52px; }}
+.mv-vbar-caption {{ font-size:8px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px;
+  margin-bottom:4px; text-align:center; }}
+.mv-vbar-track {{ position:relative; width:2px; height:80px; background:var(--line);
+  margin:6px 0; }}
+.mv-vbar-marker {{ position:absolute; left:50%; width:9px; height:9px; border-radius:50%;
+  transform:translate(-50%, 50%); }}
+.mv-vbar-val {{ position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  font-size:11px; font-weight:700; white-space:nowrap; }}
+.mv-vbar-end {{ position:absolute; left:50%; transform:translateX(-50%); font-size:9px;
+  color:var(--dim); white-space:nowrap; }}
+.mv-vbar-end.top {{ top:-14px; }}
+.mv-vbar-end.bottom {{ bottom:-14px; }}
 .market-verdict-tag {{ font-size:15px; font-weight:800; letter-spacing:.03em;
   margin-bottom:4px; }}
 .market-verdict-note {{ font-size:12px; color:var(--dim); line-height:1.4; }}
+.sysacc {{ margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }}
+.sysacc-title {{ font-size:10px; font-weight:750; text-transform:uppercase; letter-spacing:.7px;
+  color:var(--dim); margin-bottom:8px; }}
+.sysacc-line {{ font-size:12px; color:var(--text); line-height:1.5; margin-bottom:5px; }}
+.sysacc-num {{ font-weight:800; color:var(--mint); font-size:14px; }}
+.sysacc-detail {{ color:var(--dim); font-size:11px; }}
+.sysacc-note {{ font-size:10px; color:var(--dim); opacity:.75; margin-top:4px; }}
 .action-map-static {{ border:1.5px solid var(--mint); border-radius:12px; margin-bottom:14px;
   background:linear-gradient(180deg, rgba(63,185,168,.10), var(--surface) 45%); }}
 .action-map-head {{ min-height:78px; display:flex; align-items:center; flex-wrap:wrap;
@@ -2326,6 +2427,7 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .action-title {{ font-size:13px; font-weight:750; margin-bottom:5px; }}
 .action-headline {{ display:inline-block; font-size:18px; font-weight:800; color:var(--mint);
   background:rgba(63,185,168,.12); border-radius:7px; padding:2px 10px; margin-bottom:7px; }}
+.action-small-sample {{ font-size:10px; color:var(--amber); margin-bottom:6px; font-weight:600; }}
 .action-text {{ color:var(--dim); font-size:11px; line-height:1.5; }}
 .action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
 @media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
@@ -2386,9 +2488,6 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
   .mh-player-photo {{ width:52px; height:52px; flex-basis:52px; }}
   .mh-player-avatar {{ font-size:15px; }}
   .mv-cards {{ grid-template-columns:1fr; }}
-  .mv-grau-track {{ margin:0 16px 20px 16px; }}
-  .mv-grau-end.left {{ left:-16px; }}
-  .mv-grau-end.right {{ right:-16px; }}
 }}
 """
 
@@ -2903,41 +3002,62 @@ def _mod_market_verdict(payload, div):
         odd_justa_txt = f"{_fmt(odds_low)}–{_fmt(odds_high)}" if odds_low is not None else "—"
         odd_mercado_txt = _fmt(odd_mercado) if odd_mercado is not None else "—"
 
-        # REDESENHADO (21/08/2026, a pedido — "continuo sem perceber o
-        # objetivo da barra"): a versão anterior (barra preenchida +
-        # legenda à parte) obrigava a interpretar uma percentagem. Agora é
-        # uma linha simples entre os dois extremos da faixa, com um
-        # marcador que mostra o PRÓPRIO VALOR da odd de mercado escrito
-        # em cima dele — não é preciso decifrar nada, só ler "onde está
-        # o número". Também mais compacto para mobile (uma linha, não um
-        # bloco de barra + legenda separada).
+        _cor_lado = "var(--a)" if side == "a" else "var(--b)"
+
+        # PROBLEMA 1 (22/08/2026, a pedido): barra de intervalo VERTICAL, à
+        # direita da bubble, com marcador que mostra o próprio valor da odd
+        # de mercado. Alerta forte quando a odd cai FORA da faixa (o sinal
+        # mais importante: mercado a pagar acima da nossa estimativa).
         grau_html = ""
+        fora_da_faixa = False
         if odd_mercado is not None and odds_low is not None and odds_high is not None:
             pct = _grau_de_valor(odd_mercado, odds_low, odds_high)
             if pct is not None:
+                # vertical: 0% em baixo (odds_low), 100% em cima (odds_high)
                 pct_clamped = max(4, min(96, pct))
-                cor_grau = "var(--mint)" if pct >= 85 else "var(--dim)"
-                seta = " →" if pct > 100 else (" ←" if pct < 0 else "")
+                acima = pct > 100
+                abaixo = pct < 0
+                fora_da_faixa = acima or abaixo
+                if acima:
+                    cor_grau, rotulo = "var(--mint)", "acima da faixa"
+                elif abaixo:
+                    cor_grau, rotulo = "var(--red)", "abaixo da faixa"
+                elif pct >= 85:
+                    cor_grau, rotulo = "var(--mint)", "topo da faixa"
+                else:
+                    cor_grau, rotulo = "var(--dim)", ""
+                # posição vertical do marcador (bottom em %)
+                bottom_pos = max(2, min(98, pct))
                 grau_html = (
-                    f'<div class="mv-grau-caption">Odd de mercado face à nossa faixa</div>'
-                    f'<div class="mv-grau-track">'
-                    f'<span class="mv-grau-end left">{_fmt(odds_low)}</span>'
-                    f'<div class="mv-grau-line"></div>'
-                    f'<div class="mv-grau-marker" style="left:{pct_clamped:.0f}%; background:{cor_grau}">'
-                    f'<span class="mv-grau-marker-val" style="color:{cor_grau}">{_fmt(odd_mercado)}{seta}</span></div>'
-                    f'<span class="mv-grau-end right">{_fmt(odds_high)}</span>'
-                    f'</div>'
+                    f'<div class="mv-vbar-wrap">'
+                    f'<div class="mv-vbar-caption">mercado vs faixa</div>'
+                    f'<div class="mv-vbar-track">'
+                    f'<span class="mv-vbar-end top">{_fmt(odds_high)}</span>'
+                    f'<div class="mv-vbar-marker" style="bottom:{bottom_pos:.0f}%; background:{cor_grau}">'
+                    f'<span class="mv-vbar-val" style="color:{cor_grau}">{_fmt(odd_mercado)}</span></div>'
+                    f'<span class="mv-vbar-end bottom">{_fmt(odds_low)}</span>'
+                    f'</div></div>'
                 )
 
-        # NOVO (22/08/2026, a pedido): nome do jogador com a cor
-        # correspondente (azul/laranja), como no resto do relatório.
-        _cor_nome = "var(--a)" if side == "a" else "var(--b)"
+        # PROBLEMA 1: contorno do cartão na cor da jogadora; se a odd está
+        # fora da faixa, realce adicional (borda mais viva + selo).
+        estilo_card = f"border:2px solid {_cor_lado};"
+        selo_fora = ""
+        if fora_da_faixa:
+            estilo_card = f"border:2px solid var(--mint); box-shadow:0 0 0 2px rgba(63,185,168,.25);"
+            selo_fora = '<div class="mv-fora-selo">✦ Odd fora da faixa — possível valor</div>'
+
+        # PROBLEMA 1: ordem invertida dos campos — Mercado primeiro (o que
+        # o utilizador vê primeiro), depois Odd justa, depois Probabilidade.
         return (
-            f'<div class="mv-card">'
-            f'<div class="mv-card-name" style="color:{_cor_nome}">{_esc(nome)}</div>'
-            f'<div><span class="mv-label">Probabilidade (faixa)</span><span class="mv-value">{prob_txt}</span></div>'
-            f'<div><span class="mv-label">Odd justa (faixa)</span><span class="mv-value">{odd_justa_txt}</span></div>'
+            f'<div class="mv-card" style="{estilo_card}">'
+            f'<div class="mv-card-body">'
+            f'<div class="mv-card-name" style="color:{_cor_lado}">{_esc(nome)}</div>'
+            f'{selo_fora}'
             f'<div><span class="mv-label">Mercado</span><span class="mv-value">{odd_mercado_txt}</span></div>'
+            f'<div><span class="mv-label">Odd justa (faixa)</span><span class="mv-value">{odd_justa_txt}</span></div>'
+            f'<div><span class="mv-label">Probabilidade (faixa)</span><span class="mv-value">{prob_txt}</span></div>'
+            f'</div>'
             f'{grau_html}'
             f'</div>'
         )
@@ -2970,6 +3090,36 @@ def _mod_market_verdict(payload, div):
     aviso = (f'<div class="market-verdict-note" style="opacity:.75">{_esc(status_faixa)} · '
              f'n={sample}/{minimum}{_esc(bucket_txt)} — não é garantia nem odd justa exata.</div>')
 
+    # NOVO (22/08/2026, a pedido): histórico de acerto do PRÓPRIO sistema —
+    # o maior construtor de confiança, porque não é opinião, é o registo
+    # real. Só aparece se houver amostra suficiente (a função devolve None
+    # caso contrário). É um número global (igual em todos os relatórios).
+    acc = _d(payload.get("system_accuracy"))
+    acc_html = ""
+    if acc:
+        linhas = []
+        al = acc.get("alinhamento_forte")
+        if al:
+            linhas.append(
+                f'<div class="sysacc-line"><span class="sysacc-num">{al["taxa_pct"]:.0f}%</span> '
+                f'das vezes em que mercado e indicadores concordaram, o favorito confirmou '
+                f'<span class="sysacc-detail">({al["acertos"]}/{al["total"]} jogos)</span></div>'
+            )
+        dv = acc.get("divergencia")
+        if dv:
+            linhas.append(
+                f'<div class="sysacc-line"><span class="sysacc-num">{dv["taxa_pct"]:.0f}%</span> '
+                f'das vezes em que os indicadores apontaram contra o mercado, acertaram '
+                f'<span class="sysacc-detail">({dv["acertos"]}/{dv["total"]} jogos)</span></div>'
+            )
+        if linhas:
+            acc_html = (
+                '<div class="sysacc"><div class="sysacc-title">Histórico do sistema</div>'
+                + "".join(linhas)
+                + '<div class="sysacc-note">Registo real dos jogos já analisados e resolvidos — '
+                'acumula com o tempo.</div></div>'
+            )
+
     return (
         # NOVO (18/08/2026, a pedido): destaque visual forte — é a secção
         # mais importante do relatório, tem de se distinguir claramente
@@ -2978,7 +3128,7 @@ def _mod_market_verdict(payload, div):
         f'<div class="market-verdict-title">Veredicto de mercado</div>'
         f'<div class="mv-cards">{_cartao(a_nome, "a")}{_cartao(b_nome, "b")}</div>'
         f'<div class="market-verdict-tag" style="color:{cor}">{veredicto}</div>'
-        f'<div class="market-verdict-note">{texto}</div>{aviso}'
+        f'<div class="market-verdict-note">{texto}</div>{aviso}{acc_html}'
         f'</div>'
     )
 
@@ -3536,14 +3686,18 @@ def _mod_action_map(payload, div, result):
     names = {"a": a, "b": b}
     actions = []
 
-    def add(kind, title, text, source="", odd_justa=None, headline=None):
+    def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None):
         # NOVO (22/08/2026, a pedido): "headline" é só para destaque
         # visual (número grande e colorido no topo do cartão) — separado
         # de "odd_justa", que continua a controlar SÓ o destaque por
         # perfil de investidor (correção anterior: nem todo número
         # merece contar como "valor").
+        # NOVO (22/08/2026, a pedido): "n_amostra" gera um selo visual de
+        # confiança — um cenário com n=8 não deve parecer tão sólido como
+        # um com n=30. Só marca "amostra pequena" abaixo de 15; acima
+        # disso não mostra selo (é amostra saudável, não precisa de aviso).
         actions.append({"kind": kind, "title": title, "text": text, "source": source,
-                        "odd_justa": odd_justa, "headline": headline})
+                        "odd_justa": odd_justa, "headline": headline, "n_amostra": n_amostra})
 
     div = _d(div)
     level = _d(div.get("classificacao")).get("nivel", 0) or 0
@@ -3570,61 +3724,54 @@ def _mod_action_map(payload, div, result):
             "Sem preço de mercado ainda. Só dá para acompanhar os cenários ao vivo, mais abaixo.")
     elif signal_type == "direcao" and fav_side and level >= 1:
         strength = "forte" if level >= 3 else "moderada" if level >= 2 else "ligeira"
-        add("Mercado principal", f"Moneyline {fav}",
-            f"O mercado acha que ganha o outro, os indicadores acham que ganha {fav}. Vale a pena confirmar o preço antes de decidir.",
-            "Motor de divergência", headline=f"Divergência {strength}")
+        # PROBLEMA 3.1 (22/08/2026, a pedido): mostrar o PREÇO a seguir em
+        # destaque, não só "divergência forte". O preço é parte essencial
+        # da ação — "Seguir [jogador] @ [odd]".
+        _odd_fav = observed_odd(fav_side)
+        _odd_fav_txt = f"{float(_odd_fav):.2f}" if _odd_fav is not None else "s/ preço"
+        add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
+            f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}. "
+            "Confirmar o preço antes de decidir.",
+            "Motor de divergência", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
+        _odd_fav = observed_odd(fav_side)
+        _odd_fav_txt = f"{float(_odd_fav):.2f}" if _odd_fav is not None else "s/ preço"
         _nota_alinhamento = (
-            "Mercado e indicadores concordam. Só vale a pena se o preço estiver dentro da faixa indicada acima."
+            "Mercado e indicadores concordam. Só vale a pena se o preço estiver dentro da faixa indicada no Veredicto."
             if _tem_faixa_alinhamento else
             "Mercado e indicadores concordam, mas ainda não há faixa calculada para comparar o preço."
         )
-        add("Mercado principal", f"Moneyline {fav}", _nota_alinhamento,
-            "Mercado + índice de sinais")
+        add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}", _nota_alinhamento,
+            "Mercado + índice de sinais", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     else:
         add("Pré-jogo", "Sem sinal claro",
             "Mercado e indicadores estão demasiado próximos. Melhor esperar por informação ao vivo.")
 
-    # Usa a faixa já mostrada no relatório como gatilho, não como garantia.
-    estimate = _d(payload.get("indicative_odds"))
-    ranges = _d(estimate.get("players"))
-    price_side = fav_side
-    if price_side is None and div.get("indice_favorece") in (a, b):
-        price_side = "a" if div.get("indice_favorece") == a else "b"
-    if price_side and _d(ranges.get(price_side)):
-        values = _d(ranges.get(price_side))
-        low, high = values.get("odds_low"), values.get("odds_high")
-        current = observed_odd(price_side)
-        try:
-            low_f, high_f = float(low), float(high)
-            current_f = float(current) if current is not None else None
-        except (TypeError, ValueError):
-            low_f = high_f = current_f = None
-        if low_f is not None and high_f is not None:
-            status = "calibrada" if estimate.get("calibrated") else "em calibração"
-            current_text = f"Está em {current_f:.2f}. " if current_f is not None else ""
-            add("Gatilho de preço", f"Faixa {status} · {names[price_side]}",
-                f"{current_text}Abaixo de {low_f:.2f} o sinal enfraquece. Acima de {high_f:.2f}, confirma notícias antes de decidir.",
-                f"n={estimate.get('sample_size', 0)}", headline=f"Moneyline {low_f:.2f}–{high_f:.2f}")
+    # PROBLEMA 3.5 (22/08/2026, a pedido): "Gatilho de preço" REMOVIDO do
+    # Mapa de Ações. A faixa de odd justa/calibrada já é tratada no
+    # Veredicto de Mercado — repeti-la aqui ocupava espaço e desviava o
+    # foco do Mapa de Ações (que deve privilegiar mercado, preço, lado com
+    # valor, handicap e cenários). O cálculo em si não muda, só deixa de
+    # ser mostrado nesta secção.
 
-    # NOVO (21/08/2026, a pedido): referência de handicap — ESTIMATIVA
-    # GENÉRICA de mercado (não calculada pelo motor), só para orientação.
-    # Mostra-se para o lado favorecido pelo MERCADO (maior probabilidade
-    # implícita), com base na odd observada desse lado.
-    _mkt = _d(div.get("market"))
-    _lado_fav_mercado = "a" if (_mkt.get("a", 50) or 50) >= (_mkt.get("b", 50) or 50) else "b"
-    _odd_fav_mercado = observed_odd(_lado_fav_mercado)
-    _ref_handicap = estimate_typical_handicap(_odd_fav_mercado)
-    if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
-        _h_baixo, _h_alto = _ref_handicap["handicap"]
-        add("Referência de handicap", f"{names[_lado_fav_mercado]}",
-            "O mercado costuma usar esta linha para este preço.",
-            "Estimativa genérica de mercado, não calculada por nós",
-            headline=f"Handicap {_h_baixo}/{_h_alto}")
-    elif _ref_handicap and _ref_handicap["tipo"] == "ao_par":
-        add("Referência de handicap", f"{names[_lado_fav_mercado]} · odds ao par",
-            "Sem handicap típico — comparar diretamente o Moneyline.",
-            "Estimativa genérica de mercado, não calculada por nós")
+    # PROBLEMA 3.2 (22/08/2026, a pedido): a referência de handicap deve
+    # seguir SEMPRE o lado identificado como tendo VALOR (fav_side), não o
+    # lado favorecido pelo mercado. Se o valor está no underdog, a função
+    # estimate_typical_handicap já devolve handicaps POSITIVOS (a odd > par
+    # cai no ramo underdog). Regra dinâmica, funciona para qualquer lado.
+    if fav_side:
+        _odd_lado_valor = observed_odd(fav_side)
+        _ref_handicap = estimate_typical_handicap(_odd_lado_valor)
+        if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
+            _h_baixo, _h_alto = _ref_handicap["handicap"]
+            add("Referência de handicap", f"{names[fav_side]}",
+                "Mesmo lado do valor. O mercado costuma usar esta linha para este preço.",
+                "Estimativa genérica de mercado, não calculada por nós",
+                headline=f"Handicap {_h_baixo}/{_h_alto}")
+        elif _ref_handicap and _ref_handicap["tipo"] == "ao_par":
+            add("Referência de handicap", f"{names[fav_side]} · odds ao par",
+                "Sem handicap típico — comparar diretamente o Moneyline.",
+                "Estimativa genérica de mercado, não calculada por nós")
 
     # NOVO (21/08/2026, a pedido): odd justa = 1/taxa, para cada cenário
     # condicional — transforma a taxa histórica numa referência direta e
@@ -3654,7 +3801,16 @@ def _mod_action_map(payload, div, result):
         if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 5:
             comeback[side] = (float(rate), int(count))
     if comeback:
-        side = max(comeback, key=lambda key: comeback[key][0])
+        # PROBLEMA 4.6 (22/08/2026, a pedido): o cenário ao vivo deve
+        # focar-se no LADO DO VALOR, não simplesmente no lado com melhor
+        # taxa. Se o lado do valor tem dados de recuperação e uma taxa
+        # minimamente relevante (>=30%), é esse que se mostra. Só se o lado
+        # do valor não tiver dados é que se cai no melhor disponível (para
+        # não perder um cenário útil), mas a prioridade é o valor.
+        if fav_side and fav_side in comeback and comeback[fav_side][0] >= 30:
+            side = fav_side
+        else:
+            side = max(comeback, key=lambda key: comeback[key][0])
         rate, count = comeback[side]
         if rate >= 30:
             _odd_cb = _odd_justa(rate)
@@ -3662,7 +3818,7 @@ def _mod_action_map(payload, div, result):
             # número em destaque separado do texto).
             add("Cenário ao vivo", f"{names[side]} perde o 1.º set",
                 f"Recupera e ganha o jogo {rate:.0f}% das vezes (em {count} jogos assim).",
-                "Moneyline", headline=(f"Moneyline ~{_odd_cb:.2f}" if _odd_cb else None))
+                "Moneyline", headline=(f"Moneyline ~{_odd_cb:.2f}" if _odd_cb else None), n_amostra=count)
             # CORREÇÃO (21/08/2026, a pedido — "falar em linhas de
             # handicap se o histórico justificar"): antes usava um valor
             # fixo (+2.5/+3.5) sem ligação aos dados; agora usa a odd
@@ -3672,7 +3828,7 @@ def _mod_action_map(payload, div, result):
                 _hb_cb, _ha_cb = _ref_hc_cb["handicap"]
                 add("Cenário ao vivo", f"Alternativa: handicap para {names[side]}",
                     "Perder por poucos jogos é mais fácil de acontecer do que ganhar o jogo todo.",
-                    f"Histórico de recuperações · n={count}", headline=f"Handicap {_hb_cb}/{_ha_cb}")
+                    f"Histórico de recuperações · n={count}", headline=f"Handicap {_hb_cb}/{_ha_cb}", n_amostra=count)
 
     # NOVO (21/08/2026, a pedido): caso especial — favoritos com odd
     # pré-jogo entre 1.25 e 1.40. Se perderem o 1.º set, a odd ao vivo
@@ -3709,11 +3865,11 @@ def _mod_action_map(payload, div, result):
                 f"{names[side]} recupera {_rate_esp:.0f}% dos jogos assim (n={_count_esp}) — melhor do que o mercado "
                 f"costuma oferecer nesse momento ({_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}).{_hc_txt}",
                 "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real,
-                headline=f"Moneyline ~{_odd_justa_real:.2f}")
+                headline=f"Moneyline ~{_odd_justa_real:.2f}", n_amostra=_count_esp)
         else:
             add("Caso especial", f"{names[side]} · sem sinal extra se perder o 1.º set",
                 f"Recupera {_rate_esp:.0f}% dos jogos (n={_count_esp}) — dentro do que o mercado já costuma oferecer.",
-                "Estimativa genérica + histórico próprio")
+                "Estimativa genérica + histórico próprio", n_amostra=_count_esp)
 
     # Set decisivo: só quando a diferença é material e tem amostra.
     deciding = {}
@@ -3733,7 +3889,7 @@ def _mod_action_map(payload, div, result):
             _odd_ds = _odd_justa(rate)
             add("Cenário ao vivo", f"{names[side]} · se chegar ao set decisivo",
                 f"Vence {rate:.0f}% das vezes (em {count} jogos assim).",
-                "Set decisivo", headline=(f"Moneyline ~{_odd_ds:.2f}" if _odd_ds else None))
+                "Set decisivo", headline=(f"Moneyline ~{_odd_ds:.2f}" if _odd_ds else None), n_amostra=count)
 
     # NOVO (21/08/2026, a pedido): tie-break com odd justa — mesma
     # estrutura dos outros cenários condicionais, fonte rica com reserva
@@ -3758,7 +3914,7 @@ def _mod_action_map(payload, div, result):
             _odd_tb = _odd_justa(rate)
             add("Cenário ao vivo", f"{names[side]} · se houver tie-break",
                 f"Vence {rate:.0f}% das vezes (em {count} jogos assim).",
-                "Tie-break", headline=(f"Moneyline ~{_odd_tb:.2f}" if _odd_tb else None))
+                "Tie-break", headline=(f"Moneyline ~{_odd_tb:.2f}" if _odd_tb else None), n_amostra=count)
 
     # Carga abre hipóteses live, explicitamente sem modelo de linha/odd.
     fa, fb = _d(payload.get("fatigue_signal_a")), _d(payload.get("fatigue_signal_b"))
@@ -3770,19 +3926,30 @@ def _mod_action_map(payload, div, result):
             f"{names[heavy]} traz +{abs(sets_a-sets_b):g} sets em 7 dias. Se aparecer quebra clara de deslocação ou serviço, acompanhar handicap a favor de {names[fresh]} e total de jogos; o sistema ainda não calcula linha nem odd justa para estes mercados.",
             "Carga acumulada")
 
-    # NOVO (21/08/2026, a pedido): margem média de jogos (bo3) — só quando
-    # há amostra em ambas as vertentes (vitórias E derrotas), para avaliar
-    # cobertura de handicap negativo mesmo em derrota.
-    gm_a, gm_b = _d(payload.get("game_margin_a")), _d(payload.get("game_margin_b"))
-    for _side_gm, _gm, _nome_gm in (("a", gm_a, a), ("b", gm_b, b)):
+    # PROBLEMA 3.3+3.4 (22/08/2026, a pedido): margem de jogos —
+    # (1) explicar a métrica em vez do texto genérico repetido;
+    # (2) mostrar SÓ o lado do valor (não os dois lados soltos);
+    # (3) ligar diretamente à leitura do handicap.
+    # A métrica: média de jogos (games) de diferença ao longo do
+    # confronto, em vitórias e em derrotas (melhor-de-3). Serve para ver
+    # se um handicap cobre mesmo quando o resultado por sets é renhido.
+    if fav_side:
+        _gm = _d(payload.get(f"game_margin_{fav_side}"))
         _mv, _nv = _gm.get("media_margem_vitoria"), _gm.get("n_vitorias")
         _md, _nd = _gm.get("media_margem_derrota"), _gm.get("n_derrotas")
-        if _mv is None or _md is None or not _nv or not _nd or _nv < 5 or _nd < 5:
-            continue
-        add("Margem de jogos (bo3)", f"{_nome_gm}",
-            f"Quando ganha, ganha por muitos jogos. Quando perde, perde por poucos"
-            f"{' — pode cobrir um handicap negativo ligeiro mesmo perdendo' if abs(_md) <= 3.5 else ''}.",
-            f"vitórias n={_nv}, derrotas n={_nd}", headline=f"Jogos: +{_mv:.1f} / -{abs(_md):.1f}")
+        if _mv is not None and _md is not None and _nv and _nd and _nv >= 5 and _nd >= 5:
+            _cobre = abs(_md) <= 3.5
+            _txt_margem = (
+                f"Média de jogos de diferença de {names[fav_side]} ao longo do encontro (melhor-de-3): "
+                f"quando vence, +{_mv:.1f}; quando perde, -{abs(_md):.1f}. "
+                + ("A margem de derrota é apertada, por isso um handicap positivo tem boa hipótese de cobrir mesmo numa derrota renhida."
+                   if _cobre else
+                   "A margem de derrota é larga, por isso um handicap positivo é mais arriscado numa derrota.")
+            )
+            add("Margem de jogos (bo3)", f"{names[fav_side]}",
+                _txt_margem,
+                f"vitórias n={_nv}, derrotas n={_nd}",
+                headline=f"Jogos: +{_mv:.1f} / -{abs(_md):.1f}", n_amostra=min(_nv, _nd))
 
     # Serviços fortes e equilibrados sugerem observação, não previsão certa.
     pa, pb = _d(payload.get("pressure_profile_a")), _d(payload.get("pressure_profile_b"))
@@ -3804,7 +3971,28 @@ def _mod_action_map(payload, div, result):
     def _no_perfil(item):
         oj = item.get("odd_justa")
         return oj is not None and INVESTOR_PROFILE_ODDS_LOW <= oj <= INVESTOR_PROFILE_ODDS_HIGH
+
+    # PROBLEMA 4.7 (22/08/2026, a pedido): hierarquia de blocos no Mapa de
+    # Ações — o mercado principal primeiro, depois o handicap, depois a
+    # margem de jogos (que se lê JUNTO do handicap), e só depois os
+    # cenários ao vivo e observações. Ordenação estável: preserva a ordem
+    # de criação dentro de cada grupo.
+    _ordem_kind = {
+        "Pré-jogo": 0,
+        "Mercado principal": 0,
+        "Referência de handicap": 1,
+        "Margem de jogos (bo3)": 2,
+        "Caso especial": 3,
+        "Cenário ao vivo": 4,
+        "Mercados ao vivo": 5,
+    }
+    actions.sort(key=lambda item: _ordem_kind.get(item.get("kind"), 9))
+    # dentro da mesma prioridade de bloco, os do perfil preferido sobem
     actions.sort(key=lambda item: 0 if _no_perfil(item) else 1)
+    # a ordenação por perfil não deve quebrar a hierarquia de blocos:
+    # reaplica a hierarquia como chave primária (sort estável preserva o
+    # efeito do perfil dentro de cada bloco)
+    actions.sort(key=lambda item: _ordem_kind.get(item.get("kind"), 9))
 
     rendered = "".join(
         f'<div class="action-item{" action-item-perfil" if _no_perfil(item) else ""}">'
@@ -3813,6 +4001,8 @@ def _mod_action_map(payload, div, result):
         + '</div>'
         f'<div class="action-title">{_esc(item["title"])}</div>'
         + (f'<div class="action-headline">{_esc(item["headline"])}</div>' if item.get("headline") else "")
+        + (f'<div class="action-small-sample">⚠ amostra pequena (n={item["n_amostra"]}) — leitura menos fiável</div>'
+           if item.get("n_amostra") is not None and item["n_amostra"] < 15 else "")
         + f'<div class="action-text">{_esc(item["text"])}</div>'
         + (f'<div class="action-source">{_esc(item["source"])}</div>' if item["source"] else "")
         + '</div>'
@@ -3897,7 +4087,12 @@ def _plain_fact(value):
 def _mod_header_editorial(payload):
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
     ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
-    rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""; rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
+    def _rk_dead(v):
+        try:
+            vf = float(v); return int(vf) if vf == int(vf) else vf
+        except (TypeError, ValueError):
+            return v
+    rank_a = f"#{_rk_dead(ra.get('rank'))}" if ra.get("rank") else ""; rank_b = f"#{_rk_dead(rb.get('rank'))}" if rb.get("rank") else ""
     fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
     form_a = f"Forma {fa.get('wins')}â€“{fa.get('losses')}" if fa else ""; form_b = f"Forma {fb.get('wins')}â€“{fb.get('losses')}" if fb else ""
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", "")); surf = _esc(payload.get("surface", ""))
@@ -4091,7 +4286,12 @@ def _mod_recent_form_merged(payload):
 def _mod_header_editorial_clean(payload):
     a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
     ra = _d(payload.get("ranking_a")); rb = _d(payload.get("ranking_b"))
-    rank_a = f"#{ra.get('rank')}" if ra.get("rank") else ""; rank_b = f"#{rb.get('rank')}" if rb.get("rank") else ""
+    def _rk_dead(v):
+        try:
+            vf = float(v); return int(vf) if vf == int(vf) else vf
+        except (TypeError, ValueError):
+            return v
+    rank_a = f"#{_rk_dead(ra.get('rank'))}" if ra.get("rank") else ""; rank_b = f"#{_rk_dead(rb.get('rank'))}" if rb.get("rank") else ""
     fa = _d(payload.get("recent_form_a")); fb = _d(payload.get("recent_form_b"))
     form_a = f"Forma {fa.get('wins')}-{fa.get('losses')}" if fa else ""; form_b = f"Forma {fb.get('wins')}-{fb.get('losses')}" if fb else ""
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", "")); surf = _esc(payload.get("surface", ""))
@@ -4108,6 +4308,50 @@ def _mod_header_editorial_clean(payload):
     if w.get("wind_kmh") is not None: weather.append(f"vento {w['wind_kmh']:.0f} km/h")
     meta_a = " | ".join(str(x) for x in (payload.get("player_a_country"), rank_a, form_a) if x); meta_b = " | ".join(str(x) for x in (payload.get("player_b_country"), rank_b, form_b) if x)
     return f'<div class="mh"><div class="mh-kicker">Match Preview | {_esc(when)}</div><div class="mh-top"><div><div class="mh-name">{a}</div><div class="mh-sub">{_esc(meta_a)}</div></div><div><div class="mh-vs">VS</div><div class="mh-tourn">{tourn}<br>{tier} | {surf}</div></div><div><div class="mh-name b">{b}</div><div class="mh-sub b">{_esc(meta_b)}</div></div></div><div class="mh-context"><div>{_esc(" | ".join(weather))}</div><div class="mh-h2h">{h2h}</div><div class="b">{tier} | {surf}</div></div></div>'
+
+
+def _mod_ranking_h2h_box(payload):
+    """PROBLEMA 2 (22/08/2026, a pedido): caixa compacta de ranking atual +
+    H2H, posicionada entre as "Chaves do Confronto" e o "Mapa de Forças".
+    Resume o essencial do confronto num sítio só, sem o utilizador ter de
+    procurar. Ranking sempre inteiro; H2H com o quadro recente se existir."""
+    a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B"))
+    ra, rb = _d(payload.get("ranking_a")), _d(payload.get("ranking_b"))
+    tour = _esc((payload.get("tour") or "").upper())
+
+    def _rk(v):
+        try:
+            vf = float(v); return str(int(vf)) if vf == int(vf) else str(vf)
+        except (TypeError, ValueError):
+            return "—"
+    rank_a = f"{tour} #{_rk(ra.get('rank'))}" if ra.get("rank") else "—"
+    rank_b = f"{tour} #{_rk(rb.get('rank'))}" if rb.get("rank") else "—"
+
+    # H2H: usar o resumo cru + líder recente se disponível
+    h2h = _d(_d(payload.get("h2h")).get("overall"))
+    wr = _d(_d(payload.get("h2h")).get("weighted_recency"))
+    h2h_txt = "Sem confrontos diretos"
+    if h2h.get("total_matches"):
+        aw, bw = h2h.get("a_wins", 0), h2h.get("b_wins", 0)
+        h2h_txt = f"{aw}–{bw} no confronto direto"
+        if wr.get("lider") and wr.get("lider") not in ("igual", None):
+            _lider_wr = wr["lider"]
+            if _lider_wr in (payload.get("player_a"), payload.get("player_b")):
+                h2h_txt += f" · {_esc(_lider_wr)} lidera nos jogos recentes"
+
+    return (
+        '<div class="rh-box">'
+        '<div class="rh-title">Ranking e confronto direto</div>'
+        '<div class="rh-cols">'
+        f'<div class="rh-side"><div class="rh-name" style="color:var(--a)">{a}</div>'
+        f'<div class="rh-rank">{rank_a}</div></div>'
+        f'<div class="rh-vs">vs</div>'
+        f'<div class="rh-side"><div class="rh-name" style="color:var(--b)">{b}</div>'
+        f'<div class="rh-rank">{rank_b}</div></div>'
+        '</div>'
+        f'<div class="rh-h2h">{h2h_txt}</div>'
+        '</div>'
+    )
 
 
 def _mod_at_glance_clean(payload):
@@ -4159,7 +4403,6 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         # confundia. A função continua definida (não usada), caso volte a
         # fazer sentido isolá-la no futuro.
         partes.append(_mod_market_provenance(payload))
-        partes.append(_mod_mercados(payload, div))
         partes.append('</div>')
     # 2. Leitura do jogo (sempre — muda conforme estado)
     partes.append(_mod_match_intro(result))
@@ -4199,6 +4442,9 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         f'{_mod_fadiga(payload)}{_mod_transparencia_pesos(payload, div)}'
         '</div></div>'
     )
+    # PROBLEMA 2 (22/08/2026, a pedido): caixa de ranking + confronto
+    # direto, entre as Chaves do Confronto e o Mapa de Forças.
+    partes.append(_mod_ranking_h2h_box(payload))
     partes.append(_mod_fatores_detalhados(
         payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
     ))
