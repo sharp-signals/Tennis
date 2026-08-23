@@ -311,7 +311,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertLess(html.index('class="leitura"'), html.index("Leitura do mercado"))
         self.assertLess(html.index("Leitura do mercado"), html.index("O jogo num relance"))
         self.assertLess(html.index("Mercado e indicadores"), html.index("O jogo num relance"))
-        hero = html[html.index('<div class="mh">'):html.index('<div class="match-intro">')]
+        hero = html[html.index('<div class="mh">'):html.index('class="leitura"')]
         self.assertIn("2.1", hero)
         self.assertIn("1.8", hero)
         self.assertNotIn("Â", hero)
