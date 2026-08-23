@@ -3457,26 +3457,52 @@ def compute_fatigue_from_recent(recent_matches: list, player_id: int,
 
 
 def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
-                          current_surface: Optional[str] = None) -> Optional[dict]:
+                          current_surface: Optional[str] = None,
+                          tour: Optional[str] = None) -> Optional[dict]:
     """
     H2H calculado a partir da lista de confrontos da RapidAPI (fetch_h2h_matches),
     para não depender do histórico Sackmann (partido para WTA). Mesmo formato
     que compute_h2h: {overall:{a_wins,b_wins,total_matches}, on_surface, surface}.
+
+    CORREÇÃO (22/08/2026): a resposta do h2h/matches NÃO traz o piso de cada
+    confronto (confirmado em log real: só vem tournamentId, sem court/surface).
+    Por isso o "confronto direto por piso" saía sempre a zeros. Agora, quando o
+    piso não vem no confronto, resolve-se via tournamentId com get_tournament_info
+    (quase sempre em cache — não gasta chamadas novas na prática). Requer 'tour'.
     """
     if not h2h_matches:
         return None
+
+    def _piso_do_confronto(m):
+        # 1) piso direto no confronto (raro, mas honramos se vier)
+        surf = (m.get("court") or m.get("surface") or "")
+        if surf:
+            return str(surf).lower()
+        # 2) resolver via tournamentId (o caso real) — usa cache
+        tid = m.get("tournamentId")
+        if tid is not None and tour:
+            try:
+                info = get_tournament_info(tid, tour)
+            except Exception:
+                info = None
+            if info and info.get("surface"):
+                return str(info["surface"]).lower()
+        return ""
+
     a_wins = b_wins = 0
     a_surf = b_surf = 0
+    _cur = _normalize_surface_family(current_surface) if current_surface else None
     for m in h2h_matches:
         if not isinstance(m, dict):
             continue
         winner = m.get("match_winner") or m.get("winnerId") or m.get("winner")
         if winner is None:
             continue
-        # normalizar o piso do confronto
-        surf = (m.get("court") or m.get("surface") or "")
-        surf = str(surf).lower()
-        same_surface = current_surface and current_surface.lower() in surf
+        # piso do confronto (direto ou resolvido via torneio), comparado por
+        # FAMÍLIA de piso (hard/clay/grass), não por igualdade de texto.
+        piso_confronto = _piso_do_confronto(m)
+        fam_confronto = _normalize_surface_family(piso_confronto) if piso_confronto else None
+        same_surface = bool(_cur and fam_confronto and fam_confronto == _cur)
         if winner == player_a_id:
             a_wins += 1
             if same_surface: a_surf += 1
