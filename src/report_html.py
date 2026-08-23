@@ -1998,32 +1998,48 @@ def _pct_str(v, casas=0):
 
 
 # ---- PALETA V2 (cada cor com um só significado) ----
-# ===== Referência de handicap (21/08/2026, a pedido) =====
+# ===== Referência de handicap (21/08/2026; recalibrado 22/08/2026) =====
 #
 # Estimativa GENÉRICA de como o mercado tipicamente estrutura handicaps de
 # jogos para uma dada odd Moneyline — fornecida pelo utilizador a partir
 # da experiência de mercado, NÃO calculada pelo motor. Serve só de
 # orientação aproximada para o "Mapa de Ações"; nunca se apresenta como um
 # dado próprio, sempre claramente rotulada como estimativa.
+#
+# RECALIBRAÇÃO (22/08/2026, a pedido — "odd perto do par não leva handicap
+# tão positivo"): a zona neutra alargou e há um degrau intermédio (+1.5)
+# para odds logo acima do par. Antes, uma odd de 2.05 caía já em +2/+2.5,
+# o que era enganador. Agora: par alargado, depois +1.5, e só a partir de
+# ~2.20/2.30 é que aparecem os handicaps mais positivos.
 _HANDICAP_REF_FAVORITO = [
     (1.50, ("-2", "-2.5")),
     (1.40, ("-3", "-3.5")),
     (1.30, ("-3.5", "-4")),
 ]
+# underdog: (limiar_min_odd, handicap). A odd tem de ser >= limiar para o
+# handicap se aplicar. Ordenada do mais positivo para o menos, para
+# escolher o primeiro limiar que a odd atinge.
 _HANDICAP_REF_UNDERDOG = [
-    (2.50, ("+2", "+2.5")),
-    (3.00, ("+3", "+3.5")),
-    (3.50, ("+3.5", "+4")),
+    (3.30, ("+3.5", "+4")),
+    (2.80, ("+3", "+3.5")),
+    (2.30, ("+2", "+2.5")),
+    (2.16, ("+1.5", "+2")),
+    (2.00, ("+1.5", "+1.5")),
 ]
-_HANDICAP_REF_AO_PAR = (1.75, 1.90)
+# Zona neutra alargada: no meio, sem handicap pré-live que compense.
+_HANDICAP_REF_AO_PAR = (1.75, 2.00)
 
 
 def estimate_typical_handicap(odd):
     """Devolve a referência genérica de handicap para uma odd Moneyline
     observada, ou None se a odd não permitir estimar (ausente/inválida).
-    "ao_par" quando a odd está na faixa 1.75-1.90 (handicap tipicamente
-    não se aplica); "favorito"/"underdog" com o par de handicaps típico
-    mais próximo, escolhido pela âncora mais próxima da odd observada."""
+    "ao_par" quando a odd está na zona neutra (sem handicap pré-live que
+    compense). "favorito"/"underdog" com o par de handicaps típico.
+
+    RECALIBRADO (22/08/2026): para o lado underdog usa limiares ordenados
+    (não a âncora mais próxima) — uma odd de 2.05 dá +1.5 máximo, uma de
+    2.30 é que começa nos +2/+2.5, respeitando o critério do utilizador.
+    """
     try:
         odd = float(odd)
     except (TypeError, ValueError):
@@ -2032,10 +2048,15 @@ def estimate_typical_handicap(odd):
         return {"tipo": "ao_par", "handicap": None}
     if odd < _HANDICAP_REF_AO_PAR[0]:
         tabela, tipo = _HANDICAP_REF_FAVORITO, "favorito"
-    else:
-        tabela, tipo = _HANDICAP_REF_UNDERDOG, "underdog"
-    ancora, handicap = min(tabela, key=lambda par: abs(par[0] - odd))
-    return {"tipo": tipo, "handicap": handicap, "odd_ancora": ancora}
+        ancora, handicap = min(tabela, key=lambda par: abs(par[0] - odd))
+        return {"tipo": tipo, "handicap": handicap, "odd_ancora": ancora}
+    # underdog: primeiro limiar (do mais alto) que a odd atinge
+    for limiar, handicap in _HANDICAP_REF_UNDERDOG:
+        if odd >= limiar:
+            return {"tipo": "underdog", "handicap": handicap, "odd_ancora": limiar}
+    # odd acima do par mas abaixo do primeiro limiar underdog (2.00):
+    # não há handicap positivo que compense -> tratar como neutro
+    return {"tipo": "ao_par", "handicap": None}
 
 
 COLORS_V2 = {
@@ -3725,24 +3746,40 @@ def _mod_action_map(payload, div, result):
     elif signal_type == "direcao" and fav_side and level >= 1:
         strength = "forte" if level >= 3 else "moderada" if level >= 2 else "ligeira"
         # PROBLEMA 3.1 (22/08/2026, a pedido): mostrar o PREÇO a seguir em
-        # destaque, não só "divergência forte". O preço é parte essencial
-        # da ação — "Seguir [jogador] @ [odd]".
+        # destaque, não só "divergência forte".
         _odd_fav = observed_odd(fav_side)
         _odd_fav_txt = f"{float(_odd_fav):.2f}" if _odd_fav is not None else "s/ preço"
-        add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
-            f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}. "
-            "Confirmar o preço antes de decidir.",
-            "Motor de divergência", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
+        # PROBLEMA 4 (22/08/2026, a pedido): se o lado do valor é um
+        # SUPERFAVORITO (odd abaixo da faixa de perfil), o Moneyline direto
+        # não interessa — o foco vai para o handicap negativo, que é onde
+        # está o valor nesses casos.
+        if _odd_fav is not None and float(_odd_fav) < INVESTOR_PROFILE_ODDS_LOW:
+            add("Mercado principal", f"{fav} · favorito claro @ {_odd_fav_txt}",
+                f"Os indicadores apontam para {fav}, mas a odd é baixa demais para o Moneyline compensar. "
+                "O valor, a existir, está no handicap negativo (ver abaixo).",
+                "Motor de divergência", headline=f"Handicap de {fav}")
+        else:
+            add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
+                f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}. "
+                "Confirmar o preço antes de decidir.",
+                "Motor de divergência", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
         _odd_fav = observed_odd(fav_side)
         _odd_fav_txt = f"{float(_odd_fav):.2f}" if _odd_fav is not None else "s/ preço"
-        _nota_alinhamento = (
-            "Mercado e indicadores concordam. Só vale a pena se o preço estiver dentro da faixa indicada no Veredicto."
-            if _tem_faixa_alinhamento else
-            "Mercado e indicadores concordam, mas ainda não há faixa calculada para comparar o preço."
-        )
-        add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}", _nota_alinhamento,
-            "Mercado + índice de sinais", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
+        # PROBLEMA 4: superfavorito também no caso de alinhamento.
+        if _odd_fav is not None and float(_odd_fav) < INVESTOR_PROFILE_ODDS_LOW:
+            add("Mercado principal", f"{fav} · favorito claro @ {_odd_fav_txt}",
+                f"Mercado e indicadores concordam em {fav}, mas a odd é baixa demais para o Moneyline compensar. "
+                "O valor, a existir, está no handicap negativo (ver abaixo).",
+                "Mercado + índice de sinais", headline=f"Handicap de {fav}")
+        else:
+            _nota_alinhamento = (
+                "Mercado e indicadores concordam. Só vale a pena se o preço estiver dentro da faixa indicada no Veredicto."
+                if _tem_faixa_alinhamento else
+                "Mercado e indicadores concordam, mas ainda não há faixa calculada para comparar o preço."
+            )
+            add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}", _nota_alinhamento,
+                "Mercado + índice de sinais", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     else:
         add("Pré-jogo", "Sem sinal claro",
             "Mercado e indicadores estão demasiado próximos. Melhor esperar por informação ao vivo.")
@@ -3754,11 +3791,13 @@ def _mod_action_map(payload, div, result):
     # valor, handicap e cenários). O cálculo em si não muda, só deixa de
     # ser mostrado nesta secção.
 
-    # PROBLEMA 3.2 (22/08/2026, a pedido): a referência de handicap deve
-    # seguir SEMPRE o lado identificado como tendo VALOR (fav_side), não o
-    # lado favorecido pelo mercado. Se o valor está no underdog, a função
-    # estimate_typical_handicap já devolve handicaps POSITIVOS (a odd > par
-    # cai no ramo underdog). Regra dinâmica, funciona para qualquer lado.
+    # PROBLEMA 3.2 (22/08/2026, a pedido): a referência de handicap segue
+    # SEMPRE o lado identificado como tendo VALOR (fav_side). Se o valor
+    # está no underdog, estimate_typical_handicap devolve handicaps
+    # POSITIVOS. PROBLEMA 3 (22/08/2026): quando a odd está na zona neutra
+    # ("ao_par"), NÃO se mostra cartão nenhum — não há handicap pré-live
+    # que compense, e um cartão a dizer "comparar Moneyline" só ocupava
+    # espaço. Se não acrescenta, não aparece.
     if fav_side:
         _odd_lado_valor = observed_odd(fav_side)
         _ref_handicap = estimate_typical_handicap(_odd_lado_valor)
@@ -3768,10 +3807,6 @@ def _mod_action_map(payload, div, result):
                 "Mesmo lado do valor. O mercado costuma usar esta linha para este preço.",
                 "Estimativa genérica de mercado, não calculada por nós",
                 headline=f"Handicap {_h_baixo}/{_h_alto}")
-        elif _ref_handicap and _ref_handicap["tipo"] == "ao_par":
-            add("Referência de handicap", f"{names[fav_side]} · odds ao par",
-                "Sem handicap típico — comparar diretamente o Moneyline.",
-                "Estimativa genérica de mercado, não calculada por nós")
 
     # NOVO (21/08/2026, a pedido): odd justa = 1/taxa, para cada cenário
     # condicional — transforma a taxa histórica numa referência direta e
@@ -3891,30 +3926,11 @@ def _mod_action_map(payload, div, result):
                 f"Vence {rate:.0f}% das vezes (em {count} jogos assim).",
                 "Set decisivo", headline=(f"Moneyline ~{_odd_ds:.2f}" if _odd_ds else None), n_amostra=count)
 
-    # NOVO (21/08/2026, a pedido): tie-break com odd justa — mesma
-    # estrutura dos outros cenários condicionais, fonte rica com reserva
-    # no histórico local (compute_tiebreak_stats, já existente).
-    tiebreak_scenario = {}
-    for side in ("a", "b"):
-        rate, count = scenario(side, "tiebreak_win_pct", "tiebreak_count")
-        if rate is None:
-            local = _d(payload.get(f"tiebreak_{side}"))
-            matches = local.get("matches")
-            wins = local.get("wins")
-            if isinstance(matches, (int, float)) and matches:
-                rate = 100.0 * wins / matches
-                count = matches
-        if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 8:
-            tiebreak_scenario[side] = (float(rate), int(count))
-    if len(tiebreak_scenario) == 2:
-        sa, sb = tiebreak_scenario["a"], tiebreak_scenario["b"]
-        if abs(sa[0] - sb[0]) >= 8:
-            side = "a" if sa[0] > sb[0] else "b"
-            rate, count = tiebreak_scenario[side]
-            _odd_tb = _odd_justa(rate)
-            add("Cenário ao vivo", f"{names[side]} · se houver tie-break",
-                f"Vence {rate:.0f}% das vezes (em {count} jogos assim).",
-                "Tie-break", headline=(f"Moneyline ~{_odd_tb:.2f}" if _odd_tb else None), n_amostra=count)
+    # PROBLEMA 3 (22/08/2026, a pedido): cenário de TIE-BREAK REMOVIDO
+    # PERMANENTEMENTE do Mapa de Ações. Era demasiado especulativo para uma
+    # ação pré-live (um tie-break isolado não é um gatilho acionável) e
+    # poluía o mapa. A estatística de tie-break continua disponível no Mapa
+    # de Forças; só deixa de gerar um cartão de ação.
 
     # Carga abre hipóteses live, explicitamente sem modelo de linha/odd.
     fa, fb = _d(payload.get("fatigue_signal_a")), _d(payload.get("fatigue_signal_b"))
@@ -3938,14 +3954,31 @@ def _mod_action_map(payload, div, result):
         _mv, _nv = _gm.get("media_margem_vitoria"), _gm.get("n_vitorias")
         _md, _nd = _gm.get("media_margem_derrota"), _gm.get("n_derrotas")
         if _mv is not None and _md is not None and _nv and _nd and _nv >= 5 and _nd >= 5:
-            _cobre = abs(_md) <= 3.5
-            _txt_margem = (
-                f"Média de jogos de diferença de {names[fav_side]} ao longo do encontro (melhor-de-3): "
-                f"quando vence, +{_mv:.1f}; quando perde, -{abs(_md):.1f}. "
-                + ("A margem de derrota é apertada, por isso um handicap positivo tem boa hipótese de cobrir mesmo numa derrota renhida."
-                   if _cobre else
-                   "A margem de derrota é larga, por isso um handicap positivo é mais arriscado numa derrota.")
-            )
+            # PROBLEMA 4 (22/08/2026, a pedido): o texto tem de se adaptar a
+            # se o lado do valor é FAVORITO ou UNDERDOG. Antes assumia
+            # sempre o ângulo do handicap POSITIVO (só faz sentido para
+            # underdog). Para um favorito, o que interessa é a margem de
+            # VITÓRIA (cobre um handicap negativo?), não a de derrota.
+            _odd_lv = observed_odd(fav_side)
+            _e_favorito = _odd_lv is not None and float(_odd_lv) < 2.00
+            if _e_favorito:
+                _cobre_neg = _mv >= 4.0
+                _txt_margem = (
+                    f"Média de jogos de diferença de {names[fav_side]} (melhor-de-3): "
+                    f"quando vence, +{_mv:.1f}; quando perde, -{abs(_md):.1f}. "
+                    + ("A margem de vitória é folgada, por isso um handicap negativo tem boa hipótese de cobrir."
+                       if _cobre_neg else
+                       "A margem de vitória é curta, por isso um handicap negativo é mais arriscado.")
+                )
+            else:
+                _cobre_pos = abs(_md) <= 3.5
+                _txt_margem = (
+                    f"Média de jogos de diferença de {names[fav_side]} (melhor-de-3): "
+                    f"quando vence, +{_mv:.1f}; quando perde, -{abs(_md):.1f}. "
+                    + ("A margem de derrota é apertada, por isso um handicap positivo tem boa hipótese de cobrir mesmo numa derrota renhida."
+                       if _cobre_pos else
+                       "A margem de derrota é larga, por isso um handicap positivo é mais arriscado numa derrota.")
+                )
             add("Margem de jogos (bo3)", f"{names[fav_side]}",
                 _txt_margem,
                 f"vitórias n={_nv}, derrotas n={_nd}",
