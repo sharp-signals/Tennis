@@ -3849,6 +3849,36 @@ def get_player_id_from_ranking(tour: str, player_name: str) -> Optional[int]:
         close = difflib.get_close_matches(normalized, official.keys(), n=1, cutoff=0.88)
         if close:
             entry = official.get(close[0])
+    if not entry:
+        # CORREÇÃO (23/08/2026, a pedido — WTA "pressão de ronda"/"nível
+        # do adversário" ainda sem dados para nomes longos): o cutoff
+        # global de 0.88 falha em nomes compostos onde falta uma parte
+        # (ex: "Maria Camila Osorio Serrano" vs "Camila Osorio" no
+        # ranking → score 0.65, abaixo do corte). Aqui tenta uma
+        # correspondência por TOKENS: se todas as palavras do nome mais
+        # curto estão contidas no mais longo (apelido + nome de guerra a
+        # bater), aceita. Resolve os nomes compostos sem abrir a porta a
+        # falsos positivos (exige que TODAS as palavras do lado curto
+        # existam do lado longo, não só uma).
+        alvo_tokens = set(normalized.split())
+        if alvo_tokens:
+            melhor = None
+            melhor_overlap = 0
+            for cand_norm in official.keys():
+                cand_tokens = set(cand_norm.split())
+                if not cand_tokens:
+                    continue
+                curto, longo = sorted((alvo_tokens, cand_tokens), key=len)
+                # todas as palavras do lado curto presentes no longo, e
+                # pelo menos 2 palavras em comum (evita casar só por um
+                # apelido genérico)
+                if curto <= longo and len(curto) >= 2:
+                    overlap = len(curto)
+                    if overlap > melhor_overlap:
+                        melhor_overlap = overlap
+                        melhor = cand_norm
+            if melhor:
+                entry = official.get(melhor)
     return entry.get("player_id") if entry else None
 
 
