@@ -146,5 +146,34 @@ class FixtureResilienceTests(unittest.TestCase):
         self.assertEqual(actual, {10: "atp"})
 
 
+class PlayerNameResolutionTests(unittest.TestCase):
+    """Regressão para nomes compostos longos (ex: WTA) que falhavam a
+    resolução por ranking e deixavam todos os dados ricos sem dados."""
+
+    def _ranking(self):
+        return {
+            "camila osorio": {"player_id": 111},
+            "ann li": {"player_id": 222},
+            "maria sakkari": {"player_id": 444},
+        }
+
+    def test_long_composite_name_resolves_by_token_overlap(self):
+        with patch.object(fetch_data, "fetch_official_ranking", return_value=self._ranking()):
+            # o nome longo da fixture deve casar com "Camila Osorio"
+            got = fetch_data.get_player_id_from_ranking("wta", "Maria Camila Osorio Serrano")
+        self.assertEqual(got, 111)
+
+    def test_token_overlap_does_not_create_false_positive(self):
+        with patch.object(fetch_data, "fetch_official_ranking", return_value=self._ranking()):
+            # "Maria Sakkari" não deve casar com "Maria Camila" por partilhar só "Maria"
+            got = fetch_data.get_player_id_from_ranking("wta", "Maria Sakkari")
+        self.assertEqual(got, 444)
+
+    def test_unknown_name_still_returns_none(self):
+        with patch.object(fetch_data, "fetch_official_ranking", return_value=self._ranking()):
+            got = fetch_data.get_player_id_from_ranking("wta", "Jogador Inexistente")
+        self.assertIsNone(got)
+
+
 if __name__ == "__main__":
     unittest.main()
