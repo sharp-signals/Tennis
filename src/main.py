@@ -998,7 +998,7 @@ def _build_match_payload(match: dict) -> dict:
             h2h_history = _compact_match_history(
                 _h2h_matches, limit=10, tour=tour, resolve_tournaments=True,
             )
-            _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface)
+            _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface, tour=tour)
             if _h2h_api:
                 h2h = _h2h_api
             # forma/época/piso via jogos recentes da API
