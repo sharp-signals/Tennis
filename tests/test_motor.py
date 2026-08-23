@@ -152,9 +152,12 @@ def test_estado_expoe_a_composicao_do_peso_aplicado():
     assert st["peso_base_configurado"] == PESOS["piso"]
     assert st["peso_base_aplicado"] == PESOS["piso"]
     assert st["multiplicador_forca"] == 1.0
-    assert st["confianca_amostra"] == 0.5
-    assert st["peso_antes_cap"] == 4.0
-    assert st["peso_efetivo"] == 4.0
+    # ATUALIZADO (22/08/2026): confiança de amostra passou a usar raiz
+    # quadrada (peça de valor). Para amostra efetiva 15 (min de 20/20 com
+    # o cap interno), sqrt(15/30)=0.707, não 0.5 da rampa linear antiga.
+    assert st["confianca_amostra"] == 0.707
+    assert st["peso_antes_cap"] == 5.657
+    assert st["peso_efetivo"] == 5.657
     assert st["direcao_impacto"] == "a"
 
 
