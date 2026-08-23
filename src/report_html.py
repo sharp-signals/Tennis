@@ -2403,22 +2403,36 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .mv-card-name {{ font-size:14px; font-weight:700; margin-bottom:8px; }}
 .mv-label {{ display:block; font-size:11px; color:var(--dim); }}
 .mv-value {{ display:block; font-size:14px; font-weight:600; margin-bottom:6px; }}
-.mv-fora-selo {{ font-size:10px; font-weight:700; color:var(--mint); margin-bottom:6px; }}
+.mv-fora-selo {{ font-size:10px; font-weight:700; color:var(--red); margin-bottom:6px; }}
 /* Barra de intervalo VERTICAL (a pedido) — à direita de cada bubble */
 .mv-vbar-wrap {{ display:flex; flex-direction:column; align-items:center; justify-content:center;
-  min-width:52px; }}
+  min-width:74px; }}
 .mv-vbar-caption {{ font-size:8px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px;
-  margin-bottom:4px; text-align:center; }}
-.mv-vbar-track {{ position:relative; width:2px; height:80px; background:var(--line);
-  margin:6px 0; }}
-.mv-vbar-marker {{ position:absolute; left:50%; width:9px; height:9px; border-radius:50%;
-  transform:translate(-50%, 50%); }}
-.mv-vbar-val {{ position:absolute; left:12px; top:50%; transform:translateY(-50%);
-  font-size:11px; font-weight:700; white-space:nowrap; }}
-.mv-vbar-end {{ position:absolute; left:50%; transform:translateX(-50%); font-size:9px;
+  margin-bottom:26px; text-align:center; }}
+.mv-vbar-track {{ position:relative; width:10px; height:88px; background:var(--surface);
+  border:1px solid var(--line); border-radius:6px; margin:34px 0; }}
+.mv-vbar-track.fora {{ box-shadow:0 0 0 2px rgba(224,108,91,.35); }}
+.mv-vbar-fill {{ position:absolute; inset:0; border-radius:5px;
+  background:linear-gradient(180deg, rgba(63,185,168,.30), rgba(63,185,168,.10)); }}
+.mv-vbar-marker {{ position:absolute; left:50%; width:16px; height:16px; border-radius:50%;
+  background:var(--text); border:2px solid var(--bg); transform:translate(-50%, 50%);
+  box-shadow:0 1px 4px rgba(0,0,0,.5); }}
+.mv-vbar-val {{ position:absolute; left:22px; top:50%; transform:translateY(-50%);
+  font-size:13px; font-weight:800; white-space:nowrap; color:var(--text); }}
+.mv-vbar-end {{ position:absolute; left:50%; transform:translateX(-50%); font-size:10px;
   color:var(--dim); white-space:nowrap; }}
-.mv-vbar-end.top {{ top:-14px; }}
-.mv-vbar-end.bottom {{ bottom:-14px; }}
+.mv-vbar-end.top {{ top:-16px; }}
+.mv-vbar-end.bottom {{ bottom:-16px; }}
+/* odd FORA da faixa: marcador compacto fora da barra, com a cor sólida da
+   bola 🔴 (#e06c5b), sinal de divergência forte */
+.mv-vbar-out {{ position:absolute; left:50%; transform:translateX(-50%); text-align:center;
+  background:var(--red); color:#fff; border-radius:6px; padding:2px 7px;
+  box-shadow:0 2px 7px rgba(224,108,91,.5); white-space:nowrap; z-index:3; }}
+.mv-vbar-out.top {{ bottom:calc(100% + 16px); }}
+.mv-vbar-out.bottom {{ top:calc(100% + 16px); }}
+.mv-vbar-out-val {{ display:block; font-size:12px; font-weight:800; }}
+.mv-vbar-out-lbl {{ display:block; font-size:7px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.3px; opacity:.9; }}
 .market-verdict-tag {{ font-size:15px; font-weight:800; letter-spacing:.03em;
   margin-bottom:4px; }}
 .market-verdict-note {{ font-size:12px; color:var(--dim); line-height:1.4; }}
@@ -3034,28 +3048,46 @@ def _mod_market_verdict(payload, div):
         if odd_mercado is not None and odds_low is not None and odds_high is not None:
             pct = _grau_de_valor(odd_mercado, odds_low, odds_high)
             if pct is not None:
-                # vertical: 0% em baixo (odds_low), 100% em cima (odds_high)
-                pct_clamped = max(4, min(96, pct))
                 acima = pct > 100
                 abaixo = pct < 0
                 fora_da_faixa = acima or abaixo
-                if acima:
-                    cor_grau, rotulo = "var(--mint)", "acima da faixa"
-                elif abaixo:
-                    cor_grau, rotulo = "var(--red)", "abaixo da faixa"
+                if fora_da_faixa:
+                    cor_grau = "var(--red)"  # fora da faixa = divergência forte (como a bola 🔴)
                 elif pct >= 85:
-                    cor_grau, rotulo = "var(--mint)", "topo da faixa"
+                    cor_grau = "var(--mint)"
                 else:
-                    cor_grau, rotulo = "var(--dim)", ""
-                # posição vertical do marcador (bottom em %)
-                bottom_pos = max(2, min(98, pct))
+                    cor_grau = "var(--text)"
+
+                if acima:
+                    # marcador ACIMA do topo da barra, com seta a apontar para cima
+                    marcador = (
+                        f'<div class="mv-vbar-out top">'
+                        f'<span class="mv-vbar-out-val">▲ {_fmt(odd_mercado)}</span>'
+                        f'<span class="mv-vbar-out-lbl">acima da faixa</span></div>'
+                    )
+                elif abaixo:
+                    # marcador ABAIXO do fundo da barra, com seta para baixo
+                    marcador = (
+                        f'<div class="mv-vbar-out bottom">'
+                        f'<span class="mv-vbar-out-val">▼ {_fmt(odd_mercado)}</span>'
+                        f'<span class="mv-vbar-out-lbl">abaixo da faixa</span></div>'
+                    )
+                else:
+                    # dentro da faixa: marcador na posição proporcional
+                    bottom_pos = max(3, min(97, pct))
+                    marcador = (
+                        f'<div class="mv-vbar-marker" style="bottom:{bottom_pos:.0f}%">'
+                        f'<span class="mv-vbar-val">{_fmt(odd_mercado)}</span></div>'
+                    )
+
+                classe_track = "mv-vbar-track fora" if fora_da_faixa else "mv-vbar-track"
                 grau_html = (
                     f'<div class="mv-vbar-wrap">'
                     f'<div class="mv-vbar-caption">mercado vs faixa</div>'
-                    f'<div class="mv-vbar-track">'
+                    f'<div class="{classe_track}">'
                     f'<span class="mv-vbar-end top">{_fmt(odds_high)}</span>'
-                    f'<div class="mv-vbar-marker" style="bottom:{bottom_pos:.0f}%; background:{cor_grau}">'
-                    f'<span class="mv-vbar-val" style="color:{cor_grau}">{_fmt(odd_mercado)}</span></div>'
+                    f'<div class="mv-vbar-fill"></div>'
+                    f'{marcador}'
                     f'<span class="mv-vbar-end bottom">{_fmt(odds_low)}</span>'
                     f'</div></div>'
                 )
@@ -3065,7 +3097,7 @@ def _mod_market_verdict(payload, div):
         estilo_card = f"border:2px solid {_cor_lado};"
         selo_fora = ""
         if fora_da_faixa:
-            estilo_card = f"border:2px solid var(--mint); box-shadow:0 0 0 2px rgba(63,185,168,.25);"
+            estilo_card = f"border:2px solid var(--red); box-shadow:0 0 0 2px rgba(224,108,91,.25);"
             selo_fora = '<div class="mv-fora-selo">✦ Odd fora da faixa — possível valor</div>'
 
         # PROBLEMA 1: ordem invertida dos campos — Mercado primeiro (o que
@@ -4438,7 +4470,12 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         partes.append(_mod_market_provenance(payload))
         partes.append('</div>')
     # 2. Leitura do jogo (sempre — muda conforme estado)
-    partes.append(_mod_match_intro(result))
+    # REMOVIDO (23/08/2026, a pedido repetido): a caixa "match-intro"
+    # (_mod_match_intro) repetia pontos factuais tipo "X superior no
+    # ranking... força geral a favor", que o utilizador pediu várias vezes
+    # para tirar por completo. Toda essa informação já está no "jogo num
+    # relance", no Mapa de Forças e no Mapa de Ações. A função continua
+    # definida (não usada), caso volte a fazer sentido no futuro.
     partes.append(_mod_at_glance_clean(payload))
     partes.append(_mod_match_keys(payload, div))
     partes.append(_mod_data_quality_notice(payload))
