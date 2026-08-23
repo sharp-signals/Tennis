@@ -151,7 +151,7 @@ class ReportRenderingTests(unittest.TestCase):
     def test_strong_alignment_is_observed_without_claiming_fair_odds_or_handicap(self):
         payload = {
             "player_a": "A", "player_b": "B",
-            "market_odds_decimal": {"A": 1.55, "B": 2.6},
+            "market_odds_decimal": {"A": 1.80, "B": 2.05},
             "features": {
                 "h2h": {"lider": "A", "diff": 4, "a_wins": 4, "b_wins": 0},
                 "piso": {"lider": "A", "diff": 20, "amostra_a": 100, "amostra_b": 100},
@@ -165,6 +165,23 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Moneyline A", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)
+
+    def test_superfavorito_foca_handicap_nao_moneyline(self):
+        # PROBLEMA 4: odd muito abaixo da faixa de perfil (1.75) não deve
+        # destacar Moneyline; o foco vai para o handicap negativo.
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.36, "B": 3.1},
+            "features": {
+                "h2h": {"lider": "A", "diff": 4, "a_wins": 4, "b_wins": 0},
+                "piso": {"lider": "A", "diff": 20, "amostra_a": 100, "amostra_b": 100},
+                "forma_recente": {"lider": "A", "diff": 30},
+                "ranking": {"lider": "A", "diff": 40},
+            },
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("favorito claro", html)
+        self.assertIn("Handicap de A", html)
 
     def test_header_displays_odds_provenance_when_available(self):
         payload = {
