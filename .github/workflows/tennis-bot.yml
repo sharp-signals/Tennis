@@ -47,7 +47,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
-          RAPIDAPI_MAX_CALLS_PER_RUN: "800"
+          RAPIDAPI_MAX_CALLS_PER_RUN: "2250"
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
         run: python -m src.main
 
