@@ -48,7 +48,7 @@ jobs:
       - name: Aquecer a cache de mão
         env:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          RAPIDAPI_MAX_CALLS_PER_RUN: "800"
+          RAPIDAPI_MAX_CALLS_PER_RUN: "2250"
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
         run: |
           python -m src.fetch_data warm-up-hands "${{ github.event.inputs.tour }}" "${{ github.event.inputs.top_n }}"
