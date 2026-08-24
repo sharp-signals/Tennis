@@ -16,7 +16,12 @@ RAPIDAPI_BASE = f"https://{RAPIDAPI_HOST}/tennis/v2"
 # para diagnósticos manuais e impedimos que uma execução anómala consuma uma
 # parte desproporcionada da quota. Ambos os limites podem ser reduzidos no
 # workflow sem alterar código.
-RAPIDAPI_MAX_CALLS_PER_RUN = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_RUN", "800"))
+# ATUALIZADO (23/08/2026): limite por execução subiu de 800 para 2000. Dias
+# com torneios grandes (ex: US Open, 64 jogos de singles só num torneio) e
+# os fatores novos (tournament-record faz 2 chamadas/jogo) faziam estourar
+# o teto de 800 por execução e o bot falhava a meio. O teto DIÁRIO (4500)
+# continua a proteger contra consumo desproporcionado — há folga de sobra.
+RAPIDAPI_MAX_CALLS_PER_RUN = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_RUN", "2250"))
 RAPIDAPI_MAX_CALLS_PER_DAY = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_DAY", "4500"))
 if RAPIDAPI_MAX_CALLS_PER_RUN <= 0 or RAPIDAPI_MAX_CALLS_PER_DAY <= 0:
     raise ValueError("Os limites RapidAPI têm de ser inteiros positivos.")
