@@ -88,6 +88,7 @@ TRACKED_TOURNAMENT_IDS = {
     # Montreal/Toronto — National Bank Open (Masters 1000), a começar.
     21346: "atp",  # Montreal (ATP Masters 1000), 2026 — confirmado via getDateFixtures (Hurkacz, Monfils, Draper, etc.)
     16739: "wta",  # Toronto - National Bank Open (WTA 1000), 2026
+    21348: "atp",  # Winston-Salem (ATP 250)
 }
 
 # Quantos jogos pedir por página do getTournamentFixtures (o default da
