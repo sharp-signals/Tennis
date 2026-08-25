@@ -125,9 +125,13 @@ class FixtureResilienceTests(unittest.TestCase):
             self.assertIsNone(fetch_data.get_tournament_info(99, "atp"))
 
     def test_discovery_falls_back_or_keeps_only_allowed_tiers(self):
-        with patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=[]):
+        forced = {99: "atp"}
+        with patch.object(fetch_data, "FORCED_TOURNAMENT_IDS", forced), \
+             patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=[]):
             fallback = fetch_data.discover_tracked_tournaments()
-        self.assertEqual(fallback, dict(fetch_data.TRACKED_TOURNAMENT_IDS))
+        expected_fallback = dict(fetch_data.TRACKED_TOURNAMENT_IDS)
+        expected_fallback.update(forced)
+        self.assertEqual(fallback, expected_fallback)
 
         events = [
             {"type": "atp", "tournament": {"id": 10}},
@@ -138,12 +142,14 @@ class FixtureResilienceTests(unittest.TestCase):
         info = {
             10: {"tier": "ATP 500"},
             20: {"tier": "WTA 250"},
+            99: {"name": "Winston-Salem", "tier": "ATP 250"},
         }
         with patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=events), \
+             patch.object(fetch_data, "FORCED_TOURNAMENT_IDS", forced), \
              patch.object(fetch_data, "get_tournament_info", side_effect=lambda tournament_id, _tour: info[tournament_id]):
             actual = fetch_data.discover_tracked_tournaments()
 
-        self.assertEqual(actual, {10: "atp"})
+        self.assertEqual(actual, {10: "atp", 99: "atp"})
 
 
 class PlayerNameResolutionTests(unittest.TestCase):

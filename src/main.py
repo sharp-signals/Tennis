@@ -35,6 +35,7 @@ from dateutil import parser as date_parser
 
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
+    FORCED_TOURNAMENT_IDS,
     FLAG_ROUTINE,
     FLAG_UNCERTAIN,
     INDOOR_SURFACE_PREFIX,
@@ -104,6 +105,8 @@ def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dic
             resolved_info[tournament_id] = info
 
     eligible = []
+    rejection_logged = set()
+    override_logged = set()
     for match in raw_matches:
         tournament_id = match.get("tournamentId")
         info = resolved_info.get(tournament_id)
@@ -114,8 +117,19 @@ def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dic
             continue
 
         tier = info.get("tier")
-        if tier not in ALLOWED_TOURNAMENT_TIERS:
+        forced = FORCED_TOURNAMENT_IDS.get(tournament_id) == match.get("_tour")
+        if tier not in ALLOWED_TOURNAMENT_TIERS and not forced:
+            if tournament_id not in rejection_logged:
+                name = info.get("name") or f"Torneio {tournament_id}"
+                print(f"[info] torneio rejeitado: {tournament_id} {name} "
+                      f"({tier or 'tier desconhecido'})")
+                rejection_logged.add(tournament_id)
             continue
+        if forced and tier not in ALLOWED_TOURNAMENT_TIERS and tournament_id not in override_logged:
+            name = info.get("name") or f"Torneio {tournament_id}"
+            print(f"[info] override de torneio aplicado: {tournament_id} {name} "
+                  f"({tier or 'tier desconhecido'})")
+            override_logged.add(tournament_id)
 
         match["tournament_name"] = info.get("name") or f"Torneio {tournament_id}"
         match["surface"] = info.get("surface") or "Desconhecido"

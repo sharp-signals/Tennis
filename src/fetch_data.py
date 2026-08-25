@@ -52,6 +52,7 @@ from .config import (
     ALLOWED_TOURNAMENT_TIERS,
     FIXTURES_CACHE_MAX_AGE_HOURS,
     FIXTURES_CACHE_PATH,
+    FORCED_TOURNAMENT_IDS,
     HISTORY_YEARS_TO_LOAD,
     MAX_FIXTURE_PAGES,
     RAPIDAPI_BASE,
@@ -4219,15 +4220,16 @@ def discover_tracked_tournaments() -> dict[int, str]:
 
     Robustez: se a descoberta falhar por qualquer razão (sem chave, feed
     vazio, ou 0 torneios elegíveis), cai para TRACKED_TOURNAMENT_IDS
-    (config.py) como rede de segurança — nunca fica sem jogos por causa
-    disto. Podes continuar a usar a lista manual como reforço/override se
-    quiseres forçar um torneio específico.
+    (config.py) como rede de segurança. FORCED_TOURNAMENT_IDS é sempre
+    combinado com o resultado e funciona como override real de tier.
     """
+    fallback = dict(TRACKED_TOURNAMENT_IDS)
+    fallback.update(FORCED_TOURNAMENT_IDS)
     events = _fetch_extend_upcoming_events("all")
     if not events:
         print("[aviso] descoberta automática de torneios: feed vazio — "
-              "a usar TRACKED_TOURNAMENT_IDS manual (config.py).")
-        return dict(TRACKED_TOURNAMENT_IDS)
+              "a usar torneios manuais e forçados (config.py).")
+        return fallback
 
     candidatos: dict[int, str] = {}
     for ev in events:
@@ -4239,15 +4241,38 @@ def discover_tracked_tournaments() -> dict[int, str]:
         candidatos.setdefault(tid, tour)
 
     aceites: dict[int, str] = {}
+    rejeitados = []
     for tid, tour in candidatos.items():
         info = get_tournament_info(tid, tour)
         if info and info.get("tier") in ALLOWED_TOURNAMENT_TIERS:
             aceites[tid] = tour
+        else:
+            nome = (info or {}).get("name") or "torneio não identificado"
+            tier = (info or {}).get("tier") or "sem informação de tier"
+            rejeitados.append(f"{tid} {nome} ({tier})")
+
+    if rejeitados:
+        limite = 10
+        detalhes = "; ".join(rejeitados[:limite])
+        restante = f"; +{len(rejeitados) - limite} outro(s)" if len(rejeitados) > limite else ""
+        print(f"[info] descoberta automática: {len(rejeitados)} torneio(s) rejeitado(s) "
+              f"por tier/metadata — {detalhes}{restante}")
 
     if not aceites:
         print(f"[aviso] descoberta automática: {len(candidatos)} torneio(s) candidato(s), "
-              "nenhum no tier permitido — a usar TRACKED_TOURNAMENT_IDS manual (config.py).")
-        return dict(TRACKED_TOURNAMENT_IDS)
+              "nenhum no tier permitido — a usar torneios manuais (config.py).")
+        aceites.update(TRACKED_TOURNAMENT_IDS)
+
+    # Overrides explícitos não dependem de aparecer no feed global nem do
+    # respetivo tier. É isto que permite Winston-Salem sem reativar todos os
+    # ATP 250. O filtro final em main.py aplica a mesma exceção defensiva.
+    for tid, tour in FORCED_TOURNAMENT_IDS.items():
+        if tid not in aceites:
+            info = get_tournament_info(tid, tour) or {}
+            nome = info.get("name") or "torneio não identificado"
+            tier = info.get("tier") or "tier desconhecido"
+            print(f"[info] torneio forçado incluído: {tid} {nome} ({tier})")
+        aceites[tid] = tour
 
     resumo = ", ".join(f"{tid}:{tour}" for tid, tour in aceites.items())
     print(f"[info] descoberta automática: {len(aceites)} torneio(s) elegível(is) — {resumo}")
@@ -4257,7 +4282,7 @@ def discover_tracked_tournaments() -> dict[int, str]:
 def fetch_tracked_tournament_fixtures() -> list[dict]:
     """Junta fixtures de todos os torneios elegíveis, descobertos
     automaticamente (discover_tracked_tournaments), com fallback para a
-    lista manual TRACKED_TOURNAMENT_IDS se a descoberta falhar."""
+    lista manual e união permanente dos torneios forçados."""
     tracked = discover_tracked_tournaments()
     all_matches = []
     for tournament_id, tour in tracked.items():
