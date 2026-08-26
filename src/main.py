@@ -56,6 +56,7 @@ from . import run_metrics
 from . import calibration_store
 from . import player_images
 from .analyze import analyze_match
+from .pricing import estimate_market_residual_pricing
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
@@ -1388,49 +1389,18 @@ def _build_match_payload(match: dict) -> dict:
     except Exception:
         payload["indicative_odds"] = None
 
-    # NOVO (18/08/2026, a pedido): quando é alinhamento forte E a odd atual
-    # do favorito excede o topo da faixa indicativa (o mercado está a pagar
-    # mais do que a análise sugere), conta como "valor a analisar"
-    # (nivel 2) — mesma categoria já usada para divergência moderada, só
-    # que por um caminho diferente (preço, não direção). Feito DEPOIS do
-    # cálculo da divergência e da faixa, porque a faixa depende da
-    # divergência já calculada — não dá para fazer os três de uma vez só.
+    # Market-Residual Pricing v0.1: o mercado de-vig e o baseline e o indice
+    # de evidencia aplica apenas um residual limitado em log-odds. A faixa
+    # indicative_odds permanece no payload por compatibilidade/contexto, mas
+    # deixa de promover VALOR pelo percentil dentro de uma faixa heuristica.
     try:
-        div = payload.get("divergencia")
-        est = payload.get("indicative_odds")
-        if div and est and div.get("tipo") == "alinhamento" and div.get("intensidade_nivel", 0) >= 3:
-            # CORREÇÃO CRÍTICA (21/08/2026, log real — investigação do
-            # "grau de valor"): "favorecido" só é definido quando
-            # nivel>=1, mas este bloco só corre quando tipo=="alinhamento"
-            # — nesse tipo, nivel está SEMPRE em 0 neste ponto (é
-            # precisamente isto que o bloco tentava mudar). Ou seja,
-            # "favorecido" era estruturalmente sempre None aqui, e este
-            # mecanismo nunca disparou desde que foi criado (18/08/2026).
-            # Mesmo fallback já usado no Veredicto de Mercado.
-            fav = div.get("favorecido") or div.get("indice_favorece")
-            side = "a" if fav == payload.get("player_a") else ("b" if fav == payload.get("player_b") else None)
-            faixa = (est.get("players") or {}).get(side) if side else None
-            odds_map = payload.get("market_odds_decimal") or {}
-            odd_observada = odds_map.get(fav)
-            try:
-                odd_observada = float(odd_observada) if odd_observada is not None else None
-            except (TypeError, ValueError):
-                odd_observada = None
-            # NOVO (21/08/2026, a pedido — "grau de valor"): dispara VALOR
-            # não só quando a odd sai completamente da faixa, mas também
-            # quando fica no topo dela (percentil >=85%) — antes, com
-            # faixas ainda largas, "sair da faixa" raramente acontecia.
-            if faixa and faixa.get("odds_high") is not None and faixa.get("odds_low") is not None and odd_observada is not None:
-                _low, _high = faixa["odds_low"], faixa["odds_high"]
-                _pct = ((odd_observada - _low) / (_high - _low) * 100) if _high != _low else None
-                if _pct is not None and _pct >= 85:
-                    classif = dict(div.get("classificacao") or {})
-                    classif["nivel"] = max(classif.get("nivel", 0), 2)
-                    div["classificacao"] = classif
-                    div["valor_por_preco"] = True  # marcador explícito, para o relatório saber a razão
-                    div["grau_de_valor_pct"] = round(_pct, 1)
-    except Exception:
-        pass
+        payload["pricing"] = estimate_market_residual_pricing(
+            payload, payload.get("divergencia")
+        )
+    except Exception as exc:
+        print(f"[aviso:pricing] pricing residual indisponível para "
+              f"{payload.get('player_a')} vs {payload.get('player_b')}: {exc}")
+        payload["pricing"] = None
 
     return payload
 
@@ -1459,10 +1429,18 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         href = html.escape(url)
         div = payload.get("divergencia") or {}
         level = (div.get("classificacao") or {}).get("nivel", -1)
+        pricing = payload.get("pricing") or {}
+        candidate_side = pricing.get("candidate_side") if pricing.get("available") else None
         # Cores sem ambiguidade: verde só significa valor a analisar;
         # mercado alinhado é neutro e prioridade alta usa vermelho.
         aligned_strong = div.get("tipo") == "alinhamento" and div.get("intensidade_nivel", 0) >= 3
-        flag = "🔵" if level == 0 and aligned_strong else {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚠️")
+        if candidate_side and level < 3:
+            level = 2
+            flag = "🟢"
+            candidate_name = payload.get(f"player_{candidate_side}") or candidate_side.upper()
+            line = html.escape(f"{pricing.get('candidate_label')} · {candidate_name} · em validação")
+        else:
+            flag = "🔵" if level == 0 and aligned_strong else {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚠️")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
         cards.append(
             f'<a class="idx-card" href="{href}" data-level="{level}" data-tour="{tour_key}">'
@@ -1784,6 +1762,20 @@ def run() -> None:
 
         if not numeric:
             return (-1, "⚠️", f"{a} vs {b} — <b>SEM ODDS</b> · análise limitada")
+
+        pricing = payload.get("pricing") or {}
+        candidate_side = pricing.get("candidate_side") if pricing.get("available") else None
+        if candidate_side and nivel < 3:
+            player = payload.get(f"player_{candidate_side}") or candidate_side.upper()
+            side_data = (pricing.get("players") or {}).get(candidate_side) or {}
+            edge = side_data.get("expected_edge_pct")
+            edge_text = f"+{float(edge):.1f}%" if edge is not None else "experimental"
+            return (
+                2,
+                "🟢",
+                f"{a} vs {b} — <b>EDGE EXPERIMENTAL {edge_text}</b> a favor de "
+                f"{html.escape(str(player))} · em validação",
+            )
 
         # Cores do Telegram = nível determinístico do Python (auditoria p.17).
         # CORREÇÃO (18/08/2026, log real): esta bola usava {3,2}->🟢, não

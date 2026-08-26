@@ -22,11 +22,13 @@ import re
 
 try:
     from .config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
+    from .pricing import estimate_market_residual_pricing
 except ImportError:
     # Alguns testes carregam este módulo sem o pacote "src" (sys.path
     # aponta direto para a pasta), o que quebra o import relativo — cai
     # para o import absoluto nesse caso.
     from config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
+    from pricing import estimate_market_residual_pricing
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -2964,6 +2966,76 @@ def _mod_mercado_vs_sinal(payload, div):
 </div>"""
 
 
+def _mod_market_residual_pricing(payload):
+    """Bloco economico principal: mercado de-vig -> residual -> edge."""
+    pricing = _d(payload.get("pricing"))
+    if not pricing.get("available"):
+        return ""
+    players = _d(pricing.get("players"))
+    if not _d(players.get("a")) or not _d(players.get("b")):
+        return ""
+
+    def fmt(value, decimals=1, signed=False, suffix=""):
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return "—"
+        prefix = "+" if signed and number > 0 else ""
+        return f"{prefix}{number:.{decimals}f}{suffix}"
+
+    def card(side, name):
+        data = _d(players.get(side))
+        edge = data.get("expected_edge_pct")
+        try:
+            edge_class = " positive" if float(edge) > 0 else " negative" if float(edge) < 0 else ""
+        except (TypeError, ValueError):
+            edge_class = ""
+        return (
+            f'<div class="pricing-player {side}">'
+            f'<div class="pricing-player-name">{_esc(name)}</div>'
+            '<div class="pricing-metrics">'
+            f'<div><span>Market probability</span><b>{fmt(data.get("market_probability_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>Sharp estimate</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>Sharp adjustment</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
+            f'<div><span>Fair odd</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
+            f'<div><span>Market odd</span><b>{fmt(data.get("market_odd"), 2)}</b></div>'
+            f'<div class="pricing-edge{edge_class}"><span>Expected edge</span>'
+            f'<b>{fmt(edge, 1, signed=True, suffix="%")}</b></div>'
+            '</div></div>'
+        )
+
+    candidate_side = pricing.get("candidate_side")
+    candidate_label = pricing.get("candidate_label") or "SEM EDGE EXPERIMENTAL"
+    candidate_player = pricing.get("candidate_player")
+    candidate_class = " promoted" if candidate_side else " withheld" if pricing.get("candidate_status") == "edge_not_promoted_insufficient_evidence" else ""
+    if candidate_player:
+        candidate_label = f"{candidate_label} · {candidate_player}"
+    evidence = _d(pricing.get("evidence_quality"))
+    quality_pct = 100.0 * float(pricing.get("quality_score") or 0.0)
+    version = pricing.get("model_version") or "market-residual-v0.1"
+    fingerprint = pricing.get("configuration_fingerprint") or "—"
+    overround = pricing.get("market_overround_pct")
+    return (
+        '<section class="pricing-block">'
+        '<div class="pricing-head"><div>'
+        '<div class="pricing-kicker">SHARP PRICING — MARKET RESIDUAL</div>'
+        '<div class="pricing-path">Mercado sem margem → ajuste residual limitado → estimativa Sharp</div>'
+        '</div><span class="pricing-status">EXPERIMENTAL — EM VALIDAÇÃO</span></div>'
+        f'<div class="pricing-grid">{card("a", payload.get("player_a", "A"))}'
+        f'{card("b", payload.get("player_b", "B"))}</div>'
+        f'<div class="pricing-candidate{candidate_class}">{_esc(candidate_label)}</div>'
+        '<div class="pricing-audit">'
+        f'<span>Qualidade da evidência <b>{quality_pct:.0f}%</b></span>'
+        f'<span><b>{int(evidence.get("factor_count") or 0)}</b> fatores</span>'
+        f'<span>Massa efetiva <b>{fmt(evidence.get("effective_mass"), 1)}</b></span>'
+        f'<span>Overround observado <b>{fmt(overround, 2, suffix="%")}</b></span>'
+        f'<span>{_esc(version)} · config {_esc(fingerprint)}</span>'
+        '</div>'
+        f'<div class="pricing-disclaimer">{_esc(pricing.get("disclaimer") or "")}</div>'
+        '</section>'
+    )
+
+
 def _mod_market_verdict(payload, div):
     """
     Bloco compacto no topo: os DOIS jogadores lado a lado — probabilidade
@@ -3763,14 +3835,14 @@ def _mod_action_map(payload, div, result):
         name = names.get(side)
         return market.get(name, market.get(f"player_{side}"))
 
-    # Só Moneyline dispõe simultaneamente de odds e modelo próprios.
-    # NOVO (18/08/2026): verifica ANTES se a faixa indicativa existe mesmo
-    # para este jogador, para não escrever "dentro da faixa indicada"
-    # quando não há faixa nenhuma para mostrar (texto ficava a apontar
-    # para algo que não existia no relatório).
-    _estimate_alinhamento = _d(payload.get("indicative_odds"))
-    _ranges_alinhamento = _d(_estimate_alinhamento.get("players"))
-    _tem_faixa_alinhamento = bool(fav_side and _d(_ranges_alinhamento.get(fav_side)))
+    # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
+    # económica vem exclusivamente do pricing residual v0.1; a antiga faixa
+    # indicative_odds não promove valor nem orienta este mapa.
+    _pricing = _d(payload.get("pricing"))
+    _pricing_available = bool(_pricing.get("available"))
+    _pricing_candidate = bool(_pricing.get("candidate"))
+    _pricing_side = _pricing.get("candidate_side") if _pricing_candidate else None
+    _pricing_player = _d(_d(_pricing.get("players")).get(_pricing_side))
 
     if not div.get("market"):
         add("Pré-jogo", "Ainda sem odds",
@@ -3791,10 +3863,19 @@ def _mod_action_map(payload, div, result):
                 "O valor, a existir, está no handicap negativo (ver abaixo).",
                 "Motor de divergência", headline=f"Handicap de {fav}")
         else:
+            _pricing_note = ""
+            if _pricing_candidate and _pricing_side == fav_side:
+                _edge = _pricing_player.get("expected_edge_pct")
+                _edge_txt = f"{float(_edge):+.1f}%" if _edge is not None else "acima do limiar"
+                _pricing_note = (
+                    f" O pricing residual também assinala candidato experimental ({_edge_txt}), "
+                    "sujeito aos avisos de validação acima."
+                )
             add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
-                f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}. "
-                "Confirmar o preço antes de decidir.",
-                "Motor de divergência", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
+                f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}."
+                f"{_pricing_note} Confirmar o preço antes de decidir.",
+                "Motor de divergência + pricing residual experimental",
+                headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
         _odd_fav = observed_odd(fav_side)
         _odd_fav_txt = f"{float(_odd_fav):.2f}" if _odd_fav is not None else "s/ preço"
@@ -3805,13 +3886,26 @@ def _mod_action_map(payload, div, result):
                 "O valor, a existir, está no handicap negativo (ver abaixo).",
                 "Mercado + índice de sinais", headline=f"Handicap de {fav}")
         else:
-            _nota_alinhamento = (
-                "Mercado e indicadores concordam. Só vale a pena se o preço estiver dentro da faixa indicada no Veredicto."
-                if _tem_faixa_alinhamento else
-                "Mercado e indicadores concordam, mas ainda não há faixa calculada para comparar o preço."
-            )
+            if _pricing_candidate and _pricing_side == fav_side:
+                _edge = _pricing_player.get("expected_edge_pct")
+                _edge_txt = f"{float(_edge):+.1f}%" if _edge is not None else "acima do limiar"
+                _nota_alinhamento = (
+                    "Mercado e indicadores concordam e o pricing residual assinala "
+                    f"candidato experimental ({_edge_txt}); consultar os gates e o aviso de validação acima."
+                )
+            elif _pricing_available:
+                _nota_alinhamento = (
+                    "Mercado e indicadores concordam, mas o pricing residual experimental "
+                    "não superou simultaneamente o limiar de edge e os gates de qualidade."
+                )
+            else:
+                _nota_alinhamento = (
+                    "Mercado e indicadores concordam, mas não há pricing residual disponível "
+                    "para avaliar o preço."
+                )
             add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}", _nota_alinhamento,
-                "Mercado + índice de sinais", headline=f"Moneyline {fav} @ {_odd_fav_txt}")
+                "Mercado + índice de sinais + pricing residual experimental",
+                headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     else:
         add("Pré-jogo", "Sem sinal claro",
             "Mercado e indicadores estão demasiado próximos. Melhor esperar por informação ao vivo.")
@@ -3823,9 +3917,9 @@ def _mod_action_map(payload, div, result):
     # valor, handicap e cenários). O cálculo em si não muda, só deixa de
     # ser mostrado nesta secção.
 
-    # PROBLEMA 3.2 (22/08/2026, a pedido): a referência de handicap segue
-    # SEMPRE o lado identificado como tendo VALOR (fav_side). Se o valor
-    # está no underdog, estimate_typical_handicap devolve handicaps
+    # A referência de handicap segue o lado do sinal (não é promovida como
+    # valor sem passar pelos gates do pricing). Se está no underdog,
+    # estimate_typical_handicap devolve handicaps
     # POSITIVOS. PROBLEMA 3 (22/08/2026): quando a odd está na zona neutra
     # ("ao_par"), NÃO se mostra cartão nenhum — não há handicap pré-live
     # que compense, e um cartão a dizer "comparar Moneyline" só ocupava
@@ -3836,7 +3930,8 @@ def _mod_action_map(payload, div, result):
         if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
             _h_baixo, _h_alto = _ref_handicap["handicap"]
             add("Referência de handicap", f"{names[fav_side]}",
-                "Mesmo lado do valor. O mercado costuma usar esta linha para este preço.",
+                "Mesmo lado do sinal. O mercado costuma usar esta linha para este preço; "
+                "não é um candidato de valor calculado para handicap.",
                 "Estimativa genérica de mercado, não calculada por nós",
                 headline=f"Handicap {_h_baixo}/{_h_alto}")
 
@@ -4125,6 +4220,13 @@ def _normalizar_div(raw):
 
 def _css_editorial():
     return """
+.pricing-block{background:linear-gradient(145deg,rgba(74,163,223,.14),var(--surface) 42%);border:1px solid var(--a);border-radius:14px;padding:18px;margin:0 0 16px;box-shadow:0 7px 24px rgba(0,0,0,.24)}
+.pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}.pricing-kicker{color:var(--a);font-size:12px;font-weight:800;letter-spacing:1.2px}.pricing-path{color:var(--dim);font-size:10px;margin-top:4px}.pricing-status{flex:0 0 auto;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;letter-spacing:.45px}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.pricing-player{background:rgba(7,20,38,.66);border:1px solid var(--line);border-top:3px solid var(--a);border-radius:11px;padding:13px}.pricing-player.b{border-top-color:var(--b)}.pricing-player-name{font-size:14px;font-weight:800;margin-bottom:10px}.pricing-player.a .pricing-player-name{color:var(--a)}.pricing-player.b .pricing-player-name{color:var(--b)}
+.pricing-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pricing-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.pricing-metrics span{display:block;color:var(--dim);font-size:9px;line-height:1.2;margin-bottom:3px}.pricing-metrics b{display:block;font-size:14px;font-variant-numeric:tabular-nums}.pricing-edge{grid-column:1/-1;border:1px solid var(--line)}.pricing-edge.positive{border-color:var(--mint);background:rgba(63,185,168,.10)}.pricing-edge.positive b{color:var(--mint)}.pricing-edge.negative b{color:var(--dim)}
+.pricing-candidate{margin-top:11px;padding:10px 12px;border-radius:8px;background:rgba(90,107,122,.12);color:var(--dim);font-size:12px;font-weight:800;text-align:center}.pricing-candidate.promoted{background:rgba(63,185,168,.13);border:1px solid var(--mint);color:var(--mint)}.pricing-candidate.withheld{background:rgba(217,164,65,.10);border:1px solid var(--amber);color:var(--amber)}
+.pricing-audit{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:10px;color:var(--dim);font-size:9px}.pricing-audit b{color:var(--text)}.pricing-disclaimer{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);color:var(--dim);font-size:9px;line-height:1.45}
+@media(max-width:680px){.pricing-head{display:block}.pricing-status{display:inline-block;margin-top:9px}.pricing-grid{grid-template-columns:1fr}.pricing-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .mh{position:relative;overflow:hidden;border-radius:18px;padding:24px}.mh::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:linear-gradient(90deg,transparent 49.8%,var(--b) 50%,transparent 50.2%)}
 .mh-kicker{text-align:center;color:var(--b);text-transform:uppercase;letter-spacing:1.8px;font-size:10px;font-weight:700;margin-bottom:18px}.mh-name{font-size:28px;letter-spacing:-.7px}.mh-vs{font-size:18px;color:var(--text);font-weight:800;letter-spacing:2px}
 .mh-context{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);align-items:center;font-size:12px;color:var(--dim)}.mh-context .b{text-align:right}.mh-h2h{color:var(--text);font-weight:700;text-align:center;white-space:nowrap}
@@ -4447,6 +4549,13 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     else:
         raw = payload.get("divergencia") or calcular_divergencia_fn(payload)
         div = _normalizar_div(raw)
+    # Produção já recebe pricing do main. Este fallback mantém o contrato do
+    # gerador e os testes diretos retrocompatíveis, sem qualquer chamada paga.
+    if not isinstance(payload.get("pricing"), dict):
+        payload = dict(payload)
+        payload["pricing"] = estimate_market_residual_pricing(
+            payload, payload.get("divergencia") or div
+        )
     estado = detetar_estado(payload, result, div)
     chave = estado[0]
 
@@ -4454,9 +4563,11 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
     partes.append(_mod_leitura(payload, div, estado, result))
-    # NOVO (18/08/2026, a pedido): Veredicto de mercado — bloco compacto e
-    # objetivo, logo a seguir à Leitura, antes de tudo o resto.
-    partes.append(_mod_market_verdict(payload, div))
+    # A nova cadeia market -> Sharp estimate -> fair odd -> expected edge e a
+    # leitura economica principal. A faixa indicative_odds fica apenas como
+    # fallback legado quando nao e possivel produzir pricing de duas vias.
+    pricing_html = _mod_market_residual_pricing(payload)
+    partes.append(pricing_html or _mod_market_verdict(payload, div))
     if chave not in ("sem_odds", "erro"):
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
         partes.append(_mod_mercado_vs_sinal(payload, div))

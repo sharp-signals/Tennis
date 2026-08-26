@@ -59,6 +59,9 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
         "player_a": {"id": payload.get("player_a_id"), "name": payload.get("player_a")},
         "player_b": {"id": payload.get("player_b_id"), "name": payload.get("player_b")},
         "market_odds_decimal": payload.get("market_odds_decimal"),
+        # Congelado antes do encontro, juntamente com a configuracao/hash que
+        # o produziu. Uma repeticao nunca substitui esta primeira estimativa.
+        "pricing": payload.get("pricing"),
         "metrics": {key: payload.get(key) for key in _METRIC_KEYS if payload.get(key) is not None},
         "analysis": {
             key: result.get(key) for key in ("flag", "signal_strength") if result and result.get(key) is not None

@@ -197,7 +197,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Fonte: RapidAPI Moneyline", html)
         self.assertIn("captadas em 2026-08-16T09:30:00+00:00", html)
 
-    def test_calibrated_odds_range_is_labelled_and_compared_with_market(self):
+    def test_calibrated_odds_range_is_demoted_behind_primary_pricing(self):
         payload = {
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 2.1, "B": 1.8},
@@ -212,13 +212,12 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("Faixa indicativa calibrada", html)
-        self.assertIn("1.65–1.95", html)
-        self.assertIn("n=48/30", html)
-        self.assertIn("índice 70–79", html)
-        self.assertIn("não é garantia nem odd justa exata", html)
+        self.assertIn("SHARP PRICING — MARKET RESIDUAL", html)
+        self.assertIn("Expected edge", html)
+        self.assertNotIn("Faixa indicativa calibrada", html)
+        self.assertNotIn("Veredicto de mercado", html)
 
-    def test_uncalibrated_odds_range_is_rendered_as_experimental(self):
+    def test_uncalibrated_odds_range_does_not_define_visible_edge(self):
         payload = {
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 2.1, "B": 1.8},
@@ -234,9 +233,10 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("Faixa indicativa em calibração", html)
-        self.assertIn("n=12/30", html)
-        self.assertIn("não é garantia nem odd justa exata", html)
+        self.assertIn("SHARP PRICING — MARKET RESIDUAL", html)
+        self.assertIn("EXPERIMENTAL — EM VALIDAÇÃO", html)
+        self.assertNotIn("Faixa indicativa em calibração", html)
+        self.assertNotIn("Veredicto de mercado", html)
 
     def test_data_quality_uses_one_root_cause_notice(self):
         payload = {

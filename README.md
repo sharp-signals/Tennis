@@ -5,12 +5,13 @@ seguido, recolhe dados de várias fontes, calcula um **motor de divergência
 100% determinístico** (Python), gera um relatório visual, publica-o online e
 envia um resumo para o Telegram.
 
-> **Importante:** o bot **não recomenda apostas** e **não calcula edge nem
-> probabilidade própria**. Sinaliza divergências entre os dados e o mercado e
-> sugere **mercados a observar** — a decisão é sempre humana. Fala em "favorito
-> do mercado" (não "justo") e nunca afirma que "há valor de X%": esta é uma
-> decisão informada, validada por backtest (um modelo preditivo próprio não
-> mostrou vantagem consistente sobre o mercado).
+> **Importante:** o bot **não recomenda apostas**. O Sharp Signals não trata o
+> índice de evidência como probabilidade e não tenta reconstruir o mercado do
+> zero. Usa a probabilidade de mercado sem margem como baseline e aplica um
+> ajuste residual experimental, limitado e derivado dos seus indicadores.
+> A camada de pricing está em desenvolvimento e validação fora da amostra.
+> Fair odds e expected edge são estimativas experimentais, não recomendações
+> de aposta validadas; a decisão continua a ser humana.
 
 ---
 
@@ -49,13 +50,18 @@ Fluxo de uma execução (`python -m src.main`):
 6. **Calcular o motor de divergência** (Python, `_calcular_divergencia`) —
    índice de evidência 0-100, classificação (nível 0-3), fatores-chave, e o
    estado de **todos** os fatores (não só os que contribuíram).
-7. **Chamar o Claude** só quando o motor justifica (ver
+7. **Calcular o Market-Residual Pricing v0.1** — remove a margem das duas odds,
+   aplica em log-odds um residual pequeno e limitado pela qualidade da evidência
+   e produz estimativa Sharp, fair odd e expected edge para ambos os jogadores.
+   O índice de evidência determina apenas direção/magnitude; nunca é usado como
+   probabilidade.
+8. **Chamar o Claude** só quando o motor justifica (ver
    [O motor de divergência](#o-motor-de-divergência)) — devolve só a *análise*
    (resumo executivo + veredicto), nunca recalcula nem contradiz o motor.
-8. **Montar o relatório HTML** (o Python monta as secções de dados e o
+9. **Montar o relatório HTML** (o Python monta as secções de dados e o
    "Fatores Detalhados"; o Claude só contribui com 2 frases finais quando é
    chamado).
-9. **Publicar** no GitHub Pages e **enviar resumo** para o Telegram.
+10. **Publicar** no GitHub Pages e **enviar resumo** para o Telegram.
 
 ---
 
@@ -69,6 +75,7 @@ Todos em `src/`:
 | `main.py` | Orquestra a execução: descobre torneios, busca jogos, monta o payload (incl. H2H por piso e matchup de mão), chama a análise, gera o site, envia Telegram. |
 | `fetch_data.py` | Recolha de dados de todas as fontes (RapidAPI, históricos, odds, meteo). Descoberta automática de torneios, cálculo de H2H (global+piso), forma, fadiga, matchup de mão, etc. |
 | `analyze.py` | Política de quando chamar o Claude (`_evaluate_selective_policy`), prompt, fallback determinístico (`_build_selective_result`), validação pós-Claude, recuperação parcial, cache. |
+| `pricing.py` | Market-Residual Pricing v0.1: de-vig, residual limitado em log-odds, fair odds, expected edge, gates de qualidade e fingerprint de configuração. |
 | `report_html.py` | O **motor de divergência** (`_calcular_divergencia`) e a geração do relatório HTML completo (secções de dados + "Fatores Detalhados" + análise). |
 | `llm_provider.py` | Wrapper da chamada à API Anthropic (`AnthropicProvider`), mock e provider desativado. |
 | `telegram_bot.py` | Envio das mensagens para o Telegram. |
@@ -119,9 +126,27 @@ com um teto conjunto, para não contar a mesma informação várias vezes.
 
 O índice interno (0-100) mede concentração dos sinais e **não é uma
 probabilidade prevista**. Por isso, nunca se subtrai à probabilidade implícita
-do mercado, nunca produz um “gap em pontos percentuais” e o alinhamento entre
-ambos não prova subvalorização ou valor. Só existe divergência
-(`tipo="direcao"`) quando apontam para jogadores diferentes.
+do mercado nem é convertido diretamente numa odd. Na camada experimental de
+pricing, apenas determina a direção e a força normalizada de um residual
+limitado aplicado à probabilidade de mercado sem margem. O motor determinístico
+continua independente e interpretável; o alinhamento, por si só, não prova
+subvalorização.
+
+### Market-Residual Pricing v0.1
+
+A cadeia económica é: `odds observadas → probabilidade de-vig → motor de
+evidência → residual limitado em log-odds → estimativa Sharp → fair odd →
+expected edge`. A fórmula é:
+
+`logit(P_sharp) = logit(P_market) + MAX_LOGIT_SHIFT × signed_strength × quality`
+
+onde `signed_strength = (indice_evidencia_a - 50) / 50`, limitado a `[-1,1]`.
+`quality` reduz o residual quando há poucos fatores, pouca massa efetiva ou
+baixa intensidade. A promoção inicial exige expected edge ≥5%, pelo menos dois
+fatores, qualidade mínima e Moneyline válida dos dois lados. Todos estes
+parâmetros, a versão `market-residual-v0.1` e um hash determinístico ficam
+congelados no snapshot pré-jogo. A magnitude inicial é uma hipótese de
+modelação, não calibração empírica concluída.
 
 ### Quando o Claude é chamado
 Só nos casos onde a interpretação paga acrescenta valor sobre o texto
@@ -231,23 +256,28 @@ Estrutura, de cima para baixo:
    quando disponíveis, fonte e instante de captura das odds.
 2. **Leitura** — 1 frase, sempre gerada por Python, com a bola de estado
    (🟢 forte / 🟡 ligeiro / ⚪ eficiente).
-3. **Fatores principais** (chips) — apenas os fatores existentes que mais
+3. **Sharp Pricing — Market Residual** — para os dois jogadores mostra
+   probabilidade de mercado sem margem, estimativa Sharp, ajuste em p.p., fair
+   odd, odd observada e expected edge, sempre marcado `EXPERIMENTAL — EM
+   VALIDAÇÃO`. A antiga faixa indicativa deixa de decidir valor e permanece
+   apenas como infraestrutura/contexto legado.
+4. **Fatores principais** (chips) — apenas os fatores existentes que mais
    pesaram na classificação; não são criados cartões vazios para completar uma grelha.
-4. **Mercado e indicadores** — barras lado a lado, identificadas como escalas
+5. **Mercado e indicadores** — barras lado a lado, identificadas como escalas
    diferentes e não subtraíveis.
-5. **Mercado observado** — aparece apenas quando existe divergência direcional
+6. **Mercado observado** — aparece apenas quando existe divergência direcional
    e mostra somente Moneyline. Total Games e Handicap não são apresentados sem
    odds e modelos próprios.
-6. **Cenários decisivos** — secção factual visível quando diferencia os jogadores.
-7. **Mapa de Forças** (colapsável) — todos os ~11 fatores do motor, incluindo
+7. **Cenários decisivos** — secção factual visível quando diferencia os jogadores.
+8. **Mapa de Forças** (colapsável) — todos os ~11 fatores do motor, incluindo
    os detalhes de forma, época, serviço/resposta, carga e H2H. Começa fechado
    para não dominar nem duplicar a leitura inicial.
-8. **Veredicto/Leitura final** — texto do Claude (nível 3 / contraditórios) ou
+9. **Veredicto/Leitura final** — texto do Claude (nível 3 / contraditórios) ou
    o fallback determinístico (nível 0-2), sempre coerente com a classificação.
 
-> Linguagem: "favorito do mercado" (não "justo"), "acompanhar"/"interesse"
-> (nunca "apostar"/"valor de X%"). Rodapé sempre lembra que não é
-> recomendação de aposta.
+> Linguagem: o relatório distingue o favorito do mercado da fair odd
+> experimental. Um expected edge é sempre identificado como estimativa em
+> validação, nunca como lucro garantido, aposta ou recomendação.
 
 ---
 
@@ -292,6 +322,10 @@ Principais em `src/config.py`:
 | `TRACKED_TOURNAMENT_IDS` | Rede de segurança (usada só se a descoberta automática falhar) | Já não é preciso trocar a cada torneio |
 | `ALLOWED_TOURNAMENT_TIERS` | Tiers elegíveis para a descoberta automática | Define o que conta como "torneio a seguir" |
 | `CLAUDE_MODEL` | `claude-sonnet-5` | Não aceita prefill |
+| `PRICING_MAX_LOGIT_SHIFT` | `0.30` | Teto experimental do residual em log-odds |
+| `PRICING_MIN_EDGE_PCT` | `5.0` | Limiar inicial de edge experimental |
+| `PRICING_MIN_FACTORS` | `2` | Gate mínimo de fatores contribuintes |
+| `PRICING_MIN_QUALITY` | `0.45` | Gate mínimo da qualidade combinada |
 | `HISTORY_YEARS_TO_LOAD` | 10 | |
 | `SITE_BASE_URL` | `https://sharp-signals.github.io/Tennis` | GitHub Pages |
 | `SITE_OUTPUT_DIR` | `docs` | Pasta publicada |
@@ -369,6 +403,10 @@ Sessão longa de correções — registo para não repetir o mesmo erro:
 - Cada execução grava estado, fase, duração, chamadas RapidAPI por endpoint,
   tokens, custo LLM estimado e falhas. Os preços são configuráveis por variáveis
   `LLM_PRICE_*` e devem ser confirmados contra a faturação real.
+- Cada snapshot pré-jogo congela a versão, configuração/hash, baseline de-vig,
+  estimativa Sharp, fair odds, expected edge e candidato antes do encontro. Uma
+  repetição nunca substitui a primeira fotografia; o resultado só é anexado
+  posteriormente, preservando validação OOS honesta.
 - A quota RapidAPI tem checkpoint incremental. Em falha ou timeout, o workflow
   preserva apenas telemetria — nunca publica relatórios parciais.
 - Alertas de consumo, fallback LLM, custo e relatórios falhados são configuráveis
