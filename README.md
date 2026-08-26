@@ -61,8 +61,7 @@ Fluxo de uma execução (`python -m src.main`):
 9. **Montar o relatório HTML** (o Python monta as secções de dados e o
    "Fatores Detalhados"; o Claude só contribui com 2 frases finais quando é
    chamado).
-10. **Publicar** no GitHub Pages, enviar o resumo para o Telegram e, depois
-    do push, um único digest HTML por email com todos os jogos e links.
+10. **Publicar** no GitHub Pages e **enviar resumo** para o Telegram.
 
 ---
 
@@ -78,7 +77,6 @@ Todos em `src/`:
 | `analyze.py` | Política de quando chamar o Claude (`_evaluate_selective_policy`), prompt, fallback determinístico (`_build_selective_result`), validação pós-Claude, recuperação parcial, cache. |
 | `pricing.py` | Market-Residual Pricing v0.1: de-vig, residual limitado em log-odds, fair odds, expected edge, gates de qualidade e fingerprint de configuração. |
 | `report_html.py` | O **motor de divergência** (`_calcular_divergencia`) e a geração do relatório HTML completo (secções de dados + "Fatores Detalhados" + análise). |
-| `email_digest.py` | Manifesto, HTML/texto e envio SMTP do digest único de cada execução publicável. |
 | `llm_provider.py` | Wrapper da chamada à API Anthropic (`AnthropicProvider`), mock e provider desativado. |
 | `telegram_bot.py` | Envio das mensagens para o Telegram. |
 | `test_dry_run.py` | Teste de ponta a ponta sem gastar API (usa mock; API real com `USE_REAL_LLM=1`). |
@@ -342,18 +340,6 @@ Principais em `src/config.py`:
 ### Secrets (GitHub Actions)
 `ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`.
-
-Para o digest por email:
-
-- `REPORT_EMAIL_SMTP_USERNAME` e `REPORT_EMAIL_SMTP_PASSWORD` — conta SMTP e
-  palavra-passe de aplicação;
-- `REPORT_EMAIL_TO` — destinatários separados por vírgulas;
-- opcionais: `REPORT_EMAIL_FROM`, `REPORT_EMAIL_SMTP_HOST` (por omissão
-  `smtp.gmail.com`) e `REPORT_EMAIL_SMTP_PORT` (por omissão `465`).
-
-Os endereços e credenciais nunca são gravados no repositório. Se os secrets
-obrigatórios ainda não existirem, o workflow publica normalmente os relatórios
-e regista que o envio foi ignorado.
 
 ### Publicação
 GitHub Pages: **Settings → Pages → Deploy from a branch → `main` → `/docs`**.

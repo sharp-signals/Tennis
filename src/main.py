@@ -54,7 +54,6 @@ from .config import (
 from . import fetch_data
 from . import run_metrics
 from . import calibration_store
-from . import email_digest
 from . import player_images
 from .analyze import analyze_match
 from .pricing import estimate_market_residual_pricing
@@ -1777,23 +1776,6 @@ def run() -> None:
         _write_site_index(match_reports, today_str, reports_dir)
     except Exception as exc:
         print(f"[aviso] falha a gerar índice do site: {exc}")
-
-    # O email é enviado pelo workflow apenas depois do commit/push dos
-    # relatórios. Aqui deixamos um manifesto temporário com a mesma fonte de
-    # verdade usada pelo índice e pelo Telegram, sem nova chamada ao Claude.
-    email_manifest_path = os.getenv("REPORT_EMAIL_MANIFEST_PATH")
-    if email_manifest_path:
-        try:
-            index_url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/index-{today_str}.html"
-            manifest = email_digest.build_digest_manifest(
-                match_reports, report_date=today_str, index_url=index_url,
-            )
-            email_digest.write_digest_manifest(email_manifest_path, manifest)
-            print(f"[email] manifesto preparado: {len(match_reports)} jogo(s).")
-        except Exception as exc:
-            # Uma falha de construção não deve esconder os relatórios já
-            # gerados; o passo de envio ficará sem manifesto e registará isso.
-            print(f"[aviso] falha a preparar digest de email: {exc}")
 
     # --- Resumo Telegram: prioridade visual + links clicáveis ---
     # Usa a mesma divergência calculada para o relatório HTML. Não faz

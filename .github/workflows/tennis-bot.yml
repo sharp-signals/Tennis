@@ -49,7 +49,6 @@ jobs:
           TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
           RAPIDAPI_MAX_CALLS_PER_RUN: "2250"
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
-          REPORT_EMAIL_MANIFEST_PATH: ${{ runner.temp }}/tennis-report-email.json
         run: python -m src.main
 
       - name: Atualizar resultados para calibracao
@@ -112,18 +111,6 @@ jobs:
           else
             echo "Sem alterações a gravar."
           fi
-
-      - name: Enviar digest HTML único por email
-        if: success()
-        env:
-          REPORT_EMAIL_SMTP_USERNAME: ${{ secrets.REPORT_EMAIL_SMTP_USERNAME }}
-          REPORT_EMAIL_SMTP_PASSWORD: ${{ secrets.REPORT_EMAIL_SMTP_PASSWORD }}
-          REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
-          REPORT_EMAIL_FROM: ${{ secrets.REPORT_EMAIL_FROM }}
-          REPORT_EMAIL_SMTP_HOST: ${{ secrets.REPORT_EMAIL_SMTP_HOST }}
-          REPORT_EMAIL_SMTP_PORT: ${{ secrets.REPORT_EMAIL_SMTP_PORT }}
-        run: python scripts/send_report_digest.py "${{ runner.temp }}/tennis-report-email.json" --skip-if-unconfigured
-
 
       - name: Alertar no Telegram se alguma coisa falhou
         if: failure()
