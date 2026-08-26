@@ -253,3 +253,24 @@ SKIP_ANALYSIS_ODDS_THRESHOLD = 1.09
 # (1.75-1.90); ajustável por variável de ambiente sem mexer no código.
 INVESTOR_PROFILE_ODDS_LOW = float(os.environ.get("INVESTOR_PROFILE_ODDS_LOW", "1.75"))
 INVESTOR_PROFILE_ODDS_HIGH = float(os.environ.get("INVESTOR_PROFILE_ODDS_HIGH", "1.90"))
+
+# --- Sharp Signals Market-Residual Pricing v0.1 -------------------------
+# O mercado sem margem e o baseline. O indice de evidencia determina apenas
+# a direcao e a magnitude limitada de um residual no espaco log-odds; nao e
+# convertido diretamente em probabilidade. Estes valores sao hipoteses
+# experimentais versionadas e devem mudar apenas com nova versao/config hash.
+PRICING_MAX_LOGIT_SHIFT = float(os.environ.get("PRICING_MAX_LOGIT_SHIFT", "0.30"))
+PRICING_MIN_EDGE_PCT = float(os.environ.get("PRICING_MIN_EDGE_PCT", "5.0"))
+PRICING_MIN_FACTORS = int(os.environ.get("PRICING_MIN_FACTORS", "2"))
+PRICING_MIN_QUALITY = float(os.environ.get("PRICING_MIN_QUALITY", "0.45"))
+PRICING_FULL_QUALITY_FACTORS = int(os.environ.get("PRICING_FULL_QUALITY_FACTORS", "4"))
+PRICING_FULL_QUALITY_MASS = float(os.environ.get("PRICING_FULL_QUALITY_MASS", "18.0"))
+if not (
+    PRICING_MAX_LOGIT_SHIFT >= 0
+    and PRICING_MIN_EDGE_PCT >= 0
+    and PRICING_MIN_FACTORS >= 1
+    and 0 <= PRICING_MIN_QUALITY <= 1
+    and PRICING_FULL_QUALITY_FACTORS >= PRICING_MIN_FACTORS
+    and PRICING_FULL_QUALITY_MASS > 0
+):
+    raise ValueError("Parâmetros inválidos para Market-Residual Pricing v0.1.")
