@@ -61,7 +61,8 @@ Fluxo de uma execução (`python -m src.main`):
 9. **Montar o relatório HTML** (o Python monta as secções de dados e o
    "Fatores Detalhados"; o Claude só contribui com 2 frases finais quando é
    chamado).
-10. **Publicar** no GitHub Pages e **enviar resumo** para o Telegram.
+10. **Publicar** no GitHub Pages, enviar o resumo para o Telegram e, depois
+    do push, um único digest HTML por email com todos os jogos e links.
 
 ---
 
@@ -77,6 +78,7 @@ Todos em `src/`:
 | `analyze.py` | Política de quando chamar o Claude (`_evaluate_selective_policy`), prompt, fallback determinístico (`_build_selective_result`), validação pós-Claude, recuperação parcial, cache. |
 | `pricing.py` | Market-Residual Pricing v0.1: de-vig, residual limitado em log-odds, fair odds, expected edge, gates de qualidade e fingerprint de configuração. |
 | `report_html.py` | O **motor de divergência** (`_calcular_divergencia`) e a geração do relatório HTML completo (secções de dados + "Fatores Detalhados" + análise). |
+| `email_digest.py` | Manifesto, HTML/texto e envio SMTP do digest único de cada execução publicável. |
 | `llm_provider.py` | Wrapper da chamada à API Anthropic (`AnthropicProvider`), mock e provider desativado. |
 | `telegram_bot.py` | Envio das mensagens para o Telegram. |
 | `test_dry_run.py` | Teste de ponta a ponta sem gastar API (usa mock; API real com `USE_REAL_LLM=1`). |
@@ -225,6 +227,13 @@ fora da amostra antes de influenciarem o relatório.
 - **Perfil do jogador** (`ms-api/profile/{nome}`): mão dominante (`plays`),
   usado tanto para `player_hands` do jogo atual como para o matchup de mão.
 - **Jogos recentes** (`past-matches`): fadiga real e recuperação de sets.
+- A cache de jogos recentes dura **4 horas**: evita repetir chamadas na mesma
+  execução sem esconder um resultado da véspera no relatório do dia seguinte.
+- **Fichas ricas consolidadas**: cada jogador analisado fica guardado em
+  `knowledge/players/<tour>/<id>-<nome>.json`, com identidade, versão do
+  esquema e data de atualização. O workflow publica essas fichas para serem
+  reutilizadas em execuções futuras, reduzindo chamadas e inconsistências;
+  por omissão são renovadas após 30 dias (`PLAYER_SHEET_MAX_AGE_DAYS`).
 - Consumo medido: registado em `data/rapidapi_usage_log.json`.
 
 ### Históricos (fallback)
@@ -334,6 +343,18 @@ Principais em `src/config.py`:
 `ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`.
 
+Para o digest por email:
+
+- `REPORT_EMAIL_SMTP_USERNAME` e `REPORT_EMAIL_SMTP_PASSWORD` — conta SMTP e
+  palavra-passe de aplicação;
+- `REPORT_EMAIL_TO` — destinatários separados por vírgulas;
+- opcionais: `REPORT_EMAIL_FROM`, `REPORT_EMAIL_SMTP_HOST` (por omissão
+  `smtp.gmail.com`) e `REPORT_EMAIL_SMTP_PORT` (por omissão `465`).
+
+Os endereços e credenciais nunca são gravados no repositório. Se os secrets
+obrigatórios ainda não existirem, o workflow publica normalmente os relatórios
+e regista que o envio foi ignorado.
+
 ### Publicação
 GitHub Pages: **Settings → Pages → Deploy from a branch → `main` → `/docs`**.
 
@@ -416,6 +437,10 @@ Sessão longa de correções — registo para não repetir o mesmo erro:
   walk-forward e baselines. Continua a ser validação histórica, não promessa.
 - No índice, verde significa exclusivamente “valor a analisar”; mercado alinhado
   é neutro, amarelo é acompanhamento e vermelho é prioridade alta.
+- Uma métrica comparativa só atribui peso quando os dois jogadores têm dados
+  equivalentes. A ausência de um lado é “indisponível”, nunca zero ou derrota.
+- “Desempenho face ao esperado” identifica a subamostra com odds históricas,
+  mostra a cobertura e separa os jogos/vitórias excluídos por falta de odds.
 
 ## O que falta fazer
 

@@ -341,6 +341,9 @@ class ReportRenderingTests(unittest.TestCase):
             "market_adjusted_form_a": {
                 "matches": 8, "actual_wins": 6, "expected_wins": 4.7,
                 "performance_vs_market": 1.3, "sample_status": "robusto",
+                "total_recent_matches": 10, "overall_wins": 8,
+                "excluded_missing_odds": 2, "excluded_missing_odds_wins": 2,
+                "coverage_pct": 80.0,
             },
             "opposition_quality_a": {
                 "avg_opponent_rank": 42.5, "matches": 24, "sample_status": "robusto",
@@ -353,9 +356,10 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
         self.assertIn("Desempenho face ao esperado", html)
-        self.assertIn("A barra mostra as vitórias reais", html)
-        self.assertIn("<b>6</b> vitórias em 8", html)
+        self.assertIn("Compara apenas os jogos que têm odds históricas", html)
+        self.assertIn("<b>6</b> vitórias em 8 jogos com odds históricas", html)
         self.assertIn("esperado: <b>4.7</b> · diferença +1.3", html)
+        self.assertIn("2 de 10 jogos excluídos por falta de odds (2 vitórias)", html)
         self.assertIn("Acima do esperado", html)
         self.assertIn("Adversários: ranking médio #42.5 (24 jogos)", html)
         self.assertIn("Neste piso: 70% recente vs 60% carreira (melhorou 10 p.p.)", html)

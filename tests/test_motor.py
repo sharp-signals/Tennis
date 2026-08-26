@@ -161,6 +161,28 @@ def test_estado_expoe_a_composicao_do_peso_aplicado():
     assert st["direcao_impacto"] == "a"
 
 
+def test_mudanca_piso_nao_pontua_quando_faltam_dados_de_um_lado():
+    r = _calcular_divergencia(_payload(2.1, 1.8, {
+        "ranking": {"lider": "A", "diff": 30},
+    }, surface_transition_a={"em_transicao": True, "piso_recente_dominante": "Clay"}))
+    assert r is not None
+    status = r["fatores_status"]["mudanca_piso"]
+    assert status["disponivel"] is False
+    assert "dados em falta" in status["motivo_exclusao"]
+    assert not status.get("peso_efetivo")
+
+
+def test_regresso_nao_pontua_quando_faltam_dias_de_um_lado():
+    r = _calcular_divergencia(_payload(2.1, 1.8, {
+        "ranking": {"lider": "A", "diff": 30},
+    }, fatigue_signal_a={"days_since_last_match": 70}, fatigue_signal_b={}))
+    assert r is not None
+    status = r["fatores_status"]["lesao"]
+    assert status["disponivel"] is False
+    assert "dados em falta" in status["motivo_exclusao"]
+    assert not status.get("peso_efetivo")
+
+
 # ---------- runner standalone ----------
 def test_double_counting_cap_familia():
     """A família 'força base' (ranking+época+forma+serviço) não deve dominar só

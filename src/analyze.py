@@ -727,6 +727,9 @@ def analyze_match(match_data: dict) -> dict:
         "current_season_a", "current_season_b",
         "surface_stats_a", "surface_stats_b",
         "serve_return_stats_a", "serve_return_stats_b",
+        # subamostra visual com cobertura explícita; não deve influenciar o
+        # texto do Claude quando faltam odds históricas em parte dos jogos
+        "market_adjusted_form_a", "market_adjusted_form_b",
         # nicho (raramente muda a leitura de mercado)
         "handedness_matchup_a", "handedness_matchup_b",
         "layoff_return_stats_a", "layoff_return_stats_b",

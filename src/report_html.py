@@ -1076,11 +1076,19 @@ def _calcular_divergencia(payload):
     # rodagem no piso de hoje. O líder do fator é quem NÃO está em
     # transição. Só conta quando exatamente um dos dois está em transição
     # (se ambos ou nenhum, não há vantagem relativa a assinalar).
-    st_a = payload.get("surface_transition_a") if isinstance(payload.get("surface_transition_a"), dict) else {}
-    st_b = payload.get("surface_transition_b") if isinstance(payload.get("surface_transition_b"), dict) else {}
-    trans_a = bool(st_a.get("em_transicao"))
-    trans_b = bool(st_b.get("em_transicao"))
-    if trans_a != trans_b:
+    st_a = payload.get("surface_transition_a") if isinstance(payload.get("surface_transition_a"), dict) else None
+    st_b = payload.get("surface_transition_b") if isinstance(payload.get("surface_transition_b"), dict) else None
+    transition_comparable = (
+        st_a is not None and st_b is not None
+        and st_a.get("em_transicao") is not None
+        and st_b.get("em_transicao") is not None
+    )
+    trans_a = bool(st_a.get("em_transicao")) if st_a else False
+    trans_b = bool(st_b.get("em_transicao")) if st_b else False
+    if not transition_comparable:
+        _reg_status("mudanca_piso", False,
+                    motivo_exclusao="dados em falta num dos lados")
+    elif trans_a != trans_b:
         # o que NÃO está em transição leva a vantagem
         lider_mp = b if trans_a else a
         _add("mudanca_piso", lider_mp, 1.0)
@@ -1102,20 +1110,28 @@ def _calcular_divergencia(payload):
     # silenciosamente. days_since_last_match do sinal de FADIGA existe de
     # forma consistente nas duas fontes (api_recent e histórico) — é a
     # medida certa e sempre disponível de "quanto tempo parado até agora".
-    def _regresso_claro(f):
-        return (f.get("days_since_last_match") or 0) >= 60  # 2+ meses parado
-    # quem regressa de lesão longa fica em desvantagem
-    if _regresso_claro(fa) and not _regresso_claro(fb):
+    days_a = fa.get("days_since_last_match")
+    days_b = fb.get("days_since_last_match")
+    layoff_comparable = (
+        isinstance(days_a, (int, float)) and not isinstance(days_a, bool)
+        and isinstance(days_b, (int, float)) and not isinstance(days_b, bool)
+    )
+    def _regresso_claro(days):
+        return days >= 60  # 2+ meses parado
+    # quem regressa de lesão longa fica em desvantagem; a ausência de um
+    # lado nunca é convertida silenciosamente em zero dias.
+    if not layoff_comparable:
+        _reg_status("lesao", False, motivo_exclusao="dados em falta num dos lados",
+                    valor_a=days_a, valor_b=days_b)
+    elif _regresso_claro(days_a) and not _regresso_claro(days_b):
         _add("lesao", b)  # B beneficia (A está a regressar)
-        _reg_status("lesao", True, b, valor_a=fa.get("days_since_last_match"), valor_b=fb.get("days_since_last_match"))
-    elif _regresso_claro(fb) and not _regresso_claro(fa):
+        _reg_status("lesao", True, b, valor_a=days_a, valor_b=days_b)
+    elif _regresso_claro(days_b) and not _regresso_claro(days_a):
         _add("lesao", a)
-        _reg_status("lesao", True, a, valor_a=fa.get("days_since_last_match"), valor_b=fb.get("days_since_last_match"))
-    elif fa.get("days_since_last_match") is not None or fb.get("days_since_last_match") is not None:
-        _reg_status("lesao", True, "igual", "nenhum em regresso claro (<60 dias parado)",
-                   valor_a=fa.get("days_since_last_match"), valor_b=fb.get("days_since_last_match"))
+        _reg_status("lesao", True, a, valor_a=days_a, valor_b=days_b)
     else:
-        _reg_status("lesao", False)
+        _reg_status("lesao", True, "igual", "nenhum em regresso claro (<60 dias parado)",
+                   valor_a=days_a, valor_b=days_b)
 
     # Meteorologia (peso mínimo — só entra como desempate simbólico, quase nulo)
     # (não implementado como vantagem direcional; fica como contexto)
@@ -3428,9 +3444,26 @@ def _mod_forma_ajustada(payload):
         return ""
 
     def linha(nome, side, market, quality, momentum):
-        if not market or not market.get("matches"):
+        if not market:
             return ""
-        matches = max(1, int(market["matches"]))
+        matches = int(market.get("odds_eligible_matches", market.get("matches", 0)) or 0)
+        total_recent = int(market.get("total_recent_matches", matches) or matches)
+        overall_wins = int(market.get("overall_wins", market.get("actual_wins", 0)) or 0)
+        excluded = int(market.get("excluded_missing_odds", max(0, total_recent - matches)) or 0)
+        excluded_wins = int(market.get("excluded_missing_odds_wins", 0) or 0)
+        coverage = market.get("coverage_pct")
+        if matches <= 0:
+            coverage_text = (
+                f"{coverage:.0f}% de cobertura" if isinstance(coverage, (int, float)) else
+                "sem cobertura de odds"
+            )
+            return (
+                f'<div class="expect-player"><div class="expect-head"><span class="expect-name">{nome}</span>'
+                '<span class="expect-badge" style="color:var(--dim)">Sem amostra comparável</span></div>'
+                f'<div class="expect-main"><span><b>{overall_wins}</b> vitórias em {total_recent} jogos recentes</span>'
+                '<span>comparação com o mercado indisponível</span></div>'
+                f'<div class="expect-detail"><span>{excluded} jogos sem odds históricas · {coverage_text}</span></div></div>'
+            )
         actual = float(market.get("actual_wins") or 0)
         expected = float(market.get("expected_wins") or 0)
         delta = actual - expected
@@ -3454,13 +3487,19 @@ def _mod_forma_ajustada(payload):
                 f'Neste piso: {momentum["recent_win_pct"]:.0f}% recente vs '
                 f'{momentum.get("career_win_pct", 0):.0f}% carreira ({trend}{change_text})'
             )
+        if excluded:
+            details.insert(
+                0,
+                f'{excluded} de {total_recent} jogos excluídos por falta de odds '
+                f'({excluded_wins} vitórias)',
+            )
         actual_pct = min(100, 100 * actual / matches)
         expected_pct = min(100, 100 * expected / matches)
         delta_text = f"+{delta:.1f}" if delta > 0 else f"{delta:.1f}"
         return (
             f'<div class="expect-player"><div class="expect-head"><span class="expect-name">{nome}</span>'
             f'<span class="expect-badge" style="color:{status_color}">{status}</span></div>'
-            f'<div class="expect-main"><span><b>{actual:g}</b> vitórias em {matches}</span>'
+            f'<div class="expect-main"><span><b>{actual:g}</b> vitórias em {matches} jogos com odds históricas</span>'
             f'<span>esperado: <b>{expected:.1f}</b> · diferença {delta_text}</span></div>'
             f'<div class="expect-track"><span class="expect-fill" style="width:{actual_pct:.1f}%;background:var(--{side})"></span>'
             f'<span class="expect-marker" style="left:{expected_pct:.1f}%" title="Vitórias esperadas"></span></div>'
@@ -3469,7 +3508,7 @@ def _mod_forma_ajustada(payload):
 
     return (
         '<div class="card"><h3>Desempenho face ao esperado</h3>'
-        '<div class="expect-intro">A barra mostra as vitórias reais; o traço branco marca quantas eram esperadas pelas odds.</div>'
+        '<div class="expect-intro">Compara apenas os jogos que têm odds históricas: a barra mostra as vitórias reais e o traço branco as esperadas. Os resultados excluídos são indicados separadamente.</div>'
         f'{linha(a, "a", ma, qa, sa)}{linha(b, "b", mb, qb, sb)}</div>'
     )
 
