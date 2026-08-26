@@ -225,6 +225,13 @@ fora da amostra antes de influenciarem o relatório.
 - **Perfil do jogador** (`ms-api/profile/{nome}`): mão dominante (`plays`),
   usado tanto para `player_hands` do jogo atual como para o matchup de mão.
 - **Jogos recentes** (`past-matches`): fadiga real e recuperação de sets.
+- A cache de jogos recentes dura **4 horas**: evita repetir chamadas na mesma
+  execução sem esconder um resultado da véspera no relatório do dia seguinte.
+- **Fichas ricas consolidadas**: cada jogador analisado fica guardado em
+  `knowledge/players/<tour>/<id>-<nome>.json`, com identidade, versão do
+  esquema e data de atualização. O workflow publica essas fichas para serem
+  reutilizadas em execuções futuras, reduzindo chamadas e inconsistências;
+  por omissão são renovadas após 30 dias (`PLAYER_SHEET_MAX_AGE_DAYS`).
 - Consumo medido: registado em `data/rapidapi_usage_log.json`.
 
 ### Históricos (fallback)
@@ -416,6 +423,10 @@ Sessão longa de correções — registo para não repetir o mesmo erro:
   walk-forward e baselines. Continua a ser validação histórica, não promessa.
 - No índice, verde significa exclusivamente “valor a analisar”; mercado alinhado
   é neutro, amarelo é acompanhamento e vermelho é prioridade alta.
+- Uma métrica comparativa só atribui peso quando os dois jogadores têm dados
+  equivalentes. A ausência de um lado é “indisponível”, nunca zero ou derrota.
+- “Desempenho face ao esperado” identifica a subamostra com odds históricas,
+  mostra a cobertura e separa os jogos/vitórias excluídos por falta de odds.
 
 ## O que falta fazer
 

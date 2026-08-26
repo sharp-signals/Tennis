@@ -192,9 +192,27 @@ class DeterministicStatisticTests(unittest.TestCase):
 
         self.assertEqual(actual["matches"], 2)
         self.assertEqual(actual["actual_wins"], 1)
+        self.assertEqual(actual["overall_wins"], 2)
+        self.assertEqual(actual["total_recent_matches"], 3)
+        self.assertEqual(actual["excluded_missing_odds"], 1)
+        self.assertEqual(actual["excluded_missing_odds_wins"], 1)
+        self.assertEqual(actual["coverage_pct"], 66.7)
         self.assertEqual(actual["expected_wins"], 0.83)
         self.assertEqual(actual["performance_vs_market"], 0.17)
         self.assertEqual(actual["sample_status"], "limitado")
+
+    def test_market_adjusted_form_keeps_results_when_no_odds_are_available(self):
+        matches = [
+            {"player1Id": 1, "player2Id": 2, "match_winner": 1},
+            {"player1Id": 3, "player2Id": 1, "match_winner": 3},
+        ]
+        actual = fetch_data.compute_market_adjusted_form(matches, 1)
+        self.assertEqual(actual["total_recent_matches"], 2)
+        self.assertEqual(actual["overall_wins"], 1)
+        self.assertEqual(actual["odds_eligible_matches"], 0)
+        self.assertEqual(actual["excluded_missing_odds"], 2)
+        self.assertIsNone(actual["expected_wins"])
+        self.assertIsNone(actual["performance_vs_market"])
 
     def test_opposition_quality_preserves_rank_and_sample(self):
         stats = {"yearStats": {"avgOppRank": "42.5", "matchesPlayed": "24"}}

@@ -2052,21 +2052,35 @@ def compute_market_adjusted_form(matches: list, player_id) -> Optional[dict]:
     históricas, com a margem da casa removida (probabilidades
     normalizadas para somarem 100% antes de comparar).
     """
+    total_recent_matches = 0
+    overall_wins = 0
     total = 0
     actual_wins = 0
     expected_wins = 0.0
+    excluded_missing_odds = 0
+    excluded_missing_odds_wins = 0
     for m in matches or []:
         p1, p2 = m.get("player1Id"), m.get("player2Id")
         if player_id not in (p1, p2):
             continue
+        total_recent_matches += 1
+        won = m.get("match_winner") == player_id
+        if won:
+            overall_wins += 1
         odd1, odd2 = m.get("odd1"), m.get("odd2")
         if odd1 is None or odd2 is None:
+            excluded_missing_odds += 1
+            excluded_missing_odds_wins += int(won)
             continue
         try:
             odd1, odd2 = float(odd1), float(odd2)
         except (TypeError, ValueError):
+            excluded_missing_odds += 1
+            excluded_missing_odds_wins += int(won)
             continue
         if odd1 <= 1 or odd2 <= 1:
+            excluded_missing_odds += 1
+            excluded_missing_odds_wins += int(won)
             continue
         prob1, prob2 = 1.0 / odd1, 1.0 / odd2
         overround = prob1 + prob2
@@ -2075,15 +2089,23 @@ def compute_market_adjusted_form(matches: list, player_id) -> Optional[dict]:
         prob_player = (prob1 if p1 == player_id else prob2) / overround
         total += 1
         expected_wins += prob_player
-        if m.get("match_winner") == player_id:
+        if won:
             actual_wins += 1
-    if total == 0:
+    if total_recent_matches == 0:
         return None
     return {
+        # `matches` é mantido para compatibilidade com relatórios/caches
+        # anteriores; representa apenas a subamostra com odds comparáveis.
         "matches": total,
+        "odds_eligible_matches": total,
+        "total_recent_matches": total_recent_matches,
         "actual_wins": actual_wins,
-        "expected_wins": round(expected_wins, 2),
-        "performance_vs_market": round(actual_wins - expected_wins, 2),
+        "overall_wins": overall_wins,
+        "excluded_missing_odds": excluded_missing_odds,
+        "excluded_missing_odds_wins": excluded_missing_odds_wins,
+        "coverage_pct": round(100 * total / total_recent_matches, 1),
+        "expected_wins": round(expected_wins, 2) if total else None,
+        "performance_vs_market": round(actual_wins - expected_wins, 2) if total else None,
         "sample_status": "robusto" if total >= 10 else "limitado",
     }
 
@@ -3338,7 +3360,11 @@ PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS = 24 * 7  # 7 dias
 
 
 _RECENT_MATCHES_CACHE: dict = {}
-RECENT_MATCHES_CACHE_MAX_AGE_HOURS = 24  # 1 dia (jogos novos aparecem diariamente)
+# Um jogador pode voltar a jogar no dia seguinte. Com 24h, uma execução
+# matinal reutilizava a fotografia anterior ao encontro da véspera (caso
+# Ignacio Buse, 26/08/2026). Quatro horas mantém a poupança dentro da mesma
+# execução e garante uma atualização diária suficientemente recente.
+RECENT_MATCHES_CACHE_MAX_AGE_HOURS = 4
 
 
 def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
@@ -3348,7 +3374,7 @@ def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
     (ISO), tournamentId, match_winner, result, player1Id, player2Id.
     É a fonte FIÁVEL para a fadiga real: inclui os jogos do torneio em
     curso (que o histórico Sackmann/tennis-data só regista com atraso).
-    Cache 1 dia. None se falhar (a fadiga cai então no fallback do histórico).
+    Cache 4 horas. None se falhar (a fadiga cai então no fallback do histórico).
     """
     cache_key = f"{tour}:{player_id}"
     cached = _RECENT_MATCHES_CACHE.get(cache_key)

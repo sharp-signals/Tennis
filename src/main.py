@@ -209,27 +209,64 @@ _RICH_FETCH_BUDGET = {"remaining": 200}  # praticamente sem limite: a proteção
 # contra o 429 é agora a pausa entre pedidos (_rapidapi_get), não um teto rígido.
 # Assim TODOS os jogos recebem dados ricos (antes só os primeiros 6). As fichas
 # ficam em cache, por isso o custo de quota é temporário (só no 1º encontro).
+PLAYER_SHEET_MAX_AGE_DAYS = int(os.getenv("PLAYER_SHEET_MAX_AGE_DAYS", "30"))
 
 
-def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict]) -> Optional[dict]:
+def _player_sheet_path(tour: str, player_id: int, player_name: str) -> str:
+    """Caminho estável, sem colisões entre tours ou jogadores homónimos."""
+    return os.path.join(
+        "knowledge", "players", tour.lower(),
+        f"{player_id}-{_slugify(player_name)}.json",
+    )
+
+
+def _get_rich_player_data(
+    tour: str,
+    player_name: str,
+    official: Optional[dict],
+    player_id: Optional[int] = None,
+) -> Optional[dict]:
     """
     Devolve os dados ricos de um jogador (métricas de resposta de carreira
     + desempenho por nível de ranking do adversário), com estratégia
     HÍBRIDA para poupar quota:
-      1. Se existir um JSON de dados guardado em knowledge/players/<slug>.json,
+      1. Se existir uma ficha JSON em knowledge/players/<tour>/<id>-<slug>.json,
          lê de lá — sem custo de API.
       2. Senão, e se ainda houver orçamento de pedidos nesta execução, busca
          à RapidAPI e grava o JSON para reutilização futura.
       3. Se o orçamento acabou, devolve None (o relatório usa o histórico).
     """
-    slug = _slugify(player_name)
-    json_path = os.path.join("knowledge", "players", f"{slug}.json")
+    # O ID já vem normalmente do fixture. O fallback preserva compatibilidade
+    # com chamadas antigas e com o gerador manual.
+    if player_id is None:
+        player_id = fetch_data.get_player_id_from_ranking(tour, player_name)
+    if not player_id:
+        return None
+    json_path = _player_sheet_path(tour, player_id, player_name)
+    legacy_path = os.path.join("knowledge", "players", f"{_slugify(player_name)}.json")
 
     # 1) tentar a ficha guardada
     try:
-        if os.path.exists(json_path):
-            with open(json_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+        for candidate in (json_path, legacy_path):
+            if not os.path.exists(candidate):
+                continue
+            with open(candidate, "r", encoding="utf-8") as f:
+                stored = json.load(f)
+            # Esquema novo guarda metadados fora dos dados consumidos pelo
+            # relatório. Fichas planas antigas continuam legíveis.
+            if isinstance(stored, dict) and isinstance(stored.get("data"), dict):
+                updated_raw = stored.get("updated_at_utc")
+                if updated_raw:
+                    updated = date_parser.parse(str(updated_raw))
+                    if updated.tzinfo is None:
+                        updated = updated.replace(tzinfo=timezone.utc)
+                    age_days = (datetime.now(timezone.utc) - updated).total_seconds() / 86400
+                    if age_days > PLAYER_SHEET_MAX_AGE_DAYS:
+                        print(f"[ficha] ficha expirada ({age_days:.0f} dias): {candidate}")
+                        continue
+                return stored["data"]
+            if isinstance(stored, dict):
+                return stored
     except Exception:
         pass
 
@@ -237,11 +274,7 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
     if _RICH_FETCH_BUDGET["remaining"] <= 0:
         return None
 
-    # 3) resolver ID e buscar à API
-    player_id = fetch_data.get_player_id_from_ranking(tour, player_name)
-    if not player_id:
-        return None
-
+    # 3) buscar à API
     _RICH_FETCH_BUDGET["remaining"] -= 1  # consome orçamento (mesmo se falhar, evita insistir)
     career = fetch_data.fetch_player_career_stats(tour, player_id)
     perf = fetch_data.fetch_player_perf_breakdown(tour, player_id)
@@ -326,10 +359,20 @@ def _get_rich_player_data(tour: str, player_name: str, official: Optional[dict])
     # gravar para reutilização (best-effort). Escrita ATÓMICA (tmp + rename)
     # para não corromper o ficheiro se duas threads escreverem em paralelo.
     try:
-        os.makedirs(os.path.join("knowledge", "players"), exist_ok=True)
+        os.makedirs(os.path.dirname(json_path), exist_ok=True)
+        sheet = {
+            "schema_version": 1,
+            "player": {
+                "id": player_id,
+                "name": player_name,
+                "tour": tour.lower(),
+            },
+            "updated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "data": rich,
+        }
         tmp_path = f"{json_path}.{os.getpid()}.{id(rich)}.tmp"
         with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(rich, f, ensure_ascii=False)
+            json.dump(sheet, f, ensure_ascii=False, indent=2, sort_keys=True)
         os.replace(tmp_path, json_path)  # rename atómico
     except Exception:
         pass
@@ -1130,8 +1173,8 @@ def _build_match_payload(match: dict) -> dict:
     # guardada em knowledge/players/ (grátis); só se não existir é que
     # busca à RapidAPI (gasta quota). À medida que as fichas do top 100
     # forem construídas, o custo tende a zero.
-    rich_a = _get_rich_player_data(tour, player_a, official)
-    rich_b = _get_rich_player_data(tour, player_b, official)
+    rich_a = _get_rich_player_data(tour, player_a, official, player_id=_pid_a)
+    rich_b = _get_rich_player_data(tour, player_b, official, player_id=_pid_b)
 
     set1_comeback_a, _comeback_diag_a = fetch_data.compute_set1_comeback_with_diagnostics(
         history, player_a
