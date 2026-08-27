@@ -31,10 +31,10 @@ class DeterministicFeatureTests(unittest.TestCase):
             "sazonal_b": {"wins": 6, "matches": 12},
             "surface_stats_a": {"Hard": {"wins": 30, "matches": 50}},
             "surface_stats_b": {"Hard": {"wins": 20, "matches": 50}},
-            "serve_return_stats_a": {"avg_first_serve_won_pct": 0.72},
-            "serve_return_stats_b": {"avg_first_serve_won_pct": 65},
-            "serve_return_recent_a": {"avg_first_serve_won_pct": 68},
-            "serve_return_recent_b": {"avg_first_serve_won_pct": 0.70},
+            "serve_return_stats_a": {"avg_first_serve_won_pct": 0.72, "matches_used": 10},
+            "serve_return_stats_b": {"avg_first_serve_won_pct": 65, "matches_used": 8},
+            "serve_return_recent_a": {"avg_first_serve_won_pct": 68, "matches_used": 2},
+            "serve_return_recent_b": {"avg_first_serve_won_pct": 0.70, "matches_used": 2},
             "fatigue_signal_a": {"matches_last_7d": 1, "sets_last_7d": 2},
             "fatigue_signal_b": {"matches_last_7d": 3, "sets_last_7d": 8},
             "h2h": {
@@ -50,6 +50,7 @@ class DeterministicFeatureTests(unittest.TestCase):
         self.assertEqual(features["forma_recente"]["amostra_a"], 10)
         self.assertEqual(features["piso"]["valor_a"], 60.0)
         self.assertEqual(features["servico_carreira"]["valor_a"], 72.0)
+        self.assertEqual(features["servico_carreira"]["amostra_b"], 8)
         self.assertEqual(features["servico_recente"]["lider"], "B")
         self.assertEqual(features["frescura"]["mais_fresco"], "A")
         self.assertEqual(features["h2h_piso"]["lider"], "B")
@@ -57,6 +58,14 @@ class DeterministicFeatureTests(unittest.TestCase):
 
     def test_feature_computation_with_no_comparable_data_returns_none(self):
         self.assertIsNone(main._compute_features({"player_a": "A", "player_b": "B"}))
+
+    def test_zero_sample_service_is_not_compared_with_real_data(self):
+        features = main._compute_features({
+            "player_a": "A", "player_b": "B",
+            "serve_return_stats_a": {"avg_first_serve_won_pct": 63, "matches_used": 3},
+            "serve_return_stats_b": {"avg_first_serve_won_pct": 0, "matches_used": 0},
+        })
+        self.assertIsNone(features)
 
     def test_source_divergence_handles_fraction_percent_and_missing_data(self):
         self.assertTrue(

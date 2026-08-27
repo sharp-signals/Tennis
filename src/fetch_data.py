@@ -2141,6 +2141,11 @@ def compute_recent_pressure_profile(stats: dict) -> Optional[dict]:
         matches = int(matches)
     except (TypeError, ValueError):
         return None
+    # A API devolve por vezes percentagens iguais a zero juntamente com
+    # statMatchesPlayed=0. Esses zeros são sentinelas de ausência, não
+    # desempenho observado, e não devem chegar ao relatório como 0% real.
+    if matches <= 0:
+        return None
 
     def _f(key):
         v = recent.get(key)
@@ -2967,6 +2972,15 @@ def compute_serve_return_from_recent_stats(recent_stats: dict) -> Optional[dict]
     ps = rs.get("playerStats") or {}
     if not rs:
         return None
+    try:
+        matches = int(ps.get("statMatchesPlayed"))
+    except (TypeError, ValueError):
+        return None
+    # O endpoint preenche as percentagens com zero quando não tem jogos.
+    # Exigir uma amostra positiva impede que esse placeholder seja tratado
+    # como uma estatística bilateral comparável.
+    if matches <= 0:
+        return None
     def _pct(nk, dk):
         num, den = ps.get(nk), ps.get(dk)
         if num is None or not den:
@@ -2974,6 +2988,7 @@ def compute_serve_return_from_recent_stats(recent_stats: dict) -> Optional[dict]
         return round(100 * num / den, 1)
     fw = rs.get("firstServeWinPer")
     out = {
+        "matches_used": matches,
         "avg_first_serve_won_pct": float(fw) if fw is not None else None,
         "avg_second_serve_won_pct": float(rs["secondServeWinPer"]) if rs.get("secondServeWinPer") is not None else None,
         "avg_break_points_saved_pct": float(rs["bpSavedPer"]) if rs.get("bpSavedPer") is not None else None,

@@ -655,6 +655,19 @@ def _calcular_divergencia(payload):
             return 0.5  # amostra desconhecida -> confiança média (neutra)
         return max(0.2, min(math.sqrt(n_jogos / n_pleno), 1.0))
 
+    def _amostra_bilateral(feature):
+        """Menor amostra válida; None se qualquer lado não tiver observações."""
+        if not isinstance(feature, dict):
+            return None
+        try:
+            sample_a = float(feature.get("amostra_a"))
+            sample_b = float(feature.get("amostra_b"))
+        except (TypeError, ValueError):
+            return None
+        if sample_a <= 0 or sample_b <= 0:
+            return None
+        return min(sample_a, sample_b)
+
     def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
         # peso efetivo = peso base × força da diferença × confiança da amostra
         base = peso_override if peso_override is not None else PESOS.get(chave, 0)
@@ -994,14 +1007,20 @@ def _calcular_divergencia(payload):
     # mesmo limiar de 3 p.p. Sinal relevante sobretudo para observação em
     # live (favorito que recupera bem quando começa a perder).
     cb = feats.get("comeback_set1")
-    if isinstance(cb, dict) and cb.get("lider") not in (None, "igual") and abs(cb.get("diff") or 0) >= 3:
-        _add("comeback_set1", cb["lider"])
-        _reg_status("comeback_set1", True, cb["lider"], valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"))
+    _n_cb = _amostra_bilateral(cb)
+    if isinstance(cb, dict) and _n_cb is None:
+        _reg_status("comeback_set1", False, motivo_exclusao="amostra em falta num dos lados",
+                    valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"),
+                    amostra_a=cb.get("amostra_a"), amostra_b=cb.get("amostra_b"))
+    elif isinstance(cb, dict) and cb.get("lider") not in (None, "igual") and abs(cb.get("diff") or 0) >= 3:
+        _add("comeback_set1", cb["lider"], conf_amostra=_conf_amostra(_n_cb, 30))
+        _reg_status("comeback_set1", True, cb["lider"], valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"),
+                    amostra=_n_cb, amostra_a=cb.get("amostra_a"), amostra_b=cb.get("amostra_b"))
     elif isinstance(cb, dict) and cb.get("lider") == "igual":
-        _reg_status("comeback_set1", True, "igual", valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"))
+        _reg_status("comeback_set1", True, "igual", valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"), amostra=_n_cb)
     elif isinstance(cb, dict) and cb.get("lider") is not None:
         _reg_status("comeback_set1", True, cb["lider"], "abaixo do limiar (<3 p.p.)",
-                    valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"))
+                    valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"), amostra=_n_cb)
     else:
         _reg_status("comeback_set1", False)
 
@@ -1022,9 +1041,14 @@ def _calcular_divergencia(payload):
     # (14/08/2026, a pedido; ver nota em main.py).
     # CORREÇÃO (12/08/2026): mesmo limiar de 3 p.p.
     sv = feats.get("servico_carreira")
-    if isinstance(sv, dict) and sv.get("lider") not in (None, "igual") and abs(sv.get("diff") or 0) >= 3:
-        _add("servico_carreira", sv["lider"])
-        _reg_status("servico_carreira", True, sv["lider"], valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
+    _n_sv = _amostra_bilateral(sv)
+    if isinstance(sv, dict) and _n_sv is None:
+        _reg_status("servico_carreira", False, motivo_exclusao="amostra em falta num dos lados",
+                    valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"),
+                    amostra_a=sv.get("amostra_a"), amostra_b=sv.get("amostra_b"))
+    elif isinstance(sv, dict) and sv.get("lider") not in (None, "igual") and abs(sv.get("diff") or 0) >= 3:
+        _add("servico_carreira", sv["lider"], conf_amostra=_conf_amostra(_n_sv, 10))
+        _reg_status("servico_carreira", True, sv["lider"], valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"), amostra=_n_sv)
     elif isinstance(sv, dict) and sv.get("lider") == "igual":
         _reg_status("servico_carreira", True, "igual", valor_a=sv.get("valor_a"), valor_b=sv.get("valor_b"))
     elif isinstance(sv, dict) and sv.get("lider") is not None:
@@ -1034,9 +1058,14 @@ def _calcular_divergencia(payload):
         _reg_status("servico_carreira", False)
 
     svr = feats.get("servico_recente")
-    if isinstance(svr, dict) and svr.get("lider") not in (None, "igual") and abs(svr.get("diff") or 0) >= 3:
-        _add("servico_recente", svr["lider"])
-        _reg_status("servico_recente", True, svr["lider"], valor_a=svr.get("valor_a"), valor_b=svr.get("valor_b"))
+    _n_svr = _amostra_bilateral(svr)
+    if isinstance(svr, dict) and _n_svr is None:
+        _reg_status("servico_recente", False, motivo_exclusao="amostra em falta num dos lados",
+                    valor_a=svr.get("valor_a"), valor_b=svr.get("valor_b"),
+                    amostra_a=svr.get("amostra_a"), amostra_b=svr.get("amostra_b"))
+    elif isinstance(svr, dict) and svr.get("lider") not in (None, "igual") and abs(svr.get("diff") or 0) >= 3:
+        _add("servico_recente", svr["lider"], conf_amostra=_conf_amostra(_n_svr, 2))
+        _reg_status("servico_recente", True, svr["lider"], valor_a=svr.get("valor_a"), valor_b=svr.get("valor_b"), amostra=_n_svr)
     elif isinstance(svr, dict) and svr.get("lider") == "igual":
         _reg_status("servico_recente", True, "igual", valor_a=svr.get("valor_a"), valor_b=svr.get("valor_b"))
     elif isinstance(svr, dict) and svr.get("lider") is not None:
@@ -1245,10 +1274,40 @@ def _calcular_divergencia(payload):
     # ser "forte"/"moderada" se houver massa de evidência e fatores suficientes.
     massa_evidencia = peso_total
     n_fatores = len([c for c in contribuicoes if abs(c[2]) > 0])
+    familias_ativas = sorted({_familia(chave_f) for chave_f, _, peso in contribuicoes if abs(peso) > 0})
+    fatores_estruturais = {
+        "ranking", "piso", "h2h", "h2h_piso", "nivel_adversario", "qualidade_vitorias",
+    }
+    estruturais_disponiveis = sorted(
+        chave_f for chave_f in fatores_estruturais
+        if isinstance(status.get(chave_f), dict) and status[chave_f].get("disponivel")
+    )
+    issues = (payload.get("data_quality") or {}).get("issues") or []
+    identidade_nao_resolvida = any(
+        isinstance(issue, dict) and issue.get("type") == "name_resolution"
+        for issue in issues
+    )
+    limitacoes_confianca = []
+    if len(familias_ativas) < 3:
+        limitacoes_confianca.append("menos de 3 famílias independentes com peso")
+    if not estruturais_disponiveis:
+        limitacoes_confianca.append("sem cobertura estrutural")
+    if identidade_nao_resolvida:
+        limitacoes_confianca.append("identidade histórica não confirmada")
+    cobertura_qualidade = min(len(familias_ativas) / 3.0, 1.0)
+    if not estruturais_disponiveis:
+        cobertura_qualidade *= 0.5
+    fiabilidade_fontes = 0.5 if identidade_nao_resolvida else 1.0
     if massa_evidencia < 8 or n_fatores < 2:
         nivel = min(nivel, 1)
         intensidade_nivel = min(intensidade_nivel, 1)
     elif massa_evidencia < 18 or n_fatores < 3:
+        nivel = min(nivel, 2)
+        intensidade_nivel = min(intensidade_nivel, 2)
+    # Uma concentração extrema de poucos tipos de sinal não equivale a
+    # evidência forte. O nível 3 exige diversidade, pelo menos um bloco
+    # estrutural comparável e identidade histórica confirmada.
+    if limitacoes_confianca:
         nivel = min(nivel, 2)
         intensidade_nivel = min(intensidade_nivel, 2)
     intensidade_chave = ("neutra", "ligeira", "moderada", "forte")[intensidade_nivel]
@@ -1261,6 +1320,8 @@ def _calcular_divergencia(payload):
              2: ("moderada", "Divergência moderada"),
              3: ("forte", "Divergência forte")}
     chave, texto = _mapa[nivel]
+    if tipo == "direcao" and limitacoes_confianca:
+        texto = f"{texto} · dados limitados"
 
     favorecido = indice_favorece if nivel >= 1 else None
 
@@ -1294,6 +1355,18 @@ def _calcular_divergencia(payload):
         "fatores_chave": fatores_chave,
         "n_fatores": n_fatores,  # nº de sinais que contribuíram (transparência
                                   # quando o índice bate no extremo com poucos)
+        "massa_evidencia": round(massa_evidencia, 3),
+        "evidence_coverage": {
+            "active_families": familias_ativas,
+            "active_family_count": len(familias_ativas),
+            "structural_factors_available": estruturais_disponiveis,
+            "structural_coverage_count": len(estruturais_disponiveis),
+            "coverage_quality": round(cobertura_qualidade, 6),
+            "source_reliability": fiabilidade_fontes,
+            "pricing_eligible": not limitacoes_confianca,
+            "limited": bool(limitacoes_confianca),
+            "limitation_reasons": limitacoes_confianca,
+        },
         "fatores_status": status,  # TODOS os fatores (não só o top-3), para o
                                     # módulo "Fatores Detalhados" — 100% Python
         "gap_pp": None,  # compatibilidade: escalas distintas, não subtrair
@@ -3028,7 +3101,13 @@ def _mod_market_residual_pricing(payload):
         candidate_label = f"{candidate_label} · {candidate_player}"
     evidence = _d(pricing.get("evidence_quality"))
     quality_pct = 100.0 * float(pricing.get("quality_score") or 0.0)
-    version = pricing.get("model_version") or "market-residual-v0.1"
+    coverage_raw = evidence.get("coverage_quality")
+    source_raw = evidence.get("source_reliability")
+    # Payloads históricos anteriores à v0.2 não tinham estes campos; nesse
+    # caso não os apresentar falsamente como 0%.
+    coverage_pct = 100.0 * float(1.0 if coverage_raw is None else coverage_raw)
+    source_pct = 100.0 * float(1.0 if source_raw is None else source_raw)
+    version = pricing.get("model_version") or "market-residual-v0.2"
     fingerprint = pricing.get("configuration_fingerprint") or "—"
     overround = pricing.get("market_overround_pct")
     return (
@@ -3044,6 +3123,8 @@ def _mod_market_residual_pricing(payload):
         f'<span>Qualidade da evidência <b>{quality_pct:.0f}%</b></span>'
         f'<span><b>{int(evidence.get("factor_count") or 0)}</b> fatores</span>'
         f'<span>Massa efetiva <b>{fmt(evidence.get("effective_mass"), 1)}</b></span>'
+        f'<span>Cobertura <b>{coverage_pct:.0f}%</b></span>'
+        f'<span>Fiabilidade das fontes <b>{source_pct:.0f}%</b></span>'
         f'<span>Overround observado <b>{fmt(overround, 2, suffix="%")}</b></span>'
         f'<span>{_esc(version)} · config {_esc(fingerprint)}</span>'
         '</div>'

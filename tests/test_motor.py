@@ -124,6 +124,65 @@ def test_amostra_pequena_pesa_menos():
     assert r_muito["indice_evidencia_a"] > r_pouco["indice_evidencia_a"]
 
 
+def test_comeback_e_atenuado_pela_menor_amostra():
+    r = _calcular_divergencia(_payload(1.55, 2.55, {
+        "comeback_set1": {
+            "lider": "B", "diff": 12, "valor_a": 21, "valor_b": 33,
+            "amostra_a": 141, "amostra_b": 15,
+        },
+        "ranking": {"lider": "A", "diff": 30},
+    }))
+    status = r["fatores_status"]["comeback_set1"]
+    assert status["confianca_amostra"] == 0.707
+    assert status["peso_efetivo"] == 4.95
+    assert status["amostra"] == 15
+
+
+def test_servico_com_zero_observacoes_nao_pontua():
+    r = _calcular_divergencia(_payload(1.55, 2.55, {
+        "servico_carreira": {
+            "lider": "A", "diff": 63, "valor_a": 63, "valor_b": 0,
+            "amostra_a": 3, "amostra_b": 0,
+        },
+        "ranking": {"lider": "A", "diff": 30},
+    }))
+    status = r["fatores_status"]["servico_carreira"]
+    assert status["disponivel"] is False
+    assert "amostra em falta" in status["motivo_exclusao"]
+    assert not status.get("peso_efetivo")
+
+
+def test_divergencia_forte_exige_diversidade_estrutura_e_identidade_confirmada():
+    r = _calcular_divergencia(_payload(1.32, 3.20, {
+        "forma_recente": {"lider": "B", "diff": 10, "valor_a": 60, "valor_b": 70},
+        "piso": {"lider": "A", "diff": 2, "valor_a": 64, "valor_b": 62,
+                 "amostra_a": 13, "amostra_b": 13},
+        "comeback_set1": {"lider": "B", "diff": 12, "valor_a": 21, "valor_b": 33,
+                          "amostra_a": 141, "amostra_b": 15},
+        "servico_carreira": {"lider": "A", "diff": 63, "valor_a": 63, "valor_b": 0,
+                             "amostra_a": 3, "amostra_b": 0},
+    }, rich_stats_a={"scenarios": {"deciding_set_win_pct": 59, "deciding_set_count": 110}},
+       rich_stats_b={"scenarios": {"deciding_set_win_pct": 75, "deciding_set_count": 8}},
+       data_quality={"issues": [{"type": "name_resolution", "severity": "warning"}]}))
+    assert r["classificacao"]["nivel"] <= 2
+    assert "dados limitados" in r["classificacao"]["texto"]
+    assert r["evidence_coverage"]["active_family_count"] == 2
+    assert r["evidence_coverage"]["pricing_eligible"] is False
+    assert r["evidence_coverage"]["source_reliability"] == 0.5
+
+
+def test_divergencia_forte_continua_possivel_com_cobertura_diversa():
+    r = _calcular_divergencia(_payload(2.6, 1.5, {
+        "h2h": {"lider": "A", "diff": 4, "a_wins": 4, "b_wins": 0},
+        "piso": {"lider": "A", "diff": 18, "amostra_a": 100, "amostra_b": 100},
+        "forma_recente": {"lider": "A", "diff": 20},
+        "ranking": {"lider": "A", "diff": 30},
+    }))
+    assert r["classificacao"]["nivel"] == 3
+    assert r["evidence_coverage"]["active_family_count"] >= 3
+    assert r["evidence_coverage"]["pricing_eligible"] is True
+
+
 # ---------- TESTES: pesos coerentes com a decisão do utilizador ----------
 def test_pesos_h2h_piso_maiores_que_ranking():
     """H2H e piso devem ter peso maior que ranking (decisão do utilizador)."""

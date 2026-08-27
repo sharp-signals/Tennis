@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "market-residual-v0.1"
+MODEL_VERSION = "market-residual-v0.2"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
     "Estimativa experimental em desenvolvimento. Ainda não validada fora da "
@@ -42,7 +42,7 @@ DISCLAIMER = (
 )
 METHOD = (
     "logit(P_sharp) = logit(P_market_de_vig) + "
-    "max_logit_shift × signed_strength × quality"
+    "max_logit_shift × signed_strength × internal_quality × coverage × source_reliability"
 )
 
 
@@ -63,6 +63,7 @@ def _configuration_fingerprint(parameters: PricingParameters) -> str:
         "model_version": MODEL_VERSION,
         "parameters": asdict(parameters),
         "intensity_quality": {"0": 0.0, "1": 0.50, "2": 0.75, "3": 1.0},
+        "coverage_and_source_quality": True,
     }
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
@@ -194,6 +195,35 @@ def _has_serious_data_failure(payload: Mapping[str, Any]) -> bool:
     return False
 
 
+def _has_identity_resolution_warning(payload: Mapping[str, Any]) -> bool:
+    quality = payload.get("data_quality")
+    if not isinstance(quality, Mapping):
+        return False
+    issues = quality.get("issues")
+    return isinstance(issues, list) and any(
+        isinstance(issue, Mapping) and issue.get("type") == "name_resolution"
+        for issue in issues
+    )
+
+
+def _coverage_values(divergence: Mapping[str, Any] | None) -> tuple[float, float, bool]:
+    """Cobertura, fiabilidade e elegibilidade; defaults preservam payloads antigos."""
+    if not isinstance(divergence, Mapping):
+        return 1.0, 1.0, True
+    coverage = divergence.get("evidence_coverage")
+    if not isinstance(coverage, Mapping):
+        return 1.0, 1.0, True
+    try:
+        coverage_quality = min(1.0, max(0.0, float(coverage.get("coverage_quality", 1.0))))
+    except (TypeError, ValueError):
+        coverage_quality = 0.0
+    try:
+        source_reliability = min(1.0, max(0.0, float(coverage.get("source_reliability", 1.0))))
+    except (TypeError, ValueError):
+        source_reliability = 0.0
+    return coverage_quality, source_reliability, bool(coverage.get("pricing_eligible", True))
+
+
 def _unavailable(parameters: PricingParameters, reason: str) -> dict[str, Any]:
     return {
         "available": False,
@@ -243,7 +273,13 @@ def estimate_market_residual_pricing(
     # Nivel 0 significa que o proprio motor considera o sinal inconclusivo;
     # nesse caso nao ha residual utilizavel e o mercado permanece inalterado.
     intensity_quality = (0.0, 0.50, 0.75, 1.0)[intensity]
-    quality = min(factor_quality, mass_quality, intensity_quality)
+    internal_quality = min(factor_quality, mass_quality, intensity_quality)
+    coverage_quality, source_reliability, coverage_gate_passed = _coverage_values(divergence)
+    identity_warning = _has_identity_resolution_warning(payload)
+    if identity_warning:
+        source_reliability = min(source_reliability, 0.5)
+    source_gate_passed = not identity_warning and source_reliability >= 0.75
+    quality = internal_quality * coverage_quality * source_reliability
     residual = parameters.max_logit_shift * signed_strength * quality
 
     sharp_a = apply_logit_residual(market_a, residual)
@@ -259,6 +295,8 @@ def estimate_market_residual_pricing(
         factor_count >= parameters.minimum_factors
         and quality >= parameters.minimum_quality
         and not serious_failure
+        and coverage_gate_passed
+        and source_gate_passed
     )
     mathematical_side, mathematical_edge = max(
         (("a", edge_a), ("b", edge_b)), key=lambda item: item[1]
@@ -312,6 +350,12 @@ def estimate_market_residual_pricing(
             "factor_quality": round(factor_quality, 6),
             "mass_quality": round(mass_quality, 6),
             "intensity_quality": intensity_quality,
+            "internal_quality": round(internal_quality, 6),
+            "coverage_quality": round(coverage_quality, 6),
+            "source_reliability": round(source_reliability, 6),
+            "coverage_gate_passed": coverage_gate_passed,
+            "source_gate_passed": source_gate_passed,
+            "identity_resolution_warning": identity_warning,
             "serious_data_quality_failure": serious_failure,
         },
         "players": players,

@@ -104,6 +104,32 @@ class MarketResidualPricingTests(unittest.TestCase):
             pricing["candidate_status"], "edge_not_promoted_insufficient_evidence"
         )
 
+    def test_identity_warning_reduces_quality_and_blocks_candidate(self):
+        payload = self._payload()
+        payload["data_quality"] = {
+            "issues": [{"severity": "warning", "type": "name_resolution"}]
+        }
+        pricing = estimate_market_residual_pricing(
+            payload, self._divergence(100, factors=4, intensity=3, weight=5)
+        )
+        self.assertEqual(pricing["evidence_quality"]["source_reliability"], 0.5)
+        self.assertFalse(pricing["evidence_quality"]["source_gate_passed"])
+        self.assertFalse(pricing["quality_gate_passed"])
+        self.assertIsNone(pricing["candidate_side"])
+
+    def test_insufficient_factor_family_coverage_blocks_candidate(self):
+        divergence = self._divergence(100, factors=4, intensity=3, weight=5)
+        divergence["evidence_coverage"] = {
+            "coverage_quality": 2 / 3,
+            "source_reliability": 1.0,
+            "pricing_eligible": False,
+        }
+        pricing = estimate_market_residual_pricing(self._payload(), divergence)
+        self.assertAlmostEqual(pricing["evidence_quality"]["coverage_quality"], 2 / 3, places=6)
+        self.assertFalse(pricing["evidence_quality"]["coverage_gate_passed"])
+        self.assertFalse(pricing["quality_gate_passed"])
+        self.assertIsNone(pricing["candidate_side"])
+
     def test_missing_odds_fails_safely(self):
         payload = self._payload()
         payload["market_odds_decimal"] = {}
@@ -150,6 +176,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         for expected in (
             "Market probability", "Sharp estimate", "Fair odd", "Market odd",
             "Expected edge", "EXPERIMENTAL", "Estimativa experimental em desenvolvimento",
+            "Cobertura", "Fiabilidade das fontes",
         ):
             self.assertIn(expected, html)
         self.assertNotIn("Veredicto de mercado", html)

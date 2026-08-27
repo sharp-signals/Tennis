@@ -671,15 +671,31 @@ def _compute_features(payload: dict) -> dict:
     # diferentes (14/08/2026, a pedido) — mesma arquitetura já usada no
     # H2H (global vs piso): não se mistura numa média manual, deixa-se o
     # motor pesar os dois de forma consistente com o resto.
-    sa = (payload.get("serve_return_stats_a") or {}).get("avg_first_serve_won_pct")
-    sb = (payload.get("serve_return_stats_b") or {}).get("avg_first_serve_won_pct")
-    if sa is not None and sb is not None:
-        _edge(sa * 100 if sa <= 1 else sa, sb * 100 if sb <= 1 else sb, "servico_carreira")
+    def _serve_metric(side_data):
+        """Devolve valor e amostra; n=0 torna a métrica indisponível."""
+        data = side_data or {}
+        value = data.get("avg_first_serve_won_pct")
+        sample = data.get("matches_used")
+        if sample is not None:
+            try:
+                sample = int(sample)
+            except (TypeError, ValueError):
+                return None, None
+            if sample <= 0:
+                return None, sample
+        return value, sample
 
-    sa_r = (payload.get("serve_return_recent_a") or {}).get("avg_first_serve_won_pct")
-    sb_r = (payload.get("serve_return_recent_b") or {}).get("avg_first_serve_won_pct")
+    sa, nsa = _serve_metric(payload.get("serve_return_stats_a"))
+    sb, nsb = _serve_metric(payload.get("serve_return_stats_b"))
+    if sa is not None and sb is not None:
+        _edge(sa * 100 if sa <= 1 else sa, sb * 100 if sb <= 1 else sb,
+              "servico_carreira", amostra_a=nsa, amostra_b=nsb)
+
+    sa_r, nsa_r = _serve_metric(payload.get("serve_return_recent_a"))
+    sb_r, nsb_r = _serve_metric(payload.get("serve_return_recent_b"))
     if sa_r is not None and sb_r is not None:
-        _edge(sa_r * 100 if sa_r <= 1 else sa_r, sb_r * 100 if sb_r <= 1 else sb_r, "servico_recente")
+        _edge(sa_r * 100 if sa_r <= 1 else sa_r, sb_r * 100 if sb_r <= 1 else sb_r,
+              "servico_recente", amostra_a=nsa_r, amostra_b=nsb_r)
 
     # Fadiga (menos jogos recentes = mais fresco) — sinal de frescura
     fa = payload.get("fatigue_signal_a") or {}

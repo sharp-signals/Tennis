@@ -128,7 +128,11 @@ class DeterministicStatisticTests(unittest.TestCase):
                 "secondServeWinPer": 51,
                 "bpSavedPer": 64,
                 "bpConvertedPer": 42,
-                "playerStats": {"firstServe": 120, "firstServeOf": 200},
+                "playerStats": {
+                    "statMatchesPlayed": 5,
+                    "firstServe": 120,
+                    "firstServeOf": 200,
+                },
             }
         }
 
@@ -136,7 +140,18 @@ class DeterministicStatisticTests(unittest.TestCase):
 
         self.assertEqual(actual["avg_first_serve_won_pct"], 72.5)
         self.assertEqual(actual["avg_first_serve_in_pct"], 60.0)
+        self.assertEqual(actual["matches_used"], 5)
         self.assertIsNone(fetch_data.compute_serve_return_from_recent_stats({"recentStats": {}}))
+
+    def test_zero_match_percentages_are_treated_as_missing(self):
+        stats = {"recentStats": {
+            "firstServeWinPer": 0,
+            "bpSavedPer": 0,
+            "playerStats": {"statMatchesPlayed": 0},
+        }}
+
+        self.assertIsNone(fetch_data.compute_serve_return_from_recent_stats(stats))
+        self.assertIsNone(fetch_data.compute_recent_pressure_profile(stats))
 
     def test_profile_hand_and_matchup_are_resolved_deterministically(self):
         profile = {"data": {"information": {"plays": "Left-handed, two-handed backhand"}}}
