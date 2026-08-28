@@ -78,7 +78,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         )
         self.assertLess(pricing["residual_logit"], pricing["parameters"]["max_logit_shift"])
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertIsNone(pricing["candidate_side"])
+        self.assertEqual(pricing["candidate_side"], "a")
 
     def test_valid_edge_is_promoted_only_after_quality_gates(self):
         pricing = estimate_market_residual_pricing(
@@ -99,10 +99,8 @@ class MarketResidualPricingTests(unittest.TestCase):
         )
         self.assertTrue(pricing["available"])
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertIsNone(pricing["candidate_side"])
-        self.assertEqual(
-            pricing["candidate_status"], "edge_not_promoted_insufficient_evidence"
-        )
+        self.assertEqual(pricing["candidate_side"], "a")
+        self.assertEqual(pricing["candidate_status"], "experimental_edge")
 
     def test_identity_warning_reduces_quality_and_blocks_candidate(self):
         payload = self._payload()
@@ -115,7 +113,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertEqual(pricing["evidence_quality"]["source_reliability"], 0.5)
         self.assertFalse(pricing["evidence_quality"]["source_gate_passed"])
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertIsNone(pricing["candidate_side"])
+        self.assertEqual(pricing["candidate_side"], "a")
 
     def test_insufficient_factor_family_coverage_blocks_candidate(self):
         divergence = self._divergence(100, factors=4, intensity=3, weight=5)
@@ -128,7 +126,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(pricing["evidence_quality"]["coverage_quality"], 2 / 3, places=6)
         self.assertFalse(pricing["evidence_quality"]["coverage_gate_passed"])
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertIsNone(pricing["candidate_side"])
+        self.assertEqual(pricing["candidate_side"], "a")
 
     def test_missing_odds_fails_safely(self):
         payload = self._payload()

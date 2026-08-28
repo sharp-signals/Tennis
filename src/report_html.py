@@ -23,12 +23,14 @@ import re
 try:
     from .config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
     from .pricing import estimate_market_residual_pricing
+    from .prelive_decision import assess_report, build_decision
 except ImportError:
     # Alguns testes carregam este módulo sem o pacote "src" (sys.path
     # aponta direto para a pasta), o que quebra o import relativo — cai
     # para o import absoluto nesse caso.
     from config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
     from pricing import estimate_market_residual_pricing
+    from prelive_decision import assess_report, build_decision
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -765,7 +767,7 @@ def _calcular_divergencia(payload):
         como a forma bo3/bo5 (Sackmann/histórico: combina as duas)."""
         if not isinstance(d, dict):
             return None, None
-        if d.get("deciding_set_win_pct") is not None:
+        if d.get("deciding_set_win_pct") is not None and isinstance(d.get("deciding_set_count"), (int, float)) and d.get("deciding_set_count") > 0:
             return d["deciding_set_win_pct"], d.get("deciding_set_count")
         wins = matches = 0
         tem_dados = False
@@ -783,9 +785,9 @@ def _calcular_divergencia(payload):
     rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
     dec_a, dec_a_n = ra.get("deciding_set_win_pct"), ra.get("deciding_set_count")
     dec_b, dec_b_n = rb.get("deciding_set_win_pct"), rb.get("deciding_set_count")
-    if dec_a is None:
+    if dec_a is None or not isinstance(dec_a_n, (int, float)) or dec_a_n <= 0:
         dec_a, dec_a_n = _deciding_set_signal(payload.get("deciding_set_stats_a"))
-    if dec_b is None:
+    if dec_b is None or not isinstance(dec_b_n, (int, float)) or dec_b_n <= 0:
         dec_b, dec_b_n = _deciding_set_signal(payload.get("deciding_set_stats_b"))
     if dec_a is not None and dec_b is not None:
         lider = a if dec_a > dec_b else (b if dec_b > dec_a else "igual")
@@ -2737,67 +2739,105 @@ def _mod_photo_credits(payload):
             f'<div>{"<br>".join(credits)}</div></details>')
 
 
-def _mod_leitura(payload, div, estado, result):
-    """Módulo 2: Leitura do jogo — a decisão numa frase."""
-    chave, cor, label, bola = estado
-    a = _esc(payload.get("player_a", "?")); b = _esc(payload.get("player_b", "?"))
-    if chave in ("erro", "sem_odds"):
-        sub = ("Sem odds de mercado para comparar — mostramos só os dados factuais."
-               if chave == "sem_odds" else "Análise indisponível — dados factuais apenas.")
-        return f"""
-<div class="leitura" style="border-color:{cor}">
-  <div class="leitura-bola">{bola}</div>
-  <div class="leitura-txt"><b>{label}</b><div>{sub}</div></div>
-</div>"""
-    fav = div.get("favorecido") or div.get("indice_favorece")
-    idx = _d(div.get("indice_evidencia"))
-    idx_fav = idx.get("a") if fav == payload.get("player_a") else idx.get("b")
-    merc_fav = div.get("mercado_favorece")
-    tipo = div.get("tipo", "")
-    n_fatores = div.get("n_fatores")
-    nivel = (_d(div.get("classificacao"))).get("nivel", 0)
-    # Transparência (11/08/2026): quando o índice bate no extremo (todos os
-    # sinais disponíveis concordam, sem nenhum contrapeso) e há poucos sinais
-    # a sustentá-lo, isso é matematicamente correto mas FRÁGIL — vale a pena
-    # dizê-lo, para não parecer "mais evidência" do que realmente há.
-    nota_fragil = ""
-    if isinstance(n_fatores, int) and n_fatores <= 3 and idx_fav is not None and (idx_fav >= 95 or idx_fav <= 5):
-        nota_fragil = (f" <span style=\"opacity:.7\">(índice construído a partir de só "
-                        f"{n_fatores} {'sinal' if n_fatores == 1 else 'sinais'} — todos no mesmo "
-                        f"sentido, sem contrapeso.)</span>")
-    if chave == "inconclusivo":
-        frase = (f"O mercado favorece <b>{_esc(merc_fav)}</b>, mas os indicadores "
-                 "estão demasiado equilibrados para indicar uma direção clara.")
-    elif chave == "valor_preco":
-        # NOVO (18/08/2026, a pedido): alinhamento forte + mercado a pagar
-        # acima da faixa indicativa estimada. Distinto de "alinhado_forte"
-        # (sem essa margem de preço) e distinto de divergência de direção
-        # (aqui mercado e indicadores concordam no lado, só discordam se o
-        # preço está "caro" o suficiente para ter interesse).
-        frase = (f"Mercado e indicadores concordam em <b>{_esc(merc_fav)}</b>, e o mercado está "
-                 "a pagar acima da faixa indicativa estimada para esse resultado — "
-                 f"potencial valor no preço.{nota_fragil}")
-    elif chave in ("alinhado", "alinhado_forte", "eficiente"):
-        intensidade = div.get("intensidade_indicadores", "ligeira")
-        frase = (f"Mercado e indicadores apontam para <b>{_esc(merc_fav)}</b>; "
-                 f"a concentração dos indicadores é <b>{_esc(intensidade)}</b>. ")
-        if chave == "alinhado_forte":
-            frase += ("A odd merece acompanhamento, mas o índice ainda não é uma "
-                      f"probabilidade calibrada nem permite calcular uma odd justa.{nota_fragil}")
-        else:
-            frase += "Este alinhamento, por si só, não demonstra valor."
+def _mod_decision_box(payload):
+    """Decisão operacional única, sem reinterpretar o motor no HTML."""
+    decision = _d(payload.get("prelive_decision"))
+    state = decision.get("state") or "REPORT_NULL"
+    coverage = _d(decision.get("coverage"))
+    coverage_text = f'{coverage.get("weighted_pct", 0):g}% · {coverage.get("status", "insuficiente")}'
+    labels = {
+        "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢"),
+        "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴"),
+        "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪"),
+        "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫"),
+    }
+    label, css_class, ball = labels.get(state, labels["REPORT_NULL"])
+    if state == "EDGE_POSITIVE":
+        market = _d(decision.get("market"))
+        edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
+        body = (
+            f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
+            f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
+            f'<div class="decision-grid"><span>Mercado <b>{_esc(market.get("market"))}</b></span>'
+            f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
+            f'<span>Cobertura <b>{_esc(coverage_text)}</b></span></div>'
+            '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
+        )
+    elif state in {"EDGE_NEGATIVE", "EDGE_ZERO"}:
+        edge = decision.get("expected_edge_pct")
+        edge_text = f"{float(edge):+.1f}%" if edge is not None else "N/D"
+        body = (
+            f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
+            f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
+            f'<div class="decision-note">Não entra em PAPER. Cobertura {_esc(coverage_text)}.</div>'
+        )
     else:
-        # divergência de direção: contra o mercado
-        frase = (f"Os indicadores apontam para <b>{_esc(fav)}</b> (índice {idx_fav}/100), "
-                 f"mas o mercado favorece <b>{_esc(merc_fav)}</b>. "
-                 f"As duas escalas são distintas e não são subtraídas.{nota_fragil}")
-    return f"""
-<div class="leitura" style="border-color:{cor}">
-  <div class="leitura-bola">{bola}</div>
-  <div class="leitura-txt"><b>{label}</b><div>{frase}</div></div>
-</div>"""
+        assessment = _d(decision.get("report_assessment"))
+        reasons = assessment.get("reasons") or [decision.get("reason") or "dados insuficientes"]
+        items = "".join(f'<li>{_esc(reason)}</li>' for reason in reasons)
+        body = (
+            f'<div class="decision-primary">Sem edge, sem veredicto e sem entrada PAPER.</div>'
+            f'<ul class="decision-reasons">{items}</ul>'
+            f'<div class="decision-note">Cobertura ponderada {_esc(coverage_text)}.</div>'
+        )
+    return (
+        f'<section class="decision-box {css_class}"><div class="decision-head">'
+        f'<span>{ball}</span><b>{_esc(label)}</b></div>{body}</section>'
+    )
 
 
+def _mod_system_history(payload):
+    history = _d(payload.get("paper_history"))
+    paper = _d(history.get("PAPER"))
+
+    def value(raw, suffix=""):
+        if raw is None:
+            return "N/D"
+        return f"{raw}{suffix}"
+
+    paper_metrics = (
+        ("Entradas", value(paper.get("total_entries"))),
+        ("W–L", f'{value(paper.get("wins"))}–{value(paper.get("losses"))}'),
+        ("Win rate", value(paper.get("win_rate_pct"), "%")),
+        ("Resultado acumulado", value(paper.get("units"), " u")),
+        ("ROI / yield", value(paper.get("roi_pct"), "%")),
+        ("Odd média", value(paper.get("average_odd"))),
+        ("Edge médio", value(paper.get("average_edge_pct"), "%")),
+        ("CLV", value(paper.get("clv_pct"), "%")),
+        ("Drawdown máx.", value(paper.get("max_drawdown_units"), " u")),
+    )
+    cells = "".join(
+        f'<div><span>{_esc(label)}</span><b>{_esc(raw)}</b></div>' for label, raw in paper_metrics
+    )
+    markets = _d(paper.get("by_market"))
+    ml = _d(markets.get("Moneyline")); hc = _d(markets.get("Handicap"))
+    reconstructed = _d(payload.get("system_accuracy"))
+    reconstructed_parts = []
+    for label, key in (("Alinhamento", "alinhamento_forte"), ("Divergência", "divergencia")):
+        cell = _d(reconstructed.get(key))
+        if cell:
+            reconstructed_parts.append(
+                f'{label}: {value(cell.get("taxa_pct"), "%")} '
+                f'({value(cell.get("acertos"))}/{value(cell.get("total"))})'
+            )
+    reconstructed_text = " · ".join(reconstructed_parts) or "N/D"
+    def market_line(label, data):
+        if not data:
+            return f"{label}: N/D"
+        return (
+            f'{label}: {value(data.get("total_entries"))} entradas · '
+            f'{value(data.get("wins"))}–{value(data.get("losses"))} · '
+            f'{value(data.get("units"), " u")}'
+        )
+    return (
+        '<details class="system-history"><summary>Histórico do sistema'
+        '<span class="more-hint">PAPER, reconstruído e REAL sem misturar universos</span></summary>'
+        f'<div class="system-history-body"><h4>PAPER</h4><div class="history-metrics">{cells}</div>'
+        f'<div class="history-split">{_esc(market_line("Moneyline", ml))}<br>{_esc(market_line("Handicap", hc))}</div>'
+        '<div class="history-split">Performance por buckets de edge: N/D — limites ainda não definidos pelo negócio.</div>'
+        f'<h4>Histórico reconstruído / backtest</h4><p>{_esc(reconstructed_text)}</p>'
+        '<h4>REAL</h4><p>N/D — não misturado com PAPER.</p></div></details>'
+    )
 def _mod_fatores(payload, div):
     """Módulo 3: os 4 fatores decisivos em chips."""
     fatores = (div or {}).get("fatores_chave") or []
@@ -3639,6 +3679,14 @@ def _mod_servico(payload):
     sb = _d(payload.get("serve_return_stats_b"))
     pa = _d(payload.get("pressure_profile_a"))
     pb = _d(payload.get("pressure_profile_b"))
+    if sa.get("matches_used") is not None and not (isinstance(sa.get("matches_used"), (int, float)) and sa.get("matches_used") > 0):
+        sa = {}
+    if sb.get("matches_used") is not None and not (isinstance(sb.get("matches_used"), (int, float)) and sb.get("matches_used") > 0):
+        sb = {}
+    if pa.get("matches") is not None and not (isinstance(pa.get("matches"), (int, float)) and pa.get("matches") > 0):
+        pa = {}
+    if pb.get("matches") is not None and not (isinstance(pb.get("matches"), (int, float)) and pb.get("matches") > 0):
+        pb = {}
     if not ((sa and sb) or (pa and pb)):
         return ""
     a = payload.get("player_a", "A"); b = payload.get("player_b", "B")
@@ -3926,6 +3974,13 @@ def _mod_mercados(payload, div):
 
 def _mod_action_map(payload, div, result):
     """Plano condicional determinístico, sem inventar linhas ou odds."""
+    if _d(payload.get("prelive_decision")).get("state") == "REPORT_NULL":
+        return (
+            '<section class="action-map-static"><div class="action-map-head">Mapa de Ações (0)'
+            '<span class="more-hint">sem decisão operacional</span></div>'
+            '<div class="action-map-body"><div class="action-summary">Relatório nulo: não são '
+            'gerados mercados, apostas ou gatilhos automáticos com dados insuficientes.</div></div></section>'
+        )
     a = payload.get("player_a", "A")
     b = payload.get("player_b", "B")
     names = {"a": a, "b": b}
@@ -4340,6 +4395,11 @@ def _normalizar_div(raw):
 
 def _css_editorial():
     return """
+.decision-box{border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px;background:var(--surface)}
+.decision-box.positive{border-color:var(--mint);background:linear-gradient(145deg,rgba(63,185,168,.15),var(--surface) 46%)}.decision-box.negative{border-color:var(--error);background:linear-gradient(145deg,rgba(224,108,91,.13),var(--surface) 46%)}.decision-box.zero{border-color:#8b96a3}.decision-box.null{border-color:#05070a;background:#090b0e;box-shadow:inset 0 0 0 1px #252a31}
+.decision-head{display:flex;gap:9px;align-items:center;font-size:14px;letter-spacing:.3px}.decision-primary{font-size:15px;font-weight:750;margin:11px 0 8px}.decision-grid{display:flex;flex-wrap:wrap;gap:7px 18px;color:var(--dim);font-size:12px}.decision-grid b{color:var(--text)}.decision-note{color:var(--dim);font-size:11px;margin-top:8px}.decision-reasons{margin:8px 0 0;padding-left:19px;color:var(--dim);font-size:12px;line-height:1.6}
+.system-history{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:0 0 14px}.system-history>summary{cursor:pointer;padding:13px 16px;font-weight:700;list-style:none}.system-history>summary::-webkit-details-marker{display:none}.system-history>summary::before{content:"▸ ";color:var(--a)}.system-history[open]>summary::before{content:"▾ "}.system-history-body{padding:0 16px 16px}.system-history h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--a);margin:13px 0 8px}.system-history p,.history-split{color:var(--dim);font-size:11px;margin:6px 0}.history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.history-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.history-metrics span{display:block;color:var(--dim);font-size:9px}.history-metrics b{font-size:13px}
+@media(max-width:640px){.history-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-grid{display:grid;grid-template-columns:1fr 1fr}}
 .pricing-block{background:linear-gradient(145deg,rgba(74,163,223,.14),var(--surface) 42%);border:1px solid var(--a);border-radius:14px;padding:18px;margin:0 0 16px;box-shadow:0 7px 24px rgba(0,0,0,.24)}
 .pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}.pricing-kicker{color:var(--a);font-size:12px;font-weight:800;letter-spacing:1.2px}.pricing-path{color:var(--dim);font-size:10px;margin-top:4px}.pricing-status{flex:0 0 auto;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;letter-spacing:.45px}
 .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.pricing-player{background:rgba(7,20,38,.66);border:1px solid var(--line);border-top:3px solid var(--a);border-radius:11px;padding:13px}.pricing-player.b{border-top-color:var(--b)}.pricing-player-name{font-size:14px;font-weight:800;margin-bottom:10px}.pricing-player.a .pricing-player-name{color:var(--a)}.pricing-player.b .pricing-player-name{color:var(--b)}
@@ -4664,17 +4724,35 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     a = payload.get("player_a", "?"); b = payload.get("player_b", "?")
     # usar o wrapper (tem market/model/indice_evidencia estruturados) se dado,
     # senão o motor direto (e normalizamos as chaves)
+    raw = payload.get("divergencia")
     if mvm_fn is not None:
         div = mvm_fn(payload)
     else:
-        raw = payload.get("divergencia") or calcular_divergencia_fn(payload)
+        raw = raw or calcular_divergencia_fn(payload)
         div = _normalizar_div(raw)
     # Produção já recebe pricing do main. Este fallback mantém o contrato do
     # gerador e os testes diretos retrocompatíveis, sem qualquer chamada paga.
+    if not isinstance(payload.get("report_assessment"), dict):
+        payload = dict(payload)
+        # Chamadas de compatibilidade ao renderer (testes/consumidores
+        # antigos) não têm o contrato calculado pelo pipeline. Produção
+        # chega sempre com assess_report explícito antes do pricing.
+        payload["report_assessment"] = {
+            "report_null": False,
+            "status": "LEGACY_RENDER_ONLY",
+            "reasons": [],
+            "primary_reason": None,
+            "coverage": {"weighted_pct": 0, "status": "N/D"},
+        }
     if not isinstance(payload.get("pricing"), dict):
         payload = dict(payload)
         payload["pricing"] = estimate_market_residual_pricing(
-            payload, payload.get("divergencia") or div
+            payload, raw
+        )
+    if not isinstance(payload.get("prelive_decision"), dict):
+        payload = dict(payload)
+        payload["prelive_decision"] = build_decision(
+            payload, raw, payload.get("pricing"), payload.get("report_assessment")
         )
     estado = detetar_estado(payload, result, div)
     chave = estado[0]
@@ -4682,13 +4760,16 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
-    partes.append(_mod_leitura(payload, div, estado, result))
+    partes.append(_mod_decision_box(payload))
+    partes.append(_mod_system_history(payload))
     # A nova cadeia market -> Sharp estimate -> fair odd -> expected edge e a
     # leitura economica principal. A faixa indicative_odds fica apenas como
     # fallback legado quando nao e possivel produzir pricing de duas vias.
-    pricing_html = _mod_market_residual_pricing(payload)
-    partes.append(pricing_html or _mod_market_verdict(payload, div))
-    if chave not in ("sem_odds", "erro"):
+    is_null_report = _d(payload.get("prelive_decision")).get("state") == "REPORT_NULL"
+    pricing_html = "" if is_null_report else _mod_market_residual_pricing(payload)
+    if not is_null_report:
+        partes.append(pricing_html or _mod_market_verdict(payload, div))
+    if chave not in ("sem_odds", "erro") and not is_null_report:
         partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
         partes.append(_mod_mercado_vs_sinal(payload, div))
         # REMOVIDO (18/08/2026, a pedido): a "Faixa indicativa em

@@ -1,0 +1,69 @@
+# Contrato operacional pré-live do Fenzobot
+
+Versão: `fenzobot-prelive-v1` (28 de agosto de 2026).
+
+## Fonte de decisão
+
+O jogador é escolhido exclusivamente pelo índice ponderado Fenzobot. O
+Sharp/Market-Residual Pricing só estima probabilidade, fair odd e edge desse
+lado; não substitui o motor de seleção.
+
+## Estados
+
+- `EDGE_POSITIVE`: edge do lado Fenzobot estritamente superior a zero;
+  registo automático em PAPER.
+- `EDGE_NEGATIVE`: edge inferior a zero; excluído.
+- `EDGE_ZERO`: edge exatamente igual a zero; excluído.
+- `REPORT_NULL`: dados essenciais insuficientes ou edge não calculável; sem
+  veredicto e sem PAPER.
+
+Se ambos os lados tiverem edge positivo, o caso é tratado como anomalia,
+registado como `REPORT_NULL` e não produz decisão automática.
+
+## Validade e cobertura
+
+A cobertura é a soma dos pesos-base dos fatores bilateralmente disponíveis a
+dividir pela soma dos pesos-base configurados. Um dado ausente não vale zero,
+não favorece qualquer jogador e fica fora do denominador efetivo usado pelo
+índice; os fatores válidos são renormalizados pelo motor existente.
+
+Um relatório é nulo quando ocorre pelo menos uma destas condições:
+
+1. ranking ausente para qualquer jogador;
+2. nenhuma métrica bilateral de serviço/resposta com amostra positiva;
+3. nenhum bloco bilateral utilizável para o Mapa de Ações;
+4. índice Fenzobot não calculável;
+5. cobertura ponderada inferior a 45%.
+
+O valor de 45% não é um limiar novo: reutiliza `PRICING_MIN_QUALITY`, que já
+era o mínimo de qualidade do pricing. Os estados de cobertura são
+`suficiente` (100%), `reduzida` (válida mas incompleta) e `insuficiente`
+(relatório nulo). Estes critérios devem ser validados com dados liquidados e
+versionados quando forem alterados.
+
+Zeros com amostra explicitamente igual a zero são sentinelas de ausência e
+passam a `N/D`. Um zero com amostra positiva continua a ser um resultado real.
+
+## Mercados
+
+A carteira suporta uma entrada por mercado e pode guardar Moneyline e
+Handicap separadamente. No pipeline atual só Moneyline possui odds e pricing
+próprios. Handicap não entra automaticamente até existir uma fonte real de
+odd/linha e uma regra de edge já aprovada; não foi inventada uma regra.
+
+## Persistência e universos históricos
+
+- `data/calibration_snapshots.json`: primeira fotografia pré-jogo por partida,
+  imutável; a liquidação só preenche `outcome`.
+- `data/paper_trades.json`: carteira PAPER append-only, uma entrada por
+  partida/mercado; a liquidação só preenche `settlement`.
+- relatórios HTML: nome versionado com `report_id`; uma execução posterior não
+  substitui o ficheiro original.
+- `PAPER`, histórico reconstruído/backtest e `REAL` são apresentados
+  separadamente. Campos sem fonte (por exemplo CLV, REAL e buckets de edge sem
+  limites aprovados) aparecem como `N/D`.
+
+Os registos PAPER anteriores referidos informalmente não têm uma carteira
+identificável no histórico Git nem campos suficientes nos snapshots atuais.
+Não foram fabricados nem reclassificados. A sua importação exige a fonte
+original ou confirmação humana dos mercados, odds e decisões pré-jogo.

@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "market-residual-v0.2"
+MODEL_VERSION = "market-residual-v0.3"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
     "Estimativa experimental em desenvolvimento. Ainda não validada fora da "
@@ -236,7 +236,7 @@ def _unavailable(parameters: PricingParameters, reason: str) -> dict[str, Any]:
         "reason": reason,
         "candidate": False,
         "candidate_side": None,
-        "candidate_threshold_pct": parameters.minimum_edge_pct,
+        "candidate_threshold_pct": 0.0,
         "disclaimer": DISCLAIMER,
     }
 
@@ -253,6 +253,9 @@ def estimate_market_residual_pricing(
     P(B)=1-P(A). Sem odds validas, nao se fabricam probabilidades.
     """
     parameters = parameters or PricingParameters()
+    assessment = payload.get("report_assessment")
+    if isinstance(assessment, Mapping) and assessment.get("report_null"):
+        return _unavailable(parameters, "report_null_insufficient_data")
     observed = _extract_two_way_odds(payload)
     if observed is None:
         return _unavailable(parameters, "missing_or_invalid_two_way_moneyline")
@@ -301,17 +304,19 @@ def estimate_market_residual_pricing(
     mathematical_side, mathematical_edge = max(
         (("a", edge_a), ("b", edge_b)), key=lambda item: item[1]
     )
-    reaches_threshold = mathematical_edge * 100.0 >= parameters.minimum_edge_pct
-    candidate_side = mathematical_side if reaches_threshold and quality_gate_passed else None
+    # O lado operacional e sempre o lado escolhido pelo indice Fenzobot.
+    # O limiar historico de 5% deixa de decidir PAPER: qualquer edge > 0 e
+    # elegivel depois do contrato de validade pre-live. O gate abaixo fica
+    # apenas como diagnostico de qualidade do pricing.
+    fenzobot_side = "a" if index_a > 50 else "b" if index_a < 50 else None
+    fenzobot_edge = edge_a if fenzobot_side == "a" else edge_b if fenzobot_side == "b" else None
+    candidate_side = fenzobot_side if fenzobot_edge is not None and fenzobot_edge > 0 else None
     if candidate_side:
         candidate_status = "experimental_edge"
-        visible_label = f"EDGE EXPERIMENTAL +{mathematical_edge * 100.0:.1f}%"
-    elif reaches_threshold:
-        candidate_status = "edge_not_promoted_insufficient_evidence"
-        visible_label = "EDGE NÃO PROMOVIDO — EVIDÊNCIA INSUFICIENTE"
+        visible_label = f"EDGE EXPERIMENTAL +{fenzobot_edge * 100.0:.1f}%"
     else:
-        candidate_status = "below_edge_threshold"
-        visible_label = f"SEM EDGE EXPERIMENTAL ≥ +{parameters.minimum_edge_pct:.1f}%"
+        candidate_status = "non_positive_fenzobot_edge"
+        visible_label = "SEM EDGE POSITIVO NO LADO FENZOBOT"
 
     players = {
         "a": {
@@ -372,12 +377,12 @@ def estimate_market_residual_pricing(
         "market_odd_b": odd_b,
         "expected_edge_a": edge_a,
         "expected_edge_b": edge_b,
-        "mathematical_edge_side": mathematical_side if reaches_threshold else None,
+        "mathematical_edge_side": mathematical_side,
         "candidate": bool(candidate_side),
         "candidate_side": candidate_side,
         "candidate_player": payload.get(f"player_{candidate_side}") if candidate_side else None,
         "candidate_status": candidate_status,
         "candidate_label": visible_label,
-        "candidate_threshold_pct": parameters.minimum_edge_pct,
+        "candidate_threshold_pct": 0.0,
         "disclaimer": DISCLAIMER,
     }

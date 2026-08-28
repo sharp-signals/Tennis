@@ -14,7 +14,7 @@ from typing import Any, Iterable, Mapping
 
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/calibration_snapshots.json")
-MAX_ENTRIES = 5000
+MAX_ENTRIES = None  # o histórico operacional não é truncado silenciosamente
 
 _LOCK = threading.Lock()
 _METRIC_KEYS = (
@@ -27,6 +27,7 @@ _METRIC_KEYS = (
     "deciding_set_stats_a", "deciding_set_stats_b",
     "set1_comeback_stats_a", "set1_comeback_stats_b",
     "ranking_a", "ranking_b", "features", "divergencia",
+    "report_assessment", "prelive_decision",
 )
 
 
@@ -47,15 +48,19 @@ def _snapshot_key(payload: Mapping[str, Any]) -> str:
 def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None = None,
                    analyzed_at_utc: str | None = None) -> dict[str, Any]:
     """Cria uma fotografia compacta apenas com informacao conhecida pre-jogo."""
+    analyzed_at = analyzed_at_utc or _utc_now()
+    key = _snapshot_key(payload)
+    report_id = hashlib.sha256(f"{key}|{analyzed_at}".encode("utf-8")).hexdigest()[:20]
     snapshot = {
-        "key": _snapshot_key(payload),
+        "key": key,
+        "report_id": report_id,
         "match_id": payload.get("match_id"),
         "tour": payload.get("tour"),
         "tournament_id": payload.get("tournament_id"),
         "tournament": payload.get("tournament"),
         "surface": payload.get("surface"),
         "commence_time_utc": payload.get("commence_time_utc"),
-        "analyzed_at_utc": analyzed_at_utc or _utc_now(),
+        "analyzed_at_utc": analyzed_at,
         "player_a": {"id": payload.get("player_a_id"), "name": payload.get("player_a")},
         "player_b": {"id": payload.get("player_b_id"), "name": payload.get("player_b")},
         "market_odds_decimal": payload.get("market_odds_decimal"),
@@ -98,7 +103,7 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 
 def upsert_snapshots(snapshots: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH,
-                     max_entries: int = MAX_ENTRIES) -> int:
+                     max_entries: int | None = MAX_ENTRIES) -> int:
     """Insere snapshots; uma repeticao nunca reescreve a fotografia original."""
     with _LOCK:
         document = _read(path)
@@ -110,7 +115,7 @@ def upsert_snapshots(snapshots: Iterable[Mapping[str, Any]], path: Path = DEFAUL
                 existing[key] = dict(snapshot)
                 added += 1
         ordered = sorted(existing.values(), key=lambda item: item.get("analyzed_at_utc") or "")
-        document["snapshots"] = ordered[-max_entries:]
+        document["snapshots"] = ordered[-max_entries:] if max_entries else ordered
         document["updated_at_utc"] = _utc_now()
         _write(path, document)
         return added

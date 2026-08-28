@@ -55,10 +55,13 @@ from . import fetch_data
 from . import run_metrics
 from . import calibration_store
 from . import player_images
+from . import paper_trading
 from .analyze import analyze_match
 from .pricing import estimate_market_residual_pricing
+from .prelive_decision import assess_report, build_decision
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
+from .telegram_summary import decision_row as _decision_row, state_counts as telegram_state_counts
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
 
 
@@ -602,7 +605,7 @@ def _compute_features(payload: dict) -> dict:
         rich = (payload.get(f"rich_stats_{side}") or {}).get("scenarios") or {}
         rate = rich.get("first_set_lose_then_win_pct")
         amostra = rich.get("first_set_lose_count")
-        if rate is not None:
+        if rate is not None and isinstance(amostra, (int, float)) and amostra > 0:
             return rate, amostra
         raw = payload.get(f"set1_comeback_stats_{side}") or {}
         fallback = raw.get(_fmt_bo) or {}
@@ -1438,6 +1441,11 @@ def _build_match_payload(match: dict) -> dict:
     except Exception:
         payload["divergencia"] = None
 
+    # Contrato de validade factual antes de calcular qualquer edge. Ranking,
+    # serviço/resposta, mapa de ações e cobertura ponderada são gates
+    # explícitos; uma falha produz relatório nulo em vez de um score forçado.
+    payload["report_assessment"] = assess_report(payload, payload.get("divergencia"))
+
     # NOVO (18/08/2026): liga o cálculo da faixa indicativa de odds (já
     # existente em calibration_store.py, mas nunca chamado a partir daqui)
     # ao payload, para o relatório poder mostrá-la. Mesmo padrão de
@@ -1460,6 +1468,18 @@ def _build_match_payload(match: dict) -> dict:
         print(f"[aviso:pricing] pricing residual indisponível para "
               f"{payload.get('player_a')} vs {payload.get('player_b')}: {exc}")
         payload["pricing"] = None
+
+    payload["prelive_decision"] = build_decision(
+        payload,
+        payload.get("divergencia"),
+        payload.get("pricing"),
+        payload.get("report_assessment"),
+    )
+    if payload["prelive_decision"].get("conflict") == "both_sides_positive_edge":
+        print(
+            f"[anomalia:edge] ambos os lados positivos em {payload.get('player_a')} vs "
+            f"{payload.get('player_b')}; decisão automática bloqueada."
+        )
 
     return payload
 
@@ -1486,20 +1506,26 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         tour = html.escape(payload.get("tournament", ""))
         line = html.escape(result.get("summary_line", ""))
         href = html.escape(url)
-        div = payload.get("divergencia") or {}
-        level = (div.get("classificacao") or {}).get("nivel", -1)
-        pricing = payload.get("pricing") or {}
-        candidate_side = pricing.get("candidate_side") if pricing.get("available") else None
-        # Cores sem ambiguidade: verde só significa valor a analisar;
-        # mercado alinhado é neutro e prioridade alta usa vermelho.
-        aligned_strong = div.get("tipo") == "alinhamento" and div.get("intensidade_nivel", 0) >= 3
-        if candidate_side and level < 3:
-            level = 2
-            flag = "🟢"
-            candidate_name = payload.get(f"player_{candidate_side}") or candidate_side.upper()
-            line = html.escape(f"{pricing.get('candidate_label')} · {candidate_name} · em validação")
-        else:
-            flag = "🔵" if level == 0 and aligned_strong else {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚠️")
+        decision = payload.get("prelive_decision") or {}
+        state = decision.get("state")
+        level, flag = {
+            "EDGE_POSITIVE": (3, "🟢"), "EDGE_NEGATIVE": (2, "🔴"),
+            "EDGE_ZERO": (1, "⚪"), "REPORT_NULL": (0, "⚫"),
+        }.get(state, (0, "⚫"))
+        if not decision:
+            # Compatibilidade para índices reconstruídos a partir de payloads
+            # históricos anteriores ao contrato pre-live v1.
+            legacy_level = ((payload.get("divergencia") or {}).get("classificacao") or {}).get("nivel")
+            if isinstance(legacy_level, int):
+                level = legacy_level
+                flag = {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚫")
+        if state == "EDGE_POSITIVE":
+            line = html.escape(
+                f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
+                f"PAPER {(decision.get('market') or {}).get('market') or 'Moneyline'}"
+            )
+        elif state == "REPORT_NULL":
+            line = html.escape(f"Relatório nulo · {decision.get('reason') or 'dados insuficientes'}")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
         cards.append(
             f'<a class="idx-card" href="{href}" data-level="{level}" data-tour="{tour_key}">'
@@ -1536,8 +1562,8 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
   <input id="search" type="search" placeholder="Pesquisar jogador ou torneio" aria-label="Pesquisar relatórios"/>
   <select id="priority" aria-label="Filtrar por prioridade">
     <option value="all">Todas as prioridades</option>
-    <option value="3">Prioridade alta</option><option value="2">Valor a analisar</option>
-    <option value="1">A acompanhar</option><option value="0">Sem divergência</option>
+    <option value="3">Edge positivo / PAPER</option><option value="2">Edge negativo</option>
+    <option value="1">Edge zero</option><option value="0">Relatório nulo</option>
   </select>
 </div>
 <div class="filter-status" id="filter-status" aria-live="polite"></div>
@@ -1564,6 +1590,11 @@ search.addEventListener('input',applyFilters); priority.addEventListener('change
         f.write(index_html)
     with open(os.path.join(SITE_OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(index_html)
+
+
+def _telegram_decision_row(payload: dict) -> tuple[int, str, str]:
+    """Compatibilidade: delega na função pura partilhada/testável."""
+    return _decision_row(payload)
 
 
 def run() -> None:
@@ -1734,9 +1765,22 @@ def run() -> None:
     # Guardar a fotografia factual antes do jogo para calibracao futura.
     # E feita apenas depois de a execucao atingir cobertura publicavel; uma
     # repeticao do bot nao reescreve a fotografia original.
-    snapshots = [calibration_store.build_snapshot(payload, result) for payload, result in analyses]
+    snapshots = []
+    for payload, result in analyses:
+        snapshot = calibration_store.build_snapshot(payload, result)
+        # A mesma identidade liga relatório, snapshot e carteira PAPER.
+        payload["snapshot_key"] = snapshot["key"]
+        payload["report_id"] = snapshot["report_id"]
+        payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
+        snapshots.append(snapshot)
     added_snapshots = calibration_store.upsert_snapshots(snapshots)
     print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
+
+    paper_entries = [
+        entry for payload, _ in analyses for entry in paper_trading.build_entries(payload)
+    ]
+    added_paper = paper_trading.append_entries(paper_entries)
+    print(f"[paper] {added_paper} entrada(s) PAPER nova(s) guardada(s).")
 
     # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
     # (Antes era uma única página com todos os jogos — com muitos jogos
@@ -1769,16 +1813,30 @@ def run() -> None:
     except Exception as exc:
         print(f"[aviso] falha a calcular histórico de acerto do sistema: {exc}")
         _system_accuracy = None
+    try:
+        _paper_history = paper_trading.compute_history()
+    except Exception as exc:
+        print(f"[aviso] falha a calcular histórico PAPER: {exc}")
+        _paper_history = None
     for payload, result in analyses:
         if _system_accuracy:
             payload["system_accuracy"] = _system_accuracy
-        # nome de ficheiro único e estável por jogo+dia
-        slug = _slugify(f"{payload['player_a']}-vs-{payload['player_b']}-{today_str}")
+        if _paper_history:
+            payload["paper_history"] = _paper_history
+        # Versão imutável: a identidade inclui o instante do snapshot. Uma
+        # nova execução cria outro relatório; nunca substitui o original.
+        slug = _slugify(
+            f"{payload['player_a']}-vs-{payload['player_b']}-{today_str}-{payload.get('report_id')}"
+        )
         filename = f"{slug}.html"
         try:
             html_page = build_report_html(payload, result)
-            with open(os.path.join(reports_dir, filename), "w", encoding="utf-8") as f:
-                f.write(html_page)
+            report_path = os.path.join(reports_dir, filename)
+            try:
+                with open(report_path, "x", encoding="utf-8") as f:
+                    f.write(html_page)
+            except FileExistsError:
+                print(f"[relatorio] versão imutável já existe: {filename}")
             url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/{filename}"
             generated_slugs.append((payload, result, slug))
         except Exception as exc:
@@ -1797,77 +1855,7 @@ def run() -> None:
     # Usa a mesma divergência calculada para o relatório HTML. Não faz
     # chamadas adicionais ao Claude.
     def _linha_telegram(payload, result):
-        div = payload.get("divergencia") or {}
-        clf = div.get("classificacao") or {}
-        nivel = clf.get("nivel", -1)
-        fav = div.get("favorecido")
-        a = payload.get("player_a", "?")
-        b = payload.get("player_b", "?")
-        # As odds reais estão no payload (RapidAPI), não em div["market"].
-        # div["market"] não é um campo obrigatório do motor de divergência e,
-        # por isso, não pode ser usado para decidir se o jogo tem odds.
-        odds = payload.get("market_odds_decimal") or {}
-        numeric = {}
-        try:
-            for k, v in odds.items():
-                try:
-                    fv = float(v)
-                except (TypeError, ValueError):
-                    continue
-                if fv > 1:
-                    numeric[k] = fv
-        except AttributeError:
-            numeric = {}
-
-        if not numeric:
-            return (-1, "⚠️", f"{a} vs {b} — <b>SEM ODDS</b> · análise limitada")
-
-        pricing = payload.get("pricing") or {}
-        candidate_side = pricing.get("candidate_side") if pricing.get("available") else None
-        if candidate_side and nivel < 3:
-            player = payload.get(f"player_{candidate_side}") or candidate_side.upper()
-            side_data = (pricing.get("players") or {}).get(candidate_side) or {}
-            edge = side_data.get("expected_edge_pct")
-            edge_text = f"+{float(edge):.1f}%" if edge is not None else "experimental"
-            return (
-                2,
-                "🟢",
-                f"{a} vs {b} — <b>EDGE EXPERIMENTAL {edge_text}</b> a favor de "
-                f"{html.escape(str(player))} · em validação",
-            )
-
-        # Cores do Telegram = nível determinístico do Python (auditoria p.17).
-        # CORREÇÃO (18/08/2026, log real): esta bola usava {3,2}->🟢, não
-        # distinguindo nível 3 (prioridade alta) de nível 2 (valor a
-        # analisar) — e não batia certo com a contagem do cabeçalho
-        # (n_high conta só nivel>=3, n_value só nivel==2), nem com a
-        # escala agora usada no relatório (detetar_estado). Unificado:
-        # 🔴 nivel 3 · 🟢 nivel 2 (inclui "valor por preço") · 🟡 nivel 1.
-        tipo = div.get("tipo", "")
-        alinhamento_forte = tipo == "alinhamento" and div.get("intensidade_nivel", 0) >= 3
-        bola = ("🔵" if nivel == 0 and alinhamento_forte else
-                {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(nivel, "⚪"))
-        # rótulo do lado (favorito/underdog) a partir das odds
-        lado = "Moneyline"
-        try:
-            if fav in numeric and len(numeric) >= 2:
-                favorite = min(numeric, key=numeric.get)
-                lado = "Moneyline Favorito" if fav == favorite else "Moneyline Underdog"
-        except Exception:
-            pass
-
-        _txt_motor = (clf.get("texto") or "").lower()
-        if nivel >= 1 and fav:
-            txt = f"{a} vs {b} — <b>{lado}: {_txt_motor}</b> a favor de {html.escape(str(fav))}"
-        elif alinhamento_forte:
-            indice_fav = html.escape(str(div.get("indice_favorece") or "favorito do mercado"))
-            txt = (f"{a} vs {b} — <b>alinhamento forte</b> a favor de {indice_fav} "
-                   "· acompanhar preço, sem odd justa")
-        elif tipo == "inconclusivo":
-            txt = f"{a} vs {b} — indicadores inconclusivos"
-        else:
-            txt = f"{a} vs {b} — sem divergência relevante"
-        return (nivel, bola, txt)
+        return _telegram_decision_row(payload)
 
     # Construir e ordenar: fortes primeiro, sem odds no fim.
     linhas_dados = []
@@ -1876,7 +1864,7 @@ def run() -> None:
         linhas_dados.append((nivel, bola, txt, url))
     linhas_dados.sort(key=lambda x: x[0], reverse=True)
 
-    n_high = sum(1 for n, _, _, _ in linhas_dados if n >= 3)
+    n_high = sum(1 for n, _, _, _ in linhas_dados if n == 3)
     n_value = sum(1 for n, _, _, _ in linhas_dados if n == 2)
     n_watch = sum(1 for n, _, _, _ in linhas_dados if n == 1)
     # CORREÇÃO (17/08/2026, log real): "alinhamento forte" (bola 🔵) tem
@@ -1885,15 +1873,14 @@ def run() -> None:
     # aparecendo na lista detalhada como categoria própria, com texto e
     # cor diferentes. Agora tem a sua própria contagem, separada do "sem
     # edge" a sério (sem sinal nenhum).
-    n_alinhamento_forte = sum(1 for n, b, _, _ in linhas_dados if n == 0 and b == "🔵")
-    n_none = sum(1 for n, b, _, _ in linhas_dados if n == 0 and b != "🔵")
-    n_no_odds = sum(1 for n, _, _, _ in linhas_dados if n < 0)
+    n_alinhamento_forte = 0
+    n_none = sum(1 for n, _, _, _ in linhas_dados if n == 0)
+    n_no_odds = 0
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
-        f"🔴 {n_high} prioridade alta · 🟢 {n_value} valor a analisar · "
-        f"🟡 {n_watch} acompanhar · 🔵 {n_alinhamento_forte} alinhamento forte · "
-        f"⚪ {n_none} sem edge"
+        f"🟢 {n_high} edge positivo / PAPER · 🔴 {n_value} edge negativo · "
+        f"⚪ {n_watch} edge zero · ⚫ {n_none} relatório nulo"
     )
     if n_no_odds:
         cabecalho += f"\n⚠️ {n_no_odds} sem odds"
@@ -1902,8 +1889,8 @@ def run() -> None:
 
     # Separadores tornam a lista muito mais legível sem repetir informação.
     previous_group = None
-    group_names = {3: "🔴 PRIORIDADE ALTA", 2: "🟢 VALOR A ANALISAR",
-                   1: "🟡 ACOMPANHAR", 0: "⚪ SEM PRIORIDADE", -1: "⚠️ SEM ODDS"}
+    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
+                   1: "⚪ EDGE ZERO / EXCLUÍDO", 0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
     for nivel, bola, txt, url in linhas_dados:
         group = nivel if nivel in group_names else 0
         if group != previous_group:

@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.calibration_store import settle_from_matches
+from src.paper_trading import settle_from_matches as settle_paper_from_matches
 
 
 def cached_matches(cache_root: Path):
@@ -28,8 +29,11 @@ def cached_matches(cache_root: Path):
 
 
 if __name__ == "__main__":
+    matches = list(cached_matches(ROOT / "data" / "cache" / "players"))
     count = settle_from_matches(
-        cached_matches(ROOT / "data" / "cache" / "players"),
+        matches,
         ROOT / "data" / "calibration_snapshots.json",
     )
     print(f"Snapshots com resultado atualizado: {count}")
+    paper_count = settle_paper_from_matches(matches, ROOT / "data" / "paper_trades.json")
+    print(f"Entradas PAPER liquidadas: {paper_count}")

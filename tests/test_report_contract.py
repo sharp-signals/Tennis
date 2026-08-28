@@ -81,7 +81,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", html)
         self.assertIn("<main>", html)
         self.assertIn("Todos os relatórios", html)
-        self.assertIn("Sem odds", html)
+        self.assertIn("RELATÓRIO NULO", html)
         self.assertNotIn('<script>alert("a")</script>', html)
         self.assertNotIn('<img src=x onerror="alert(1)">', html)
         self.assertNotIn('<svg onload="alert(2)">', html)
@@ -161,7 +161,7 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertIn("Alinhamento forte", html)
+        self.assertIn("EDGE POSITIVO", html)
         self.assertIn("Moneyline A", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)
@@ -307,11 +307,11 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn('class="mh-odds"', html)
         self.assertIn("2.1", html)
         self.assertIn("1.8", html)
-        self.assertLess(html.index('class="mh-odds"'), html.index('class="leitura"'))
-        self.assertLess(html.index('class="leitura"'), html.index("Leitura do mercado"))
+        self.assertLess(html.index('class="mh-odds"'), html.index('class="decision-box'))
+        self.assertLess(html.index('class="decision-box'), html.index("Leitura do mercado"))
         self.assertLess(html.index("Leitura do mercado"), html.index("O jogo num relance"))
         self.assertLess(html.index("Mercado e indicadores"), html.index("O jogo num relance"))
-        hero = html[html.index('<div class="mh">'):html.index('class="leitura"')]
+        hero = html[html.index('<div class="mh">'):html.index('class="decision-box')]
         self.assertIn("2.1", hero)
         self.assertIn("1.8", hero)
         self.assertNotIn("Â", hero)
