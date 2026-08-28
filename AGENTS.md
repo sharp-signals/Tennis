@@ -40,7 +40,7 @@ Exige `CHANGE-ID`/brief explícito. Não alterar nada fora desse brief sem repor
 ### Level 3 — estrutural/constitucional
 Exemplos: definição do Fenzobot, pricing/calibração, arquitetura de dados, execução real, claims, metodologia central.
 
-Não implementar sem decisão explícita dos dois co-desenvolvedores ou aprovação registada no BRAIN/Canon.
+Antes de qualquer alteração Level 3, ler `docs/governance/CONSTITUTION.md` e confirmar que a alteração e o respetivo registo seguem a Constituição.
 
 ## 4. Política de scope
 
