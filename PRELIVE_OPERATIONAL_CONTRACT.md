@@ -1,6 +1,6 @@
 # Contrato operacional pré-live do Fenzobot
 
-Versão: `fenzobot-prelive-v1` (28 de agosto de 2026).
+Versão: `fenzobot-prelive-v1` (29 de agosto de 2026).
 
 ## Fonte de decisão
 
@@ -44,12 +44,31 @@ versionados quando forem alterados.
 Zeros com amostra explicitamente igual a zero são sentinelas de ausência e
 passam a `N/D`. Um zero com amostra positiva continua a ser um resultado real.
 
+Uma fixture só entra no pipeline se estiver inequivocamente pré-live. Estados
+de live, em curso, suspenso, interrompido, retomado ou terminado são excluídos;
+na ausência de um estado fiável, qualquer score/relógio de jogo disponível é
+tratado de forma conservadora como evidência de início. A exclusão acontece
+antes do enriquecimento, do relatório, do snapshot e do PAPER.
+
 ## Mercados
 
 A carteira suporta uma entrada por mercado e pode guardar Moneyline e
 Handicap separadamente. No pipeline atual só Moneyline possui odds e pricing
 próprios. Handicap não entra automaticamente até existir uma fonte real de
 odd/linha e uma regra de edge já aprovada; não foi inventada uma regra.
+
+As odds Moneyline disponíveis são preços correntes no instante de captura, não
+odds de abertura. Snapshot e PAPER guardam a fonte, o instante UTC e esse tipo
+de captura. A referência de handicap no relatório é apenas uma tabela interna
+de contexto por faixa de Moneyline; nunca é uma linha observada, uma odd, um
+edge ou uma entrada PAPER.
+
+As métricas de diferencial de games usam apenas resultados históricos
+completos e legíveis, separam BO3 de BO5 e rejeitam retiros, walkovers e
+scores parciais. ATP Grand Slam é classificado como BO5; os restantes casos
+mantêm BO3 salvo indicação explícita da fonte. Cruzamentos históricos entre
+Moneyline e margem só são exibidos se as colunas de odds existirem de facto no
+dataset.
 
 ## Persistência e universos históricos
 

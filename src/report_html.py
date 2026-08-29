@@ -2105,9 +2105,11 @@ def _pct_str(v, casas=0):
 # o que era enganador. Agora: par alargado, depois +1.5, e só a partir de
 # ~2.20/2.30 é que aparecem os handicaps mais positivos.
 _HANDICAP_REF_FAVORITO = [
-    (1.50, ("-2", "-2.5")),
-    (1.40, ("-3", "-3.5")),
-    (1.30, ("-3.5", "-4")),
+    # Referências analíticas internas fornecidas para a leitura humana.
+    # Não são odds/linhas capturadas nem entram em pricing/PAPER.
+    (1.25, ("-5.5", "-6.5")),
+    (1.40, ("-3.5", "-4.5")),
+    (1.60, ("-2", "-3.5")),
 ]
 # underdog: (limiar_min_odd, handicap). A odd tem de ser >= limiar para o
 # handicap se aplicar. Ordenada do mais positivo para o menos, para
@@ -4286,6 +4288,56 @@ def _mod_action_map(payload, div, result):
                 f"vitórias n={_nv}, derrotas n={_nd}",
                 headline=f"Jogos: +{_mv:.1f} / -{abs(_md):.1f}", n_amostra=min(_nv, _nd))
 
+        # Perfil factual novo: formato da partida atual, nunca uma odd/linha
+        # de bookmaker. Mostra sempre N para impedir percentagens frágeis.
+        _fmt = str(payload.get("match_format") or "bo3").casefold()
+        _profile = _d(_d(payload.get(f"game_differential_{fav_side}")).get(_fmt))
+        _wins = _d(_profile.get("wins"))
+        _losses = _d(_profile.get("losses"))
+        if _wins.get("n"):
+            _n = int(_wins["n"])
+            _cover = _d(_wins.get("cover_ge"))
+            _threshold = 6 if _fmt == "bo5" else 4
+            _covered = int(_cover.get(str(_threshold), 0))
+            _pct_cover = 100 * _covered / _n
+            _loss_note = ""
+            if _losses.get("n"):
+                _loss_note = (
+                    f" Em {_losses['n']} derrotas analisáveis, teve diferencial positivo em "
+                    f"{_losses.get('positive', 0)} caso(s)."
+                )
+            add(f"Margem factual ({_fmt.upper()})", f"{names[fav_side]}",
+                f"Em {_n} vitórias {_fmt.upper()} analisáveis, terminou com diferencial de games ≥ +{_threshold} em {_covered} casos ({_pct_cover:.0f}%). "
+                f"Mediana: {_wins.get('median', 'N/D'):+g}; média: {_wins.get('mean', 'N/D'):+g}. "
+                + _loss_note + " Contexto histórico, não linha real nem garantia de cobertura.",
+                f"scores completos · n={_n}", headline=f"≥ +{_threshold}: {_pct_cover:.0f}%", n_amostra=_n)
+
+        # Cruzamento opcional: só é mostrado quando a odd histórica existe no
+        # dataset e a odd atual cabe numa das faixas observadas. Não cria linha
+        # de handicap, edge ou recomendação.
+        _historical_ml = _d(payload.get(f"historical_moneyline_margins_{fav_side}"))
+        try:
+            _current_odd = float(observed_odd(fav_side))
+        except (TypeError, ValueError):
+            _current_odd = None
+        if _current_odd is not None:
+            for _band, _stats in _d(_historical_ml.get("buckets")).items():
+                try:
+                    _low, _high = (float(v) for v in _band.split("-", 1))
+                except (TypeError, ValueError):
+                    continue
+                if _low <= _current_odd <= _high and _stats.get("n"):
+                    _n = int(_stats["n"])
+                    _wins_pct = _stats.get("win_rate_pct", "N/D")
+                    _mean = _stats.get("mean_game_diff", "N/D")
+                    add("Histórico odds/margem", f"{names[fav_side]} · odds {_band}",
+                        f"Em {_n} jogos históricos com odds efetivamente registadas nesta faixa: "
+                        f"vitória {_wins_pct}% e diferencial médio de games {_mean:+g}. "
+                        "Leitura descritiva; não representa uma odd, linha ou edge atuais.",
+                        f"colunas históricas: {'/'.join(_historical_ml.get('odds_columns', ())) }",
+                        headline=f"n={_n}", n_amostra=_n)
+                    break
+
     # Serviços fortes e equilibrados sugerem observação, não previsão certa.
     pa, pb = _d(payload.get("pressure_profile_a")), _d(payload.get("pressure_profile_b"))
     serve_a, serve_b = pa.get("first_serve_won_pct"), pb.get("first_serve_won_pct")
@@ -4317,6 +4369,9 @@ def _mod_action_map(payload, div, result):
         "Mercado principal": 0,
         "Referência de handicap": 1,
         "Margem de jogos (bo3)": 2,
+        "Margem factual (BO3)": 2,
+        "Margem factual (BO5)": 2,
+        "Histórico odds/margem": 2,
         "Caso especial": 3,
         "Cenário ao vivo": 4,
         "Mercados ao vivo": 5,
@@ -4701,6 +4756,25 @@ def _mod_ranking_h2h_box(payload):
     )
 
 
+def _mod_handicap_reference_header(payload):
+    """Distingue explicitamente preço observado de referência interna."""
+    odds = _d(payload.get("market_odds_decimal"))
+    valid = [(name, value) for name, value in odds.items() if isinstance(value, (int, float)) and value > 1]
+    if not valid:
+        return ""
+    name, odd = min(valid, key=lambda pair: pair[1])
+    ref = estimate_typical_handicap(odd)
+    if not ref or ref.get("tipo") == "ao_par":
+        return ""
+    low, high = ref["handicap"]
+    fmt = str(payload.get("match_format") or "bo3").upper()
+    return (f'<div class="data-quality" style="border-color:var(--line);border-left-color:var(--a)">'
+            f'<div class="data-quality-title">Referência analítica de handicap</div>'
+            f'<div>Moneyline pré-live capturada: <b>{_esc(name)} @ {float(odd):.2f}</b> · '
+            f'Zona interna de referência: <b>{_esc(low)} a {_esc(high)}</b> · {fmt}.</div>'
+            '<div class="data-quality-note">A zona é uma tabela analítica interna; não é linha, odd, edge ou mercado de bookmaker.</div></div>')
+
+
 def _mod_at_glance_clean(payload):
     a = _esc(payload.get("player_a", "A")); b = _esc(payload.get("player_b", "B")); rows = []
     def add(label, va, vb, higher=True, fmt=str):
@@ -4760,6 +4834,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
+    partes.append(_mod_handicap_reference_header(payload))
     partes.append(_mod_decision_box(payload))
     partes.append(_mod_system_history(payload))
     # A nova cadeia market -> Sharp estimate -> fair odd -> expected edge e a
