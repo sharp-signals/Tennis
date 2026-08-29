@@ -10,10 +10,17 @@ from email.message import EmailMessage
 from typing import Iterable
 
 from .config import SITE_BASE_URL
+from .telegram_summary import decision_row
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
 SMTP_TIMEOUT_SECONDS = 20
+GROUP_NAMES = {
+    3: "🟢 EDGE POSITIVO / PAPER",
+    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
+    1: "⚪ EDGE ZERO / EXCLUÍDO",
+    0: "⚫ RELATÓRIO NULO",
+}
 
 
 def _settings() -> tuple[str, str, str] | None:
@@ -25,12 +32,14 @@ def _settings() -> tuple[str, str, str] | None:
     return recipient, sender, app_password
 
 
-def _report_rows(match_reports: Iterable[tuple[dict, dict, str | None]]) -> list[tuple[str, str | None]]:
-    rows = []
+def _grouped_report_rows(match_reports: Iterable[tuple[dict, dict, str | None]]) -> list[tuple[str, list[tuple[str, str | None]]]]:
+    """Agrupa como o resumo Telegram, mantendo os links do e-mail simples."""
+    grouped: dict[int, list[tuple[str, str | None]]] = {}
     for payload, _result, url in match_reports:
         title = f"{payload.get('player_a', 'A')} vs {payload.get('player_b', 'B')}"
-        rows.append((title, url))
-    return rows
+        level, _ball, _text = decision_row(payload)
+        grouped.setdefault(level if level in GROUP_NAMES else 0, []).append((title, url))
+    return [(GROUP_NAMES[level], grouped[level]) for level in sorted(grouped, reverse=True)]
 
 
 def send_run_report_email(today: str, match_reports: Iterable[tuple[dict, dict, str | None]]) -> bool:
@@ -45,20 +54,26 @@ def send_run_report_email(today: str, match_reports: Iterable[tuple[dict, dict, 
         print("[email] não configurado: faltam REPORT_EMAIL_TO, REPORT_EMAIL_FROM ou REPORT_EMAIL_APP_PASSWORD.")
         return False
     recipient, sender, app_password = settings
-    rows = _report_rows(match_reports)
+    groups = _grouped_report_rows(match_reports)
+    report_count = sum(len(rows) for _group, rows in groups)
 
     plain_lines = [f"Relatórios pré-live Fenzobot — {today}", ""]
-    html_rows = []
-    for title, url in rows:
-        if url:
-            plain_lines.append(f"- {title}: {url}")
-            html_rows.append(f'<li><a href="{html.escape(url, quote=True)}">{html.escape(title)}</a></li>')
-        else:
-            plain_lines.append(f"- {title}: relatório indisponível")
-            html_rows.append(f"<li>{html.escape(title)} — relatório indisponível</li>")
-    if not rows:
+    html_groups = []
+    for group_name, rows in groups:
+        plain_lines.extend([group_name, ""])
+        html_rows = []
+        for title, url in rows:
+            if url:
+                plain_lines.append(f"- {title}: {url}")
+                html_rows.append(f'<li><a href="{html.escape(url, quote=True)}">{html.escape(title)}</a></li>')
+            else:
+                plain_lines.append(f"- {title}: relatório indisponível")
+                html_rows.append(f"<li>{html.escape(title)} — relatório indisponível</li>")
+        plain_lines.append("")
+        html_groups.append(f"<h3 style=\"margin:20px 0 8px;color:#1e352c;\">{html.escape(group_name)}</h3><ul>{''.join(html_rows)}</ul>")
+    if not groups:
         plain_lines.append("Não foram gerados relatórios nesta run.")
-        html_rows.append("<li>Não foram gerados relatórios nesta run.</li>")
+        html_groups.append("<p>Não foram gerados relatórios nesta run.</p>")
     plain_lines.extend([
         "",
         "Fenzo Tennis Intelligence",
@@ -76,7 +91,7 @@ def send_run_report_email(today: str, match_reports: Iterable[tuple[dict, dict, 
         '<html><body style="margin:0;background:#f4f4f4;color:#202020;font-family:Arial,sans-serif;">'
         '<div style="max-width:640px;margin:0 auto;background:#ffffff;padding:28px;">'
         '<h2 style="margin:0 0 8px;color:#1e352c;">Relatórios pré-live Fenzobot</h2>'
-        f"<p style=\"margin:0 0 20px;\">Run de {html.escape(today)}.</p><ul>{''.join(html_rows)}</ul>"
+        f"<p style=\"margin:0 0 20px;\">Run de {html.escape(today)}.</p>{''.join(html_groups)}"
         '<p style="margin:20px 0 0;">Os relatórios são links para o site publicado; não seguem anexos.</p>'
         '<hr style="border:0;border-top:1px solid #d7d7d7;margin:28px 0 20px;">'
         f'<img src="{html.escape(logo_url, quote=True)}" alt="Fenzo Tennis Intelligence" width="130" '
@@ -97,5 +112,5 @@ def send_run_report_email(today: str, match_reports: Iterable[tuple[dict, dict, 
     except (OSError, smtplib.SMTPException):
         raise RuntimeError("Falha ao enviar o resumo de relatórios por e-mail.") from None
 
-    print(f"[email] resumo enviado para {recipient} com {len(rows)} relatório(s).")
+    print(f"[email] resumo enviado para {recipient} com {report_count} relatório(s).")
     return True

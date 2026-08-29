@@ -21,7 +21,8 @@ class EmailReportsTests(unittest.TestCase):
         smtp = MagicMock()
         smtp.return_value.__enter__.return_value = client
         reports = [
-            ({"player_a": "Alpha", "player_b": "Beta"}, {}, "https://example.test/report.html"),
+            ({"player_a": "Alpha", "player_b": "Beta", "prelive_decision": {"state": "EDGE_POSITIVE"}}, {}, "https://example.test/report.html"),
+            ({"player_a": "Gamma", "player_b": "Delta", "prelive_decision": {"state": "REPORT_NULL"}}, {}, "https://example.test/null.html"),
         ]
         environment = {
             "REPORT_EMAIL_TO": "fenzobot@gmail.com",
@@ -44,6 +45,8 @@ class EmailReportsTests(unittest.TestCase):
         html_body = message.get_body(preferencelist=("html",)).get_content()
         self.assertIn("https://sharp-signals.github.io/Tennis/assets/fenzo-logo.png", html_body)
         self.assertIn("Fenzo Tennis Intelligence", html_body)
+        self.assertIn("EDGE POSITIVO / PAPER", html_body)
+        self.assertIn("RELATÓRIO NULO", html_body)
 
     def test_smtp_failure_does_not_expose_app_password(self):
         password = "secret-app-password"
