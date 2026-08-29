@@ -37,7 +37,9 @@ jobs:
           LLM_MODE: disabled
           LLM_POLICY: never
           ALLOW_PAID_LLM: "0"
-        run: python scripts/odds_monitor.py
+        # -m mantém a raiz do repositório no caminho de importação, para que
+        # o monitor possa importar ``src.fetch_data`` no runner do GitHub.
+        run: python -m scripts.odds_monitor
 
       - name: Persistir observações e telemetria
         run: |
