@@ -247,6 +247,19 @@ def run() -> dict[str, Any]:
     fetch_data.reset_rapidapi_call_count()
     now = _utc_now()
     entries = load_open_paper_entries(now=now)
+    if not entries:
+        fetch_data.clear_rapidapi_checkpoint()
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "mode": "SHADOW",
+            "eligible_paper_entries": 0,
+            "captured_entries": 0,
+            "new_history_records": 0,
+            "rapidapi_calls": 0,
+            "access_counts": {},
+            "llm_calls": 0,
+        }
+
     event_map = _read_event_map()
     captures = []
     written = 0
