@@ -18,9 +18,10 @@ e um resumo Telegram.
    explícitas (`FORCED_TOURNAMENT_IDS`).
 2. Obtém fixtures por torneio, remove duplicados e mantém apenas jogos na
    janela `LOOKAHEAD_HOURS_MIN..LOOKAHEAD_HOURS_MAX` (por omissão, 0–36h).
-3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; guarda a
-   Moneyline embutida apenas como referência e consulta a Moneyline recente por
-   bookmaker para pricing; constrói, em paralelo, um payload factual
+3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; prefere a
+   Moneyline recente por bookmaker para pricing e, se o timestamp do fornecedor
+   estiver indisponível/desatualizado, usa o par exato observado no feed
+   *upcoming* nessa execução, identificado como tal; constrói, em paralelo, um payload factual
    por jogo: ranking, H2H, superfície, forma, fadiga, serviço/resposta,
    cenários, mãos, estatísticas ricas e qualidade dos dados.
 4. Calcula o índice Fenzobot em Python e avalia se há cobertura factual mínima
@@ -86,11 +87,13 @@ que por si só crie uma entrada PAPER.
 - **RapidAPI Matchstat:** descoberta, fixtures, ranking,
   jogos recentes, H2H, perfis e dados ricos. O contador é persistido durante a
   execução; limites por run/dia e retry de timeout, 429 e 503 são obrigatórios.
-  A odd embutida em *upcoming* é apenas referência visual. Pricing/edge/PAPER
-  exigem `recent-odds`, os dois lados na mesma casa e timestamp do fornecedor
-  até 15 minutos, após validar participantes, ordem e estado do `eventId`; se
-  isso faltar, o relatório mantém a análise factual como `PRICING_UNAVAILABLE`
-  e bloqueia edge/PAPER.
+  O pricing prefere `recent-odds` com os dois lados na mesma casa e timestamp
+  do fornecedor até 15 minutos, após validar participantes, ordem e estado do
+  `eventId`. Se aquele timestamp estiver indisponível/desatualizado, pode usar
+  o par exato do feed *upcoming* observado na execução, marcado sem bookmaker
+  nem timestamp do fornecedor; o relatório e o snapshot preservam essa
+  limitação. Sem qualquer par válido, mantém a análise factual como
+  `PRICING_UNAVAILABLE` e bloqueia edge/PAPER.
 - **Históricos:** TennisMyLife, Sackmann e tennis-data.co.uk são usados como
   complemento/fallback consoante o tour e a métrica. Nunca se inventa um valor
   quando uma fonte falha.

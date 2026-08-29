@@ -340,9 +340,11 @@ _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
 _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
 
-# A cotação usada em pricing/PAPER tem de ser uma observação identificável e
-# recente do endpoint dedicado. O feed upcoming continua apenas como referência
-# visual, porque não identifica bookmaker nem timestamp do provider.
+# A cotação ``recent-odds`` só é tratada como verificada quando o fornecedor
+# inclui uma hora recente. O feed ``upcoming`` é uma observação recolhida pelo
+# próprio bot nesta execução: não identifica bookmaker nem permite afirmar a
+# hora de actualização do operador, mas continua a ser uma alternativa útil
+# quando o campo temporal do endpoint dedicado está congelado.
 RAPIDAPI_FRESH_MARKET_MAX_AGE_SECONDS = 15 * 60
 
 
@@ -592,6 +594,59 @@ def _odds_names_key(n1: str, n2: str):
     if not a or not b:
         return None
     return "|".join(sorted([a, b]))
+
+
+def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
+    """Obtém o par do feed ``upcoming`` observado nesta execução.
+
+    A indexação do feed usa apelidos para tolerar a variação de formatos das
+    fontes. Antes de devolver uma cotação para pricing, porém, a identidade é
+    novamente confirmada pelos dois nomes completos normalizados. Isto impede
+    que dois jogadores com o mesmo apelido partilhem acidentalmente uma odd.
+    """
+    player_a = str((match.get("player1") or {}).get("name") or "").strip()
+    player_b = str((match.get("player2") or {}).get("name") or "").strip()
+    tour = match.get("_tour")
+    key = _odds_names_key(player_a, player_b)
+    if not key or not player_a or not player_b:
+        return None, None
+    embedded = _RAPIDAPI_EMBEDDED_ODDS.get(f"{tour}:{key}") if tour else None
+    embedded = embedded or _RAPIDAPI_EMBEDDED_ODDS.get(f"*:{key}")
+    if not isinstance(embedded, dict):
+        return None, None
+
+    source_names = {
+        _normalize_name(embedded.get("n1")),
+        _normalize_name(embedded.get("n2")),
+    }
+    expected_names = {_normalize_name(player_a), _normalize_name(player_b)}
+    if "" in source_names or source_names != expected_names:
+        return None, None
+    try:
+        odd_1 = float(embedded.get("o1"))
+        odd_2 = float(embedded.get("o2"))
+    except (TypeError, ValueError):
+        return None, None
+    if odd_1 <= 1 or odd_2 <= 1:
+        return None, None
+
+    if _normalize_name(player_a) == _normalize_name(embedded["n1"]):
+        odds = {player_a: odd_1, player_b: odd_2}
+    else:
+        odds = {player_a: odd_2, player_b: odd_1}
+    provenance = {
+        "source": "RapidAPI Tennis API / embedded upcoming feed",
+        "endpoint": embedded.get("endpoint") or "N/D",
+        "event_id": None,
+        "captured_at_utc": embedded.get("captured_at_utc"),
+        "capture_kind": "feed_observed_at_capture",
+        "provider_timestamp": None,
+        "bookmaker": None,
+        "from_cache": True,
+        "cache_age_seconds": _odds_cache_age_seconds(embedded.get("captured_at_utc")),
+    }
+    print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
+    return odds, provenance
 
 
 def record_market_odds_observation(match: dict, odds: Optional[dict], provenance: Optional[dict]) -> Optional[dict]:
@@ -884,6 +939,27 @@ def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optiona
     return odds, provenance
 
 
+def fetch_rapidapi_pricing_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
+    """Escolhe a melhor observação disponível para pricing nesta execução.
+
+    Preferência: ``recent-odds`` verificado por bookmaker e timestamp do
+    provider. Quando esse timestamp está ausente ou parado, usa o par exacto
+    do feed ``upcoming`` capturado pelo bot agora. A proveniência mantém a
+    diferença visível: a segunda via não faz alegações sobre a hora do
+    bookmaker, mas evita que um defeito temporal do endpoint dedicado elimine
+    toda a análise de mercado.
+    """
+    odds, provenance = fetch_rapidapi_fresh_moneyline_with_provenance(match)
+    if odds:
+        return odds, provenance
+    odds, provenance = fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    if odds and provenance:
+        provenance = dict(provenance)
+        provenance["pricing_fallback_reason"] = "recent_odds_sem_timestamp_fresco"
+        return odds, provenance
+    return None, None
+
+
 def fetch_rapidapi_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
     """
     Obtém a Moneyline de um jogo pela RapidAPI. Estratégia robusta:
@@ -899,37 +975,9 @@ def fetch_rapidapi_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
     tour = match.get("_tour")
 
     # --- 1) odds embutidas (fonte principal) ---
-    key = _odds_names_key(player_a, player_b)
-    if key:
-        # tenta a chave com tour; se falhar, a chave global (sem tour)
-        emb = None
-        if tour:
-            emb = _RAPIDAPI_EMBEDDED_ODDS.get(f"{tour}:{key}")
-        if not emb:
-            emb = _RAPIDAPI_EMBEDDED_ODDS.get(f"*:{key}")
-        if emb:
-            # mapear as odds aos nomes do NOSSO jogo (a ordem pode diferir)
-            def _sn(n):
-                toks = [t for t in str(n).lower().replace(".", " ").split() if t.isalpha()]
-                return toks[-1] if toks else str(n).lower().strip()
-            if _sn(player_a) == _sn(emb["n1"]):
-                odds = {player_a: emb["o1"], player_b: emb["o2"]}
-            else:
-                odds = {player_a: emb["o2"], player_b: emb["o1"]}
-            captured_at_utc = emb.get("captured_at_utc")
-            provenance = {
-                "source": "RapidAPI Tennis API / embedded upcoming feed",
-                "endpoint": emb.get("endpoint") or "N/D",
-                "event_id": None,
-                "captured_at_utc": captured_at_utc,
-                "capture_kind": "current_at_capture",
-                "provider_timestamp": None,
-                "bookmaker": None,
-                "from_cache": True,
-                "cache_age_seconds": _odds_cache_age_seconds(captured_at_utc),
-            }
-            print(f"[odds] {player_a} vs {player_b} | RapidAPI embutidas | {odds}")
-            return odds, provenance
+    embedded_odds, embedded_provenance = fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    if embedded_odds:
+        return embedded_odds, embedded_provenance
 
     # --- 2) fallback: recent-odds por eventId ---
     event_id = _rapidapi_event_id_for_match(match)

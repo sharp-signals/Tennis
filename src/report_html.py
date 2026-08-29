@@ -2707,6 +2707,8 @@ def _mod_header(payload, div, estado):
         odds_meta_parts.append(f"Endpoint: {_esc(payload['odds_endpoint'])}")
     if payload.get("odds_captured_at_utc"):
         odds_meta_parts.append(f"Captura: {_esc(payload['odds_captured_at_utc'])}")
+    if payload.get("odds_capture_kind") == "feed_observed_at_capture":
+        odds_meta_parts.append("Observação do feed nesta execução; hora do bookmaker N/D")
     odds_meta_parts.append(f"Provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
     odds_meta_parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
     if payload.get("odds_from_cache") is not None:
@@ -4639,6 +4641,8 @@ def _mod_market_provenance(payload):
         parts.append(f"Evento: {_esc(payload['odds_event_id'])}")
     if payload.get("odds_captured_at_utc"):
         parts.append(f"Captura Sharp Signals: {_esc(payload['odds_captured_at_utc'])}")
+    if payload.get("odds_capture_kind") == "feed_observed_at_capture":
+        parts.append("Tipo: feed observado nesta execução (hora do bookmaker N/D)")
     parts.append(f"Timestamp do provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
     parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
     if payload.get("odds_from_cache") is not None:

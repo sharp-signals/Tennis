@@ -1042,11 +1042,12 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # A RapidAPI upcoming é apenas fotografia de referência: não tem
-    # bookmaker nem hora do provider e nunca alimenta edge/PAPER. Pricing só
-    # recebe um par recente e identificável do endpoint recent-odds.
+    # Preferimos ``recent-odds`` quando o timestamp do provider é verificável.
+    # Quando esse campo vem congelado, o feed upcoming recolhido nesta própria
+    # execução é um fallback de observação, com proveniência explícita; a
+    # validação pré-live/identidade do evento já ocorreu antes deste ponto.
     reference_odds, reference_odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
-    odds, odds_provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
+    odds, odds_provenance = fetch_data.fetch_rapidapi_pricing_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
     odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)

@@ -234,6 +234,18 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Captura: 2026-08-16T09:30:00+00:00", html)
         self.assertIn("Timestamp do provider: N/D", html)
 
+    def test_header_marks_feed_observation_without_bookmaker_timestamp(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "odds_source": "RapidAPI Tennis API / embedded upcoming feed",
+            "odds_captured_at_utc": "2026-08-29T21:00:00+00:00",
+            "odds_capture_kind": "feed_observed_at_capture",
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Observação do feed nesta execução; hora do bookmaker N/D", html)
+
     def test_handicap_reference_is_format_aware_and_uses_both_boundaries(self):
         bo3 = report_html.estimate_typical_handicap(1.40, "bo3")
         bo5 = report_html.estimate_typical_handicap(1.40, "bo5")

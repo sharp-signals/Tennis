@@ -96,6 +96,37 @@ class MatchInputTests(unittest.TestCase):
         self.assertIsNone(odds)
         self.assertIsNone(provenance)
 
+    def test_pricing_uses_current_upcoming_observation_when_recent_timestamp_is_stale(self):
+        match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
+        key = fetch_data._odds_names_key("Alice Player", "Bea Player")
+        embedded = {
+            f"*:{key}": {
+                "n1": "Alice Player", "n2": "Bea Player", "o1": 1.71, "o2": 2.18,
+                "captured_at_utc": datetime.now(timezone.utc).isoformat(), "endpoint": "https://provider.test/upcoming",
+            }
+        }
+        with patch.object(fetch_data, "fetch_rapidapi_fresh_moneyline_with_provenance", return_value=(None, None)), \
+                patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_pricing_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Alice Player": 1.71, "Bea Player": 2.18})
+        self.assertEqual(provenance["capture_kind"], "feed_observed_at_capture")
+        self.assertEqual(provenance["pricing_fallback_reason"], "recent_odds_sem_timestamp_fresco")
+        self.assertIsNone(provenance["bookmaker"])
+
+    def test_embedded_pricing_rejects_same_surname_but_wrong_full_name(self):
+        match = {"player1": {"name": "Alice Smith"}, "player2": {"name": "Bea Jones"}, "_tour": "atp"}
+        key = fetch_data._odds_names_key("Alice Smith", "Bea Jones")
+        embedded = {
+            f"*:{key}": {
+                "n1": "Alex Smith", "n2": "Bea Jones", "o1": 1.71, "o2": 2.18,
+                "captured_at_utc": datetime.now(timezone.utc).isoformat(), "endpoint": "https://provider.test/upcoming",
+            }
+        }
+        with patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+        self.assertIsNone(odds)
+        self.assertIsNone(provenance)
+
     def test_tournament_info_is_fetched_by_frequency_and_filters_unknown_tiers(self):
         matches = [
             {"id": 1, "tournamentId": 20, "_tour": "atp"},
