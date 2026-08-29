@@ -1240,9 +1240,6 @@ def _calcular_divergencia(payload):
     if oa and ob:
         prob_mercado_a = round(100 * (1/oa) / ((1/oa) + (1/ob)))
 
-    if prob_mercado_a is None:
-        return None
-
     # --- 4. Direção e intensidade (escalas mantidas separadas) ---
     # O índice mede a quota de peso dos sinais; o mercado exprime probabilidade
     # implícita. Como as escalas não são equivalentes, nunca se subtraem nem se
@@ -1250,15 +1247,15 @@ def _calcular_divergencia(payload):
     # opostos. Quando concordam, registamos também a intensidade interna para
     # não perder alinhamentos fortes — sem a converter em probabilidade, odd
     # justa ou valor de mercado.
-    mercado_favorece = a if prob_mercado_a >= 50 else b
     indice_favorece = a if indice_evidencia_a >= 50 else b
     forca_indice = abs(indice_evidencia_a - 50)  # força interna dos sinais, 0-50
     intensidade_nivel = (0 if forca_indice < 5 else
                           1 if forca_indice < 10 else
                           2 if forca_indice < 25 else 3)
     intensidade_chave = ("neutra", "ligeira", "moderada", "forte")[intensidade_nivel]
-    tipo = "inconclusivo" if intensidade_nivel == 0 else "alinhamento"
-    if indice_favorece != mercado_favorece:
+    mercado_favorece = a if prob_mercado_a is not None and prob_mercado_a >= 50 else b if prob_mercado_a is not None else None
+    tipo = "evidence_only" if prob_mercado_a is None else ("inconclusivo" if intensidade_nivel == 0 else "alinhamento")
+    if mercado_favorece is not None and indice_favorece != mercado_favorece:
         # A severidade depende apenas da concentração dos sinais. A força do
         # mercado continua visível nas odds, mas não é misturada nesta escala.
         tipo = "direcao"
@@ -1313,7 +1310,7 @@ def _calcular_divergencia(payload):
         nivel = min(nivel, 2)
         intensidade_nivel = min(intensidade_nivel, 2)
     intensidade_chave = ("neutra", "ligeira", "moderada", "forte")[intensidade_nivel]
-    if tipo != "direcao":
+    if tipo not in {"direcao", "evidence_only"}:
         tipo = "inconclusivo" if intensidade_nivel == 0 else "alinhamento"
     _mapa = {0: (("inconclusivo", "Indicadores inconclusivos")
                  if tipo == "inconclusivo" else
@@ -1342,7 +1339,7 @@ def _calcular_divergencia(payload):
         "indice_evidencia_b": 100 - indice_evidencia_a,
         # direção do mercado (só para comparação direcional)
         "prob_mercado_a": prob_mercado_a,
-        "prob_mercado_b": 100 - prob_mercado_a,
+        "prob_mercado_b": 100 - prob_mercado_a if prob_mercado_a is not None else None,
         "mercado_favorece": mercado_favorece,
         "indice_favorece": indice_favorece,
         # compatibilidade retro: alguns sítios ainda leem estas chaves
@@ -1386,7 +1383,8 @@ def _compute_model_vs_market(payload):
     r = payload.get("divergencia") or _calcular_divergencia(payload)
     if not r:
         return {"market": None, "model": None, "divergencia": None}
-    market = {"a": r["prob_mercado_a"], "b": r["prob_mercado_b"]}
+    market = ({"a": r["prob_mercado_a"], "b": r["prob_mercado_b"]}
+              if r.get("prob_mercado_a") is not None else None)
     # "model" agora é o ÍNDICE DE EVIDÊNCIA (0-100), não uma probabilidade
     model = {"a": r["indice_evidencia_a"], "b": r["indice_evidencia_b"]}
     divergencia = None
@@ -2810,6 +2808,7 @@ def _mod_decision_box(payload):
         "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴"),
         "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪"),
         "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫"),
+        "PRICING_UNAVAILABLE": ("PREÇO DE MERCADO INDISPONÍVEL", "zero", "🟡"),
     }
     label, css_class, ball = labels.get(state, labels["REPORT_NULL"])
     if state == "EDGE_POSITIVE":
@@ -2830,6 +2829,11 @@ def _mod_decision_box(payload):
             f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
             f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
             f'<div class="decision-note">Não entra em PAPER. Cobertura {_esc(coverage_text)}.</div>'
+        )
+    elif state == "PRICING_UNAVAILABLE":
+        body = (
+            '<div class="decision-primary">Análise factual disponível; edge e PAPER bloqueados por ausência de cotação fresca verificável.</div>'
+            f'<div class="decision-note">{_esc(decision.get("reason") or "Preço de mercado indisponível")} · Cobertura {_esc(coverage_text)}.</div>'
         )
     else:
         assessment = _d(decision.get("report_assessment"))

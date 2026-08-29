@@ -20,6 +20,7 @@ EDGE_POSITIVE = "EDGE_POSITIVE"
 EDGE_NEGATIVE = "EDGE_NEGATIVE"
 EDGE_ZERO = "EDGE_ZERO"
 REPORT_NULL = "REPORT_NULL"
+PRICING_UNAVAILABLE = "PRICING_UNAVAILABLE"
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -199,9 +200,11 @@ def build_decision(
 
     pricing = _mapping(pricing)
     side = fenzobot_side(payload, divergence)
-    if not pricing.get("available") or side not in {"a", "b"}:
+    if not pricing.get("available"):
         reason = pricing.get("reason") or "edge não calculável para o lado Fenzobot"
-        return {**base, "state": REPORT_NULL, "reason": reason}
+        return {**base, "state": PRICING_UNAVAILABLE, "reason": reason}
+    if side not in {"a", "b"}:
+        return {**base, "state": REPORT_NULL, "reason": "lado Fenzobot não calculável"}
 
     players = _mapping(pricing.get("players"))
     side_data = _mapping(players.get(side))
@@ -209,7 +212,7 @@ def build_decision(
     try:
         edge = float(side_data.get("expected_edge_pct"))
     except (TypeError, ValueError):
-        return {**base, "state": REPORT_NULL, "reason": "edge Fenzobot não calculável"}
+        return {**base, "state": PRICING_UNAVAILABLE, "reason": "edge Fenzobot não calculável"}
     try:
         other_edge = float(_mapping(players.get(other)).get("expected_edge_pct"))
     except (TypeError, ValueError):

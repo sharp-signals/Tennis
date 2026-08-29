@@ -335,7 +335,7 @@ _RAPIDAPI_EVENT_INDEX: dict[str, dict] = {}
 _RAPIDAPI_EVENT_INDEX_READY: set[str] = set()
 _RAPIDAPI_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_FRESH_ODDS_CACHE: dict[str, Optional[dict]] = {}
-_RAPIDAPI_EVENT_LOOKUP_CACHE: dict[str, Optional[str]] = {}
+_RAPIDAPI_EVENT_LOOKUP_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
 _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
@@ -632,7 +632,110 @@ def record_market_odds_observation(match: dict, odds: Optional[dict], provenance
     return movement if movement["players"] else None
 
 
-def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
+_EVENT_NON_PRELIVE_STATUSES = {
+    "live", "in progress", "in_play", "in-play", "suspended", "interrupted",
+    "resumed", "completed", "finished", "cancelled", "canceled", "walkover",
+}
+
+
+def _iter_event_dicts(value: object):
+    """Percorre respostas variáveis do endpoint ``event/get`` sem assumir schema."""
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from _iter_event_dicts(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _iter_event_dicts(child)
+
+
+def _event_person_name(value: object) -> str:
+    if isinstance(value, dict):
+        for key in ("name", "fullName", "playerName", "participantName"):
+            if value.get(key):
+                return str(value[key]).strip()
+    return str(value or "").strip()
+
+
+def _event_start(value: object) -> Optional[datetime]:
+    if value in (None, ""):
+        return None
+    try:
+        if isinstance(value, (int, float)) or str(value).strip().isdigit():
+            raw = float(value)
+            # APIs diferentes usam segundos ou milissegundos Unix.
+            if raw > 10_000_000_000:
+                raw /= 1000
+            return datetime.fromtimestamp(raw, tz=timezone.utc)
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
+
+
+def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
+    """Extrai só um evento cuja identidade e estado possam ser comprovados.
+
+    ``recent-odds`` não traz participantes. Portanto nunca podemos usar as
+    suas odds sem primeiro provar, via ``event/get``, que o eventId é do par
+    certo e em que ordem o fornecedor publicou os jogadores.
+    """
+    expected_a = str((match.get("player1") or {}).get("name") or "").strip()
+    expected_b = str((match.get("player2") or {}).get("name") or "").strip()
+    expected_names = _event_names_key(expected_a, expected_b)
+    try:
+        fixture_start = datetime.fromisoformat(str(match.get("date") or "").replace("Z", "+00:00"))
+        fixture_start = fixture_start.replace(tzinfo=timezone.utc) if fixture_start.tzinfo is None else fixture_start.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        fixture_start = None
+
+    rejected = None
+    for node in _iter_event_dicts(payload):
+        event_id = node.get("eventId") or node.get("event_id") or node.get("id")
+        first = _event_person_name(node.get("participant1") or node.get("player1") or node.get("home"))
+        second = _event_person_name(node.get("participant2") or node.get("player2") or node.get("away"))
+        if event_id in (None, "") or not first or not second:
+            continue
+        if _event_names_key(first, second) != expected_names:
+            continue
+        status = next((node.get(key) for key in ("status", "state", "matchStatus", "match_status") if node.get(key) is not None), None)
+        if status is not None and str(status).strip().casefold() in _EVENT_NON_PRELIVE_STATUSES:
+            rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": str(status)}
+            continue
+        if node.get("live") not in (None, False, 0, "0", "false", "False", ""):
+            rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": "live"}
+            continue
+        event_start = _event_start(next((node.get(key) for key in ("startTimestamp", "start_time", "startTime", "date", "commence_time") if node.get(key) is not None), None))
+        if event_start and event_start <= datetime.now(timezone.utc):
+            rejected = {"valid": False, "reason": "event_start_in_past", "event_id": str(event_id), "event_start": event_start.isoformat()}
+            continue
+        if fixture_start and event_start and abs((event_start - fixture_start).total_seconds()) > 36 * 3600:
+            rejected = {"valid": False, "reason": "event_time_mismatch", "event_id": str(event_id), "event_start": event_start.isoformat()}
+            continue
+        return {
+            "valid": True, "event_id": str(event_id), "participant1": first,
+            "participant2": second, "event_status": str(status or "scheduled"),
+            "event_start": event_start.isoformat() if event_start else None,
+        }
+    return rejected
+
+
+def rapidapi_event_integrity(match: dict) -> dict:
+    """Valida a identidade/pre-live do evento de mercado sem bloquear sem dados.
+
+    ``unknown`` não exclui um fixture: o relatório factual pode continuar sem
+    preço. ``rejected`` é uma prova factual de evento errado/já iniciado e é
+    excluído antes de qualquer enriquecimento, relatório ou PAPER.
+    """
+    record = _rapidapi_event_record_for_match(match)
+    if record and record.get("valid"):
+        return {"status": "verified", **record}
+    if record and record.get("valid") is False:
+        return {"status": "rejected", **record}
+    return {"status": "unknown", "reason": "event_identity_unavailable"}
+
+
+def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
     """Resolve o identificador Extend usado pelos endpoints de odds.
 
     Os fixtures do pipeline e a API de odds usam identificadores diferentes.
@@ -657,7 +760,9 @@ def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
         if key:
             event_id = _RAPIDAPI_EVENT_INDEX.get(f"{tour}:{key}")
             if event_id:
-                return event_id
+                # Índices legados não guardam participantes/estado; não podem
+                # autorizar pricing sem a verificação do endpoint event/get.
+                break
 
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
@@ -674,27 +779,6 @@ def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
     if cache_key in _RAPIDAPI_EVENT_LOOKUP_CACHE:
         return _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key]
 
-    def _extract_event_id(payload: object) -> Optional[str]:
-        if isinstance(payload, dict):
-            for key in ("eventId", "event_id"):
-                value = payload.get(key)
-                if value not in (None, ""):
-                    return str(value)
-            value = payload.get("id")
-            markers = {"participant1", "participant2", "matchId", "startTimestamp", "league", "status"}
-            if value not in (None, "") and len(markers.intersection(payload)) >= 2:
-                return str(value)
-            for child in payload.values():
-                found = _extract_event_id(child)
-                if found:
-                    return found
-        elif isinstance(payload, list):
-            for child in payload:
-                found = _extract_event_id(child)
-                if found:
-                    return found
-        return None
-
     for offset in (0, -1, 1):
         date_only = (start + timedelta(days=offset)).date().isoformat()
         for left, right in ((player_a, player_b), (player_b, player_a)):
@@ -703,14 +787,19 @@ def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
                 response = _rapidapi_get(url)
                 if response.status_code != 200:
                     continue
-                event_id = _extract_event_id(response.json() or {})
-                if event_id:
-                    _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = event_id
-                    return event_id
+                record = _validated_event_record(response.json() or {}, match)
+                if record:
+                    _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = record
+                    return record
             except (requests.RequestException, ValueError, RapidAPIBudgetExceeded):
                 continue
     _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = None
     return None
+
+
+def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
+    record = _rapidapi_event_record_for_match(match)
+    return str(record["event_id"]) if record and record.get("valid") and record.get("event_id") else None
 
 
 def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
@@ -722,7 +811,8 @@ def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optiona
     """
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
-    event_id = _rapidapi_event_id_for_match(match)
+    event = _rapidapi_event_record_for_match(match)
+    event_id = str(event.get("event_id")) if event and event.get("valid") and event.get("event_id") else None
     if not event_id or not player_a or not player_b:
         return None, None
     if event_id in _RAPIDAPI_FRESH_ODDS_CACHE:
@@ -769,7 +859,15 @@ def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optiona
         return None, None
 
     age, _overround, bookmaker, odd_a, odd_b, provider_at = min(candidates, key=lambda item: (item[0], item[1], item[2]))
-    odds = {player_a: odd_a, player_b: odd_b}
+    # ``od1``/``od2`` pertencem explicitamente à ordem confirmada pelo
+    # event/get; nunca à ordem arbitrária do fixture do nosso pipeline.
+    if _normalize_name(event.get("participant1")) == _normalize_name(player_a):
+        odds = {player_a: odd_a, player_b: odd_b}
+    elif _normalize_name(event.get("participant1")) == _normalize_name(player_b):
+        odds = {player_a: odd_b, player_b: odd_a}
+    else:  # defesa adicional: não há mapeamento seguro, logo não há pricing
+        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
+        return None, None
     provenance = {
         "source": "RapidAPI Tennis API / recent-odds",
         "endpoint": url,

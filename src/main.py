@@ -1594,7 +1594,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         state = decision.get("state")
         level, flag = {
             "EDGE_POSITIVE": (3, "🟢"), "EDGE_NEGATIVE": (2, "🔴"),
-            "EDGE_ZERO": (1, "⚪"), "REPORT_NULL": (0, "⚫"),
+            "EDGE_ZERO": (1, "⚪"), "PRICING_UNAVAILABLE": (0, "🟡"),
+            "REPORT_NULL": (0, "⚫"),
         }.get(state, (0, "⚫"))
         if not decision:
             # Compatibilidade para índices reconstruídos a partir de payloads
@@ -1610,6 +1611,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             )
         elif state == "REPORT_NULL":
             line = html.escape(f"Relatório nulo · {decision.get('reason') or 'dados insuficientes'}")
+        elif state == "PRICING_UNAVAILABLE":
+            line = html.escape("Análise factual disponível · preço de mercado indisponível · sem PAPER")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
         cards.append(
             f'<a class="idx-card" href="{href}" data-level="{level}" data-tour="{tour_key}">'
@@ -1714,6 +1717,28 @@ def run() -> None:
     # usam o eventId da camada Extend. O índice evita uma chamada /event/get
     # por jogo e mantém o consumo de RapidAPI controlado.
     fetch_data.prepare_rapidapi_odds_index(eligible)
+
+    # A fonte de fixtures e a camada de odds são independentes. Uma resposta
+    # de odds com jogadores/estado incompatíveis é evidência para EXCLUIR, não
+    # para tentar compensar com um relatório que possa induzir PAPER. Quando a
+    # API não permite verificar, mantemos o jogo factual, mas sem pricing.
+    verified_eligible = []
+    for match in eligible:
+        integrity = fetch_data.rapidapi_event_integrity(match)
+        if integrity.get("status") == "rejected":
+            print("[prelive] PRELIVE_EXCLUDED_EVENT_INTEGRITY "
+                  f"id={match.get('id')} reason={integrity.get('reason')} "
+                  f"event_id={integrity.get('event_id')}")
+            continue
+        match["_rapidapi_event_integrity"] = integrity
+        verified_eligible.append(match)
+    eligible = verified_eligible
+    run_metrics.update_context(eligible=len(eligible), phase="event_integrity")
+    if not eligible:
+        run_metrics.update_context(status="no_eligible_matches", phase="complete")
+        fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
+        print("[info] Sem jogos pré-live com identidade de evento válida. Nada a enviar.")
+        return
 
     # Processar os jogos em PARALELO (resolve a lentidão: antes era um loop
     # sequencial que com muitos jogos chegava a ~30 min). Poucos workers para

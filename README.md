@@ -18,15 +18,16 @@ e um resumo Telegram.
    explícitas (`FORCED_TOURNAMENT_IDS`).
 2. Obtém fixtures por torneio, remove duplicados e mantém apenas jogos na
    janela `LOOKAHEAD_HOURS_MIN..LOOKAHEAD_HOURS_MAX` (por omissão, 0–36h).
-3. Guarda a Moneyline embutida apenas como referência e consulta a Moneyline
-   recente por bookmaker para pricing; constrói, em paralelo, um payload factual
+3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; guarda a
+   Moneyline embutida apenas como referência e consulta a Moneyline recente por
+   bookmaker para pricing; constrói, em paralelo, um payload factual
    por jogo: ranking, H2H, superfície, forma, fadiga, serviço/resposta,
    cenários, mãos, estatísticas ricas e qualidade dos dados.
 4. Calcula o índice Fenzobot em Python e avalia se há cobertura factual mínima
    para publicar uma decisão pré-live.
 5. Aplica o *Market-Residual Pricing* experimental apenas sobre um par de odds
    recente, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
-   `EDGE_ZERO` ou `REPORT_NULL`.
+   `EDGE_ZERO`, `PRICING_UNAVAILABLE` ou `REPORT_NULL`.
 6. Chama o Claude apenas quando a política seletiva o justifica; a análise
    textual não pode recalcular nem contrariar o motor determinístico.
 7. Congela o snapshot pré-jogo, acrescenta entradas PAPER quando elegíveis,
@@ -87,7 +88,9 @@ que por si só crie uma entrada PAPER.
   execução; limites por run/dia e retry de timeout, 429 e 503 são obrigatórios.
   A odd embutida em *upcoming* é apenas referência visual. Pricing/edge/PAPER
   exigem `recent-odds`, os dois lados na mesma casa e timestamp do fornecedor
-  até 15 minutos; se isso faltar, o relatório fica sem pricing.
+  até 15 minutos, após validar participantes, ordem e estado do `eventId`; se
+  isso faltar, o relatório mantém a análise factual como `PRICING_UNAVAILABLE`
+  e bloqueia edge/PAPER.
 - **Históricos:** TennisMyLife, Sackmann e tennis-data.co.uk são usados como
   complemento/fallback consoante o tour e a métrica. Nunca se inventa um valor
   quando uma fonte falha.

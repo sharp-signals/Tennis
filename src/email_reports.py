@@ -19,7 +19,8 @@ GROUP_NAMES = {
     3: "🟢 EDGE POSITIVO / PAPER",
     2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
     1: "⚪ EDGE ZERO / EXCLUÍDO",
-    0: "⚫ RELATÓRIO NULO",
+    0: "🟡 PREÇO DE MERCADO INDISPONÍVEL / SEM PAPER",
+    -1: "⚫ RELATÓRIO NULO",
 }
 
 
@@ -38,7 +39,9 @@ def _grouped_report_rows(match_reports: Iterable[tuple[dict, dict, str | None]])
     for payload, _result, url in match_reports:
         title = f"{payload.get('player_a', 'A')} vs {payload.get('player_b', 'B')}"
         level, _ball, _text = decision_row(payload)
-        grouped.setdefault(level if level in GROUP_NAMES else 0, []).append((title, url))
+        state = (payload.get("prelive_decision") or {}).get("state")
+        group_level = -1 if state == "REPORT_NULL" else level
+        grouped.setdefault(group_level if group_level in GROUP_NAMES else -1, []).append((title, url))
     return [(GROUP_NAMES[level], grouped[level]) for level in sorted(grouped, reverse=True)]
 
 

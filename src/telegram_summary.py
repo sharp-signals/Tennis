@@ -23,12 +23,15 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
         return 2, "🔴", f"{a} vs {b} — edge negativo {edge_text} em {player} · excluído"
     if state == "EDGE_ZERO":
         return 1, "⚪", f"{a} vs {b} — edge exatamente 0,0% em {player} · excluído"
+    if state == "PRICING_UNAVAILABLE":
+        reason = html.escape(str(decision.get("reason") or "preço de mercado indisponível"))
+        return 0, "🟡", f"{a} vs {b} — <b>PREÇO INDISPONÍVEL</b> · análise factual disponível · {reason}"
     reason = html.escape(str(decision.get("reason") or "dados insuficientes"))
     return 0, "⚫", f"{a} vs {b} — <b>RELATÓRIO NULO</b> · {reason}"
 
 
 def state_counts(payloads) -> dict[str, int]:
-    counts = {"EDGE_POSITIVE": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "REPORT_NULL": 0}
+    counts = {"EDGE_POSITIVE": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "REPORT_NULL": 0}
     for payload in payloads:
         state = (payload.get("prelive_decision") or {}).get("state")
         counts[state if state in counts else "REPORT_NULL"] += 1

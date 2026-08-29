@@ -37,13 +37,41 @@ class MatchInputTests(unittest.TestCase):
                     "od1": "1.70", "od2": "2.20", "addTime": str(datetime.now(timezone.utc).timestamp()),
                 }}}}
 
-        with patch.object(fetch_data, "_rapidapi_event_id_for_match", return_value="event-1"), \
+        verified_event = {"valid": True, "event_id": "event-1", "participant1": "Alice Player", "participant2": "Bea Player"}
+        with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=verified_event), \
                 patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
                 patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
             odds, provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
         self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
         self.assertEqual(provenance["bookmaker"], "Test Book")
         self.assertEqual(provenance["capture_kind"], "provider_timestamp_verified")
+
+    def test_rapidapi_pricing_maps_odds_using_verified_provider_order(self):
+        match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
+
+        class Response:
+            status_code = 200
+            def raise_for_status(self): return None
+            def json(self):
+                return {"result": {"Full Time Result": {"Test Book": {
+                    "od1": "2.20", "od2": "1.70", "addTime": str(datetime.now(timezone.utc).timestamp()),
+                }}}}
+
+        # A API publicou Bea primeiro; Alice tem obrigatoriamente de receber od2.
+        verified_event = {"valid": True, "event_id": "event-2", "participant1": "Bea Player", "participant2": "Alice Player"}
+        with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=verified_event), \
+                patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
+                patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
+            odds, _ = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
+
+    def test_event_integrity_rejects_finished_event_with_matching_players(self):
+        match = {"id": 77, "date": "2026-08-30T15:00:00+00:00", "player1": {"name": "Arthur Fery"}, "player2": {"name": "Ignacio Buse"}}
+        payload = {"result": {"id": "old-event", "participant1": "Arthur Fery", "participant2": "Ignacio Buse", "status": "finished"}}
+        with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=fetch_data._validated_event_record(payload, match)):
+            integrity = fetch_data.rapidapi_event_integrity(match)
+        self.assertEqual(integrity["status"], "rejected")
+        self.assertEqual(integrity["reason"], "event_not_prelive")
 
     def test_rapidapi_pricing_rejects_stale_provider_timestamp(self):
         match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
@@ -60,7 +88,8 @@ class MatchInputTests(unittest.TestCase):
                     "od1": "1.70", "od2": "2.20", "addTime": str(stale),
                 }}}}
 
-        with patch.object(fetch_data, "_rapidapi_event_id_for_match", return_value="event-1"), \
+        verified_event = {"valid": True, "event_id": "event-1", "participant1": "Alice Player", "participant2": "Bea Player"}
+        with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=verified_event), \
                 patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
                 patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
             odds, provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)

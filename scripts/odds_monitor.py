@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from src import fetch_data
+from src import fetch_data, paper_trading
 
 PAPER_PATH = Path(os.environ.get("ODDS_MONITOR_PAPER_PATH", "data/paper_trades.json"))
 OUTPUT_DIR = Path(os.environ.get("ODDS_MONITOR_OUTPUT_DIR", "data/odds_monitor"))
@@ -55,9 +55,11 @@ def load_open_paper_entries(path: Path = PAPER_PATH, *, now: datetime | None = N
     if not isinstance(entries, list):
         return []
 
+    excluded = paper_trading.excluded_keys()
     selected = []
     for entry in entries:
-        if not isinstance(entry, dict) or entry.get("mode") != "PAPER" or entry.get("settlement") is not None:
+        if (not isinstance(entry, dict) or entry.get("mode") != "PAPER" or entry.get("settlement") is not None
+                or str(entry.get("key")) in excluded):
             continue
         pregame = entry.get("pregame")
         if not isinstance(pregame, dict) or pregame.get("market_type") != "Moneyline":

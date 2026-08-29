@@ -1,6 +1,6 @@
 # Contrato operacional pré-live do Fenzobot
 
-Versão: `fenzobot-prelive-v1` (29 de agosto de 2026).
+Versão: `fenzobot-prelive-v1` (29 de agosto de 2026; CHANGE-2026-08-29-006).
 
 ## Fonte de decisão
 
@@ -14,8 +14,10 @@ lado; não substitui o motor de seleção.
   registo automático em PAPER.
 - `EDGE_NEGATIVE`: edge inferior a zero; excluído.
 - `EDGE_ZERO`: edge exatamente igual a zero; excluído.
-- `REPORT_NULL`: dados essenciais insuficientes ou edge não calculável; sem
-  veredicto e sem PAPER.
+- `PRICING_UNAVAILABLE`: dados factuais válidos, mas sem um par de odds
+  recente e verificável; mostra a análise factual, sem edge e sem PAPER.
+- `REPORT_NULL`: dados factuais essenciais insuficientes; sem veredicto e sem
+  PAPER. Não é usado apenas porque falta um preço de mercado.
 
 Se ambos os lados tiverem edge positivo, o caso é tratado como anomalia,
 registado como `REPORT_NULL` e não produz decisão automática.
@@ -50,6 +52,12 @@ na ausência de um estado fiável, qualquer score/relógio de jogo disponível �
 tratado de forma conservadora como evidência de início. A exclusão acontece
 antes do enriquecimento, do relatório, do snapshot e do PAPER.
 
+Quando o pricing usa a camada Extend, o `eventId` também tem de ser validado
+contra os dois participantes, a ordem do fornecedor e o estado/data do evento.
+Um evento terminado, em curso, com jogadores diferentes ou horário incompatível
+é excluído pelo mesmo gate. As chaves `od1`/`od2` são então mapeadas pela ordem
+confirmada pelo fornecedor, nunca pela ordem do fixture local.
+
 ## Mercados
 
 A carteira suporta uma entrada por mercado e pode guardar Moneyline e
@@ -78,6 +86,9 @@ dataset.
   imutável; a liquidação só preenche `outcome`.
 - `data/paper_trades.json`: carteira PAPER append-only, uma entrada por
   partida/mercado; a liquidação só preenche `settlement`.
+- `data/paper_integrity_exclusions.json`: ledger de anulações factuais; não
+  apaga PAPER histórico, mas exclui uma entrada comprovadamente inválida de
+  monitorização, liquidação e métricas.
 - relatórios HTML: nome versionado com `report_id`; uma execução posterior não
   substitui o ficheiro original.
 - `PAPER`, histórico reconstruído/backtest e `REAL` são apresentados

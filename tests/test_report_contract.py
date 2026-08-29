@@ -90,7 +90,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", html)
         self.assertIn("<main>", html)
         self.assertIn("Todos os relatórios", html)
-        self.assertIn("RELATÓRIO NULO", html)
+        self.assertIn("PREÇO DE MERCADO INDISPONÍVEL", html)
         self.assertNotIn('<script>alert("a")</script>', html)
         self.assertNotIn('<img src=x onerror="alert(1)">', html)
         self.assertNotIn('<svg onload="alert(2)">', html)
@@ -156,6 +156,21 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn("Total Games", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Mercado observado", html)
+
+    def test_factual_divergence_survives_when_fresh_market_price_is_missing(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "market_odds_decimal": None,
+            "features": {
+                "h2h": {"lider": "A", "diff": 4, "a_wins": 4, "b_wins": 0},
+                "piso": {"lider": "A", "diff": 20, "amostra_a": 100, "amostra_b": 100},
+                "forma_recente": {"lider": "A", "diff": 30},
+                "ranking": {"lider": "A", "diff": 40},
+            },
+        }
+        div = report_html._calcular_divergencia(payload)
+        self.assertIsNotNone(div)
+        self.assertIsNone(div["prob_mercado_a"])
+        self.assertIsNotNone(div["indice_evidencia_a"])
 
     def test_strong_alignment_is_observed_without_claiming_fair_odds_or_handicap(self):
         payload = {

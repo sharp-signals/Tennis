@@ -10,6 +10,7 @@ from src.prelive_decision import (
     EDGE_POSITIVE,
     EDGE_ZERO,
     REPORT_NULL,
+    PRICING_UNAVAILABLE,
     _action_block_available,
     _service_block_available,
     assess_report,
@@ -140,6 +141,12 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(decision["state"], REPORT_NULL)
         self.assertFalse(decision["paper_eligible"])
 
+    def test_missing_price_is_not_a_factual_report_null(self):
+        unavailable = {"available": False, "reason": "missing_or_invalid_two_way_moneyline"}
+        decision = build_decision(self.payload(), self.divergence(), unavailable, self.assessment())
+        self.assertEqual(decision["state"], PRICING_UNAVAILABLE)
+        self.assertFalse(decision["paper_eligible"])
+
     def test_snapshot_pregame_is_immutable_after_settlement(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "snapshots.json"
@@ -222,7 +229,7 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual({entry["pregame"]["market_type"] for entry in entries}, {"Moneyline", "Handicap"})
         self.assertEqual(len({entry["key"] for entry in entries}), 2)
 
-    def test_telegram_has_four_states_colours_and_counts(self):
+    def test_telegram_states_colours_and_counts(self):
         payloads = []
         for state, edge in ((EDGE_POSITIVE, 0.1), (EDGE_NEGATIVE, -0.1), (EDGE_ZERO, 0.0)):
             payload = self.payload(); payload["prelive_decision"] = self.decision(edge)
@@ -231,9 +238,12 @@ class PreliveOperationalContractTests(unittest.TestCase):
         null_payload = self.payload()
         null_payload["prelive_decision"] = {"state": REPORT_NULL, "reason": "sem dados"}
         payloads.append(null_payload)
-        self.assertEqual([_telegram_decision_row(item)[1] for item in payloads], ["🟢", "🔴", "⚪", "⚫"])
+        unavailable = self.payload()
+        unavailable["prelive_decision"] = {"state": PRICING_UNAVAILABLE, "reason": "sem preço fresco"}
+        payloads.append(unavailable)
+        self.assertEqual([_telegram_decision_row(item)[1] for item in payloads], ["🟢", "🔴", "⚪", "⚫", "🟡"])
         self.assertEqual(telegram_state_counts(payloads), {
-            EDGE_POSITIVE: 1, EDGE_NEGATIVE: 1, EDGE_ZERO: 1, REPORT_NULL: 1,
+            EDGE_POSITIVE: 1, EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1, REPORT_NULL: 1,
         })
 
 

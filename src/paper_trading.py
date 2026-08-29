@@ -15,6 +15,7 @@ from typing import Any, Iterable, Mapping
 
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/paper_trades.json")
+DEFAULT_EXCLUSIONS_PATH = Path("data/paper_integrity_exclusions.json")
 _LOCK = threading.Lock()
 
 
@@ -34,6 +35,18 @@ def _read(path: Path) -> dict[str, Any]:
 
 def read_entries(path: Path = DEFAULT_PATH) -> list[dict[str, Any]]:
     return copy.deepcopy(_read(path)["entries"])
+
+
+def excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
+    """Chaves anuladas por incidente de integridade, sem reescrever PAPER."""
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return set()
+    records = document.get("exclusions") if isinstance(document, Mapping) else None
+    if not isinstance(records, list):
+        return set()
+    return {str(item.get("paper_key")) for item in records if isinstance(item, Mapping) and item.get("paper_key")}
 
 
 def _write(path: Path, document: Mapping[str, Any]) -> None:
@@ -193,7 +206,10 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
     with _LOCK:
         document = _read(path)
         settled = 0
+        excluded = excluded_keys()
         for entry in document["entries"]:
+            if str(entry.get("key")) in excluded:
+                continue
             if entry.get("settlement") is not None:
                 continue
             pregame = entry.get("pregame") or {}
@@ -280,7 +296,8 @@ def _summary(entries: list[Mapping[str, Any]]) -> dict[str, Any]:
 
 
 def compute_history(path: Path = DEFAULT_PATH) -> dict[str, Any]:
-    entries = _read(path)["entries"]
+    exclusions = excluded_keys()
+    entries = [entry for entry in _read(path)["entries"] if str(entry.get("key")) not in exclusions]
     by_market = {}
     for kind in ("Moneyline", "Handicap"):
         subset = [entry for entry in entries if str((entry.get("pregame") or {}).get("market_type")) == kind]
@@ -290,4 +307,5 @@ def compute_history(path: Path = DEFAULT_PATH) -> dict[str, Any]:
         "BACKTEST_RECONSTRUCTED": None,
         "REAL": None,
         "history_version": "paper-history-v1",
+        "excluded_integrity_entries": len(exclusions),
     }
