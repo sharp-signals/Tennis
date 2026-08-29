@@ -24,6 +24,23 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(provenance["endpoint"], "https://provider.test/upcoming")
         self.assertTrue(provenance["from_cache"])
 
+    def test_the_odds_pricing_requires_fresh_named_bookmaker_pair(self):
+        match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
+        event = {
+            "id": "event-1", "participants": ["Alice Player", "Bea Player"],
+            "bookmakers": [{
+                "title": "Test Book", "last_update": datetime.now(timezone.utc).isoformat(),
+                "markets": [{"key": "h2h", "outcomes": [
+                    {"name": "Alice Player", "price": 1.70}, {"name": "Bea Player", "price": 2.20},
+                ]}],
+            }],
+        }
+        with patch.object(fetch_data, "_the_odds_event_for_match", return_value=event):
+            odds, provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
+        self.assertEqual(provenance["bookmaker"], "Test Book")
+        self.assertEqual(provenance["capture_kind"], "provider_last_update_verified")
+
     def test_tournament_info_is_fetched_by_frequency_and_filters_unknown_tiers(self):
         matches = [
             {"id": 1, "tournamentId": 20, "_tour": "atp"},

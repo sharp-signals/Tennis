@@ -228,6 +228,32 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertNotIn("Tie-break / total acima", html)
 
+    def test_handicap_card_uses_actual_format_and_shows_match_win_loss_coverage(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.40, "B": 3.0},
+            "game_differential_a": {"bo5": {
+                "wins": {"n": 2, "margins": [5, 3]},
+                "losses": {"n": 2, "margins": [4, -3]}, "analyzable_matches": 4,
+            }},
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Handicap — leitura factual (BO5)", html)
+        self.assertIn("vitórias", html)
+        self.assertIn("derrotas", html)
+        self.assertNotIn("Margem de jogos (bo3)", html)
+
+    def test_reference_only_odds_are_labelled_not_eligible_for_pricing(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "market_odds_decimal": None,
+            "reference_market_odds_decimal": {"A": 1.8, "B": 2.0},
+            "reference_odds_provenance": {"source": "RapidAPI upcoming", "captured_at_utc": "2026-08-29T15:00:00+00:00"},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Odds de referência", html)
+        self.assertIn("não elegíveis para pricing, edge ou PAPER", html)
+
     def test_system_history_keeps_universes_separate_without_empty_market_rows(self):
         html = report_html._mod_system_history({"paper_history": {"PAPER": {"total_entries": 0}}})
         self.assertIn("Ainda não há entradas PAPER registadas.", html)

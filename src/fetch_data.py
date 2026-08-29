@@ -56,6 +56,7 @@ from .config import (
     FORCED_TOURNAMENT_IDS,
     HISTORY_YEARS_TO_LOAD,
     MAX_FIXTURE_PAGES,
+    ODDS_API_TENNIS_SPORT_KEYS,
     RAPIDAPI_BASE,
     RAPIDAPI_HOST,
     RAPIDAPI_MAX_CALLS_PER_DAY,
@@ -118,6 +119,7 @@ def _write_player_cache_entry(
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
 ODDS_API_BASE = "https://api.the-odds-api.com/v4"
+ODDS_API_MAX_AGE_SECONDS = 15 * 60
 
 RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY", "")
 _RAPIDAPI_HEADERS = {
@@ -339,6 +341,9 @@ _RAPIDAPI_EVENT_INDEX_READY: set[str] = set()
 _RAPIDAPI_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
+_THE_ODDS_EVENTS: dict[str, list[dict]] = {}
+_THE_ODDS_INDEX_READY: set[str] = set()
+_MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
 
 
 def _odds_capture_timestamp() -> str:
@@ -587,6 +592,181 @@ def _odds_names_key(n1: str, n2: str):
     if not a or not b:
         return None
     return "|".join(sorted([a, b]))
+
+
+def _the_odds_sport_keys_for_match(match: dict) -> list[str]:
+    """Restringe pedidos pagos da The Odds API ao torneio do fixture.
+
+    O catálogo da API é separado por competição. Não se percorre a lista
+    inteira de ténis em cada execução: só são pedidas as chaves cujo sufixo
+    coincide com o nome conhecido do torneio.
+    """
+    tour = str(match.get("_tour") or "").strip().lower()
+    tournament = " ".join(str(match.get(key) or "") for key in (
+        "tournament_name", "tournament", "name", "tier",
+    )).casefold().replace("-", " ")
+    tournament = re.sub(r"[^a-z0-9]+", " ", tournament).strip()
+    aliases = {
+        "cincinnati": ("western southern",),
+        "canadian": ("rogers cup", "national bank"),
+        "queens club champ": ("queens",),
+        "italian": ("rome", "roma"),
+        "monte carlo": ("montecarlo",),
+        "aus open singles": ("australian open",),
+    }
+    matched = []
+    for sport_key in ODDS_API_TENNIS_SPORT_KEYS:
+        prefix = f"tennis_{tour}_"
+        if not tour or not sport_key.startswith(prefix):
+            continue
+        suffix = sport_key.removeprefix(prefix).replace("_", " ")
+        if suffix in tournament or any(alias in tournament for alias in aliases.get(suffix, ())):
+            matched.append(sport_key)
+    return matched
+
+
+def prepare_the_odds_market_index(matches: list[dict]) -> None:
+    """Obtém cotações Moneyline recentes e identificáveis por bookmaker.
+
+    A fonte é preparada uma vez por execução. Falhas, plano sem cobertura ou
+    ausência de uma competição deixam o índice vazio; nunca são substituídas
+    silenciosamente por odds RapidAPI para pricing/PAPER.
+    """
+    if not ODDS_API_KEY:
+        print("[odds] The Odds API indisponível: ODDS_API_KEY ausente.")
+        return
+    sport_keys = sorted({key for match in matches for key in _the_odds_sport_keys_for_match(match)})
+    if not sport_keys:
+        print("[odds] The Odds API: nenhum torneio elegível tem chave configurada.")
+        return
+    for sport_key in sport_keys:
+        if sport_key in _THE_ODDS_INDEX_READY:
+            continue
+        url = f"{ODDS_API_BASE}/sports/{sport_key}/odds"
+        try:
+            response = requests.get(url, params={
+                "apiKey": ODDS_API_KEY,
+                "regions": "eu",
+                "markets": "h2h",
+                "oddsFormat": "decimal",
+                "dateFormat": "iso",
+            }, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            events = response.json() or []
+            if not isinstance(events, list):
+                events = []
+            _THE_ODDS_EVENTS[sport_key] = events
+            _THE_ODDS_INDEX_READY.add(sport_key)
+            print(f"[odds] The Odds API {sport_key}: {len(events)} evento(s) recebidos.")
+        except (requests.RequestException, ValueError) as exc:
+            _THE_ODDS_EVENTS[sport_key] = []
+            _THE_ODDS_INDEX_READY.add(sport_key)
+            print(f"[aviso] The Odds API indisponível para {sport_key}: {exc}")
+
+
+def _the_odds_event_for_match(match: dict) -> Optional[dict]:
+    player_a = (match.get("player1") or {}).get("name", "")
+    player_b = (match.get("player2") or {}).get("name", "")
+    wanted = _event_names_key(player_a, player_b)
+    for sport_key in _the_odds_sport_keys_for_match(match):
+        for event in _THE_ODDS_EVENTS.get(sport_key, []):
+            if not isinstance(event, dict):
+                continue
+            names = event.get("participants") or event.get("teams") or []
+            if len(names) == 2 and _event_names_key(names[0], names[1]) == wanted:
+                return event
+    return None
+
+
+def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
+    """Escolhe um par Moneyline recente do mesmo bookmaker para pricing.
+
+    Não combina lados de casas diferentes. Entre pares válidos, usa a cotação
+    mais recente; em empate, prefere menor margem. Sem ``last_update`` ou com
+    idade superior ao limite, devolve ausência e bloqueia edge/PAPER.
+    """
+    event = _the_odds_event_for_match(match)
+    if not event:
+        return None, None
+    player_a = (match.get("player1") or {}).get("name", "")
+    player_b = (match.get("player2") or {}).get("name", "")
+    wanted = {_normalize_name(player_a): player_a, _normalize_name(player_b): player_b}
+    candidates = []
+    for bookmaker in event.get("bookmakers") or []:
+        if not isinstance(bookmaker, dict):
+            continue
+        captured = bookmaker.get("last_update")
+        age = _odds_cache_age_seconds(captured)
+        if age is None or age > ODDS_API_MAX_AGE_SECONDS:
+            continue
+        h2h = next((market for market in bookmaker.get("markets") or []
+                    if isinstance(market, dict) and market.get("key") == "h2h"), None)
+        outcome_map = {}
+        for outcome in (h2h or {}).get("outcomes") or []:
+            try:
+                price = float(outcome.get("price"))
+            except (AttributeError, TypeError, ValueError):
+                continue
+            name = wanted.get(_normalize_name(outcome.get("name")))
+            if name and price > 1:
+                outcome_map[name] = price
+        if set(outcome_map) != {player_a, player_b}:
+            continue
+        overround = (1 / outcome_map[player_a]) + (1 / outcome_map[player_b]) - 1
+        candidates.append((age, overround, str(bookmaker.get("title") or bookmaker.get("key") or "N/D"), outcome_map, captured))
+    if not candidates:
+        return None, None
+    age, _overround, bookmaker, odds, captured = min(candidates, key=lambda item: (item[0], item[1], item[2]))
+    provenance = {
+        "source": "The Odds API / bookmaker market",
+        "endpoint": f"{ODDS_API_BASE}/sports/.../odds",
+        "event_id": event.get("id"),
+        "captured_at_utc": _odds_capture_timestamp(),
+        "capture_kind": "provider_last_update_verified",
+        "provider_timestamp": captured,
+        "bookmaker": bookmaker,
+        "from_cache": False,
+        "cache_age_seconds": age,
+    }
+    return odds, provenance
+
+
+def record_market_odds_observation(match: dict, odds: Optional[dict], provenance: Optional[dict]) -> Optional[dict]:
+    """Guarda apenas a última observação de mercado para exibir movimento.
+
+    Não altera snapshots nem PAPER, que são ex ante e imutáveis. Se a escrita
+    falhar, o pricing continua válido; só a comparação visual fica N/D.
+    """
+    if not odds or not provenance or not provenance.get("bookmaker"):
+        return None
+    player_a = (match.get("player1") or {}).get("name", "")
+    player_b = (match.get("player2") or {}).get("name", "")
+    raw_key = str(match.get("id") or _odds_names_key(player_a, player_b) or "")
+    safe_key = re.sub(r"[^A-Za-z0-9_.-]+", "_", raw_key).strip("_")
+    if not safe_key:
+        return None
+    try:
+        path = _MARKET_OBSERVATION_STORE.entity_path("market_odds", "latest.json")
+        previous = _MARKET_OBSERVATION_STORE.get_entry(path, safe_key, max_age_hours=24 * 14)
+        current = {
+            "odds": dict(odds), "bookmaker": provenance.get("bookmaker"),
+            "provider_timestamp": provenance.get("provider_timestamp"),
+            "captured_at_utc": provenance.get("captured_at_utc"),
+        }
+        _MARKET_OBSERVATION_STORE.set_entry(path, safe_key, current)
+    except (OSError, TypeError, ValueError):
+        return None
+    if not isinstance(previous, dict) or previous.get("bookmaker") != current["bookmaker"]:
+        return None
+    movement = {"previous_captured_at_utc": previous.get("captured_at_utc"), "bookmaker": current["bookmaker"], "players": {}}
+    for player, current_odd in odds.items():
+        try:
+            old = float((previous.get("odds") or {}).get(player))
+            new = float(current_odd)
+        except (TypeError, ValueError):
+            continue
+        movement["players"][player] = {"previous": old, "current": new, "delta": round(new - old, 3)}
+    return movement if movement["players"] else None
 
 
 def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
@@ -1901,6 +2081,7 @@ def compute_game_differential_profile(history: pd.DataFrame, player: str) -> Opt
                     "median": float(pd.Series(values).median()),
                     "positive": sum(x > 0 for x in values), "zero": sum(x == 0 for x in values),
                     "negative": sum(x < 0 for x in values),
+                    "margins": list(values),
                     "cover_ge": {str(n): sum(x >= n for x in values) for n in range(2, 8)}}
         result[label] = {"wins": describe(wins), "losses": describe(losses),
                          "analyzable_matches": len(wins) + len(losses)}
