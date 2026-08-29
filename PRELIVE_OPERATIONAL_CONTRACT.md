@@ -1,6 +1,6 @@
 # Contrato operacional pré-live do Fenzobot
 
-Versão: `fenzobot-prelive-v1` (29 de agosto de 2026; CHANGE-2026-08-29-006).
+Versão: `fenzobot-prelive-v1` (29 de agosto de 2026; CHANGE-2026-08-29-008).
 
 ## Fonte de decisão
 
@@ -65,11 +65,14 @@ Handicap separadamente. No pipeline atual só Moneyline possui odds e pricing
 próprios. Handicap não entra automaticamente até existir uma fonte real de
 odd/linha e uma regra de edge já aprovada; não foi inventada uma regra.
 
-Pricing, edge e PAPER só podem usar um par Moneyline do endpoint dedicado de
-odds, com os dois lados na mesma casa, bookmaker identificável e timestamp do
-fornecedor com no máximo 15 minutos. A odd embutida em *upcoming* é referência
-visual e nunca alimenta esses campos. Snapshot e PAPER guardam fonte, instante
-UTC e esse tipo de captura. A referência de handicap no relatório é apenas uma tabela interna
+Pricing, edge e PAPER preferem um par Moneyline do endpoint dedicado de odds,
+com os dois lados na mesma casa, bookmaker identificável e timestamp do
+fornecedor com no máximo 15 minutos. Quando esse endpoint devolver uma hora
+ausente ou desatualizada, podem usar o par exato do feed *upcoming* observado
+na própria execução, desde que a fixture/evento já tenha passado o gate de
+identidade e pré-live. Este fallback não declara bookmaker nem timestamp do
+fornecedor; snapshot, PAPER e relatório preservam explicitamente o tipo de
+captura. A referência de handicap no relatório é apenas uma tabela interna
 de contexto por faixa de Moneyline; nunca é uma linha observada, uma odd, um
 edge ou uma entrada PAPER.
 

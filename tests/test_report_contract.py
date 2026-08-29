@@ -70,6 +70,18 @@ class ReportStateTests(unittest.TestCase):
         self.assertEqual(actual["n_fatores"], 4)
         self.assertEqual(actual["gap_pp"], 15)
 
+    def test_divergence_normalization_keeps_factual_index_without_market_price(self):
+        raw = {
+            "prob_mercado_a": None, "prob_mercado_b": None,
+            "indice_evidencia_a": 72, "indice_evidencia_b": 28,
+            "indice_favorece": "A", "tipo": "evidence_only",
+            "classificacao": {"nivel": 0}, "n_fatores": 5,
+        }
+        actual = report_html._normalizar_div(raw)
+        self.assertIsNone(actual["market"])
+        self.assertEqual(actual["indice_evidencia"], {"a": 72, "b": 28})
+        self.assertEqual(actual["indice_favorece"], "A")
+
 
 class ReportRenderingTests(unittest.TestCase):
     def test_no_odds_report_is_semantic_safe_and_has_no_market_section(self):
@@ -221,6 +233,18 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Fonte: RapidAPI Moneyline", html)
         self.assertIn("Captura: 2026-08-16T09:30:00+00:00", html)
         self.assertIn("Timestamp do provider: N/D", html)
+
+    def test_header_marks_feed_observation_without_bookmaker_timestamp(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.8, "B": 2.1},
+            "odds_source": "RapidAPI Tennis API / embedded upcoming feed",
+            "odds_captured_at_utc": "2026-08-29T21:00:00+00:00",
+            "odds_capture_kind": "feed_observed_at_capture",
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("Observação do feed nesta execução; hora do bookmaker N/D", html)
 
     def test_handicap_reference_is_format_aware_and_uses_both_boundaries(self):
         bo3 = report_html.estimate_typical_handicap(1.40, "bo3")
