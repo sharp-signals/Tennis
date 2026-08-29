@@ -2677,7 +2677,10 @@ def _mod_header(payload, div, estado):
         rank_b = f"{_tour_lbl} {rank_b}"
     tourn = _esc(payload.get("tournament", "")); tier = _esc(payload.get("tier", ""))
     surf = _esc(payload.get("surface", ""))
-    odds = _d(payload.get("market_odds_decimal"))
+    pricing_odds = _d(payload.get("market_odds_decimal"))
+    reference_odds = _d(payload.get("reference_market_odds_decimal"))
+    reference_only = not pricing_odds and bool(reference_odds)
+    odds = pricing_odds or reference_odds
 
     def _odd_fmt(v):
         # CORREÇÃO (18/08/2026, a pedido): odds apareciam com o número de
@@ -2693,6 +2696,13 @@ def _mod_header(payload, div, estado):
     oa = _esc(_odd_fmt(odds.get(payload.get("player_a"))))
     ob = _esc(_odd_fmt(odds.get(payload.get("player_b"))))
     odds_meta_parts = []
+    if reference_only:
+        reference_provenance = _d(payload.get("reference_odds_provenance"))
+        odds_meta_parts.append("Odds de referência — não elegíveis para pricing, edge ou PAPER")
+        if reference_provenance.get("source"):
+            odds_meta_parts.append(f"Fonte: {_esc(reference_provenance['source'])}")
+        if reference_provenance.get("captured_at_utc"):
+            odds_meta_parts.append(f"Captura: {_esc(reference_provenance['captured_at_utc'])}")
     if payload.get("odds_source"):
         odds_meta_parts.append(f"Fonte: {_esc(payload['odds_source'])}")
     if payload.get("odds_endpoint"):
@@ -2707,6 +2717,15 @@ def _mod_header(payload, div, estado):
         if isinstance(age, (int, float)):
             cache += f" ({int(age)} s)"
         odds_meta_parts.append(f"Cache: {cache}")
+    movement = _d(payload.get("odds_movement"))
+    movement_parts = []
+    for player, item in _d(movement.get("players")).items():
+        try:
+            movement_parts.append(f"{player}: {float(item['previous']):.2f}→{float(item['current']):.2f} ({float(item['delta']):+.2f})")
+        except (KeyError, TypeError, ValueError):
+            continue
+    if movement_parts:
+        odds_meta_parts.append("Variação: " + "; ".join(movement_parts))
     odds_meta = " · ".join(odds_meta_parts)
     # prob mercado
     pa = pb = None
@@ -4149,24 +4168,6 @@ def _mod_action_map(payload, div, result):
     # valor, handicap e cenários). O cálculo em si não muda, só deixa de
     # ser mostrado nesta secção.
 
-    # A referência de handicap segue o lado do sinal (não é promovida como
-    # valor sem passar pelos gates do pricing). Se está no underdog,
-    # estimate_typical_handicap devolve handicaps
-    # POSITIVOS. PROBLEMA 3 (22/08/2026): quando a odd está na zona neutra
-    # ("ao_par"), NÃO se mostra cartão nenhum — não há handicap pré-live
-    # que compense, e um cartão a dizer "comparar Moneyline" só ocupava
-    # espaço. Se não acrescenta, não aparece.
-    if fav_side:
-        _odd_lado_valor = observed_odd(fav_side)
-        _ref_handicap = estimate_typical_handicap(_odd_lado_valor, match_format)
-        if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
-            _h_baixo, _h_alto = _ref_handicap["handicap"]
-            add("Referência de handicap", f"{names[fav_side]}",
-                "Zona de comparação interna para o mesmo lado do sinal; não é uma linha de bookmaker, "
-                "nem um candidato de valor para handicap.",
-                "Referência analítica interna",
-                headline=f"Handicap {_h_baixo}/{_h_alto}")
-
     # NOVO (21/08/2026, a pedido): odd justa = 1/taxa, para cada cenário
     # condicional — transforma a taxa histórica numa referência direta e
     # comparável com o que se vir no mercado ao vivo/pré-jogo. Nunca uma
@@ -4301,79 +4302,69 @@ def _mod_action_map(payload, div, result):
             f"{names[heavy]} traz +{abs(sets_a-sets_b):g} sets em 7 dias. Se aparecer quebra clara de deslocação ou serviço, acompanhar handicap a favor de {names[fresh]} e total de jogos; o sistema ainda não calcula linha nem odd justa para estes mercados.",
             "Carga acumulada")
 
-    # PROBLEMA 3.3+3.4 (22/08/2026, a pedido): margem de jogos —
-    # (1) explicar a métrica em vez do texto genérico repetido;
-    # (2) mostrar SÓ o lado do valor (não os dois lados soltos);
-    # (3) ligar diretamente à leitura do handicap.
-    # A métrica: média de jogos (games) de diferença ao longo do
-    # confronto, em vitórias e em derrotas (melhor-de-3). Serve para ver
-    # se um handicap cobre mesmo quando o resultado por sets é renhido.
+    # Um único cartão de handicap, sempre no formato real da partida. O
+    # bloco legado de média BO3 foi removido: num BO5 era inválido e não
+    # respondia à pergunta operacional (que linhas cobriria de facto?).
     if fav_side:
-        _gm = _d(payload.get(f"game_margin_{fav_side}"))
-        _mv, _nv = _gm.get("media_margem_vitoria"), _gm.get("n_vitorias")
-        _md, _nd = _gm.get("media_margem_derrota"), _gm.get("n_derrotas")
-        if _mv is not None and _md is not None and _nv and _nd and _nv >= 5 and _nd >= 5:
-            # PROBLEMA 4 (22/08/2026, a pedido): o texto tem de se adaptar a
-            # se o lado do valor é FAVORITO ou UNDERDOG. Antes assumia
-            # sempre o ângulo do handicap POSITIVO (só faz sentido para
-            # underdog). Para um favorito, o que interessa é a margem de
-            # VITÓRIA (cobre um handicap negativo?), não a de derrota.
-            _odd_lv = observed_odd(fav_side)
-            _e_favorito = _odd_lv is not None and float(_odd_lv) < 2.00
-            if _e_favorito:
-                _cobre_neg = _mv >= 4.0
-                _txt_margem = (
-                    f"Média de jogos de diferença de {names[fav_side]} (melhor-de-3): "
-                    f"quando vence, +{_mv:.1f}; quando perde, -{abs(_md):.1f}. "
-                    + ("A margem de vitória é folgada, por isso um handicap negativo tem boa hipótese de cobrir."
-                       if _cobre_neg else
-                       "A margem de vitória é curta, por isso um handicap negativo é mais arriscado.")
-                )
-            else:
-                _cobre_pos = abs(_md) <= 3.5
-                _txt_margem = (
-                    f"Média de jogos de diferença de {names[fav_side]} (melhor-de-3): "
-                    f"quando vence, +{_mv:.1f}; quando perde, -{abs(_md):.1f}. "
-                    + ("A margem de derrota é apertada, por isso um handicap positivo tem boa hipótese de cobrir mesmo numa derrota renhida."
-                       if _cobre_pos else
-                       "A margem de derrota é larga, por isso um handicap positivo é mais arriscado numa derrota.")
-                )
-            add("Margem de jogos (bo3)", f"{names[fav_side]}",
-                _txt_margem,
-                f"vitórias n={_nv}, derrotas n={_nd}",
-                headline=f"Jogos: +{_mv:.1f} / -{abs(_md):.1f}", n_amostra=min(_nv, _nd))
-
-        # Perfil factual novo: formato da partida atual, nunca uma odd/linha
-        # de bookmaker. Mostra sempre N para impedir percentagens frágeis.
         _fmt = match_format
         _profile = _d(_d(payload.get(f"game_differential_{fav_side}")).get(_fmt))
         _wins = _d(_profile.get("wins"))
         _losses = _d(_profile.get("losses"))
         if _wins.get("n") or _losses.get("n"):
             _reference = estimate_typical_handicap(observed_odd(fav_side), _fmt)
-            _thresholds = handicap_coverage_thresholds(_reference)
             _n_wins = int(_wins.get("n") or 0)
             _n_losses = int(_losses.get("n") or 0)
-            _coverage_parts = []
-            if _n_wins and _thresholds:
-                _cover = _d(_wins.get("cover_ge"))
-                for _threshold in _thresholds:
-                    _covered = int(_cover.get(str(_threshold), 0))
-                    _coverage_parts.append(f"≥ +{_threshold}: {_covered}/{_n_wins} ({100 * _covered / _n_wins:.0f}%)")
-            _coverage_text = "; ".join(_coverage_parts) or "Sem zona interna de handicap aplicável para esta odd/formato."
-            _wins_text = (
-                f"Vitórias: + {int(_wins.get('positive', 0))}, 0 {int(_wins.get('zero', 0))}, − {int(_wins.get('negative', 0))} "
-                f"(n={_n_wins})."
-            )
-            _losses_text = (
-                f"Derrotas: + {int(_losses.get('positive', 0))}, 0 {int(_losses.get('zero', 0))}, − {int(_losses.get('negative', 0))} "
-                f"(n={_n_losses})."
-            )
-            _headline = _coverage_parts[0] if _coverage_parts else f"n={_n_wins + _n_losses}"
-            add(f"Margem factual ({_fmt.upper()})", f"{names[fav_side]}",
-                f"Cobertura histórica nas duas fronteiras da zona interna: {_coverage_text}. "
-                f"{_wins_text} {_losses_text} Contexto factual por scores completos; não é linha real, odd, edge nem garantia de cobertura.",
-                f"scores completos · formato {_fmt.upper()}", headline=_headline, n_amostra=_n_wins + _n_losses)
+            _wins_margins = list(_wins.get("margins") or [])
+            _losses_margins = list(_losses.get("margins") or [])
+
+            def _settlement(values, line):
+                try:
+                    line = float(line)
+                except (TypeError, ValueError):
+                    return (0, 0, 0)
+                cover = push = miss = 0
+                for margin in values:
+                    result = float(margin) + line
+                    if result > 0:
+                        cover += 1
+                    elif result < 0:
+                        miss += 1
+                    else:
+                        push += 1
+                return cover, push, miss
+
+            if not _reference or _reference.get("tipo") == "ao_par":
+                add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
+                    "Sem zona interna de handicap para esta Moneyline. O jogo está numa faixa equilibrada; não há linha a avaliar.",
+                    f"scores completos · {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} jogos", headline="Sem linha", n_amostra=_n_wins + _n_losses)
+            else:
+                _line_parts = []
+                _wins_without_game_advantage = sum(float(margin) <= 0 for margin in _wins_margins)
+                for _line in _reference.get("handicap") or ():
+                    _wc, _wp, _wm = _settlement(_wins_margins, _line)
+                    _lc, _lp, _lm = _settlement(_losses_margins, _line)
+                    _total = _n_wins + _n_losses
+                    _covered = _wc + _lc
+                    _pushes = _wp + _lp
+                    _piece = f"{_line}: total {_covered}/{_total}"
+                    if _pushes:
+                        _piece += f" ({_pushes} push)"
+                    if _n_wins:
+                        _piece += f" — vitórias que cobrem {_wc}/{_n_wins}"
+                        _piece += f"; vitórias com ≤0 games {_wins_without_game_advantage}/{_n_wins}"
+                    if _n_losses:
+                        _piece += f"; derrotas que ainda cobrem {_lc}/{_n_losses}"
+                    _line_parts.append((_covered, _piece))
+                _best = max(_line_parts, key=lambda item: item[0]) if _line_parts else None
+                _reading = (
+                    f"A fronteira com maior cobertura histórica é {_best[1].split(':', 1)[0]}. "
+                    "É contexto de cobertura; exige linha e odd atuais antes de qualquer PAPER."
+                    if _best else "Sem linhas internas calculáveis para avaliação."
+                )
+                add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
+                    "; ".join(piece for _, piece in _line_parts) + ". " + _reading,
+                    "scores completos · cobertura por vitória e derrota do match",
+                    headline=f"Zona {_reference['handicap'][0]} a {_reference['handicap'][1]}", n_amostra=_n_wins + _n_losses)
 
         # Cruzamento opcional: só é mostrado quando a odd histórica existe no
         # dataset e a odd atual cabe numa das faixas observadas. Não cria linha
@@ -4422,6 +4413,8 @@ def _mod_action_map(payload, div, result):
         "Pré-jogo": 0,
         "Mercado principal": 0,
         "Referência de handicap": 1,
+        "Handicap — leitura factual (BO3)": 2,
+        "Handicap — leitura factual (BO5)": 2,
         "Margem de jogos (bo3)": 2,
         "Margem factual (BO3)": 2,
         "Margem factual (BO5)": 2,

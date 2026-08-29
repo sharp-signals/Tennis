@@ -18,13 +18,14 @@ e um resumo Telegram.
    explícitas (`FORCED_TOURNAMENT_IDS`).
 2. Obtém fixtures por torneio, remove duplicados e mantém apenas jogos na
    janela `LOOKAHEAD_HOURS_MIN..LOOKAHEAD_HOURS_MAX` (por omissão, 0–36h).
-3. Indexa a Moneyline do mesmo feed e constrói, em paralelo, um payload factual
+3. Guarda a Moneyline embutida apenas como referência e consulta a Moneyline
+   recente por bookmaker para pricing; constrói, em paralelo, um payload factual
    por jogo: ranking, H2H, superfície, forma, fadiga, serviço/resposta,
    cenários, mãos, estatísticas ricas e qualidade dos dados.
 4. Calcula o índice Fenzobot em Python e avalia se há cobertura factual mínima
    para publicar uma decisão pré-live.
-5. Aplica o *Market-Residual Pricing* experimental sobre a probabilidade de
-   mercado sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
+5. Aplica o *Market-Residual Pricing* experimental apenas sobre um par de odds
+   recente, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
    `EDGE_ZERO` ou `REPORT_NULL`.
 6. Chama o Claude apenas quando a política seletiva o justifica; a análise
    textual não pode recalcular nem contrariar o motor determinístico.
@@ -81,9 +82,12 @@ que por si só crie uma entrada PAPER.
 
 ## Dados e resiliência
 
-- **RapidAPI Matchstat:** descoberta, fixtures, odds embutidas, ranking,
+- **RapidAPI Matchstat:** descoberta, fixtures, ranking,
   jogos recentes, H2H, perfis e dados ricos. O contador é persistido durante a
   execução; limites por run/dia e retry de timeout, 429 e 503 são obrigatórios.
+  A odd embutida em *upcoming* é apenas referência visual. Pricing/edge/PAPER
+  exigem `recent-odds`, os dois lados na mesma casa e timestamp do fornecedor
+  até 15 minutos; se isso faltar, o relatório fica sem pricing.
 - **Históricos:** TennisMyLife, Sackmann e tennis-data.co.uk são usados como
   complemento/fallback consoante o tour e a métrica. Nunca se inventa um valor
   quando uma fonte falha.
@@ -139,7 +143,7 @@ publicar relatórios parciais.
 
 ### Secrets necessários
 
-`ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
+`ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`, `TELEGRAPH_ACCESS_TOKEN` e `REPORT_EMAIL_APP_PASSWORD`.
 O último é uma App Password da conta Gmail `fenzobot@gmail.com`, não a sua
 palavra-passe normal.

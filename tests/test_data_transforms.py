@@ -24,6 +24,49 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(provenance["endpoint"], "https://provider.test/upcoming")
         self.assertTrue(provenance["from_cache"])
 
+    def test_rapidapi_pricing_requires_fresh_named_bookmaker_pair(self):
+        match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
+        class Response:
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"result": {"Full Time Result": {"Test Book": {
+                    "od1": "1.70", "od2": "2.20", "addTime": str(datetime.now(timezone.utc).timestamp()),
+                }}}}
+
+        with patch.object(fetch_data, "_rapidapi_event_id_for_match", return_value="event-1"), \
+                patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
+                patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
+        self.assertEqual(provenance["bookmaker"], "Test Book")
+        self.assertEqual(provenance["capture_kind"], "provider_timestamp_verified")
+
+    def test_rapidapi_pricing_rejects_stale_provider_timestamp(self):
+        match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
+
+        class Response:
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                stale = (datetime.now(timezone.utc) - pd.Timedelta(minutes=16)).timestamp()
+                return {"result": {"Full Time Result": {"Test Book": {
+                    "od1": "1.70", "od2": "2.20", "addTime": str(stale),
+                }}}}
+
+        with patch.object(fetch_data, "_rapidapi_event_id_for_match", return_value="event-1"), \
+                patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
+                patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
+        self.assertIsNone(odds)
+        self.assertIsNone(provenance)
+
     def test_tournament_info_is_fetched_by_frequency_and_filters_unknown_tiers(self):
         matches = [
             {"id": 1, "tournamentId": 20, "_tour": "atp"},

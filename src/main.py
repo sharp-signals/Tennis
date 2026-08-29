@@ -1042,9 +1042,14 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    odds, odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
+    # A RapidAPI upcoming é apenas fotografia de referência: não tem
+    # bookmaker nem hora do provider e nunca alimenta edge/PAPER. Pricing só
+    # recebe um par recente e identificável do endpoint recent-odds.
+    reference_odds, reference_odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
+    odds, odds_provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
+    odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)
 
     _pid_a = match.get("player1Id")
     _pid_b = match.get("player2Id")
@@ -1423,7 +1428,9 @@ def _build_match_payload(match: dict) -> dict:
         "match_format": _match_format(match),
         "surface": surface,
         "commence_time_utc": start.isoformat(),
-        "market_odds_decimal": odds,  # None se a RapidAPI não tiver Moneyline para o evento
+        "market_odds_decimal": odds,
+        "reference_market_odds_decimal": reference_odds,
+        "reference_odds_provenance": reference_odds_provenance,
         "odds_source": odds_provenance.get("source") if odds else None,
         "odds_endpoint": odds_provenance.get("endpoint") if odds else None,
         "odds_event_id": odds_provenance.get("event_id") if odds else None,
@@ -1433,6 +1440,7 @@ def _build_match_payload(match: dict) -> dict:
         "odds_bookmaker": odds_provenance.get("bookmaker") if odds else None,
         "odds_from_cache": odds_provenance.get("from_cache") if odds else None,
         "odds_cache_age_seconds": odds_provenance.get("cache_age_seconds") if odds else None,
+        "odds_movement": odds_movement,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
         "h2h_history": h2h_history,
