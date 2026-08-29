@@ -4168,24 +4168,6 @@ def _mod_action_map(payload, div, result):
     # valor, handicap e cenários). O cálculo em si não muda, só deixa de
     # ser mostrado nesta secção.
 
-    # A referência de handicap segue o lado do sinal (não é promovida como
-    # valor sem passar pelos gates do pricing). Se está no underdog,
-    # estimate_typical_handicap devolve handicaps
-    # POSITIVOS. PROBLEMA 3 (22/08/2026): quando a odd está na zona neutra
-    # ("ao_par"), NÃO se mostra cartão nenhum — não há handicap pré-live
-    # que compense, e um cartão a dizer "comparar Moneyline" só ocupava
-    # espaço. Se não acrescenta, não aparece.
-    if fav_side:
-        _odd_lado_valor = observed_odd(fav_side)
-        _ref_handicap = estimate_typical_handicap(_odd_lado_valor, match_format)
-        if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
-            _h_baixo, _h_alto = _ref_handicap["handicap"]
-            add("Referência de handicap", f"{names[fav_side]}",
-                "Zona de comparação interna para o mesmo lado do sinal; não é uma linha de bookmaker, "
-                "nem um candidato de valor para handicap.",
-                "Referência analítica interna",
-                headline=f"Handicap {_h_baixo}/{_h_alto}")
-
     # NOVO (21/08/2026, a pedido): odd justa = 1/taxa, para cada cenário
     # condicional — transforma a taxa histórica numa referência direta e
     # comparável com o que se vir no mercado ao vivo/pré-jogo. Nunca uma
@@ -4357,16 +4339,21 @@ def _mod_action_map(payload, div, result):
                     f"scores completos · {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} jogos", headline="Sem linha", n_amostra=_n_wins + _n_losses)
             else:
                 _line_parts = []
+                _wins_without_game_advantage = sum(float(margin) <= 0 for margin in _wins_margins)
                 for _line in _reference.get("handicap") or ():
                     _wc, _wp, _wm = _settlement(_wins_margins, _line)
                     _lc, _lp, _lm = _settlement(_losses_margins, _line)
                     _total = _n_wins + _n_losses
                     _covered = _wc + _lc
                     _pushes = _wp + _lp
-                    _piece = f"{_line}: cobre {_covered}/{_total}"
+                    _piece = f"{_line}: total {_covered}/{_total}"
                     if _pushes:
                         _piece += f" ({_pushes} push)"
-                    _piece += f" — vitórias {_wc}/{_n_wins}; derrotas {_lc}/{_n_losses}"
+                    if _n_wins:
+                        _piece += f" — vitórias que cobrem {_wc}/{_n_wins}"
+                        _piece += f"; vitórias com ≤0 games {_wins_without_game_advantage}/{_n_wins}"
+                    if _n_losses:
+                        _piece += f"; derrotas que ainda cobrem {_lc}/{_n_losses}"
                     _line_parts.append((_covered, _piece))
                 _best = max(_line_parts, key=lambda item: item[0]) if _line_parts else None
                 _reading = (

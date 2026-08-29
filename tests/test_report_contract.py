@@ -240,9 +240,11 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap — leitura factual (BO5)", html)
-        self.assertIn("vitórias", html)
-        self.assertIn("derrotas", html)
+        self.assertIn("vitórias que cobrem", html)
+        self.assertIn("vitórias com ≤0 games", html)
+        self.assertIn("derrotas que ainda cobrem", html)
         self.assertNotIn("Margem de jogos (bo3)", html)
+        self.assertNotIn("Handicap -3.5/-4.5", html)
 
     def test_reference_only_odds_are_labelled_not_eligible_for_pricing(self):
         payload = {
@@ -463,7 +465,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn('<details class="more report-map action-map"', html)
         self.assertNotIn("<summary>Mapa de Ações", html)
         self.assertIn('class="action-map-body"', html)
-        self.assertIn("Mapa de Ações (6)", html)
+        self.assertIn("Mapa de Ações (5)", html)
         self.assertIn("Moneyline A", html)
         self.assertIn("A perde o 1.º set", html)
         self.assertIn("se chegar ao set decisivo", html)

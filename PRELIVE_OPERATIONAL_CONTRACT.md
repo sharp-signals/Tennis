@@ -57,9 +57,11 @@ Handicap separadamente. No pipeline atual só Moneyline possui odds e pricing
 próprios. Handicap não entra automaticamente até existir uma fonte real de
 odd/linha e uma regra de edge já aprovada; não foi inventada uma regra.
 
-As odds Moneyline disponíveis são preços correntes no instante de captura, não
-odds de abertura. Snapshot e PAPER guardam a fonte, o instante UTC e esse tipo
-de captura. A referência de handicap no relatório é apenas uma tabela interna
+Pricing, edge e PAPER só podem usar um par Moneyline do endpoint dedicado de
+odds, com os dois lados na mesma casa, bookmaker identificável e timestamp do
+fornecedor com no máximo 15 minutos. A odd embutida em *upcoming* é referência
+visual e nunca alimenta esses campos. Snapshot e PAPER guardam fonte, instante
+UTC e esse tipo de captura. A referência de handicap no relatório é apenas uma tabela interna
 de contexto por faixa de Moneyline; nunca é uma linha observada, uma odd, um
 edge ou uma entrada PAPER.
 

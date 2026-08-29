@@ -1044,9 +1044,9 @@ def _build_match_payload(match: dict) -> dict:
 
     # A RapidAPI upcoming é apenas fotografia de referência: não tem
     # bookmaker nem hora do provider e nunca alimenta edge/PAPER. Pricing só
-    # recebe uma cotação recente, identificável e validada pela The Odds API.
+    # recebe um par recente e identificável do endpoint recent-odds.
     reference_odds, reference_odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
-    odds, odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+    odds, odds_provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
     odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)
@@ -1714,7 +1714,6 @@ def run() -> None:
     # usam o eventId da camada Extend. O índice evita uma chamada /event/get
     # por jogo e mantém o consumo de RapidAPI controlado.
     fetch_data.prepare_rapidapi_odds_index(eligible)
-    fetch_data.prepare_the_odds_market_index(eligible)
 
     # Processar os jogos em PARALELO (resolve a lentidão: antes era um loop
     # sequencial que com muitos jogos chegava a ~30 min). Poucos workers para
