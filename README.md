@@ -118,6 +118,9 @@ do dia e GitHub Pages serve `https://sharp-signals.github.io/Tennis`.
 
 O Telegram recebe um resumo por grupos de decisão, com links para cada
 relatório. Mensagens longas são divididas abaixo do limite do Telegram.
+Quando `REPORT_EMAIL_APP_PASSWORD` está configurado, o bot envia também um
+e-mail por run para `fenzobot@gmail.com`, com o mesmo conjunto de links (sem
+anexos).
 
 ## Execução e GitHub Actions
 
@@ -136,7 +139,9 @@ publicar relatórios parciais.
 ### Secrets necessários
 
 `ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
-`TELEGRAM_CHAT_ID` e `TELEGRAPH_ACCESS_TOKEN`.
+`TELEGRAM_CHAT_ID`, `TELEGRAPH_ACCESS_TOKEN` e `REPORT_EMAIL_APP_PASSWORD`.
+O último é uma App Password da conta Gmail `fenzobot@gmail.com`, não a sua
+palavra-passe normal.
 
 ## Desenvolvimento
 

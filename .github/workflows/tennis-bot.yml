@@ -46,6 +46,9 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPORT_EMAIL_TO: fenzobot@gmail.com
+          REPORT_EMAIL_FROM: fenzobot@gmail.com
+          REPORT_EMAIL_APP_PASSWORD: ${{ secrets.REPORT_EMAIL_APP_PASSWORD }}
           TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
           RAPIDAPI_MAX_CALLS_PER_RUN: "2250"
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"

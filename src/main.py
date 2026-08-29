@@ -61,6 +61,7 @@ from .pricing import estimate_market_residual_pricing
 from .prelive_decision import assess_report, build_decision
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
+from .email_reports import send_run_report_email
 from .telegram_summary import decision_row as _decision_row, state_counts as telegram_state_counts
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
 
@@ -1996,6 +1997,14 @@ def run() -> None:
     for i, chunk in enumerate(chunks):
         prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
         send_message(prefix + chunk)
+
+    # Entrega adicional, opcional e independente do Telegram. Se o SMTP
+    # falhar, os relatórios e o resumo Telegram já publicados não são
+    # invalidados; o aviso fica explícito no log da run.
+    try:
+        send_run_report_email(today_str, match_reports)
+    except RuntimeError as exc:
+        print(f"[aviso] {exc}")
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
 
     reports_ok = sum(1 for _, _, url in match_reports if url)
