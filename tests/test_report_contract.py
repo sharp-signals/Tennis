@@ -70,6 +70,18 @@ class ReportStateTests(unittest.TestCase):
         self.assertEqual(actual["n_fatores"], 4)
         self.assertEqual(actual["gap_pp"], 15)
 
+    def test_divergence_normalization_keeps_factual_index_without_market_price(self):
+        raw = {
+            "prob_mercado_a": None, "prob_mercado_b": None,
+            "indice_evidencia_a": 72, "indice_evidencia_b": 28,
+            "indice_favorece": "A", "tipo": "evidence_only",
+            "classificacao": {"nivel": 0}, "n_fatores": 5,
+        }
+        actual = report_html._normalizar_div(raw)
+        self.assertIsNone(actual["market"])
+        self.assertEqual(actual["indice_evidencia"], {"a": 72, "b": 28})
+        self.assertEqual(actual["indice_favorece"], "A")
+
 
 class ReportRenderingTests(unittest.TestCase):
     def test_no_odds_report_is_semantic_safe_and_has_no_market_section(self):
