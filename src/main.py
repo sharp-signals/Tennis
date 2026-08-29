@@ -1042,12 +1042,10 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # Preferimos ``recent-odds`` quando o timestamp do provider é verificável.
-    # Quando esse campo vem congelado, o feed upcoming recolhido nesta própria
-    # execução é um fallback de observação, com proveniência explícita; a
-    # validação pré-live/identidade do evento já ocorreu antes deste ponto.
+    # RapidAPI mantém-se como referência/diagnóstico. Pricing e PAPER recebem
+    # apenas o par The Odds API com bookmaker e timestamp verificáveis.
     reference_odds, reference_odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
-    odds, odds_provenance = fetch_data.fetch_rapidapi_pricing_moneyline_with_provenance(match)
+    odds, odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
     odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)
@@ -1718,6 +1716,7 @@ def run() -> None:
     # usam o eventId da camada Extend. O índice evita uma chamada /event/get
     # por jogo e mantém o consumo de RapidAPI controlado.
     fetch_data.prepare_rapidapi_odds_index(eligible)
+    fetch_data.prepare_the_odds_market_index(eligible)
 
     # A fonte de fixtures e a camada de odds são independentes. Uma resposta
     # de odds com jogadores/estado incompatíveis é evidência para EXCLUIR, não
