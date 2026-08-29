@@ -341,6 +341,20 @@ _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
 
 
+def _odds_capture_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _odds_cache_age_seconds(captured_at_utc: object) -> Optional[int]:
+    try:
+        captured = datetime.fromisoformat(str(captured_at_utc).replace("Z", "+00:00"))
+        if captured.tzinfo is None:
+            captured = captured.replace(tzinfo=timezone.utc)
+        return max(0, int((datetime.now(timezone.utc) - captured.astimezone(timezone.utc)).total_seconds()))
+    except (TypeError, ValueError):
+        return None
+
+
 def _event_match_key(player1_id, player2_id, tournament_id, round_id=None):
     if player1_id is None or player2_id is None or tournament_id is None:
         return None
@@ -396,12 +410,19 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                 resp.raise_for_status()
                 payload = resp.json() or {}
                 page_results = payload.get("matches") or []
+                captured_at_utc = _odds_capture_timestamp()
                 if page == 1:
                     _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
                     print(f"[diag] all-upcoming/{t}: HTTP {resp.status_code}, "
                           f"chaves={_chaves}, total={payload.get('total')}, "
                           f"matches_pag1={len(page_results)}, url={url}")
-                novos = [e for e in page_results if isinstance(e, dict)]
+                novos = []
+                for event in page_results:
+                    if isinstance(event, dict):
+                        event = dict(event)
+                        event["_odds_captured_at_utc"] = captured_at_utc
+                        event["_odds_endpoint"] = url
+                        novos.append(event)
                 tour_events.extend(novos)
                 # parar quando a página vier vazia ou incompleta (última página)
                 if len(page_results) < LIMIT or not novos:
@@ -427,11 +448,17 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
             resp.raise_for_status()
             payload = resp.json() or {}
             page_results = payload.get("matches") or payload.get("results") or []
+            captured_at_utc = _odds_capture_timestamp()
             if page == 1:
                 _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
                 print(f"[diag] upcoming/{tour}: HTTP {resp.status_code}, "
                       f"chaves={_chaves}, matches={len(page_results)}, url={url}")
-            events.extend(e for e in page_results if isinstance(e, dict))
+            for event in page_results:
+                if isinstance(event, dict):
+                    event = dict(event)
+                    event["_odds_captured_at_utc"] = captured_at_utc
+                    event["_odds_endpoint"] = url
+                    events.append(event)
             total = payload.get("total")
             if not page_results or (isinstance(total, int) and len(events) >= total):
                 break
@@ -481,7 +508,11 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
                 continue
             key = _odds_names_key(n1, n2)
             if key:
-                registo = {"n1": n1, "n2": n2, "o1": oa, "o2": ob}
+                registo = {
+                    "n1": n1, "n2": n2, "o1": oa, "o2": ob,
+                    "captured_at_utc": event.get("_odds_captured_at_utc"),
+                    "endpoint": event.get("_odds_endpoint"),
+                }
                 _RAPIDAPI_EMBEDDED_ODDS[f"*:{key}"] = registo
                 n_indexados += 1
         _RAPIDAPI_EVENT_INDEX_READY.add("__ALL__")
@@ -580,14 +611,15 @@ def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
     return None
 
 
-def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
+def fetch_rapidapi_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
     """
     Obtém a Moneyline de um jogo pela RapidAPI. Estratégia robusta:
     1) ODDS EMBUTIDAS na lista upcoming (player.odd) — indexadas por apelidos.
        É a fonte principal: não depende de cruzar eventId (que falhava para
        alguns jogos) nem de uma segunda chamada.
     2) Fallback: endpoint recent-odds/get/{eventId}, se o eventId existir.
-    Devolve {nome_jogador: odd} com os nomes do nosso jogo.
+    Devolve odds e proveniência factual. A hora de captura é sempre a hora
+    do pedido/feed original; um cache hit nunca recebe uma hora nova.
     """
     player_a = (match.get("player1") or {}).get("name", "")
     player_b = (match.get("player2") or {}).get("name", "")
@@ -611,16 +643,34 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
                 odds = {player_a: emb["o1"], player_b: emb["o2"]}
             else:
                 odds = {player_a: emb["o2"], player_b: emb["o1"]}
+            captured_at_utc = emb.get("captured_at_utc")
+            provenance = {
+                "source": "RapidAPI Tennis API / embedded upcoming feed",
+                "endpoint": emb.get("endpoint") or "N/D",
+                "event_id": None,
+                "captured_at_utc": captured_at_utc,
+                "capture_kind": "current_at_capture",
+                "provider_timestamp": None,
+                "bookmaker": None,
+                "from_cache": True,
+                "cache_age_seconds": _odds_cache_age_seconds(captured_at_utc),
+            }
             print(f"[odds] {player_a} vs {player_b} | RapidAPI embutidas | {odds}")
-            return odds
+            return odds, provenance
 
     # --- 2) fallback: recent-odds por eventId ---
     event_id = _rapidapi_event_id_for_match(match)
     if not event_id:
-        return None
+        return None, None
 
     if event_id in _RAPIDAPI_ODDS_CACHE:
-        return _RAPIDAPI_ODDS_CACHE[event_id]
+        cached = _RAPIDAPI_ODDS_CACHE[event_id]
+        if not cached:
+            return None, None
+        provenance = dict(cached["provenance"])
+        provenance["from_cache"] = True
+        provenance["cache_age_seconds"] = _odds_cache_age_seconds(provenance.get("captured_at_utc"))
+        return cached["odds"], provenance
 
     url = f"{RAPIDAPI_EXTEND_BASE}/event/recent-odds/get/{event_id}"
     try:
@@ -630,10 +680,12 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
         market = result.get("Full Time Result") or {}
         if not market:
             _RAPIDAPI_ODDS_CACHE[event_id] = None
-            return None
+            return None, None
 
         best_a = None
         best_b = None
+        best_a_bookmaker = None
+        best_b_bookmaker = None
 
         for bookmaker, quote in market.items():
             if not isinstance(quote, dict):
@@ -645,8 +697,10 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
                 continue
             if od1 > 1 and (best_a is None or od1 > best_a):
                 best_a = od1
+                best_a_bookmaker = bookmaker
             if od2 > 1 and (best_b is None or od2 > best_b):
                 best_b = od2
+                best_b_bookmaker = bookmaker
 
         odds = {}
         if best_a is not None:
@@ -654,16 +708,34 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
         if best_b is not None:
             odds[player_b] = best_b
         odds = odds or None
-        _RAPIDAPI_ODDS_CACHE[event_id] = odds
+        captured_at_utc = _odds_capture_timestamp()
+        provenance = {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "captured_at_utc": captured_at_utc,
+            "capture_kind": "current_at_capture",
+            "provider_timestamp": None,
+            "bookmaker": ({player_a: best_a_bookmaker, player_b: best_b_bookmaker} if odds else None),
+            "from_cache": False,
+            "cache_age_seconds": 0,
+        }
+        _RAPIDAPI_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance} if odds else None
         if odds:
             print(f"[odds] {player_a} vs {player_b} | RapidAPI event {event_id} | {odds}")
         else:
             print(f"[aviso] RapidAPI sem Moneyline para {player_a} vs {player_b} (event {event_id}).")
-        return odds
+        return odds, provenance if odds else None
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter odds RapidAPI para event {event_id}: {exc}")
         _RAPIDAPI_ODDS_CACHE[event_id] = None
-        return None
+        return None, None
+
+
+def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
+    """Compatibilidade: devolve apenas as odds à API chamadora legada."""
+    odds, _provenance = fetch_rapidapi_moneyline_with_provenance(match)
+    return odds
 
 
 # --------------------------------------------------------------------- #

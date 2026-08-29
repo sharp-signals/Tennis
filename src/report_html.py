@@ -2104,12 +2104,20 @@ def _pct_str(v, casas=0):
 # para odds logo acima do par. Antes, uma odd de 2.05 caía já em +2/+2.5,
 # o que era enganador. Agora: par alargado, depois +1.5, e só a partir de
 # ~2.20/2.30 é que aparecem os handicaps mais positivos.
-_HANDICAP_REF_FAVORITO = [
+_HANDICAP_REF_BO5_FAVORITO = [
     # Referências analíticas internas fornecidas para a leitura humana.
     # Não são odds/linhas capturadas nem entram em pricing/PAPER.
     (1.25, ("-5.5", "-6.5")),
     (1.40, ("-3.5", "-4.5")),
     (1.60, ("-2", "-3.5")),
+]
+# Tabela BO3 fornecida pelo BRAIN em 29/08/2026. Os limites são explícitos
+# para impedir que 1.40 caia simultaneamente em duas bandas: 1.40 pertence à
+# segunda banda. Abaixo de 1.30 não há referência BO3 aprovada.
+_HANDICAP_REF_BO3_FAVORITO = [
+    (1.30, 1.40, ("-3.5", "-4")),
+    (1.40, 1.51, ("-3", "-3.5")),
+    (1.51, 1.61, ("-1.5", "-2.5")),
 ]
 # underdog: (limiar_min_odd, handicap). A odd tem de ser >= limiar para o
 # handicap se aplicar. Ordenada do mais positivo para o menos, para
@@ -2125,7 +2133,7 @@ _HANDICAP_REF_UNDERDOG = [
 _HANDICAP_REF_AO_PAR = (1.75, 2.00)
 
 
-def estimate_typical_handicap(odd):
+def estimate_typical_handicap(odd, match_format="bo5"):
     """Devolve a referência genérica de handicap para uma odd Moneyline
     observada, ou None se a odd não permitir estimar (ausente/inválida).
     "ao_par" quando a odd está na zona neutra (sem handicap pré-live que
@@ -2139,19 +2147,40 @@ def estimate_typical_handicap(odd):
         odd = float(odd)
     except (TypeError, ValueError):
         return None
+    fmt = str(match_format or "bo3").casefold()
+    if fmt not in {"bo3", "bo5"}:
+        fmt = "bo3"
+    if fmt == "bo3" and odd < _HANDICAP_REF_AO_PAR[0]:
+        for low, high, handicap in _HANDICAP_REF_BO3_FAVORITO:
+            if low <= odd < high:
+                return {"tipo": "favorito", "handicap": handicap, "moneyline_bucket": (low, high), "format": fmt}
+        return None
     if _HANDICAP_REF_AO_PAR[0] <= odd <= _HANDICAP_REF_AO_PAR[1]:
         return {"tipo": "ao_par", "handicap": None}
     if odd < _HANDICAP_REF_AO_PAR[0]:
-        tabela, tipo = _HANDICAP_REF_FAVORITO, "favorito"
+        tabela, tipo = _HANDICAP_REF_BO5_FAVORITO, "favorito"
         ancora, handicap = min(tabela, key=lambda par: abs(par[0] - odd))
-        return {"tipo": tipo, "handicap": handicap, "odd_ancora": ancora}
+        return {"tipo": tipo, "handicap": handicap, "odd_ancora": ancora, "format": fmt}
     # underdog: primeiro limiar (do mais alto) que a odd atinge
     for limiar, handicap in _HANDICAP_REF_UNDERDOG:
         if odd >= limiar:
-            return {"tipo": "underdog", "handicap": handicap, "odd_ancora": limiar}
+            return {"tipo": "underdog", "handicap": handicap, "odd_ancora": limiar, "format": fmt}
     # odd acima do par mas abaixo do primeiro limiar underdog (2.00):
     # não há handicap positivo que compense -> tratar como neutro
     return {"tipo": "ao_par", "handicap": None}
+
+
+def handicap_coverage_thresholds(reference):
+    """Converte uma zona negativa aprovada nos dois limiares inteiros reais."""
+    if not reference or reference.get("tipo") != "favorito":
+        return []
+    values = []
+    for line in reference.get("handicap") or ():
+        try:
+            values.append(int(math.ceil(abs(float(line)))))
+        except (TypeError, ValueError):
+            return []
+    return sorted(set(values))
 
 
 COLORS_V2 = {
@@ -2666,8 +2695,18 @@ def _mod_header(payload, div, estado):
     odds_meta_parts = []
     if payload.get("odds_source"):
         odds_meta_parts.append(f"Fonte: {_esc(payload['odds_source'])}")
+    if payload.get("odds_endpoint"):
+        odds_meta_parts.append(f"Endpoint: {_esc(payload['odds_endpoint'])}")
     if payload.get("odds_captured_at_utc"):
-        odds_meta_parts.append(f"captadas em {_esc(payload['odds_captured_at_utc'])}")
+        odds_meta_parts.append(f"Captura: {_esc(payload['odds_captured_at_utc'])}")
+    odds_meta_parts.append(f"Provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
+    odds_meta_parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_from_cache") is not None:
+        cache = "hit" if payload.get("odds_from_cache") else "miss"
+        age = payload.get("odds_cache_age_seconds")
+        if isinstance(age, (int, float)):
+            cache += f" ({int(age)} s)"
+        odds_meta_parts.append(f"Cache: {cache}")
     odds_meta = " · ".join(odds_meta_parts)
     # prob mercado
     pa = pb = None
@@ -2797,22 +2836,22 @@ def _mod_system_history(payload):
             return "N/D"
         return f"{raw}{suffix}"
 
+    total_entries = int(paper.get("total_entries") or 0)
+    settled = int(paper.get("settled") or (paper.get("wins") or 0) + (paper.get("losses") or 0))
+    pending = int(paper.get("pending") or max(0, total_entries - settled))
     paper_metrics = (
-        ("Entradas", value(paper.get("total_entries"))),
-        ("W–L", f'{value(paper.get("wins"))}–{value(paper.get("losses"))}'),
-        ("Win rate", value(paper.get("win_rate_pct"), "%")),
+        ("Entradas PAPER", value(total_entries)),
+        ("Liquidadas", value(settled)),
+        ("Pendentes", value(pending)),
+        ("W–L liquidado", f'{value(paper.get("wins"))}–{value(paper.get("losses"))}'),
+        ("Win rate liquidado", value(paper.get("win_rate_pct"), "%")),
         ("Resultado acumulado", value(paper.get("units"), " u")),
-        ("ROI / yield", value(paper.get("roi_pct"), "%")),
-        ("Odd média", value(paper.get("average_odd"))),
-        ("Edge médio", value(paper.get("average_edge_pct"), "%")),
-        ("CLV", value(paper.get("clv_pct"), "%")),
-        ("Drawdown máx.", value(paper.get("max_drawdown_units"), " u")),
+        ("ROI / yield liquidado", value(paper.get("roi_pct"), "%")),
+        ("Odd média das entradas PAPER", value(paper.get("average_odd"))),
     )
-    cells = "".join(
-        f'<div><span>{_esc(label)}</span><b>{_esc(raw)}</b></div>' for label, raw in paper_metrics
-    )
+    cells = "".join(f'<div><span>{_esc(label)}</span><b>{_esc(raw)}</b></div>' for label, raw in paper_metrics)
     markets = _d(paper.get("by_market"))
-    ml = _d(markets.get("Moneyline")); hc = _d(markets.get("Handicap"))
+    ml = _d(markets.get("Moneyline"))
     reconstructed = _d(payload.get("system_accuracy"))
     reconstructed_parts = []
     for label, key in (("Alinhamento", "alinhamento_forte"), ("Divergência", "divergencia")):
@@ -2822,23 +2861,38 @@ def _mod_system_history(payload):
                 f'{label}: {value(cell.get("taxa_pct"), "%")} '
                 f'({value(cell.get("acertos"))}/{value(cell.get("total"))})'
             )
-    reconstructed_text = " · ".join(reconstructed_parts) or "N/D"
+    reconstructed_text = " · ".join(reconstructed_parts)
     def market_line(label, data):
-        if not data:
-            return f"{label}: N/D"
+        if not data or not data.get("total_entries"):
+            return ""
         return (
             f'{label}: {value(data.get("total_entries"))} entradas · '
             f'{value(data.get("wins"))}–{value(data.get("losses"))} · '
             f'{value(data.get("units"), " u")}'
         )
+    paper_status = (
+        "Ainda não há entradas PAPER registadas."
+        if not total_entries else
+        "Há entradas PAPER registadas, mas ainda não existe amostra liquidada."
+        if not settled else ""
+    )
+    paper_market_line = market_line("Moneyline", ml)
+    paper_html = (
+        f'<p>{_esc(paper_status)}</p>' if not total_entries else
+        f'<div class="history-metrics">{cells}</div><div class="history-split">{_esc(paper_status or paper_market_line)}</div>'
+        '<div class="history-split">A odd média é calculada apenas sobre entradas PAPER válidas; não representa backtest/reconstruído.</div>'
+    )
+    reconstructed_html = (
+        f'<p>{_esc(reconstructed_text)}</p>' if reconstructed_text else
+        '<p>Ainda sem amostra reconstruída liquidada suficiente para métricas. '
+        'Este bloco é reconstruído a partir de snapshots resolvidos; não é o PAPER nem histórico REAL.</p>'
+    )
     return (
         '<details class="system-history"><summary>Histórico do sistema'
         '<span class="more-hint">PAPER, reconstruído e REAL sem misturar universos</span></summary>'
-        f'<div class="system-history-body"><h4>PAPER</h4><div class="history-metrics">{cells}</div>'
-        f'<div class="history-split">{_esc(market_line("Moneyline", ml))}<br>{_esc(market_line("Handicap", hc))}</div>'
-        '<div class="history-split">Performance por buckets de edge: N/D — limites ainda não definidos pelo negócio.</div>'
-        f'<h4>Histórico reconstruído / backtest</h4><p>{_esc(reconstructed_text)}</p>'
-        '<h4>REAL</h4><p>N/D — não misturado com PAPER.</p></div></details>'
+        f'<div class="system-history-body"><h4>PAPER</h4>{paper_html}'
+        f'<h4>Reconstruído / backtest</h4>{reconstructed_html}'
+        '<h4>REAL</h4><p>Ainda sem histórico REAL. Não é misturado com PAPER nem com reconstruído.</p></div></details>'
     )
 def _mod_fatores(payload, div):
     """Módulo 3: os 4 fatores decisivos em chips."""
@@ -4007,6 +4061,7 @@ def _mod_action_map(payload, div, result):
     fav = div.get("favorecido") if signal_type == "direcao" else div.get("indice_favorece")
     fav_side = "a" if fav == a else "b" if fav == b else None
     market = _d(payload.get("market_odds_decimal"))
+    match_format = str(payload.get("match_format") or "bo3").casefold()
 
     def observed_odd(side):
         name = names.get(side)
@@ -4103,13 +4158,13 @@ def _mod_action_map(payload, div, result):
     # espaço. Se não acrescenta, não aparece.
     if fav_side:
         _odd_lado_valor = observed_odd(fav_side)
-        _ref_handicap = estimate_typical_handicap(_odd_lado_valor)
+        _ref_handicap = estimate_typical_handicap(_odd_lado_valor, match_format)
         if _ref_handicap and _ref_handicap["tipo"] != "ao_par":
             _h_baixo, _h_alto = _ref_handicap["handicap"]
             add("Referência de handicap", f"{names[fav_side]}",
-                "Mesmo lado do sinal. O mercado costuma usar esta linha para este preço; "
-                "não é um candidato de valor calculado para handicap.",
-                "Estimativa genérica de mercado, não calculada por nós",
+                "Zona de comparação interna para o mesmo lado do sinal; não é uma linha de bookmaker, "
+                "nem um candidato de valor para handicap.",
+                "Referência analítica interna",
                 headline=f"Handicap {_h_baixo}/{_h_alto}")
 
     # NOVO (21/08/2026, a pedido): odd justa = 1/taxa, para cada cenário
@@ -4162,7 +4217,7 @@ def _mod_action_map(payload, div, result):
             # handicap se o histórico justificar"): antes usava um valor
             # fixo (+2.5/+3.5) sem ligação aos dados; agora usa a odd
             # justa já calculada para indicar a linha típica real.
-            _ref_hc_cb = estimate_typical_handicap(_odd_cb) if _odd_cb else None
+            _ref_hc_cb = estimate_typical_handicap(_odd_cb, match_format) if _odd_cb else None
             if _ref_hc_cb and _ref_hc_cb["tipo"] != "ao_par":
                 _hb_cb, _ha_cb = _ref_hc_cb["handicap"]
                 add("Cenário ao vivo", f"Alternativa: handicap para {names[side]}",
@@ -4193,7 +4248,7 @@ def _mod_action_map(payload, div, result):
         if _odd_justa_real is None:
             continue
         if _odd_justa_real < _ODD_AO_VIVO_TIPICA_RANGE[0]:
-            _ref_hc_esp = estimate_typical_handicap(_odd_justa_real)
+            _ref_hc_esp = estimate_typical_handicap(_odd_justa_real, match_format)
             _hc_txt = ""
             if _ref_hc_esp and _ref_hc_esp["tipo"] != "ao_par":
                 _hb, _ha = _ref_hc_esp["handicap"]
@@ -4290,27 +4345,35 @@ def _mod_action_map(payload, div, result):
 
         # Perfil factual novo: formato da partida atual, nunca uma odd/linha
         # de bookmaker. Mostra sempre N para impedir percentagens frágeis.
-        _fmt = str(payload.get("match_format") or "bo3").casefold()
+        _fmt = match_format
         _profile = _d(_d(payload.get(f"game_differential_{fav_side}")).get(_fmt))
         _wins = _d(_profile.get("wins"))
         _losses = _d(_profile.get("losses"))
-        if _wins.get("n"):
-            _n = int(_wins["n"])
-            _cover = _d(_wins.get("cover_ge"))
-            _threshold = 6 if _fmt == "bo5" else 4
-            _covered = int(_cover.get(str(_threshold), 0))
-            _pct_cover = 100 * _covered / _n
-            _loss_note = ""
-            if _losses.get("n"):
-                _loss_note = (
-                    f" Em {_losses['n']} derrotas analisáveis, teve diferencial positivo em "
-                    f"{_losses.get('positive', 0)} caso(s)."
-                )
+        if _wins.get("n") or _losses.get("n"):
+            _reference = estimate_typical_handicap(observed_odd(fav_side), _fmt)
+            _thresholds = handicap_coverage_thresholds(_reference)
+            _n_wins = int(_wins.get("n") or 0)
+            _n_losses = int(_losses.get("n") or 0)
+            _coverage_parts = []
+            if _n_wins and _thresholds:
+                _cover = _d(_wins.get("cover_ge"))
+                for _threshold in _thresholds:
+                    _covered = int(_cover.get(str(_threshold), 0))
+                    _coverage_parts.append(f"≥ +{_threshold}: {_covered}/{_n_wins} ({100 * _covered / _n_wins:.0f}%)")
+            _coverage_text = "; ".join(_coverage_parts) or "Sem zona interna de handicap aplicável para esta odd/formato."
+            _wins_text = (
+                f"Vitórias: + {int(_wins.get('positive', 0))}, 0 {int(_wins.get('zero', 0))}, − {int(_wins.get('negative', 0))} "
+                f"(n={_n_wins})."
+            )
+            _losses_text = (
+                f"Derrotas: + {int(_losses.get('positive', 0))}, 0 {int(_losses.get('zero', 0))}, − {int(_losses.get('negative', 0))} "
+                f"(n={_n_losses})."
+            )
+            _headline = _coverage_parts[0] if _coverage_parts else f"n={_n_wins + _n_losses}"
             add(f"Margem factual ({_fmt.upper()})", f"{names[fav_side]}",
-                f"Em {_n} vitórias {_fmt.upper()} analisáveis, terminou com diferencial de games ≥ +{_threshold} em {_covered} casos ({_pct_cover:.0f}%). "
-                f"Mediana: {_wins.get('median', 'N/D'):+g}; média: {_wins.get('mean', 'N/D'):+g}. "
-                + _loss_note + " Contexto histórico, não linha real nem garantia de cobertura.",
-                f"scores completos · n={_n}", headline=f"≥ +{_threshold}: {_pct_cover:.0f}%", n_amostra=_n)
+                f"Cobertura histórica nas duas fronteiras da zona interna: {_coverage_text}. "
+                f"{_wins_text} {_losses_text} Contexto factual por scores completos; não é linha real, odd, edge nem garantia de cobertura.",
+                f"scores completos · formato {_fmt.upper()}", headline=_headline, n_amostra=_n_wins + _n_losses)
 
         # Cruzamento opcional: só é mostrado quando a odd histórica existe no
         # dataset e a odd atual cabe numa das faixas observadas. Não cria linha
@@ -4337,15 +4400,6 @@ def _mod_action_map(payload, div, result):
                         f"colunas históricas: {'/'.join(_historical_ml.get('odds_columns', ())) }",
                         headline=f"n={_n}", n_amostra=_n)
                     break
-
-    # Serviços fortes e equilibrados sugerem observação, não previsão certa.
-    pa, pb = _d(payload.get("pressure_profile_a")), _d(payload.get("pressure_profile_b"))
-    serve_a, serve_b = pa.get("first_serve_won_pct"), pb.get("first_serve_won_pct")
-    if (isinstance(serve_a, (int, float)) and isinstance(serve_b, (int, float))
-            and min(serve_a, serve_b) >= 65 and abs(serve_a - serve_b) <= 5):
-        add("Mercados ao vivo", "Tie-break / total acima · observar",
-            "Se ambos confirmarem elevada proteção do serviço nos primeiros jogos, acompanhar linhas de tie-break e total acima. Sem confirmação ao vivo, o equilíbrio histórico não basta.",
-            "Pressão de serviço")
 
     summary = result.get("verdict") or result.get("executive_summary")
     summary_html = f'<div class="action-summary">{_esc(summary)}</div>' if summary else ""
@@ -4571,8 +4625,20 @@ def _mod_market_provenance(payload):
     parts = []
     if payload.get("odds_source"):
         parts.append(f"Fonte: {_esc(payload['odds_source'])}")
+    if payload.get("odds_endpoint"):
+        parts.append(f"Endpoint: {_esc(payload['odds_endpoint'])}")
+    if payload.get("odds_event_id"):
+        parts.append(f"Evento: {_esc(payload['odds_event_id'])}")
     if payload.get("odds_captured_at_utc"):
-        parts.append(f"captadas em {_esc(payload['odds_captured_at_utc'])}")
+        parts.append(f"Captura Sharp Signals: {_esc(payload['odds_captured_at_utc'])}")
+    parts.append(f"Timestamp do provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
+    parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_from_cache") is not None:
+        cache = "hit" if payload.get("odds_from_cache") else "miss"
+        age = payload.get("odds_cache_age_seconds")
+        if isinstance(age, (int, float)):
+            cache += f" ({int(age)} s)"
+        parts.append(f"Cache: {cache}")
     return f'<div class="mh-odds-meta">{" Â· ".join(parts)}</div>' if parts else ""
 
 
@@ -4763,11 +4829,12 @@ def _mod_handicap_reference_header(payload):
     if not valid:
         return ""
     name, odd = min(valid, key=lambda pair: pair[1])
-    ref = estimate_typical_handicap(odd)
+    fmt = str(payload.get("match_format") or "bo3").casefold()
+    ref = estimate_typical_handicap(odd, fmt)
     if not ref or ref.get("tipo") == "ao_par":
         return ""
     low, high = ref["handicap"]
-    fmt = str(payload.get("match_format") or "bo3").upper()
+    fmt = fmt.upper()
     return (f'<div class="data-quality" style="border-color:var(--line);border-left-color:var(--a)">'
             f'<div class="data-quality-title">Referência analítica de handicap</div>'
             f'<div>Moneyline pré-live capturada: <b>{_esc(name)} @ {float(odd):.2f}</b> · '

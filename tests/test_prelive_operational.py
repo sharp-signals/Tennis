@@ -158,14 +158,19 @@ class PreliveOperationalContractTests(unittest.TestCase):
         payload = self.payload()
         payload.update({
             "odds_source": "RapidAPI Moneyline",
+            "odds_endpoint": "https://example.test/odds",
+            "odds_event_id": "123",
             "odds_captured_at_utc": "2026-08-28T09:59:00+00:00",
             "odds_capture_kind": "current_at_capture",
+            "odds_bookmaker": "Book A",
         })
         snapshot = calibration_store.build_snapshot(payload, {})
         self.assertEqual(snapshot["odds_provenance"]["captured_at_utc"], payload["odds_captured_at_utc"])
+        self.assertEqual(snapshot["odds_provenance"]["endpoint"], payload["odds_endpoint"])
         payload["prelive_decision"] = self.decision(0.1)
         entry = paper_trading.build_entries(payload)[0]
         self.assertEqual(entry["pregame"]["odds_provenance"]["capture_kind"], "current_at_capture")
+        self.assertEqual(entry["pregame"]["odds_provenance"]["bookmaker"], "Book A")
 
     def test_later_data_does_not_mutate_original_paper_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:

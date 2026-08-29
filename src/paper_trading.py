@@ -100,8 +100,14 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             "market_odds_decimal": copy.deepcopy(payload.get("market_odds_decimal")),
             "odds_provenance": {
                 "source": payload.get("odds_source"),
+                "endpoint": payload.get("odds_endpoint"),
+                "event_id": payload.get("odds_event_id"),
                 "captured_at_utc": payload.get("odds_captured_at_utc"),
                 "capture_kind": payload.get("odds_capture_kind"),
+                "provider_timestamp": payload.get("odds_provider_timestamp"),
+                "bookmaker": payload.get("odds_bookmaker"),
+                "from_cache": payload.get("odds_from_cache"),
+                "cache_age_seconds": payload.get("odds_cache_age_seconds"),
             },
         }
         entries.append({

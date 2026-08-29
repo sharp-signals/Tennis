@@ -204,7 +204,35 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
         self.assertIn("Fonte: RapidAPI Moneyline", html)
-        self.assertIn("captadas em 2026-08-16T09:30:00+00:00", html)
+        self.assertIn("Captura: 2026-08-16T09:30:00+00:00", html)
+        self.assertIn("Timestamp do provider: N/D", html)
+
+    def test_handicap_reference_is_format_aware_and_uses_both_boundaries(self):
+        bo3 = report_html.estimate_typical_handicap(1.40, "bo3")
+        bo5 = report_html.estimate_typical_handicap(1.40, "bo5")
+        self.assertEqual(bo3["handicap"], ("-3", "-3.5"))
+        self.assertEqual(bo5["handicap"], ("-3.5", "-4.5"))
+        self.assertEqual(report_html.handicap_coverage_thresholds(bo3), [3, 4])
+        self.assertEqual(report_html.handicap_coverage_thresholds(bo5), [4, 5])
+        self.assertIsNone(report_html.estimate_typical_handicap(1.25, "bo3"))
+
+    def test_action_map_excludes_tiebreak_suggestion_but_keeps_data_elsewhere(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.40, "B": 3.0},
+            "match_format": "bo3",
+            "pressure_profile_a": {"first_serve_won_pct": 68},
+            "pressure_profile_b": {"first_serve_won_pct": 67},
+        }
+        div = {"market": {"a": 68, "b": 32}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertNotIn("Tie-break / total acima", html)
+
+    def test_system_history_keeps_universes_separate_without_empty_market_rows(self):
+        html = report_html._mod_system_history({"paper_history": {"PAPER": {"total_entries": 0}}})
+        self.assertIn("Ainda não há entradas PAPER registadas.", html)
+        self.assertIn("Ainda sem histórico REAL.", html)
+        self.assertNotIn("Handicap: N/D", html)
 
     def test_calibrated_odds_range_is_demoted_behind_primary_pricing(self):
         payload = {

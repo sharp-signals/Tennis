@@ -8,6 +8,22 @@ from src import fetch_data, main
 
 
 class MatchInputTests(unittest.TestCase):
+    def test_embedded_odds_keep_original_capture_provenance(self):
+        match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "wta"}
+        key = fetch_data._odds_names_key("Alice Player", "Bea Player")
+        embedded = {
+            f"*:{key}": {
+                "n1": "Alice Player", "n2": "Bea Player", "o1": 1.44, "o2": 2.90,
+                "captured_at_utc": "2026-08-29T10:00:00+00:00", "endpoint": "https://provider.test/upcoming",
+            }
+        }
+        with patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
+        self.assertEqual(odds["Alice Player"], 1.44)
+        self.assertEqual(provenance["captured_at_utc"], "2026-08-29T10:00:00+00:00")
+        self.assertEqual(provenance["endpoint"], "https://provider.test/upcoming")
+        self.assertTrue(provenance["from_cache"])
+
     def test_tournament_info_is_fetched_by_frequency_and_filters_unknown_tiers(self):
         matches = [
             {"id": 1, "tournamentId": 20, "_tour": "atp"},
