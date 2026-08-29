@@ -70,6 +70,23 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(naive.tzinfo, timezone.utc)
         self.assertEqual(explicit.utcoffset().total_seconds(), 7200)
 
+    def test_match_format_uses_bo5_only_for_atp_grand_slams(self):
+        self.assertEqual(main._match_format({"_tour": "atp", "tier": "Grand Slam"}), "bo5")
+        self.assertEqual(main._match_format({"_tour": "wta", "tier": "Grand Slam"}), "bo3")
+        self.assertEqual(main._match_format({"best_of": "5", "_tour": "wta"}), "bo5")
+
+    def test_prelive_filter_excludes_started_or_scored_fixtures(self):
+        fixtures = [
+            {"id": 1, "status": "scheduled"},
+            {"id": 2, "live": True},
+            {"id": 3, "status": "suspended", "score": "6-4 2-1"},
+            {"id": 4, "status": "interrupted", "result": "6-4 2-1"},
+            {"id": 5, "status": "resumed"},
+            {"id": 6, "status": "completed"},
+            {"id": 7, "state": "unknown", "score": "6-4"},
+        ]
+        self.assertEqual([item["id"] for item in main._filter_prelive_matches(fixtures)], [1])
+
 
 class DeterministicStatisticTests(unittest.TestCase):
     def test_h2h_normalizes_surface_family(self):
@@ -120,6 +137,43 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(fetch_data._count_completed_sets("6-4 3-2 RET"), 0)
         self.assertEqual(fetch_data._count_completed_sets("W/O"), 0)
         self.assertEqual(fetch_data._count_completed_sets(None), 0)
+
+    def test_game_differential_is_factual_and_separates_bo3_bo5(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "best_of": "3", "score": "6-0 0-6 7-6(4)"},
+            {"winner_name": "C", "loser_name": "A", "best_of": 3, "score": "6-4 6-4"},
+            {"winner_name": "A", "loser_name": "D", "best_of": 5, "score": "6-4 6-4 6-4"},
+            {"winner_name": "A", "loser_name": "E", "best_of": 3, "score": "6-4 2-1 RET"},
+        ])
+        profile = fetch_data.compute_game_differential_profile(history, "A")
+        self.assertEqual(profile["bo3"]["wins"]["n"], 1)
+        self.assertEqual(profile["bo3"]["wins"]["mean"], 1.0)
+        self.assertEqual(profile["bo3"]["losses"]["mean"], -4.0)
+        self.assertEqual(profile["bo5"]["wins"]["cover_ge"]["6"], 1)
+
+    def test_game_differential_accepts_wta_set_columns_and_ignores_retirements(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "best_of": 3,
+             "W1": 6, "L1": 4, "W2": 6, "L2": 3, "B365W": 1.32, "B365L": 3.4},
+            {"winner_name": "C", "loser_name": "A", "best_of": 3,
+             "W1": 6, "L1": 2, "W2": 2, "L2": 1, "B365W": 1.40, "B365L": 3.0},
+        ])
+        profile = fetch_data.compute_game_differential_profile(history, "A")
+        odds = fetch_data.compute_historical_moneyline_margins(history, "A")
+
+        self.assertEqual(profile["bo3"]["wins"]["mean"], 5.0)
+        self.assertEqual(profile["bo3"]["losses"]["n"], 0)
+        self.assertEqual(odds["odds_columns"], ("B365W", "B365L"))
+        self.assertEqual(odds["buckets"]["1.31-1.40"]["n"], 1)
+
+    def test_game_differential_keeps_a_positive_margin_in_a_loss(self):
+        history = pd.DataFrame([
+            {"winner_name": "B", "loser_name": "A", "best_of": 3,
+             "score": "7-6 0-6 7-6"},
+        ])
+        profile = fetch_data.compute_game_differential_profile(history, "A")
+        self.assertEqual(profile["bo3"]["losses"]["positive"], 1)
+        self.assertEqual(profile["bo3"]["losses"]["mean"], 4.0)
 
     def test_recent_stats_are_normalized_and_require_first_serve_metric(self):
         stats = {
