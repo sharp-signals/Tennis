@@ -98,6 +98,11 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             ),
             "decision_contract_version": decision.get("contract_version"),
             "market_odds_decimal": copy.deepcopy(payload.get("market_odds_decimal")),
+            "odds_provenance": {
+                "source": payload.get("odds_source"),
+                "captured_at_utc": payload.get("odds_captured_at_utc"),
+                "capture_kind": payload.get("odds_capture_kind"),
+            },
         }
         entries.append({
             "key": entry_key,

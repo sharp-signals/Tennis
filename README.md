@@ -96,7 +96,8 @@ que por si só crie uma entrada PAPER.
 ## Calibração e PAPER
 
 Cada run publicável guarda a primeira fotografia pré-jogo em
-`data/calibration_snapshots.json`: identidade, odds, métricas, pricing,
+`data/calibration_snapshots.json`: identidade, odds capturadas (fonte, UTC e
+tipo de captura), métricas, pricing,
 configuração/fingerprint e resultado da análise. Repetições do mesmo jogo não
 substituem essa fotografia.
 

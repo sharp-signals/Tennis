@@ -64,6 +64,11 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
         "player_a": {"id": payload.get("player_a_id"), "name": payload.get("player_a")},
         "player_b": {"id": payload.get("player_b_id"), "name": payload.get("player_b")},
         "market_odds_decimal": payload.get("market_odds_decimal"),
+        "odds_provenance": {
+            "source": payload.get("odds_source"),
+            "captured_at_utc": payload.get("odds_captured_at_utc"),
+            "capture_kind": payload.get("odds_capture_kind"),
+        },
         # Congelado antes do encontro, juntamente com a configuracao/hash que
         # o produziu. Uma repeticao nunca substitui esta primeira estimativa.
         "pricing": payload.get("pricing"),

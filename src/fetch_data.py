@@ -37,6 +37,7 @@ import difflib
 import io
 import json
 import os
+import re
 import threading
 import time
 import unicodedata
@@ -1736,6 +1737,149 @@ def _analyse_set1_comeback(history: pd.DataFrame, player: str) -> tuple[Optional
         return None, diagnostics
     diagnostics["reason"] = None
     return result, diagnostics
+
+
+def _game_differential_from_score(score: object, winner_is_player: bool) -> Optional[int]:
+    """Reconstrói uma margem só de scores completos convencionais.
+
+    Retires, W/O, match tie-breaks e tokens parciais são deliberadamente N/D:
+    uma margem reconstruída parcialmente não é uma métrica factual segura.
+    """
+    if not isinstance(score, str) or not score.strip():
+        return None
+    raw = score.upper().strip()
+    if any(marker in raw for marker in ("RET", "W/O", " WO", "DEF", "ABD")):
+        return None
+    games_w = games_l = sets = 0
+    for token in raw.split():
+        match = re.fullmatch(r"(\d+)-(\d+)(?:\([^)]*\))?", token)
+        if not match:
+            return None
+        left, right = int(match.group(1)), int(match.group(2))
+        # 1-0 é normalmente super/match-tiebreak no dataset, não um set de games.
+        if (left, right) == (1, 0) or max(left, right) < 6 or abs(left - right) < 2 and max(left, right) < 7:
+            return None
+        games_w += left; games_l += right; sets += 1
+    if not sets:
+        return None
+    margin = games_w - games_l
+    return margin if winner_is_player else -margin
+
+
+def _game_differential_from_row(row: pd.Series, winner_is_player: bool) -> Optional[int]:
+    """Lê score combinado ou colunas W1/L1 sem completar dados em falta."""
+    score = row.get("score")
+    if isinstance(score, str) and score.strip():
+        return _game_differential_from_score(score, winner_is_player)
+
+    try:
+        best_of = int(float(row.get("best_of")))
+    except (TypeError, ValueError):
+        best_of = 3
+    required_sets = 3 if best_of == 5 else 2
+    games_w = games_l = parsed_sets = 0
+    for number in range(1, 6):
+        winner_games, loser_games = row.get(f"W{number}"), row.get(f"L{number}")
+        if pd.isna(winner_games) and pd.isna(loser_games):
+            continue
+        try:
+            left, right = int(float(winner_games)), int(float(loser_games))
+        except (TypeError, ValueError):
+            return None
+        if (left, right) == (1, 0) or max(left, right) < 6 or (abs(left - right) < 2 and max(left, right) < 7):
+            return None
+        games_w += left
+        games_l += right
+        parsed_sets += 1
+    if parsed_sets < required_sets:
+        return None
+    margin = games_w - games_l
+    return margin if winner_is_player else -margin
+
+
+def compute_game_differential_profile(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """Perfil descritivo de margem de games, separado por BO3/BO5.
+
+    Não usa odds reconstruídas nem altera o Fenzobot; é exclusivamente
+    contexto histórico factual para o relatório de handicap.
+    """
+    if history.empty or "best_of" not in history.columns:
+        return None
+    resolved = resolve_player_name(history, player)
+    has_set_columns = {"W1", "L1"}.issubset(history.columns)
+    if resolved is None or ("score" not in history.columns and not has_set_columns):
+        return None
+    played = history[(history["winner_name"] == resolved) | (history["loser_name"] == resolved)].copy()
+    played["_bo"] = pd.to_numeric(played["best_of"], errors="coerce")
+    result = {}
+    for bo, label in ((3, "bo3"), (5, "bo5")):
+        wins, losses = [], []
+        for _, row in played[played["_bo"] == bo].iterrows():
+            won = row.get("winner_name") == resolved
+            margin = _game_differential_from_row(row, won)
+            if margin is not None:
+                (wins if won else losses).append(margin)
+        if not wins and not losses:
+            continue
+        def describe(values):
+            if not values:
+                return {"n": 0}
+            ordered = sorted(values)
+            return {"n": len(values), "mean": round(sum(values) / len(values), 2),
+                    "median": float(pd.Series(values).median()),
+                    "positive": sum(x > 0 for x in values), "zero": sum(x == 0 for x in values),
+                    "negative": sum(x < 0 for x in values),
+                    "cover_ge": {str(n): sum(x >= n for x in values) for n in range(2, 8)}}
+        result[label] = {"wins": describe(wins), "losses": describe(losses),
+                         "analyzable_matches": len(wins) + len(losses)}
+    return result or None
+
+
+def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> Optional[dict]:
+    """Cruza odds históricas realmente presentes com margem factual.
+
+    Aceita apenas pares de odds de vencedor/perdedor já existentes no dataset;
+    não reconstrói preços nem produz pricing.
+    """
+    has_set_columns = {"W1", "L1"}.issubset(history.columns)
+    if history.empty or ("score" not in history.columns and not has_set_columns):
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    pairs = [("B365W", "B365L"), ("AvgW", "AvgL"), ("PSW", "PSL")]
+    cols = next((pair for pair in pairs if set(pair).issubset(history.columns)), None)
+    if not cols:
+        return None
+    buckets = ((1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50), (1.51, 1.60))
+    output = {f"{lo:.2f}-{hi:.2f}": {"n": 0, "wins": 0, "margins": []} for lo, hi in buckets}
+    for _, row in history.iterrows():
+        won = row.get("winner_name") == resolved
+        lost = row.get("loser_name") == resolved
+        if not (won or lost):
+            continue
+        try:
+            odd = float(row.get(cols[0] if won else cols[1]))
+        except (TypeError, ValueError):
+            continue
+        margin = _game_differential_from_row(row, won)
+        if margin is None:
+            continue
+        for lo, hi in buckets:
+            if lo <= odd <= hi:
+                cell = output[f"{lo:.2f}-{hi:.2f}"]
+                cell["n"] += 1; cell["wins"] += int(won); cell["margins"].append(margin)
+                break
+    result = {}
+    for label, cell in output.items():
+        if not cell["n"]:
+            continue
+        values = cell.pop("margins")
+        cell["win_rate_pct"] = round(100 * cell["wins"] / cell["n"], 1)
+        cell["mean_game_diff"] = round(sum(values) / len(values), 2)
+        cell["cover_ge"] = {str(n): sum(v >= n for v in values) for n in range(3, 8)}
+        result[label] = cell
+    return {"odds_columns": cols, "buckets": result} if result else None
 
 
 def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[dict]:

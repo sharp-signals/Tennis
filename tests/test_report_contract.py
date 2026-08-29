@@ -4,6 +4,15 @@ from src import report_html
 
 
 class ReportStateTests(unittest.TestCase):
+    def test_handicap_reference_header_is_explicitly_internal(self):
+        html = report_html._mod_handicap_reference_header({
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.24, "B": 4.2},
+        })
+        self.assertIn("Moneyline pré-live capturada", html)
+        self.assertIn("tabela analítica interna", html)
+        self.assertIn("BO5", html)
+
     def test_percentage_normalization_accepts_fraction_percent_and_invalid(self):
         self.assertEqual(report_html._pct(0.68), 68.0)
         self.assertEqual(report_html._pct(68), 68.0)

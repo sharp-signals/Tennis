@@ -187,6 +187,19 @@ def _parse_utc(date_str: str) -> datetime:
     return parsed
 
 
+def _match_format(match: dict) -> str:
+    """Formato pré-live conhecido; ATP Grand Slam é BO5, WTA mantém BO3."""
+    explicit = match.get("best_of") or match.get("bestOf")
+    try:
+        if int(explicit) in (3, 5):
+            return f"bo{int(explicit)}"
+    except (TypeError, ValueError):
+        pass
+    if str(match.get("_tour", "")).casefold() == "atp" and "grand slam" in str(match.get("tier", "")).casefold():
+        return "bo5"
+    return "bo3"
+
+
 def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
     now = datetime.now(timezone.utc)
     window_start = now + timedelta(hours=LOOKAHEAD_HOURS_MIN)
@@ -200,6 +213,51 @@ def _filter_matches_in_window(matches: list[dict]) -> list[dict]:
             continue
         if window_start <= start <= window_end:
             eligible.append(m)
+    return eligible
+
+
+_PRELIVE_STARTED_STATUSES = {
+    "live", "in progress", "in_play", "in-play", "suspended", "interrupted",
+    "resumed", "completed", "finished", "cancelled", "canceled", "walkover",
+}
+
+
+def _prelive_start_evidence(match: dict) -> tuple[bool, dict]:
+    """Devolve evidência factual de que uma fixture já não é pré-live.
+
+    O fornecedor nem sempre expõe o mesmo schema nos feeds de fixtures. Não
+    inferimos estados ausentes: só excluímos estados explicitamente terminais/
+    in-play, o flag ``live`` e resultados/score já presentes. Um estado
+    desconhecido sem score continua elegível; estado desconhecido com score é
+    excluído por fail-safe.
+    """
+    evidence = {}
+    for key in ("status", "state", "result_type", "match_status"):
+        value = match.get(key)
+        if value is not None and str(value).strip().casefold() in _PRELIVE_STARTED_STATUSES:
+            evidence[key] = value
+            return True, evidence
+    live = match.get("live")
+    if live not in (None, False, 0, "0", "false", "False", ""):
+        evidence["live"] = live
+        return True, evidence
+    for key in ("score", "result", "timeGame", "current_score"):
+        value = match.get(key)
+        if value not in (None, "", [], {}):
+            evidence[key] = value
+    return bool(evidence), evidence
+
+
+def _filter_prelive_matches(matches: list[dict]) -> list[dict]:
+    """Exclui jogos com evidência de início antes de qualquer análise."""
+    eligible = []
+    for match in matches:
+        started, evidence = _prelive_start_evidence(match)
+        if started:
+            print("[prelive] PRELIVE_EXCLUDED_ALREADY_STARTED "
+                  f"id={match.get('id')} evidence={evidence}")
+            continue
+        eligible.append(match)
     return eligible
 
 
@@ -1205,6 +1263,10 @@ def _build_match_payload(match: dict) -> dict:
     # (bo3), para avaliar cobertura de handicap negativo mesmo em derrota.
     game_margin_a = fetch_data.compute_game_margin_stats(history, player_a)
     game_margin_b = fetch_data.compute_game_margin_stats(history, player_b)
+    game_differential_a = fetch_data.compute_game_differential_profile(history, player_a)
+    game_differential_b = fetch_data.compute_game_differential_profile(history, player_b)
+    historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(history, player_a)
+    historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(history, player_b)
     # NOVO (22/08/2026, a pedido): efeito de mudança de piso — jogador que
     # vem de outra superfície e entra fresco no piso de hoje.
     surface_transition_a = fetch_data.compute_surface_transition(history, player_a, surface)
@@ -1356,11 +1418,13 @@ def _build_match_payload(match: dict) -> dict:
         "tournament": tournament,
         "tier": match["tier"],
         "tour": tour,  # NOVO (14/08/2026): útil para decidir bo3/bo5 (recuperação após set1) e outras afinações por tour
+        "match_format": _match_format(match),
         "surface": surface,
         "commence_time_utc": start.isoformat(),
         "market_odds_decimal": odds,  # None se a RapidAPI não tiver Moneyline para o evento
         "odds_source": "RapidAPI Moneyline" if odds else None,
         "odds_captured_at_utc": odds_captured_at_utc,
+        "odds_capture_kind": "current_at_capture" if odds else None,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
         "h2h_history": h2h_history,
@@ -1410,6 +1474,10 @@ def _build_match_payload(match: dict) -> dict:
         "set1_comeback_stats_b": set1_comeback_b,
         "game_margin_a": game_margin_a,  # NOVO: margem média de jogos ganhos/perdidos (bo3)
         "game_margin_b": game_margin_b,
+        "game_differential_a": game_differential_a,
+        "game_differential_b": game_differential_b,
+        "historical_moneyline_margins_a": historical_moneyline_margins_a,
+        "historical_moneyline_margins_b": historical_moneyline_margins_b,
         "surface_transition_a": surface_transition_a,  # NOVO: efeito mudança de piso
         "surface_transition_b": surface_transition_b,
         "tournament_record_a": tournament_record_a,  # NOVO: histórico neste torneio
@@ -1613,6 +1681,7 @@ def run() -> None:
     print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
 
     windowed = _filter_matches_in_window(raw_matches)
+    windowed = _filter_prelive_matches(windowed)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
     run_metrics.update_context(eligible=len(eligible), phase="filtering")
     fetch_data.flush_tournament_cache()
