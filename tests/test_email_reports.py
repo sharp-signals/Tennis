@@ -41,6 +41,9 @@ class EmailReportsTests(unittest.TestCase):
         message = client.send_message.call_args.args[0]
         self.assertEqual(message["To"], "fenzobot@gmail.com")
         self.assertIn("https://example.test/report.html", message.get_body(preferencelist=("plain",)).get_content())
+        html_body = message.get_body(preferencelist=("html",)).get_content()
+        self.assertIn("https://sharp-signals.github.io/Tennis/assets/fenzo-logo.png", html_body)
+        self.assertIn("Fenzo Tennis Intelligence", html_body)
 
     def test_smtp_failure_does_not_expose_app_password(self):
         password = "secret-app-password"

@@ -120,7 +120,8 @@ O Telegram recebe um resumo por grupos de decisão, com links para cada
 relatório. Mensagens longas são divididas abaixo do limite do Telegram.
 Quando `REPORT_EMAIL_APP_PASSWORD` está configurado, o bot envia também um
 e-mail por run para `fenzobot@gmail.com`, com o mesmo conjunto de links (sem
-anexos).
+anexos). O e-mail tem rodapé Fenzo, logo servido pelo GitHub Pages e aviso de
+uso analítico responsável.
 
 ## Execução e GitHub Actions
 

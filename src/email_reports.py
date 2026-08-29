@@ -9,6 +9,7 @@ import ssl
 from email.message import EmailMessage
 from typing import Iterable
 
+from .config import SITE_BASE_URL
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
@@ -58,17 +59,33 @@ def send_run_report_email(today: str, match_reports: Iterable[tuple[dict, dict, 
     if not rows:
         plain_lines.append("Não foram gerados relatórios nesta run.")
         html_rows.append("<li>Não foram gerados relatórios nesta run.</li>")
+    plain_lines.extend([
+        "",
+        "Fenzo Tennis Intelligence",
+        "Análise pré-live baseada em dados e contexto de mercado.",
+        "Informação analítica; não constitui recomendação de aposta nem garantia de resultado.",
+    ])
 
     message = EmailMessage()
     message["Subject"] = f"Fenzobot — Relatórios pré-live {today}"
     message["From"] = sender
     message["To"] = recipient
     message.set_content("\n".join(plain_lines))
+    logo_url = f"{SITE_BASE_URL}/assets/fenzo-logo.png"
     message.add_alternative(
-        "<html><body><h2>Relatórios pré-live Fenzobot</h2>"
-        f"<p>Run de {html.escape(today)}.</p><ul>{''.join(html_rows)}</ul>"
-        "<p>Os relatórios são links para o site publicado; não seguem anexos.</p>"
-        "</body></html>",
+        '<html><body style="margin:0;background:#f4f4f4;color:#202020;font-family:Arial,sans-serif;">'
+        '<div style="max-width:640px;margin:0 auto;background:#ffffff;padding:28px;">'
+        '<h2 style="margin:0 0 8px;color:#1e352c;">Relatórios pré-live Fenzobot</h2>'
+        f"<p style=\"margin:0 0 20px;\">Run de {html.escape(today)}.</p><ul>{''.join(html_rows)}</ul>"
+        '<p style="margin:20px 0 0;">Os relatórios são links para o site publicado; não seguem anexos.</p>'
+        '<hr style="border:0;border-top:1px solid #d7d7d7;margin:28px 0 20px;">'
+        f'<img src="{html.escape(logo_url, quote=True)}" alt="Fenzo Tennis Intelligence" width="130" '
+        'style="display:block;width:130px;height:auto;margin:0 0 12px;">'
+        '<div style="font-size:14px;line-height:1.5;color:#4b4b4b;">'
+        '<strong style="color:#1e352c;">Fenzo Tennis Intelligence</strong><br>'
+        'Análise pré-live baseada em dados e contexto de mercado.<br>'
+        '<span style="font-size:12px;">Informação analítica; não constitui recomendação de aposta nem garantia de resultado.</span>'
+        '</div></div></body></html>',
         subtype="html",
     )
 
