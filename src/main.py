@@ -1042,10 +1042,11 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # RapidAPI mantém-se como referência/diagnóstico. Pricing e PAPER recebem
-    # apenas o par The Odds API com bookmaker e timestamp verificáveis.
-    reference_odds, reference_odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
-    odds, odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+    # RapidAPI recent-odds é a observação operacional: a auditoria demonstrou
+    # que os preços atualizam, embora o addTime não seja fiável. The Odds API
+    # é uma comparação independente, nunca uma mistura de preços.
+    odds, odds_provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+    reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
     odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)
@@ -1436,6 +1437,7 @@ def _build_match_payload(match: dict) -> dict:
         "odds_captured_at_utc": odds_captured_at_utc,
         "odds_capture_kind": odds_provenance.get("capture_kind") if odds else None,
         "odds_provider_timestamp": odds_provenance.get("provider_timestamp") if odds else None,
+        "odds_provider_timestamp_status": odds_provenance.get("provider_timestamp_status") if odds else None,
         "odds_bookmaker": odds_provenance.get("bookmaker") if odds else None,
         "odds_from_cache": odds_provenance.get("from_cache") if odds else None,
         "odds_cache_age_seconds": odds_provenance.get("cache_age_seconds") if odds else None,
@@ -1716,7 +1718,6 @@ def run() -> None:
     # usam o eventId da camada Extend. O índice evita uma chamada /event/get
     # por jogo e mantém o consumo de RapidAPI controlado.
     fetch_data.prepare_rapidapi_odds_index(eligible)
-    fetch_data.prepare_the_odds_market_index(eligible)
 
     # A fonte de fixtures e a camada de odds são independentes. Uma resposta
     # de odds com jogadores/estado incompatíveis é evidência para EXCLUIR, não
@@ -1739,6 +1740,11 @@ def run() -> None:
         fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
         print("[info] Sem jogos pré-live com identidade de evento válida. Nada a enviar.")
         return
+
+    # A The Odds API é apenas uma comparação independente. Só a consultamos
+    # depois de o gate de integridade já ter eliminado fixtures impossíveis,
+    # para não gastar créditos em jogos terminados ou mal mapeados.
+    fetch_data.prepare_the_odds_market_index(eligible)
 
     # Processar os jogos em PARALELO (resolve a lentidão: antes era um loop
     # sequencial que com muitos jogos chegava a ~30 min). Poucos workers para

@@ -18,10 +18,11 @@ e um resumo Telegram.
    explícitas (`FORCED_TOURNAMENT_IDS`).
 2. Obtém fixtures por torneio, remove duplicados e mantém apenas jogos na
    janela `LOOKAHEAD_HOURS_MIN..LOOKAHEAD_HOURS_MAX` (por omissão, 0–36h).
-3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; guarda a
-   Moneyline RapidAPI como referência e usa a The Odds API, com bookmaker e
-   timestamp verificáveis, para pricing/PAPER; constrói, em paralelo, um payload factual
-   por jogo: ranking, H2H, superfície, forma, fadiga, serviço/resposta,
+3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; usa a
+   Moneyline `recent-odds` da RapidAPI, com evento, ordem e bookmaker
+   verificáveis, para pricing/PAPER, e guarda a The Odds API como comparação
+   independente opcional; constrói, em paralelo, um payload factual por jogo:
+   ranking, H2H, superfície, forma, fadiga, serviço/resposta,
    cenários, mãos, estatísticas ricas e qualidade dos dados.
 4. Calcula o índice Fenzobot em Python e avalia se há cobertura factual mínima
    para publicar uma decisão pré-live.
@@ -86,10 +87,16 @@ que por si só crie uma entrada PAPER.
 - **RapidAPI Matchstat:** descoberta, fixtures, ranking,
   jogos recentes, H2H, perfis e dados ricos. O contador é persistido durante a
   execução; limites por run/dia e retry de timeout, 429 e 503 são obrigatórios.
-  A RapidAPI continua a fornecer fixtures e odds de referência, mas não
-  alimenta pricing/PAPER. Estes exigem The Odds API, um par `h2h` da mesma
-  casa e timestamp do fornecedor até 15 minutos; sem esse par, o relatório
-  mantém a análise factual como `PRICING_UNAVAILABLE` e bloqueia edge/PAPER.
+  A RapidAPI `all-upcoming` serve exclusivamente para descobrir fixtures e
+  nunca alimenta pricing. O preço operacional é o par da mesma casa em
+  `recent-odds`, depois de confirmar evento, jogadores, ordem e estado
+  pré-live. A auditoria `CHANGE-2026-08-30-010` mostrou que o campo `addTime`
+  pode ficar congelado mesmo quando as odds mudam; por isso é guardado como
+  metadado, enquanto a frescura operacional é a hora da resposta observada
+  nesta execução. A The Odds API é uma comparação independente opcional, não
+  é misturada com o preço RapidAPI e a sua ausência não bloqueia pricing/PAPER.
+  Sem um par RapidAPI válido, o relatório mantém a análise factual como
+  `PRICING_UNAVAILABLE` e bloqueia edge/PAPER.
 - **Históricos:** TennisMyLife, Sackmann e tennis-data.co.uk são usados como
   complemento/fallback consoante o tour e a métrica. Nunca se inventa um valor
   quando uma fonte falha.

@@ -347,11 +347,10 @@ ODDS_API_MAX_AGE_SECONDS = 15 * 60
 _THE_ODDS_EVENTS: dict[str, list[dict]] = {}
 _THE_ODDS_INDEX_READY: set[str] = set()
 
-# A cotação ``recent-odds`` só é tratada como verificada quando o fornecedor
-# inclui uma hora recente. O feed ``upcoming`` é uma observação recolhida pelo
-# próprio bot nesta execução: não identifica bookmaker nem permite afirmar a
-# hora de actualização do operador, mas continua a ser uma alternativa útil
-# quando o campo temporal do endpoint dedicado está congelado.
+# Compatibilidade do monitor SHADOW: este limiar continua a classificar o
+# metadado temporal devolvido pelos endpoints auxiliares. Não é um requisito
+# de frescura nem um bloqueio para o pricing principal `recent-odds`, pois a
+# auditoria CHANGE-2026-08-30-010 demonstrou que `addTime` pode ficar parado.
 RAPIDAPI_FRESH_MARKET_MAX_AGE_SECONDS = 15 * 60
 
 
@@ -991,12 +990,15 @@ def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
     return str(record["event_id"]) if record and record.get("valid") and record.get("event_id") else None
 
 
-def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
-    """Obtém Moneyline fresca, pareada e identificada por bookmaker.
+def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
+    """Obtém a Moneyline ``recent-odds`` observada agora, por bookmaker.
 
-    Só aceita odds dos dois jogadores na mesma casa e com ``addTime`` do
-    provider até 15 minutos. Não usa a fotografia embutida de upcoming para
-    pricing, edge ou PAPER; essa continua disponível apenas como referência.
+    A auditoria CHANGE-2026-08-30-010 demonstrou que ``addTime`` pode ficar
+    parado enquanto ``od1``/``od2`` continuam a atualizar. A frescura desta
+    fonte é, por isso, a hora da resposta diretamente recebida pelo bot; o
+    ``addTime`` é preservado como metadado, mas nunca usado para bloquear a
+    cotação. A identidade, ordem e estado pré-live do evento continuam a ser
+    obrigatórios.
     """
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
@@ -1009,11 +1011,8 @@ def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optiona
         if not cached:
             return None, None
         provenance = dict(cached["provenance"])
-        provider_age = _odds_cache_age_seconds(provenance.get("provider_timestamp"))
-        if provider_age is None or provider_age > RAPIDAPI_FRESH_MARKET_MAX_AGE_SECONDS:
-            return None, None
         provenance["from_cache"] = True
-        provenance["cache_age_seconds"] = provider_age
+        provenance["cache_age_seconds"] = _odds_cache_age_seconds(provenance.get("captured_at_utc"))
         return dict(cached["odds"]), provenance
 
     url = f"{RAPIDAPI_EXTEND_BASE}/event/recent-odds/get/{event_id}"
@@ -1027,27 +1026,28 @@ def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optiona
         return None, None
 
     candidates = []
-    now = datetime.now(timezone.utc)
     for bookmaker, quote_data in market.items():
         if not isinstance(quote_data, dict):
             continue
         try:
             odd_a, odd_b = float(quote_data.get("od1")), float(quote_data.get("od2"))
+        except (TypeError, ValueError):
+            continue
+        if odd_a <= 1 or odd_b <= 1:
+            continue
+        try:
             provider_at = datetime.fromtimestamp(float(quote_data.get("addTime")), tz=timezone.utc)
         except (TypeError, ValueError, OverflowError, OSError):
-            continue
-        age = max(0, int((now - provider_at).total_seconds()))
-        if odd_a <= 1 or odd_b <= 1 or age > RAPIDAPI_FRESH_MARKET_MAX_AGE_SECONDS:
-            continue
+            provider_at = None
         overround = (1 / odd_a) + (1 / odd_b) - 1
-        candidates.append((age, overround, str(bookmaker), odd_a, odd_b, provider_at))
+        candidates.append((overround, str(bookmaker), odd_a, odd_b, provider_at))
 
     if not candidates:
-        print(f"[aviso] sem par Moneyline fresco e identificável para {player_a} vs {player_b}.")
+        print(f"[aviso] sem par Moneyline recente e identificável para {player_a} vs {player_b}.")
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
         return None, None
 
-    age, _overround, bookmaker, odd_a, odd_b, provider_at = min(candidates, key=lambda item: (item[0], item[1], item[2]))
+    _overround, bookmaker, odd_a, odd_b, provider_at = min(candidates, key=lambda item: (item[0], item[1]))
     # ``od1``/``od2`` pertencem explicitamente à ordem confirmada pelo
     # event/get; nunca à ordem arbitrária do fixture do nosso pipeline.
     if _normalize_name(event.get("participant1")) == _normalize_name(player_a):
@@ -1062,14 +1062,15 @@ def fetch_rapidapi_fresh_moneyline_with_provenance(match: dict) -> tuple[Optiona
         "endpoint": url,
         "event_id": event_id,
         "captured_at_utc": _odds_capture_timestamp(),
-        "capture_kind": "provider_timestamp_verified",
-        "provider_timestamp": provider_at.isoformat(timespec="seconds"),
+        "capture_kind": "rapidapi_response_observed_at_capture",
+        "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
+        "provider_timestamp_status": "unreliable_for_freshness",
         "bookmaker": bookmaker,
         "from_cache": False,
-        "cache_age_seconds": age,
+        "cache_age_seconds": 0,
     }
     _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance}
-    print(f"[odds] {player_a} vs {player_b} | RapidAPI recente · {bookmaker} | {odds}")
+    print(f"[odds] {player_a} vs {player_b} | RapidAPI recent-odds observado · {bookmaker} | {odds}")
     return odds, provenance
 
 
