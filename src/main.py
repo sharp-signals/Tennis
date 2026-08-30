@@ -1981,6 +1981,7 @@ def run() -> None:
     linhas_dados.sort(key=lambda x: x[0], reverse=True)
 
     n_high = sum(1 for n, _, _, _ in linhas_dados if n == 3)
+    n_low_coverage = sum(1 for n, _, _, _ in linhas_dados if n == 2.5)
     n_value = sum(1 for n, _, _, _ in linhas_dados if n == 2)
     n_watch = sum(1 for n, _, _, _ in linhas_dados if n == 1)
     # CORREÇÃO (17/08/2026, log real): "alinhamento forte" (bola 🔵) tem
@@ -1995,7 +1996,7 @@ def run() -> None:
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
-        f"🟢 {n_high} edge positivo / PAPER · 🔴 {n_value} edge negativo · "
+        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura) · 🔴 {n_value} edge negativo · "
         f"⚪ {n_watch} edge zero · ⚫ {n_none} relatório nulo"
     )
     if n_no_odds:
@@ -2005,7 +2006,8 @@ def run() -> None:
 
     # Separadores tornam a lista muito mais legível sem repetir informação.
     previous_group = None
-    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
+    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / COBERTURA INSUFICIENTE",
+                   2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
                    1: "⚪ EDGE ZERO / EXCLUÍDO", 0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
     for nivel, bola, txt, url in linhas_dados:
         group = nivel if nivel in group_names else 0

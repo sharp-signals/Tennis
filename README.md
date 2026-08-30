@@ -28,7 +28,9 @@ e um resumo Telegram.
    para publicar uma decisão pré-live.
 5. Aplica o *Market-Residual Pricing* experimental apenas sobre um par de odds
    recente, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
-   `EDGE_ZERO`, `PRICING_UNAVAILABLE` ou `REPORT_NULL`.
+   `EDGE_ZERO`, `PRICING_UNAVAILABLE` ou `REPORT_NULL`. Um edge positivo só
+   entra em PAPER com cobertura ponderada mínima de 60%; abaixo disso fica
+   visível como edge positivo sem PAPER.
 6. Chama o Claude apenas quando a política seletiva o justifica; a análise
    textual não pode recalcular nem contrariar o motor determinístico.
 7. Congela o snapshot pré-jogo, acrescenta entradas PAPER quando elegíveis,
@@ -138,9 +140,9 @@ uso analítico responsável.
 
 ## Execução e GitHub Actions
 
-O workflow `.github/workflows/tennis-bot.yml` é atualmente acionado apenas
-manualmente (`workflow_dispatch`); o agendamento está deliberadamente
-desativado. Em produção usa:
+O workflow `.github/workflows/tennis-bot.yml` corre automaticamente às 05:30
+e 17:30 UTC (06:30 e 18:30 em Portugal durante o horário de verão), além de
+aceitar execução manual (`workflow_dispatch`). Em produção usa:
 
 - Python 3.11 e `requirements.lock`;
 - `LLM_MODE=anthropic`, `LLM_POLICY=selective` e `ALLOW_PAID_LLM=1`;

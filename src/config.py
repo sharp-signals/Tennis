@@ -263,6 +263,9 @@ PRICING_MAX_LOGIT_SHIFT = float(os.environ.get("PRICING_MAX_LOGIT_SHIFT", "0.30"
 PRICING_MIN_EDGE_PCT = float(os.environ.get("PRICING_MIN_EDGE_PCT", "5.0"))
 PRICING_MIN_FACTORS = int(os.environ.get("PRICING_MIN_FACTORS", "2"))
 PRICING_MIN_QUALITY = float(os.environ.get("PRICING_MIN_QUALITY", "0.45"))
+# Um relatório factual pode ser válido com cobertura reduzida, mas a carteira
+# PAPER só aceita sinais com massa factual suficiente para serem comparáveis.
+PAPER_MIN_WEIGHTED_COVERAGE = float(os.environ.get("PAPER_MIN_WEIGHTED_COVERAGE", "0.60"))
 PRICING_FULL_QUALITY_FACTORS = int(os.environ.get("PRICING_FULL_QUALITY_FACTORS", "4"))
 PRICING_FULL_QUALITY_MASS = float(os.environ.get("PRICING_FULL_QUALITY_MASS", "18.0"))
 if not (
@@ -270,6 +273,7 @@ if not (
     and PRICING_MIN_EDGE_PCT >= 0
     and PRICING_MIN_FACTORS >= 1
     and 0 <= PRICING_MIN_QUALITY <= 1
+    and 0 <= PAPER_MIN_WEIGHTED_COVERAGE <= 1
     and PRICING_FULL_QUALITY_FACTORS >= PRICING_MIN_FACTORS
     and PRICING_FULL_QUALITY_MASS > 0
 ):
