@@ -347,6 +347,13 @@ ODDS_API_MAX_AGE_SECONDS = 15 * 60
 _THE_ODDS_EVENTS: dict[str, list[dict]] = {}
 _THE_ODDS_INDEX_READY: set[str] = set()
 
+# Compatibilidade do monitor SHADOW: este limiar continua a classificar o
+# metadado temporal devolvido pelos endpoints auxiliares. Não é um requisito
+# de frescura nem um bloqueio para o pricing principal `recent-odds`, pois a
+# auditoria CHANGE-2026-08-30-010 demonstrou que `addTime` pode ficar parado.
+RAPIDAPI_FRESH_MARKET_MAX_AGE_SECONDS = 15 * 60
+
+
 def _odds_capture_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
