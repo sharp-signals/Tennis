@@ -263,10 +263,14 @@ class ReportRenderingTests(unittest.TestCase):
     def test_handicap_reference_is_format_aware_and_uses_both_boundaries(self):
         bo3 = report_html.estimate_typical_handicap(1.40, "bo3")
         bo5 = report_html.estimate_typical_handicap(1.40, "bo5")
+        bo5_130 = report_html.estimate_typical_handicap(1.30, "bo5")
+        bo5_low = report_html.estimate_typical_handicap(1.22, "bo5")
         self.assertEqual(bo3["handicap"], ("-3", "-3.5"))
-        self.assertEqual(bo5["handicap"], ("-3.5", "-4.5"))
+        self.assertEqual(bo5["handicap"], ("-3.5", "-4"))
+        self.assertEqual(bo5_130["handicap"], ("-4", "-4.5"))
+        self.assertEqual(bo5_low["handicap"], ("-5", "-6"))
         self.assertEqual(report_html.handicap_coverage_thresholds(bo3), [3, 4])
-        self.assertEqual(report_html.handicap_coverage_thresholds(bo5), [4, 5])
+        self.assertEqual(report_html.handicap_coverage_thresholds(bo5), [4])
         self.assertIsNone(report_html.estimate_typical_handicap(1.25, "bo3"))
 
     def test_action_map_excludes_tiebreak_suggestion_but_keeps_data_elsewhere(self):

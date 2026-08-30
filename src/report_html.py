@@ -2105,8 +2105,9 @@ def _pct_str(v, casas=0):
 _HANDICAP_REF_BO5_FAVORITO = [
     # Referências analíticas internas fornecidas para a leitura humana.
     # Não são odds/linhas capturadas nem entram em pricing/PAPER.
-    (1.25, ("-5.5", "-6.5")),
-    (1.40, ("-3.5", "-4.5")),
+    (1.225, ("-5", "-6")),   # faixa 1.20-1.25
+    (1.30, ("-4", "-4.5")),
+    (1.40, ("-3.5", "-4")),
     (1.60, ("-2", "-3.5")),
 ]
 # Tabela BO3 fornecida pelo BRAIN em 29/08/2026. Os limites são explícitos
