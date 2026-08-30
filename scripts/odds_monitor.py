@@ -1,8 +1,17 @@
 """Monitor SHADOW de movimento de odds para entradas PAPER pré-live abertas.
 
-Não recalcula Fenzobot, pricing ou PAPER. Não usa LLM. Consulta apenas a camada
-RapidAPI Extend/Odds, preserva respostas observadas com timestamp e partilha o
-mesmo guardrail diário de chamadas já usado pelo pipeline principal.
+Não recalcula Fenzobot, pricing ou PAPER. Não usa LLM. Mantém duas camadas
+explicitamente separadas:
+
+1. ``market_observation`` — série temporal principal, baseada no feed
+   ``upcoming`` observado pelo próprio monitor nesta execução. É uma observação
+   atual do feed, mas sem timestamp do bookmaker; essa limitação fica explícita.
+2. ``endpoints`` — dados auxiliares de ``recent-odds``, ``compare``, movimentos
+   e arbitragem. Quotes com timestamp do fornecedor recebem ``quote_age_seconds``
+   e são marcadas FRESH/STALE/UNKNOWN; dados stale nunca são promovidos a odd
+   atual nem a arbitragem atual.
+
+O monitor partilha o mesmo guardrail diário RapidAPI do pipeline principal.
 """
 
 from __future__ import annotations
@@ -23,7 +32,13 @@ EVENT_MAP_PATH = OUTPUT_DIR / "event_map.json"
 STATUS_PATH = OUTPUT_DIR / "status.json"
 MARKET_ID = int(os.environ.get("ODDS_MONITOR_MARKET_ID", "1"))
 HORIZON_HOURS = int(os.environ.get("ODDS_MONITOR_HORIZON_HOURS", "48"))
-SCHEMA_VERSION = 1
+FRESH_MAX_AGE_SECONDS = int(
+    os.environ.get(
+        "ODDS_MONITOR_FRESH_MAX_AGE_SECONDS",
+        str(fetch_data.RAPIDAPI_FRESH_MARKET_MAX_AGE_SECONDS),
+    )
+)
+SCHEMA_VERSION = 2
 
 
 def _utc_now() -> datetime:
@@ -35,11 +50,36 @@ def _parse_utc(value: object) -> datetime | None:
         return None
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except ValueError:
+    except (TypeError, ValueError):
         return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _provider_time(value: object) -> datetime | None:
+    """Aceita Unix seconds/ms ou ISO e normaliza para UTC."""
+    if value in (None, ""):
+        return None
+    try:
+        raw = float(value)
+        if raw > 10_000_000_000:
+            raw /= 1000
+        return datetime.fromtimestamp(raw, tz=timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return _parse_utc(value)
+
+
+def _quote_age_seconds(provider_at: datetime | None, captured_at: datetime) -> int | None:
+    if provider_at is None:
+        return None
+    return max(0, int((captured_at - provider_at).total_seconds()))
+
+
+def _freshness(age_seconds: int | None) -> str:
+    if age_seconds is None:
+        return "UNKNOWN"
+    return "FRESH" if age_seconds <= FRESH_MAX_AGE_SECONDS else "STALE"
 
 
 def load_open_paper_entries(path: Path = PAPER_PATH, *, now: datetime | None = None) -> list[dict[str, Any]]:
@@ -58,8 +98,12 @@ def load_open_paper_entries(path: Path = PAPER_PATH, *, now: datetime | None = N
     excluded = paper_trading.excluded_keys()
     selected = []
     for entry in entries:
-        if (not isinstance(entry, dict) or entry.get("mode") != "PAPER" or entry.get("settlement") is not None
-                or str(entry.get("key")) in excluded):
+        if (
+            not isinstance(entry, dict)
+            or entry.get("mode") != "PAPER"
+            or entry.get("settlement") is not None
+            or str(entry.get("key")) in excluded
+        ):
             continue
         pregame = entry.get("pregame")
         if not isinstance(pregame, dict) or pregame.get("market_type") != "Moneyline":
@@ -69,6 +113,25 @@ def load_open_paper_entries(path: Path = PAPER_PATH, *, now: datetime | None = N
             continue
         selected.append(entry)
     return selected
+
+
+def _entry_to_match(entry: dict[str, Any]) -> dict[str, Any]:
+    """Converte o snapshot PAPER no shape mínimo esperado por ``fetch_data``."""
+    pregame = entry.get("pregame") or {}
+    players = pregame.get("players") or {}
+    player_a = players.get("a") or {}
+    player_b = players.get("b") or {}
+    return {
+        "id": pregame.get("match_id"),
+        "_tour": pregame.get("tour"),
+        "date": pregame.get("commence_time_utc"),
+        "tournamentId": pregame.get("tournament_id"),
+        "roundId": pregame.get("round_id"),
+        "player1Id": player_a.get("id"),
+        "player2Id": player_b.get("id"),
+        "player1": {"id": player_a.get("id"), "name": player_a.get("name")},
+        "player2": {"id": player_b.get("id"), "name": player_b.get("name")},
+    }
 
 
 def _iter_dicts(value: Any):
@@ -125,6 +188,136 @@ def _request(url: str, *, params: dict[str, Any] | None = None) -> dict[str, Any
     }
 
 
+def _summarize_quotes(quotes: list[dict[str, Any]]) -> dict[str, Any]:
+    fresh = sum(1 for item in quotes if item.get("freshness") == "FRESH")
+    stale = sum(1 for item in quotes if item.get("freshness") == "STALE")
+    unknown = sum(1 for item in quotes if item.get("freshness") == "UNKNOWN")
+    ages = [item["quote_age_seconds"] for item in quotes if isinstance(item.get("quote_age_seconds"), int)]
+    return {
+        "fresh_max_age_seconds": FRESH_MAX_AGE_SECONDS,
+        "quote_count": len(quotes),
+        "fresh_count": fresh,
+        "stale_count": stale,
+        "unknown_count": unknown,
+        "freshest_quote_age_seconds": min(ages) if ages else None,
+        "quotes": quotes,
+    }
+
+
+def _annotate_recent_odds(result: dict[str, Any], *, captured_at: datetime) -> dict[str, Any]:
+    market = (((result.get("payload") or {}).get("result") or {}).get("Full Time Result") or {})
+    quotes = []
+    if isinstance(market, dict):
+        for bookmaker, raw in market.items():
+            if not isinstance(raw, dict):
+                continue
+            provider_at = _provider_time(raw.get("addTime"))
+            age = _quote_age_seconds(provider_at, captured_at)
+            quotes.append(
+                {
+                    "bookmaker": str(bookmaker),
+                    "od1": raw.get("od1"),
+                    "od2": raw.get("od2"),
+                    "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
+                    "quote_age_seconds": age,
+                    "freshness": _freshness(age),
+                }
+            )
+    result["quote_quality"] = _summarize_quotes(quotes)
+    return result
+
+
+def _annotate_compare(result: dict[str, Any], *, captured_at: datetime) -> dict[str, Any]:
+    rows = ((result.get("payload") or {}).get("results") or [])
+    quotes = []
+    if isinstance(rows, list):
+        for raw in rows:
+            if not isinstance(raw, dict):
+                continue
+            provider_at = _provider_time(raw.get("sourceAddTime"))
+            age = _quote_age_seconds(provider_at, captured_at)
+            quotes.append(
+                {
+                    "bookmaker": str(raw.get("bookmaker") or "N/D"),
+                    "od1": raw.get("od1"),
+                    "od2": raw.get("od2"),
+                    "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
+                    "quote_age_seconds": age,
+                    "freshness": _freshness(age),
+                }
+            )
+    result["quote_quality"] = _summarize_quotes(quotes)
+    return result
+
+
+def _annotate_arbitrage(result: dict[str, Any], compare_result: dict[str, Any]) -> dict[str, Any]:
+    arb = ((result.get("payload") or {}).get("result") or {})
+    checked = arb.get("bookmakersChecked")
+    try:
+        checked = int(checked)
+    except (TypeError, ValueError):
+        checked = None
+
+    by_bookmaker = {
+        str(item.get("bookmaker")): item
+        for item in ((compare_result.get("quote_quality") or {}).get("quotes") or [])
+        if item.get("bookmaker")
+    }
+    best = arb.get("bestOdds") or {}
+    best_bookmakers = []
+    if isinstance(best, dict):
+        for outcome in best.values():
+            if isinstance(outcome, dict) and outcome.get("bookmaker"):
+                best_bookmakers.append(str(outcome["bookmaker"]))
+
+    statuses = [by_bookmaker.get(name, {}).get("freshness", "UNKNOWN") for name in best_bookmakers]
+    if statuses and all(status == "FRESH" for status in statuses):
+        input_status = "CURRENT_VERIFIED"
+    elif any(status == "STALE" for status in statuses):
+        input_status = "STALE_INPUTS"
+    else:
+        input_status = "UNKNOWN_INPUT_FRESHNESS"
+
+    result["input_quality"] = {
+        "status": input_status,
+        "bookmaker_coverage": "MULTI_BOOKMAKER" if checked is not None and checked >= 2 else "SINGLE_BOOKMAKER",
+        "bookmakers_checked": checked,
+        "best_odds_bookmakers": best_bookmakers,
+        "current_arbitrage_eligible": input_status == "CURRENT_VERIFIED" and checked is not None and checked >= 2,
+    }
+    return result
+
+
+def _primary_market_observation(match: dict[str, Any]) -> dict[str, Any]:
+    """Cria a série principal a partir do feed observado nesta execução."""
+    odds, provenance = fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    if not odds or not provenance:
+        return {
+            "available": False,
+            "series_eligible": False,
+            "freshness": "UNAVAILABLE",
+            "odds": None,
+            "source": "RapidAPI upcoming feed",
+        }
+
+    captured_at = _parse_utc(provenance.get("captured_at_utc"))
+    capture_age = _quote_age_seconds(captured_at, _utc_now()) if captured_at else None
+    return {
+        "available": True,
+        "series_eligible": True,
+        "freshness": "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME",
+        "odds": dict(odds),
+        "source": provenance.get("source"),
+        "endpoint": provenance.get("endpoint"),
+        "captured_at_utc": provenance.get("captured_at_utc"),
+        "capture_age_seconds": capture_age,
+        "provider_timestamp": None,
+        "quote_age_seconds": None,
+        "bookmaker": None,
+        "caveat": "Feed observado nesta execução; hora de atualização do bookmaker não fornecida.",
+    }
+
+
 def _read_event_map(path: Path = EVENT_MAP_PATH) -> dict[str, Any]:
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
@@ -132,6 +325,7 @@ def _read_event_map(path: Path = EVENT_MAP_PATH) -> dict[str, Any]:
         return {"schema_version": SCHEMA_VERSION, "events": {}}
     if not isinstance(document, dict) or not isinstance(document.get("events"), dict):
         return {"schema_version": SCHEMA_VERSION, "events": {}}
+    document["schema_version"] = SCHEMA_VERSION
     return document
 
 
@@ -178,7 +372,10 @@ def _resolve_event(entry: dict[str, Any], event_map: dict[str, Any]) -> tuple[st
 
 
 def _payload_fingerprint(value: dict[str, Any]) -> str:
-    material = {key: value.get(key) for key in ("paper_key", "event_id", "endpoints")}
+    material = {
+        key: value.get(key)
+        for key in ("paper_key", "event_id", "market_observation", "endpoints")
+    }
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:20]
 
@@ -209,13 +406,21 @@ def _append_snapshot(snapshot: dict[str, Any], *, output_dir: Path = OUTPUT_DIR)
     return True
 
 
-def monitor_entry(entry: dict[str, Any], event_map: dict[str, Any]) -> dict[str, Any]:
+def monitor_entry(
+    entry: dict[str, Any],
+    event_map: dict[str, Any],
+    *,
+    match: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     pregame = entry["pregame"]
+    match = match or _entry_to_match(entry)
     event_id, resolution = _resolve_event(entry, event_map)
+    captured_at_text = _utc_now().isoformat(timespec="seconds")
+    captured_at = _parse_utc(captured_at_text) or _utc_now()
     snapshot = {
         "schema_version": SCHEMA_VERSION,
         "mode": "SHADOW",
-        "captured_at_utc": _utc_now().isoformat(timespec="seconds"),
+        "captured_at_utc": captured_at_text,
         "paper_key": entry.get("key"),
         "snapshot_key": pregame.get("snapshot_key"),
         "match_id": pregame.get("match_id"),
@@ -228,19 +433,32 @@ def monitor_entry(entry: dict[str, Any], event_map: dict[str, Any]) -> dict[str,
         "market_id": MARKET_ID,
         "event_id": event_id,
         "event_resolution": resolution,
+        "market_observation": _primary_market_observation(match),
         "endpoints": {},
     }
     if not event_id:
         return snapshot
 
     base = fetch_data.RAPIDAPI_EXTEND_BASE
+    recent = _annotate_recent_odds(
+        _request(f"{base}/event/recent-odds/get/{event_id}"),
+        captured_at=captured_at,
+    )
+    compare = _annotate_compare(
+        _request(f"{base}/odds/compare/{event_id}", params={"market_id": MARKET_ID}),
+        captured_at=captured_at,
+    )
+    movements = _request(f"{base}/odds/biggest-movements/{event_id}", params={"market_id": MARKET_ID})
+    movements["interpretation"] = "HISTORICAL_AUXILIARY_NOT_CURRENT_QUOTE"
+    arbitrage = _annotate_arbitrage(
+        _request(f"{base}/odds/arbitrage/{event_id}", params={"market_id": MARKET_ID}),
+        compare,
+    )
     snapshot["endpoints"] = {
-        "recent_odds": _request(f"{base}/event/recent-odds/get/{event_id}"),
-        "compare": _request(f"{base}/odds/compare/{event_id}", params={"market_id": MARKET_ID}),
-        "biggest_movements": _request(
-            f"{base}/odds/biggest-movements/{event_id}", params={"market_id": MARKET_ID}
-        ),
-        "arbitrage": _request(f"{base}/odds/arbitrage/{event_id}", params={"market_id": MARKET_ID}),
+        "recent_odds": recent,
+        "compare": compare,
+        "biggest_movements": movements,
+        "arbitrage": arbitrage,
     }
     return snapshot
 
@@ -254,6 +472,7 @@ def run() -> dict[str, Any]:
         return {
             "schema_version": SCHEMA_VERSION,
             "mode": "SHADOW",
+            "trigger": os.environ.get("ODDS_MONITOR_TRIGGER", "unknown"),
             "eligible_paper_entries": 0,
             "captured_entries": 0,
             "new_history_records": 0,
@@ -262,32 +481,78 @@ def run() -> dict[str, Any]:
             "llm_calls": 0,
         }
 
+    matches = [_entry_to_match(entry) for entry in entries]
+    feed_prepare_error = None
+    try:
+        fetch_data.prepare_rapidapi_odds_index(matches)
+    except (fetch_data.RapidAPIBudgetExceeded, OSError, RuntimeError, ValueError) as exc:
+        feed_prepare_error = str(exc)
+
     event_map = _read_event_map()
     captures = []
     written = 0
 
     try:
-        for entry in entries:
-            snapshot = monitor_entry(entry, event_map)
+        for entry, match in zip(entries, matches):
+            snapshot = monitor_entry(entry, event_map, match=match)
             captures.append(snapshot)
             if _append_snapshot(snapshot):
                 written += 1
     finally:
         _atomic_json(EVENT_MAP_PATH, event_map)
         access_counts: dict[str, int] = {}
+        primary_series_records = 0
+        recent_fresh = 0
+        recent_stale = 0
+        recent_unknown = 0
+        current_arbitrage_eligible = 0
+        stale_arbitrage_inputs = 0
+        single_bookmaker_arbitrage = 0
+
         for capture in captures:
+            if (capture.get("market_observation") or {}).get("series_eligible"):
+                primary_series_records += 1
             for endpoint in capture.get("endpoints", {}).values():
                 access = str(endpoint.get("access") or "unknown")
                 access_counts[access] = access_counts.get(access, 0) + 1
+
+            recent_quality = ((capture.get("endpoints") or {}).get("recent_odds") or {}).get("quote_quality") or {}
+            recent_fresh += int(recent_quality.get("fresh_count") or 0)
+            recent_stale += int(recent_quality.get("stale_count") or 0)
+            recent_unknown += int(recent_quality.get("unknown_count") or 0)
+
+            arb_quality = ((capture.get("endpoints") or {}).get("arbitrage") or {}).get("input_quality") or {}
+            if arb_quality.get("current_arbitrage_eligible"):
+                current_arbitrage_eligible += 1
+            if arb_quality.get("status") == "STALE_INPUTS":
+                stale_arbitrage_inputs += 1
+            if arb_quality.get("bookmaker_coverage") == "SINGLE_BOOKMAKER":
+                single_bookmaker_arbitrage += 1
+
         status = {
             "schema_version": SCHEMA_VERSION,
             "mode": "SHADOW",
+            "trigger": os.environ.get("ODDS_MONITOR_TRIGGER", "unknown"),
+            "github_run_id": os.environ.get("ODDS_MONITOR_GITHUB_RUN_ID"),
             "last_run_at_utc": _utc_now().isoformat(timespec="seconds"),
             "eligible_paper_entries": len(entries),
             "captured_entries": len(captures),
             "new_history_records": written,
+            "primary_series_records": primary_series_records,
             "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
             "access_counts": access_counts,
+            "recent_odds_quote_quality": {
+                "fresh": recent_fresh,
+                "stale": recent_stale,
+                "unknown": recent_unknown,
+                "fresh_max_age_seconds": FRESH_MAX_AGE_SECONDS,
+            },
+            "arbitrage_quality": {
+                "current_eligible_entries": current_arbitrage_eligible,
+                "stale_input_entries": stale_arbitrage_inputs,
+                "single_bookmaker_entries": single_bookmaker_arbitrage,
+            },
+            "feed_prepare_error": feed_prepare_error,
             "llm_calls": 0,
         }
         _atomic_json(STATUS_PATH, status)
