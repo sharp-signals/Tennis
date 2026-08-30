@@ -10,8 +10,10 @@ lado; não substitui o motor de seleção.
 
 ## Estados
 
-- `EDGE_POSITIVE`: edge do lado Fenzobot estritamente superior a zero;
-  registo automático em PAPER.
+- `EDGE_POSITIVE`: edge do lado Fenzobot estritamente superior a zero e
+  cobertura ponderada de pelo menos 60%; registo automático em PAPER.
+- `EDGE_POSITIVE_COVERAGE_INSUFFICIENT`: edge positivo, mas cobertura abaixo
+  de 60%; mantém o relatório factual, sem registo PAPER.
 - `EDGE_NEGATIVE`: edge inferior a zero; excluído.
 - `EDGE_ZERO`: edge exatamente igual a zero; excluído.
 - `PRICING_UNAVAILABLE`: dados factuais válidos, mas sem um par de odds

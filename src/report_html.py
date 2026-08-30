@@ -2816,13 +2816,14 @@ def _mod_decision_box(payload):
     coverage_text = f'{coverage.get("weighted_pct", 0):g}% · {coverage.get("status", "insuficiente")}'
     labels = {
         "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢"),
+        "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": ("EDGE POSITIVO — COBERTURA INSUFICIENTE PARA PAPER", "zero", "🟡"),
         "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴"),
         "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪"),
         "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫"),
         "PRICING_UNAVAILABLE": ("PREÇO DE MERCADO INDISPONÍVEL", "zero", "🟡"),
     }
     label, css_class, ball = labels.get(state, labels["REPORT_NULL"])
-    if state == "EDGE_POSITIVE":
+    if state in {"EDGE_POSITIVE", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT"}:
         market = _d(decision.get("market"))
         edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
         body = (
@@ -2831,7 +2832,11 @@ def _mod_decision_box(payload):
             f'<div class="decision-grid"><span>Mercado <b>{_esc(market.get("market"))}</b></span>'
             f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
             f'<span>Cobertura <b>{_esc(coverage_text)}</b></span></div>'
-            '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
+            + (
+                '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
+                if state == "EDGE_POSITIVE" else
+                f'<div class="decision-note">Não entra em PAPER: {_esc(decision.get("reason"))}. Consultar o relatório integral antes de qualquer utilização.</div>'
+            )
         )
     elif state in {"EDGE_NEGATIVE", "EDGE_ZERO"}:
         edge = decision.get("expected_edge_pct")

@@ -8,6 +8,7 @@ from src.telegram_summary import decision_row as _telegram_decision_row, state_c
 from src.prelive_decision import (
     EDGE_NEGATIVE,
     EDGE_POSITIVE,
+    EDGE_POSITIVE_COVERAGE_INSUFFICIENT,
     EDGE_ZERO,
     REPORT_NULL,
     PRICING_UNAVAILABLE,
@@ -72,6 +73,17 @@ class PreliveOperationalContractTests(unittest.TestCase):
         decision = self.decision(0.1)
         self.assertEqual(decision["state"], EDGE_POSITIVE)
         self.assertTrue(decision["paper_eligible"])
+
+    def test_positive_edge_below_paper_coverage_gate_is_visible_but_excluded(self):
+        assessment = {"report_null": False, "coverage": {"weighted_pct": 46.5, "status": "reduzida"}}
+        decision = build_decision(self.payload(), self.divergence(), self.pricing(1.0), assessment)
+        self.assertEqual(decision["state"], EDGE_POSITIVE_COVERAGE_INSUFFICIENT)
+        self.assertFalse(decision["paper_eligible"])
+        self.assertEqual(decision["paper_markets"], [])
+        self.assertIn("46.5%", decision["reason"])
+        payload = self.payload(); payload["prelive_decision"] = decision
+        self.assertEqual(_telegram_decision_row(payload)[1], "🟡")
+        self.assertIn("insuficiente para PAPER", _telegram_decision_row(payload)[2])
 
     def test_edge_zero_is_excluded(self):
         decision = self.decision(0.0)
@@ -243,7 +255,8 @@ class PreliveOperationalContractTests(unittest.TestCase):
         payloads.append(unavailable)
         self.assertEqual([_telegram_decision_row(item)[1] for item in payloads], ["🟢", "🔴", "⚪", "⚫", "🟡"])
         self.assertEqual(telegram_state_counts(payloads), {
-            EDGE_POSITIVE: 1, EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1, REPORT_NULL: 1,
+            EDGE_POSITIVE: 1, EDGE_POSITIVE_COVERAGE_INSUFFICIENT: 0,
+            EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1, REPORT_NULL: 1,
         })
 
 

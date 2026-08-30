@@ -11,12 +11,13 @@ import math
 from typing import Any, Mapping
 
 try:
-    from .config import PRICING_MIN_QUALITY
+    from .config import PAPER_MIN_WEIGHTED_COVERAGE, PRICING_MIN_QUALITY
 except ImportError:  # pragma: no cover
-    from config import PRICING_MIN_QUALITY
+    from config import PAPER_MIN_WEIGHTED_COVERAGE, PRICING_MIN_QUALITY
 
 
 EDGE_POSITIVE = "EDGE_POSITIVE"
+EDGE_POSITIVE_COVERAGE_INSUFFICIENT = "EDGE_POSITIVE_COVERAGE_INSUFFICIENT"
 EDGE_NEGATIVE = "EDGE_NEGATIVE"
 EDGE_ZERO = "EDGE_ZERO"
 REPORT_NULL = "REPORT_NULL"
@@ -239,13 +240,28 @@ def build_decision(
         "sharp_estimate_pct": side_data.get("sharp_estimate_pct"),
         "expected_edge_pct": edge,
     }
+    coverage = _mapping(assessment.get("coverage"))
+    try:
+        raw_ratio = coverage.get("weighted_ratio")
+        coverage_ratio = float(raw_ratio) if raw_ratio is not None else float(coverage.get("weighted_pct")) / 100.0
+    except (TypeError, ValueError):
+        coverage_ratio = 0.0
+    coverage_sufficient_for_paper = coverage_ratio >= PAPER_MIN_WEIGHTED_COVERAGE
+    if state == EDGE_POSITIVE and not coverage_sufficient_for_paper:
+        state = EDGE_POSITIVE_COVERAGE_INSUFFICIENT
+        reason = (
+            f"edge positivo, mas cobertura ponderada de {coverage_ratio:.1%} "
+            f"inferior ao mínimo PAPER de {PAPER_MIN_WEIGHTED_COVERAGE:.0%}"
+        )
+    else:
+        reason = "edge positivo" if state == EDGE_POSITIVE else (
+            "edge negativo" if state == EDGE_NEGATIVE else "edge exatamente zero"
+        )
     paper_markets = [market] if state == EDGE_POSITIVE else []
     return {
         **base,
         "state": state,
-        "reason": "edge positivo" if state == EDGE_POSITIVE else (
-            "edge negativo" if state == EDGE_NEGATIVE else "edge exatamente zero"
-        ),
+        "reason": reason,
         "side": side,
         "player": payload.get(f"player_{side}"),
         "fenzobot_index": index,
