@@ -281,7 +281,7 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertNotIn("Tie-break / total acima", html)
 
-    def test_handicap_card_uses_actual_format_and_shows_match_win_loss_coverage(self):
+    def test_handicap_card_uses_actual_format_and_shows_clear_win_loss_reading(self):
         payload = {
             "player_a": "A", "player_b": "B", "match_format": "bo5",
             "market_odds_decimal": {"A": 1.40, "B": 3.0},
@@ -293,11 +293,30 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap — leitura factual (BO5)", html)
-        self.assertIn("vitórias que cobrem", html)
-        self.assertIn("vitórias com ≤0 games", html)
-        self.assertIn("derrotas que ainda cobrem", html)
+        self.assertIn("Handicap a avaliar: A -3.5 / -4", html)
+        self.assertIn("Quando vence, A cobriu -3.5 em 1/2 vitórias.", html)
+        self.assertIn("Mesmo quando perde, terminou com mais games totais em 1/2 derrotas.", html)
+        self.assertIn("Cobertura histórica: -3.5: 2/4 no total; quando vence 1/2", html)
+        self.assertNotIn("vitórias com ≤0 games", html)
+        self.assertNotIn("derrotas que ainda cobrem", html)
         self.assertNotIn("Margem de jogos (bo3)", html)
         self.assertNotIn("Handicap -3.5/-4.5", html)
+
+    def test_handicap_card_uses_same_clear_reading_for_bo3(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.55, "B": 2.6},
+            "game_differential_a": {"bo3": {
+                "wins": {"n": 3, "margins": [4, 2, 1]},
+                "losses": {"n": 2, "margins": [1, -4]}, "analyzable_matches": 5,
+            }},
+        }
+        div = {"market": {"a": 65, "b": 35}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Handicap — leitura factual (BO3)", html)
+        self.assertIn("Handicap a avaliar: A -1.5 / -2", html)
+        self.assertIn("Quando vence, A cobriu -1.5 em 2/3 vitórias.", html)
+        self.assertIn("Mesmo quando perde, terminou com mais games totais em 1/2 derrotas.", html)
 
     def test_reference_only_odds_are_labelled_not_eligible_for_pricing(self):
         payload = {

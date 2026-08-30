@@ -90,6 +90,13 @@ mantêm BO3 salvo indicação explícita da fonte. Cruzamentos históricos entre
 Moneyline e margem só são exibidos se as colunas de odds existirem de facto no
 dataset.
 
+No Mapa de Ações, a leitura factual de Handicap começa pela zona interna a
+confirmar na casa e, para favoritos, pela linha mais acessível e a meia-unidade
+seguinte (por exemplo, `-2 / -2.5`). Expõe separadamente a cobertura quando o
+jogador vence e, nas derrotas, quantas terminaram com mais games totais do que
+o adversário. Esta leitura é contextual: não é uma linha capturada, uma odd,
+um edge nem uma entrada PAPER.
+
 ## Persistência e universos históricos
 
 - `data/calibration_snapshots.json`: primeira fotografia pré-jogo por partida,

@@ -4352,33 +4352,79 @@ def _mod_action_map(payload, div, result):
                     "Sem zona interna de handicap para esta Moneyline. O jogo está numa faixa equilibrada; não há linha a avaliar.",
                     f"scores completos · {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} jogos", headline="Sem linha", n_amostra=_n_wins + _n_losses)
             else:
+                # A referência interna aponta uma zona possível; o cartão
+                # traduz essa zona para a pergunta operacional humana: qual
+                # a linha mais acessível a procurar e o que acontece quando
+                # o jogador vence/perde. Não cria linha real, odd, edge ou
+                # entrada PAPER.
+                _reference_lines = list(_reference.get("handicap") or ())
+
+                def _line_number(value):
+                    try:
+                        return float(value)
+                    except (TypeError, ValueError):
+                        return None
+
+                def _line_label(value):
+                    number = _line_number(value)
+                    if number is None:
+                        return str(value)
+                    return f"{number:+g}"
+
+                # Para favoritos, a linha mais acessível e a meia-unidade
+                # seguinte são a zona prática a confirmar na casa (ex.:
+                # -2/-2.5). Para underdogs mantém-se a zona positiva de
+                # referência aprovada.
+                _candidate_lines = list(_reference_lines)
+                if _reference.get("tipo") == "favorito" and _reference_lines:
+                    _first_number = _line_number(_reference_lines[0])
+                    if _first_number is not None:
+                        _candidate_lines = [_line_label(_first_number), _line_label(_first_number - 0.5)]
+                _candidate_lines = list(dict.fromkeys(_candidate_lines))
+
                 _line_parts = []
-                _wins_without_game_advantage = sum(float(margin) <= 0 for margin in _wins_margins)
-                for _line in _reference.get("handicap") or ():
+                for _line in _candidate_lines:
                     _wc, _wp, _wm = _settlement(_wins_margins, _line)
                     _lc, _lp, _lm = _settlement(_losses_margins, _line)
                     _total = _n_wins + _n_losses
                     _covered = _wc + _lc
                     _pushes = _wp + _lp
-                    _piece = f"{_line}: total {_covered}/{_total}"
+                    _piece = f"{_line_label(_line)}: {_covered}/{_total} no total"
                     if _pushes:
-                        _piece += f" ({_pushes} push)"
+                        _piece += f" ({_pushes} devolução)"
                     if _n_wins:
-                        _piece += f" — vitórias que cobrem {_wc}/{_n_wins}"
-                        _piece += f"; vitórias com ≤0 games {_wins_without_game_advantage}/{_n_wins}"
-                    if _n_losses:
-                        _piece += f"; derrotas que ainda cobrem {_lc}/{_n_losses}"
-                    _line_parts.append((_covered, _piece))
-                _best = max(_line_parts, key=lambda item: item[0]) if _line_parts else None
-                _reading = (
-                    f"A fronteira com maior cobertura histórica é {_best[1].split(':', 1)[0]}. "
-                    "É contexto de cobertura; exige linha e odd atuais antes de qualquer PAPER."
-                    if _best else "Sem linhas internas calculáveis para avaliação."
+                        _piece += f"; quando vence {_wc}/{_n_wins}"
+                    _line_parts.append((str(_line), _wc, _lc, _piece))
+
+                _top_line = _line_parts[0][0] if _line_parts else None
+                _top_win_cover = _line_parts[0][1] if _line_parts else 0
+                _losses_with_game_advantage = sum(float(margin) > 0 for margin in _losses_margins)
+                _reading_parts = []
+                if _n_wins and _top_line is not None:
+                    _reading_parts.append(
+                        f"Quando vence, {names[fav_side]} cobriu {_line_label(_top_line)} em "
+                        f"{_top_win_cover}/{_n_wins} vitórias."
+                    )
+                if _n_losses:
+                    _reading_parts.append(
+                        f"Mesmo quando perde, terminou com mais games totais em "
+                        f"{_losses_with_game_advantage}/{_n_losses} derrotas."
+                    )
+                if _line_parts:
+                    _reading_parts.append("Cobertura histórica: " + " · ".join(part[3] for part in _line_parts) + ".")
+                _reading_parts.append(
+                    "Contexto factual: confirmar linha e odd atuais antes de qualquer PAPER."
+                )
+                _headline = (
+                    f"Handicap a avaliar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
+                    f"{_line_label(_candidate_lines[1])}"
+                    if _n_wins and len(_candidate_lines) >= 2
+                    else "Sem base suficiente para uma linha a avaliar"
                 )
                 add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
-                    "; ".join(piece for _, piece in _line_parts) + ". " + _reading,
-                    "scores completos · cobertura por vitória e derrota do match",
-                    headline=f"Zona {_reference['handicap'][0]} a {_reference['handicap'][1]}", n_amostra=_n_wins + _n_losses)
+                    " ".join(_reading_parts),
+                    "scores completos · vitórias e derrotas por games · referência interna, não linha real",
+                    headline=_headline, n_amostra=_n_wins + _n_losses)
 
         # Cruzamento opcional: só é mostrado quando a odd histórica existe no
         # dataset e a odd atual cabe numa das faixas observadas. Não cria linha
