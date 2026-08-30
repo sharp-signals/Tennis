@@ -246,6 +246,20 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
         self.assertIn("Observação do feed nesta execução; hora do bookmaker N/D", html)
 
+    def test_header_shows_rapidapi_primary_and_the_odds_crosscheck(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "market_odds_decimal": {"A": 1.28, "B": 4.10},
+            "reference_market_odds_decimal": {"A": 1.30, "B": 4.00},
+            "odds_source": "RapidAPI Tennis API / recent-odds",
+            "odds_capture_kind": "rapidapi_response_observed_at_capture",
+            "reference_odds_provenance": {"source": "The Odds API / current h2h"},
+            "features": {"ranking": {"lider": "A", "diff": 10}},
+        }
+        html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
+        self.assertIn("RapidAPI observada nesta execução; addTime apenas informativo", html)
+        self.assertIn("Comparação The Odds API / current h2h: 1.30 / 4.00", html)
+
     def test_handicap_reference_is_format_aware_and_uses_both_boundaries(self):
         bo3 = report_html.estimate_typical_handicap(1.40, "bo3")
         bo5 = report_html.estimate_typical_handicap(1.40, "bo5")

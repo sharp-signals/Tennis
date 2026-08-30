@@ -2707,6 +2707,8 @@ def _mod_header(payload, div, estado):
         odds_meta_parts.append(f"Endpoint: {_esc(payload['odds_endpoint'])}")
     if payload.get("odds_captured_at_utc"):
         odds_meta_parts.append(f"Captura: {_esc(payload['odds_captured_at_utc'])}")
+    if payload.get("odds_capture_kind") == "rapidapi_response_observed_at_capture":
+        odds_meta_parts.append("RapidAPI observada nesta execução; addTime apenas informativo")
     if payload.get("odds_capture_kind") == "feed_observed_at_capture":
         odds_meta_parts.append("Observação do feed nesta execução; hora do bookmaker N/D")
     odds_meta_parts.append(f"Provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
@@ -2726,6 +2728,12 @@ def _mod_header(payload, div, estado):
             continue
     if movement_parts:
         odds_meta_parts.append("Variação: " + "; ".join(movement_parts))
+    if pricing_odds and reference_odds:
+        ra = _esc(_odd_fmt(reference_odds.get(payload.get("player_a"))))
+        rb = _esc(_odd_fmt(reference_odds.get(payload.get("player_b"))))
+        reference_provenance = _d(payload.get("reference_odds_provenance"))
+        source = _esc(reference_provenance.get("source") or "The Odds API")
+        odds_meta_parts.append(f"Comparação {source}: {ra} / {rb}")
     odds_meta = " · ".join(odds_meta_parts)
     # prob mercado
     pa = pb = None

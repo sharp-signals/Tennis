@@ -1,6 +1,6 @@
 # Contrato operacional pré-live do Fenzobot
 
-Versão: `fenzobot-prelive-v1` (30 de agosto de 2026; CHANGE-2026-08-30-009).
+Versão: `fenzobot-prelive-v1` (30 de agosto de 2026; CHANGE-2026-08-30-011).
 
 ## Fonte de decisão
 
@@ -65,11 +65,20 @@ Handicap separadamente. No pipeline atual só Moneyline possui odds e pricing
 próprios. Handicap não entra automaticamente até existir uma fonte real de
 odd/linha e uma regra de edge já aprovada; não foi inventada uma regra.
 
-Pricing, edge e PAPER só usam um par Moneyline da The Odds API, com os dois
-lados na mesma casa, bookmaker identificável e timestamp do fornecedor com no
-máximo 15 minutos. RapidAPI `upcoming` e `recent-odds` são referências/diagnóstico:
-nunca podem preencher pricing, edge ou PAPER, mesmo quando a cotação pareça
-plausível. Snapshot e PAPER guardam fonte, instante UTC e esse tipo de captura.
+A fonte operacional para pricing, edge e PAPER é um par Moneyline
+`recent-odds` da RapidAPI, com os dois lados na mesma casa, bookmaker
+identificável, evento/jogadores/ordem confirmados pelo `event/get` e estado
+pré-live válido. O instante de frescura é a resposta recebida pelo bot. O
+campo `addTime` é preservado como metadado, mas não bloqueia a cotação: a
+auditoria `CHANGE-2026-08-30-010` provou que pode permanecer antigo enquanto
+`od1`/`od2` continuam a acompanhar o mercado. RapidAPI `upcoming` nunca pode
+preencher pricing, edge ou PAPER.
+
+A The Odds API fornece apenas uma comparação independente de mercado quando
+estiver disponível. Não substitui, não faz média e não bloqueia o preço
+operacional RapidAPI; a ausência desse comparador não invalida um par RapidAPI
+válido. Snapshot e PAPER guardam fonte, instante UTC e tipo de captura do
+preço que efetivamente alimentou o pricing.
 A referência de handicap no relatório é apenas uma tabela interna
 de contexto por faixa de Moneyline; nunca é uma linha observada, uma odd, um
 edge ou uma entrada PAPER.

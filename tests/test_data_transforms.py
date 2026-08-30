@@ -24,7 +24,7 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(provenance["endpoint"], "https://provider.test/upcoming")
         self.assertTrue(provenance["from_cache"])
 
-    def test_rapidapi_pricing_requires_fresh_named_bookmaker_pair(self):
+    def test_rapidapi_recent_pricing_requires_verified_named_bookmaker_pair(self):
         match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
         class Response:
             status_code = 200
@@ -41,10 +41,11 @@ class MatchInputTests(unittest.TestCase):
         with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=verified_event), \
                 patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
                 patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
-            odds, provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
+            odds, provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
         self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
         self.assertEqual(provenance["bookmaker"], "Test Book")
-        self.assertEqual(provenance["capture_kind"], "provider_timestamp_verified")
+        self.assertEqual(provenance["capture_kind"], "rapidapi_response_observed_at_capture")
+        self.assertEqual(provenance["provider_timestamp_status"], "unreliable_for_freshness")
 
     def test_rapidapi_pricing_maps_odds_using_verified_provider_order(self):
         match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
@@ -62,7 +63,7 @@ class MatchInputTests(unittest.TestCase):
         with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=verified_event), \
                 patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
                 patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
-            odds, _ = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
+            odds, _ = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
         self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
 
     def test_event_integrity_rejects_finished_event_with_matching_players(self):
@@ -73,7 +74,7 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(integrity["status"], "rejected")
         self.assertEqual(integrity["reason"], "event_not_prelive")
 
-    def test_rapidapi_pricing_rejects_stale_provider_timestamp(self):
+    def test_rapidapi_recent_pricing_keeps_quote_when_provider_timestamp_is_stale(self):
         match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
 
         class Response:
@@ -92,9 +93,10 @@ class MatchInputTests(unittest.TestCase):
         with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=verified_event), \
                 patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
                 patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
-            odds, provenance = fetch_data.fetch_rapidapi_fresh_moneyline_with_provenance(match)
-        self.assertIsNone(odds)
-        self.assertIsNone(provenance)
+            odds, provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
+        self.assertEqual(provenance["capture_kind"], "rapidapi_response_observed_at_capture")
+        self.assertEqual(provenance["provider_timestamp_status"], "unreliable_for_freshness")
 
     def test_the_odds_pricing_uses_fresh_market_timestamp_and_same_bookmaker_pair(self):
         match = {
