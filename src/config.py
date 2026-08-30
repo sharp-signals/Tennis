@@ -110,7 +110,7 @@ TOURS_TO_FOLLOW = ("atp", "wta")
 # Já não decide "que jogos existem" — só tenta enriquecer com odds quando
 # o jogo (por nomes dos jogadores) também aparecer aqui. Se não aparecer,
 # o campo de odds fica None, tal como qualquer outro dado em falta.
-# Só chaves ATP, dado TOURS_TO_FOLLOW acima.
+# Chaves ATP e WTA, alinhadas com os tours seguidos pelo pipeline.
 ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_aus_open_singles", "tennis_atp_french_open",
     "tennis_atp_wimbledon", "tennis_atp_us_open",

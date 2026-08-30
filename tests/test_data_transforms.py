@@ -96,22 +96,44 @@ class MatchInputTests(unittest.TestCase):
         self.assertIsNone(odds)
         self.assertIsNone(provenance)
 
-    def test_pricing_uses_current_upcoming_observation_when_recent_timestamp_is_stale(self):
-        match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
-        key = fetch_data._odds_names_key("Alice Player", "Bea Player")
-        embedded = {
-            f"*:{key}": {
-                "n1": "Alice Player", "n2": "Bea Player", "o1": 1.71, "o2": 2.18,
-                "captured_at_utc": datetime.now(timezone.utc).isoformat(), "endpoint": "https://provider.test/upcoming",
-            }
+    def test_the_odds_pricing_uses_fresh_market_timestamp_and_same_bookmaker_pair(self):
+        match = {
+            "player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"},
+            "_tour": "atp", "tournament_name": "U.S. Open - New York",
         }
-        with patch.object(fetch_data, "fetch_rapidapi_fresh_moneyline_with_provenance", return_value=(None, None)), \
-                patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
-            odds, provenance = fetch_data.fetch_rapidapi_pricing_moneyline_with_provenance(match)
-        self.assertEqual(odds, {"Alice Player": 1.71, "Bea Player": 2.18})
-        self.assertEqual(provenance["capture_kind"], "feed_observed_at_capture")
-        self.assertEqual(provenance["pricing_fallback_reason"], "recent_odds_sem_timestamp_fresco")
-        self.assertIsNone(provenance["bookmaker"])
+        now = datetime.now(timezone.utc).isoformat()
+        event = {
+            "id": "odds-event-1", "home_team": "Alice Player", "away_team": "Bea Player",
+            "bookmakers": [{
+                "title": "Test Book", "markets": [{"key": "h2h", "last_update": now, "outcomes": [
+                    {"name": "Alice Player", "price": 1.28}, {"name": "Bea Player", "price": 4.10},
+                ]}],
+            }],
+        }
+        with patch.dict(fetch_data._THE_ODDS_EVENTS, {"tennis_atp_us_open": [event]}, clear=True):
+            odds, provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Alice Player": 1.28, "Bea Player": 4.10})
+        self.assertEqual(provenance["bookmaker"], "Test Book")
+        self.assertEqual(provenance["capture_kind"], "provider_last_update_verified")
+
+    def test_the_odds_pricing_rejects_stale_market_timestamp(self):
+        match = {
+            "player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"},
+            "_tour": "atp", "tournament_name": "U.S. Open - New York",
+        }
+        stale = (datetime.now(timezone.utc) - pd.Timedelta(minutes=16)).isoformat()
+        event = {
+            "id": "odds-event-1", "home_team": "Alice Player", "away_team": "Bea Player",
+            "bookmakers": [{
+                "title": "Test Book", "markets": [{"key": "h2h", "last_update": stale, "outcomes": [
+                    {"name": "Alice Player", "price": 1.28}, {"name": "Bea Player", "price": 4.10},
+                ]}],
+            }],
+        }
+        with patch.dict(fetch_data._THE_ODDS_EVENTS, {"tennis_atp_us_open": [event]}, clear=True):
+            odds, provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+        self.assertIsNone(odds)
+        self.assertIsNone(provenance)
 
     def test_embedded_pricing_rejects_same_surname_but_wrong_full_name(self):
         match = {"player1": {"name": "Alice Smith"}, "player2": {"name": "Bea Jones"}, "_tour": "atp"}
