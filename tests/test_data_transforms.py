@@ -309,6 +309,21 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(odds["odds_columns"], ("B365W", "B365L"))
         self.assertEqual(odds["buckets"]["1.31-1.40"]["n"], 1)
 
+    def test_game_differential_treats_whitespace_only_unused_sets_as_missing(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "best_of": 3,
+             "W1": 6, "L1": 4, "W2": 6, "L2": 3, "W3": "\t", "L3": None},
+            {"winner_name": "A", "loser_name": "C", "best_of": 3,
+             "W1": 6, "L1": 3, "W2": 6, "L2": None},
+        ])
+
+        profile = fetch_data.compute_game_differential_profile(history, "A")
+
+        # O primeiro é uma vitória BO3 completa em dois sets; o segundo tem
+        # uma coluna de score truncada e deve continuar excluído.
+        self.assertEqual(profile["bo3"]["wins"]["n"], 1)
+        self.assertEqual(profile["bo3"]["wins"]["margins"], [5])
+
     def test_game_differential_keeps_a_positive_margin_in_a_loss(self):
         history = pd.DataFrame([
             {"winner_name": "B", "loser_name": "A", "best_of": 3,
