@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "20 5,11,17,23 * * *"
   workflow_dispatch: {}
+  # Fallback/event-driven: sempre que o bot principal terminar com sucesso,
+  # recolher uma observação de mercado imediatamente depois do novo sinal.
+  # Mantemos o schedule independente para continuar a medir movimento depois.
+  workflow_run:
+    workflows: ["Tennis Pre-Live Bot"]
+    types: [completed]
 
 concurrency:
   group: tennis-pre-live-production
@@ -11,6 +17,7 @@ concurrency:
 
 jobs:
   monitor-odds:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -35,6 +42,9 @@ jobs:
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
           ODDS_MONITOR_MARKET_ID: "1"
           ODDS_MONITOR_HORIZON_HOURS: "48"
+          ODDS_MONITOR_FRESH_MAX_AGE_SECONDS: "900"
+          ODDS_MONITOR_TRIGGER: ${{ github.event_name }}
+          ODDS_MONITOR_GITHUB_RUN_ID: ${{ github.run_id }}
           LLM_MODE: disabled
           LLM_POLICY: never
           ALLOW_PAID_LLM: "0"
