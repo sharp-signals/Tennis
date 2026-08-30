@@ -2287,8 +2287,18 @@ def _game_differential_from_row(row: pd.Series, winner_is_player: bool) -> Optio
     games_w = games_l = parsed_sets = 0
     for number in range(1, 6):
         winner_games, loser_games = row.get(f"W{number}"), row.get(f"L{number}")
-        if pd.isna(winner_games) and pd.isna(loser_games):
+        # tennis-data.co.uk por vezes representa um set ausente por espaços/tab,
+        # em vez de NaN. Um par vazio significa simplesmente que o jogo acabou
+        # antes desse set; um lado vazio e o outro preenchido continua inválido.
+        def _empty_set_value(value: object) -> bool:
+            return pd.isna(value) or (isinstance(value, str) and not value.strip())
+
+        winner_missing = _empty_set_value(winner_games)
+        loser_missing = _empty_set_value(loser_games)
+        if winner_missing and loser_missing:
             continue
+        if winner_missing or loser_missing:
+            return None
         try:
             left, right = int(float(winner_games)), int(float(loser_games))
         except (TypeError, ValueError):
