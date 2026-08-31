@@ -147,7 +147,9 @@ aceitar execução manual (`workflow_dispatch`). Em produção usa:
 - Python 3.11 e `requirements.lock`;
 - `LLM_MODE=anthropic`, `LLM_POLICY=selective` e `ALLOW_PAID_LLM=1`;
 - limites RapidAPI de 2250 chamadas/run e 4500/dia;
-- commit automático de caches, telemetria, snapshots, PAPER e `docs/`.
+- commit automático direto em `main` apenas para caches, telemetria, snapshots,
+  PAPER, relatórios e dados SHADOW gerados; mudanças de código continuam por
+  Pull Request.
 
 Em caso de falha, o workflow preserva telemetria e alerta o Telegram; não deve
 publicar relatórios parciais.

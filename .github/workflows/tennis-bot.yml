@@ -3,7 +3,8 @@ name: Tennis Pre-Live Bot
 on:
   schedule:
     # 05:30/17:30 UTC = 06:30/18:30 em Portugal durante o horário de verão.
-    - cron: "30 5,17 * * *"
+    - cron: "30 5 * * *"
+    - cron: "30 17 * * *"
   workflow_dispatch: {}   # mantém também a execução manual pela UI
 
 concurrency:
@@ -16,9 +17,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write   # necessário para o commit automático da cache de torneios
-      pull-requests: write
-    env:
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -82,31 +80,7 @@ jobs:
             knowledge/players/ docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar caches e relatórios"
-            # Integrar mudanças remotas antes de enviar (evita o erro
-            # "! [rejected] ... fetch first" quando o repo avançou entretanto,
-            # ex: substituições manuais de ficheiros). Rebase por cima do
-            # remoto e tenta o push; se ainda falhar, repete.
-            push_ok=0
-            for tentativa in 1 2 3; do
-              if ! git pull --rebase --autostash origin main; then
-                echo "Rebase falhou; não é seguro continuar para push."
-                exit 1
-              fi
-              if bash scripts/publish-generated-changes.sh "chore: atualizar caches e relatórios"; then
-                echo "Push concluído (tentativa $tentativa)."
-                push_ok=1
-                break
-              fi
-              echo "Push falhou na tentativa $tentativa; a repetir..."
-              sleep 3
-            done
-            # AUDITORIA P1: se as 3 tentativas falharam, falhar o workflow
-            # explicitamente para o alerta do Telegram (if: failure()) disparar.
-            # Sem isto, o push podia falhar em silêncio e ninguém saberia.
-            if [ "$push_ok" -ne 1 ]; then
-              echo "Push falhou definitivamente após 3 tentativas."
-              exit 1
-            fi
+            bash scripts/publish-generated-changes.sh "chore: atualizar caches e relatórios"
           else
             echo "Sem alterações a gravar."
           fi

@@ -1,39 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Este script é usado exclusivamente por workflows que acabaram de criar um
+# commit de dados gerados (caches, relatórios, telemetria ou SHADOW). Código
+# continua a entrar por Pull Request; não há auto-merge nem GitHub CLI aqui.
 title="${1:-chore: atualizar dados gerados}"
-slug="$(printf '%s' "${GITHUB_WORKFLOW:-workflow}" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9_-')"
-branch="bot/${slug}-${GITHUB_RUN_ID:-manual}-${GITHUB_RUN_ATTEMPT:-1}"
 
-if git show-ref --verify --quiet "refs/heads/$branch"; then
-  git switch "$branch"
-else
-  git switch -c "$branch"
+if [ "$(git branch --show-current)" != "main" ]; then
+  echo "Publicação automática só é permitida a partir de main."
+  exit 1
 fi
-git push --set-upstream origin "$branch"
-pr_url="$(gh pr list --state open --head "$branch" --json url --jq '.[0].url // empty')"
-if [ -z "$pr_url" ]; then
-  pr_url="$(gh pr create --base main --head "$branch" --title "$title" \
-    --body "Atualização automática gerada por \`${GITHUB_WORKFLOW:-workflow}\`, execução \`${GITHUB_RUN_ID:-local}\`. O CI deve passar antes da integração.")"
-fi
-gh pr merge "$pr_url" --auto --squash --delete-branch
 
-# Não libertar o grupo de concorrência enquanto a telemetria/caches ainda
-# estiverem apenas no branch do PR. Sem esta confirmação, a execução seguinte
-# poderia arrancar de main desatualizada e subcontar a quota diária.
-for tentativa in $(seq 1 30); do
-  state="$(gh pr view "$pr_url" --json state --jq '.state')"
-  if [ "$state" = "MERGED" ]; then
-    echo "PR automático integrado: $pr_url"
-    exit 0
-  fi
-  if [ "$state" = "CLOSED" ]; then
-    echo "PR automático fechado sem merge: $pr_url"
+# A concorrência partilhada dos workflows evita corridas entre bot e monitor.
+# Ainda assim, rebase + três tentativas protegem contra um push humano ou uma
+# atualização remota que ocorra durante a execução.
+for tentativa in 1 2 3; do
+  if ! git pull --rebase --autostash origin main; then
+    echo "Rebase falhou; não é seguro publicar dados gerados."
     exit 1
   fi
-  echo "PR ainda $state; a aguardar integração ($tentativa/30)..."
-  sleep 10
+  if git push origin HEAD:main; then
+    echo "Dados gerados publicados diretamente em main: $title (tentativa $tentativa)."
+    exit 0
+  fi
+  echo "Push falhou; nova tentativa ($tentativa/3)."
+  sleep 3
 done
 
-echo "PR automático não foi integrado dentro de 5 minutos: $pr_url"
+echo "Push dos dados gerados falhou após 3 tentativas."
 exit 1
