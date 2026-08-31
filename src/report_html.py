@@ -2112,9 +2112,11 @@ _HANDICAP_REF_BO5_FAVORITO = [
 ]
 # Tabela BO3 fornecida pelo BRAIN em 29/08/2026. Os limites são explícitos
 # para impedir que 1.40 caia simultaneamente em duas bandas: 1.40 pertence à
-# segunda banda. Abaixo de 1.30 não há referência BO3 aprovada.
+# segunda banda. Super-favoritos abaixo de 1.30 usam a faixa aprovada
+# -4.5/-5; não é uma linha real capturada.
 _HANDICAP_REF_BO3_FAVORITO = [
-    (1.30, 1.40, ("-3.5", "-4")),
+    (1.00, 1.30, ("-4.5", "-5")),
+    (1.30, 1.40, ("-4", "-4.5")),
     (1.40, 1.51, ("-3", "-3.5")),
     (1.51, 1.61, ("-1.5", "-2.5")),
 ]
@@ -4402,34 +4404,65 @@ def _mod_action_map(payload, div, result):
                         _piece += f"; quando vence {_wc}/{_n_wins}"
                     _line_parts.append((str(_line), _wc, _lc, _piece))
 
-                _top_line = _line_parts[0][0] if _line_parts else None
-                _top_win_cover = _line_parts[0][1] if _line_parts else 0
                 _losses_with_game_advantage = sum(float(margin) > 0 for margin in _losses_margins)
-                _reading_parts = []
-                if _n_wins and _top_line is not None:
+                if _fmt == "bo3":
+                    # No BO3, a leitura operacional deve ser uma fotografia
+                    # curta: cobertura nas vitórias, comportamento nas derrotas
+                    # e tamanho da amostra. Não misturar uma taxa "total" que
+                    # confunda cobertura de handicap do favorito com derrotas.
+                    _win_lines = []
+                    for _line, _wc, _lc, _piece in _line_parts:
+                        _entry = f"{_line_label(_line)} cobre {_wc}/{_n_wins}"
+                        _pushes = _settlement(_wins_margins, _line)[1]
+                        if _pushes:
+                            _entry += f" ({_pushes} {'devolução' if _pushes == 1 else 'devoluções'})"
+                        _win_lines.append(_entry)
+                    _reading_parts = []
+                    if _n_wins and _win_lines:
+                        _reading_parts.append(f"Vitórias ({_n_wins}): " + " · ".join(_win_lines) + ".")
+                    if _n_losses:
+                        _reading_parts.append(
+                            f"Derrotas ({_n_losses}): terminou com mais games em "
+                            f"{_losses_with_game_advantage}/{_n_losses}."
+                        )
                     _reading_parts.append(
-                        f"Quando vence, {names[fav_side]} cobriu {_line_label(_top_line)} em "
-                        f"{_top_win_cover}/{_n_wins} vitórias."
+                        f"Amostra: {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} scores completos."
                     )
-                if _n_losses:
+                    _headline = (
+                        f"Linha a confirmar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
+                        f"{_line_label(_candidate_lines[1])}"
+                        if _n_wins and len(_candidate_lines) >= 2
+                        else "Sem base suficiente para uma linha a avaliar"
+                    )
+                    _footnote = "referência interna · confirmar linha e odd atuais"
+                else:
+                    _top_line = _line_parts[0][0] if _line_parts else None
+                    _top_win_cover = _line_parts[0][1] if _line_parts else 0
+                    _reading_parts = []
+                    if _n_wins and _top_line is not None:
+                        _reading_parts.append(
+                            f"Quando vence, {names[fav_side]} cobriu {_line_label(_top_line)} em "
+                            f"{_top_win_cover}/{_n_wins} vitórias."
+                        )
+                    if _n_losses:
+                        _reading_parts.append(
+                            f"Mesmo quando perde, terminou com mais games totais em "
+                            f"{_losses_with_game_advantage}/{_n_losses} derrotas."
+                        )
+                    if _line_parts:
+                        _reading_parts.append("Cobertura histórica: " + " · ".join(part[3] for part in _line_parts) + ".")
                     _reading_parts.append(
-                        f"Mesmo quando perde, terminou com mais games totais em "
-                        f"{_losses_with_game_advantage}/{_n_losses} derrotas."
+                        "Contexto factual: confirmar linha e odd atuais antes de qualquer PAPER."
                     )
-                if _line_parts:
-                    _reading_parts.append("Cobertura histórica: " + " · ".join(part[3] for part in _line_parts) + ".")
-                _reading_parts.append(
-                    "Contexto factual: confirmar linha e odd atuais antes de qualquer PAPER."
-                )
-                _headline = (
-                    f"Handicap a avaliar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
-                    f"{_line_label(_candidate_lines[1])}"
-                    if _n_wins and len(_candidate_lines) >= 2
-                    else "Sem base suficiente para uma linha a avaliar"
-                )
+                    _headline = (
+                        f"Handicap a avaliar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
+                        f"{_line_label(_candidate_lines[1])}"
+                        if _n_wins and len(_candidate_lines) >= 2
+                        else "Sem base suficiente para uma linha a avaliar"
+                    )
+                    _footnote = "scores completos · vitórias e derrotas por games · referência interna, não linha real"
                 add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
-                    " ".join(_reading_parts),
-                    "scores completos · vitórias e derrotas por games · referência interna, não linha real",
+                    " ".join(_reading_parts), _footnote,
                     headline=_headline, n_amostra=_n_wins + _n_losses)
 
         # Cruzamento opcional: só é mostrado quando a odd histórica existe no
