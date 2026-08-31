@@ -140,12 +140,15 @@ uso analítico responsável.
 
 ## Execução e GitHub Actions
 
-O workflow `.github/workflows/tennis-bot.yml` corre automaticamente às 05:30
-e 17:30 UTC (06:30 e 18:30 em Portugal durante o horário de verão), além de
-aceitar execução manual (`workflow_dispatch`). Em produção usa:
+O workflow `.github/workflows/tennis-bot.yml` é acionado pelo Google Apps
+Script às 06:30 e 18:30 em Portugal, além de aceitar execução manual
+(`workflow_dispatch`). O cron nativo do GitHub fica desativado: pode atrasar
+horas e criar uma execução fora da janela prevista. Em produção usa:
 
 - Python 3.11 e `requirements.lock`;
-- `LLM_MODE=anthropic`, `LLM_POLICY=selective` e `ALLOW_PAID_LLM=1`;
+- `LLM_MODE=disabled`, `LLM_POLICY=never` e `ALLOW_PAID_LLM=0`; Claude não é
+  chamado pelo bot nesta fase, pelo que as decisões PAPER e os relatórios são
+  inteiramente determinísticos e não geram custo Anthropic;
 - limites RapidAPI de 2250 chamadas/run e 4500/dia;
 - commit automático direto em `main` apenas para caches, telemetria, snapshots,
   PAPER, relatórios e dados SHADOW gerados; mudanças de código continuam por
@@ -156,7 +159,7 @@ publicar relatórios parciais.
 
 ### Secrets necessários
 
-`ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
+`RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`, `TELEGRAPH_ACCESS_TOKEN` e `REPORT_EMAIL_APP_PASSWORD`.
 O último é uma App Password da conta Gmail `fenzobot@gmail.com`, não a sua
 palavra-passe normal.

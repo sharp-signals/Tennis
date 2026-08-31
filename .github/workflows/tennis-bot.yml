@@ -1,11 +1,11 @@
 name: Tennis Pre-Live Bot
 
 on:
-  schedule:
-    # 05:30/17:30 UTC = 06:30/18:30 em Portugal durante o horário de verão.
-    - cron: "30 5 * * *"
-    - cron: "30 17 * * *"
-  workflow_dispatch: {}   # mantém também a execução manual pela UI
+  # O agendamento é feito pelo Google Apps Script, que dispara este workflow
+  # por ``workflow_dispatch`` às 06:30 e 18:30 Europe/Lisbon. O cron nativo
+  # do GitHub pode arrancar horas atrasado, portanto fica deliberadamente
+  # desativado para não criar execuções inesperadas nem custo extra.
+  workflow_dispatch: {}
 
 concurrency:
   group: tennis-pre-live-production
@@ -31,10 +31,12 @@ jobs:
 
       - name: Correr o bot
         env:
-          LLM_MODE: anthropic
-          LLM_POLICY: selective
-          ALLOW_PAID_LLM: "1"
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # CHANGE-2026-08-31-017: nesta fase o motor e os relatórios são
+          # determinísticos; Claude não é necessário para decidir PAPER.
+          # Mantemos o secret fora do job para impedir qualquer custo acidental.
+          LLM_MODE: disabled
+          LLM_POLICY: never
+          ALLOW_PAID_LLM: "0"
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
