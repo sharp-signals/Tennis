@@ -262,16 +262,19 @@ class ReportRenderingTests(unittest.TestCase):
 
     def test_handicap_reference_is_format_aware_and_uses_both_boundaries(self):
         bo3 = report_html.estimate_typical_handicap(1.40, "bo3")
+        bo3_130 = report_html.estimate_typical_handicap(1.30, "bo3")
+        bo3_low = report_html.estimate_typical_handicap(1.25, "bo3")
         bo5 = report_html.estimate_typical_handicap(1.40, "bo5")
         bo5_130 = report_html.estimate_typical_handicap(1.30, "bo5")
         bo5_low = report_html.estimate_typical_handicap(1.22, "bo5")
         self.assertEqual(bo3["handicap"], ("-3", "-3.5"))
+        self.assertEqual(bo3_130["handicap"], ("-4", "-4.5"))
+        self.assertEqual(bo3_low["handicap"], ("-4.5", "-5"))
         self.assertEqual(bo5["handicap"], ("-3.5", "-4"))
         self.assertEqual(bo5_130["handicap"], ("-4", "-4.5"))
         self.assertEqual(bo5_low["handicap"], ("-5", "-6"))
         self.assertEqual(report_html.handicap_coverage_thresholds(bo3), [3, 4])
         self.assertEqual(report_html.handicap_coverage_thresholds(bo5), [4])
-        self.assertIsNone(report_html.estimate_typical_handicap(1.25, "bo3"))
 
     def test_action_map_excludes_tiebreak_suggestion_but_keeps_data_elsewhere(self):
         payload = {
@@ -318,9 +321,11 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 65, "b": 35}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap — leitura factual (BO3)", html)
-        self.assertIn("Handicap a avaliar: A -1.5 / -2", html)
-        self.assertIn("Quando vence, A cobriu -1.5 em 2/3 vitórias.", html)
-        self.assertIn("Mesmo quando perde, terminou com mais games totais em 1/2 derrotas.", html)
+        self.assertIn("Linha a confirmar: A -1.5 / -2", html)
+        self.assertIn("Vitórias (3): -1.5 cobre 2/3 · -2 cobre 1/3 (1 devolução).", html)
+        self.assertIn("Derrotas (2): terminou com mais games em 1/2.", html)
+        self.assertIn("Amostra: 5 scores completos.", html)
+        self.assertNotIn("Cobertura histórica:", html)
 
     def test_reference_only_odds_are_labelled_not_eligible_for_pricing(self):
         payload = {
