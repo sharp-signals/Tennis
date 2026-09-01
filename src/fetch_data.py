@@ -58,6 +58,7 @@ from .config import (
     MAX_FIXTURE_PAGES,
     ODDS_API_TENNIS_SPORT_KEYS,
     RAPIDAPI_BASE,
+    RAPIDAPI_BACKFILL_GLOBAL_CEILING,
     RAPIDAPI_HOST,
     RAPIDAPI_MAX_CALLS_PER_DAY,
     RAPIDAPI_MAX_CALLS_PER_RUN,
@@ -126,8 +127,10 @@ _RAPIDAPI_HEADERS = {
 # Contador de chamadas à RapidAPI por execução.
 _RAPIDAPI_CALL_COUNT = {"n": 0}
 _RAPIDAPI_ENDPOINT_CALLS: dict[str, int] = {}
+_RAPIDAPI_PURPOSE_CALLS: dict[str, int] = {}
 _RAPIDAPI_RECORDED_TODAY = {"n": 0}
 _RAPIDAPI_BUDGET_EXCEEDED = {"value": False}
+_RAPIDAPI_BACKFILL_BUDGET_EXCEEDED = {"value": False}
 RAPIDAPI_MIN_INTERVAL = 0.35
 _RAPIDAPI_LAST_CALL = {"t": 0.0}
 _RAPIDAPI_LOCK = threading.Lock()
@@ -138,6 +141,10 @@ RAPIDAPI_CHECKPOINT_EVERY = 10
 
 class RapidAPIBudgetExceeded(RuntimeError):
     """A execução atingiu o orçamento configurado antes do pedido seguinte."""
+
+
+class RapidAPIBackfillBudgetExceeded(RapidAPIBudgetExceeded):
+    """O backfill atingiu o teto subordinado, preservando a reserva operacional."""
 
 
 def _load_recorded_today_calls() -> int:
@@ -177,7 +184,8 @@ def _write_rapidapi_checkpoint() -> None:
 def persist_rapidapi_usage(*, status: str, matches: int = 0) -> dict:
     """Fecha o checkpoint numa entrada histórica, incluindo runs falhadas."""
     entry = {"timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-             "calls": get_rapidapi_call_count(), "matches": int(matches), "status": status}
+             "calls": get_rapidapi_call_count(), "matches": int(matches), "status": status,
+             "purpose_calls": get_rapidapi_purpose_counts()}
     try:
         with open(RAPIDAPI_USAGE_PATH, "r", encoding="utf-8") as handle:
             history = json.load(handle)
@@ -206,10 +214,18 @@ def clear_rapidapi_checkpoint() -> None:
         pass
 
 
-def _reserve_rapidapi_call() -> None:
+def _reserve_rapidapi_call(*, purpose: str = "operational") -> None:
     """Reserva atomicamente uma chamada real, incluindo tentativas após 429."""
+    if purpose not in {"operational", "backfill"}:
+        raise ValueError(f"Propósito RapidAPI inválido: {purpose!r}")
     projected_run = _RAPIDAPI_CALL_COUNT["n"] + 1
     projected_day = _RAPIDAPI_RECORDED_TODAY["n"] + projected_run
+    if purpose == "backfill" and projected_day > RAPIDAPI_BACKFILL_GLOBAL_CEILING:
+        _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = True
+        raise RapidAPIBackfillBudgetExceeded(
+            "Ceiling histórico RapidAPI atingido; reserva operacional preservada "
+            f"(dia={projected_day - 1}/{RAPIDAPI_BACKFILL_GLOBAL_CEILING})."
+        )
     if (
         projected_run > RAPIDAPI_MAX_CALLS_PER_RUN
         or projected_day > RAPIDAPI_MAX_CALLS_PER_DAY
@@ -221,11 +237,12 @@ def _reserve_rapidapi_call() -> None:
             f"dia={projected_day - 1}/{RAPIDAPI_MAX_CALLS_PER_DAY})."
         )
     _RAPIDAPI_CALL_COUNT["n"] = projected_run
+    _RAPIDAPI_PURPOSE_CALLS[purpose] = _RAPIDAPI_PURPOSE_CALLS.get(purpose, 0) + 1
     if projected_run == 1 or projected_run % RAPIDAPI_CHECKPOINT_EVERY == 0:
         _write_rapidapi_checkpoint()
 
 
-def _rapidapi_get(url, **kwargs):
+def _rapidapi_get(url, *, rapidapi_purpose: str = "operational", **kwargs):
     """Wrapper único com orçamento, contador real, anti-429 e retry.
 
     CORREÇÃO (16/08/2026): reconstruído a partir dos testes do Hugo depois
@@ -237,7 +254,7 @@ def _rapidapi_get(url, **kwargs):
     resp = None
     for tentativa in range(3):
         with _RAPIDAPI_LOCK:
-            _reserve_rapidapi_call()
+            _reserve_rapidapi_call(purpose=rapidapi_purpose)
             endpoint = urlparse(str(url)).path
             _RAPIDAPI_ENDPOINT_CALLS[endpoint] = _RAPIDAPI_ENDPOINT_CALLS.get(endpoint, 0) + 1
             elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
@@ -284,16 +301,26 @@ def get_rapidapi_endpoint_counts() -> dict[str, int]:
     return dict(sorted(_RAPIDAPI_ENDPOINT_CALLS.items()))
 
 
+def get_rapidapi_purpose_counts() -> dict[str, int]:
+    return dict(sorted(_RAPIDAPI_PURPOSE_CALLS.items()))
+
+
 def reset_rapidapi_call_count() -> None:
     _RAPIDAPI_CALL_COUNT["n"] = 0
     _RAPIDAPI_ENDPOINT_CALLS.clear()
+    _RAPIDAPI_PURPOSE_CALLS.clear()
     _RAPIDAPI_RECORDED_TODAY["n"] = _load_recorded_today_calls()
     _RAPIDAPI_BUDGET_EXCEEDED["value"] = False
+    _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = False
     _write_rapidapi_checkpoint()
 
 
 def rapidapi_budget_exceeded() -> bool:
     return _RAPIDAPI_BUDGET_EXCEEDED["value"]
+
+
+def rapidapi_backfill_budget_exceeded() -> bool:
+    return _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"]
 
 
 _BROWSER_HEADERS = {
