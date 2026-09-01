@@ -1,4 +1,4 @@
-"""Offline cache, schema and resume tests for CHANGE-2026-09-01-021."""
+"""Offline cache, schema and resume tests for CHANGE-2026-09-01-021/022."""
 
 from __future__ import annotations
 
@@ -75,12 +75,16 @@ class HistoricalWarehouseTests(unittest.TestCase):
         with self.assertRaises(CorruptCachedPayload):
             self.warehouse.get_raw_response(key)
 
-    def test_resume_skips_completed_player_item(self) -> None:
+    def test_legacy_completed_player_is_not_mistaken_for_provider_exhaustion(self) -> None:
         self.warehouse.set_backfill_state("past_matches:atp:1", "completed")
+        response = Mock(status_code=200)
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"data": [], "page": 1, "hasNextPage": False}
         acquirer = HistoricalAcquirer(self.warehouse)
-        with patch.object(acquirer, "fetch_json") as fetch:
+        with patch("src.historical_acquisition.fetch_data._rapidapi_get", return_value=response) as fetch:
             self.assertEqual(acquirer.acquire_player_past_matches("atp", 1, resume=True), [])
-        fetch.assert_not_called()
+        fetch.assert_called_once()
+        self.assertEqual(self.warehouse.get_backfill_state("past_matches:atp:1")["status"], "source_exhausted")
 
     def test_partial_batch_resumes_from_cached_cursor(self) -> None:
         response = Mock(status_code=200)
@@ -101,8 +105,8 @@ class HistoricalWarehouseTests(unittest.TestCase):
         self.assertEqual(third, [])
         request.assert_called_once()
         state = self.warehouse.get_backfill_state("past_matches:atp:1")
-        self.assertEqual(state["status"], "completed")
-        self.assertEqual(state["cursor"], "3")
+        self.assertEqual(state["status"], "source_exhausted")
+        self.assertEqual(HistoricalAcquirer._parse_cursor(state["cursor"])["row_offset"], 3)
 
 
 if __name__ == "__main__":

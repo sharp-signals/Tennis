@@ -45,13 +45,23 @@ def _summarize(name: str, tour: str, payload: Any, cache_hit: bool) -> dict[str,
             timestamps += 1
         if item.get("bookmaker"):
             bookmakers.add(str(item["bookmaker"]))
-    temporal_safe = name == "getPlayerPastMatches"
+    temporal_uses = {
+        "match_identity_temporal_use": "UNAVAILABLE",
+        "result_temporal_use": "UNAVAILABLE",
+        "odds_temporal_use": "UNAVAILABLE",
+        "ranking_temporal_use": "UNAVAILABLE",
+    }
     limitations = []
+    if name == "getPlayerPastMatches":
+        temporal_uses.update({
+            "match_identity_temporal_use": "EXACT_EX_ANTE",
+            "result_temporal_use": "EX_POST_ONLY",
+            "odds_temporal_use": "UNAVAILABLE",
+            "ranking_temporal_use": "UNAVAILABLE",
+        })
     if name in {"getPlayerPerfBreakdown", "getVsAllStats"}:
-        temporal_safe = False
         limitations.append("Agregado pode incluir jogos posteriores; persistível para auditoria, não usado diretamente no replay.")
     if name == "getSinglesRanking":
-        temporal_safe = False
         limitations.append("Ranking atual; proibido como ranking histórico.")
     if odds and not timestamps:
         limitations.append("Odds sem timestamp/semântica; guardadas como UNAVAILABLE para replay ex ante.")
@@ -65,7 +75,7 @@ def _summarize(name: str, tour: str, payload: Any, cache_hit: bool) -> dict[str,
         "latest_observed": max(dates) if dates else None, "pagination_observed": pagination,
         "odds_records": odds, "bookmakers": sorted(bookmakers), "odds_timestamp_records": timestamps,
         "odds_temporal_role": "UNKNOWN" if odds else None,
-        "safe_for_ex_ante_replay": temporal_safe,
+        "temporal_uses": temporal_uses,
         "limitations": limitations,
     }
 
@@ -82,7 +92,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"- range observed: {item.get('earliest_observed')} → {item.get('latest_observed')}",
             f"- pagination observed: {item.get('pagination_observed')}",
             f"- odds/bookmakers/timestamps: {item.get('odds_records')} / {item.get('bookmakers')} / {item.get('odds_timestamp_records')}",
-            f"- safe ex ante: {item.get('safe_for_ex_ante_replay')}",
+            f"- temporal uses: {item.get('temporal_uses')}",
             f"- limitations: {'; '.join(item.get('limitations') or []) or 'none observed in sample'}", "",
         ]
     lines += [
@@ -116,7 +126,16 @@ def run_audit(*, warehouse_path: Path, output_dir: Path, max_calls: int = 8) -> 
                     payload, _, hit = acquirer.fetch_json(name, url, params)
                     report["endpoints"].append(_summarize(name, tour, payload, hit))
                 except Exception as exc:
-                    report["endpoints"].append({"endpoint": name, "tour": tour.upper(), "access_status": "error", "error": str(exc), "safe_for_ex_ante_replay": False})
+                    report["endpoints"].append({
+                        "endpoint": name, "tour": tour.upper(),
+                        "access_status": "error", "error": str(exc),
+                        "temporal_uses": {
+                            "match_identity_temporal_use": "UNAVAILABLE",
+                            "result_temporal_use": "UNAVAILABLE",
+                            "odds_temporal_use": "UNAVAILABLE",
+                            "ranking_temporal_use": "UNAVAILABLE",
+                        },
+                    })
         report.update({"status": "completed", "calls_made": acquirer.metrics.calls_made, "cache_hits": acquirer.metrics.cache_hits})
     (output_dir / "historical-capability-audit.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "historical-capability-audit.md").write_text(render_markdown(report), encoding="utf-8")

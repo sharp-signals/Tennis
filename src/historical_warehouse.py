@@ -1,6 +1,6 @@
 """SQLite warehouse for temporally safe historical acquisition and replay.
 
-CHANGE-2026-09-01-021.  The database is deliberately local and disposable
+CHANGE-2026-09-01-021/022.  The database is deliberately local and disposable
 from Git's point of view; provenance and schema live in code, while real
 historical payloads remain outside version control.
 """
@@ -18,7 +18,7 @@ from typing import Any, Iterable, Iterator, Mapping
 
 
 SCHEMA_VERSION = 1
-CHANGE_ID = "CHANGE-2026-09-01-021"
+CHANGE_ID = "CHANGE-2026-09-01-022"
 DEFAULT_PATH = Path(
     os.environ.get(
         "HISTORICAL_WAREHOUSE_PATH",
@@ -259,9 +259,15 @@ class HistoricalWarehouse:
             )
 
     def get_raw_response(self, cache_key: str) -> Any | None:
+        entry = self.get_raw_response_entry(cache_key)
+        return entry["payload"] if entry else None
+
+    def get_raw_response_entry(self, cache_key: str) -> dict[str, Any] | None:
         with self.connect() as connection:
             row = connection.execute(
-                "SELECT payload_json, payload_hash FROM raw_responses WHERE cache_key=?",
+                """SELECT payload_json, payload_hash, status, fetched_at_utc,
+                          provider_timestamp, endpoint, normalized_params
+                   FROM raw_responses WHERE cache_key=?""",
                 (cache_key,),
             ).fetchone()
         if row is None:
@@ -272,7 +278,14 @@ class HistoricalWarehouse:
             raise CorruptCachedPayload(f"JSON inválido na cache {cache_key}") from exc
         if payload_hash(payload) != row["payload_hash"]:
             raise CorruptCachedPayload(f"Hash inválido na cache {cache_key}")
-        return payload
+        return {
+            "payload": payload,
+            "status": int(row["status"]),
+            "fetched_at_utc": row["fetched_at_utc"],
+            "provider_timestamp": row["provider_timestamp"],
+            "endpoint": row["endpoint"],
+            "normalized_params": json.loads(row["normalized_params"]),
+        }
 
     def put_raw_response(
         self,

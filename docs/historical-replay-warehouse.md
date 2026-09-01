@@ -1,6 +1,6 @@
 # Historical Replay Warehouse
 
-`CHANGE-2026-09-01-021` adds an isolated historical validation path. It does not replace `src/backtest.py`, alter Fenzobot weights, pricing, PAPER, reports, alerts, or operational snapshots.
+`CHANGE-2026-09-01-021` added the isolated historical validation path. `CHANGE-2026-09-01-022` adds real, cached pagination and a bounded depth probe. Neither change replaces `src/backtest.py` nor alters Fenzobot weights, pricing, PAPER, reports, alerts, or operational snapshots.
 
 ## Pipeline and storage
 
@@ -30,6 +30,12 @@ Historical `odd1/odd2` is preserved, but without a bookmaker timestamp it is `te
 
 Transient errors, 404 responses and empty dynamic histories are not written to the immutable successful-response cache, so a temporary absence cannot block future discovery forever.
 
+## Paginated acquisition and resume
+
+`getPlayerPastMatches` is acquired page by page. Each raw-cache key includes `tour`, `player_id`, `page` and the source version; a cached page therefore costs zero calls. The provider payload observed by the authenticated capability audit exposed `page`, `pageNo` and `hasNextPage`; the depth probe is the controlled empirical check that the `page` request parameter advances to page 2.
+
+The version-2 resume cursor is JSON and records the next provider page, the row offset inside a partially processed page, and the previous page fingerprint. Legacy numeric offsets are migrated conservatively to page 1. State distinguishes `source_exhausted`, `limit_reached`, `budget_reached` and `failed`. Repeated/non-advancing pages stop acquisition rather than consuming quota indefinitely.
+
 ## Commands
 
 Capability audit (small documented ATP/WTA sample, JSON + Markdown, no large backfill):
@@ -37,6 +43,13 @@ Capability audit (small documented ATP/WTA sample, JSON + Markdown, no large bac
 ```bash
 LLM_MODE=disabled LLM_POLICY=never ALLOW_PAID_LLM=0 \
 python -m scripts.historical_capability_audit --max-calls 8
+```
+
+Bounded depth probe (Alcaraz ATP and Świątek WTA; at most 12 pages each and 24 calls total):
+
+```bash
+LLM_MODE=disabled LLM_POLICY=never ALLOW_PAID_LLM=0 RAPIDAPI_KEY=... \
+python -m scripts.historical_depth_probe --max-pages-per-player 12 --max-calls 24
 ```
 
 Controlled pilot (default player IDs are already documented/observed in this repository):
@@ -67,7 +80,7 @@ If operational work has already used 800 calls, historical acquisition can use a
 
 ## Current limitations
 
-- Actual subscription depth must be measured by the capability audit; endpoint names are not proof.
+- Actual subscription depth must be measured by the authenticated depth probe; endpoint names and pagination fields alone are not proof.
 - No separate historical-odds endpoint is currently documented in the repository.
 - Quote temporal semantics and bookmaker can be absent.
 - Historical rankings may be unavailable.
