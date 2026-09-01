@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Audit, controlled pilot, explicit backfill, or offline replay
+        description: Audit, depth probe, controlled pilot, explicit backfill, or offline replay
         type: choice
-        options: [audit, pilot, backfill, replay]
+        options: [audit, depth_probe, pilot, backfill, replay]
         default: audit
       tour:
         description: Circuit
@@ -24,9 +24,12 @@ on:
         default: "20"
       max_calls:
         description: Maximum calls requested by this controlled run
-        default: "8"
+        default: "24"
+      max_pages_per_player:
+        description: Maximum provider pages per player in depth_probe
+        default: "12"
       resume:
-        description: Skip completed acquisition items
+        description: Resume saved cursors and skip source-exhausted items
         type: boolean
         default: true
       confirm_backfill:
@@ -68,6 +71,21 @@ jobs:
           MAX_CALLS_INPUT: ${{ inputs.max_calls }}
         run: python -m scripts.historical_capability_audit --max-calls "$MAX_CALLS_INPUT" --output-dir artifacts/historical-audit
 
+      - name: Historical depth probe
+        if: inputs.mode == 'depth_probe'
+        env:
+          MAX_PAGES_INPUT: ${{ inputs.max_pages_per_player }}
+          MAX_CALLS_INPUT: ${{ inputs.max_calls }}
+          RESUME_INPUT: ${{ inputs.resume }}
+        shell: bash
+        run: |
+          extra=()
+          if [[ "$RESUME_INPUT" == "false" ]]; then extra+=(--no-resume); fi
+          python -m scripts.historical_depth_probe \
+            --max-pages-per-player "$MAX_PAGES_INPUT" \
+            --max-calls "$MAX_CALLS_INPUT" \
+            --output-dir artifacts/historical-depth-probe "${extra[@]}"
+
       - name: Controlled acquisition
         if: inputs.mode == 'pilot' || inputs.mode == 'backfill'
         shell: bash
@@ -102,6 +120,7 @@ jobs:
           name: historical-${{ inputs.mode }}-${{ github.run_id }}
           path: |
             artifacts/historical-audit/
-            data/historical_warehouse/*.sqlite3
+            artifacts/historical-depth-probe/
+            data/historical_warehouse/*.sqlite3*
           if-no-files-found: ignore
           retention-days: 7
