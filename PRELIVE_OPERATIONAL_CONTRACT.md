@@ -92,14 +92,16 @@ mantêm BO3 salvo indicação explícita da fonte. Cruzamentos históricos entre
 Moneyline e margem só são exibidos se as colunas de odds existirem de facto no
 dataset.
 
-No Mapa de Ações, a leitura factual de Handicap começa pela zona interna a
-confirmar na casa para o jogador selecionado pela decisão pré-live. Se esse
-jogador for o underdog, a zona do favorito é espelhada (por exemplo, favorito
-`-4 / -4.5` corresponde a underdog `+4 / +4.5`); para favoritos, mostra a
-linha mais acessível e a meia-unidade seguinte. Expõe separadamente a cobertura
-quando o jogador vence e, nas derrotas, quantas terminaram com mais games
-totais do que o adversário. Esta leitura é contextual: não é uma linha
-capturada, uma odd, um edge nem uma entrada PAPER.
+No Mapa de Ações, o cartão **Handicap para avaliar em PAPER** começa pela zona
+interna indicada pela Moneyline pré-live para o jogador selecionado pela
+decisão. Se esse jogador for o underdog, a zona do favorito é espelhada (por
+exemplo, favorito `-4 / -4.5` corresponde a underdog `+4 / +4.5`). Para cada
+linha, expõe `cobre / devolve / falha` em contagem e percentagem, incluindo
+separadamente o que ocorre nas vitórias e derrotas. Quando existem odds
+históricas reais, acrescenta a mesma leitura apenas para a faixa de Moneyline
+comparável e o mesmo formato (BO3 ou BO5). O cartão indica a linha mais
+protegida a procurar primeiro, mas não cria linha capturada, odd, edge nem uma
+entrada PAPER automática de handicap.
 
 ## Persistência e universos históricos
 

@@ -2414,7 +2414,13 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
     if not cols:
         return None
     buckets = ((1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50), (1.51, 1.60))
-    output = {f"{lo:.2f}-{hi:.2f}": {"n": 0, "wins": 0, "margins": []} for lo, hi in buckets}
+    output = {
+        f"{lo:.2f}-{hi:.2f}": {
+            "n": 0, "wins": 0, "margins": [], "win_margins": [],
+            "loss_margins": [], "by_format": {},
+        }
+        for lo, hi in buckets
+    }
     for _, row in history.iterrows():
         won = row.get("winner_name") == resolved
         lost = row.get("loser_name") == resolved
@@ -2431,16 +2437,50 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
             if lo <= odd <= hi:
                 cell = output[f"{lo:.2f}-{hi:.2f}"]
                 cell["n"] += 1; cell["wins"] += int(won); cell["margins"].append(margin)
+                cell["win_margins" if won else "loss_margins"].append(margin)
+                try:
+                    best_of = int(float(row.get("best_of")))
+                except (TypeError, ValueError):
+                    best_of = None
+                if best_of in (3, 5):
+                    format_cell = cell["by_format"].setdefault(
+                        f"bo{best_of}", {
+                            "n": 0, "wins": 0, "margins": [], "win_margins": [],
+                            "loss_margins": [],
+                        },
+                    )
+                    format_cell["n"] += 1
+                    format_cell["wins"] += int(won)
+                    format_cell["margins"].append(margin)
+                    format_cell["win_margins" if won else "loss_margins"].append(margin)
                 break
+
+    def describe(cell):
+        values = list(cell.get("margins") or [])
+        n = int(cell.get("n") or 0)
+        wins = int(cell.get("wins") or 0)
+        return {
+            "n": n,
+            "wins": wins,
+            "margins": values,
+            "win_margins": list(cell.get("win_margins") or []),
+            "loss_margins": list(cell.get("loss_margins") or []),
+            "win_rate_pct": round(100 * wins / n, 1) if n else 0.0,
+            "mean_game_diff": round(sum(values) / len(values), 2) if values else 0.0,
+            "cover_ge": {str(threshold): sum(v >= threshold for v in values) for threshold in range(3, 8)},
+        }
+
     result = {}
     for label, cell in output.items():
         if not cell["n"]:
             continue
-        values = cell.pop("margins")
-        cell["win_rate_pct"] = round(100 * cell["wins"] / cell["n"], 1)
-        cell["mean_game_diff"] = round(sum(values) / len(values), 2)
-        cell["cover_ge"] = {str(n): sum(v >= n for v in values) for n in range(3, 8)}
-        result[label] = cell
+        described = describe(cell)
+        described["by_format"] = {
+            fmt: describe(format_cell)
+            for fmt, format_cell in cell.get("by_format", {}).items()
+            if format_cell.get("n")
+        }
+        result[label] = described
     return {"odds_columns": cols, "buckets": result} if result else None
 
 

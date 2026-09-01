@@ -2238,6 +2238,27 @@ def handicap_coverage_thresholds(reference):
     return sorted(set(values))
 
 
+def handicap_settlement_counts(margins, line):
+    """Conta coberturas, devoluções e falhas de uma linha por margem factual."""
+    try:
+        line = float(line)
+    except (TypeError, ValueError):
+        return (0, 0, 0)
+    cover = push = miss = 0
+    for margin in margins or ():
+        try:
+            result = float(margin) + line
+        except (TypeError, ValueError):
+            continue
+        if result > 0:
+            cover += 1
+        elif result < 0:
+            miss += 1
+        else:
+            push += 1
+    return cover, push, miss
+
+
 COLORS_V2 = {
     "bg": "#071426", "surface": "#0d2038", "surface2": "#122a47",
     "text": "#f4f7fb", "dim": "#91a5bc", "line": "#23415f",
@@ -2642,7 +2663,7 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .action-headline {{ display:inline-block; font-size:18px; font-weight:800; color:var(--mint);
   background:rgba(63,185,168,.12); border-radius:7px; padding:2px 10px; margin-bottom:7px; }}
 .action-small-sample {{ font-size:10px; color:var(--amber); margin-bottom:6px; font-weight:600; }}
-.action-text {{ color:var(--dim); font-size:11px; line-height:1.5; }}
+.action-text {{ color:var(--dim); font-size:11px; line-height:1.5; white-space:pre-line; }}
 .action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
 @media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
   details.report-map>summary, .action-map-head {{ min-height:78px; }} }}
@@ -4396,24 +4417,8 @@ def _mod_action_map(payload, div, result):
             _wins_margins = list(_wins.get("margins") or [])
             _losses_margins = list(_losses.get("margins") or [])
 
-            def _settlement(values, line):
-                try:
-                    line = float(line)
-                except (TypeError, ValueError):
-                    return (0, 0, 0)
-                cover = push = miss = 0
-                for margin in values:
-                    result = float(margin) + line
-                    if result > 0:
-                        cover += 1
-                    elif result < 0:
-                        miss += 1
-                    else:
-                        push += 1
-                return cover, push, miss
-
             if not _reference or _reference.get("tipo") == "ao_par":
-                add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
+                add(f"Handicap para avaliar em PAPER ({_fmt.upper()})", names[fav_side],
                     "Sem zona interna de handicap para esta Moneyline. O jogo está numa faixa equilibrada; não há linha a avaliar.",
                     f"scores completos · {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} jogos", headline="Sem linha", n_amostra=_n_wins + _n_losses)
             else:
@@ -4447,106 +4452,102 @@ def _mod_action_map(payload, div, result):
                         _candidate_lines = [_line_label(_first_number), _line_label(_first_number - 0.5)]
                 _candidate_lines = list(dict.fromkeys(_candidate_lines))
 
-                _line_parts = []
-                for _line in _candidate_lines:
-                    _wc, _wp, _wm = _settlement(_wins_margins, _line)
-                    _lc, _lp, _lm = _settlement(_losses_margins, _line)
-                    _total = _n_wins + _n_losses
-                    _covered = _wc + _lc
-                    _pushes = _wp + _lp
-                    _piece = f"{_line_label(_line)}: {_covered}/{_total} no total"
-                    if _pushes:
-                        _piece += f" ({_pushes} devolução)"
-                    if _n_wins:
-                        _piece += f"; quando vence {_wc}/{_n_wins}"
-                    _line_parts.append((str(_line), _wc, _lc, _piece))
+                _all_margins = _wins_margins + _losses_margins
+                _total = len(_all_margins)
 
-                _losses_with_game_advantage = sum(float(margin) > 0 for margin in _losses_margins)
-                if _fmt == "bo3":
-                    # No BO3, a leitura operacional deve ser uma fotografia
-                    # curta: cobertura nas vitórias, comportamento nas derrotas
-                    # e tamanho da amostra. Não misturar uma taxa "total" que
-                    # confunda cobertura de handicap do favorito com derrotas.
-                    _win_lines = []
-                    for _line, _wc, _lc, _piece in _line_parts:
-                        _entry = f"{_line_label(_line)} cobre {_wc}/{_n_wins}"
-                        _pushes = _settlement(_wins_margins, _line)[1]
-                        if _pushes:
-                            _entry += f" ({_pushes} {'devolução' if _pushes == 1 else 'devoluções'})"
-                        _win_lines.append(_entry)
-                    _reading_parts = []
-                    if _n_wins and _win_lines:
-                        _reading_parts.append(f"Vitórias ({_n_wins}): " + " · ".join(_win_lines) + ".")
-                    if _n_losses:
-                        _reading_parts.append(
-                            f"Derrotas ({_n_losses}): terminou com mais games em "
-                            f"{_losses_with_game_advantage}/{_n_losses}."
-                        )
-                    _reading_parts.append(
-                        f"Amostra: {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} scores completos."
-                    )
-                    _headline = (
-                        f"Linha a confirmar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
-                        f"{_line_label(_candidate_lines[1])}"
-                        if _n_wins and len(_candidate_lines) >= 2
-                        else "Sem base suficiente para uma linha a avaliar"
-                    )
-                    _footnote = "referência interna · confirmar linha e odd atuais"
-                else:
-                    _top_line = _line_parts[0][0] if _line_parts else None
-                    _top_win_cover = _line_parts[0][1] if _line_parts else 0
-                    _reading_parts = []
-                    if _n_wins and _top_line is not None:
-                        _reading_parts.append(
-                            f"Quando vence, {names[fav_side]} cobriu {_line_label(_top_line)} em "
-                            f"{_top_win_cover}/{_n_wins} vitórias."
-                        )
-                    if _n_losses:
-                        _reading_parts.append(
-                            f"Mesmo quando perde, terminou com mais games totais em "
-                            f"{_losses_with_game_advantage}/{_n_losses} derrotas."
-                        )
-                    if _line_parts:
-                        _reading_parts.append("Cobertura histórica: " + " · ".join(part[3] for part in _line_parts) + ".")
-                    _reading_parts.append(
-                        "Contexto factual: confirmar linha e odd atuais antes de qualquer PAPER."
-                    )
-                    _headline = (
-                        f"Handicap a avaliar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
-                        f"{_line_label(_candidate_lines[1])}"
-                        if _n_wins and len(_candidate_lines) >= 2
-                        else "Sem base suficiente para uma linha a avaliar"
-                    )
-                    _footnote = "scores completos · vitórias e derrotas por games · referência interna, não linha real"
-                add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
-                    " ".join(_reading_parts), _footnote,
-                    headline=_headline, n_amostra=_n_wins + _n_losses)
+                def _pct_count(value, total):
+                    return f"{(100 * value / total):.1f}%" if total else "N/D"
 
-        # Cruzamento opcional: só é mostrado quando a odd histórica existe no
-        # dataset e a odd atual cabe numa das faixas observadas. Não cria linha
-        # de handicap, edge ou recomendação.
-        _historical_ml = _d(payload.get(f"historical_moneyline_margins_{fav_side}"))
-        try:
-            _current_odd = float(observed_odd(fav_side))
-        except (TypeError, ValueError):
-            _current_odd = None
-        if _current_odd is not None:
-            for _band, _stats in _d(_historical_ml.get("buckets")).items():
+                def _line_outcome_text(line, margins, wins_margins, losses_margins):
+                    cover, push, miss = handicap_settlement_counts(margins, line)
+                    win_cover, _, _ = handicap_settlement_counts(wins_margins, line)
+                    loss_cover, _, _ = handicap_settlement_counts(losses_margins, line)
+                    text = (
+                        f"{_line_label(line)}: cobre {cover}/{len(margins)} ({_pct_count(cover, len(margins))})"
+                    )
+                    if push:
+                        text += f" · devolve {push}/{len(margins)} ({_pct_count(push, len(margins))})"
+                    text += f" · falha {miss}/{len(margins)} ({_pct_count(miss, len(margins))})"
+                    if wins_margins:
+                        text += f" · quando vence {win_cover}/{len(wins_margins)}"
+                    if losses_margins:
+                        text += f" · nas derrotas cobre {loss_cover}/{len(losses_margins)}"
+                    return text
+
+                _overall_lines = [
+                    _line_outcome_text(_line, _all_margins, _wins_margins, _losses_margins)
+                    for _line in _candidate_lines
+                ]
+
+                # A faixa de Moneyline comparável valida a zona escolhida
+                # pela tabela interna. Só usa scores do mesmo formato do jogo
+                # atual: BO3 nunca é misturado com BO5 nesta leitura.
+                _matching_band = _matching_stats = None
+                _historical_ml = _d(payload.get(f"historical_moneyline_margins_{fav_side}"))
                 try:
-                    _low, _high = (float(v) for v in _band.split("-", 1))
+                    _current_odd = float(observed_odd(fav_side))
                 except (TypeError, ValueError):
-                    continue
-                if _low <= _current_odd <= _high and _stats.get("n"):
-                    _n = int(_stats["n"])
-                    _wins_pct = _stats.get("win_rate_pct", "N/D")
-                    _mean = _stats.get("mean_game_diff", "N/D")
-                    add("Histórico odds/margem", f"{names[fav_side]} · odds {_band}",
-                        f"Em {_n} jogos históricos com odds efetivamente registadas nesta faixa: "
-                        f"vitória {_wins_pct}% e diferencial médio de games {_mean:+g}. "
-                        "Leitura descritiva; não representa uma odd, linha ou edge atuais.",
-                        f"colunas históricas: {'/'.join(_historical_ml.get('odds_columns', ())) }",
-                        headline=f"n={_n}", n_amostra=_n)
-                    break
+                    _current_odd = None
+                if _current_odd is not None:
+                    for _band, _stats in _d(_historical_ml.get("buckets")).items():
+                        try:
+                            _low, _high = (float(v) for v in _band.split("-", 1))
+                        except (TypeError, ValueError):
+                            continue
+                        if _low <= _current_odd <= _high and _stats.get("n"):
+                            _format_stats = _d(_d(_stats.get("by_format")).get(_fmt))
+                            # Compatibilidade com payloads anteriores à
+                            # separação BO3/BO5; não inventa um formato.
+                            if not _stats.get("by_format"):
+                                _format_stats = _d(_stats)
+                            if _format_stats.get("n") and _format_stats.get("margins"):
+                                _matching_band, _matching_stats = _band, _format_stats
+                            break
+
+                _reading_parts = [
+                    f"Zona indicada pela Moneyline {_current_odd:.3f}: "
+                    f"{_line_label(_candidate_lines[0])} / {_line_label(_candidate_lines[1])}."
+                    if _current_odd is not None and len(_candidate_lines) >= 2
+                    else "Zona de handicap indicada pela tabela interna."
+                ]
+                if _overall_lines:
+                    _reading_parts.append("Histórico total: " + ". ".join(_overall_lines) + ".")
+                if _matching_stats:
+                    _band_margins = list(_matching_stats.get("margins") or [])
+                    _band_wins = list(_matching_stats.get("win_margins") or [])
+                    _band_losses = list(_matching_stats.get("loss_margins") or [])
+                    _band_lines = [
+                        _line_outcome_text(_line, _band_margins, _band_wins, _band_losses)
+                        for _line in _candidate_lines
+                    ]
+                    _reading_parts.append(
+                        f"Faixa comparável de Moneyline {_matching_band} · n={len(_band_margins)}: "
+                        + ". ".join(_band_lines) + "."
+                    )
+                else:
+                    _reading_parts.append("Faixa comparável de Moneyline: sem scores com odds históricas suficientes.")
+
+                _reference_type = _reference.get("tipo")
+                _protected_line = _candidate_lines[0] if _reference_type == "favorito" else _candidate_lines[-1]
+                _other_line = _candidate_lines[-1] if _reference_type == "favorito" else _candidate_lines[0]
+                _reading_parts.append(
+                    f"Leitura PAPER: começar por {_line_label(_protected_line)} (linha mais protegida); "
+                    f"só trocar para {_line_label(_other_line)} se a odd compensar a menor proteção."
+                )
+                _reading_parts.append("A referência não cria entrada PAPER automática de handicap.")
+                _headline = (
+                    f"Zona PAPER: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
+                    f"{_line_label(_candidate_lines[1])}"
+                    if len(_candidate_lines) >= 2
+                    else "Sem base suficiente para uma linha a avaliar"
+                )
+                _footnote = (
+                    "scores completos · cobertura inclui vitórias e derrotas · "
+                    "referência interna, não linha real"
+                )
+                add(f"Handicap para avaliar em PAPER ({_fmt.upper()})", names[fav_side],
+                    "\n".join(_reading_parts), _footnote,
+                    headline=_headline, n_amostra=_total)
 
     summary = result.get("verdict") or result.get("executive_summary")
     summary_html = f'<div class="action-summary">{_esc(summary)}</div>' if summary else ""
@@ -4569,12 +4570,11 @@ def _mod_action_map(payload, div, result):
         "Pré-jogo": 0,
         "Mercado principal": 0,
         "Referência de handicap": 1,
-        "Handicap — leitura factual (BO3)": 2,
-        "Handicap — leitura factual (BO5)": 2,
+        "Handicap para avaliar em PAPER (BO3)": 2,
+        "Handicap para avaliar em PAPER (BO5)": 2,
         "Margem de jogos (bo3)": 2,
         "Margem factual (BO3)": 2,
         "Margem factual (BO5)": 2,
-        "Histórico odds/margem": 2,
         "Caso especial": 3,
         "Cenário ao vivo": 4,
         "Mercados ao vivo": 5,
