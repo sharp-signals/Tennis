@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from src import fetch_data
 
@@ -150,6 +150,43 @@ class FixtureResilienceTests(unittest.TestCase):
             actual = fetch_data.discover_tracked_tournaments()
 
         self.assertEqual(actual, {10: "atp", 99: "atp"})
+
+    def test_upcoming_400_with_pagination_retries_without_query_params(self):
+        """A mudança de contrato da RapidAPI não pode parecer calendário vazio."""
+        fetch_data.RAPIDAPI_KEY = "offline-test"
+        previous_cache = fetch_data._ALL_UPCOMING_EVENTS_CACHE
+        previous_successes = fetch_data._UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES
+        fetch_data._ALL_UPCOMING_EVENTS_CACHE = None
+        fetch_data._UPCOMING_DISCOVERY_FAILURES.clear()
+
+        bad = Mock()
+        bad.raise_for_status.side_effect = fetch_data.requests.RequestException("400 Client Error")
+        good_atp = Mock(status_code=200)
+        good_atp.json.return_value = {"total": 1, "matches": [{"id": 1}]}
+        good_wta = Mock(status_code=200)
+        good_wta.json.return_value = {"total": 0, "matches": []}
+
+        try:
+            with patch.object(
+                fetch_data,
+                "_rapidapi_get",
+                side_effect=[bad, good_atp, good_wta],
+            ) as request:
+                actual = fetch_data._fetch_extend_upcoming_events("all")
+        finally:
+            fetch_data._ALL_UPCOMING_EVENTS_CACHE = previous_cache
+            fetch_data._UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = previous_successes
+            fetch_data._UPCOMING_DISCOVERY_FAILURES.clear()
+
+        self.assertEqual([item["id"] for item in actual], [1])
+        self.assertEqual(
+            request.call_args_list,
+            [
+                call(fetch_data.RAPIDAPI_ALL_UPCOMING_URL + "/atp", params={"page": 1, "limit": 100}),
+                call(fetch_data.RAPIDAPI_ALL_UPCOMING_URL + "/atp"),
+                call(fetch_data.RAPIDAPI_ALL_UPCOMING_URL + "/wta", params={"page": 1, "limit": 100}),
+            ],
+        )
 
 
 class PlayerNameResolutionTests(unittest.TestCase):

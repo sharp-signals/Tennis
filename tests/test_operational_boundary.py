@@ -88,6 +88,15 @@ class OperationalBoundaryTests(unittest.TestCase):
         persist_usage.assert_called_once_with(status="failed", matches=0)
         append_run.assert_called_once_with(context={"rapidapi_calls": 7, "rapidapi_calls_by_endpoint": {}})
 
+    def test_discovery_outage_is_not_reported_as_no_eligible_matches(self):
+        with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
+             patch.object(main.fetch_data, "fetch_tracked_tournament_fixtures", return_value=[]), \
+             patch.object(main.fetch_data, "upcoming_discovery_failed", return_value=True), \
+             patch.object(main.fetch_data, "flush_tournament_cache"), \
+             patch.object(main.fetch_data, "flush_fixtures_cache"):
+            with self.assertRaisesRegex(RuntimeError, "DISCOVERY_UNAVAILABLE"):
+                main.run()
+
     def test_below_minimum_coverage_does_not_publish_partial_reports(self):
         matches = self._matches(10, failures=3)
         with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
