@@ -308,6 +308,9 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(profile["bo3"]["losses"]["n"], 0)
         self.assertEqual(odds["odds_columns"], ("B365W", "B365L"))
         self.assertEqual(odds["buckets"]["1.31-1.40"]["n"], 1)
+        band = odds["buckets"]["1.31-1.40"]["by_format"]["bo3"]
+        self.assertEqual(band["win_margins"], [5])
+        self.assertEqual(band["loss_margins"], [])
 
     def test_game_differential_treats_whitespace_only_unused_sets_as_missing(self):
         history = pd.DataFrame([
