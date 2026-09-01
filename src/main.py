@@ -1707,6 +1707,15 @@ def run() -> None:
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
 
+    # Uma API indisponível não é o mesmo que um calendário sem jogos. Falhar
+    # torna o problema visível no Actions e ativa o alerta Telegram do
+    # workflow, em vez de o mascarar como ``no_eligible_matches``.
+    if not raw_matches and fetch_data.upcoming_discovery_failed():
+        raise RuntimeError(
+            "DISCOVERY_UNAVAILABLE: todos os feeds RapidAPI de descoberta "
+            "falharam; não é seguro concluir que não existem jogos elegíveis."
+        )
+
     if not eligible:
         run_metrics.update_context(status="no_eligible_matches", phase="complete")
         fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)

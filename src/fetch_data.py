@@ -339,6 +339,10 @@ _RAPIDAPI_FRESH_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_EVENT_LOOKUP_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
+# Mantém a causa de uma descoberta impossibilitada. Uma lista vazia só é
+# legítima quando os feeds responderam com sucesso; não pode esconder 400/500.
+_UPCOMING_DISCOVERY_FAILURES: list[str] = []
+_UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
 _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
@@ -381,6 +385,37 @@ def _event_names_key(player1: str, player2: str) -> tuple[str, str]:
     return tuple(sorted((_normalize_name(player1), _normalize_name(player2))))
 
 
+def upcoming_discovery_failed() -> bool:
+    """Indica se todos os feeds de descoberta falharam nesta execução."""
+    return bool(_UPCOMING_DISCOVERY_FAILURES) and _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES == 0
+
+
+def _is_bad_request(exc: Exception) -> bool:
+    """Reconhece o HTTP 400 sem depender do formato do cliente Requests."""
+    response = getattr(exc, "response", None)
+    return getattr(response, "status_code", None) == 400 or "400" in str(exc)
+
+
+def _get_upcoming_page(url: str, *, page: int, limit: int):
+    """Pede uma página e degrada para o endpoint sem paginação se necessário.
+
+    A RapidAPI já aceitou ``page``/``limit`` nestes paths, mas em 01-09-2026
+    passou a devolver 400. A resposta sem query continua válida e contém a
+    primeira página; é preferível a concluir incorretamente que não há jogos.
+    """
+    try:
+        response = _rapidapi_get(url, params={"page": page, "limit": limit})
+        response.raise_for_status()
+        return response, True
+    except requests.RequestException as exc:
+        if page != 1 or not _is_bad_request(exc):
+            raise
+        print(f"[aviso] {url} rejeitou page/limit (HTTP 400); a repetir sem paginação.")
+        response = _rapidapi_get(url)
+        response.raise_for_status()
+        return response, False
+
+
 def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     """
     Carrega os eventos upcoming para obter as ODDS EMBUTIDAS (player.odd) e
@@ -395,13 +430,15 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     de torneios como a indexação de odds precisam deste mesmo feed — sem
     cache, duplicaria ~6 pedidos paginados por execução.
     """
-    global _ALL_UPCOMING_EVENTS_CACHE
+    global _ALL_UPCOMING_EVENTS_CACHE, _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES
     if _ALL_UPCOMING_EVENTS_CACHE is not None:
         return _ALL_UPCOMING_EVENTS_CACHE
 
     if not RAPIDAPI_KEY:
         return []
 
+    _UPCOMING_DISCOVERY_FAILURES.clear()
+    _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
     events: list[dict] = []
 
     # --- FONTE PRINCIPAL: Upcoming Matches por tour (tem matches + odds embutidas) ---
@@ -419,8 +456,10 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
         while page <= _ALL_UPCOMING_MAX_PAGES:
             url = f"{RAPIDAPI_ALL_UPCOMING_URL}/{t}"
             try:
-                resp = _rapidapi_get(url, params={"page": page, "limit": LIMIT})
-                resp.raise_for_status()
+                resp, pagination_supported = _get_upcoming_page(
+                    url, page=page, limit=LIMIT,
+                )
+                _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES += 1
                 payload = resp.json() or {}
                 page_results = payload.get("matches") or []
                 captured_at_utc = _odds_capture_timestamp()
@@ -438,10 +477,11 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                         novos.append(event)
                 tour_events.extend(novos)
                 # parar quando a página vier vazia ou incompleta (última página)
-                if len(page_results) < LIMIT or not novos:
+                if not pagination_supported or len(page_results) < LIMIT or not novos:
                     break
                 page += 1
             except requests.RequestException as exc:
+                _UPCOMING_DISCOVERY_FAILURES.append(f"all-upcoming/{t}: {exc}")
                 print(f"[aviso] falha a obter all-upcoming/{t} (pág {page}) para odds: {exc}")
                 break
         print(f"[diag] all-upcoming/{t}: {len(tour_events)} jogos carregados em {page} página(s).")
@@ -457,8 +497,10 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     while True:
         url = f"{RAPIDAPI_EXTEND_BASE}/events/upcoming/{tour}"
         try:
-            resp = _rapidapi_get(url, params={"page": page, "limit": 100})
-            resp.raise_for_status()
+            resp, pagination_supported = _get_upcoming_page(
+                url, page=page, limit=100,
+            )
+            _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES += 1
             payload = resp.json() or {}
             page_results = payload.get("matches") or payload.get("results") or []
             captured_at_utc = _odds_capture_timestamp()
@@ -473,12 +515,14 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                     event["_odds_endpoint"] = url
                     events.append(event)
             total = payload.get("total")
-            if not page_results or (isinstance(total, int) and len(events) >= total):
+            if (not pagination_supported or not page_results
+                    or (isinstance(total, int) and len(events) >= total)):
                 break
             page += 1
             if page > MAX_FIXTURE_PAGES:
                 break
         except requests.RequestException as exc:
+            _UPCOMING_DISCOVERY_FAILURES.append(f"upcoming/{tour}: {exc}")
             print(f"[aviso] falha a obter eventos upcoming {tour}: {exc}")
             break
     return events
