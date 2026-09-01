@@ -2171,6 +2171,60 @@ def estimate_typical_handicap(odd, match_format="bo5"):
     return {"tipo": "ao_par", "handicap": None}
 
 
+def _opposite_handicap_line(value) -> str | None:
+    """Espelha uma linha do favorito para o lado underdog correspondente."""
+    try:
+        return f"{-float(value):+g}"
+    except (TypeError, ValueError):
+        return None
+
+
+def handicap_reference_for_player(payload, player, match_format=None):
+    """Devolve a zona interna para o lado operacional indicado.
+
+    Se o lado escolhido for o underdog, a zona relevante é o espelho da zona
+    do favorito observado no mesmo jogo: favorito -4/-4.5 -> underdog +4/+4.5.
+    """
+    odds = _d(payload.get("market_odds_decimal"))
+    valid = [
+        (str(name), float(value))
+        for name, value in odds.items()
+        if isinstance(value, (int, float)) and value > 1
+    ]
+    if not player or not valid:
+        return None
+    target = next((pair for pair in valid if pair[0] == str(player)), None)
+    if target is None:
+        return None
+    fmt = str(match_format or payload.get("match_format") or "bo3").casefold()
+    favourite_name, favourite_odd = min(valid, key=lambda pair: pair[1])
+    target_name, target_odd = target
+    if target_name != favourite_name:
+        favourite_reference = estimate_typical_handicap(favourite_odd, fmt)
+        favourite_lines = (favourite_reference or {}).get("handicap") or ()
+        if (favourite_reference or {}).get("tipo") == "favorito" and favourite_lines:
+            mirrored = tuple(
+                line for line in (_opposite_handicap_line(value) for value in favourite_lines)
+                if line is not None
+            )
+            if len(mirrored) == len(favourite_lines):
+                return {
+                    "player": target_name,
+                    "odd": target_odd,
+                    "reference": {
+                        **favourite_reference,
+                        "tipo": "underdog",
+                        "handicap": mirrored,
+                        "mirrored_from_favourite": favourite_name,
+                    },
+                }
+    return {
+        "player": target_name,
+        "odd": target_odd,
+        "reference": estimate_typical_handicap(target_odd, fmt),
+    }
+
+
 def handicap_coverage_thresholds(reference):
     """Converte uma zona negativa aprovada nos dois limiares inteiros reais."""
     if not reference or reference.get("tipo") != "favorito":
@@ -4333,7 +4387,10 @@ def _mod_action_map(payload, div, result):
         _wins = _d(_profile.get("wins"))
         _losses = _d(_profile.get("losses"))
         if _wins.get("n") or _losses.get("n"):
-            _reference = estimate_typical_handicap(observed_odd(fav_side), _fmt)
+            _reference_data = handicap_reference_for_player(
+                payload, names[fav_side], _fmt,
+            )
+            _reference = _reference_data.get("reference") if _reference_data else None
             _n_wins = int(_wins.get("n") or 0)
             _n_losses = int(_losses.get("n") or 0)
             _wins_margins = list(_wins.get("margins") or [])
@@ -4933,9 +4990,19 @@ def _mod_handicap_reference_header(payload):
     valid = [(name, value) for name, value in odds.items() if isinstance(value, (int, float)) and value > 1]
     if not valid:
         return ""
-    name, odd = min(valid, key=lambda pair: pair[1])
+    decision = _d(payload.get("prelive_decision"))
+    target = decision.get("player") or _d(decision.get("market")).get("player")
+    if not target:
+        target = min(valid, key=lambda pair: pair[1])[0]
     fmt = str(payload.get("match_format") or "bo3").casefold()
-    ref = estimate_typical_handicap(odd, fmt)
+    reference_data = handicap_reference_for_player(payload, target, fmt)
+    if not reference_data:
+        return ""
+    name, odd, ref = (
+        reference_data["player"],
+        reference_data["odd"],
+        reference_data["reference"],
+    )
     if not ref or ref.get("tipo") == "ao_par":
         return ""
     low, high = ref["handicap"]

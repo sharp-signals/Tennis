@@ -13,6 +13,24 @@ class ReportStateTests(unittest.TestCase):
         self.assertIn("tabela analítica interna", html)
         self.assertIn("BO5", html)
 
+    def test_handicap_reference_header_follows_paper_underdog_and_mirrors_favourite(self):
+        html = report_html._mod_handicap_reference_header({
+            "player_a": "Leylah Annie Fernandez", "player_b": "Mananchaya Sawangkaew",
+            "match_format": "bo3",
+            "market_odds_decimal": {
+                "Leylah Annie Fernandez": 1.32,
+                "Mananchaya Sawangkaew": 3.29,
+            },
+            "prelive_decision": {
+                "state": "EDGE_POSITIVE",
+                "player": "Mananchaya Sawangkaew",
+                "market": {"player": "Mananchaya Sawangkaew"},
+            },
+        })
+        self.assertIn("Mananchaya Sawangkaew @ 3.29", html)
+        self.assertIn("+4 a +4.5", html)
+        self.assertNotIn("Leylah Annie Fernandez @ 1.32", html)
+
     def test_percentage_normalization_accepts_fraction_percent_and_invalid(self):
         self.assertEqual(report_html._pct(0.68), 68.0)
         self.assertEqual(report_html._pct(68), 68.0)
@@ -326,6 +344,27 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Derrotas (2): terminou com mais games em 1/2.", html)
         self.assertIn("Amostra: 5 scores completos.", html)
         self.assertNotIn("Cobertura histórica:", html)
+
+    def test_handicap_card_follows_selected_underdog_with_mirrored_zone(self):
+        payload = {
+            "player_a": "Leylah Annie Fernandez", "player_b": "Mananchaya Sawangkaew",
+            "match_format": "bo3",
+            "market_odds_decimal": {
+                "Leylah Annie Fernandez": 1.32,
+                "Mananchaya Sawangkaew": 3.29,
+            },
+            "game_differential_b": {"bo3": {
+                "wins": {"n": 3, "margins": [5, 2, 1]},
+                "losses": {"n": 2, "margins": [-1, -4]}, "analyzable_matches": 5,
+            }},
+        }
+        div = {
+            "market": {"a": 75, "b": 25}, "tipo": "direcao",
+            "favorecido": "Mananchaya Sawangkaew", "classificacao": {"nivel": 2},
+        }
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Linha a confirmar: Mananchaya Sawangkaew +4 / +4.5", html)
+        self.assertNotIn("Linha a confirmar: Leylah Annie Fernandez -4", html)
 
     def test_reference_only_odds_are_labelled_not_eligible_for_pricing(self):
         payload = {
