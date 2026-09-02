@@ -411,6 +411,39 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("sem percentagem histórica", html)
         self.assertNotIn("A perde o 1.º set", html)
 
+    def test_bo5_super_favourite_uses_only_bo5_recovery_history(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.36, "B": 3.2},
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 28.0, "first_set_lose_count": 271,
+            }},
+            "set1_comeback_stats_a": {"bo5": {
+                "comeback_rate_pct": 40.0, "matches_lost_set1": 10,
+            }},
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+
+        self.assertIn("Recupera e vence: 40.0% (10 jogos).", html)
+        self.assertIn("Observar ML &gt; 2.50", html)
+        self.assertNotIn("28.0% (271 jogos)", html)
+
+    def test_bo5_super_favourite_without_bo5_history_is_not_validated(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.36, "B": 3.2},
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 28.0, "first_set_lose_count": 271,
+            }},
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+
+        self.assertIn("Sem validação BO5", html)
+        self.assertIn("Não avaliar Moneyline live por este cenário", html)
+        self.assertNotIn("28.0% (271 jogos)", html)
+
     def test_action_map_hides_technical_llm_disabled_summary(self):
         payload = {"player_a": "A", "player_b": "B", "market_odds_decimal": {"A": 1.8, "B": 2.0}}
         div = {"market": {"a": 55, "b": 45}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 1}}

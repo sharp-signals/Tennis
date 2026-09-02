@@ -392,6 +392,37 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(actual["first_set_lose_then_win_pct"], 100)
         self.assertEqual(actual["first_set_win_then_win_pct"], 0)
 
+    def test_scenarios_filter_strictly_by_declared_format(self):
+        matches = [
+            {"player1Id": 1, "player2Id": 2, "match_winner": 1,
+             "result": "4-6 6-3 6-2", "bestOf": 3},
+            {"player1Id": 1, "player2Id": 3, "match_winner": 1,
+             "result": "4-6 6-3 6-2 6-4", "bestOf": 5},
+            {"player1Id": 1, "player2Id": 4, "match_winner": 4,
+             "result": "4-6 3-6 6-3 6-4 4-6", "bestOf": 5},
+            {"player1Id": 1, "player2Id": 5, "match_winner": 1,
+             "result": "4-6 6-3 6-2"},
+        ]
+        actual = fetch_data.compute_scenarios_from_past_matches(
+            matches, 1, expected_best_of=5,
+        )
+        self.assertEqual(actual["first_set_lose_count"], 2)
+        self.assertEqual(actual["first_set_lose_then_win_pct"], 50)
+
+    def test_deciding_set_stats_normalizes_string_best_of_values(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "best_of": "5",
+             "score": "6-4 3-6 6-3 4-6 6-2"},
+            {"winner_name": "C", "loser_name": "A", "best_of": "3",
+             "score": "6-4 3-6 6-2"},
+        ])
+
+        actual = fetch_data.compute_deciding_set_stats(history, "A")
+
+        self.assertEqual(actual["bo5"]["matches_went_the_distance"], 1)
+        self.assertEqual(actual["bo5"]["win_rate_pct"], 100.0)
+        self.assertEqual(actual["bo3"]["matches_went_the_distance"], 1)
+
     def test_layoff_uses_only_the_requested_player_and_valid_dates(self):
         matches = [
             {"player1Id": 1, "player2Id": 2, "date": "2026-08-10T00:00:00Z"},

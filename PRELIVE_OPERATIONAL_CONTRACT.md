@@ -112,6 +112,12 @@ histórico ponto-a-ponto; não é apresentada uma taxa de recuperação inventad
 Mensagens técnicas sobre LLM deliberadamente desativado não são exibidas no
 Mapa de Ações.
 
+Em jogos BO5, cenários de recuperação após perder o primeiro set e de set
+decisivo usam exclusivamente amostras BO5 explícitas; estatísticas genéricas
+ou BO3 não são usadas como substituto. Sem scores BO5 com odds históricas na
+faixa atual, o cartão de handicap declara que não existe validação PAPER por
+preço e proíbe concluir que há valor de handicap a partir da amostra geral.
+
 ## Persistência e universos históricos
 
 - `data/calibration_snapshots.json`: primeira fotografia pré-jogo por partida,
