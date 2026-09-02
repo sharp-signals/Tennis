@@ -2653,17 +2653,17 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
   border-left:3px solid var(--mint); background:rgba(63,185,168,.07);
   border-radius:0 9px 9px 0; margin-bottom:12px; }}
 .action-list {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
-.action-item {{ border:1px solid var(--line); border-radius:10px; padding:12px;
+.action-item {{ border:1px solid var(--line); border-radius:10px; padding:15px;
   background:var(--surface2); min-width:0; }}
 .action-item-perfil {{ border-color:var(--mint); box-shadow:0 0 0 1px var(--mint) inset; }}
 .action-perfil-tag {{ color:var(--mint); text-transform:none; letter-spacing:0; font-weight:700; }}
 .action-kind {{ color:var(--dim); font-size:9px; font-weight:750; text-transform:uppercase;
   letter-spacing:.7px; margin-bottom:4px; }}
-.action-title {{ font-size:13px; font-weight:750; margin-bottom:5px; }}
-.action-headline {{ display:inline-block; font-size:18px; font-weight:800; color:var(--mint);
+.action-title {{ font-size:14px; font-weight:750; margin-bottom:7px; }}
+.action-headline {{ display:inline-block; font-size:19px; font-weight:800; color:var(--mint);
   background:rgba(63,185,168,.12); border-radius:7px; padding:2px 10px; margin-bottom:7px; }}
 .action-small-sample {{ font-size:10px; color:var(--amber); margin-bottom:6px; font-weight:600; }}
-.action-text {{ color:var(--dim); font-size:11px; line-height:1.5; white-space:pre-line; }}
+.action-text {{ color:var(--dim); font-size:12.5px; line-height:1.65; white-space:pre-line; }}
 .action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
 @media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
   details.report-map>summary, .action-map-head {{ min-height:78px; }} }}
@@ -4183,6 +4183,46 @@ def _mod_action_map(payload, div, result):
         name = names.get(side)
         return market.get(name, market.get(f"player_{side}"))
 
+    def comparable_moneyline_history(side):
+        """Devolve apenas histórico de odds do mesmo formato do jogo atual."""
+        try:
+            current_odd = float(observed_odd(side))
+        except (TypeError, ValueError):
+            return None
+        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        for band, stats in _d(history.get("buckets")).items():
+            try:
+                low, high = (float(value) for value in band.split("-", 1))
+            except (TypeError, ValueError):
+                continue
+            if not (low <= current_odd <= high and stats.get("n")):
+                continue
+            format_stats = _d(_d(stats.get("by_format")).get(match_format))
+            # Compatibilidade com payloads históricos anteriores à divisão
+            # explícita BO3/BO5, sem alterar o comportamento deles.
+            if not stats.get("by_format"):
+                format_stats = _d(stats)
+            if format_stats.get("n"):
+                return {"band": band, "stats": format_stats, "current_odd": current_odd}
+        return None
+
+    def moneyline_history_note(side):
+        context = comparable_moneyline_history(side)
+        if not context:
+            return ""
+        stats = context["stats"]
+        n = int(stats.get("n") or 0)
+        wins = int(stats.get("wins") or 0)
+        win_rate = stats.get("win_rate_pct")
+        if not isinstance(win_rate, (int, float)) and n:
+            win_rate = round(100 * wins / n, 1)
+        if not n or not isinstance(win_rate, (int, float)):
+            return ""
+        return (
+            f"\nHistórico com Moneyline {context['band']} ({match_format.upper()}): "
+            f"venceu {wins}/{n} ({float(win_rate):.1f}%)."
+        )
+
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
     # económica vem exclusivamente do pricing residual v0.1; a antiga faixa
     # indicative_odds não promove valor nem orienta este mapa.
@@ -4208,7 +4248,8 @@ def _mod_action_map(payload, div, result):
         if _odd_fav is not None and float(_odd_fav) < INVESTOR_PROFILE_ODDS_LOW:
             add("Mercado principal", f"{fav} · favorito claro @ {_odd_fav_txt}",
                 f"Os indicadores apontam para {fav}, mas a odd é baixa demais para o Moneyline compensar. "
-                "O valor, a existir, está no handicap negativo (ver abaixo).",
+                "Mercado a observar: handicap negativo (ver abaixo)."
+                f"{moneyline_history_note(fav_side)}",
                 "Motor de divergência", headline=f"Handicap de {fav}")
         else:
             _pricing_note = ""
@@ -4221,7 +4262,8 @@ def _mod_action_map(payload, div, result):
                 )
             add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
                 f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}."
-                f"{_pricing_note} Confirmar o preço antes de decidir.",
+                f"{_pricing_note} Confirmar o preço antes de decidir."
+                f"{moneyline_history_note(fav_side)}",
                 "Motor de divergência + pricing residual experimental",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
@@ -4231,7 +4273,8 @@ def _mod_action_map(payload, div, result):
         if _odd_fav is not None and float(_odd_fav) < INVESTOR_PROFILE_ODDS_LOW:
             add("Mercado principal", f"{fav} · favorito claro @ {_odd_fav_txt}",
                 f"Mercado e indicadores concordam em {fav}, mas a odd é baixa demais para o Moneyline compensar. "
-                "O valor, a existir, está no handicap negativo (ver abaixo).",
+                "Mercado a observar: handicap negativo (ver abaixo)."
+                f"{moneyline_history_note(fav_side)}",
                 "Mercado + índice de sinais", headline=f"Handicap de {fav}")
         else:
             if _pricing_candidate and _pricing_side == fav_side:
@@ -4251,7 +4294,8 @@ def _mod_action_map(payload, div, result):
                     "Mercado e indicadores concordam, mas não há pricing residual disponível "
                     "para avaliar o preço."
                 )
-            add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}", _nota_alinhamento,
+            add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}",
+                f"{_nota_alinhamento}{moneyline_history_note(fav_side)}",
                 "Mercado + índice de sinais + pricing residual experimental",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     else:
@@ -4306,38 +4350,38 @@ def _mod_action_map(payload, div, result):
         rate, count = comeback[side]
         if rate >= 30:
             _odd_cb = _odd_justa(rate)
+            try:
+                _is_super_favourite = float(observed_odd(side)) <= 1.45
+            except (TypeError, ValueError):
+                _is_super_favourite = False
             # SIMPLIFICADO (22/08/2026, a pedido — linguagem simples,
             # número em destaque separado do texto).
-            add("Cenário ao vivo", f"{names[side]} perde o 1.º set",
-                f"Recupera e ganha o jogo {rate:.0f}% das vezes (em {count} jogos assim).",
-                "Moneyline", headline=(f"Moneyline ~{_odd_cb:.2f}" if _odd_cb else None), n_amostra=count)
+            if not _is_super_favourite:
+                add("Cenário ao vivo", f"{names[side]} perde o 1.º set",
+                    f"Recupera e ganha o jogo {rate:.0f}% das vezes (em {count} jogos assim).",
+                    "Moneyline", headline=(f"Moneyline ~{_odd_cb:.2f}" if _odd_cb else None), n_amostra=count)
             # CORREÇÃO (21/08/2026, a pedido — "falar em linhas de
             # handicap se o histórico justificar"): antes usava um valor
             # fixo (+2.5/+3.5) sem ligação aos dados; agora usa a odd
             # justa já calculada para indicar a linha típica real.
             _ref_hc_cb = estimate_typical_handicap(_odd_cb, match_format) if _odd_cb else None
-            if _ref_hc_cb and _ref_hc_cb["tipo"] != "ao_par":
+            if not _is_super_favourite and _ref_hc_cb and _ref_hc_cb["tipo"] != "ao_par":
                 _hb_cb, _ha_cb = _ref_hc_cb["handicap"]
                 add("Cenário ao vivo", f"Alternativa: handicap para {names[side]}",
                     "Perder por poucos jogos é mais fácil de acontecer do que ganhar o jogo todo.",
                     f"Histórico de recuperações · n={count}", headline=f"Handicap {_hb_cb}/{_ha_cb}", n_amostra=count)
 
-    # NOVO (21/08/2026, a pedido): caso especial — favoritos com odd
-    # pré-jogo entre 1.25 e 1.40. Se perderem o 1.º set, a odd ao vivo
-    # tipicamente sobe para 1.80-2.40 (estimativa GENÉRICA de mercado,
-    # fornecida pelo utilizador — não calculada por nós). Compara essa
-    # faixa típica com a taxa REAL de recuperação deste jogador (já
-    # calculada pelo motor, reaproveitada do bloco anterior) — se a taxa
-    # real implica uma odd justa mais baixa do que a faixa típica de
-    # mercado, é um sinal de valor a assinalar.
-    _FAVORITO_ESPECIAL_RANGE = (1.25, 1.40)
-    _ODD_AO_VIVO_TIPICA_RANGE = (1.80, 2.40)
+    # Super favoritos (ML <=1.45): o Mapa prioriza a recuperação depois de
+    # perder o primeiro set. A recuperação após uma quebra isolada não é
+    # quantificável sem histórico ponto-a-ponto; é um gatilho de observação,
+    # nunca uma taxa inventada.
+    _SUPER_FAVOURITE_MAX_ODD = 1.45
     for side in ("a", "b"):
         try:
             _odd_pre_jogo_f = float(observed_odd(side))
         except (TypeError, ValueError):
             continue
-        if not (_FAVORITO_ESPECIAL_RANGE[0] <= _odd_pre_jogo_f <= _FAVORITO_ESPECIAL_RANGE[1]):
+        if not (1.0 < _odd_pre_jogo_f <= _SUPER_FAVOURITE_MAX_ODD):
             continue
         if side not in comeback:
             continue
@@ -4345,23 +4389,16 @@ def _mod_action_map(payload, div, result):
         _odd_justa_real = _odd_justa(_rate_esp)
         if _odd_justa_real is None:
             continue
-        if _odd_justa_real < _ODD_AO_VIVO_TIPICA_RANGE[0]:
-            _ref_hc_esp = estimate_typical_handicap(_odd_justa_real, match_format)
-            _hc_txt = ""
-            if _ref_hc_esp and _ref_hc_esp["tipo"] != "ao_par":
-                _hb, _ha = _ref_hc_esp["handicap"]
-                _hc_txt = f" Handicap típico: {_hb} a {_ha}."
-            # SIMPLIFICADO (22/08/2026, a pedido): linguagem direta,
-            # número em destaque no topo do cartão.
-            add("Caso especial", f"{names[side]} · favorito, valor se perder o 1.º set",
-                f"{names[side]} recupera {_rate_esp:.0f}% dos jogos assim (n={_count_esp}) — melhor do que o mercado "
-                f"costuma oferecer nesse momento ({_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}).{_hc_txt}",
-                "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real,
-                headline=f"Moneyline ~{_odd_justa_real:.2f}", n_amostra=_count_esp)
-        else:
-            add("Caso especial", f"{names[side]} · sem sinal extra se perder o 1.º set",
-                f"Recupera {_rate_esp:.0f}% dos jogos (n={_count_esp}) — dentro do que o mercado já costuma oferecer.",
-                "Estimativa genérica + histórico próprio", n_amostra=_count_esp)
+        add("Live · super favorito", f"{names[side]} após perder o 1.º set",
+            "DADOS HISTÓRICOS\n"
+            f"• Recupera e vence: {_rate_esp:.1f}% ({_count_esp} jogos).\n"
+            f"• Moneyline de referência após perder o set: ~{_odd_justa_real:.2f}.\n\n"
+            "AÇÃO\n"
+            "• Observar Moneyline apenas se a odd ao vivo for superior à referência.\n"
+            "• Se ficar break abaixo no 1.º set: observar a reação, mas sem percentagem histórica — "
+            "o sistema não tem ainda histórico ponto-a-ponto. Se perder o set, aplicar os dados acima.",
+            "Histórico de recuperação por set · referência factual, não odd capturada",
+            odd_justa=_odd_justa_real, headline=f"Observar ML > {_odd_justa_real:.2f}", n_amostra=_count_esp)
 
     # Set decisivo: só quando a diferença é material e tem amostra.
     deciding = {}
@@ -4462,16 +4499,14 @@ def _mod_action_map(payload, div, result):
                     cover, push, miss = handicap_settlement_counts(margins, line)
                     win_cover, _, _ = handicap_settlement_counts(wins_margins, line)
                     loss_cover, _, _ = handicap_settlement_counts(losses_margins, line)
-                    text = (
-                        f"{_line_label(line)}: cobre {cover}/{len(margins)} ({_pct_count(cover, len(margins))})"
-                    )
+                    text = f"• {_line_label(line)} — cobre {_pct_count(cover, len(margins))} ({cover}/{len(margins)})"
                     if push:
-                        text += f" · devolve {push}/{len(margins)} ({_pct_count(push, len(margins))})"
-                    text += f" · falha {miss}/{len(margins)} ({_pct_count(miss, len(margins))})"
+                        text += f" · devolve {_pct_count(push, len(margins))}"
+                    text += f" · falha {_pct_count(miss, len(margins))}"
                     if wins_margins:
-                        text += f" · quando vence {win_cover}/{len(wins_margins)}"
+                        text += f" · quando vence {_pct_count(win_cover, len(wins_margins))}"
                     if losses_margins:
-                        text += f" · nas derrotas cobre {loss_cover}/{len(losses_margins)}"
+                        text += f" · nas derrotas {loss_cover}/{len(losses_margins)}"
                     return text
 
                 _overall_lines = [
@@ -4482,36 +4517,31 @@ def _mod_action_map(payload, div, result):
                 # A faixa de Moneyline comparável valida a zona escolhida
                 # pela tabela interna. Só usa scores do mesmo formato do jogo
                 # atual: BO3 nunca é misturado com BO5 nesta leitura.
-                _matching_band = _matching_stats = None
-                _historical_ml = _d(payload.get(f"historical_moneyline_margins_{fav_side}"))
+                _context = comparable_moneyline_history(fav_side)
+                _matching_band = _context["band"] if _context else None
+                _matching_stats = _context["stats"] if _context else None
+                _current_odd = _context["current_odd"] if _context else observed_odd(fav_side)
                 try:
-                    _current_odd = float(observed_odd(fav_side))
+                    _current_odd = float(_current_odd)
                 except (TypeError, ValueError):
                     _current_odd = None
-                if _current_odd is not None:
-                    for _band, _stats in _d(_historical_ml.get("buckets")).items():
-                        try:
-                            _low, _high = (float(v) for v in _band.split("-", 1))
-                        except (TypeError, ValueError):
-                            continue
-                        if _low <= _current_odd <= _high and _stats.get("n"):
-                            _format_stats = _d(_d(_stats.get("by_format")).get(_fmt))
-                            # Compatibilidade com payloads anteriores à
-                            # separação BO3/BO5; não inventa um formato.
-                            if not _stats.get("by_format"):
-                                _format_stats = _d(_stats)
-                            if _format_stats.get("n") and _format_stats.get("margins"):
-                                _matching_band, _matching_stats = _band, _format_stats
-                            break
 
+                _reference_type = _reference.get("tipo")
+                _protected_line = _candidate_lines[0] if _reference_type == "favorito" else _candidate_lines[-1]
+                _other_line = _candidate_lines[-1] if _reference_type == "favorito" else _candidate_lines[0]
                 _reading_parts = [
-                    f"Zona indicada pela Moneyline {_current_odd:.3f}: "
+                    "MERCADO A OBSERVAR",
+                    f"• Prioridade: {names[fav_side]} {_line_label(_protected_line)} (linha mais protegida).",
+                    f"• Alternativa: {_line_label(_other_line)}, apenas se a odd compensar a menor proteção.",
+                    "",
+                    f"ZONA INDICADA PELA MONEYLINE {_current_odd:.3f}: "
                     f"{_line_label(_candidate_lines[0])} / {_line_label(_candidate_lines[1])}."
                     if _current_odd is not None and len(_candidate_lines) >= 2
-                    else "Zona de handicap indicada pela tabela interna."
+                    else "ZONA INDICADA PELA TABELA INTERNA.",
+                    "HISTÓRICO TOTAL",
                 ]
                 if _overall_lines:
-                    _reading_parts.append("Histórico total: " + ". ".join(_overall_lines) + ".")
+                    _reading_parts.extend(_overall_lines)
                 if _matching_stats:
                     _band_margins = list(_matching_stats.get("margins") or [])
                     _band_wins = list(_matching_stats.get("win_margins") or [])
@@ -4520,24 +4550,16 @@ def _mod_action_map(payload, div, result):
                         _line_outcome_text(_line, _band_margins, _band_wins, _band_losses)
                         for _line in _candidate_lines
                     ]
-                    _reading_parts.append(
-                        f"Faixa comparável de Moneyline {_matching_band} · n={len(_band_margins)}: "
-                        + ". ".join(_band_lines) + "."
-                    )
+                    _reading_parts.extend([
+                        "",
+                        f"FAIXA COMPARÁVEL DE MONEYLINE {_matching_band} · n={len(_band_margins)}",
+                        *_band_lines,
+                    ])
                 else:
                     _reading_parts.append("Faixa comparável de Moneyline: sem scores com odds históricas suficientes.")
-
-                _reference_type = _reference.get("tipo")
-                _protected_line = _candidate_lines[0] if _reference_type == "favorito" else _candidate_lines[-1]
-                _other_line = _candidate_lines[-1] if _reference_type == "favorito" else _candidate_lines[0]
-                _reading_parts.append(
-                    f"Leitura PAPER: começar por {_line_label(_protected_line)} (linha mais protegida); "
-                    f"só trocar para {_line_label(_other_line)} se a odd compensar a menor proteção."
-                )
-                _reading_parts.append("A referência não cria entrada PAPER automática de handicap.")
+                _reading_parts.extend(["", "A referência não cria entrada PAPER automática de handicap."])
                 _headline = (
-                    f"Zona PAPER: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
-                    f"{_line_label(_candidate_lines[1])}"
+                    f"Observar {names[fav_side]} {_line_label(_protected_line)}"
                     if len(_candidate_lines) >= 2
                     else "Sem base suficiente para uma linha a avaliar"
                 )
@@ -4550,6 +4572,13 @@ def _mod_action_map(payload, div, result):
                     headline=_headline, n_amostra=_total)
 
     summary = result.get("verdict") or result.get("executive_summary")
+    # O LLM é deliberadamente desligado na produção para controlar custo.
+    # Essa configuração é interna e não deve ocupar o Mapa de Ações nem
+    # aparentar uma falha da análise determinística.
+    if isinstance(summary, str) and (
+        "LLM_MODE=disabled" in summary or "síntese LLM desativada" in summary.casefold()
+    ):
+        summary = ""
     summary_html = f'<div class="action-summary">{_esc(summary)}</div>' if summary else ""
 
     # NOVO (21/08/2026, a pedido): filtro por perfil de investidor — destaca

@@ -318,10 +318,11 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap para avaliar em PAPER (BO5)", html)
-        self.assertIn("Zona PAPER: A -3.5 / -4", html)
-        self.assertIn("-3.5: cobre 2/4 (50.0%)", html)
-        self.assertIn("nas derrotas cobre 1/2", html)
-        self.assertIn("Leitura PAPER: começar por -3.5", html)
+        self.assertIn("Observar A -3.5", html)
+        self.assertIn("MERCADO A OBSERVAR", html)
+        self.assertIn("• -3.5 — cobre 50.0% (2/4)", html)
+        self.assertIn("nas derrotas 1/2", html)
+        self.assertIn("Prioridade: A -3.5", html)
         self.assertIn("entrada PAPER automática de handicap", html)
         self.assertNotIn("Margem de jogos (bo3)", html)
         self.assertNotIn("Handicap -3.5/-4.5", html)
@@ -338,11 +339,11 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 65, "b": 35}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap para avaliar em PAPER (BO3)", html)
-        self.assertIn("Zona PAPER: A -1.5 / -2", html)
-        self.assertIn("-1.5: cobre 2/5 (40.0%)", html)
-        self.assertIn("-2: cobre 1/5 (20.0%) · devolve 1/5 (20.0%)", html)
-        self.assertIn("nas derrotas cobre 0/2", html)
-        self.assertIn("Leitura PAPER: começar por -1.5", html)
+        self.assertIn("Observar A -1.5", html)
+        self.assertIn("• -1.5 — cobre 40.0% (2/5)", html)
+        self.assertIn("• -2 — cobre 20.0% (1/5) · devolve 20.0%", html)
+        self.assertIn("nas derrotas 0/2", html)
+        self.assertIn("Prioridade: A -1.5", html)
 
     def test_handicap_card_follows_selected_underdog_with_mirrored_zone(self):
         payload = {
@@ -362,9 +363,9 @@ class ReportRenderingTests(unittest.TestCase):
             "favorecido": "Mananchaya Sawangkaew", "classificacao": {"nivel": 2},
         }
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
-        self.assertIn("Zona PAPER: Mananchaya Sawangkaew +4 / +4.5", html)
-        self.assertIn("Leitura PAPER: começar por +4.5", html)
-        self.assertNotIn("Zona PAPER: Leylah Annie Fernandez -4", html)
+        self.assertIn("Observar Mananchaya Sawangkaew +4.5", html)
+        self.assertIn("Prioridade: Mananchaya Sawangkaew +4.5", html)
+        self.assertNotIn("Observar Leylah Annie Fernandez -4", html)
 
     def test_handicap_card_uses_matching_moneyline_band_with_actual_settlements(self):
         payload = {
@@ -387,9 +388,35 @@ class ReportRenderingTests(unittest.TestCase):
         }
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
-        self.assertIn("Faixa comparável de Moneyline 1.41-1.50 · n=3", html)
-        self.assertIn("-3: cobre 1/3 (33.3%) · devolve 1/3 (33.3%) · falha 1/3 (33.3%)", html)
-        self.assertIn("-3.5: cobre 1/3 (33.3%) · falha 2/3 (66.7%)", html)
+        self.assertIn("Histórico com Moneyline 1.41-1.50 (BO3): venceu 2/3 (66.7%).", html)
+        self.assertIn("FAIXA COMPARÁVEL DE MONEYLINE 1.41-1.50 · n=3", html)
+        self.assertIn("• -3 — cobre 33.3% (1/3) · devolve 33.3% · falha 33.3%", html)
+        self.assertIn("• -3.5 — cobre 33.3% (1/3) · falha 66.7%", html)
+
+    def test_super_favourite_live_card_uses_first_set_recovery_without_inventing_break_rate(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.44, "B": 3.0},
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 45.0,
+                "first_set_lose_count": 20,
+            }},
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Live · super favorito", html)
+        self.assertIn("A após perder o 1.º set", html)
+        self.assertIn("Recupera e vence: 45.0% (20 jogos).", html)
+        self.assertIn("Observar ML &gt; 2.22", html)
+        self.assertIn("sem percentagem histórica", html)
+        self.assertNotIn("A perde o 1.º set", html)
+
+    def test_action_map_hides_technical_llm_disabled_summary(self):
+        payload = {"player_a": "A", "player_b": "B", "market_odds_decimal": {"A": 1.8, "B": 2.0}}
+        div = {"market": {"a": 55, "b": 45}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 1}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Síntese indisponível porque LLM_MODE=disabled."})
+        self.assertNotIn("LLM_MODE=disabled", html)
+        self.assertNotIn("action-summary", html)
 
     def test_reference_only_odds_are_labelled_not_eligible_for_pricing(self):
         payload = {
