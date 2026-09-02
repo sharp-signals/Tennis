@@ -103,6 +103,15 @@ comparável e o mesmo formato (BO3 ou BO5). O cartão indica a linha mais
 protegida a procurar primeiro, mas não cria linha capturada, odd, edge nem uma
 entrada PAPER automática de handicap.
 
+O cartão de Moneyline acrescenta, quando disponível, a percentagem histórica
+de vitórias na faixa de odds comparável e no mesmo formato. Para super favoritos
+com Moneyline até `1.45`, o Mapa inclui um cenário live após perda do primeiro
+set, com taxa de recuperação, amostra e Moneyline de referência. Estar break
+abaixo durante o primeiro set é apenas um gatilho de observação até existir
+histórico ponto-a-ponto; não é apresentada uma taxa de recuperação inventada.
+Mensagens técnicas sobre LLM deliberadamente desativado não são exibidas no
+Mapa de Ações.
+
 ## Persistência e universos históricos
 
 - `data/calibration_snapshots.json`: primeira fotografia pré-jogo por partida,
