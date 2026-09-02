@@ -10,7 +10,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.historical_replay import UNIVERSE, replay_matches
-from src.historical_snapshot import TemporalLeakageError, assert_aggregate_is_ex_ante, build_historical_snapshot
+from src.historical_snapshot import (
+    H2H_AVAILABLE,
+    H2H_DATA_INSUFFICIENT,
+    H2H_NONE_OBSERVED_EX_ANTE,
+    TemporalLeakageError,
+    assert_aggregate_is_ex_ante,
+    build_historical_snapshot,
+)
 from src.historical_warehouse import HistoricalWarehouse
 from scripts.historical_replay import _assert_zero_llm
 
@@ -59,7 +66,41 @@ class HistoricalReplayTests(unittest.TestCase):
         self.assertEqual(first["snapshot_hash"], second["snapshot_hash"])
         h2h = first["feature_values"]["classified"]["h2h"]
         self.assertEqual(h2h["sample_size"], 1)
+        self.assertEqual(h2h["status"], H2H_AVAILABLE)
         self.assertNotIn("future", first["raw_source_references"])
+
+    def test_h2h_none_observed_requires_adequate_prehistory_for_both_players(self) -> None:
+        warehouse = HistoricalWarehouse(Path(self.temp.name) / "h2h-none.sqlite3")
+        for index in range(10):
+            warehouse.upsert_match(match(
+                f"a-{index}", f"2024-01-{index + 1:02d}T12:00:00+00:00",
+                "A", f"AX{index}", "A",
+            ))
+            warehouse.upsert_match(match(
+                f"b-{index}", f"2024-02-{index + 1:02d}T12:00:00+00:00",
+                "B", f"BX{index}", "B",
+            ))
+        warehouse.upsert_match(match("target-none", "2024-04-01T12:00:00+00:00", "A", "B", None))
+        snapshot = build_historical_snapshot(warehouse, "target-none", "2024-04-01T12:00:00+00:00")
+        h2h = snapshot["feature_values"]["classified"]["h2h"]
+        self.assertEqual(h2h["status"], H2H_NONE_OBSERVED_EX_ANTE)
+        self.assertFalse(h2h["available"])
+        self.assertEqual((h2h["prehistory_matches_a"], h2h["prehistory_matches_b"]), (10, 10))
+
+    def test_h2h_absence_stays_insufficient_when_one_player_lacks_history(self) -> None:
+        warehouse = HistoricalWarehouse(Path(self.temp.name) / "h2h-insufficient.sqlite3")
+        for index in range(10):
+            warehouse.upsert_match(match(
+                f"a-{index}", f"2024-01-{index + 1:02d}T12:00:00+00:00",
+                "A", f"AX{index}", "A",
+            ))
+        warehouse.upsert_match(match("target-insufficient", "2024-04-01T12:00:00+00:00", "A", "B", None))
+        snapshot = build_historical_snapshot(
+            warehouse, "target-insufficient", "2024-04-01T12:00:00+00:00",
+        )
+        h2h = snapshot["feature_values"]["classified"]["h2h"]
+        self.assertEqual(h2h["status"], H2H_DATA_INSUFFICIENT)
+        self.assertFalse(h2h["available"])
 
     def test_current_ranking_is_never_fetched_and_missing_stays_unavailable(self) -> None:
         target = self.db.get_match("target")
@@ -91,6 +132,7 @@ class HistoricalReplayTests(unittest.TestCase):
         rapidapi.assert_not_called()
         generic_network.assert_not_called()
         self.assertEqual(result["metrics"]["universe"], UNIVERSE)
+        self.assertEqual(result["metrics"]["h2h_status_counts"], {H2H_AVAILABLE: 1})
         self.assertEqual(paper.read_text(encoding="utf-8"), "sentinel")
         self.assertEqual(operational_snapshot.read_text(encoding="utf-8"), "sentinel")
         with self.db.connect() as connection:

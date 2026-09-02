@@ -6,7 +6,7 @@ on:
       mode:
         description: Audit, depth probe, controlled pilot, explicit backfill, or offline replay
         type: choice
-        options: [audit, depth_probe, pilot, backfill, replay]
+        options: [audit, depth_probe, pilot, backfill, replay, coverage_enrichment]
         default: audit
       tour:
         description: Circuit
@@ -35,6 +35,12 @@ on:
       confirm_backfill:
         description: For backfill only, enter I_UNDERSTAND_THE_QUOTA
         default: ""
+      seed_run_id:
+        description: Immutable Pilot 100 run used by coverage_enrichment
+        default: "33566438208"
+      seed_artifact:
+        description: Immutable Pilot 100 artifact used by coverage_enrichment
+        default: "historical-pilot-33566438208"
 
 concurrency:
   group: tennis-pre-live-production
@@ -46,6 +52,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      actions: read
     env:
       LLM_MODE: disabled
       LLM_POLICY: never
@@ -113,6 +120,26 @@ jobs:
           MAX_MATCHES_INPUT: ${{ inputs.max_matches }}
         run: python -m scripts.historical_replay replay --tour "$TOUR_INPUT" --max-matches "$MAX_MATCHES_INPUT"
 
+      - name: Download fixed Pilot 100 seed
+        if: inputs.mode == 'coverage_enrichment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SEED_RUN_ID: ${{ inputs.seed_run_id }}
+          SEED_ARTIFACT: ${{ inputs.seed_artifact }}
+        run: gh run download "$SEED_RUN_ID" --name "$SEED_ARTIFACT" --dir artifacts/change-023-seed
+
+      - name: Historical coverage enrichment experiment
+        if: inputs.mode == 'coverage_enrichment'
+        env:
+          MAX_CALLS_INPUT: ${{ inputs.max_calls }}
+        run: >-
+          python -m scripts.historical_coverage_enrichment
+          --seed-warehouse artifacts/change-023-seed/data/historical_warehouse/sharp_history.sqlite3
+          --warehouse data/historical_warehouse/sharp_history.sqlite3
+          --max-calls "$MAX_CALLS_INPUT"
+          --output-dir artifacts/historical-coverage-enrichment
+          --tennis-data-cache artifacts/historical-coverage-enrichment/tennis-data-cache
+
       - name: Upload audit/pilot artefacts (ephemeral warehouse, not durable storage)
         if: always()
         uses: actions/upload-artifact@v4
@@ -121,6 +148,7 @@ jobs:
           path: |
             artifacts/historical-audit/
             artifacts/historical-depth-probe/
+            artifacts/historical-coverage-enrichment/
             data/historical_warehouse/*.sqlite3*
           if-no-files-found: ignore
           retention-days: 7

@@ -14,9 +14,13 @@ from . import backtest, fetch_data, main, report_html
 from .historical_warehouse import CHANGE_ID, HistoricalWarehouse, canonical_json, payload_hash, utc_now
 
 
-REPLAY_VERSION = "historical-replay-v1"
+REPLAY_VERSION = "historical-replay-v2"
 ENGINE_VERSION = "fenzobot-v3-current"
 PRICING_MODEL_VERSION = None
+H2H_REQUIRED_PREHISTORY_PER_PLAYER = 10
+H2H_AVAILABLE = "H2H_AVAILABLE"
+H2H_NONE_OBSERVED_EX_ANTE = "H2H_NONE_OBSERVED_EX_ANTE"
+H2H_DATA_INSUFFICIENT = "H2H_DATA_INSUFFICIENT"
 
 
 class TemporalLeakageError(ValueError):
@@ -104,12 +108,25 @@ def _feature(value: Any, *, sample_size: int | None, source: str, available: boo
     }
 
 
+def _player_prehistory_matches(history: pd.DataFrame, player: str) -> int:
+    if history.empty or not {"winner_name", "loser_name"}.issubset(history.columns):
+        return 0
+    return int(((history["winner_name"] == player) | (history["loser_name"] == player)).sum())
+
+
 def build_historical_snapshot(
     warehouse: HistoricalWarehouse,
     match: str | Mapping[str, Any],
     as_of_utc: str,
+    *,
+    replay_version: str = REPLAY_VERSION,
 ) -> dict[str, Any]:
-    target = warehouse.get_match(match) if isinstance(match, str) else dict(match)
+    if isinstance(match, str):
+        target = warehouse.get_effective_match(match)
+    else:
+        # A caller-provided mapping is already the frozen input for this
+        # snapshot (and is useful for leakage tests); never silently replace it.
+        target = dict(match)
     if not target:
         raise KeyError(f"Jogo histórico inexistente: {match}")
     as_of = _parse_utc(as_of_utc)
@@ -123,7 +140,7 @@ def build_historical_snapshot(
         cutoff -= timedelta(days=backtest.LEAKAGE_SAFETY_BUFFER_DAYS)
         safety_buffer_applied = True
 
-    candidates = warehouse.matches_before(cutoff.isoformat())
+    candidates = warehouse.matches_before(cutoff.isoformat(), enriched=True)
     # Defensive check beyond the SQL predicate: rejects malformed/provider rows.
     safe_rows = [row for row in candidates if _parse_utc(row["event_start_utc"]) < cutoff]
     rejected = len(candidates) - len(safe_rows)
@@ -131,6 +148,14 @@ def build_historical_snapshot(
     a, b = target["player_a_name"], target["player_b_name"]
     surface = target.get("surface")
     h2h = fetch_data.compute_h2h(history, a, b, surface)
+    prehistory_a = _player_prehistory_matches(history, a)
+    prehistory_b = _player_prehistory_matches(history, b)
+    if h2h is not None:
+        h2h_status = H2H_AVAILABLE
+    elif min(prehistory_a, prehistory_b) >= H2H_REQUIRED_PREHISTORY_PER_PLAYER:
+        h2h_status = H2H_NONE_OBSERVED_EX_ANTE
+    else:
+        h2h_status = H2H_DATA_INSUFFICIENT
     form_a = fetch_data.compute_recent_form(history, a, 10)
     form_b = fetch_data.compute_recent_form(history, b, 10)
     surface_a = fetch_data.compute_surface_stats(history, a)
@@ -138,9 +163,8 @@ def build_historical_snapshot(
 
     # Ranking is taken only from the historical target record. No call to
     # singlesRanking (current ranking) is made anywhere in this module.
-    ranking_class = target.get("ranking_temporal_class")
-    ranking_a = {"rank": target.get("player_a_rank")} if ranking_class != "UNAVAILABLE" else None
-    ranking_b = {"rank": target.get("player_b_rank")} if ranking_class != "UNAVAILABLE" else None
+    ranking_a = {"rank": target.get("player_a_rank")} if target.get("player_a_rank") is not None else None
+    ranking_b = {"rank": target.get("player_b_rank")} if target.get("player_b_rank") is not None else None
     payload = {
         "player_a": a, "player_b": b, "surface": surface,
         "ranking_a": ranking_a, "ranking_b": ranking_b,
@@ -156,16 +180,30 @@ def build_historical_snapshot(
     overall = (h2h or {}).get("overall") or {}
     current_surface_a = (surface_a or {}).get(str(surface).lower()) or (surface_a or {}).get(str(surface).title())
     current_surface_b = (surface_b or {}).get(str(surface).lower()) or (surface_b or {}).get(str(surface).title())
+    surface_history_source = (
+        "warehouse.matches+match_enrichments<cutoff"
+        if any((row.get("enrichment_provenance") or {}).get("surface") for row in safe_rows)
+        else "warehouse.matches<cutoff"
+    )
     features = {
         "ranking_a": _feature(target.get("player_a_rank"), sample_size=1 if ranking_a else None,
-                              source=target["source"], available=ranking_a is not None),
+                              source=(target.get("enrichment_provenance") or {}).get("player_a_rank", {}).get("source", target["source"]), available=ranking_a is not None),
         "ranking_b": _feature(target.get("player_b_rank"), sample_size=1 if ranking_b else None,
-                              source=target["source"], available=ranking_b is not None),
-        "h2h": _feature(h2h, sample_size=overall.get("total_matches"), source="warehouse.matches<cutoff", available=h2h is not None),
+                              source=(target.get("enrichment_provenance") or {}).get("player_b_rank", {}).get("source", target["source"]), available=ranking_b is not None),
+        "h2h": {
+            **_feature(
+                h2h, sample_size=overall.get("total_matches"),
+                source="warehouse.matches<cutoff", available=h2h is not None,
+            ),
+            "status": h2h_status,
+            "prehistory_matches_a": prehistory_a,
+            "prehistory_matches_b": prehistory_b,
+            "required_prehistory_per_player": H2H_REQUIRED_PREHISTORY_PER_PLAYER,
+        },
         "recent_form_a": _feature(form_a, sample_size=(form_a or {}).get("matches"), source="warehouse.matches<cutoff", available=form_a is not None),
         "recent_form_b": _feature(form_b, sample_size=(form_b or {}).get("matches"), source="warehouse.matches<cutoff", available=form_b is not None),
-        "surface_a": _feature(current_surface_a, sample_size=(current_surface_a or {}).get("matches"), source="warehouse.matches<cutoff", available=current_surface_a is not None),
-        "surface_b": _feature(current_surface_b, sample_size=(current_surface_b or {}).get("matches"), source="warehouse.matches<cutoff", available=current_surface_b is not None),
+        "surface_a": _feature(current_surface_a, sample_size=(current_surface_a or {}).get("matches"), source=surface_history_source, available=current_surface_a is not None),
+        "surface_b": _feature(current_surface_b, sample_size=(current_surface_b or {}).get("matches"), source=surface_history_source, available=current_surface_b is not None),
     }
     available = sum(1 for item in features.values() if item["available"])
     exact = sum(1 for item in features.values() if item["temporal_class"] == "EXACT_EX_ANTE")
@@ -175,7 +213,11 @@ def build_historical_snapshot(
         "match_id": target["canonical_match_id"],
         "as_of_utc": as_of.isoformat(),
         "raw_source_references": warehouse.raw_references([row["canonical_match_id"] for row in safe_rows] + [target["canonical_match_id"]]),
-        "feature_values": {"classified": features, "engine_features": payload["features"], "engine_divergence": payload["divergencia"]},
+        "feature_values": {
+            "classified": features, "engine_features": payload["features"],
+            "engine_divergence": payload["divergencia"],
+            "effective_target_provenance": target.get("enrichment_provenance") or {},
+        },
         "coverage": {
             "available": available, "total": len(features),
             "ratio": round(available / len(features), 4),
@@ -197,7 +239,7 @@ def build_historical_snapshot(
         "pricing_model_version": PRICING_MODEL_VERSION,
         "git_commit": git_commit(),
         "change_id": CHANGE_ID,
-        "replay_version": REPLAY_VERSION,
+        "replay_version": replay_version,
     }
     digest = payload_hash(stable)
     stable.update({
