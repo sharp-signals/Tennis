@@ -17,6 +17,10 @@ from .historical_warehouse import CHANGE_ID, HistoricalWarehouse, canonical_json
 REPLAY_VERSION = "historical-replay-v2"
 ENGINE_VERSION = "fenzobot-v3-current"
 PRICING_MODEL_VERSION = None
+H2H_REQUIRED_PREHISTORY_PER_PLAYER = 10
+H2H_AVAILABLE = "H2H_AVAILABLE"
+H2H_NONE_OBSERVED_EX_ANTE = "H2H_NONE_OBSERVED_EX_ANTE"
+H2H_DATA_INSUFFICIENT = "H2H_DATA_INSUFFICIENT"
 
 
 class TemporalLeakageError(ValueError):
@@ -104,6 +108,12 @@ def _feature(value: Any, *, sample_size: int | None, source: str, available: boo
     }
 
 
+def _player_prehistory_matches(history: pd.DataFrame, player: str) -> int:
+    if history.empty or not {"winner_name", "loser_name"}.issubset(history.columns):
+        return 0
+    return int(((history["winner_name"] == player) | (history["loser_name"] == player)).sum())
+
+
 def build_historical_snapshot(
     warehouse: HistoricalWarehouse,
     match: str | Mapping[str, Any],
@@ -138,6 +148,14 @@ def build_historical_snapshot(
     a, b = target["player_a_name"], target["player_b_name"]
     surface = target.get("surface")
     h2h = fetch_data.compute_h2h(history, a, b, surface)
+    prehistory_a = _player_prehistory_matches(history, a)
+    prehistory_b = _player_prehistory_matches(history, b)
+    if h2h is not None:
+        h2h_status = H2H_AVAILABLE
+    elif min(prehistory_a, prehistory_b) >= H2H_REQUIRED_PREHISTORY_PER_PLAYER:
+        h2h_status = H2H_NONE_OBSERVED_EX_ANTE
+    else:
+        h2h_status = H2H_DATA_INSUFFICIENT
     form_a = fetch_data.compute_recent_form(history, a, 10)
     form_b = fetch_data.compute_recent_form(history, b, 10)
     surface_a = fetch_data.compute_surface_stats(history, a)
@@ -172,7 +190,16 @@ def build_historical_snapshot(
                               source=(target.get("enrichment_provenance") or {}).get("player_a_rank", {}).get("source", target["source"]), available=ranking_a is not None),
         "ranking_b": _feature(target.get("player_b_rank"), sample_size=1 if ranking_b else None,
                               source=(target.get("enrichment_provenance") or {}).get("player_b_rank", {}).get("source", target["source"]), available=ranking_b is not None),
-        "h2h": _feature(h2h, sample_size=overall.get("total_matches"), source="warehouse.matches<cutoff", available=h2h is not None),
+        "h2h": {
+            **_feature(
+                h2h, sample_size=overall.get("total_matches"),
+                source="warehouse.matches<cutoff", available=h2h is not None,
+            ),
+            "status": h2h_status,
+            "prehistory_matches_a": prehistory_a,
+            "prehistory_matches_b": prehistory_b,
+            "required_prehistory_per_player": H2H_REQUIRED_PREHISTORY_PER_PLAYER,
+        },
         "recent_form_a": _feature(form_a, sample_size=(form_a or {}).get("matches"), source="warehouse.matches<cutoff", available=form_a is not None),
         "recent_form_b": _feature(form_b, sample_size=(form_b or {}).get("matches"), source="warehouse.matches<cutoff", available=form_b is not None),
         "surface_a": _feature(current_surface_a, sample_size=(current_surface_a or {}).get("matches"), source=surface_history_source, available=current_surface_a is not None),

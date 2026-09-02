@@ -18,13 +18,13 @@ from src.historical_warehouse import HistoricalWarehouse, make_cache_key
 from scripts.historical_coverage_enrichment import MAX_EXPERIMENT_CALLS
 
 
-def match(match_id: str, date: str, a: str, b: str, *, surface=None, rank_a=None, rank_b=None, winner=None):
+def match(match_id: str, date: str, a: str, b: str, *, surface=None, rank_a=None, rank_b=None, winner=None, tour="ATP"):
     return {
         "canonical_match_id": match_id, "source": "rapidapi", "endpoint": "fixture",
         "provider_match_id": match_id, "provider_timestamp": None,
         "fetched_at_utc": "2026-01-01T00:00:00+00:00", "source_version": "test",
         "payload_hash": match_id.ljust(64, "0")[:64], "raw_cache_key": None,
-        "tour": "ATP", "tournament": None, "tournament_id": None,
+        "tour": tour, "tournament": None, "tournament_id": None,
         "tournament_level": None, "surface": surface, "event_start_utc": date,
         "date_precision": "event_exact", "player_a_id": a, "player_a_name": a,
         "player_b_id": b, "player_b_name": b, "player_a_rank": rank_a,
@@ -169,6 +169,29 @@ class HistoricalEnrichmentTests(unittest.TestCase):
         self.assertEqual(report["players_sufficient"], 2)
         self.assertEqual(report["acquisition"]["calls_made"], 2)
         self.assertTrue(all(player["prior_matches"] == 10 for player in report["players"]))
+
+    def test_opponent_acquisition_round_robins_tours_and_players(self):
+        targets = [
+            match("atp-target", "2026-02-01T12:00:00+00:00", "1", "2", tour="ATP"),
+            match("wta-target", "2026-02-01T12:00:00+00:00", "3", "4", tour="WTA"),
+        ]
+        for target in targets:
+            self.db.upsert_match(target)
+        requests = []
+
+        def one_page(acquirer, tour, player_id, **_kwargs):
+            acquirer.metrics.calls_made += 1
+            requests.append((tour.upper(), str(player_id)))
+            return {"pages": [{"page": 1}], "stop_reason": "max_pages", "source_exhausted": False}
+
+        with patch("src.historical_enrichment.HistoricalAcquirer.acquire_player_past_match_pages", new=one_page):
+            report = enrich_opponent_history(self.db, targets, max_calls=4)
+        self.assertEqual([tour for tour, _ in requests], ["ATP", "WTA", "ATP", "WTA"])
+        self.assertEqual(requests, [("ATP", "1"), ("WTA", "3"), ("ATP", "2"), ("WTA", "4")])
+        self.assertEqual(report["calls_by_tour"], {"ATP": 2, "WTA": 2})
+        self.assertEqual(report["scheduler"], "tour_then_player_page_round_robin")
+        self.assertEqual(report["players_by_tour"]["ATP"]["players_total"], 2)
+        self.assertEqual(report["players_by_tour"]["WTA"]["players_total"], 2)
 
     def test_enriched_surface_enters_only_strictly_prior_history(self):
         self.db.upsert_match(match("past", "2026-01-01T12:00:00+00:00", "Alpha One", "Other Three", winner="Alpha One"))

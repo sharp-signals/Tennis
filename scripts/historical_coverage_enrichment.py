@@ -121,6 +121,7 @@ def _write_reports(output_dir: Path, report: dict[str, Any]) -> None:
         "> Coverage experiment only. No predictive performance or edge claim.", "",
         f"- Fixed universe: {report['sample']['unique_matches']} unique matches",
         f"- RapidAPI calls: {report['rapidapi']['calls_made']} / {report['rapidapi']['hard_limit']}",
+        f"- RapidAPI calls by tour: {report['rapidapi']['calls_by_tour']}",
         f"- Cache hits: {report['rapidapi']['cache_hits']}",
         f"- Warehouse: {report['warehouse_size_bytes']} bytes", "",
         "| Feature | Before | After | Delta |", "|---|---:|---:|---:|",
@@ -132,6 +133,7 @@ def _write_reports(output_dir: Path, report: dict[str, Any]) -> None:
     lines.extend([
         "", f"Overall: {before['feature_coverage']['coverage_ratio']:.1%} → "
         f"{after['feature_coverage']['coverage_ratio']:.1%}.", "",
+        f"H2H states after enrichment: {after['replay']['metrics'].get('h2h_status_counts', {})}.", "",
         "Odds imported from tennis-data.co.uk remain `UNAVAILABLE` for ex-ante pricing "
         "because bookmaker timestamp semantics are not proven.",
     ])
@@ -197,6 +199,9 @@ def main() -> None:
             "calls_made": acquisition["calls_made"],
             "cache_hits": acquisition["cache_hits"],
             "calls_avoided_via_cache": acquisition["calls_avoided_via_cache"],
+            "calls_by_tour": opponent["calls_by_tour"],
+            "cache_hits_by_tour": opponent["cache_hits_by_tour"],
+            "pages_by_tour": opponent["pages_by_tour"],
             "hard_limit": args.max_calls,
             "calls_per_unique_target": round(acquisition["calls_made"] / len(match_ids), 4),
             "linear_calls_estimate_for_1000_targets": round(acquisition["calls_made"] * 1000 / len(match_ids)),

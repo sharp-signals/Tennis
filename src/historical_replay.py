@@ -54,6 +54,7 @@ def replay_matches(
         "tour": {}, "surface": {}, "tournament_level": {},
     }
     temporal_rejections = 0
+    h2h_status_counts: dict[str, int] = {}
     for match_id in unique_ids:
         match = warehouse.get_effective_match(match_id)
         if not match:
@@ -89,6 +90,8 @@ def replay_matches(
             reconstructed_fields += snapshot["coverage"]["reconstructed_ex_ante_fields"]
             usable_market_matches += int(snapshot["coverage"]["usable_market_quotes"] > 0)
             classified = snapshot["feature_values"]["classified"]
+            h2h_status = str((classified.get("h2h") or {}).get("status") or "UNCLASSIFIED")
+            h2h_status_counts[h2h_status] = h2h_status_counts.get(h2h_status, 0) + 1
             available_count = sum(int(item["available"]) for item in classified.values())
             available_histogram[available_count] = available_histogram.get(available_count, 0) + 1
             for field, item in classified.items():
@@ -129,6 +132,7 @@ def replay_matches(
         "matches_with_usable_market_odds": usable_market_matches,
         "unavailable_fields": unavailable,
         "available_fields": availability,
+        "h2h_status_counts": h2h_status_counts,
         "available_features_per_snapshot": {
             "mean": round(sum(count * matches for count, matches in available_histogram.items()) / reconstructed, 4)
             if reconstructed else 0.0,

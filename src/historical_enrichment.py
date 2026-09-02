@@ -7,7 +7,7 @@ without overwriting the original RapidAPI records.
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -105,7 +105,12 @@ def enrich_opponent_history(
     required_prior_matches: int = 10,
     resume: bool = True,
 ) -> dict[str, Any]:
-    """Acquire pages until each target player has ten strictly prior matches."""
+    """Acquire pages fairly until each target has enough strictly prior history.
+
+    Scheduling is round-robin first across tours and then across players within
+    each tour.  A single player or circuit therefore cannot monopolise the
+    bounded RapidAPI budget.
+    """
     cutoffs: dict[tuple[str, str], str] = {}
     names: dict[tuple[str, str], str] = {}
     target_membership: dict[tuple[str, str], list[str]] = defaultdict(list)
@@ -122,69 +127,127 @@ def enrich_opponent_history(
             target_membership[key].append(str(target["canonical_match_id"]))
 
     acquirer = HistoricalAcquirer(warehouse)
-    players: list[dict[str, Any]] = []
+    states: dict[tuple[str, str], dict[str, Any]] = {}
+    queues: dict[str, deque[tuple[str, str]]] = defaultdict(deque)
     page_reports: list[dict[str, Any]] = []
     for (tour, player_id), cutoff in sorted(cutoffs.items()):
         initial_count = len(warehouse.player_matches_before(player_id, cutoff))
-        before = initial_count
-        already_sufficient = before >= required_prior_matches
-        stop_reason = "already_sufficient" if already_sufficient else "not_started"
-        iterations = 0
-        calls_at_start = acquirer.metrics.calls_made
-        cache_hits_at_start = acquirer.metrics.cache_hits
-        pages_for_player = 0
-        source_exhausted = False
-        while before < required_prior_matches and acquirer.metrics.calls_made < max_calls:
-            iterations += 1
-            if iterations > 50:
-                stop_reason = "iteration_guard"
-                break
-            result = acquirer.acquire_player_past_match_pages(
-                tour, int(player_id), resume=resume, max_pages=1, max_calls=max_calls,
-            )
-            page_reports.extend(result.get("pages") or [])
-            pages_for_player += len(result.get("pages") or [])
-            source_exhausted = bool(result.get("source_exhausted"))
-            after = len(warehouse.player_matches_before(player_id, cutoff))
-            stop_reason = str(result.get("stop_reason") or "unknown")
-            if after >= required_prior_matches:
-                before = after
-                stop_reason = "sufficient"
-                break
-            if result.get("source_exhausted") or stop_reason in {
-                "failed", "budget_reached", "max_calls", "repeated_page",
-                "non_advancing_page", "iteration_guard",
-            }:
-                before = after
-                break
-            if after == before and not result.get("pages"):
-                stop_reason = "no_progress"
-                break
-            before = after
-        final_count = len(warehouse.player_matches_before(player_id, cutoff))
-        if acquirer.metrics.calls_made >= max_calls and final_count < required_prior_matches:
-            stop_reason = "max_calls"
-        players.append({
-            "tour": tour.upper(), "player_id": player_id, "player_name": names[(tour, player_id)],
-            "target_match_ids": list(dict.fromkeys(target_membership[(tour, player_id)])),
-            "targets_count": len(set(target_membership[(tour, player_id)])),
-            "earliest_target_cutoff": cutoff, "prior_matches": final_count,
+        key = (tour, player_id)
+        already_sufficient = initial_count >= required_prior_matches
+        states[key] = {
+            "tour": tour.upper(), "player_id": player_id,
+            "player_name": names[key],
+            "target_match_ids": list(dict.fromkeys(target_membership[key])),
+            "targets_count": len(set(target_membership[key])),
+            "earliest_target_cutoff": cutoff,
             "prior_matches_before_acquisition": initial_count,
             "required_prior_matches": required_prior_matches,
             "already_sufficient": already_sufficient,
-            "enriched_to_sufficient": not already_sufficient and final_count >= required_prior_matches,
+            "pages_required": 0, "calls_made": 0, "cache_hits": 0,
+            "source_exhausted": False, "iterations": 0,
+            "stop_reason": "already_sufficient" if already_sufficient else "not_started",
+        }
+        if not already_sufficient:
+            queues[tour].append(key)
+
+    calls_by_tour: dict[str, int] = defaultdict(int)
+    cache_hits_by_tour: dict[str, int] = defaultdict(int)
+    pages_by_tour: dict[str, int] = defaultdict(int)
+    terminal_reasons = {
+        "failed", "budget_reached", "max_calls", "repeated_page",
+        "non_advancing_page", "iteration_guard", "source_exhausted",
+    }
+    tour_order = sorted(queues)
+    for tour in tour_order:
+        calls_by_tour[tour.upper()] += 0
+        cache_hits_by_tour[tour.upper()] += 0
+        pages_by_tour[tour.upper()] += 0
+    while any(queues[tour] for tour in tour_order):
+        progressed = False
+        for tour in tour_order:
+            if not queues[tour]:
+                continue
+            if acquirer.metrics.calls_made >= max_calls:
+                break
+            key = queues[tour].popleft()
+            state = states[key]
+            player_id = key[1]
+            cutoff = str(state["earliest_target_cutoff"])
+            before = len(warehouse.player_matches_before(player_id, cutoff))
+            if before >= required_prior_matches:
+                state["stop_reason"] = "sufficient_shared_history"
+                progressed = True
+                continue
+            state["iterations"] += 1
+            if state["iterations"] > 50:
+                state["stop_reason"] = "iteration_guard"
+                continue
+
+            calls_before = acquirer.metrics.calls_made
+            cache_before = acquirer.metrics.cache_hits
+            result = acquirer.acquire_player_past_match_pages(
+                tour, int(player_id), resume=resume, max_pages=1, max_calls=max_calls,
+            )
+            call_delta = acquirer.metrics.calls_made - calls_before
+            cache_delta = acquirer.metrics.cache_hits - cache_before
+            pages = result.get("pages") or []
+            page_reports.extend(pages)
+            state["pages_required"] += len(pages)
+            state["calls_made"] += call_delta
+            state["cache_hits"] += cache_delta
+            state["source_exhausted"] = bool(result.get("source_exhausted"))
+            calls_by_tour[tour.upper()] += call_delta
+            cache_hits_by_tour[tour.upper()] += cache_delta
+            pages_by_tour[tour.upper()] += len(pages)
+            after = len(warehouse.player_matches_before(player_id, cutoff))
+            stop_reason = str(result.get("stop_reason") or "unknown")
+            state["stop_reason"] = stop_reason
+            progressed = progressed or bool(pages) or call_delta > 0 or cache_delta > 0 or after > before
+            if after >= required_prior_matches:
+                state["stop_reason"] = "sufficient"
+            elif result.get("source_exhausted"):
+                state["stop_reason"] = "source_exhausted"
+            elif stop_reason in terminal_reasons:
+                pass
+            elif after == before and not pages:
+                state["stop_reason"] = "no_progress"
+            else:
+                queues[tour].append(key)
+        if acquirer.metrics.calls_made >= max_calls or not progressed:
+            break
+
+    players: list[dict[str, Any]] = []
+    for key in sorted(states):
+        state = states[key]
+        final_count = len(warehouse.player_matches_before(
+            str(state["player_id"]), str(state["earliest_target_cutoff"]),
+        ))
+        if final_count < required_prior_matches and state["stop_reason"] in {"not_started", "max_pages"}:
+            state["stop_reason"] = "max_calls" if acquirer.metrics.calls_made >= max_calls else "incomplete"
+        state.pop("iterations", None)
+        state.update({
+            "prior_matches": final_count,
+            "enriched_to_sufficient": not state["already_sufficient"] and final_count >= required_prior_matches,
             "prehistory_10_sufficient": final_count >= required_prior_matches,
             "sufficient": final_count >= required_prior_matches,
-            "pages_required": pages_for_player,
-            "calls_made": acquirer.metrics.calls_made - calls_at_start,
-            "cache_hits": acquirer.metrics.cache_hits - cache_hits_at_start,
-            "source_exhausted": source_exhausted,
-            "stop_reason": stop_reason,
         })
+        players.append(state)
 
     sufficient = sum(int(player["sufficient"]) for player in players)
     already_sufficient = sum(int(player["already_sufficient"]) for player in players)
     enriched = sum(int(player["enriched_to_sufficient"]) for player in players)
+    players_by_tour: dict[str, dict[str, int]] = {}
+    for player in players:
+        bucket = players_by_tour.setdefault(player["tour"], {
+            "players_total": 0, "players_sufficient": 0,
+            "players_already_sufficient": 0, "players_enriched_to_sufficient": 0,
+            "players_insufficient": 0,
+        })
+        bucket["players_total"] += 1
+        bucket["players_sufficient"] += int(player["sufficient"])
+        bucket["players_already_sufficient"] += int(player["already_sufficient"])
+        bucket["players_enriched_to_sufficient"] += int(player["enriched_to_sufficient"])
+        bucket["players_insufficient"] += int(not player["sufficient"])
     return {
         "acquisition": acquirer.metrics.as_dict(),
         "players_total": len(players), "players_sufficient": sufficient,
@@ -192,6 +255,11 @@ def enrich_opponent_history(
         "players_enriched_to_sufficient": enriched,
         "players_insufficient": len(players) - sufficient,
         "calls_per_player_enriched": round(acquirer.metrics.calls_made / enriched, 4) if enriched else None,
+        "scheduler": "tour_then_player_page_round_robin",
+        "calls_by_tour": dict(sorted(calls_by_tour.items())),
+        "cache_hits_by_tour": dict(sorted(cache_hits_by_tour.items())),
+        "pages_by_tour": dict(sorted(pages_by_tour.items())),
+        "players_by_tour": dict(sorted(players_by_tour.items())),
         "players": players, "page_reports": page_reports,
     }
 
