@@ -4323,17 +4323,31 @@ def _mod_action_map(payload, div, result):
         return round(100.0 / rate_pct, 2)
 
     def scenario(side, rate_key, count_key):
+        # Dados ricos não separam BO3/BO5. Num encontro BO5, a única
+        # evidência aceitável para cenários de sets é a série BO5 explícita.
+        if match_format == "bo5":
+            if rate_key == "first_set_lose_then_win_pct":
+                fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo5"))
+                return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+            if rate_key == "deciding_set_win_pct":
+                fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo5"))
+                return fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
         rich = _d(_d(payload.get(f"rich_stats_{side}")).get("scenarios"))
-        return rich.get(rate_key), rich.get(count_key)
+        rate, count = rich.get(rate_key), rich.get(count_key)
+        if rate is not None:
+            return rate, count
+        if rate_key == "first_set_lose_then_win_pct":
+            fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo3"))
+            return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+        if rate_key == "deciding_set_win_pct":
+            fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo3"))
+            return fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
+        return rate, count
 
     # Recuperação depois do primeiro set: gatilho condicional live.
     comeback = {}
     for side in ("a", "b"):
         rate, count = scenario(side, "first_set_lose_then_win_pct", "first_set_lose_count")
-        if rate is None:
-            is_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
-            fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo5" if is_bo5 else "bo3"))
-            rate, count = fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
         if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 5:
             comeback[side] = (float(rate), int(count))
     if comeback:
@@ -4384,6 +4398,11 @@ def _mod_action_map(payload, div, result):
         if not (1.0 < _odd_pre_jogo_f <= _SUPER_FAVOURITE_MAX_ODD):
             continue
         if side not in comeback:
+            add("Live · super favorito", f"{names[side]} após perder o 1.º set",
+                f"Sem amostra histórica {match_format.upper()} suficiente para medir recuperação após perder o 1.º set. "
+                "Não avaliar Moneyline live por este cenário.",
+                "Sem mistura BO3/BO5 · não há taxa de recuperação publicada",
+                headline="Sem validação BO5" if match_format == "bo5" else "Sem validação BO3")
             continue
         _rate_esp, _count_esp = comeback[side]
         _odd_justa_real = _odd_justa(_rate_esp)
@@ -4404,10 +4423,6 @@ def _mod_action_map(payload, div, result):
     deciding = {}
     for side in ("a", "b"):
         rate, count = scenario(side, "deciding_set_win_pct", "deciding_set_count")
-        if rate is None:
-            is_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
-            fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo5" if is_bo5 else "bo3"))
-            rate, count = fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
         if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 8:
             deciding[side] = (float(rate), int(count))
     if len(deciding) == 2:
@@ -4556,7 +4571,12 @@ def _mod_action_map(payload, div, result):
                         *_band_lines,
                     ])
                 else:
-                    _reading_parts.append("Faixa comparável de Moneyline: sem scores com odds históricas suficientes.")
+                    _reading_parts.extend([
+                        "",
+                        "VALIDAÇÃO PAPER: indisponível",
+                        f"• Sem scores {match_format.upper()} com odds históricas na faixa atual de Moneyline.",
+                        "• Observar a linha na casa, mas não concluir que há valor de handicap com esta evidência.",
+                    ])
                 _reading_parts.extend(["", "A referência não cria entrada PAPER automática de handicap."])
                 _headline = (
                     f"Observar {names[fav_side]} {_line_label(_protected_line)}"

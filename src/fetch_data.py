@@ -3234,13 +3234,14 @@ def compute_deciding_set_stats(history: pd.DataFrame, player: str) -> Optional[d
         return None
     player = resolved
 
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
     if played.empty:
         return None
+    played["_best_of_normalized"] = pd.to_numeric(played["best_of"], errors="coerce")
 
     result: dict = {}
     for best_of, label in ((3, "bo3"), (5, "bo5")):
-        subset = played[played["best_of"] == best_of]
+        subset = played[played["_best_of_normalized"] == best_of]
         deciding_matches = 0
         deciding_wins = 0
         for _, row in subset.iterrows():
@@ -3833,14 +3834,29 @@ def resolve_handedness_matchup(handedness_stats: Optional[dict], opponent_hand: 
     }
 
 
-def compute_scenarios_from_past_matches(past_matches: list, player_id: int) -> Optional[dict]:
-    """Recuperação de 1º set a partir do score set-a-set ('result')."""
+def compute_scenarios_from_past_matches(
+    past_matches: list, player_id: int, expected_best_of: Optional[int] = None,
+) -> Optional[dict]:
+    """Recuperação de 1º set a partir do score set-a-set ('result').
+
+    Quando ``expected_best_of`` é indicado, só usa partidas cujo formato vem
+    explicitamente identificado pela fonte. Isto impede que um cenário BO5
+    use recuperação genérica/BO3 por falta de metadados suficientes.
+    """
     if not past_matches:
         return None
     fsl_win = fsl_tot = fsw_win = fsw_tot = 0
     for m in past_matches:
         if not isinstance(m, dict):
             continue
+        if expected_best_of is not None:
+            raw_best_of = m.get("bestOf") or m.get("best_of") or m.get("bestOfSets")
+            try:
+                best_of = int(float(raw_best_of))
+            except (TypeError, ValueError):
+                continue
+            if best_of != expected_best_of:
+                continue
         result = m.get("result")
         winner = m.get("match_winner")
         p1, p2 = m.get("player1Id"), m.get("player2Id")

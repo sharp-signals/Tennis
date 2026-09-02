@@ -657,17 +657,29 @@ def _compute_features(payload: dict) -> dict:
     # Cenário ao vivo, mas "sem dados" no Mapa de Forças). Passa a usar a
     # MESMA ordem de prioridade nos dois sítios: dados ricos primeiro,
     # histórico local como reserva.
-    _e_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
+    # O payload já transporta o formato apurado na descoberta do jogo.
+    # Usamo-lo primeiro para que nenhuma futura competição BO5 dependa de
+    # uma etiqueta textual de tier; o fallback mantém compatibilidade com
+    # payloads antigos que ainda não tinham ``match_format``.
+    _payload_format = str(payload.get("match_format") or "").strip().casefold()
+    _e_bo5 = _payload_format == "bo5" or (
+        payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
+    )
     _fmt_bo = "bo5" if _e_bo5 else "bo3"
 
     def _comeback_rate_amostra(side):
+        raw = payload.get(f"set1_comeback_stats_{side}") or {}
+        fallback = raw.get(_fmt_bo) or {}
+        # A estatística rica da API não declara o formato. Em BO5, usar
+        # apenas o histórico explicitamente BO5; nunca misturar BO3 numa
+        # variável que afeta o score pré-live.
+        if _fmt_bo == "bo5":
+            return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
         rich = (payload.get(f"rich_stats_{side}") or {}).get("scenarios") or {}
         rate = rich.get("first_set_lose_then_win_pct")
         amostra = rich.get("first_set_lose_count")
         if rate is not None and isinstance(amostra, (int, float)) and amostra > 0:
             return rate, amostra
-        raw = payload.get(f"set1_comeback_stats_{side}") or {}
-        fallback = raw.get(_fmt_bo) or {}
         return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
 
     _pa, _amostra_a = _comeback_rate_amostra("a")
@@ -1348,12 +1360,13 @@ def _build_match_payload(match: dict) -> dict:
         if _srv_b:
             serve_b = _srv_b
         # -- Sets decisivos --
+        # O recent-stats não declara BO3/BO5. Mantemos a estatística local
+        # separada por formato para não transformar um 5.º set de Slam num
+        # agregado misto de sets decisivos.
         _ds_a = fetch_data.compute_deciding_set_from_recent_stats(_rs_a) if _rs_a else None
         _ds_b = fetch_data.compute_deciding_set_from_recent_stats(_rs_b) if _rs_b else None
-        if _ds_a:
-            deciding_set_a = _ds_a
-        if _ds_b:
-            deciding_set_b = _ds_b
+        if _ds_a or _ds_b:
+            print("[info] deciding-set recent-stats ignorado no payload pré-live: formato BO3/BO5 não declarado.")
         # -- Recuperação de 1º set (past-matches, reaproveita cache) --
         _pm_a = _recent_a_cache if _recent_a_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_a)
         _pm_b = _recent_b_cache if _recent_b_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_b)
@@ -1361,8 +1374,13 @@ def _build_match_payload(match: dict) -> dict:
         recent_history_b = _compact_match_history(_pm_b, _pid_b, 10)
         market_form_a = fetch_data.compute_market_adjusted_form(_pm_a, _pid_a)
         market_form_b = fetch_data.compute_market_adjusted_form(_pm_b, _pid_b)
-        _sc_a = fetch_data.compute_scenarios_from_past_matches(_pm_a, _pid_a) if _pm_a else None
-        _sc_b = fetch_data.compute_scenarios_from_past_matches(_pm_b, _pid_b) if _pm_b else None
+        _expected_best_of = 5 if _match_format(match) == "bo5" else 3
+        _sc_a = fetch_data.compute_scenarios_from_past_matches(
+            _pm_a, _pid_a, expected_best_of=_expected_best_of,
+        ) if _pm_a else None
+        _sc_b = fetch_data.compute_scenarios_from_past_matches(
+            _pm_b, _pid_b, expected_best_of=_expected_best_of,
+        ) if _pm_b else None
         if _sc_a:
             set1_comeback_a = _sc_a
         if _sc_b:
