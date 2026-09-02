@@ -1,6 +1,6 @@
 """SQLite warehouse for temporally safe historical acquisition and replay.
 
-CHANGE-2026-09-01-021/022.  The database is deliberately local and disposable
+CHANGE-2026-09-01-021/022/023.  The database is deliberately local and disposable
 from Git's point of view; provenance and schema live in code, while real
 historical payloads remain outside version control.
 """
@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator, Mapping
 
 
-SCHEMA_VERSION = 1
-CHANGE_ID = "CHANGE-2026-09-01-022"
+SCHEMA_VERSION = 2
+CHANGE_ID = "CHANGE-2026-09-02-023"
 DEFAULT_PATH = Path(
     os.environ.get(
         "HISTORICAL_WAREHOUSE_PATH",
@@ -141,6 +141,27 @@ CREATE INDEX IF NOT EXISTS idx_matches_start ON matches(event_start_utc);
 CREATE INDEX IF NOT EXISTS idx_matches_players_a ON matches(player_a_id, event_start_utc);
 CREATE INDEX IF NOT EXISTS idx_matches_players_b ON matches(player_b_id, event_start_utc);
 
+CREATE TABLE IF NOT EXISTS match_enrichments (
+    enrichment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id TEXT NOT NULL,
+    field_name TEXT NOT NULL,
+    value_json TEXT NOT NULL,
+    source TEXT NOT NULL,
+    source_record_key TEXT NOT NULL,
+    source_date TEXT,
+    temporal_class TEXT NOT NULL,
+    match_method TEXT NOT NULL,
+    match_confidence TEXT NOT NULL,
+    payload_hash TEXT NOT NULL,
+    fetched_at_utc TEXT NOT NULL,
+    conflict INTEGER NOT NULL DEFAULT 0 CHECK(conflict IN (0, 1)),
+    UNIQUE(match_id, field_name, source, source_record_key),
+    FOREIGN KEY(match_id) REFERENCES matches(canonical_match_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_match_enrichments_match_field
+ON match_enrichments(match_id, field_name);
+
 CREATE TABLE IF NOT EXISTS market_quotes (
     quote_id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id TEXT NOT NULL,
@@ -241,11 +262,20 @@ class HistoricalWarehouse:
 
     def _initialize(self) -> None:
         with self.connect() as connection:
-            connection.executescript(SCHEMA_SQL)
+            # Execute every additive DDL statement in one explicit transaction.
+            # This upgrades v1 warehouses in place and leaves them untouched if
+            # any v2 statement fails.
+            connection.execute("PRAGMA journal_mode = WAL")
+            connection.execute("BEGIN IMMEDIATE")
+            for statement in SCHEMA_SQL.split(";"):
+                statement = statement.strip()
+                if statement and not statement.upper().startswith("PRAGMA"):
+                    connection.execute(statement)
             version = connection.execute(
                 "SELECT value FROM warehouse_meta WHERE key='schema_version'"
             ).fetchone()
-            if version is not None and int(version["value"]) != SCHEMA_VERSION:
+            existing_version = int(version["value"]) if version is not None else 0
+            if existing_version not in {0, 1, SCHEMA_VERSION}:
                 raise RuntimeError(
                     f"Warehouse schema {version['value']} incompatível com {SCHEMA_VERSION}."
                 )
@@ -364,6 +394,18 @@ class HistoricalWarehouse:
             "endpoint", "fetched_at_utc", "payload_hash",
         )
         with self.connect() as connection:
+            existing = connection.execute(
+                """SELECT quote_id FROM market_quotes
+                   WHERE match_id=? AND bookmaker IS ? AND market=? AND selection=?
+                     AND odd=? AND provider_timestamp IS ? AND source=?""",
+                (
+                    quote.get("match_id"), quote.get("bookmaker"), quote.get("market"),
+                    quote.get("selection"), quote.get("odd"),
+                    quote.get("provider_timestamp"), quote.get("source"),
+                ),
+            ).fetchone()
+            if existing is not None:
+                return
             connection.execute(
                 f"INSERT OR IGNORE INTO market_quotes({','.join(columns)}) "
                 f"VALUES({','.join('?' for _ in columns)})",
@@ -376,6 +418,103 @@ class HistoricalWarehouse:
                 "SELECT * FROM matches WHERE canonical_match_id=?", (str(match_id),)
             ).fetchone()
         return dict(row) if row else None
+
+    _ENRICHABLE_FIELDS = {
+        "player_a_rank", "player_b_rank", "surface", "tournament",
+        "tournament_level",
+    }
+
+    def add_match_enrichment(self, enrichment: Mapping[str, Any]) -> bool:
+        """Append a sourced fact without mutating the provider's match row."""
+        field_name = str(enrichment.get("field_name") or "")
+        if field_name not in self._ENRICHABLE_FIELDS:
+            raise ValueError(f"Campo de enriquecimento inválido: {field_name!r}")
+        temporal_class = enrichment.get("temporal_class")
+        if temporal_class not in TEMPORAL_CLASSES:
+            raise ValueError(f"Classe temporal inválida: {temporal_class!r}")
+        match_id = str(enrichment["match_id"])
+        target = self.get_match(match_id)
+        if target is None:
+            raise KeyError(f"Jogo inexistente para enriquecimento: {match_id}")
+        value = enrichment.get("value")
+        encoded = canonical_json(value)
+        conflict = int(target.get(field_name) is not None and canonical_json(target[field_name]) != encoded)
+        with self.connect() as connection:
+            existing = connection.execute(
+                "SELECT value_json FROM match_enrichments WHERE match_id=? AND field_name=?",
+                (match_id, field_name),
+            ).fetchall()
+            conflict = int(conflict or any(row["value_json"] != encoded for row in existing))
+            cursor = connection.execute(
+                """
+                INSERT OR IGNORE INTO match_enrichments(
+                    match_id,field_name,value_json,source,source_record_key,
+                    source_date,temporal_class,match_method,match_confidence,
+                    payload_hash,fetched_at_utc,conflict
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    match_id, field_name, encoded, enrichment["source"],
+                    str(enrichment["source_record_key"]), enrichment.get("source_date"),
+                    temporal_class, enrichment["match_method"],
+                    enrichment.get("match_confidence") or "deterministic",
+                    enrichment.get("payload_hash") or payload_hash(value),
+                    enrichment.get("fetched_at_utc") or utc_now(), conflict,
+                ),
+            )
+            return cursor.rowcount == 1
+
+    def list_match_enrichments(self, match_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM match_enrichments WHERE match_id=? ORDER BY enrichment_id",
+                (str(match_id),),
+            ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["value"] = json.loads(item.pop("value_json"))
+            item["conflict"] = bool(item["conflict"])
+            result.append(item)
+        return result
+
+    def get_effective_match(self, match_id: str) -> dict[str, Any] | None:
+        """Return original values first, then one unambiguous safe enrichment."""
+        match = self.get_match(match_id)
+        if match is None:
+            return None
+        return self._apply_enrichments(match, self.list_match_enrichments(match_id))
+
+    @staticmethod
+    def _apply_enrichments(
+        match: dict[str, Any], enrichments: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        provenance: dict[str, Any] = {}
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for item in enrichments:
+            grouped.setdefault(item["field_name"], []).append(item)
+        for field_name, candidates in grouped.items():
+            if match.get(field_name) is not None:
+                provenance[field_name] = {"source": "matches", "precedence": "original"}
+                continue
+            safe = [
+                item for item in candidates
+                if item["temporal_class"] in {"EXACT_EX_ANTE", "RECONSTRUCTED_EX_ANTE"}
+                and not item["conflict"]
+            ]
+            distinct = {canonical_json(item["value"]) for item in safe}
+            if len(distinct) == 1 and safe:
+                match[field_name] = safe[0]["value"]
+                provenance[field_name] = {
+                    "source": safe[0]["source"],
+                    "temporal_class": safe[0]["temporal_class"],
+                    "match_method": safe[0]["match_method"],
+                    "source_record_key": safe[0]["source_record_key"],
+                }
+        match["enrichment_provenance"] = provenance
+        if match.get("player_a_rank") is not None or match.get("player_b_rank") is not None:
+            match["ranking_temporal_class"] = "RECONSTRUCTED_EX_ANTE"
+        return match
 
     def list_matches(self, *, tour: str | None = None, limit: int | None = None) -> list[dict[str, Any]]:
         query = "SELECT * FROM matches"
@@ -390,11 +529,41 @@ class HistoricalWarehouse:
         with self.connect() as connection:
             return [dict(row) for row in connection.execute(query, values).fetchall()]
 
-    def matches_before(self, as_of_utc: str) -> list[dict[str, Any]]:
+    def matches_before(self, as_of_utc: str, *, enriched: bool = False) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
                 "SELECT * FROM matches WHERE event_start_utc < ? ORDER BY event_start_utc",
                 (as_of_utc,),
+            ).fetchall()
+            enrichment_rows = []
+            if enriched:
+                enrichment_rows = connection.execute(
+                    """SELECT e.* FROM match_enrichments e
+                       JOIN matches m ON m.canonical_match_id=e.match_id
+                       WHERE m.event_start_utc < ? ORDER BY e.enrichment_id""",
+                    (as_of_utc,),
+                ).fetchall()
+        result = [dict(row) for row in rows]
+        if enriched:
+            grouped: dict[str, list[dict[str, Any]]] = {}
+            for row in enrichment_rows:
+                item = dict(row)
+                item["value"] = json.loads(item.pop("value_json"))
+                item["conflict"] = bool(item["conflict"])
+                grouped.setdefault(item["match_id"], []).append(item)
+            return [
+                self._apply_enrichments(row, grouped.get(row["canonical_match_id"], []))
+                for row in result
+            ]
+        return result
+
+    def player_matches_before(self, player_id: str, as_of_utc: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM matches
+                   WHERE event_start_utc < ? AND (player_a_id=? OR player_b_id=?)
+                   ORDER BY event_start_utc DESC""",
+                (as_of_utc, str(player_id), str(player_id)),
             ).fetchall()
         return [dict(row) for row in rows]
 
@@ -504,7 +673,7 @@ class HistoricalWarehouse:
     def table_count(self, table: str) -> int:
         allowed = {
             "raw_responses", "matches", "market_quotes", "replay_snapshots",
-            "replay_runs", "replay_outputs", "backfill_state",
+            "replay_runs", "replay_outputs", "backfill_state", "match_enrichments",
         }
         if table not in allowed:
             raise ValueError(f"Tabela inválida: {table}")

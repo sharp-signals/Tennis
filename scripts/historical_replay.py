@@ -62,7 +62,7 @@ def main() -> None:
             remaining -= len(ids)
         result = {"mode": args.mode, "acquisition": acquirer.metrics.as_dict(), "match_ids": acquired}
         if args.mode == "pilot":
-            replay = replay_matches(warehouse, acquired)
+            replay = replay_matches(warehouse, acquired, mode="pilot")
             result["replay"] = replay
             reconstructed = replay["metrics"]["matches_reconstructed"]
             result["pilot_metrics"] = {

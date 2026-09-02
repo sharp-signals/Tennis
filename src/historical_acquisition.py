@@ -168,6 +168,13 @@ class HistoricalAcquirer:
     ) -> tuple[Any, str, bool]:
         key = make_cache_key(SOURCE, endpoint, params, source_version=SOURCE_VERSION)
         cached = self.warehouse.get_raw_response(key)
+        if cached is None:
+            legacy_key = make_cache_key(
+                SOURCE, endpoint, params, source_version=SOURCE_VERSION, schema_version=1,
+            )
+            cached = self.warehouse.get_raw_response(legacy_key)
+            if cached is not None:
+                key = legacy_key
         if cached is not None:
             self.metrics.cache_hits += 1
             self.metrics.calls_avoided_via_cache += 1
@@ -325,6 +332,14 @@ class HistoricalAcquirer:
                 SOURCE, "getPlayerPastMatches", cache_params, source_version=SOURCE_VERSION,
             )
             entry = self.warehouse.get_raw_response_entry(key)
+            if entry is None:
+                legacy_key = make_cache_key(
+                    SOURCE, "getPlayerPastMatches", cache_params,
+                    source_version=SOURCE_VERSION, schema_version=1,
+                )
+                legacy_entry = self.warehouse.get_raw_response_entry(legacy_key)
+                if legacy_entry is not None:
+                    key, entry = legacy_key, legacy_entry
             if entry is None and max_calls is not None and self.metrics.calls_made >= max_calls:
                 stop_reason = "max_calls"
                 break
