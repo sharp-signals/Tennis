@@ -53,6 +53,7 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
     report_id = hashlib.sha256(f"{key}|{analyzed_at}".encode("utf-8")).hexdigest()[:20]
     snapshot = {
         "key": key,
+        "event_key": payload.get("event_key") or key,
         "report_id": report_id,
         "match_id": payload.get("match_id"),
         "tour": payload.get("tour"),
@@ -64,6 +65,10 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
         "player_a": {"id": payload.get("player_a_id"), "name": payload.get("player_a")},
         "player_b": {"id": payload.get("player_b_id"), "name": payload.get("player_b")},
         "market_odds_decimal": payload.get("market_odds_decimal"),
+        "entry_market_observation_id": payload.get("entry_market_observation_id"),
+        "reference_market_observation_ids": payload.get("reference_market_observation_ids") or [],
+        "market_memory_status": payload.get("market_memory_status") or "UNAVAILABLE",
+        "market_memory_eligible": bool(payload.get("market_memory_eligible")),
         "odds_provenance": {
             "source": payload.get("odds_source"),
             "endpoint": payload.get("odds_endpoint"),
@@ -74,6 +79,7 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
             "bookmaker": payload.get("odds_bookmaker"),
             "from_cache": payload.get("odds_from_cache"),
             "cache_age_seconds": payload.get("odds_cache_age_seconds"),
+            "raw_payload_sha256": payload.get("odds_raw_payload_sha256"),
         },
         # Congelado antes do encontro, juntamente com a configuracao/hash que
         # o produziu. Uma repeticao nunca substitui esta primeira estimativa.

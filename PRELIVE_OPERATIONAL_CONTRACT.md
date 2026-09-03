@@ -77,7 +77,8 @@ auditoria `CHANGE-2026-08-30-010` provou que pode permanecer antigo enquanto
 preencher pricing, edge ou PAPER.
 
 A The Odds API fornece apenas uma comparação independente de mercado quando
-estiver disponível. Não substitui, não faz média e não bloqueia o preço
+estiver explicitamente ativada; desde o `CHANGE-2026-09-03-024` está `OFF` por
+defeito. Não substitui, não faz média e não bloqueia o preço
 operacional RapidAPI; a ausência desse comparador não invalida um par RapidAPI
 válido. Snapshot e PAPER guardam fonte, instante UTC e tipo de captura do
 preço que efetivamente alimentou o pricing.
@@ -127,6 +128,9 @@ preço e proíbe concluir que há valor de handicap a partir da amostra geral.
 - `data/paper_integrity_exclusions.json`: ledger de anulações factuais; não
   apaga PAPER histórico, mas exclui uma entrada comprovadamente inválida de
   monitorização, liquidação e métricas.
+- `data/market_ledger/`: observações Moneyline já recolhidas, em JSONL diário
+  append-only, ligadas por `event_key`/`observation_id`; falhas desta camada não
+  alteram decisão, PAPER ou settlement e deixam Market Memory/CLV como N/D.
 - relatórios HTML: nome versionado com `report_id`; uma execução posterior não
   substitui o ficheiro original.
 - `PAPER`, histórico reconstruído/backtest e `REAL` são apresentados

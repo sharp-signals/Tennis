@@ -126,6 +126,11 @@ TOURS_TO_FOLLOW = ("atp", "wta")
 # Já não decide "que jogos existem" — só tenta enriquecer com odds quando
 # o jogo (por nomes dos jogadores) também aparecer aqui. Se não aparecer,
 # o campo de odds fica None, tal como qualquer outro dado em falta.
+# CHANGE-2026-09-03-024: fica OFF por defeito. A presença acidental do secret
+# não autoriza chamadas nem cria uma dependência paga para o pipeline v1.
+THE_ODDS_API_ENABLED = os.environ.get("THE_ODDS_API_ENABLED", "0").strip().casefold() in {
+    "1", "true", "yes", "on",
+}
 # Chaves ATP e WTA, alinhadas com os tours seguidos pelo pipeline.
 ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_aus_open_singles", "tennis_atp_french_open",
