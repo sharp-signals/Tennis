@@ -54,6 +54,7 @@ from .config import (
 from . import fetch_data
 from . import run_metrics
 from . import calibration_store
+from . import market_ledger
 from . import player_images
 from . import paper_trading
 from .analyze import analyze_match
@@ -1061,6 +1062,25 @@ def _build_match_payload(match: dict) -> dict:
     reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
+    market_memory = market_ledger.record_market_batch_best_effort(
+        match,
+        odds,
+        odds_provenance,
+        role="OPERATIONAL_PRICING",
+        pipeline="PRELIVE",
+    )
+    reference_market_memory = market_ledger.record_market_batch_best_effort(
+        match,
+        reference_odds,
+        reference_odds_provenance,
+        role="REFERENCE_COMPARATOR",
+        pipeline="PRELIVE",
+    )
+    if market_memory.get("errors"):
+        print(
+            "[market-memory] observação operacional não bloqueante: "
+            + "; ".join(market_memory["errors"][:3])
+        )
     odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)
 
     _pid_a = match.get("player1Id")
@@ -1449,6 +1469,12 @@ def _build_match_payload(match: dict) -> dict:
         "market_odds_decimal": odds,
         "reference_market_odds_decimal": reference_odds,
         "reference_odds_provenance": reference_odds_provenance,
+        "event_key": market_ledger.event_key(match),
+        "entry_market_observation_id": market_memory.get("entry_observation_id"),
+        "market_memory_status": market_memory.get("status"),
+        "market_memory_eligible": bool(market_memory.get("entry_memory_eligible")),
+        "market_memory_errors": market_memory.get("errors") or [],
+        "reference_market_observation_ids": reference_market_memory.get("observation_ids") or [],
         "odds_source": odds_provenance.get("source") if odds else None,
         "odds_endpoint": odds_provenance.get("endpoint") if odds else None,
         "odds_event_id": odds_provenance.get("event_id") if odds else None,
@@ -1459,6 +1485,7 @@ def _build_match_payload(match: dict) -> dict:
         "odds_bookmaker": odds_provenance.get("bookmaker") if odds else None,
         "odds_from_cache": odds_provenance.get("from_cache") if odds else None,
         "odds_cache_age_seconds": odds_provenance.get("cache_age_seconds") if odds else None,
+        "odds_raw_payload_sha256": odds_provenance.get("raw_payload_sha256") if odds else None,
         "odds_movement": odds_movement,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
@@ -1924,6 +1951,14 @@ def run() -> None:
     ]
     added_paper = paper_trading.append_entries(paper_entries)
     print(f"[paper] {added_paper} entrada(s) PAPER nova(s) guardada(s).")
+    try:
+        archived_days = market_ledger.rotate_archives()
+        if archived_days:
+            print(f"[market-memory] {len(archived_days)} dia(s) antigo(s) arquivado(s).")
+    except Exception as exc:
+        # Por decisão do CHANGE, o ledger nunca muda decisão/PAPER nem o
+        # resultado operacional do pipeline.
+        print(f"[market-memory] rotação não bloqueante indisponível: {exc}")
 
     # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
     # (Antes era uma única página com todos os jogos — com muitos jogos

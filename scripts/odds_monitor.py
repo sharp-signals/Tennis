@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from src import fetch_data, paper_trading
+from src import fetch_data, market_ledger, paper_trading
 
 PAPER_PATH = Path(os.environ.get("ODDS_MONITOR_PAPER_PATH", "data/paper_trades.json"))
 OUTPUT_DIR = Path(os.environ.get("ODDS_MONITOR_OUTPUT_DIR", "data/odds_monitor"))
@@ -314,6 +314,8 @@ def _primary_market_observation(match: dict[str, Any]) -> dict[str, Any]:
         "provider_timestamp": None,
         "quote_age_seconds": None,
         "bookmaker": None,
+        "raw_payload_sha256": provenance.get("raw_payload_sha256"),
+        "identity_mapping_status": provenance.get("identity_mapping_status") or "VERIFIED",
         "caveat": "Feed observado nesta execução; hora de atualização do bookmaker não fornecida.",
     }
 
@@ -340,7 +342,13 @@ def _resolve_event(entry: dict[str, Any], event_map: dict[str, Any]) -> tuple[st
     key = str(entry.get("key") or "")
     cached = event_map["events"].get(key)
     if isinstance(cached, dict) and cached.get("event_id"):
-        return str(cached["event_id"]), {"cached": True, "lookup": cached.get("lookup")}
+        return str(cached["event_id"]), {
+            "cached": True,
+            "lookup": cached.get("lookup"),
+            "participant1": cached.get("participant1"),
+            "participant2": cached.get("participant2"),
+            "identity_mapping_status": cached.get("identity_mapping_status") or "UNVERIFIED",
+        }
 
     pregame = entry["pregame"]
     players = pregame.get("players") or {}
@@ -360,14 +368,26 @@ def _resolve_event(entry: dict[str, Any], event_map: dict[str, Any]) -> tuple[st
             if result["access"] == "forbidden":
                 return None, {"cached": False, "access": "forbidden", "attempts": attempts}
             if result["ok"]:
-                event_id = extract_event_id(result["payload"])
+                verified = fetch_data._validated_event_record(result["payload"], _entry_to_match(entry))
+                event_id = str(verified.get("event_id")) if verified and verified.get("valid") else extract_event_id(result["payload"])
                 if event_id:
+                    participant1 = verified.get("participant1") if verified and verified.get("valid") else None
+                    participant2 = verified.get("participant2") if verified and verified.get("valid") else None
                     event_map["events"][key] = {
                         "event_id": event_id,
                         "resolved_at_utc": _utc_now().isoformat(timespec="seconds"),
                         "lookup": attempts[-1],
+                        "participant1": participant1,
+                        "participant2": participant2,
+                        "identity_mapping_status": "VERIFIED" if participant1 and participant2 else "UNVERIFIED",
                     }
-                    return event_id, {"cached": False, "lookup": attempts[-1]}
+                    return event_id, {
+                        "cached": False,
+                        "lookup": attempts[-1],
+                        "participant1": participant1,
+                        "participant2": participant2,
+                        "identity_mapping_status": "VERIFIED" if participant1 and participant2 else "UNVERIFIED",
+                    }
     return None, {"cached": False, "access": "unresolved", "attempts": attempts}
 
 
@@ -404,6 +424,119 @@ def _append_snapshot(snapshot: dict[str, Any], *, output_dir: Path = OUTPUT_DIR)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(snapshot, ensure_ascii=False, sort_keys=True, default=str) + "\n")
     return True
+
+
+def _mapped_provider_odds(
+    match: dict[str, Any],
+    event_resolution: dict[str, Any],
+    quote: dict[str, Any],
+) -> tuple[dict[str, float] | None, str]:
+    """Mapeia od1/od2 apenas quando a ordem veio do event/get já pedido."""
+    player_a = str((match.get("player1") or {}).get("name") or "")
+    player_b = str((match.get("player2") or {}).get("name") or "")
+    participant1 = str(event_resolution.get("participant1") or "")
+    participant2 = str(event_resolution.get("participant2") or "")
+    if not player_a or not player_b or not participant1 or not participant2:
+        return None, "UNVERIFIED"
+    expected = {fetch_data._normalize_name(player_a), fetch_data._normalize_name(player_b)}
+    actual = {fetch_data._normalize_name(participant1), fetch_data._normalize_name(participant2)}
+    if expected != actual:
+        return None, "UNVERIFIED"
+    try:
+        od1, od2 = float(quote.get("od1")), float(quote.get("od2"))
+    except (TypeError, ValueError):
+        return None, "VERIFIED"
+    if od1 <= 1 or od2 <= 1:
+        return None, "VERIFIED"
+    if fetch_data._normalize_name(participant1) == fetch_data._normalize_name(player_a):
+        return {player_a: od1, player_b: od2}, "VERIFIED"
+    return {player_a: od2, player_b: od1}, "VERIFIED"
+
+
+def _persist_market_ledger_best_effort(
+    entry: dict[str, Any],
+    match: dict[str, Any],
+    snapshot: dict[str, Any],
+    *,
+    ledger_root: Path = market_ledger.DEFAULT_ROOT,
+) -> dict[str, Any]:
+    """Normaliza apenas respostas já recolhidas; não chama qualquer endpoint."""
+    results = []
+    primary = snapshot.get("market_observation") or {}
+    if primary.get("available") and isinstance(primary.get("odds"), dict):
+        results.append(market_ledger.record_market_batch_best_effort(
+            match,
+            primary["odds"],
+            {
+                "source": primary.get("source"),
+                "endpoint": primary.get("endpoint"),
+                "event_id": snapshot.get("event_id"),
+                "captured_at_utc": primary.get("captured_at_utc"),
+                "capture_kind": "feed_observed_at_capture",
+                "provider_timestamp": primary.get("provider_timestamp"),
+                "bookmaker": primary.get("bookmaker"),
+                "freshness_status": primary.get("freshness"),
+                "identity_mapping_status": primary.get("identity_mapping_status") or "VERIFIED",
+                "raw_payload_sha256": primary.get("raw_payload_sha256"),
+                "github_run_id": os.environ.get("ODDS_MONITOR_GITHUB_RUN_ID"),
+            },
+            role="SHADOW_MONITOR",
+            pipeline="ODDS_MONITOR",
+            root=ledger_root,
+        ))
+
+    resolution = snapshot.get("event_resolution") or {}
+    captured_at = snapshot.get("captured_at_utc")
+    endpoint_specs = (
+        ("recent_odds", f"{fetch_data.RAPIDAPI_EXTEND_BASE}/event/recent-odds/get/{snapshot.get('event_id')}", "RapidAPI Tennis API / recent-odds"),
+        ("compare", f"{fetch_data.RAPIDAPI_EXTEND_BASE}/odds/compare/{snapshot.get('event_id')}", "RapidAPI Tennis API / odds compare"),
+    )
+    for endpoint_key, endpoint_url, source_name in endpoint_specs:
+        endpoint = (snapshot.get("endpoints") or {}).get(endpoint_key) or {}
+        payload = endpoint.get("payload")
+        raw_hash = market_ledger.payload_sha256(payload) if payload is not None else None
+        for quote in (endpoint.get("quote_quality") or {}).get("quotes") or []:
+            odds, mapping_status = _mapped_provider_odds(match, resolution, quote)
+            if not odds:
+                continue
+            # Em recent-odds, addTime é metadado comprovadamente pouco fiável;
+            # a observação temporal é a resposta recebida nesta execução. No
+            # compare mantemos a classificação temporal do próprio endpoint.
+            freshness_status = (
+                "OBSERVED_AT_CAPTURE" if endpoint_key == "recent_odds"
+                else quote.get("freshness")
+            )
+            provider_timestamp_status = (
+                "unreliable_for_freshness" if endpoint_key == "recent_odds"
+                else "AVAILABLE" if quote.get("provider_timestamp") else "UNAVAILABLE"
+            )
+            results.append(market_ledger.record_market_batch_best_effort(
+                match,
+                odds,
+                {
+                    "source": source_name,
+                    "endpoint": endpoint_url,
+                    "event_id": snapshot.get("event_id"),
+                    "captured_at_utc": captured_at,
+                    "capture_kind": "monitor_response_observed_at_capture",
+                    "provider_timestamp": quote.get("provider_timestamp"),
+                    "provider_timestamp_status": provider_timestamp_status,
+                    "bookmaker": quote.get("bookmaker"),
+                    "freshness_status": freshness_status,
+                    "identity_mapping_status": mapping_status,
+                    "provider_side_a": "od1" if fetch_data._normalize_name(resolution.get("participant1")) == fetch_data._normalize_name((match.get("player1") or {}).get("name")) else "od2",
+                    "provider_side_b": "od2" if fetch_data._normalize_name(resolution.get("participant1")) == fetch_data._normalize_name((match.get("player1") or {}).get("name")) else "od1",
+                    "raw_payload_sha256": raw_hash,
+                    "github_run_id": os.environ.get("ODDS_MONITOR_GITHUB_RUN_ID"),
+                },
+                role="SHADOW_MONITOR",
+                pipeline="ODDS_MONITOR",
+                root=ledger_root,
+            ))
+    return {
+        "recorded": sum(len(item.get("observation_ids") or []) for item in results),
+        "errors": [error for item in results for error in (item.get("errors") or [])],
+    }
 
 
 def monitor_entry(
@@ -491,6 +624,8 @@ def run() -> dict[str, Any]:
     event_map = _read_event_map()
     captures = []
     written = 0
+    ledger_records = 0
+    ledger_errors = []
 
     try:
         for entry, match in zip(entries, matches):
@@ -498,6 +633,9 @@ def run() -> dict[str, Any]:
             captures.append(snapshot)
             if _append_snapshot(snapshot):
                 written += 1
+            ledger_result = _persist_market_ledger_best_effort(entry, match, snapshot)
+            ledger_records += int(ledger_result.get("recorded") or 0)
+            ledger_errors.extend(ledger_result.get("errors") or [])
     finally:
         _atomic_json(EVENT_MAP_PATH, event_map)
         access_counts: dict[str, int] = {}
@@ -538,6 +676,8 @@ def run() -> dict[str, Any]:
             "eligible_paper_entries": len(entries),
             "captured_entries": len(captures),
             "new_history_records": written,
+            "market_ledger_records": ledger_records,
+            "market_ledger_errors": ledger_errors[:20],
             "primary_series_records": primary_series_records,
             "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
             "access_counts": access_counts,
@@ -556,6 +696,11 @@ def run() -> dict[str, Any]:
             "llm_calls": 0,
         }
         _atomic_json(STATUS_PATH, status)
+        try:
+            market_ledger.rotate_archives()
+        except Exception as exc:
+            status["market_ledger_errors"].append(f"rotation:{type(exc).__name__}:{exc}")
+            _atomic_json(STATUS_PATH, status)
         fetch_data.persist_rapidapi_usage(status="odds_monitor", matches=len(captures))
     return status
 

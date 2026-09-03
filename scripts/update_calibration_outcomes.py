@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.calibration_store import settle_from_matches
+from src import market_ledger, market_memory_report
 from src.paper_trading import settle_from_matches as settle_paper_from_matches
 
 
@@ -35,5 +36,25 @@ if __name__ == "__main__":
         ROOT / "data" / "calibration_snapshots.json",
     )
     print(f"Snapshots com resultado atualizado: {count}")
-    paper_count = settle_paper_from_matches(matches, ROOT / "data" / "paper_trades.json")
+    paper_count = settle_paper_from_matches(
+        matches,
+        ROOT / "data" / "paper_trades.json",
+        ledger_root=ROOT / "data" / "market_ledger",
+    )
     print(f"Entradas PAPER liquidadas: {paper_count}")
+    try:
+        report = market_memory_report.build_and_write(
+            ledger_root=ROOT / "data" / "market_ledger",
+            snapshots_path=ROOT / "data" / "calibration_snapshots.json",
+            paper_path=ROOT / "data" / "paper_trades.json",
+            output_path=ROOT / "data" / "market_ledger" / "derived" / "market-memory-v1.json",
+        )
+        archived = market_ledger.rotate_archives(root=ROOT / "data" / "market_ledger")
+        print(
+            "Market Memory atualizado: "
+            f"{report['observation_count']} observações; {len(archived)} dia(s) arquivado(s)."
+        )
+    except Exception as exc:
+        # O contrato do CHANGE exige degradação aberta: settlement e PAPER
+        # continuam válidos; apenas Market Memory/CLV fica indisponível.
+        print(f"[market-memory] atualização não bloqueante indisponível: {type(exc).__name__}: {exc}")
