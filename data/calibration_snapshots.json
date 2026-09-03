@@ -169688,7 +169688,12 @@
         "provider_timestamp": "2026-08-29T14:41:16+00:00",
         "source": "RapidAPI Tennis API / recent-odds"
       },
-      "outcome": null,
+      "outcome": {
+        "result": "4-6 6-1 6-2",
+        "settled_at_utc": "2026-09-03T05:36:26+00:00",
+        "winner_id": 4110,
+        "winner_side": "a"
+      },
       "player_a": {
         "id": 4110,
         "name": "Tatjana Maria"
@@ -170429,7 +170434,12 @@
         "provider_timestamp": null,
         "source": null
       },
-      "outcome": null,
+      "outcome": {
+        "result": "6-1 6-4",
+        "settled_at_utc": "2026-09-03T05:36:26+00:00",
+        "winner_id": 17142,
+        "winner_side": "b"
+      },
       "player_a": {
         "id": 17503,
         "name": "Daria Kasatkina"
@@ -171130,7 +171140,12 @@
         "provider_timestamp": "2026-08-29T00:35:44+00:00",
         "source": "RapidAPI Tennis API / recent-odds"
       },
-      "outcome": null,
+      "outcome": {
+        "result": "7-5 6-3",
+        "settled_at_utc": "2026-09-03T05:36:26+00:00",
+        "winner_id": 80381,
+        "winner_side": "a"
+      },
       "player_a": {
         "id": 80381,
         "name": "Iva Jovic"
@@ -186278,7 +186293,12 @@
         "provider_timestamp": null,
         "source": null
       },
-      "outcome": null,
+      "outcome": {
+        "result": "6-2 6-1 6-1",
+        "settled_at_utc": "2026-09-03T05:36:26+00:00",
+        "winner_id": 61667,
+        "winner_side": "b"
+      },
       "player_a": {
         "id": 99691,
         "name": "Rafael Jodar"
@@ -192028,7 +192048,3010 @@
       "tour": "wta",
       "tournament": "U.S. Open - New York",
       "tournament_id": 16743
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-03T05:36:22+00:00",
+      "commence_time_utc": "2026-09-03T23:00:00+00:00",
+      "key": "atp:1246",
+      "market_odds_decimal": null,
+      "match_id": 1246,
+      "metrics": {
+        "deciding_set_stats_a": {
+          "bo3": {
+            "matches_went_the_distance": 42,
+            "win_rate_pct": 31.0,
+            "wins": 13
+          },
+          "bo5": {
+            "matches_went_the_distance": 9,
+            "win_rate_pct": 55.6,
+            "wins": 5
+          }
+        },
+        "deciding_set_stats_b": {
+          "bo3": {
+            "matches_went_the_distance": 25,
+            "win_rate_pct": 72.0,
+            "wins": 18
+          },
+          "bo5": null
+        },
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "indoor/outdoor",
+              "Ignacio Buse"
+            ],
+            [
+              "tie-break",
+              "Ignacio Buse"
+            ],
+            [
+              "evolução de ranking",
+              "Ignacio Buse"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 3.0,
+              "amostra_a": 21,
+              "amostra_b": 3,
+              "confianca_amostra": 0.316,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Benjamin Bonzi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.214,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.214,
+              "valor_a": 23.8,
+              "valor_b": 0.0
+            },
+            "fadiga": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Benjamin Bonzi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 4.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 2,
+              "valor_b": 4
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 2.8,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 60.0,
+              "valor_b": 70.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": "amostra insuficiente (1 jogo)",
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "amostra": 1,
+              "confianca_amostra": 0.408,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.5,
+              "peso_antes_cap": 2.449,
+              "peso_base_aplicado": 12.0,
+              "peso_base_configurado": 12.0,
+              "peso_efetivo": 2.449,
+              "valor_a": 0,
+              "valor_b": 1
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 44.0,
+              "valor_b": 55.6
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 1,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.4,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 41.1,
+              "valor_b": 61.9
+            },
+            "mudanca_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "nenhum em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 31.3,
+              "valor_b": 47.4
+            },
+            "piso": {
+              "amostra": 40,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Benjamin Bonzi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.44,
+              "peso_antes_cap": 3.52,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 3.52,
+              "valor_a": 64.1,
+              "valor_b": 57.5
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 1,
+              "valor_b": 1
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.091,
+              "pontos_a": 656,
+              "pontos_b": 1550,
+              "valor_a": 97.0,
+              "valor_b": 30.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.909,
+              "valor_a": -9.0,
+              "valor_b": 130.1
+            },
+            "recuperacao_sets": {
+              "amostra": 102,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.6,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 3.6,
+              "valor_a": 56,
+              "valor_b": 59
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 42.9,
+              "valor_b": 60.0
+            },
+            "servico_carreira": {
+              "amostra": 15.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Benjamin Bonzi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.0,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 3.0,
+              "valor_a": 69.0,
+              "valor_b": 65.0
+            },
+            "servico_recente": {
+              "disponivel": true,
+              "lider": "Benjamin Bonzi",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 5,
+              "valor_a": 70.1,
+              "valor_b": 68.1
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Ignacio Buse",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 48.1,
+              "valor_b": 66.7
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 26,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 24,
+          "inclinacao_modelo_b": 76,
+          "indice_evidencia_a": 24,
+          "indice_evidencia_b": 76,
+          "indice_favorece": "Ignacio Buse",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 47.983,
+          "mercado_favorece": null,
+          "n_fatores": 14,
+          "player_a": "Benjamin Bonzi",
+          "player_b": "Ignacio Buse",
+          "prob_mercado_a": null,
+          "prob_mercado_b": null,
+          "tipo": "evidence_only"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 21,
+            "amostra_b": 3,
+            "diff": 23.8,
+            "lider": "Benjamin Bonzi",
+            "valor_a": 23.8,
+            "valor_b": 0.0
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 10.0,
+            "lider": "Ignacio Buse",
+            "unidade": "%",
+            "valor_a": 60.0,
+            "valor_b": 70.0
+          },
+          "frescura": {
+            "jogos_7d_a": 2,
+            "jogos_7d_b": 4,
+            "mais_fresco": "Benjamin Bonzi",
+            "sets_7d_a": 7,
+            "sets_7d_b": 13
+          },
+          "h2h": {
+            "a_wins": 0,
+            "b_wins": 1,
+            "lider": "Ignacio Buse",
+            "total": 1
+          },
+          "h2h_piso": {
+            "a_wins": 0,
+            "b_wins": 1,
+            "lider": "Ignacio Buse",
+            "total": 1
+          },
+          "indoor_outdoor": {
+            "amostra_a": 116,
+            "amostra_b": 45,
+            "diff": 11.6,
+            "lider": "Ignacio Buse",
+            "unidade": "%",
+            "valor_a": 44.0,
+            "valor_b": 55.6
+          },
+          "nivel_adversario": {
+            "amostra_a": 67,
+            "amostra_b": 38,
+            "diff": -16.099999999999998,
+            "lider": "Ignacio Buse",
+            "valor_a": 31.3,
+            "valor_b": 47.4
+          },
+          "piso": {
+            "amostra_a": 312,
+            "amostra_b": 40,
+            "diff": 6.6,
+            "lider": "Benjamin Bonzi",
+            "unidade": "%",
+            "valor_a": 64.1,
+            "valor_b": 57.5
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 1,
+            "top50_b": 1,
+            "valor_a": 1,
+            "valor_b": 1
+          },
+          "ranking": {
+            "diff": 67.0,
+            "lider": "Ignacio Buse",
+            "pontos_a": 656,
+            "pontos_b": 1550,
+            "valor_a": 97.0,
+            "valor_b": 30.0
+          },
+          "ranking_evolucao": {
+            "diff": -139.05,
+            "lider": "Ignacio Buse",
+            "valor_a": -9.0,
+            "valor_b": 130.1
+          },
+          "sazonal": {
+            "amostra_a": 21,
+            "amostra_b": 5,
+            "diff": 17.1,
+            "lider": "Ignacio Buse",
+            "unidade": "%",
+            "valor_a": 42.9,
+            "valor_b": 60.0
+          },
+          "servico_carreira": {
+            "amostra_a": 15,
+            "amostra_b": 32,
+            "diff": 4.0,
+            "lider": "Benjamin Bonzi",
+            "unidade": "%",
+            "valor_a": 69.0,
+            "valor_b": 65.0
+          },
+          "servico_recente": {
+            "amostra_a": 2,
+            "amostra_b": 2,
+            "diff": 2.0,
+            "lider": "Benjamin Bonzi",
+            "unidade": "%",
+            "valor_a": 70.1,
+            "valor_b": 68.1
+          },
+          "tiebreak": {
+            "amostra_a": 79,
+            "amostra_b": 18,
+            "diff": 18.6,
+            "lider": "Ignacio Buse",
+            "unidade": "%",
+            "valor_a": 48.1,
+            "valor_b": 66.7
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 3,
+          "coverage_pct": 50.0,
+          "excluded_missing_odds": 5,
+          "excluded_missing_odds_wins": 3,
+          "expected_wins": 2.72,
+          "matches": 5,
+          "odds_eligible_matches": 5,
+          "overall_wins": 6,
+          "performance_vs_market": 0.28,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 1,
+          "coverage_pct": 30.0,
+          "excluded_missing_odds": 7,
+          "excluded_missing_odds_wins": 6,
+          "expected_wins": 1.49,
+          "matches": 3,
+          "odds_eligible_matches": 3,
+          "overall_wins": 7,
+          "performance_vs_market": -0.49,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 78.32,
+          "matches": 22,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 68.02,
+          "matches": 41,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 18,
+            "available_weight": 117.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 81.2,
+            "weighted_ratio": 0.8125
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "reason": "missing_or_invalid_two_way_moneyline",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 18,
+              "available_weight": 117.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 81.2,
+              "weighted_ratio": 0.8125
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "state": "PRICING_UNAVAILABLE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 37.0,
+          "bp_saved_pct": 61.0,
+          "first_serve_won_pct": 69.0,
+          "matches": 15,
+          "opponent_first_serve_won_pct": 25.0,
+          "opponent_second_serve_won_pct": 43.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 46.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 37.0,
+          "bp_saved_pct": 52.0,
+          "first_serve_won_pct": 65.0,
+          "matches": 32,
+          "opponent_first_serve_won_pct": 27.0,
+          "opponent_second_serve_won_pct": 45.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 45.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 656,
+          "rank": 97
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 1550,
+          "rank": 30
+        },
+        "recent_form_a": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "recent_form_b": {
+          "losses": 3,
+          "matches": 10,
+          "wins": 7
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 18,
+            "available_weight": 117.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 81.2,
+            "weighted_ratio": 0.8125
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 37.0,
+          "avg_break_points_saved_pct": 61.0,
+          "avg_first_serve_in_pct": 61.6,
+          "avg_first_serve_won_pct": 69.0,
+          "avg_second_serve_won_pct": 46.0,
+          "matches_used": 15
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 37.0,
+          "avg_break_points_saved_pct": 52.0,
+          "avg_first_serve_in_pct": 61.2,
+          "avg_first_serve_won_pct": 65.0,
+          "avg_second_serve_won_pct": 45.0,
+          "matches_used": 32
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 15.3,
+            "matches_lost_set1": 59,
+            "matches_lost_set1_won_overall": 9
+          },
+          "bo5": {
+            "comeback_rate_pct": 23.8,
+            "matches_lost_set1": 21,
+            "matches_lost_set1_won_overall": 5
+          }
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 33.3,
+            "matches_lost_set1": 21,
+            "matches_lost_set1_won_overall": 7
+          },
+          "bo5": {
+            "comeback_rate_pct": 0.0,
+            "matches_lost_set1": 3,
+            "matches_lost_set1_won_overall": 0
+          }
+        },
+        "surface_momentum_a": {
+          "delta_pp": -9.2,
+          "recent_win_pct": 54.9,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -7.5,
+          "recent_win_pct": 50.0,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": null,
+        "capture_kind": null,
+        "captured_at_utc": null,
+        "endpoint": null,
+        "event_id": null,
+        "from_cache": null,
+        "provider_timestamp": null,
+        "source": null
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 28899,
+        "name": "Benjamin Bonzi"
+      },
+      "player_b": {
+        "id": 79113,
+        "name": "Ignacio Buse"
+      },
+      "pricing": {
+        "available": false,
+        "candidate": false,
+        "candidate_side": null,
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "reason": "missing_or_invalid_two_way_moneyline",
+        "status": "unavailable",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "report_id": "b4771f99cfa46bcd0255",
+      "surface": "Hard",
+      "tour": "atp",
+      "tournament": "U.S. Open - New York",
+      "tournament_id": 21349
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-03T05:36:22+00:00",
+      "commence_time_utc": "2026-09-03T20:00:00+00:00",
+      "key": "atp:1394",
+      "market_odds_decimal": {
+        "Alexander Blockx": 1.142,
+        "Marco Trungelliti": 5.5
+      },
+      "match_id": 1394,
+      "metrics": {
+        "deciding_set_stats_a": {
+          "bo3": {
+            "matches_went_the_distance": 18,
+            "win_rate_pct": 61.1,
+            "wins": 11
+          },
+          "bo5": null
+        },
+        "deciding_set_stats_b": {
+          "bo3": {
+            "matches_went_the_distance": 10,
+            "win_rate_pct": 50.0,
+            "wins": 5
+          },
+          "bo5": {
+            "matches_went_the_distance": 4,
+            "win_rate_pct": 50.0,
+            "wins": 2
+          }
+        },
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 4,
+            "structural_factors_available": [
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "indoor/outdoor",
+              "Alexander Blockx"
+            ],
+            [
+              "evolução de ranking",
+              "Alexander Blockx"
+            ],
+            [
+              "serviço (2 jogos)",
+              "Alexander Blockx"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 4.0,
+              "amostra_a": 4,
+              "amostra_b": 10,
+              "confianca_amostra": 0.365,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.556,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.556,
+              "valor_a": 25.0,
+              "valor_b": 20.0
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 4
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Marco Trungelliti",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 2.8,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.593,
+              "valor_a": 50.0,
+              "valor_b": 60.0
+            },
+            "h2h": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 53.1,
+              "valor_b": 40.4
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 2,
+              "valor_b": 2
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.4,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 55.0,
+              "valor_b": 39.6
+            },
+            "mudanca_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "nenhum em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 3.294,
+              "valor_a": 50.0,
+              "valor_b": 31.8
+            },
+            "piso": {
+              "disponivel": true,
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 8,
+              "valor_a": 55.6,
+              "valor_b": 54.1
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.5,
+              "peso_antes_cap": 4.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 1.882,
+              "valor_a": 3,
+              "valor_b": 1
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.091,
+              "pontos_a": 1396,
+              "pontos_b": 731,
+              "valor_a": 34.0,
+              "valor_b": 83.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.909,
+              "valor_a": 162.4,
+              "valor_b": 30.3
+            },
+            "recuperacao_sets": {
+              "disponivel": true,
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 9
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Marco Trungelliti",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.824,
+              "valor_a": 16.7,
+              "valor_b": 40.0
+            },
+            "servico_carreira": {
+              "amostra": 20.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.0,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 2.778,
+              "valor_a": 71.0,
+              "valor_b": 68.0
+            },
+            "servico_recente": {
+              "amostra": 2.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Alexander Blockx",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.63,
+              "valor_a": 82.3,
+              "valor_b": 74.2
+            },
+            "tiebreak": {
+              "disponivel": true,
+              "lider": "Marco Trungelliti",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 5,
+              "valor_a": 38.1,
+              "valor_b": 39.1
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 36,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 86,
+          "inclinacao_modelo_b": 14,
+          "indice_evidencia_a": 86,
+          "indice_evidencia_b": 14,
+          "indice_favorece": "Alexander Blockx",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 37.956,
+          "mercado_favorece": "Alexander Blockx",
+          "n_fatores": 11,
+          "player_a": "Alexander Blockx",
+          "player_b": "Marco Trungelliti",
+          "prob_mercado_a": 83,
+          "prob_mercado_b": 17,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 4,
+            "amostra_b": 10,
+            "diff": 5.0,
+            "lider": "Alexander Blockx",
+            "valor_a": 25.0,
+            "valor_b": 20.0
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 10.0,
+            "lider": "Marco Trungelliti",
+            "unidade": "%",
+            "valor_a": 50.0,
+            "valor_b": 60.0
+          },
+          "frescura": {
+            "jogos_7d_a": 1,
+            "jogos_7d_b": 1,
+            "mais_fresco": "igual",
+            "sets_7d_a": 3,
+            "sets_7d_b": 5
+          },
+          "indoor_outdoor": {
+            "amostra_a": 32,
+            "amostra_b": 47,
+            "diff": 12.7,
+            "lider": "Alexander Blockx",
+            "unidade": "%",
+            "valor_a": 53.1,
+            "valor_b": 40.4
+          },
+          "nivel_adversario": {
+            "amostra_a": 36,
+            "amostra_b": 22,
+            "diff": 18.2,
+            "lider": "Alexander Blockx",
+            "valor_a": 50.0,
+            "valor_b": 31.8
+          },
+          "piso": {
+            "amostra_a": 72,
+            "amostra_b": 185,
+            "diff": 1.5,
+            "lider": "Alexander Blockx",
+            "unidade": "%",
+            "valor_a": 55.6,
+            "valor_b": 54.1
+          },
+          "qualidade_vitorias": {
+            "lider": "Alexander Blockx",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 3,
+            "top50_b": 1,
+            "valor_a": 3,
+            "valor_b": 1
+          },
+          "ranking": {
+            "diff": 49.0,
+            "lider": "Alexander Blockx",
+            "pontos_a": 1396,
+            "pontos_b": 731,
+            "valor_a": 34.0,
+            "valor_b": 83.0
+          },
+          "ranking_evolucao": {
+            "diff": 132.09999999999997,
+            "lider": "Alexander Blockx",
+            "valor_a": 162.4,
+            "valor_b": 30.3
+          },
+          "sazonal": {
+            "amostra_a": 6,
+            "amostra_b": 15,
+            "diff": 23.3,
+            "lider": "Marco Trungelliti",
+            "unidade": "%",
+            "valor_a": 16.7,
+            "valor_b": 40.0
+          },
+          "servico_carreira": {
+            "amostra_a": 25,
+            "amostra_b": 20,
+            "diff": 3.0,
+            "lider": "Alexander Blockx",
+            "unidade": "%",
+            "valor_a": 71.0,
+            "valor_b": 68.0
+          },
+          "servico_recente": {
+            "amostra_a": 2,
+            "amostra_b": 2,
+            "diff": 8.1,
+            "lider": "Alexander Blockx",
+            "unidade": "%",
+            "valor_a": 82.3,
+            "valor_b": 74.2
+          },
+          "tiebreak": {
+            "amostra_a": 21,
+            "amostra_b": 23,
+            "diff": 1.0,
+            "lider": "Marco Trungelliti",
+            "unidade": "%",
+            "valor_a": 38.1,
+            "valor_b": 39.1
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 3,
+          "coverage_pct": 60.0,
+          "excluded_missing_odds": 4,
+          "excluded_missing_odds_wins": 2,
+          "expected_wins": 3.3,
+          "matches": 6,
+          "odds_eligible_matches": 6,
+          "overall_wins": 5,
+          "performance_vs_market": -0.3,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 2,
+          "coverage_pct": 20.0,
+          "excluded_missing_odds": 8,
+          "excluded_missing_odds_wins": 4,
+          "expected_wins": 0.86,
+          "matches": 2,
+          "odds_eligible_matches": 2,
+          "overall_wins": 6,
+          "performance_vs_market": 1.14,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 88.15,
+          "matches": 34,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 100.73,
+          "matches": 22,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.6875
+          },
+          "expected_edge_pct": -2.17,
+          "fenzobot_index": 86,
+          "market": {
+            "expected_edge_pct": -2.17,
+            "fair_odd": 1.167,
+            "line": null,
+            "market": "Moneyline Alexander Blockx",
+            "market_type": "Moneyline",
+            "odd": 1.142,
+            "player": "Alexander Blockx",
+            "sharp_estimate_pct": 85.67,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Alexander Blockx",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 16,
+              "available_weight": 99.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 68.8,
+              "weighted_ratio": 0.6875
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 27.0,
+          "bp_saved_pct": 57.0,
+          "first_serve_won_pct": 71.0,
+          "matches": 25,
+          "opponent_first_serve_won_pct": 22.0,
+          "opponent_second_serve_won_pct": 45.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 48.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 37.0,
+          "bp_saved_pct": 59.0,
+          "first_serve_won_pct": 68.0,
+          "matches": 20,
+          "opponent_first_serve_won_pct": 27.0,
+          "opponent_second_serve_won_pct": 47.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 45.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 1396,
+          "rank": 34
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 731,
+          "rank": 83
+        },
+        "recent_form_a": {
+          "losses": 5,
+          "matches": 10,
+          "wins": 5
+        },
+        "recent_form_b": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.6875
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 27.0,
+          "avg_break_points_saved_pct": 57.0,
+          "avg_first_serve_in_pct": 58.4,
+          "avg_first_serve_won_pct": 71.0,
+          "avg_second_serve_won_pct": 48.0,
+          "matches_used": 25
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 37.0,
+          "avg_break_points_saved_pct": 59.0,
+          "avg_first_serve_in_pct": 59.2,
+          "avg_first_serve_won_pct": 68.0,
+          "avg_second_serve_won_pct": 45.0,
+          "matches_used": 20
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 38.1,
+            "matches_lost_set1": 21,
+            "matches_lost_set1_won_overall": 8
+          },
+          "bo5": {
+            "comeback_rate_pct": 25.0,
+            "matches_lost_set1": 4,
+            "matches_lost_set1_won_overall": 1
+          }
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 17.4,
+            "matches_lost_set1": 23,
+            "matches_lost_set1_won_overall": 4
+          },
+          "bo5": {
+            "comeback_rate_pct": 20.0,
+            "matches_lost_set1": 10,
+            "matches_lost_set1_won_overall": 2
+          }
+        },
+        "surface_momentum_a": {
+          "delta_pp": 7.2,
+          "recent_win_pct": 62.8,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -6.7,
+          "recent_win_pct": 47.4,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": "Bet365",
+        "cache_age_seconds": 0,
+        "capture_kind": "rapidapi_response_observed_at_capture",
+        "captured_at_utc": "2026-09-03T05:34:48+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3881147",
+        "event_id": "3881147",
+        "from_cache": false,
+        "provider_timestamp": "2026-09-02T09:58:11+00:00",
+        "source": "RapidAPI Tennis API / recent-odds"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 88766,
+        "name": "Alexander Blockx"
+      },
+      "player_b": {
+        "id": 12653,
+        "name": "Marco Trungelliti"
+      },
+      "pricing": {
+        "adjustment_pp_a": 2.861400534815517,
+        "adjustment_pp_b": -2.861400534815517,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 37.957,
+          "factor_count": 11,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 1.0,
+          "internal_quality": 1.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.02167390495895316,
+        "expected_edge_b": -0.21172812848139932,
+        "fair_odd_a": 1.167299948134457,
+        "fair_odd_b": 6.97728816506453,
+        "market_odd_a": 1.142,
+        "market_odd_b": 5.5,
+        "market_overround_pct": 5.747,
+        "market_probability_a": 0.8280638361939174,
+        "market_probability_b": 0.17193616380608248,
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 2.86,
+            "expected_edge_pct": -2.17,
+            "fair_odd": 1.167,
+            "market_odd": 1.142,
+            "market_probability_pct": 82.81,
+            "sharp_estimate_pct": 85.67
+          },
+          "b": {
+            "adjustment_pp": -2.86,
+            "expected_edge_pct": -21.17,
+            "fair_odd": 6.977,
+            "market_odd": 5.5,
+            "market_probability_pct": 17.19,
+            "sharp_estimate_pct": 14.33
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 1.0,
+        "residual_logit": 0.216,
+        "sharp_estimate_a": 0.8566778415420726,
+        "sharp_estimate_b": 0.1433221584579274,
+        "signed_strength": 0.72,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "report_id": "54a2a42f837a5ec4643e",
+      "surface": "Hard",
+      "tour": "atp",
+      "tournament": "U.S. Open - New York",
+      "tournament_id": 21349
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-03T05:36:22+00:00",
+      "commence_time_utc": "2026-09-03T20:00:00+00:00",
+      "key": "wta:946",
+      "market_odds_decimal": {
+        "Qinwen Zheng": 1.363,
+        "Yulia Putintseva": 3.2
+      },
+      "match_id": 946,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "historial",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 7,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 4,
+            "structural_factors_available": [
+              "h2h",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "superfície",
+              "Qinwen Zheng"
+            ],
+            [
+              "recuperação pós-1º set",
+              "Qinwen Zheng"
+            ],
+            [
+              "indoor/outdoor",
+              "Qinwen Zheng"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 134.0,
+              "amostra_a": 134,
+              "amostra_b": 393,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 31,
+              "valor_b": 18
+            },
+            "fadiga": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 4.0,
+              "peso_efetivo": 3.457,
+              "valor_a": 2,
+              "valor_b": 1
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 2.8,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 60.0,
+              "valor_b": 50.0
+            },
+            "h2h": {
+              "amostra": 2,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.5,
+              "peso_antes_cap": 3.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 3.0,
+              "valor_a": 0,
+              "valor_b": 2
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "amostra": "4/13 edições",
+              "confianca_amostra": 0.894,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "historial",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.367,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 5.367,
+              "valor_a": "86%",
+              "valor_b": "53%"
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 62.4,
+              "valor_b": 51.6
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 3,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.4,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 53.6,
+              "valor_b": 32.0
+            },
+            "mudanca_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "nenhum em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7
+            },
+            "piso": {
+              "amostra": 198,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.947,
+              "peso_antes_cap": 7.573,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 7.573,
+              "valor_a": 67.2,
+              "valor_b": 53.0
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.2,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 1.58,
+              "valor_a": 1,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.813,
+              "peso_antes_cap": 4.065,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 3.635,
+              "pontos_a": 610,
+              "pontos_b": 904,
+              "valor_a": 123.0,
+              "valor_b": 84.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 5.365,
+              "valor_a": -75.0,
+              "valor_b": -7.9
+            },
+            "recuperacao_sets": {
+              "amostra": 126,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.6,
+              "peso_antes_cap": 5.4,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 5.4,
+              "valor_a": 63,
+              "valor_b": 54
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.963,
+              "valor_a": 73.9,
+              "valor_b": 52.9
+            },
+            "servico_carreira": {
+              "amostra": 21.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.0,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 3.0,
+              "valor_a": 69.0,
+              "valor_b": 57.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Qinwen Zheng",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 56.0,
+              "valor_b": 50.5
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 26,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 76,
+          "inclinacao_modelo_b": 24,
+          "indice_evidencia_a": 76,
+          "indice_evidencia_b": 24,
+          "indice_favorece": "Qinwen Zheng",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 64.54,
+          "mercado_favorece": "Qinwen Zheng",
+          "n_fatores": 15,
+          "player_a": "Qinwen Zheng",
+          "player_b": "Yulia Putintseva",
+          "prob_mercado_a": 70,
+          "prob_mercado_b": 30,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 134,
+            "amostra_b": 393,
+            "diff": 13,
+            "lider": "Qinwen Zheng",
+            "valor_a": 31,
+            "valor_b": 18
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 10.0,
+            "lider": "Qinwen Zheng",
+            "unidade": "%",
+            "valor_a": 60.0,
+            "valor_b": 50.0
+          },
+          "frescura": {
+            "jogos_7d_a": 2,
+            "jogos_7d_b": 1,
+            "mais_fresco": "Yulia Putintseva",
+            "sets_7d_a": 6,
+            "sets_7d_b": 3
+          },
+          "h2h": {
+            "a_wins": 0,
+            "b_wins": 2,
+            "lider": "Yulia Putintseva",
+            "total": 2
+          },
+          "indoor_outdoor": {
+            "amostra_a": 197,
+            "amostra_b": 399,
+            "diff": 10.8,
+            "lider": "Qinwen Zheng",
+            "unidade": "%",
+            "valor_a": 62.4,
+            "valor_b": 51.6
+          },
+          "piso": {
+            "amostra_a": 198,
+            "amostra_b": 447,
+            "diff": 14.2,
+            "lider": "Qinwen Zheng",
+            "unidade": "%",
+            "valor_a": 67.2,
+            "valor_b": 53.0
+          },
+          "qualidade_vitorias": {
+            "lider": "Qinwen Zheng",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 1,
+            "top50_b": 0,
+            "valor_a": 1,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 39.0,
+            "lider": "Yulia Putintseva",
+            "pontos_a": 610,
+            "pontos_b": 904,
+            "valor_a": 123.0,
+            "valor_b": 84.0
+          },
+          "ranking_evolucao": {
+            "diff": -67.14999999999999,
+            "lider": "Yulia Putintseva",
+            "valor_a": -75.0,
+            "valor_b": -7.9
+          },
+          "sazonal": {
+            "amostra_a": 23,
+            "amostra_b": 70,
+            "diff": 21.1,
+            "lider": "Qinwen Zheng",
+            "unidade": "%",
+            "valor_a": 73.9,
+            "valor_b": 52.9
+          },
+          "servico_carreira": {
+            "amostra_a": 21,
+            "amostra_b": 21,
+            "diff": 12.0,
+            "lider": "Qinwen Zheng",
+            "unidade": "%",
+            "valor_a": 69.0,
+            "valor_b": 57.0
+          },
+          "tiebreak": {
+            "amostra_a": 50,
+            "amostra_b": 107,
+            "diff": 5.5,
+            "lider": "Qinwen Zheng",
+            "unidade": "%",
+            "valor_a": 56.0,
+            "valor_b": 50.5
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 5,
+          "coverage_pct": 90.0,
+          "excluded_missing_odds": 1,
+          "excluded_missing_odds_wins": 1,
+          "expected_wins": 5.78,
+          "matches": 9,
+          "odds_eligible_matches": 9,
+          "overall_wins": 6,
+          "performance_vs_market": -0.78,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 3,
+          "coverage_pct": 50.0,
+          "excluded_missing_odds": 5,
+          "excluded_missing_odds_wins": 2,
+          "expected_wins": 2.57,
+          "matches": 5,
+          "odds_eligible_matches": 5,
+          "overall_wins": 5,
+          "performance_vs_market": 0.43,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 67.31,
+          "matches": 26,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 89.54,
+          "matches": 39,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.6875
+          },
+          "expected_edge_pct": -0.1,
+          "fenzobot_index": 76,
+          "market": {
+            "expected_edge_pct": -0.1,
+            "fair_odd": 1.364,
+            "line": null,
+            "market": "Moneyline Qinwen Zheng",
+            "market_type": "Moneyline",
+            "odd": 1.363,
+            "player": "Qinwen Zheng",
+            "sharp_estimate_pct": 73.29,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Qinwen Zheng",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 16,
+              "available_weight": 99.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 68.8,
+              "weighted_ratio": 0.6875
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 33.0,
+          "bp_saved_pct": 52.0,
+          "first_serve_won_pct": 69.0,
+          "matches": 21,
+          "opponent_first_serve_won_pct": 27.0,
+          "opponent_second_serve_won_pct": 46.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 44.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 40.0,
+          "bp_saved_pct": 52.0,
+          "first_serve_won_pct": 57.0,
+          "matches": 21,
+          "opponent_first_serve_won_pct": 35.0,
+          "opponent_second_serve_won_pct": 54.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 42.0
+        },
+        "ranking_a": {
+          "as_of": "2026-07-28 00:00:00",
+          "points": 610,
+          "rank": 123
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 904,
+          "rank": 84
+        },
+        "recent_form_a": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "recent_form_b": {
+          "losses": 5,
+          "matches": 10,
+          "wins": 5
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.6875
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 33.0,
+          "avg_break_points_saved_pct": 52.0,
+          "avg_first_serve_in_pct": 58.3,
+          "avg_first_serve_won_pct": 69.0,
+          "avg_second_serve_won_pct": 44.0,
+          "matches_used": 21
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 40.0,
+          "avg_break_points_saved_pct": 52.0,
+          "avg_first_serve_in_pct": 64.9,
+          "avg_first_serve_won_pct": 57.0,
+          "avg_second_serve_won_pct": 42.0,
+          "matches_used": 21
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 28.1,
+            "matches_lost_set1": 89,
+            "matches_lost_set1_won_overall": 25
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 18.3,
+            "matches_lost_set1": 197,
+            "matches_lost_set1_won_overall": 36
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": -10.1,
+          "recent_win_pct": 57.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -2.1,
+          "recent_win_pct": 50.9,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": "Bet365",
+        "cache_age_seconds": 0,
+        "capture_kind": "rapidapi_response_observed_at_capture",
+        "captured_at_utc": "2026-09-03T05:35:46+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3881158",
+        "event_id": "3881158",
+        "from_cache": false,
+        "provider_timestamp": "2026-09-03T01:33:27+00:00",
+        "source": "RapidAPI Tennis API / recent-odds"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 53128,
+        "name": "Qinwen Zheng"
+      },
+      "player_b": {
+        "id": 12390,
+        "name": "Yulia Putintseva"
+      },
+      "pricing": {
+        "adjustment_pp_a": 3.1621968214915253,
+        "adjustment_pp_b": -3.1621968214915253,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 64.54,
+          "factor_count": 15,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 1.0,
+          "internal_quality": 1.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.001036886076083876,
+        "expected_edge_b": -0.14532792704074204,
+        "fair_odd_a": 1.364414742648656,
+        "fair_odd_b": 3.7441260820891986,
+        "market_odd_a": 1.363,
+        "market_odd_b": 3.2,
+        "market_overround_pct": 4.618,
+        "market_probability_a": 0.7012930089853167,
+        "market_probability_b": 0.29870699101468334,
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 3.16,
+            "expected_edge_pct": -0.1,
+            "fair_odd": 1.364,
+            "market_odd": 1.363,
+            "market_probability_pct": 70.13,
+            "sharp_estimate_pct": 73.29
+          },
+          "b": {
+            "adjustment_pp": -3.16,
+            "expected_edge_pct": -14.53,
+            "fair_odd": 3.744,
+            "market_odd": 3.2,
+            "market_probability_pct": 29.87,
+            "sharp_estimate_pct": 26.71
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 1.0,
+        "residual_logit": 0.156,
+        "sharp_estimate_a": 0.7329149772002319,
+        "sharp_estimate_b": 0.2670850227997681,
+        "signed_strength": 0.52,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "report_id": "a15b466c83f23d97e294",
+      "surface": "Hard",
+      "tour": "wta",
+      "tournament": "U.S. Open - New York",
+      "tournament_id": 16743
+    },
+    {
+      "analysis": {
+        "flag": "🟢",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-03T05:36:22+00:00",
+      "commence_time_utc": "2026-09-03T18:00:00+00:00",
+      "key": "wta:923",
+      "market_odds_decimal": {
+        "Iga Swiatek": 1.012,
+        "Nadia Podoroska": 23.0
+      },
+      "match_id": 923,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "historial",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 7,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 4,
+            "structural_factors_available": [
+              "h2h",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "superfície",
+              "Iga Swiatek"
+            ],
+            [
+              "resiliência em sets",
+              "Iga Swiatek"
+            ],
+            [
+              "forma recente",
+              "Iga Swiatek"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 128.0,
+              "amostra_a": 128,
+              "amostra_b": 265,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 6.927,
+              "valor_a": 38,
+              "valor_b": 20
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 4
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 90.0,
+              "valor_b": 40.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": "amostra insuficiente (1 jogo)",
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "amostra": "7/5 edições",
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "historial",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": "81%",
+              "valor_b": "13%"
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 80.8,
+              "valor_b": 41.3
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 2,
+              "valor_b": 2
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.4,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 71.9,
+              "valor_b": 23.3
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "B vem de outro piso sem rodagem",
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 2.516,
+              "valor_a": "hard",
+              "valor_b": "clay"
+            },
+            "nivel_adversario": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7
+            },
+            "piso": {
+              "amostra": 242,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 8.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 8.0,
+              "valor_a": 79.2,
+              "valor_b": 59.9
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 0.612,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 4.899,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.465,
+              "valor_a": 15,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "pontos_a": 4809,
+              "pontos_b": 100,
+              "valor_a": 8.0,
+              "valor_b": 537.0
+            },
+            "ranking_evolucao": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "recuperacao_sets": {
+              "amostra": 131,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.8,
+              "peso_antes_cap": 7.2,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 7.125,
+              "valor_a": 65,
+              "valor_b": 53
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 3.019,
+              "valor_a": 75.9,
+              "valor_b": 33.3
+            },
+            "servico_carreira": {
+              "amostra": 4.0,
+              "confianca_amostra": 0.632,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Nadia Podoroska",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 1.897,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 1.897,
+              "valor_a": 57.0,
+              "valor_b": 63.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Iga Swiatek",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.948,
+              "valor_a": 57.6,
+              "valor_b": 54.5
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 47,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 97,
+          "inclinacao_modelo_b": 3,
+          "indice_evidencia_a": 97,
+          "indice_evidencia_b": 3,
+          "indice_favorece": "Iga Swiatek",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 63.297,
+          "mercado_favorece": "Iga Swiatek",
+          "n_fatores": 13,
+          "player_a": "Iga Swiatek",
+          "player_b": "Nadia Podoroska",
+          "prob_mercado_a": 96,
+          "prob_mercado_b": 4,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 128,
+            "amostra_b": 265,
+            "diff": 18,
+            "lider": "Iga Swiatek",
+            "valor_a": 38,
+            "valor_b": 20
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 50.0,
+            "lider": "Iga Swiatek",
+            "unidade": "%",
+            "valor_a": 90.0,
+            "valor_b": 40.0
+          },
+          "frescura": {
+            "jogos_7d_a": 1,
+            "jogos_7d_b": 1,
+            "mais_fresco": "igual",
+            "sets_7d_a": 2,
+            "sets_7d_b": 3
+          },
+          "h2h": {
+            "a_wins": 1,
+            "b_wins": 0,
+            "lider": "Iga Swiatek",
+            "total": 1
+          },
+          "indoor_outdoor": {
+            "amostra_a": 381,
+            "amostra_b": 121,
+            "diff": 39.5,
+            "lider": "Iga Swiatek",
+            "unidade": "%",
+            "valor_a": 80.8,
+            "valor_b": 41.3
+          },
+          "piso": {
+            "amostra_a": 283,
+            "amostra_b": 242,
+            "diff": 19.3,
+            "lider": "Iga Swiatek",
+            "unidade": "%",
+            "valor_a": 79.2,
+            "valor_b": 59.9
+          },
+          "qualidade_vitorias": {
+            "lider": "Iga Swiatek",
+            "top10_a": 3,
+            "top10_b": 0,
+            "top20_a": 5,
+            "top20_b": 0,
+            "top50_a": 7,
+            "top50_b": 0,
+            "valor_a": 15,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 529.0,
+            "lider": "Iga Swiatek",
+            "pontos_a": 4809,
+            "pontos_b": 100,
+            "valor_a": 8.0,
+            "valor_b": 537.0
+          },
+          "sazonal": {
+            "amostra_a": 54,
+            "amostra_b": 21,
+            "diff": 42.6,
+            "lider": "Iga Swiatek",
+            "unidade": "%",
+            "valor_a": 75.9,
+            "valor_b": 33.3
+          },
+          "servico_carreira": {
+            "amostra_a": 34,
+            "amostra_b": 4,
+            "diff": 6.0,
+            "lider": "Nadia Podoroska",
+            "unidade": "%",
+            "valor_a": 57.0,
+            "valor_b": 63.0
+          },
+          "tiebreak": {
+            "amostra_a": 66,
+            "amostra_b": 22,
+            "diff": 3.0,
+            "lider": "Iga Swiatek",
+            "unidade": "%",
+            "valor_a": 57.6,
+            "valor_b": 54.5
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 6,
+          "coverage_pct": 70.0,
+          "excluded_missing_odds": 3,
+          "excluded_missing_odds_wins": 3,
+          "expected_wins": 5.44,
+          "matches": 7,
+          "odds_eligible_matches": 7,
+          "overall_wins": 9,
+          "performance_vs_market": 0.56,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 3,
+          "coverage_pct": 40.0,
+          "excluded_missing_odds": 6,
+          "excluded_missing_odds_wins": 1,
+          "expected_wins": 1.89,
+          "matches": 4,
+          "odds_eligible_matches": 4,
+          "overall_wins": 4,
+          "performance_vs_market": 1.11,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 67.54,
+          "matches": 63,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 140.25,
+          "matches": 4,
+          "sample_status": "limitado"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 98.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.1,
+            "weighted_ratio": 0.680556
+          },
+          "expected_edge_pct": -2.05,
+          "fenzobot_index": 97,
+          "market": {
+            "expected_edge_pct": -2.05,
+            "fair_odd": 1.033,
+            "line": null,
+            "market": "Moneyline Iga Swiatek",
+            "market_type": "Moneyline",
+            "odd": 1.012,
+            "player": "Iga Swiatek",
+            "sharp_estimate_pct": 96.79,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Iga Swiatek",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 16,
+              "available_weight": 98.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 68.1,
+              "weighted_ratio": 0.680556
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 33.0,
+          "bp_saved_pct": 44.0,
+          "first_serve_won_pct": 57.0,
+          "matches": 34,
+          "opponent_first_serve_won_pct": 31.0,
+          "opponent_second_serve_won_pct": 51.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 38.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 31.0,
+          "bp_saved_pct": 56.0,
+          "first_serve_won_pct": 63.0,
+          "matches": 4,
+          "opponent_first_serve_won_pct": 34.0,
+          "opponent_second_serve_won_pct": 50.0,
+          "sample_status": "limitado",
+          "second_serve_won_pct": 42.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 4809,
+          "rank": 8
+        },
+        "ranking_b": {
+          "as_of": "2026-07-20 00:00:00",
+          "points": 100,
+          "rank": 537
+        },
+        "recent_form_a": {
+          "losses": 1,
+          "matches": 10,
+          "wins": 9
+        },
+        "recent_form_b": {
+          "losses": 6,
+          "matches": 10,
+          "wins": 4
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 98.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.1,
+            "weighted_ratio": 0.680556
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 33.0,
+          "avg_break_points_saved_pct": 44.0,
+          "avg_first_serve_in_pct": 62.5,
+          "avg_first_serve_won_pct": 57.0,
+          "avg_second_serve_won_pct": 38.0,
+          "matches_used": 34
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 31.0,
+          "avg_break_points_saved_pct": 56.0,
+          "avg_first_serve_in_pct": 59.5,
+          "avg_first_serve_won_pct": 63.0,
+          "avg_second_serve_won_pct": 42.0,
+          "matches_used": 4
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 36.0,
+            "matches_lost_set1": 100,
+            "matches_lost_set1_won_overall": 36
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 14.7,
+            "matches_lost_set1": 75,
+            "matches_lost_set1_won_overall": 11
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": -0.7,
+          "recent_win_pct": 78.5,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": 20.1,
+          "recent_win_pct": 80.0,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": "Bet365",
+        "cache_age_seconds": 0,
+        "capture_kind": "rapidapi_response_observed_at_capture",
+        "captured_at_utc": "2026-09-03T05:36:11+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3881146",
+        "event_id": "3881146",
+        "from_cache": false,
+        "provider_timestamp": "2026-09-01T04:20:16+00:00",
+        "source": "RapidAPI Tennis API / recent-odds"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 45854,
+        "name": "Iga Swiatek"
+      },
+      "player_b": {
+        "id": 14448,
+        "name": "Nadia Podoroska"
+      },
+      "pricing": {
+        "adjustment_pp_a": 1.0023617262864826,
+        "adjustment_pp_b": -1.0023617262864826,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 63.297,
+          "factor_count": 13,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 1.0,
+          "internal_quality": 1.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.020507440326149373,
+        "expected_edge_b": -0.26119453804205905,
+        "fair_odd_a": 1.033188042119456,
+        "fair_odd_b": 31.1313345451544,
+        "market_odd_a": 1.012,
+        "market_odd_b": 23.0,
+        "market_overround_pct": 3.162,
+        "market_probability_a": 0.9578544061302682,
+        "market_probability_b": 0.042145593869731796,
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 1.0,
+            "expected_edge_pct": -2.05,
+            "fair_odd": 1.033,
+            "market_odd": 1.012,
+            "market_probability_pct": 95.79,
+            "sharp_estimate_pct": 96.79
+          },
+          "b": {
+            "adjustment_pp": -1.0,
+            "expected_edge_pct": -26.12,
+            "fair_odd": 31.131,
+            "market_odd": 23.0,
+            "market_probability_pct": 4.21,
+            "sharp_estimate_pct": 3.21
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 1.0,
+        "residual_logit": 0.282,
+        "sharp_estimate_a": 0.967878023393133,
+        "sharp_estimate_b": 0.032121976606867,
+        "signed_strength": 0.94,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "report_id": "d799b8c4bbba3e6269eb",
+      "surface": "Hard",
+      "tour": "wta",
+      "tournament": "U.S. Open - New York",
+      "tournament_id": 16743
     }
   ],
-  "updated_at_utc": "2026-09-02T17:36:42+00:00"
+  "updated_at_utc": "2026-09-03T05:36:26+00:00"
 }

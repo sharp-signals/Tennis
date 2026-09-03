@@ -1166,7 +1166,15 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 21349
       },
-      "settlement": null
+      "settlement": {
+        "closing_odd": null,
+        "clv_pct": null,
+        "match_result": "3-6 6-3 6-3 6-7(6) 6-1",
+        "pnl_units": 0.666,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-03T05:36:26+00:00",
+        "winner_id": 79113
+      }
     },
     {
       "key": "atp:1269:moneyline:b:na",
@@ -1371,7 +1379,15 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 16743
       },
-      "settlement": null
+      "settlement": {
+        "closing_odd": null,
+        "clv_pct": null,
+        "match_result": "4-6 6-1 6-2",
+        "pnl_units": -1.0,
+        "result": "LOSS",
+        "settled_at_utc": "2026-09-03T05:36:26+00:00",
+        "winner_id": 4110
+      }
     },
     {
       "key": "wta:802:moneyline:b:na",
@@ -1718,7 +1734,15 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 16743
       },
-      "settlement": null
+      "settlement": {
+        "closing_odd": null,
+        "clv_pct": null,
+        "match_result": "7-5 6-3",
+        "pnl_units": 0.3,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-03T05:36:26+00:00",
+        "winner_id": 80381
+      }
     },
     {
       "key": "wta:907:moneyline:b:na",
@@ -2097,8 +2121,71 @@
         "tournament_id": 16743
       },
       "settlement": null
+    },
+    {
+      "key": "atp:1294:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-03T05:36:22+00:00",
+        "commence_time_utc": "2026-09-03T18:00:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "expected_edge_pct": 3.61,
+        "fair_odd": 1.316,
+        "fenzobot_index": 100,
+        "line": null,
+        "market": "Moneyline Felix Auger Aliassime",
+        "market_odds_decimal": {
+          "Felix Auger Aliassime": 1.363,
+          "Karen Khachanov": 3.2
+        },
+        "market_type": "Moneyline",
+        "match_id": 1294,
+        "odd": 1.363,
+        "odds_provenance": {
+          "bookmaker": "Bet365",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-03T05:34:53+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3881150",
+          "event_id": "3881150",
+          "from_cache": false,
+          "provider_timestamp": "2026-09-02T06:58:22+00:00",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "players": {
+          "a": {
+            "id": 40434,
+            "name": "Felix Auger Aliassime"
+          },
+          "b": {
+            "id": 25543,
+            "name": "Karen Khachanov"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "55c825008fab171b382f",
+        "selected_player": "Felix Auger Aliassime",
+        "selected_side": "a",
+        "sharp_estimate_pct": 76.01,
+        "snapshot_key": "atp:1294",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "U.S. Open - New York",
+        "tournament_id": 21349
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-02T17:36:42+00:00"
+  "updated_at_utc": "2026-09-03T05:36:26+00:00"
 }
