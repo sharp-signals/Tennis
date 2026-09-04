@@ -321,10 +321,12 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap para avaliar em PAPER (BO5)", html)
         self.assertIn("Observar A -3.5", html)
-        self.assertIn("MERCADO A OBSERVAR", html)
-        self.assertIn("• -3.5 — cobre 50.0% (2/4)", html)
-        self.assertIn("nas derrotas 1/2", html)
-        self.assertIn("Prioridade: A -3.5", html)
+        self.assertIn('class="action-item action-item-handicap"', html)
+        self.assertIn('class="handicap-visual"', html)
+        self.assertIn("LINHA MAIS PROTEGIDA", html)
+        self.assertIn("50.0% <span>cobre</span>", html)
+        self.assertIn("Nas derrotas: cobre 1/2", html)
+        self.assertIn("SEM VALIDAÇÃO POR PREÇO", html)
         self.assertIn("entrada PAPER automática de handicap", html)
         self.assertNotIn("Margem de jogos (bo3)", html)
         self.assertNotIn("Handicap -3.5/-4.5", html)
@@ -342,10 +344,11 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap para avaliar em PAPER (BO3)", html)
         self.assertIn("Observar A -1.5", html)
-        self.assertIn("• -1.5 — cobre 40.0% (2/5)", html)
-        self.assertIn("• -2 — cobre 20.0% (1/5) · devolve 20.0%", html)
-        self.assertIn("nas derrotas 0/2", html)
-        self.assertIn("Prioridade: A -1.5", html)
+        self.assertIn("A -1.5", html)
+        self.assertIn("40.0% <span>cobre</span>", html)
+        self.assertIn("A -2", html)
+        self.assertIn("20.0% <span>cobre</span>", html)
+        self.assertIn("Nas derrotas: cobre 0/2", html)
 
     def test_handicap_card_follows_selected_underdog_with_mirrored_zone(self):
         payload = {
@@ -366,7 +369,8 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Observar Mananchaya Sawangkaew +4.5", html)
-        self.assertIn("Prioridade: Mananchaya Sawangkaew +4.5", html)
+        self.assertIn("Mananchaya Sawangkaew +4.5", html)
+        self.assertIn("100.0% <span>cobre</span>", html)
         self.assertNotIn("Observar Leylah Annie Fernandez -4", html)
 
     def test_handicap_card_uses_matching_moneyline_band_with_actual_settlements(self):
@@ -391,9 +395,9 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Histórico com Moneyline 1.41-1.50 (BO3): venceu 2/3 (66.7%).", html)
-        self.assertIn("FAIXA COMPARÁVEL DE MONEYLINE 1.41-1.50 · n=3", html)
-        self.assertIn("• -3 — cobre 33.3% (1/3) · devolve 33.3% · falha 33.3%", html)
-        self.assertIn("• -3.5 — cobre 33.3% (1/3) · falha 66.7%", html)
+        self.assertIn("VALIDAÇÃO NA FAIXA DE ODD 1.41-1.50 · n=3", html)
+        self.assertIn("prioridade -3: 33.3% cobre (1/3)", html)
+        self.assertIn("alternativa -3.5: 33.3% cobre (1/3)", html)
 
     def test_super_favourite_live_card_uses_first_set_recovery_without_inventing_break_rate(self):
         payload = {
