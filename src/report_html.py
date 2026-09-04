@@ -2672,6 +2672,31 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .action-small-sample {{ font-size:10px; color:var(--amber); margin-bottom:6px; font-weight:600; }}
 .action-text {{ color:var(--dim); font-size:12.5px; line-height:1.65; white-space:pre-line; }}
 .action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
+.action-item-handicap {{ grid-column:1 / -1; }}
+.handicap-visual {{ margin-top:4px; }}
+.handicap-zone {{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--dim); font-size:12px;
+  margin:2px 0 11px; }}
+.handicap-zone strong {{ color:var(--text); font-size:13px; }}
+.handicap-zone .hz-odd {{ color:#79b8ff; font-weight:800; }}
+.handicap-zone .hz-arrow {{ color:var(--mint); font-size:16px; font-weight:800; }}
+.handicap-choices {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
+.handicap-choice {{ border:1px solid var(--line); border-radius:9px; padding:12px; background:rgba(255,255,255,.025); }}
+.handicap-choice.protected {{ border-color:#4f8fcf; background:rgba(79,143,207,.10); }}
+.handicap-choice.alternative {{ border-color:var(--amber); background:rgba(225,170,72,.08); }}
+.handicap-choice-tag {{ color:var(--dim); font-size:9px; font-weight:800; letter-spacing:.65px; }}
+.handicap-choice.protected .handicap-choice-tag {{ color:#79b8ff; }}
+.handicap-choice.alternative .handicap-choice-tag {{ color:var(--amber); }}
+.handicap-choice-line {{ color:var(--text); font-size:18px; font-weight:850; margin:4px 0; }}
+.handicap-choice-rate {{ color:var(--mint); font-size:20px; font-weight:850; line-height:1.1; }}
+.handicap-choice-rate span {{ color:var(--text); font-size:11px; font-weight:600; }}
+.handicap-choice-detail {{ color:var(--dim); font-size:11px; line-height:1.5; margin-top:5px; }}
+.handicap-validation {{ border-radius:8px; margin-top:11px; padding:10px 12px; font-size:12px; line-height:1.5; }}
+.handicap-validation.ready {{ background:rgba(63,185,168,.10); border-left:3px solid var(--mint); }}
+.handicap-validation.missing {{ background:rgba(224,108,91,.10); border-left:3px solid var(--error); }}
+.handicap-validation-title {{ font-size:10px; font-weight:800; letter-spacing:.6px; color:var(--text); }}
+.handicap-validation.missing .handicap-validation-title {{ color:var(--error); }}
+.handicap-validation-detail {{ color:var(--dim); }}
+@media(max-width:640px) {{ .handicap-choices {{ grid-template-columns:1fr; }} }}
 @media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
   details.report-map>summary, .action-map-head {{ min-height:78px; }} }}
 
@@ -4165,7 +4190,8 @@ def _mod_action_map(payload, div, result):
     names = {"a": a, "b": b}
     actions = []
 
-    def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None):
+    def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None,
+            card_class="", visual=None):
         # NOVO (22/08/2026, a pedido): "headline" é só para destaque
         # visual (número grande e colorido no topo do cartão) — separado
         # de "odd_justa", que continua a controlar SÓ o destaque por
@@ -4176,7 +4202,8 @@ def _mod_action_map(payload, div, result):
         # um com n=30. Só marca "amostra pequena" abaixo de 15; acima
         # disso não mostra selo (é amostra saudável, não precisa de aviso).
         actions.append({"kind": kind, "title": title, "text": text, "source": source,
-                        "odd_justa": odd_justa, "headline": headline, "n_amostra": n_amostra})
+                        "odd_justa": odd_justa, "headline": headline, "n_amostra": n_amostra,
+                        "card_class": card_class, "visual": visual})
 
     div = _d(div)
     level = _d(div.get("classificacao")).get("nivel", 0) or 0
@@ -4517,20 +4544,36 @@ def _mod_action_map(payload, div, result):
                 def _pct_count(value, total):
                     return f"{(100 * value / total):.1f}%" if total else "N/D"
 
-                def _line_outcome_text(line, margins, wins_margins, losses_margins):
+                def _line_outcome(line, margins, wins_margins, losses_margins):
                     cover, push, miss = handicap_settlement_counts(margins, line)
                     win_cover, _, _ = handicap_settlement_counts(wins_margins, line)
                     loss_cover, _, _ = handicap_settlement_counts(losses_margins, line)
-                    text = f"• {_line_label(line)} — cobre {_pct_count(cover, len(margins))} ({cover}/{len(margins)})"
-                    if push:
-                        text += f" · devolve {_pct_count(push, len(margins))}"
-                    text += f" · falha {_pct_count(miss, len(margins))}"
+                    return {
+                        "line": _line_label(line), "cover": cover, "push": push, "miss": miss,
+                        "total": len(margins), "cover_pct": _pct_count(cover, len(margins)),
+                        "push_pct": _pct_count(push, len(margins)),
+                        "miss_pct": _pct_count(miss, len(margins)),
+                        "win_cover": win_cover, "win_total": len(wins_margins),
+                        "win_cover_pct": _pct_count(win_cover, len(wins_margins)),
+                        "loss_cover": loss_cover, "loss_total": len(losses_margins),
+                    }
+
+                def _line_outcome_text(line, margins, wins_margins, losses_margins):
+                    outcome = _line_outcome(line, margins, wins_margins, losses_margins)
+                    text = f"• {outcome['line']} — cobre {outcome['cover_pct']} ({outcome['cover']}/{outcome['total']})"
+                    if outcome["push"]:
+                        text += f" · devolve {outcome['push_pct']}"
+                    text += f" · falha {outcome['miss_pct']}"
                     if wins_margins:
-                        text += f" · quando vence {_pct_count(win_cover, len(wins_margins))}"
+                        text += f" · quando vence {outcome['win_cover_pct']}"
                     if losses_margins:
-                        text += f" · nas derrotas {loss_cover}/{len(losses_margins)}"
+                        text += f" · nas derrotas {outcome['loss_cover']}/{outcome['loss_total']}"
                     return text
 
+                _overall_outcomes = [
+                    _line_outcome(_line, _all_margins, _wins_margins, _losses_margins)
+                    for _line in _candidate_lines
+                ]
                 _overall_lines = [
                     _line_outcome_text(_line, _all_margins, _wins_margins, _losses_margins)
                     for _line in _candidate_lines
@@ -4551,40 +4594,37 @@ def _mod_action_map(payload, div, result):
                 _reference_type = _reference.get("tipo")
                 _protected_line = _candidate_lines[0] if _reference_type == "favorito" else _candidate_lines[-1]
                 _other_line = _candidate_lines[-1] if _reference_type == "favorito" else _candidate_lines[0]
-                _reading_parts = [
-                    "MERCADO A OBSERVAR",
-                    f"• Prioridade: {names[fav_side]} {_line_label(_protected_line)} (linha mais protegida).",
-                    f"• Alternativa: {_line_label(_other_line)}, apenas se a odd compensar a menor proteção.",
-                    "",
-                    f"ZONA INDICADA PELA MONEYLINE {_current_odd:.3f}: "
-                    f"{_line_label(_candidate_lines[0])} / {_line_label(_candidate_lines[1])}."
-                    if _current_odd is not None and len(_candidate_lines) >= 2
-                    else "ZONA INDICADA PELA TABELA INTERNA.",
-                    "HISTÓRICO TOTAL",
-                ]
-                if _overall_lines:
-                    _reading_parts.extend(_overall_lines)
+                _outcome_by_line = {outcome["line"]: outcome for outcome in _overall_outcomes}
+                _protected_outcome = _outcome_by_line.get(_line_label(_protected_line))
+                _other_outcome = _outcome_by_line.get(_line_label(_other_line))
+                _visual = {
+                    "player": names[fav_side], "format": _fmt.upper(),
+                    "odd": _current_odd, "zone": [_line_label(line) for line in _candidate_lines],
+                    "protected": _protected_outcome, "alternative": _other_outcome,
+                    "validation": {"state": "missing", "title": "SEM VALIDAÇÃO POR PREÇO",
+                                   "detail": f"Sem scores {_fmt.upper()} com odds históricas na faixa atual. Não concluir valor PAPER apenas pelo histórico geral."},
+                }
                 if _matching_stats:
                     _band_margins = list(_matching_stats.get("margins") or [])
                     _band_wins = list(_matching_stats.get("win_margins") or [])
                     _band_losses = list(_matching_stats.get("loss_margins") or [])
-                    _band_lines = [
-                        _line_outcome_text(_line, _band_margins, _band_wins, _band_losses)
+                    _band_outcomes = [
+                        _line_outcome(_line, _band_margins, _band_wins, _band_losses)
                         for _line in _candidate_lines
                     ]
-                    _reading_parts.extend([
-                        "",
-                        f"FAIXA COMPARÁVEL DE MONEYLINE {_matching_band} · n={len(_band_margins)}",
-                        *_band_lines,
-                    ])
+                    _band_lookup = {outcome["line"]: outcome for outcome in _band_outcomes}
+                    _band_protected = _band_lookup.get(_line_label(_protected_line))
+                    _band_alternative = _band_lookup.get(_line_label(_other_line))
+                    _band_summary = []
+                    for label, outcome in (("prioridade", _band_protected), ("alternativa", _band_alternative)):
+                        if outcome:
+                            _band_summary.append(f"{label} {outcome['line']}: {outcome['cover_pct']} cobre ({outcome['cover']}/{outcome['total']})")
+                    _visual["validation"] = {
+                        "state": "ready", "title": f"VALIDAÇÃO NA FAIXA DE ODD {_matching_band} · n={len(_band_margins)}",
+                        "detail": " · ".join(_band_summary),
+                    }
                 else:
-                    _reading_parts.extend([
-                        "",
-                        "VALIDAÇÃO PAPER: indisponível",
-                        f"• Sem scores {match_format.upper()} com odds históricas na faixa atual de Moneyline.",
-                        "• Observar a linha na casa, mas não concluir que há valor de handicap com esta evidência.",
-                    ])
-                _reading_parts.extend(["", "A referência não cria entrada PAPER automática de handicap."])
+                    pass
                 _headline = (
                     f"Observar {names[fav_side]} {_line_label(_protected_line)}"
                     if len(_candidate_lines) >= 2
@@ -4595,8 +4635,9 @@ def _mod_action_map(payload, div, result):
                     "referência interna, não linha real"
                 )
                 add(f"Handicap para avaliar em PAPER ({_fmt.upper()})", names[fav_side],
-                    "\n".join(_reading_parts), _footnote,
-                    headline=_headline, n_amostra=_total)
+                    "A referência não cria entrada PAPER automática de handicap.", _footnote,
+                    headline=_headline, n_amostra=_total,
+                    card_class="action-item-handicap", visual=_visual)
 
     summary = result.get("verdict") or result.get("executive_summary")
     # O LLM é deliberadamente desligado na produção para controlar custo.
@@ -4643,8 +4684,54 @@ def _mod_action_map(payload, div, result):
     # efeito do perfil dentro de cada bloco)
     actions.sort(key=lambda item: _ordem_kind.get(item.get("kind"), 9))
 
+    def _render_handicap_visual(visual):
+        if not isinstance(visual, dict):
+            return ""
+
+        def _choice(outcome, css_class, tag):
+            if not isinstance(outcome, dict):
+                return ""
+            settlement = f"{outcome['cover']}/{outcome['total']} jogos"
+            if outcome.get("push"):
+                settlement += f" · devolve {outcome['push_pct']}"
+            when_wins = (
+                f"Quando vence: {outcome['win_cover_pct']} "
+                f"({outcome['win_cover']}/{outcome['win_total']})"
+                if outcome.get("win_total") else "Quando vence: N/D"
+            )
+            when_loses = (
+                f"Nas derrotas: cobre {outcome['loss_cover']}/{outcome['loss_total']}"
+                if outcome.get("loss_total") else "Nas derrotas: N/D"
+            )
+            return (
+                f'<div class="handicap-choice {css_class}">'
+                f'<div class="handicap-choice-tag">{_esc(tag)}</div>'
+                f'<div class="handicap-choice-line">{_esc(visual.get("player"))} {_esc(outcome["line"])}</div>'
+                f'<div class="handicap-choice-rate">{_esc(outcome["cover_pct"])} <span>cobre</span></div>'
+                f'<div class="handicap-choice-detail">{_esc(settlement)}<br>{_esc(when_wins)}<br>{_esc(when_loses)}</div>'
+                '</div>'
+            )
+
+        odd = visual.get("odd")
+        odd_text = f"Moneyline {float(odd):.3f}" if isinstance(odd, (int, float)) else "Moneyline atual"
+        zone = " / ".join(str(line) for line in visual.get("zone") or [])
+        validation = visual.get("validation") or {}
+        validation_class = "ready" if validation.get("state") == "ready" else "missing"
+        return (
+            '<div class="handicap-visual">'
+            f'<div class="handicap-zone"><span class="hz-odd">{_esc(odd_text)}</span><span class="hz-arrow">→</span>'
+            f'<strong>Zona { _esc(zone) }</strong><span>({ _esc(visual.get("format", "")) })</span></div>'
+            '<div class="handicap-choices">'
+            + _choice(visual.get("protected"), "protected", "LINHA MAIS PROTEGIDA · OBSERVAR PRIMEIRO")
+            + _choice(visual.get("alternative"), "alternative", "ALTERNATIVA MAIS EXIGENTE · SÓ COM ODD MELHOR")
+            + '</div>'
+            f'<div class="handicap-validation {validation_class}">'
+            f'<div class="handicap-validation-title">{_esc(validation.get("title", ""))}</div>'
+            f'<div class="handicap-validation-detail">{_esc(validation.get("detail", ""))}</div></div></div>'
+        )
+
     rendered = "".join(
-        f'<div class="action-item{" action-item-perfil" if _no_perfil(item) else ""}">'
+        f'<div class="action-item{" action-item-perfil" if _no_perfil(item) else ""}{" " + item.get("card_class", "") if item.get("card_class") else ""}">'
         f'<div class="action-kind">{_esc(item["kind"])}'
         + (f' <span class="action-perfil-tag">★ odd na faixa preferida ({INVESTOR_PROFILE_ODDS_LOW:.2f}–{INVESTOR_PROFILE_ODDS_HIGH:.2f})</span>' if _no_perfil(item) else "")
         + '</div>'
@@ -4652,6 +4739,7 @@ def _mod_action_map(payload, div, result):
         + (f'<div class="action-headline">{_esc(item["headline"])}</div>' if item.get("headline") else "")
         + (f'<div class="action-small-sample">⚠ amostra pequena (n={item["n_amostra"]}) — leitura menos fiável</div>'
            if item.get("n_amostra") is not None and item["n_amostra"] < 15 else "")
+        + _render_handicap_visual(item.get("visual"))
         + f'<div class="action-text">{_esc(item["text"])}</div>'
         + (f'<div class="action-source">{_esc(item["source"])}</div>' if item["source"] else "")
         + '</div>'
