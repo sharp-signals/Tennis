@@ -2103,12 +2103,15 @@ def _pct_str(v, casas=0):
 # o que era enganador. Agora: par alargado, depois +1.5, e só a partir de
 # ~2.20/2.30 é que aparecem os handicaps mais positivos.
 _HANDICAP_REF_BO5_FAVORITO = [
-    # Referências analíticas internas fornecidas para a leitura humana.
-    # Não são odds/linhas capturadas nem entram em pricing/PAPER.
-    (1.225, ("-5", "-6")),   # faixa 1.20-1.25
-    (1.30, ("-4", "-4.5")),
-    (1.40, ("-3.5", "-4")),
-    (1.60, ("-2", "-3.5")),
+    # Faixas, e não âncoras mais próximas: a linha indicada deve ser a que
+    # tende a estar ao par na faixa inteira. Assim, 1.33 ou 1.363 continuam
+    # a estudar -4/-4.5, em vez de saltar prematuramente para -3.5/-4.
+    # São referências internas; não são linhas/odds capturadas nem entram
+    # em pricing ou PAPER.
+    (1.00, 1.30, ("-5", "-6")),
+    (1.30, 1.40, ("-4", "-4.5")),
+    (1.40, 1.51, ("-3.5", "-4")),
+    (1.51, 1.75, ("-2", "-3.5")),
 ]
 # Tabela BO3 fornecida pelo BRAIN em 29/08/2026. Os limites são explícitos
 # para impedir que 1.40 caia simultaneamente em duas bandas: 1.40 pertence à
@@ -2159,9 +2162,13 @@ def estimate_typical_handicap(odd, match_format="bo5"):
     if _HANDICAP_REF_AO_PAR[0] <= odd <= _HANDICAP_REF_AO_PAR[1]:
         return {"tipo": "ao_par", "handicap": None}
     if odd < _HANDICAP_REF_AO_PAR[0]:
-        tabela, tipo = _HANDICAP_REF_BO5_FAVORITO, "favorito"
-        ancora, handicap = min(tabela, key=lambda par: abs(par[0] - odd))
-        return {"tipo": tipo, "handicap": handicap, "odd_ancora": ancora, "format": fmt}
+        for low, high, handicap in _HANDICAP_REF_BO5_FAVORITO:
+            if low <= odd < high:
+                return {
+                    "tipo": "favorito", "handicap": handicap,
+                    "moneyline_bucket": (low, high), "format": fmt,
+                }
+        return None
     # underdog: primeiro limiar (do mais alto) que a odd atinge
     for limiar, handicap in _HANDICAP_REF_UNDERDOG:
         if odd >= limiar:
