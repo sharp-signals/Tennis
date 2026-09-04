@@ -1,27 +1,31 @@
-# Sharp Signals — Constituição do Projeto
-**Versão:** v1.0 — 28/08/2026  
-**Estado:** RATIFICADA / CANÓNICA  
-**Finalidade:** princípios fundamentais e regras de funcionamento do Sharp Signals.
+# Fenzobot — Constituição do Projeto
+**Versão:** v1.1 — 04/09/2026  
+**Estado:** CANÓNICA / EM VIGOR  
+**CHANGE-ID:** CHANGE-2026-09-04-025  
+**Finalidade:** princípios fundamentais e regras de funcionamento do Fenzobot, projeto da Fenzo Intelligence.
 
-> Esta versão foi aprovada pelos dois co-desenvolvedores e constitui a Constituição canónica do projeto a partir de 28/08/2026.
+> Esta versão sucede à Constitution v1.0 para consolidar a identidade canónica do projeto. Os princípios materiais da v1.0 são preservados, salvo a atualização explícita de identidade e nomenclatura descrita no Artigo 1 e no Registo de Alteração Constitucional.
 
 ## Preâmbulo
-O Sharp Signals é um projeto conjunto de inteligência aplicada ao ténis, desenvolvido de forma experimental, orientada por dados e assistida por inteligência artificial. Esta Constituição existe para preservar coerência, integridade e aprendizagem cumulativa sem reduzir a autonomia dos dois co-desenvolvedores nem tornar o projeto burocrático.
-A presente versão foi ratificada pelos dois co-desenvolvedores e é canónica. Alterações futuras devem seguir o processo definido no Artigo 22.
+O Fenzobot é um projeto da Fenzo Intelligence de inteligência aplicada ao ténis, desenvolvido de forma experimental, orientada por dados e assistida por inteligência artificial. A Fenzo Intelligence é constituída por Hugo e Guerra. Esta Constituição existe para preservar coerência, integridade e aprendizagem cumulativa sem reduzir a autonomia dos dois co-desenvolvedores nem tornar o projeto burocrático.
 
 > **Espírito do projeto:** rigor sem rigidez; autonomia com rastreabilidade; experimentação com memória; e um objetivo explícito de construir algo útil sem deixar de ser divertido fazê-lo.
 
 ## Artigo 1 — Identidade e finalidade do projeto
 
-**1.1 Sharp Signals** — O Sharp Signals é uma plataforma, knowledge base e sistema de análise aplicada ao ténis. Não se confunde com uma única fórmula, relatório, modelo, interface ou agente de IA.
+**1.1 Fenzo Intelligence** — A Fenzo Intelligence é a estrutura/entidade no âmbito da qual o Fenzobot é desenvolvido e é constituída por Hugo e Guerra. Esta Constituição não faz qualquer afirmação adicional sobre forma jurídica, incorporação ou estatuto societário da Fenzo Intelligence.
 
-**1.2 Objetivo** — O objetivo principal é construir, aprender e experimentar em conjunto. O projeto deve ser intelectualmente estimulante e divertido para os dois co-desenvolvedores. Se evoluir para uma ferramenta interna robusta e útil, isso constitui sucesso. Se, adicionalmente, surgir uma aplicação comercial com boa relação retorno/risco e viabilidade plausível, essa oportunidade deve ser considerada.
+**1.2 Fenzobot** — Fenzobot é o nome canónico deste projeto/produto. É uma plataforma, knowledge base e sistema de análise aplicada ao ténis e não se confunde com uma única fórmula, relatório, modelo, interface ou agente de IA.
 
-**1.3 Direção aberta** — O projeto não fica preso a uma arquitetura final pré-definida. O Fenzobot pode permanecer um evidence index, evoluir para um modelo probabilístico ou ser complementado/substituído por outra abordagem, desde que o caminho seja tecnicamente lógico, testável e apresente boa probabilidade de sucesso.
+**1.3 Nomenclatura histórica** — `Sharp Signals` e `Project Roland` são designações históricas **SUPERSEDED** como nomes ativos do projeto a partir de 04/09/2026. Permanecem preservadas onde façam parte do audit trail, incluindo commits, PRs, CHANGE-IDs, relatórios, snapshots e documentos históricos. Não devem ser reintroduzidas como identidade atual.
+
+**1.4 Objetivo** — O objetivo principal é construir, aprender e experimentar em conjunto. O projeto deve ser intelectualmente estimulante e divertido para os dois co-desenvolvedores. Se evoluir para uma ferramenta interna robusta e útil, isso constitui sucesso. Se, adicionalmente, surgir uma aplicação comercial com boa relação retorno/risco e viabilidade plausível, essa oportunidade deve ser considerada.
+
+**1.5 Direção aberta** — O projeto não fica preso a uma arquitetura final pré-definida. O motor Fenzobot pode permanecer um evidence index, evoluir para um modelo probabilístico ou ser complementado/substituído por outra abordagem, desde que o caminho seja tecnicamente lógico, testável e apresente boa probabilidade de sucesso. O nome do projeto Fenzobot não obriga a preservar indefinidamente a implementação atual do motor.
 
 ## Artigo 2 — Evidência antes de conclusão
 
-O Sharp Signals deve distinguir permanentemente FACTO, INFERÊNCIA, HIPÓTESE e RESULTADO VALIDADO. Uma hipótese não se transforma em facto porque parece intuitivamente correta, foi sugerida por um LLM, foi implementada em código ou produziu alguns resultados favoráveis. Sempre que possível, uma nova ideia deve gerar uma pergunta testável.
+O Fenzobot deve distinguir permanentemente FACTO, INFERÊNCIA, HIPÓTESE e RESULTADO VALIDADO. Uma hipótese não se transforma em facto porque parece intuitivamente correta, foi sugerida por um LLM, foi implementada em código ou produziu alguns resultados favoráveis. Sempre que possível, uma nova ideia deve gerar uma pergunta testável.
 
 ## Artigo 3 — Primazia temporal dos dados
 
@@ -29,7 +33,7 @@ Toda a análise destinada a avaliar capacidade preditiva deve respeitar o princ�
 
 ## Artigo 4 — Integridade e suficiência dos dados
 
-O Sharp Signals não inventa dados. Informação inexistente, ambígua ou insuficiente deve permanecer N/D ou equivalente. Missing data não equivale automaticamente a zero; fatores inválidos não influenciam silenciosamente o índice; cobertura e qualidade devem ser visíveis; e um relatório pode ser declarado nulo quando a evidência disponível não permite uma comparação credível.
+O Fenzobot não inventa dados. Informação inexistente, ambígua ou insuficiente deve permanecer N/D ou equivalente. Missing data não equivale automaticamente a zero; fatores inválidos não influenciam silenciosamente o índice; cobertura e qualidade devem ser visíveis; e um relatório pode ser declarado nulo quando a evidência disponível não permite uma comparação credível.
 
 ## Artigo 5 — Universos experimentais
 
@@ -43,7 +47,7 @@ SHADOW, PAPER e REAL são universos distintos e nunca devem ser misturados estat
 
 ## Artigo 6 — Mercado como benchmark
 
-Quando o Sharp Signals produzir inteligência sobre probabilidades, odds ou valor económico, deve ser comparado com um baseline de mercado apropriado. A pergunta relevante não é apenas “o Sharp Signals acerta?”, mas também “o Sharp Signals acrescenta informação que o mercado ainda não contém?”. Accuracy isolada não é evidência suficiente de vantagem económica.
+Quando o Fenzobot produzir inteligência sobre probabilidades, odds ou valor económico, deve ser comparado com um baseline de mercado apropriado. A pergunta relevante não é apenas “o Fenzobot acerta?”, mas também “o Fenzobot acrescenta informação que o mercado ainda não contém?”. Accuracy isolada não é evidência suficiente de vantagem económica.
 
 ## Artigo 7 — Pricing, fair odds e edge
 
@@ -67,7 +71,7 @@ Uma previsão histórica deve poder ser associada à versão que a produziu. Alt
 
 ## Artigo 12 — Autonomia dos co-desenvolvedores
 
-Os dois co-desenvolvedores possuem autonomia ampla para propor, investigar, testar, implementar, alterar, remover ou substituir qualquer componente do projeto. Nenhuma ação está, por princípio, reservada exclusivamente a um deles.
+Os dois co-desenvolvedores, Hugo e Guerra, possuem autonomia ampla para propor, investigar, testar, implementar, alterar, remover ou substituir qualquer componente do projeto. Nenhuma ação está, por princípio, reservada exclusivamente a um deles.
 
 Qualquer alteração material ou estrutural deve, contudo, ser claramente identificada e registada, permitindo ao outro compreender o que mudou, porquê e quais as consequências esperadas. Autonomia não elimina rastreabilidade.
 
@@ -77,11 +81,11 @@ Qualquer alteração material ou estrutural deve, contudo, ser claramente identi
 
 **LEVEL 2 — Comportamento do sistema** — Fatores, pesos, thresholds, tratamento de dados, PAPER logic, edge, reporting decisório e outras alterações de comportamento. Exige registo com CHANGE-ID e Implementation Brief, mas não aprovação do outro co-desenvolvedor.
 
-**LEVEL 3 — Estrutural / constitucional** — Definição do Fenzobot, metodologia probabilística, sistema de pricing, arquitetura central de dados, execução REAL, claims públicos, alterações à Constituição e outras mudanças estruturais. Não exige unanimidade, mas exige registo explícito, destacado e rastreável.
+**LEVEL 3 — Estrutural / constitucional** — Definição do motor Fenzobot, identidade canónica, metodologia probabilística, sistema de pricing, arquitetura central de dados, execução REAL, claims públicos, alterações à Constituição e outras mudanças estruturais. Não exige unanimidade, mas exige registo explícito, destacado e rastreável.
 
 Os níveis existem para determinar o grau de documentação e visibilidade necessário, não para limitar a autonomia individual.
 
-## Artigo 14 — Brain, Codex e execução
+## Artigo 14 — BRAIN, Codex e execução
 
 O projeto adota a separação: BRAIN pensa e decide; Codex implementa; GitHub regista; testes verificam; Canon preserva. O Codex ou qualquer outro agente de implementação não deve decidir silenciosamente questões de produto ou metodologia fora do scope recebido. Ideias descobertas durante a implementação devem regressar ao BRAIN como propostas separadas.
 
@@ -97,9 +101,9 @@ O projeto deve usar recursos computacionais proporcionalmente à dificuldade e a
 
 **GitHub main** — Verdade sobre o que está efetivamente implementado.
 
-**Project Canon / Decision Register** — Verdade sobre o que foi formalmente registado e decidido.
+**Fenzobot — Project Canon / Fenzobot — Decision Register** — Verdade sobre o que foi formalmente registado e decidido.
 
-**Experiment Ledger** — Verdade sobre o que os testes e experiências realmente demonstraram.
+**Fenzobot — Experiment Register** — Verdade sobre o que os testes e experiências realmente demonstraram.
 
 **Constituição** — Princípios fundamentais do projeto.
 
@@ -115,13 +119,13 @@ O projeto deve proteger-se de overfitting, data snooping, cherry-picking, seleç
 
 ## Artigo 19 — Claims, comunicação e exceções de desenvolvimento
 
-O Sharp Signals deve, por princípio, comunicar conclusões com precisão proporcional à evidência disponível e não transformar correlação em causalidade, hipótese em facto, PAPER em performance REAL, edge experimental em vantagem comprovada ou índice em probabilidade sem validação.
+O Fenzobot deve, por princípio, comunicar conclusões com precisão proporcional à evidência disponível e não transformar correlação em causalidade, hipótese em facto, PAPER em performance REAL, edge experimental em vantagem comprovada ou índice em probabilidade sem validação.
 
 Por razões de desenvolvimento, prototipagem, modelação de relatórios, UX ou teste de produto, o sistema pode apresentar outputs que contrariem temporariamente estes princípios formais — por exemplo probabilidades, edge, classificações ou linguagem ainda não validados. Isso é permitido apenas se o próprio sistema alertar explicitamente que a informação é experimental, provisória, simulada, não validada ou equivalente. O alerta deve ser visível e inequívoco. O disclaimer não transforma a informação em validada; serve para impedir que o utilizador confunda um output de desenvolvimento com uma conclusão comprovada.
 
 ## Artigo 20 — Monetização e oportunidade comercial
 
-O Sharp Signals é, nesta fase, prioritariamente uma ferramenta interna. Pode evoluir para produto comercial se surgir evidência de viabilidade e retorno atrativo.
+O Fenzobot é, nesta fase, prioritariamente uma ferramenta interna da Fenzo Intelligence. Pode evoluir para produto comercial se surgir evidência de viabilidade e retorno atrativo.
 
 O BRAIN deve identificar proativamente oportunidades plausíveis de monetização ou transformação em produto. Sempre que surgir uma oportunidade material, deve apresentá-la com uma pontuação de 0 a 100 segundo critérios de avaliação comercial a definir e versionar separadamente. A existência de uma oportunidade comercial não obriga à sua execução.
 
@@ -149,10 +153,15 @@ Quando existir conflito entre manter uma ideia e aprender a verdade, a aprendiza
 
 Quando existir conflito entre diversão e burocracia sem valor acrescentado, simplificar o processo prevalece.
 
-## Registo de ratificação
+## Registo de alteração constitucional — v1.1
 
-**Estado:** RATIFICADA  
-**Data de entrada em vigor:** 28/08/2026  
-**Aprovação:** confirmada pelos dois co-desenvolvedores.  
+**Estado:** CANÓNICA / EM VIGOR  
+**Data de entrada em vigor:** 04/09/2026  
+**CHANGE-ID:** CHANGE-2026-09-04-025  
+**Artigo afetado materialmente:** Artigo 1 — Identidade e finalidade do projeto; alterações terminológicas coerentes nos artigos restantes.  
+**Razão:** eliminar a coexistência ambígua de `Sharp Signals`, `Project Roland` e `Fenzobot` como possíveis nomes atuais e consolidar a relação entre Fenzo Intelligence e Fenzobot.  
+**Consequências:** Fenzobot passa a ser a única designação canónica ativa do projeto/produto; Fenzo Intelligence identifica a estrutura/entidade constituída por Hugo e Guerra; `Sharp Signals` e `Project Roland` tornam-se designações históricas SUPERSEDED como nomes ativos.  
+**Preservação histórica:** a Constitution v1.0, os commits, PRs, CHANGE-IDs, relatórios e documentos históricos mantêm as designações originais onde estas façam parte do audit trail.  
+**Aprovação/processo:** alteração Level 3 explicitamente determinada e registada nos termos dos Artigos 12, 13 e 22; não é feita qualquer afirmação de unanimidade adicional para esta versão.  
 
-Esta versão substitui a `Sharp Signals — Constitution Draft v0.2` como referência constitucional do projeto. Versões anteriores devem ser preservadas em arquivo para rastreabilidade histórica.
+Esta versão substitui a `Sharp Signals — Constitution v1.0` como Constituição ativa. A v1.0 permanece preservada como versão histórica e fonte do percurso de governação anterior a 04/09/2026.
