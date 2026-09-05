@@ -19,7 +19,7 @@ class ReportStateTests(unittest.TestCase):
             "match_format": "bo3",
             "market_odds_decimal": {
                 "Leylah Annie Fernandez": 1.32,
-                "Mananchaya Sawangkaew": 3.29,
+                "Mananchaya Sawangkaew": 2.20,
             },
             "prelive_decision": {
                 "state": "EDGE_POSITIVE",
@@ -27,7 +27,7 @@ class ReportStateTests(unittest.TestCase):
                 "market": {"player": "Mananchaya Sawangkaew"},
             },
         })
-        self.assertIn("Mananchaya Sawangkaew @ 3.29", html)
+        self.assertIn("Mananchaya Sawangkaew @ 2.20", html)
         self.assertIn("+4 a +4.5", html)
         self.assertNotIn("Leylah Annie Fernandez @ 1.32", html)
 
@@ -356,12 +356,18 @@ class ReportRenderingTests(unittest.TestCase):
             "match_format": "bo3",
             "market_odds_decimal": {
                 "Leylah Annie Fernandez": 1.32,
-                "Mananchaya Sawangkaew": 3.29,
+                "Mananchaya Sawangkaew": 2.20,
             },
             "game_differential_b": {"bo3": {
                 "wins": {"n": 3, "margins": [5, 2, 1]},
-                "losses": {"n": 2, "margins": [-1, -4]}, "analyzable_matches": 5,
+                "losses": {"n": 2, "margins": [-5, -6]}, "analyzable_matches": 5,
             }},
+            "historical_moneyline_margins_b": {
+                "underdog": {"n": 8, "wins": 3, "by_format": {"bo3": {"n": 6, "wins": 2}}},
+                "buckets": {"2.10-2.30": {
+                    "n": 4, "wins": 2, "by_format": {"bo3": {"n": 4, "wins": 2}},
+                }},
+            },
         }
         div = {
             "market": {"a": 75, "b": 25}, "tipo": "direcao",
@@ -370,7 +376,10 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Observar Mananchaya Sawangkaew +4.5", html)
         self.assertIn("Mananchaya Sawangkaew +4.5", html)
-        self.assertIn("100.0% <span>cobre</span>", html)
+        self.assertIn("60.0% <span>cobre</span>", html)
+        self.assertIn("SEM PROTEÇÃO REAL EM DERROTA", html)
+        self.assertIn("Histórico como underdog (&gt;2.00, BO3): venceu 2/6 (33.3%).", html)
+        self.assertIn("Faixa comparável 2.10-2.30 (BO3): venceu 2/4 (50.0%).", html)
         self.assertNotIn("Observar Leylah Annie Fernandez -4", html)
 
     def test_handicap_card_uses_matching_moneyline_band_with_actual_settlements(self):
@@ -394,7 +403,7 @@ class ReportRenderingTests(unittest.TestCase):
         }
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
-        self.assertIn("Histórico com Moneyline 1.41-1.50 (BO3): venceu 2/3 (66.7%).", html)
+        self.assertIn("Faixa comparável 1.41-1.50 (BO3): venceu 2/3 (66.7%).", html)
         self.assertIn("VALIDAÇÃO NA FAIXA DE ODD 1.41-1.50 · n=3", html)
         self.assertIn("prioridade -3: 33.3% cobre (1/3)", html)
         self.assertIn("alternativa -3.5: 33.3% cobre (1/3)", html)
