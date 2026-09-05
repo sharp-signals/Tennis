@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karen Khachanov vs Benjamin Bonzi</title>
+<style>
+:root {
+  --bg:#071426; --surface:#0d2038; --surface2:#122a47;
+  --text:#f4f7fb; --dim:#91a5bc; --line:#23415f;
+  --a:#4aa3df; --b:#e8935a; --mint:#3fb9a8; --amber:#d9a441;
+  --neutral:#5a6b7a; --error:#e06c5b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  line-height:1.5; font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased; padding:16px; }
+.wrap { max-width:1080px; margin:0 auto; }
+.wrap-text { max-width:720px; margin-left:auto; margin-right:auto; }
+.report-nav { max-width:1080px; margin:0 auto 10px; }
+.report-nav a { color:var(--dim); text-decoration:none; font-size:14px; }
+.report-nav a:hover, .report-nav a:focus { color:var(--text); text-decoration:underline; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.num { font-variant-numeric:tabular-nums; }
+
+/* --- MATCHUP HEADER (ficha de combate) --- */
+.mh { background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  padding:20px; margin-bottom:14px; }
+.mh-top { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:start; }
+.mh-player { display:flex; align-items:center; gap:12px; min-width:0; }
+.mh-player.b { flex-direction:row-reverse; }
+.mh-player-photo { width:76px; height:76px; flex:0 0 76px; border-radius:50%;
+  object-fit:cover; object-position:center 22%; border:2px solid var(--a);
+  background:var(--surface2); box-shadow:0 5px 18px rgba(0,0,0,.28); }
+.mh-player.b .mh-player-photo { border-color:var(--b); }
+.mh-player-avatar { display:grid; place-items:center; color:var(--a); font-size:20px;
+  font-weight:800; letter-spacing:.5px; }
+.mh-player.b .mh-player-avatar { color:var(--b); }
+.mh-player-info { min-width:0; flex:1; }
+.mh-name { font-size:22px; font-weight:700; letter-spacing:-.3px;
+  border-left:3px solid var(--a); padding-left:8px; }
+.mh-name.b { text-align:right; border-left:none;
+  border-right:3px solid var(--b); padding-left:0; padding-right:8px; }
+.mh-sub { font-size:13px; color:var(--dim); margin-top:3px; }
+.mh-sub.b { text-align:right; }
+.mh-vs { font-size:12px; color:var(--dim); text-align:center; padding-top:6px;
+  font-weight:600; letter-spacing:1px; }
+.mh-tourn { font-size:11px; color:var(--dim); text-align:center; margin-top:4px;
+  text-transform:uppercase; letter-spacing:.5px; }
+.mh-odds { display:grid; grid-template-columns:1fr auto 1fr; gap:12px;
+  margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+.mh-odd { font-size:20px; font-weight:700; }
+.mh-odd.b { text-align:right; }
+.mh-odd small { display:block; font-size:12px; color:var(--dim); font-weight:400; }
+.mh-odds-meta { color:var(--dim); font-size:10px; text-align:center; margin-top:7px; }
+.mh-mid { text-align:center; font-size:12px; color:var(--dim); }
+
+/* --- LEITURA DO JOGO (a decisão, 1 frase) --- */
+.leitura { border-radius:12px; padding:14px 16px; margin-bottom:14px;
+  border:1px solid var(--line); display:flex; gap:12px; align-items:center; }
+.leitura-bola { font-size:24px; }
+.leitura-txt b { font-size:15px; }
+.leitura-txt div { font-size:13px; color:var(--dim); margin-top:2px; }
+
+/* --- 4 FATORES (chips) --- */
+.fatores { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+@media(max-width:640px){ .fatores { grid-template-columns:repeat(2,1fr); } }
+.fator { background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:10px; text-align:center; }
+.fator-lbl { font-size:10px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.5px; margin-bottom:4px; }
+.fator-val { font-size:14px; font-weight:600; }
+.fator-fav { font-size:11px; margin-top:2px; }
+
+/* --- MERCADO vs SINAL (gráfico central) --- */
+.mvs { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin-bottom:14px; }
+.mvs h3, .card h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:14px; font-weight:600; }
+.mvs-row { margin-bottom:14px; }
+.mvs-names { display:flex; justify-content:space-between; font-size:13px;
+  font-weight:700; margin-bottom:10px; }
+.mvs-names span:first-child { color:var(--a); }
+.mvs-names span:last-child { color:var(--b); }
+.mvs-row-lbl-single { font-size:12px; color:var(--dim); margin-bottom:5px; }
+.mvs-row-lbl { display:flex; justify-content:space-between; font-size:12px;
+  color:var(--dim); margin-bottom:5px; }
+.mvs-track { position:relative; height:26px; background:var(--surface2);
+  border-radius:6px; overflow:hidden; }
+.mvs-fill { position:absolute; top:0; bottom:0; left:0; border-radius:6px; }
+.mvs-mid { position:absolute; left:50%; top:0; bottom:0; width:1px;
+  background:var(--dim); opacity:.4; }
+.mvs-track-destaque { box-shadow:0 0 0 2px rgba(217,164,65,.35); }
+.mvs-val { position:absolute; top:50%; transform:translateY(-50%); font-size:12px;
+  font-weight:700; padding:0 8px; }
+.mvs-delta { text-align:center; font-size:13px; margin-top:10px; font-weight:600; }
+.odds-range { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:16px 18px; margin:-4px 0 14px; }
+.odds-range h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:11px; font-weight:600; }
+.odds-range-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.odds-range-player { background:var(--surface2); border-radius:9px; padding:11px 12px; }
+.odds-range-player.b { text-align:right; }
+.odds-range-name { color:var(--dim); font-size:11px; }
+.odds-range-value { font-size:18px; font-weight:750; margin:2px 0; }
+.odds-range-read { color:var(--dim); font-size:10px; }
+.odds-range-note { color:var(--dim); font-size:10px; margin-top:9px; }
+.data-quality { margin:12px 0 16px; padding:12px 14px; border:1px solid rgba(217,164,65,.45);
+  border-left:3px solid var(--amber); border-radius:10px; background:rgba(217,164,65,.07); }
+.data-quality-title { color:var(--amber); font-size:11px; font-weight:750; text-transform:uppercase;
+  letter-spacing:.65px; margin-bottom:5px; }
+.data-quality ul { padding-left:17px; color:var(--text); font-size:11px; }
+.data-quality li+li { margin-top:3px; }
+.data-quality-note { color:var(--dim); font-size:10px; margin-top:6px; }
+
+/* --- CARDS genéricos --- */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:16px; margin-bottom:14px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media(max-width:760px){ .grid2 { grid-template-columns:1fr; } }
+
+/* --- barra comparativa (forma, serviço) --- */
+.cmp { margin-bottom:12px; }
+.cmp:last-child { margin-bottom:0; }
+.cmp-lbl { font-size:12px; color:var(--dim); margin-bottom:6px; }
+.cmp-row { display:grid; grid-template-columns:90px 1fr 54px; gap:8px;
+  align-items:center; margin-bottom:4px; }
+.cmp-name { font-size:12px; color:var(--dim); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.cmp-bar { height:14px; background:var(--surface2); border-radius:4px; overflow:hidden; }
+.cmp-bar span { display:block; height:100%; border-radius:4px; }
+.cmp-num { font-size:13px; font-weight:600; text-align:right; }
+.cmp-delta { font-size:11px; text-align:center; color:var(--mint); margin-top:3px; }
+.expect-intro { color:var(--dim); font-size:11px; margin:-5px 0 12px; }
+.expect-player { padding:12px; border:1px solid var(--line); border-radius:10px;
+  background:var(--surface2); margin-top:9px; }
+.expect-head { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+.expect-name { font-size:13px; font-weight:700; }
+.expect-badge { border-radius:999px; padding:3px 8px; font-size:10px; font-weight:700;
+  background:rgba(255,255,255,.05); white-space:nowrap; }
+.expect-main { display:flex; justify-content:space-between; gap:10px; margin:8px 0 5px;
+  font-size:12px; color:var(--dim); }
+.expect-main b { color:var(--text); font-size:14px; }
+.expect-track { position:relative; height:12px; border-radius:999px; background:var(--surface);
+  overflow:visible; margin:7px 2px 9px; }
+.expect-fill { display:block; height:100%; border-radius:999px; }
+.expect-marker { position:absolute; top:-4px; width:2px; height:20px; background:#fff;
+  box-shadow:0 0 0 2px rgba(0,0,0,.35); border-radius:2px; }
+.expect-detail { display:flex; flex-wrap:wrap; gap:6px 12px; color:var(--dim); font-size:10px; }
+.service-intro { color:var(--dim); font-size:11px; margin:-5px 0 12px; }
+.service-metric { padding:11px 0; border-top:1px solid var(--line); }
+.service-metric:first-of-type { border-top:0; padding-top:0; }
+.service-head { display:flex; justify-content:space-between; gap:10px; margin-bottom:8px;
+  align-items:baseline; }
+.service-title { font-size:12px; font-weight:650; }
+.service-edge { font-size:10px; font-weight:700; text-align:right; }
+.service-player { display:grid; grid-template-columns:minmax(76px,auto) 1fr 44px; gap:8px;
+  align-items:center; margin-top:5px; }
+.service-player-name { color:var(--dim); font-size:10px; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
+.service-track { height:9px; border-radius:999px; background:var(--surface2); overflow:hidden; }
+.service-fill { display:block; height:100%; border-radius:999px; }
+.service-value { font-size:11px; font-weight:750; text-align:right; }
+.service-section { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
+.service-section:first-of-type { margin-top:0; padding-top:0; border-top:0; }
+.service-section-title { display:flex; justify-content:space-between; gap:10px; color:var(--dim);
+  font-size:10px; text-transform:uppercase; letter-spacing:.7px; margin-bottom:8px; }
+.load-intro { color:var(--dim); font-size:11px; margin:-5px 0 12px; }
+.load-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.load-player { border:1px solid var(--line); border-radius:10px; background:var(--surface2); padding:12px; }
+.load-player.b { text-align:right; }
+.load-head { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:10px; }
+.load-player.b .load-head { flex-direction:row-reverse; }
+.load-name { font-size:12px; font-weight:700; }
+.load-status { font-size:9px; font-weight:750; border-radius:999px; padding:3px 7px;
+  background:rgba(255,255,255,.05); white-space:nowrap; }
+.load-stats { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.load-stat { background:var(--surface); border-radius:7px; padding:7px; }
+.load-stat b { display:block; font-size:15px; }
+.load-stat span { display:block; color:var(--dim); font-size:9px; line-height:1.25; }
+.load-reading { margin-top:10px; padding:9px 11px; border-left:3px solid var(--amber);
+  background:rgba(217,164,65,.07); border-radius:0 8px 8px 0; font-size:11px; color:var(--dim); }
+@media(max-width:520px) { .load-grid { grid-template-columns:1fr; } .load-player.b { text-align:left; }
+  .load-player.b .load-head { flex-direction:row; } }
+
+/* --- transparência dos pesos --- */
+.weight-intro { color:var(--dim); font-size:11px; line-height:1.5; margin:0 0 12px; }
+.weight-summary { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }
+.weight-chip { padding:5px 8px; border:1px solid var(--line); border-radius:999px;
+  background:var(--surface2); color:var(--dim); font-size:9px; }
+.weight-chip b { color:var(--text); }
+.weight-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.weight-row { min-width:0; padding:9px 10px; border:1px solid var(--line); border-radius:9px;
+  background:var(--surface2); }
+.weight-row.inactive { opacity:.62; }
+.weight-row-head { display:flex; justify-content:space-between; gap:8px; align-items:baseline;
+  margin-bottom:7px; }
+.weight-name { color:var(--text); font-size:10px; font-weight:700; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.weight-state { color:var(--dim); font-size:8px; white-space:nowrap; }
+.weight-state.a { color:var(--a); } .weight-state.b { color:var(--b); }
+.weight-scale { display:grid; grid-template-columns:44px 1fr 38px; gap:6px; align-items:center;
+  margin-top:4px; }
+.weight-scale-label { color:var(--dim); font-size:8px; text-transform:uppercase; letter-spacing:.35px; }
+.weight-track { height:6px; border-radius:999px; background:var(--surface); overflow:hidden; }
+.weight-fill { display:block; height:100%; border-radius:999px; }
+.weight-fill.base { background:#657586; } .weight-fill.a { background:var(--a); }
+.weight-fill.b { background:var(--b); } .weight-fill.zero { background:transparent; }
+.weight-number { color:var(--dim); font-size:9px; text-align:right; font-variant-numeric:tabular-nums; }
+.weight-number.used { color:var(--text); font-weight:750; }
+.weight-formula { margin-top:12px; padding:9px 11px; border-left:3px solid var(--a);
+  background:rgba(74,163,223,.06); border-radius:0 8px 8px 0; color:var(--dim);
+  font-size:9px; line-height:1.5; }
+@media(max-width:680px) { .weight-list { grid-template-columns:1fr; } }
+
+/* amostra (auditoria #8): esbatido se n<10 */
+.samp-low { opacity:.5; }
+.samp-tag { font-size:10px; color:var(--dim); }
+
+/* --- fadiga --- */
+.fadiga-cmp { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center; }
+.fadiga-side { font-size:13px; }
+.fadiga-side.b { text-align:right; }
+.fadiga-big { font-size:18px; font-weight:700; }
+.fadiga-delta { text-align:center; font-size:12px; color:var(--amber); font-weight:600; }
+
+/* --- details (mais estatísticas) --- */
+details.more { background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; margin-bottom:14px; }
+details.more>summary { padding:14px 16px; cursor:pointer; font-size:13px;
+  font-weight:600; color:var(--text); list-style:none; }
+details.more>summary::-webkit-details-marker { display:none; }
+details.more>summary::before { content:"▸ "; }
+details.more[open]>summary::before { content:"▾ "; }
+details.more .more-body { padding:0 16px 16px; }
+.more-hint { color:var(--dim); font-size:11px; font-weight:400; margin-left:6px; }
+
+/* Mapa de Forças: destaque visual (feedback de teste, 13/08/2026 —
+   "devia ter mais visibilidade, ligeiramente maior e com outra cor, para
+   mostrar que é o único elemento carregável com info relevante") */
+details.report-map>summary { min-height:78px; display:flex; align-items:center;
+  flex-wrap:wrap; gap:0; padding:16px 18px; font-size:14px; }
+details.mais-forcas { border:1.5px solid var(--amber);
+  background:linear-gradient(180deg, rgba(217,164,65,.10), var(--surface) 45%); }
+details.mais-forcas>summary { color:var(--amber); }
+details.mais-forcas>summary::before { color:var(--amber); }
+details.mais-forcas .more-hint { color:var(--amber); opacity:.75; }
+details.weight-transparency-card { border:1.5px solid var(--a);
+  background:linear-gradient(180deg, rgba(74,163,223,.10), var(--surface) 45%); }
+details.weight-transparency-card>summary { min-height:64px; display:flex; align-items:center;
+  flex-wrap:wrap; color:var(--a); padding:14px 16px; }
+details.weight-transparency-card>summary::before { color:var(--a); }
+details.weight-transparency-card .more-hint { color:var(--a); opacity:.72; }
+.market-verdict { background:var(--surface); border-radius:12px; padding:16px 18px;
+  margin-bottom:14px; }
+.market-verdict-highlight { background:linear-gradient(180deg, var(--surface2), var(--surface));
+  box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 4px 20px rgba(0,0,0,.35); padding:20px 22px; }
+.market-verdict-highlight .market-verdict-title { font-size:12px; letter-spacing:.08em; }
+.market-verdict-highlight .market-verdict-tag { font-size:18px; }
+.rh-box { background:var(--surface2); border-radius:10px; padding:14px 16px; margin:16px 0; }
+.rh-title { font-size:10px; font-weight:750; text-transform:uppercase; letter-spacing:.7px;
+  color:var(--dim); margin-bottom:10px; }
+.rh-cols { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; }
+.rh-side { text-align:center; }
+.rh-name { font-size:14px; font-weight:700; margin-bottom:3px; }
+.rh-rank { font-size:13px; color:var(--text); }
+.rh-vs { font-size:11px; color:var(--dim); }
+.rh-h2h { text-align:center; font-size:12px; color:var(--dim); margin-top:10px;
+  padding-top:10px; border-top:1px solid var(--line); }
+.market-verdict-title { font-size:11px; color:var(--dim); text-transform:uppercase;
+  letter-spacing:.05em; margin-bottom:10px; }
+.mv-cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }
+.mv-card { background:var(--surface2); border-radius:10px; padding:10px 12px;
+  display:flex; gap:10px; align-items:stretch; }
+.mv-card-body { flex:1; min-width:0; }
+.mv-card-name { font-size:14px; font-weight:700; margin-bottom:8px; }
+.mv-label { display:block; font-size:11px; color:var(--dim); }
+.mv-value { display:block; font-size:14px; font-weight:600; margin-bottom:6px; }
+.mv-fora-selo { font-size:10px; font-weight:700; color:var(--red); margin-bottom:6px; }
+/* Barra de intervalo VERTICAL (a pedido) — à direita de cada bubble */
+.mv-vbar-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-width:74px; }
+.mv-vbar-caption { font-size:8px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px;
+  margin-bottom:26px; text-align:center; }
+.mv-vbar-track { position:relative; width:10px; height:88px; background:var(--surface);
+  border:1px solid var(--line); border-radius:6px; margin:34px 0; }
+.mv-vbar-track.fora { box-shadow:0 0 0 2px rgba(224,108,91,.35); }
+.mv-vbar-fill { position:absolute; inset:0; border-radius:5px;
+  background:linear-gradient(180deg, rgba(63,185,168,.30), rgba(63,185,168,.10)); }
+.mv-vbar-marker { position:absolute; left:50%; width:16px; height:16px; border-radius:50%;
+  background:var(--text); border:2px solid var(--bg); transform:translate(-50%, 50%);
+  box-shadow:0 1px 4px rgba(0,0,0,.5); }
+.mv-vbar-val { position:absolute; left:22px; top:50%; transform:translateY(-50%);
+  font-size:13px; font-weight:800; white-space:nowrap; color:var(--text); }
+.mv-vbar-end { position:absolute; left:50%; transform:translateX(-50%); font-size:10px;
+  color:var(--dim); white-space:nowrap; }
+.mv-vbar-end.top { top:-16px; }
+.mv-vbar-end.bottom { bottom:-16px; }
+/* odd FORA da faixa: marcador compacto fora da barra, com a cor sólida da
+   bola 🔴 (#e06c5b), sinal de divergência forte */
+.mv-vbar-out { position:absolute; left:50%; transform:translateX(-50%); text-align:center;
+  background:var(--red); color:#fff; border-radius:6px; padding:2px 7px;
+  box-shadow:0 2px 7px rgba(224,108,91,.5); white-space:nowrap; z-index:3; }
+.mv-vbar-out.top { bottom:calc(100% + 16px); }
+.mv-vbar-out.bottom { top:calc(100% + 16px); }
+.mv-vbar-out-val { display:block; font-size:12px; font-weight:800; }
+.mv-vbar-out-lbl { display:block; font-size:7px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.3px; opacity:.9; }
+.market-verdict-tag { font-size:15px; font-weight:800; letter-spacing:.03em;
+  margin-bottom:4px; }
+.market-verdict-note { font-size:12px; color:var(--dim); line-height:1.4; }
+.sysacc { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
+.sysacc-title { font-size:10px; font-weight:750; text-transform:uppercase; letter-spacing:.7px;
+  color:var(--dim); margin-bottom:8px; }
+.sysacc-line { font-size:12px; color:var(--text); line-height:1.5; margin-bottom:5px; }
+.sysacc-num { font-weight:800; color:var(--mint); font-size:14px; }
+.sysacc-detail { color:var(--dim); font-size:11px; }
+.sysacc-note { font-size:10px; color:var(--dim); opacity:.75; margin-top:4px; }
+.action-map-static { border:1.5px solid var(--mint); border-radius:12px; margin-bottom:14px;
+  background:linear-gradient(180deg, rgba(63,185,168,.10), var(--surface) 45%); }
+.action-map-head { min-height:78px; display:flex; align-items:center; flex-wrap:wrap;
+  padding:16px 18px; color:var(--mint); font-size:14px; font-weight:600; }
+.action-map-head .more-hint { color:var(--mint); opacity:.78; }
+.action-map-body { padding:0 16px 16px; }
+.action-summary { color:var(--text); font-size:13px; padding:12px 14px;
+  border-left:3px solid var(--mint); background:rgba(63,185,168,.07);
+  border-radius:0 9px 9px 0; margin-bottom:12px; }
+.action-list { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.action-item { border:1px solid var(--line); border-radius:10px; padding:15px;
+  background:var(--surface2); min-width:0; }
+.action-item-perfil { border-color:var(--mint); box-shadow:0 0 0 1px var(--mint) inset; }
+.action-perfil-tag { color:var(--mint); text-transform:none; letter-spacing:0; font-weight:700; }
+.action-kind { color:var(--dim); font-size:9px; font-weight:750; text-transform:uppercase;
+  letter-spacing:.7px; margin-bottom:4px; }
+.action-title { font-size:14px; font-weight:750; margin-bottom:7px; }
+.action-headline { display:inline-block; font-size:19px; font-weight:800; color:var(--mint);
+  background:rgba(63,185,168,.12); border-radius:7px; padding:2px 10px; margin-bottom:7px; }
+.action-small-sample { font-size:10px; color:var(--amber); margin-bottom:6px; font-weight:600; }
+.action-text { color:var(--dim); font-size:12.5px; line-height:1.65; white-space:pre-line; }
+.action-source { color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }
+.action-item-handicap { grid-column:1 / -1; }
+.handicap-visual { margin-top:4px; }
+.handicap-zone { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--dim); font-size:12px;
+  margin:2px 0 11px; }
+.handicap-zone strong { color:var(--text); font-size:13px; }
+.handicap-zone .hz-odd { color:#79b8ff; font-weight:800; }
+.handicap-zone .hz-arrow { color:var(--mint); font-size:16px; font-weight:800; }
+.handicap-choices { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.handicap-choice { border:1px solid var(--line); border-radius:9px; padding:12px; background:rgba(255,255,255,.025); }
+.handicap-choice.protected { border-color:#4f8fcf; background:rgba(79,143,207,.10); }
+.handicap-choice.alternative { border-color:var(--amber); background:rgba(225,170,72,.08); }
+.handicap-choice-tag { color:var(--dim); font-size:9px; font-weight:800; letter-spacing:.65px; }
+.handicap-choice.protected .handicap-choice-tag { color:#79b8ff; }
+.handicap-choice.alternative .handicap-choice-tag { color:var(--amber); }
+.handicap-choice-line { color:var(--text); font-size:18px; font-weight:850; margin:4px 0; }
+.handicap-choice-rate { color:var(--mint); font-size:20px; font-weight:850; line-height:1.1; }
+.handicap-choice-rate span { color:var(--text); font-size:11px; font-weight:600; }
+.handicap-choice-detail { color:var(--dim); font-size:11px; line-height:1.5; margin-top:5px; }
+.handicap-validation { border-radius:8px; margin-top:11px; padding:10px 12px; font-size:12px; line-height:1.5; }
+.handicap-validation.ready { background:rgba(63,185,168,.10); border-left:3px solid var(--mint); }
+.handicap-validation.missing { background:rgba(224,108,91,.10); border-left:3px solid var(--error); }
+.handicap-validation-title { font-size:10px; font-weight:800; letter-spacing:.6px; color:var(--text); }
+.handicap-validation.missing .handicap-validation-title { color:var(--error); }
+.handicap-validation-detail { color:var(--dim); }
+@media(max-width:640px) { .handicap-choices { grid-template-columns:1fr; } }
+@media(max-width:640px) { .action-list { grid-template-columns:1fr; }
+  details.report-map>summary, .action-map-head { min-height:78px; } }
+
+/* --- estado parcial/erro --- */
+.parcial { background:rgba(224,108,91,.1); border:1px solid var(--error);
+  border-radius:12px; padding:16px; margin-bottom:14px; }
+.parcial b { color:var(--error); }
+
+/* --- veredicto --- */
+.veredicto { background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; padding:18px; margin-bottom:14px; }
+.veredicto h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--dim); margin-bottom:10px; }
+.merc-linha { display:flex; align-items:center; gap:10px; padding:7px 0;
+  border-bottom:1px solid var(--line); font-size:13px; }
+.merc-linha:last-of-type { border-bottom:none; }
+.merc-bola { font-size:14px; }
+.merc-nome { font-weight:600; min-width:130px; }
+.merc-nota { color:var(--dim); font-size:12px; }
+.merc-principal { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  margin-bottom:10px; background:var(--surface2); }
+.merc-principal-tag { font-size:10px; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--dim); font-weight:700; display:block; margin-bottom:4px; }
+.merc-linha-top { border-bottom:none; padding:2px 0; font-size:14px; }
+.merc-linha-top .merc-nome { font-size:15px; }
+.merc-secundarios { opacity:.75; }
+.merc-sec-tag { font-size:10px; color:var(--dim); margin-bottom:2px; }
+.h2h-line { font-size:14px; line-height:1.6; }
+.fd-linha { padding:6px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.fd-linha:last-child { border-bottom:none; }
+.fd-linha-top { display:flex; justify-content:space-between; align-items:baseline;
+  gap:10px; margin-bottom:4px; }
+.fd-nome { color:var(--text); font-weight:600; }
+.fd-val { font-weight:600; text-align:right; }
+.fd-dim { color:var(--dim); font-weight:400; }
+.fd-nota { color:var(--dim); font-size:11px; font-weight:400; }
+.fd-bar { display:flex; position:relative; height:22px; border-radius:5px;
+  overflow:hidden; background:var(--surface2); }
+.fd-bar::after { content:""; position:absolute; left:50%; top:0; bottom:0;
+  width:1px; background:rgba(255,255,255,.3); z-index:2; }
+.fd-bar-a { background:var(--a); opacity:.78; }
+.fd-bar-b { background:var(--b); opacity:.78; }
+.fd-bar-val { position:absolute; top:50%; transform:translateY(-50%); z-index:3;
+  color:#fff; font-size:11px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.65); }
+.fd-bar-val.a { left:7px; } .fd-bar-val.b { right:7px; }
+.fd-bar.samp-low { opacity:.52; }
+@media(max-width:520px){ .more-hint { display:block; margin:2px 0 0 16px; }
+  .fd-linha-top { align-items:flex-start; } .fd-val { font-size:11px; } }
+.foot { text-align:center; font-size:11px; color:var(--dim); margin-top:20px;
+  padding-top:14px; border-top:1px solid var(--line); }
+.photo-credits { margin-top:18px; color:var(--dim); font-size:10px; line-height:1.6; }
+.photo-credits summary { cursor:pointer; width:max-content; max-width:100%; }
+.photo-credits a { color:var(--dim); text-decoration:underline; }
+@media(max-width:640px) {
+  .mh-player { gap:7px; align-items:flex-start; }
+  .mh-player-photo { width:52px; height:52px; flex-basis:52px; }
+  .mh-player-avatar { font-size:15px; }
+  .mv-cards { grid-template-columns:1fr; }
+}
+
+.decision-box{border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px;background:var(--surface)}
+.decision-box.positive{border-color:var(--mint);background:linear-gradient(145deg,rgba(63,185,168,.15),var(--surface) 46%)}.decision-box.negative{border-color:var(--error);background:linear-gradient(145deg,rgba(224,108,91,.13),var(--surface) 46%)}.decision-box.zero{border-color:#8b96a3}.decision-box.null{border-color:#05070a;background:#090b0e;box-shadow:inset 0 0 0 1px #252a31}
+.decision-head{display:flex;gap:9px;align-items:center;font-size:14px;letter-spacing:.3px}.decision-primary{font-size:15px;font-weight:750;margin:11px 0 8px}.decision-grid{display:flex;flex-wrap:wrap;gap:7px 18px;color:var(--dim);font-size:12px}.decision-grid b{color:var(--text)}.decision-note{color:var(--dim);font-size:11px;margin-top:8px}.decision-reasons{margin:8px 0 0;padding-left:19px;color:var(--dim);font-size:12px;line-height:1.6}
+.system-history{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:0 0 14px}.system-history>summary{cursor:pointer;padding:13px 16px;font-weight:700;list-style:none}.system-history>summary::-webkit-details-marker{display:none}.system-history>summary::before{content:"▸ ";color:var(--a)}.system-history[open]>summary::before{content:"▾ "}.system-history-body{padding:0 16px 16px}.system-history h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--a);margin:13px 0 8px}.system-history p,.history-split{color:var(--dim);font-size:11px;margin:6px 0}.history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.history-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.history-metrics span{display:block;color:var(--dim);font-size:9px}.history-metrics b{font-size:13px}
+@media(max-width:640px){.history-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-grid{display:grid;grid-template-columns:1fr 1fr}}
+.pricing-block{background:linear-gradient(145deg,rgba(74,163,223,.14),var(--surface) 42%);border:1px solid var(--a);border-radius:14px;padding:18px;margin:0 0 16px;box-shadow:0 7px 24px rgba(0,0,0,.24)}
+.pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}.pricing-kicker{color:var(--a);font-size:12px;font-weight:800;letter-spacing:1.2px}.pricing-path{color:var(--dim);font-size:10px;margin-top:4px}.pricing-status{flex:0 0 auto;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;letter-spacing:.45px}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.pricing-player{background:rgba(7,20,38,.66);border:1px solid var(--line);border-top:3px solid var(--a);border-radius:11px;padding:13px}.pricing-player.b{border-top-color:var(--b)}.pricing-player-name{font-size:14px;font-weight:800;margin-bottom:10px}.pricing-player.a .pricing-player-name{color:var(--a)}.pricing-player.b .pricing-player-name{color:var(--b)}
+.pricing-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pricing-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.pricing-metrics span{display:block;color:var(--dim);font-size:9px;line-height:1.2;margin-bottom:3px}.pricing-metrics b{display:block;font-size:14px;font-variant-numeric:tabular-nums}.pricing-edge{grid-column:1/-1;border:1px solid var(--line)}.pricing-edge.positive{border-color:var(--mint);background:rgba(63,185,168,.10)}.pricing-edge.positive b{color:var(--mint)}.pricing-edge.negative b{color:var(--dim)}
+.pricing-candidate{margin-top:11px;padding:10px 12px;border-radius:8px;background:rgba(90,107,122,.12);color:var(--dim);font-size:12px;font-weight:800;text-align:center}.pricing-candidate.promoted{background:rgba(63,185,168,.13);border:1px solid var(--mint);color:var(--mint)}.pricing-candidate.withheld{background:rgba(217,164,65,.10);border:1px solid var(--amber);color:var(--amber)}
+.pricing-audit{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:10px;color:var(--dim);font-size:9px}.pricing-audit b{color:var(--text)}.pricing-disclaimer{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);color:var(--dim);font-size:9px;line-height:1.45}
+@media(max-width:680px){.pricing-head{display:block}.pricing-status{display:inline-block;margin-top:9px}.pricing-grid{grid-template-columns:1fr}.pricing-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mh{position:relative;overflow:hidden;border-radius:18px;padding:24px}.mh::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:linear-gradient(90deg,transparent 49.8%,var(--b) 50%,transparent 50.2%)}
+.mh-kicker{text-align:center;color:var(--b);text-transform:uppercase;letter-spacing:1.8px;font-size:10px;font-weight:700;margin-bottom:18px}.mh-name{font-size:28px;letter-spacing:-.7px}.mh-vs{font-size:18px;color:var(--text);font-weight:800;letter-spacing:2px}
+.mh-context{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);align-items:center;font-size:12px;color:var(--dim)}.mh-context .b{text-align:right}.mh-h2h{color:var(--text);font-weight:700;text-align:center;white-space:nowrap}
+.section-title{font-size:11px;color:var(--b);text-transform:uppercase;letter-spacing:1.5px;margin:22px 2px 9px}.match-intro{border-left:3px solid var(--b);padding:12px 15px;background:rgba(52,200,255,.06);border-radius:0 10px 10px 0;margin-bottom:14px;color:var(--text);font-size:15px}
+.glance{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}.glance-head,.glance-row{display:grid;grid-template-columns:1fr minmax(120px,.8fr) 1fr;gap:10px;align-items:center}.glance-head{padding-bottom:9px;color:var(--dim);font-size:11px}.glance-head span:last-child,.glance-b{text-align:right}.glance-row{padding:9px 0;border-top:1px solid var(--line)}.glance-label{text-align:center;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.glance-a,.glance-b{font-size:15px;font-weight:700}.glance-win{color:var(--mint)}
+.keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
+.history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}.history-winner.a{color:var(--a)}.history-winner.b{color:var(--b)}
+.pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1fr);gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:nowrap;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}.pulse-seq::-webkit-scrollbar{display:none}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;flex:0 0 25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;flex-basis:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
+.pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
+.factor-bars-card{border-color:var(--line);background:linear-gradient(180deg,rgba(74,163,223,.08),var(--surface) 30%)}
+.factor-bars-card .fd-linha{padding:9px 11px;background:rgba(74,163,223,.055);border-bottom-color:rgba(120,207,255,.14)}.factor-bars-card .fd-linha:first-of-type{border-radius:8px 8px 0 0}.factor-bars-card .fd-linha:last-child{border-radius:0 0 8px 8px}
+.factor-bars-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}.factor-bars-head h3{color:var(--a);margin:0}.impact-toggle{display:flex;align-items:center;gap:7px;color:var(--dim);font-size:10px}.impact-switch{position:relative;width:42px;height:24px;flex:0 0 auto}.impact-switch input{position:absolute;opacity:0;pointer-events:none}.impact-slider{position:absolute;inset:0;border-radius:999px;background:var(--surface2);border:1px solid var(--line);cursor:pointer;transition:.2s}.impact-slider::before{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.impact-switch input:checked+.impact-slider{background:rgba(74,163,223,.55);border-color:var(--a)}.impact-switch input:checked+.impact-slider::before{transform:translateX(18px)}.impact-switch input:focus-visible+.impact-slider{outline:2px solid var(--a);outline-offset:2px}
+.factor-lines{position:relative}.fd-impact-bar,.impact-trace{display:none}.factor-bars-card.impact-mode{background:#090e13;border-color:#213445}.factor-bars-card.impact-mode .factor-lines{background:#070b0f;border-radius:9px}.factor-bars-card.impact-mode .fd-linha{background:rgba(8,16,23,.82);border-bottom-color:rgba(110,145,168,.12)}.factor-bars-card.impact-mode .fd-nome,.factor-bars-card.impact-mode .fd-val{color:#748493!important}.factor-bars-card.impact-mode .fd-nota{color:#586875}.factor-bars-card.impact-mode .fd-bar{display:none}.factor-bars-card.impact-mode .fd-impact-bar{display:block;position:relative;height:22px;border-radius:5px;overflow:hidden;background:#111a22}.fd-impact-bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.32);z-index:2}.fd-impact-fill{position:absolute;top:0;bottom:0;z-index:1}.fd-impact-fill.a{right:50%;background:var(--a)}.fd-impact-fill.b{left:50%;background:var(--b)}.fd-impact-value{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;color:#dce8f0;font-size:10px;font-weight:700;background:rgba(5,9,12,.68);padding:1px 5px;border-radius:4px}.factor-bars-card.impact-mode .impact-trace{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:5}.impact-trace path{fill:none;stroke:#d5f4ff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(120,207,255,.8))}.impact-trace circle{fill:#f3fbff;stroke:#20394a;stroke-width:1.5}.factor-bars-card.impact-mode .fd-linha[data-impact-side=""]{opacity:.42}
+.factor-bars-card.impact-mode .fd-linha[data-impact-side="a"] .fd-val{color:#78cfff!important}.factor-bars-card.impact-mode .fd-linha[data-impact-side="b"] .fd-val{color:#ffb47f!important}.factor-bars-card.impact-mode .fd-nota{color:#586875!important}
+@media(max-width:640px){.factor-bars-head{align-items:flex-start;flex-direction:column}.impact-toggle{width:100%;justify-content:flex-end}}
+.history-score{padding:0 0 12px;margin-bottom:2px}.history-score-names{display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:11px;margin-bottom:5px}
+@media(max-width:640px){.mh{padding:18px 14px}.mh-top{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);grid-template-areas:"player-a . player-b" "center center center";gap:12px 5px}.mh-top>.mh-player.a{grid-area:player-a}.mh-top>.mh-player.b{grid-area:player-b}.mh-top>div:nth-child(2){grid-area:center}.mh-player,.mh-player.b{flex-direction:column;gap:8px}.mh-player{align-items:flex-start}.mh-player.b{align-items:flex-end}.mh-player-photo{width:60px;height:60px;flex-basis:60px}.mh-player-info{width:100%}.mh-name{font-size:17px;line-height:1.18;overflow-wrap:anywhere}.mh-sub{font-size:11px}.mh-tourn{font-size:9px}.mh-odds{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:7px}.mh-odd{font-size:18px}.mh-context{font-size:10px}.keys{grid-template-columns:1fr}.glance-head,.glance-row{grid-template-columns:1fr 100px 1fr}.pulse-player{grid-template-columns:1fr;gap:7px}.pulse-seq{justify-content:flex-start;width:100%}}
+</style></head>
+<body>
+<nav class="report-nav" aria-label="Navegação do relatório">
+  <a href="https://sharp-signals.github.io/Tennis/">← Todos os relatórios</a>
+</nav>
+<main>
+<h1 class="sr-only">Karen Khachanov vs Benjamin Bonzi</h1>
+<div class="wrap">
+<div class="mh">
+  <div class="mh-top">
+    <div class="mh-player a">
+      <img class="mh-player-photo" src="../assets/players/atp-25543-karen-khachanov.jpg" alt="Fotografia de Karen Khachanov" loading="eager">
+      <div class="mh-player-info"><div class="mh-name">Karen Khachanov</div>
+      <div class="mh-sub">ATP #50</div></div>
+    </div>
+    <div>
+      <div class="mh-vs">VS</div>
+      <div class="mh-tourn">U.S. Open - New York<br>Grand Slam · Hard</div>
+    </div>
+    <div class="mh-player b">
+      <img class="mh-player-photo" src="../assets/players/atp-28899-benjamin-bonzi.jpg" alt="Fotografia de Benjamin Bonzi" loading="eager">
+      <div class="mh-player-info"><div class="mh-name b">Benjamin Bonzi</div>
+      <div class="mh-sub b">ATP #97</div></div>
+    </div>
+  </div>
+  <div class="mh-odds">
+    <div class="mh-odd">1.44<small>66% mercado</small></div>
+    <div class="mh-mid"></div>
+    <div class="mh-odd b">2.75<small>34% mercado</small></div>
+  </div>
+  <div class="mh-odds-meta">Fonte: RapidAPI Tennis API / recent-odds · Endpoint: https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3897175 · Captura: 2026-09-05T05:33:42+00:00 · RapidAPI observada nesta execução; addTime apenas informativo · Provider: 2026-09-04T05:43:52+00:00 · Bookmaker: Bet365 · Cache: miss (0 s)</div>
+</div><div class="data-quality" style="border-color:var(--line);border-left-color:var(--a)"><div class="data-quality-title">Referência analítica de handicap</div><div>Moneyline pré-live capturada: <b>Karen Khachanov @ 1.44</b> · Zona interna de referência: <b>-3.5 a -4</b> · BO5.</div><div class="data-quality-note">A zona é uma tabela analítica interna; não é linha, odd, edge ou mercado de bookmaker.</div></div><section class="decision-box negative"><div class="decision-head"><span>🔴</span><b>EDGE NEGATIVO — EXCLUÍDO</b></div><div class="decision-primary">Karen Khachanov · índice Fenzobot 67/100 · edge -2.9%</div><div class="decision-note">Não entra em PAPER. Cobertura 85.4% · reduzida.</div></section><details class="system-history"><summary>Histórico do sistema<span class="more-hint">PAPER, reconstruído e REAL sem misturar universos</span></summary><div class="system-history-body"><h4>PAPER</h4><div class="history-metrics"><div><span>Entradas PAPER</span><b>49</b></div><div><span>Liquidadas</span><b>30</b></div><div><span>Pendentes</span><b>19</b></div><div><span>W–L liquidado</span><b>17–13</b></div><div><span>Win rate liquidado</span><b>56.67%</b></div><div><span>Resultado acumulado</span><b>-4.468 u</b></div><div><span>ROI / yield liquidado</span><b>-14.89%</b></div><div><span>Odd média das entradas PAPER</span><b>1.594</b></div></div><div class="history-split">Moneyline: 49 entradas · 17–13 · -4.468 u</div><div class="history-split">A odd média é calculada apenas sobre entradas PAPER válidas; não representa backtest/reconstruído.</div><h4>Reconstruído / backtest</h4><p>Alinhamento: 70.4% (188/267) · Divergência: 48.6% (17/35)</p><h4>REAL</h4><p>Ainda sem histórico REAL. Não é misturado com PAPER nem com reconstruído.</p></div></details><section class="pricing-block"><div class="pricing-head"><div><div class="pricing-kicker">SHARP PRICING — MARKET RESIDUAL</div><div class="pricing-path">Mercado sem margem → ajuste residual limitado → estimativa Sharp</div></div><span class="pricing-status">EXPERIMENTAL — EM VALIDAÇÃO</span></div><div class="pricing-grid"><div class="pricing-player a"><div class="pricing-player-name">Karen Khachanov</div><div class="pricing-metrics"><div><span>Market probability</span><b>65.6%</b></div><div><span>Sharp estimate</span><b>67.3%</b></div><div><span>Sharp adjustment</span><b>+1.7 p.p.</b></div><div><span>Fair odd</span><b>1.49</b></div><div><span>Market odd</span><b>1.44</b></div><div class="pricing-edge negative"><span>Expected edge</span><b>-2.9%</b></div></div></div><div class="pricing-player b"><div class="pricing-player-name">Benjamin Bonzi</div><div class="pricing-metrics"><div><span>Market probability</span><b>34.4%</b></div><div><span>Sharp estimate</span><b>32.7%</b></div><div><span>Sharp adjustment</span><b>-1.7 p.p.</b></div><div><span>Fair odd</span><b>3.06</b></div><div><span>Market odd</span><b>2.75</b></div><div class="pricing-edge negative"><span>Expected edge</span><b>-10.0%</b></div></div></div></div><div class="pricing-candidate">SEM EDGE POSITIVO NO LADO FENZOBOT</div><div class="pricing-audit"><span>Qualidade da evidência <b>75%</b></span><span><b>14</b> fatores</span><span>Massa efetiva <b>57.2</b></span><span>Cobertura <b>100%</b></span><span>Fiabilidade das fontes <b>100%</b></span><span>Overround observado <b>5.62%</b></span><span>market-residual-v0.3 · config f46ec3e2aa6f92a9</span></div><div class="pricing-disclaimer">Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.</div></section><div class="market-section"><div class="section-title">Leitura do mercado</div>
+<div class="mvs">
+  <h3>Mercado e indicadores</h3>
+  <div class="mvs-names"><span>Karen Khachanov</span><span>Benjamin Bonzi</span></div>
+  
+<div class="mvs-row">
+  <div class="mvs-row-lbl-single" style="font-weight:700; letter-spacing:.04em; text-transform:uppercase;">Mercado</div>
+  <div class="mvs-track mvs-track-destaque" style="height:32px;">
+    <div class="mvs-fill" style="width:66%; background:#4aa3df"></div>
+    <div class="mvs-mid"></div>
+    <div class="mvs-val" style="left:0; color:#fff; font-weight:700">66%</div>
+    <div class="mvs-val" style="right:0; color:#fff; font-weight:700">34%</div>
+  </div>
+</div>
+<div class="mvs-row">
+  <div class="mvs-row-lbl-single" style="">Indicadores · peso relativo</div>
+  <div class="mvs-track" style="">
+    <div class="mvs-fill" style="width:67%; background:#4aa3df"></div>
+    <div class="mvs-mid"></div>
+    <div class="mvs-val" style="left:0; color:#fff; font-weight:700">67/100</div>
+    <div class="mvs-val" style="right:0; color:#fff; font-weight:700">33/100</div>
+  </div>
+</div>
+</div><div class="mh-odds-meta">Fonte: RapidAPI Tennis API / recent-odds Â· Endpoint: https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3897175 Â· Evento: 3897175 Â· Captura Sharp Signals: 2026-09-05T05:33:42+00:00 Â· Timestamp do provider: 2026-09-04T05:43:52+00:00 Â· Bookmaker: Bet365 Â· Cache: miss (0 s)</div></div><div class="section-title">O jogo num relance</div><div class="glance"><div class="glance-head"><span>Karen Khachanov</span><span></span><span>Benjamin Bonzi</span></div><div class="glance-row"><div class="glance-a glance-win">#50</div><div class="glance-label">Ranking</div><div class="glance-b ">#97</div></div><div class="glance-row"><div class="glance-a ">40%</div><div class="glance-label">Forma recente</div><div class="glance-b glance-win">70%</div></div><div class="glance-row"><div class="glance-a glance-win">57%</div><div class="glance-label">Em Hard</div><div class="glance-b ">46%</div></div><div class="glance-row"><div class="glance-a ">7</div><div class="glance-label">Carga | sets 7d</div><div class="glance-b ">7</div></div><div class="glance-row"><div class="glance-a glance-win">69%</div><div class="glance-label">1st servico ganho</div><div class="glance-b ">68%</div></div></div><div class="section-title">Chaves do confronto</div><div class="fatores"><div class="fator"><div class="fator-lbl">indoor/outdoor</div><div class="fator-fav" style="color:var(--a)">▲ Karen Khachanov</div></div><div class="fator"><div class="fator-lbl">recuperação pós-1º set</div><div class="fator-fav" style="color:var(--a)">▲ Karen Khachanov</div></div><div class="fator"><div class="fator-lbl">forma recente</div><div class="fator-fav" style="color:var(--b)">▲ Benjamin Bonzi</div></div></div><div class="rh-box"><div class="rh-title">Ranking e confronto direto</div><div class="rh-cols"><div class="rh-side"><div class="rh-name" style="color:var(--a)">Karen Khachanov</div><div class="rh-rank">ATP #50</div></div><div class="rh-vs">vs</div><div class="rh-side"><div class="rh-name" style="color:var(--b)">Benjamin Bonzi</div><div class="rh-rank">ATP #97</div></div></div><div class="rh-h2h">3–0 no confronto direto</div></div><details class="more report-map mais-forcas"><summary>Mapa de Forças (20)<span class="more-hint">comparação visual de todos os fatores</span></summary><div class="more-body"><div class="card history-card"><h3>Confronto Direto</h3><div class="history-score"><div class="history-score-names"><span>Karen Khachanov</span><span>Benjamin Bonzi</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:100%"></span><span class="fd-bar-b" style="width:0%"></span><span class="fd-bar-val a">3</span><span class="fd-bar-val b">0</span></div></div><div class="history-row"><div class="history-meta">2022 | Australian Open - Melbourne</div><div class="history-result"><b class="history-winner a">Karen Khachanov</b><span>6-4 6-0 7-5</span></div></div><div class="history-row"><div class="history-meta">2021 | Open Parc - Lyon</div><div class="history-result"><b class="history-winner a">Karen Khachanov</b><span>6-1 4-6 7-6(4)</span></div></div><div class="history-row"><div class="history-meta">2015 | France F5</div><div class="history-result"><b class="history-winner a">Karen Khachanov</b><span>6-2 6-4</span></div></div></div><div class="card pulse-card merged-form-card"><h3>Forma Recente | &#218;ltimos 10</h3><div class="pulse-player"><span>Karen Khachanov</span><div class="pulse-seq"><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-loss">L</span><span class="pulse-loss">L</span><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-loss">L</span></div></div><div class="pulse-player"><span>Benjamin Bonzi</span><div class="pulse-seq"><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-win">W</span><span class="pulse-loss">L</span><span class="pulse-win">W</span><span class="pulse-loss">L</span></div></div><div class="pulse-form-bars">
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4aa3df;margin-right:5px;vertical-align:middle"></span>Karen Khachanov</div>
+  <div class="cmp-bar"><span style="width:40%; background:#4aa3df"></span></div>
+  <div class="cmp-num">4-6 | 40%</div>
+</div>
+<div class="cmp-row">
+  <div class="cmp-name"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e8935a;margin-right:5px;vertical-align:middle"></span>Benjamin Bonzi</div>
+  <div class="cmp-bar"><span style="width:70%; background:#e8935a"></span></div>
+  <div class="cmp-num">7-3 | 70%</div>
+</div></div></div><div class="card"><h3>Desempenho face ao esperado</h3><div class="expect-intro">Compara apenas os jogos que têm odds históricas: a barra mostra as vitórias reais e o traço branco as esperadas. Os resultados excluídos são indicados separadamente.</div><div class="expect-player"><div class="expect-head"><span class="expect-name">Karen Khachanov</span><span class="expect-badge" style="color:var(--error)">Abaixo do esperado</span></div><div class="expect-main"><span><b>2</b> vitórias em 4 jogos com odds históricas</span><span>esperado: <b>3.0</b> · diferença -1.0</span></div><div class="expect-track"><span class="expect-fill" style="width:50.0%;background:var(--a)"></span><span class="expect-marker" style="left:74.2%" title="Vitórias esperadas"></span></div><div class="expect-detail"><span>6 de 10 jogos excluídos por falta de odds (2 vitórias)</span><span>Adversários: ranking médio #82.17 (42 jogos)</span><span>Neste piso: 49% recente vs 0% carreira (piorou 10 p.p.)</span></div></div><div class="expect-player"><div class="expect-head"><span class="expect-name">Benjamin Bonzi</span><span class="expect-badge" style="color:var(--b)">Acima do esperado</span></div><div class="expect-main"><span><b>4</b> vitórias em 6 jogos com odds históricas</span><span>esperado: <b>3.2</b> · diferença +0.8</span></div><div class="expect-track"><span class="expect-fill" style="width:66.7%;background:var(--b)"></span><span class="expect-marker" style="left:52.7%" title="Vitórias esperadas"></span></div><div class="expect-detail"><span>4 de 10 jogos excluídos por falta de odds (3 vitórias)</span><span>Adversários: ranking médio #76.52 (23 jogos)</span><span>Neste piso: 55% recente vs 0% carreira (piorou 9 p.p.)</span></div></div></div>
+<div class="card"><h3>Serviço e resposta · quem leva vantagem</h3>
+  <div class="service-intro">A base histórica mostra o nível estrutural; o momento recente revela como cada jogador tem respondido sob pressão.</div>
+  <div class="service-section"><div class="service-section-title"><span>Base histórica</span><span></span></div>
+<div class="service-metric">
+  <div class="service-head"><span class="service-title">Pontos ganhos no 1.º serviço</span><span class="service-edge" style="color:#4aa3df">Vantagem Khachanov · +1.0 p.p.</span></div>
+  <div class="service-player"><span class="service-player-name">Karen Khachanov</span><span class="service-track"><span class="service-fill" style="width:69.0%;background:var(--a)"></span></span><span class="service-value">69.0%</span></div>
+  <div class="service-player"><span class="service-player-name">Benjamin Bonzi</span><span class="service-track"><span class="service-fill" style="width:68.0%;background:var(--b)"></span></span><span class="service-value">68.0%</span></div>
+</div>
+<div class="service-metric">
+  <div class="service-head"><span class="service-title">Break points salvos sob pressão</span><span class="service-edge" style="color:#e8935a">Vantagem Bonzi · +4.0 p.p.</span></div>
+  <div class="service-player"><span class="service-player-name">Karen Khachanov</span><span class="service-track"><span class="service-fill" style="width:56.0%;background:var(--a)"></span></span><span class="service-value">56.0%</span></div>
+  <div class="service-player"><span class="service-player-name">Benjamin Bonzi</span><span class="service-track"><span class="service-fill" style="width:60.0%;background:var(--b)"></span></span><span class="service-value">60.0%</span></div>
+</div>
+<div class="service-metric">
+  <div class="service-head"><span class="service-title">Break points convertidos na resposta</span><span class="service-edge" style="color:#e8935a">Vantagem Bonzi · +12.0 p.p.</span></div>
+  <div class="service-player"><span class="service-player-name">Karen Khachanov</span><span class="service-track"><span class="service-fill" style="width:27.0%;background:var(--a)"></span></span><span class="service-value">27.0%</span></div>
+  <div class="service-player"><span class="service-player-name">Benjamin Bonzi</span><span class="service-track"><span class="service-fill" style="width:39.0%;background:var(--b)"></span></span><span class="service-value">39.0%</span></div>
+</div></div><div class="service-section"><div class="service-section-title"><span>Momento recente sob pressão</span><span>Karen Khachanov: n=24 · Benjamin Bonzi: n=16</span></div>
+<div class="service-metric">
+  <div class="service-head"><span class="service-title">Pontos ganhos no 1.º serviço</span><span class="service-edge" style="color:#4aa3df">Vantagem Khachanov · +1.0 p.p.</span></div>
+  <div class="service-player"><span class="service-player-name">Karen Khachanov</span><span class="service-track"><span class="service-fill" style="width:69.0%;background:var(--a)"></span></span><span class="service-value">69.0%</span></div>
+  <div class="service-player"><span class="service-player-name">Benjamin Bonzi</span><span class="service-track"><span class="service-fill" style="width:68.0%;background:var(--b)"></span></span><span class="service-value">68.0%</span></div>
+</div>
+<div class="service-metric">
+  <div class="service-head"><span class="service-title">Pontos ganhos no 2.º serviço</span><span class="service-edge" style="color:#4aa3df">Vantagem Khachanov · +2.0 p.p.</span></div>
+  <div class="service-player"><span class="service-player-name">Karen Khachanov</span><span class="service-track"><span class="service-fill" style="width:49.0%;background:var(--a)"></span></span><span class="service-value">49.0%</span></div>
+  <div class="service-player"><span class="service-player-name">Benjamin Bonzi</span><span class="service-track"><span class="service-fill" style="width:47.0%;background:var(--b)"></span></span><span class="service-value">47.0%</span></div>
+</div></div>
+</div><div class="card factor-bars-card"><div class="factor-bars-head"><h3>Raio-X Anal&#237;tico</h3><div class="impact-toggle"><span>Valores reais</span><label class="impact-switch"><input type="checkbox" aria-label="Alternar para impacto no matchup"><span class="impact-slider"></span></label><span>Impacto no matchup</span></div></div><div class="factor-lines"><div class="fd-linha" data-impact="4.215" data-impact-pct="70" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">ranking</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:62%"></span><span class="fd-bar-b" style="width:38%"></span><span class="fd-bar-val a">#50</span><span class="fd-bar-val b">#97</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:35.0%"></span><span class="fd-impact-value">peso 4.2</span></div></div><div class="fd-linha" data-impact="4.785" data-impact-pct="80" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">evolução de ranking</span><span class="fd-val" style="color:var(--b)">▲ Benjamin Bonzi</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:23%"></span><span class="fd-bar-b" style="width:77%"></span><span class="fd-bar-val a">-62%</span><span class="fd-bar-val b">-9%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:40.0%"></span><span class="fd-impact-value">peso 4.8</span></div></div><div class="fd-linha" data-impact="4.500" data-impact-pct="75" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">confronto direto</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:100%"></span><span class="fd-bar-b" style="width:0%"></span><span class="fd-bar-val a">3</span><span class="fd-bar-val b">0</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:37.5%"></span><span class="fd-impact-value">peso 4.5</span></div></div><div class="fd-linha" data-impact="4.619" data-impact-pct="77" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">confronto direto (piso)</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:100%"></span><span class="fd-bar-b" style="width:0%"></span><span class="fd-bar-val a">2</span><span class="fd-bar-val b">0</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:38.5%"></span><span class="fd-impact-value">peso 4.6</span></div></div><div class="fd-linha" data-impact="6.000" data-impact-pct="100" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">indoor/outdoor</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:57%"></span><span class="fd-bar-b" style="width:43%"></span><span class="fd-bar-val a">58%</span><span class="fd-bar-val b">44%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:50.0%"></span><span class="fd-impact-value">peso 6.0</span></div></div><div class="fd-linha" data-impact="5.833" data-impact-pct="97" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">forma recente</span><span class="fd-val" style="color:var(--b)">▲ Benjamin Bonzi</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:36%"></span><span class="fd-bar-b" style="width:64%"></span><span class="fd-bar-val a">40%</span><span class="fd-bar-val b">70%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:48.5%"></span><span class="fd-impact-value">peso 5.8</span></div></div><div class="fd-linha" data-impact="1.497" data-impact-pct="25" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">qualidade de vitórias (90d)</span><span class="fd-val" style="color:var(--b)">▲ Benjamin Bonzi</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:0%"></span><span class="fd-bar-b" style="width:100%"></span><span class="fd-bar-val a">0</span><span class="fd-bar-val b">1</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:12.5%"></span><span class="fd-impact-value">peso 1.5</span></div></div><div class="fd-linha" data-impact="3.001" data-impact-pct="50" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">padrão sazonal</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:54%"></span><span class="fd-bar-b" style="width:46%"></span><span class="fd-bar-val a">51%</span><span class="fd-bar-val b">43%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:25.0%"></span><span class="fd-impact-value">peso 3.0</span></div></div><div class="fd-linha" data-impact="3.200" data-impact-pct="53" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">superfície</span><span class="fd-val" style="color:var(--b)">▲ Benjamin Bonzi</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:48%"></span><span class="fd-bar-b" style="width:52%"></span><span class="fd-bar-val a">59%</span><span class="fd-bar-val b">64%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:26.5%"></span><span class="fd-impact-value">peso 3.2</span></div></div><div class="fd-linha" data-impact="3.600" data-impact-pct="60" data-impact-side="b"><div class="fd-linha-top"><span class="fd-nome">resiliência em sets</span><span class="fd-val" style="color:var(--b)">▲ Benjamin Bonzi</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:48%"></span><span class="fd-bar-b" style="width:52%"></span><span class="fd-bar-val a">52%</span><span class="fd-bar-val b">56%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill b" style="width:30.0%"></span><span class="fd-impact-value">peso 3.6</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">tie-break</span><span class="fd-val" style="color:var(--dim)">· Karen Khachanov <span class="fd-nota">(abaixo do limiar (&lt;3 p.p.))</span></span></div><div class="fd-bar"><span class="fd-bar-a" style="width:51%"></span><span class="fd-bar-b" style="width:49%"></span><span class="fd-bar-val a">51%</span><span class="fd-bar-val b">48%</span></div></div><div class="fd-linha" data-impact="3.501" data-impact-pct="58" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">nível do adversário</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:63%"></span><span class="fd-bar-b" style="width:37%"></span><span class="fd-bar-val a">52%</span><span class="fd-bar-val b">31%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:29.0%"></span><span class="fd-impact-value">peso 3.5</span></div></div><div class="fd-linha" data-impact="5.857" data-impact-pct="98" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">recuperação pós-1º set</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:63%"></span><span class="fd-bar-b" style="width:37%"></span><span class="fd-bar-val a">41%</span><span class="fd-bar-val b">24%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:49.0%"></span><span class="fd-impact-value">peso 5.9</span></div></div><div class="fd-linha" data-impact="2.400" data-impact-pct="40" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">matchup de mão</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:59%"></span><span class="fd-bar-b" style="width:41%"></span><span class="fd-bar-val a">58%</span><span class="fd-bar-val b">41%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:20.0%"></span><span class="fd-impact-value">peso 2.4</span></div></div><div class="fd-linha" data-impact="4.167" data-impact-pct="69" data-impact-side="a"><div class="fd-linha-top"><span class="fd-nome">serviço (2 jogos)</span><span class="fd-val" style="color:var(--a)">▲ Karen Khachanov</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:53%"></span><span class="fd-bar-b" style="width:47%"></span><span class="fd-bar-val a">78%</span><span class="fd-bar-val b">70%</span></div><div class="fd-impact-bar"><span class="fd-impact-fill a" style="width:34.5%"></span><span class="fd-impact-value">peso 4.2</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">serviço (carreira)</span><span class="fd-val" style="color:var(--dim)">· Karen Khachanov <span class="fd-nota">(abaixo do limiar (&lt;3 p.p.))</span></span></div><div class="fd-bar"><span class="fd-bar-a" style="width:50%"></span><span class="fd-bar-b" style="width:50%"></span><span class="fd-bar-val a">69%</span><span class="fd-bar-val b">68%</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">fadiga</span><span class="fd-val fd-dim">empate</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">regresso após paragem</span><span class="fd-val fd-dim">empate</span></div><div class="fd-bar"><span class="fd-bar-a" style="width:33%"></span><span class="fd-bar-b" style="width:67%"></span><span class="fd-bar-val a">2</span><span class="fd-bar-val b">1</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">velocidade do piso</span><span class="fd-val fd-dim">sem dados</span></div></div><div class="fd-linha" data-impact="0.000" data-impact-pct="0" data-impact-side=""><div class="fd-linha-top"><span class="fd-nome">pressão de ronda decisiva</span><span class="fd-val fd-dim">sem dados</span></div></div><svg class="impact-trace" aria-hidden="true"><path></path><g></g></svg></div></div><div class="force-map-tail"><div class="load-tail">
+<div class="card"><h3>Carga e recuperação</h3>
+  <div class="load-intro">Leitura combinada do descanso, densidade competitiva e volume acumulado — não apenas do número de jogos.</div>
+  <div class="load-grid"><div class="load-player a"><div class="load-head"><span class="load-name">Karen Khachanov</span><span class="load-status" style="color:var(--amber)">Carga moderada</span></div><div class="load-stats"><div class="load-stat"><b>2</b><span>dias de descanso</span></div><div class="load-stat"><b>1</b><span>jogos em 3 dias</span></div><div class="load-stat"><b>7</b><span>sets em 7 dias</span></div><div class="load-stat"><b>2</b><span>jogos no torneio</span></div><div class="load-stat"><b>4</b><span>sets no último jogo</span></div><div class="load-stat"><b>2</b><span>jogos em 14 dias</span></div></div></div><div class="load-player b"><div class="load-head"><span class="load-name">Benjamin Bonzi</span><span class="load-status" style="color:var(--error)">Carga elevada</span></div><div class="load-stats"><div class="load-stat"><b>1</b><span>dias de descanso</span></div><div class="load-stat"><b>1</b><span>jogos em 3 dias</span></div><div class="load-stat"><b>7</b><span>sets em 7 dias</span></div><div class="load-stat"><b>2</b><span>jogos no torneio</span></div><div class="load-stat"><b>3</b><span>sets no último jogo</span></div><div class="load-stat"><b>7</b><span>jogos em 14 dias</span></div></div></div></div>
+  <div class="load-reading"><b>Leitura combinada:</b> Karen Khachanov tem +1 sets no último jogo; Benjamin Bonzi tem 1 dia(s) menos de recuperação.</div>
+</div><details class="more weight-transparency-card"><summary>Transparência dos Pesos (23)<span class="more-hint">peso-base e contributo aplicado</span></summary><div class="more-body"><div class="weight-intro">Cada fator começa com um peso-base. O peso aplicado mostra quanto entrou realmente na avaliação deste confronto e para que jogador apontou.</div><div class="weight-summary"><span class="weight-chip"><b>14</b> fatores ativos</span><span class="weight-chip"><b>57.2</b> peso total aplicado</span><span class="weight-chip"><b>23</b> fatores auditados</span></div><div class="weight-list"><div class="weight-row" data-weight-factor="ranking"><div class="weight-row-head"><span class="weight-name">ranking</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:41.7%"></span></span><span class="weight-number">5</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:35.1%"></span></span><span class="weight-number used">4.2</span></div></div><div class="weight-row" data-weight-factor="ranking_evolucao"><div class="weight-row-head"><span class="weight-name">evolução de ranking</span><span class="weight-state b">→ Benjamin Bonzi</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:50.0%"></span></span><span class="weight-number">6</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill b" style="width:39.9%"></span></span><span class="weight-number used">4.8</span></div></div><div class="weight-row" data-weight-factor="h2h"><div class="weight-row-head"><span class="weight-name">confronto direto</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:50.0%"></span></span><span class="weight-number">6</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:37.5%"></span></span><span class="weight-number used">4.5</span></div></div><div class="weight-row" data-weight-factor="h2h_piso"><div class="weight-row-head"><span class="weight-name">confronto direto (piso)</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:100.0%"></span></span><span class="weight-number">12</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:38.5%"></span></span><span class="weight-number used">4.6</span></div></div><div class="weight-row inactive" data-weight-factor="velocidade_piso"><div class="weight-row-head"><span class="weight-name">velocidade do piso</span><span class="weight-state">sem dados</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:83.3%"></span></span><span class="weight-number">10</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row" data-weight-factor="indoor_outdoor"><div class="weight-row-head"><span class="weight-name">indoor/outdoor</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:50.0%"></span></span><span class="weight-number">6</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:50.0%"></span></span><span class="weight-number used">6.0</span></div></div><div class="weight-row" data-weight-factor="forma_recente"><div class="weight-row-head"><span class="weight-name">forma recente</span><span class="weight-state b">→ Benjamin Bonzi</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:58.3%"></span></span><span class="weight-number">7</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill b" style="width:48.6%"></span></span><span class="weight-number used">5.8</span></div></div><div class="weight-row" data-weight-factor="qualidade_vitorias"><div class="weight-row-head"><span class="weight-name">qualidade de vitórias (90d)</span><span class="weight-state b">→ Benjamin Bonzi</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:66.7%"></span></span><span class="weight-number">8</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill b" style="width:12.5%"></span></span><span class="weight-number used">1.5</span></div></div><div class="weight-row" data-weight-factor="sazonal"><div class="weight-row-head"><span class="weight-name">padrão sazonal</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:50.0%"></span></span><span class="weight-number">6</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:25.0%"></span></span><span class="weight-number used">3.0</span></div></div><div class="weight-row" data-weight-factor="piso"><div class="weight-row-head"><span class="weight-name">superfície</span><span class="weight-state b">→ Benjamin Bonzi</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:66.7%"></span></span><span class="weight-number">8</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill b" style="width:26.7%"></span></span><span class="weight-number used">3.2</span></div></div><div class="weight-row" data-weight-factor="recuperacao_sets"><div class="weight-row-head"><span class="weight-name">resiliência em sets</span><span class="weight-state b">→ Benjamin Bonzi</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:75.0%"></span></span><span class="weight-number">9</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill b" style="width:30.0%"></span></span><span class="weight-number used">3.6</span></div></div><div class="weight-row inactive" data-weight-factor="tiebreak"><div class="weight-row-head"><span class="weight-name">tie-break</span><span class="weight-state">abaixo do limiar (&lt;3 p.p.)</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:41.7%"></span></span><span class="weight-number">5</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row inactive" data-weight-factor="pressao_ronda"><div class="weight-row-head"><span class="weight-name">pressão de ronda decisiva</span><span class="weight-state">sem dados</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:50.0%"></span></span><span class="weight-number">6</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row" data-weight-factor="nivel_adversario"><div class="weight-row-head"><span class="weight-name">nível do adversário</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:58.3%"></span></span><span class="weight-number">7</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:29.2%"></span></span><span class="weight-number used">3.5</span></div></div><div class="weight-row" data-weight-factor="comeback_set1"><div class="weight-row-head"><span class="weight-name">recuperação pós-1º set</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:58.3%"></span></span><span class="weight-number">7</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:48.8%"></span></span><span class="weight-number used">5.9</span></div></div><div class="weight-row" data-weight-factor="matchup_maos"><div class="weight-row-head"><span class="weight-name">matchup de mão</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:66.7%"></span></span><span class="weight-number">8</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:20.0%"></span></span><span class="weight-number used">2.4</span></div></div><div class="weight-row" data-weight-factor="servico_recente"><div class="weight-row-head"><span class="weight-name">serviço (2 jogos)</span><span class="weight-state a">→ Karen Khachanov</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:41.7%"></span></span><span class="weight-number">5</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill a" style="width:34.7%"></span></span><span class="weight-number used">4.2</span></div></div><div class="weight-row inactive" data-weight-factor="servico_carreira"><div class="weight-row-head"><span class="weight-name">serviço (carreira)</span><span class="weight-state">abaixo do limiar (&lt;3 p.p.)</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:25.0%"></span></span><span class="weight-number">3</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row inactive" data-weight-factor="fadiga"><div class="weight-row-head"><span class="weight-name">fadiga</span><span class="weight-state">equilíbrio</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:33.3%"></span></span><span class="weight-number">4</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row inactive" data-weight-factor="lesao"><div class="weight-row-head"><span class="weight-name">regresso após paragem</span><span class="weight-state">equilíbrio</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:41.7%"></span></span><span class="weight-number">5</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row inactive" data-weight-factor="historico_torneio"><div class="weight-row-head"><span class="weight-name">histórico no torneio</span><span class="weight-state">abaixo do limiar (&lt;8 p.p.)</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:50.0%"></span></span><span class="weight-number">6</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row inactive" data-weight-factor="mudanca_piso"><div class="weight-row-head"><span class="weight-name">mudança de piso</span><span class="weight-state">sem dados</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:41.7%"></span></span><span class="weight-number">5</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div><div class="weight-row inactive" data-weight-factor="meteo"><div class="weight-row-head"><span class="weight-name">meteorologia</span><span class="weight-state">sem dados</span></div><div class="weight-scale"><span class="weight-scale-label">base</span><span class="weight-track"><span class="weight-fill base" style="width:8.3%"></span></span><span class="weight-number">1</span></div><div class="weight-scale"><span class="weight-scale-label">aplicado</span><span class="weight-track"><span class="weight-fill zero" style="width:0.0%"></span></span><span class="weight-number used">0.0</span></div></div></div><div class="weight-formula"><b>Como é calculado:</b> peso aplicado = peso-base × intensidade da diferença × confiança da amostra; no fim, fatores relacionados partilham limites para evitar contar duas vezes a mesma vantagem. Limites por família: força base ≤ 10 · matchup ≤ 18 · superfície ≤ 16 · resiliência ≤ 19 · ranking ≤ 9 · contexto ≤ 8 · historial ≤ 6.</div></div></details></div></div></div></details><section class="action-map-static"><div class="action-map-head">Mapa de Ações (4)<span class="more-hint">mercados, gatilhos e cenários a acompanhar</span></div><div class="action-map-body"><div class="action-list"><div class="action-item"><div class="action-kind">Pré-jogo</div><div class="action-title">Sem sinal claro</div><div class="action-text">Mercado e indicadores estão demasiado próximos. Melhor esperar por informação ao vivo.</div></div><div class="action-item action-item-handicap"><div class="action-kind">Handicap para avaliar em PAPER (BO5)</div><div class="action-title">Karen Khachanov</div><div class="action-headline">Observar Karen Khachanov -3.5</div><div class="handicap-visual"><div class="handicap-zone"><span class="hz-odd">Moneyline 1.444</span><span class="hz-arrow">→</span><strong>Zona -3.5 / -4</strong><span>(BO5)</span></div><div class="handicap-choices"><div class="handicap-choice protected"><div class="handicap-choice-tag">LINHA MAIS PROTEGIDA · OBSERVAR PRIMEIRO</div><div class="handicap-choice-line">Karen Khachanov -3.5</div><div class="handicap-choice-rate">50.0% <span>cobre</span></div><div class="handicap-choice-detail">56/112 jogos<br>Quando vence: 75.7% (56/74)<br>Nas derrotas: cobre 0/38</div></div><div class="handicap-choice alternative"><div class="handicap-choice-tag">ALTERNATIVA MAIS EXIGENTE · SÓ COM ODD MELHOR</div><div class="handicap-choice-line">Karen Khachanov -4</div><div class="handicap-choice-rate">43.8% <span>cobre</span></div><div class="handicap-choice-detail">49/112 jogos · devolve 6.2%<br>Quando vence: 66.2% (49/74)<br>Nas derrotas: cobre 0/38</div></div></div><div class="handicap-validation missing"><div class="handicap-validation-title">SEM VALIDAÇÃO POR PREÇO</div><div class="handicap-validation-detail">Sem scores BO5 com odds históricas na faixa atual. Não concluir valor PAPER apenas pelo histórico geral.</div></div></div><div class="action-text">A referência não cria entrada PAPER automática de handicap.</div><div class="action-source">scores completos · cobertura inclui vitórias e derrotas · referência interna, não linha real</div></div><div class="action-item"><div class="action-kind">Cenário ao vivo</div><div class="action-title">Benjamin Bonzi · se chegar ao set decisivo</div><div class="action-headline">Moneyline ~1.80</div><div class="action-small-sample">⚠ amostra pequena (n=9) — leitura menos fiável</div><div class="action-text">Vence 56% das vezes (em 9 jogos assim).</div><div class="action-source">Set decisivo</div></div><div class="action-item"><div class="action-kind">Live · super favorito</div><div class="action-title">Karen Khachanov após perder o 1.º set</div><div class="action-headline">Observar ML &gt; 2.42</div><div class="action-text">DADOS HISTÓRICOS
+• Recupera e vence: 41.3% (46 jogos).
+• Moneyline de referência após perder o set: ~2.42.
+
+AÇÃO
+• Observar Moneyline apenas se a odd ao vivo for superior à referência.
+• Se ficar break abaixo no 1.º set: observar a reação, mas sem percentagem histórica — o sistema não tem ainda histórico ponto-a-ponto. Se perder o set, aplicar os dados acima.</div><div class="action-source">Histórico de recuperação por set · referência factual, não odd capturada</div></div></div></div></section><details class="photo-credits"><summary>Créditos das fotografias</summary><div>Karen Khachanov: <a href="https://commons.wikimedia.org/wiki/File:Khachanov_WMQ15_%2811%29_%2819944440142%29.jpg">si.robi</a>, <a href="https://creativecommons.org/licenses/by-sa/2.0">CC BY-SA 2.0</a>; miniatura/enquadramento adaptado<br>Benjamin Bonzi: <a href="https://commons.wikimedia.org/wiki/File:Bonzi_RG18_%287%29_%2842260485824%29.jpg">si.robi</a>, <a href="https://creativecommons.org/licenses/by-sa/2.0">CC BY-SA 2.0</a>; miniatura/enquadramento adaptado</div></details></div>
+<div class="wrap"><div class="foot">Gerado em 05/09/2026 · Análise informativa, não recomendação de aposta.</div></div>
+</main>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  function drawTrace(card) {
+    const box = card.querySelector(".factor-lines");
+    const svg = card.querySelector(".impact-trace");
+    if (!box || !svg || !card.classList.contains("impact-mode")) return;
+    const rect = box.getBoundingClientRect();
+    const rows = [...box.querySelectorAll(".fd-linha[data-impact-side]")]
+      .filter(row => row.dataset.impactSide && Number(row.dataset.impactPct) > 0);
+    const points = rows.map(row => {
+      const rr = row.getBoundingClientRect();
+      const direction = row.dataset.impactSide === "a" ? -1 : 1;
+      return {
+        x: rect.width * (.5 + direction * .42 * Number(row.dataset.impactPct) / 100),
+        y: rr.top - rect.top + rr.height / 2
+      };
+    });
+    svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+    const path = svg.querySelector("path");
+    const dots = svg.querySelector("g");
+    if (!points.length) { path.setAttribute("d", ""); dots.replaceChildren(); return; }
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1], cur = points[i], midY = (prev.y + cur.y) / 2;
+      d += ` C ${prev.x} ${midY}, ${cur.x} ${midY}, ${cur.x} ${cur.y}`;
+    }
+    path.setAttribute("d", d);
+    dots.replaceChildren(...points.map(point => {
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("cx", point.x); dot.setAttribute("cy", point.y); dot.setAttribute("r", 3.5);
+      return dot;
+    }));
+  }
+  document.querySelectorAll(".factor-bars-card").forEach(card => {
+    const toggle = card.querySelector(".impact-switch input");
+    if (!toggle) return;
+    toggle.addEventListener("change", () => {
+      card.classList.toggle("impact-mode", toggle.checked);
+      requestAnimationFrame(() => drawTrace(card));
+    });
+  });
+  window.addEventListener("resize", () => {
+    document.querySelectorAll(".factor-bars-card.impact-mode").forEach(drawTrace);
+  });
+})();
+</script>
+</body></html>
