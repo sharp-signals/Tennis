@@ -2690,6 +2690,8 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .handicap-choice-rate {{ color:var(--mint); font-size:20px; font-weight:850; line-height:1.1; }}
 .handicap-choice-rate span {{ color:var(--text); font-size:11px; font-weight:600; }}
 .handicap-choice-detail {{ color:var(--dim); font-size:11px; line-height:1.5; margin-top:5px; }}
+.handicap-protection-alert {{ margin-top:8px; padding:7px 8px; border-radius:6px; background:rgba(224,108,91,.13); color:#ffb4a8; font-size:10px; line-height:1.45; }}
+.handicap-protection-alert strong {{ display:block; color:var(--error); font-size:9px; letter-spacing:.45px; margin-bottom:2px; }}
 .handicap-validation {{ border-radius:8px; margin-top:11px; padding:10px 12px; font-size:12px; line-height:1.5; }}
 .handicap-validation.ready {{ background:rgba(63,185,168,.10); border-left:3px solid var(--mint); }}
 .handicap-validation.missing {{ background:rgba(224,108,91,.10); border-left:3px solid var(--error); }}
@@ -4242,20 +4244,42 @@ def _mod_action_map(payload, div, result):
 
     def moneyline_history_note(side):
         context = comparable_moneyline_history(side)
-        if not context:
-            return ""
-        stats = context["stats"]
-        n = int(stats.get("n") or 0)
-        wins = int(stats.get("wins") or 0)
-        win_rate = stats.get("win_rate_pct")
-        if not isinstance(win_rate, (int, float)) and n:
-            win_rate = round(100 * wins / n, 1)
-        if not n or not isinstance(win_rate, (int, float)):
-            return ""
-        return (
-            f"\nHistórico com Moneyline {context['band']} ({match_format.upper()}): "
-            f"venceu {wins}/{n} ({float(win_rate):.1f}%)."
-        )
+        notes = []
+
+        # Para uma seleção underdog, a taxa global como underdog explica se
+        # o preço alto costuma ser apenas derrota ou se o jogador realmente
+        # vence uma parte relevante destes jogos. É sempre do mesmo formato.
+        try:
+            current_odd = float(observed_odd(side))
+        except (TypeError, ValueError):
+            current_odd = None
+        if current_odd and current_odd > 2.0:
+            history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+            underdog = _d(history.get("underdog"))
+            format_stats = _d(_d(underdog.get("by_format")).get(match_format))
+            if not underdog.get("by_format"):
+                format_stats = underdog
+            n = int(format_stats.get("n") or 0)
+            wins = int(format_stats.get("wins") or 0)
+            if n:
+                notes.append(
+                    f"Histórico como underdog (>2.00, {match_format.upper()}): "
+                    f"venceu {wins}/{n} ({100 * wins / n:.1f}%)."
+                )
+
+        if context:
+            stats = context["stats"]
+            n = int(stats.get("n") or 0)
+            wins = int(stats.get("wins") or 0)
+            win_rate = stats.get("win_rate_pct")
+            if not isinstance(win_rate, (int, float)) and n:
+                win_rate = round(100 * wins / n, 1)
+            if n and isinstance(win_rate, (int, float)):
+                notes.append(
+                    f"Faixa comparável {context['band']} ({match_format.upper()}): "
+                    f"venceu {wins}/{n} ({float(win_rate):.1f}%)."
+                )
+        return ("\n" + " ".join(notes)) if notes else ""
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
     # económica vem exclusivamente do pricing residual v0.1; a antiga faixa
@@ -4604,6 +4628,19 @@ def _mod_action_map(payload, div, result):
                     "validation": {"state": "missing", "title": "SEM VALIDAÇÃO POR PREÇO",
                                    "detail": f"Sem scores {_fmt.upper()} com odds históricas na faixa atual. Não concluir valor PAPER apenas pelo histórico geral."},
                 }
+                # Um handicap positivo só é realmente uma proteção se ainda
+                # cobrir uma parte material das derrotas. Caso contrário a
+                # taxa total vem quase toda das vitórias e não deve ser lida
+                # como alternativa defensiva à Moneyline.
+                if _reference_type == "underdog" and _protected_outcome:
+                    _loss_total = int(_protected_outcome.get("loss_total") or 0)
+                    _loss_cover = int(_protected_outcome.get("loss_cover") or 0)
+                    if _loss_total and 100 * _loss_cover / _loss_total < 20:
+                        _visual["protection_alert"] = (
+                            "SEM PROTEÇÃO REAL EM DERROTA",
+                            f"Só cobre {_loss_cover}/{_loss_total} derrotas "
+                            f"({100 * _loss_cover / _loss_total:.1f}%). A cobertura vem quase toda das vitórias.",
+                        )
                 if _matching_stats:
                     _band_margins = list(_matching_stats.get("margins") or [])
                     _band_wins = list(_matching_stats.get("win_margins") or [])
@@ -4703,13 +4740,19 @@ def _mod_action_map(payload, div, result):
                 f"Nas derrotas: cobre {outcome['loss_cover']}/{outcome['loss_total']}"
                 if outcome.get("loss_total") else "Nas derrotas: N/D"
             )
+            alert = ""
+            if css_class == "protected" and visual.get("protection_alert"):
+                alert = (
+                    f'<div class="handicap-protection-alert"><strong>{_esc(visual["protection_alert"][0])}</strong>'
+                    f'{_esc(visual["protection_alert"][1])}</div>'
+                )
             return (
                 f'<div class="handicap-choice {css_class}">'
                 f'<div class="handicap-choice-tag">{_esc(tag)}</div>'
                 f'<div class="handicap-choice-line">{_esc(visual.get("player"))} {_esc(outcome["line"])}</div>'
                 f'<div class="handicap-choice-rate">{_esc(outcome["cover_pct"])} <span>cobre</span></div>'
                 f'<div class="handicap-choice-detail">{_esc(settlement)}<br>{_esc(when_wins)}<br>{_esc(when_loses)}</div>'
-                '</div>'
+                f'{alert}</div>'
             )
 
         odd = visual.get("odd")
@@ -4722,7 +4765,7 @@ def _mod_action_map(payload, div, result):
             f'<div class="handicap-zone"><span class="hz-odd">{_esc(odd_text)}</span><span class="hz-arrow">→</span>'
             f'<strong>Zona { _esc(zone) }</strong><span>({ _esc(visual.get("format", "")) })</span></div>'
             '<div class="handicap-choices">'
-            + _choice(visual.get("protected"), "protected", "LINHA MAIS PROTEGIDA · OBSERVAR PRIMEIRO")
+            + _choice(visual.get("protected"), "protected", "LINHA MAIS PROTEGIDA DA ZONA")
             + _choice(visual.get("alternative"), "alternative", "ALTERNATIVA MAIS EXIGENTE · SÓ COM ODD MELHOR")
             + '</div>'
             f'<div class="handicap-validation {validation_class}">'

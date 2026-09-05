@@ -2507,7 +2507,15 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
     cols = next((pair for pair in pairs if set(pair).issubset(history.columns)), None)
     if not cols:
         return None
-    buckets = ((1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50), (1.51, 1.60))
+    # Bandas curtas em torno das odds mais usuais. As bandas de underdog
+    # permitem comparar, por exemplo, uma odd 2.20 com 2.10-2.30, em vez
+    # de misturar todos os underdogs numa só percentagem.
+    buckets = (
+        (1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50), (1.51, 1.60),
+        (1.61, 1.80), (1.81, 2.00), (2.01, 2.09), (2.10, 2.30),
+        (2.31, 2.60), (2.61, 3.00), (3.01, 3.50), (3.51, 4.50),
+        (4.51, 6.00), (6.01, 10.00),
+    )
     output = {
         f"{lo:.2f}-{hi:.2f}": {
             "n": 0, "wins": 0, "margins": [], "win_margins": [],
@@ -2515,6 +2523,28 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
         }
         for lo, hi in buckets
     }
+    underdog = {"n": 0, "wins": 0, "margins": [], "win_margins": [],
+                "loss_margins": [], "by_format": {}}
+
+    def append_observation(cell, won, margin, row):
+        cell["n"] += 1; cell["wins"] += int(won); cell["margins"].append(margin)
+        cell["win_margins" if won else "loss_margins"].append(margin)
+        try:
+            best_of = int(float(row.get("best_of")))
+        except (TypeError, ValueError):
+            best_of = None
+        if best_of in (3, 5):
+            format_cell = cell["by_format"].setdefault(
+                f"bo{best_of}", {
+                    "n": 0, "wins": 0, "margins": [], "win_margins": [],
+                    "loss_margins": [],
+                },
+            )
+            format_cell["n"] += 1
+            format_cell["wins"] += int(won)
+            format_cell["margins"].append(margin)
+            format_cell["win_margins" if won else "loss_margins"].append(margin)
+
     for _, row in history.iterrows():
         won = row.get("winner_name") == resolved
         lost = row.get("loser_name") == resolved
@@ -2527,26 +2557,12 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
         margin = _game_differential_from_row(row, won)
         if margin is None:
             continue
+        if odd > 2.0:
+            append_observation(underdog, won, margin, row)
         for lo, hi in buckets:
             if lo <= odd <= hi:
                 cell = output[f"{lo:.2f}-{hi:.2f}"]
-                cell["n"] += 1; cell["wins"] += int(won); cell["margins"].append(margin)
-                cell["win_margins" if won else "loss_margins"].append(margin)
-                try:
-                    best_of = int(float(row.get("best_of")))
-                except (TypeError, ValueError):
-                    best_of = None
-                if best_of in (3, 5):
-                    format_cell = cell["by_format"].setdefault(
-                        f"bo{best_of}", {
-                            "n": 0, "wins": 0, "margins": [], "win_margins": [],
-                            "loss_margins": [],
-                        },
-                    )
-                    format_cell["n"] += 1
-                    format_cell["wins"] += int(won)
-                    format_cell["margins"].append(margin)
-                    format_cell["win_margins" if won else "loss_margins"].append(margin)
+                append_observation(cell, won, margin, row)
                 break
 
     def describe(cell):
@@ -2575,7 +2591,14 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
             if format_cell.get("n")
         }
         result[label] = described
-    return {"odds_columns": cols, "buckets": result} if result else None
+    underdog_result = describe(underdog) if underdog["n"] else None
+    if underdog_result:
+        underdog_result["by_format"] = {
+            fmt: describe(format_cell)
+            for fmt, format_cell in underdog.get("by_format", {}).items()
+            if format_cell.get("n")
+        }
+    return {"odds_columns": cols, "buckets": result, "underdog": underdog_result} if result or underdog_result else None
 
 
 def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
