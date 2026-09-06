@@ -120,6 +120,8 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", html)
         self.assertIn("<main>", html)
         self.assertIn("Todos os relatórios", html)
+        self.assertIn("Dashboard", html)
+        self.assertIn("https://sharp-signals.github.io/Tennis/dashboard/", html)
         self.assertIn("PREÇO DE MERCADO INDISPONÍVEL", html)
         self.assertNotIn('<script>alert("a")</script>', html)
         self.assertNotIn('<img src=x onerror="alert(1)">', html)
