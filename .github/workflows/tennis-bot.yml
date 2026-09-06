@@ -38,7 +38,8 @@ jobs:
           LLM_POLICY: never
           ALLOW_PAID_LLM: "0"
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          # CHANGE-2026-09-03-024: comparador pago opcional, OFF por defeito.
+          THE_ODDS_API_ENABLED: "0"
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REPORT_EMAIL_TO: fenzobot@gmail.com
@@ -61,7 +62,7 @@ jobs:
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
           git add data/rapidapi_usage_log.json data/rapidapi_usage_inflight.json \
-            data/run_metrics_log.json 2>/dev/null || true
+            data/run_metrics_log.json data/market_ledger/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: preservar telemetria de execução falhada [skip ci]"
             git pull --rebase --autostash origin main
@@ -77,7 +78,7 @@ jobs:
           git add data/analysis_cache/ data/cache/ data/fixtures_cache.json \
             data/tournament_cache.json data/rapidapi_usage_log.json \
             data/run_metrics_log.json data/calibration_snapshots.json \
-            data/paper_trades.json \
+            data/paper_trades.json data/market_ledger/ \
             data/player_images.json data/player_images_review.json \
             knowledge/players/ docs/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then

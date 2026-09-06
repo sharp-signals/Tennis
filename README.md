@@ -1,8 +1,15 @@
-# 🎾 Sharp Signals — Tennis Pre-Live Bot
+# 🎾 Fenzobot — Tennis Pre-Live Bot
 
 Sistema pré-live para jogos ATP/WTA. Recolhe dados factuais, calcula um índice
 determinístico de evidência, confronta-o com o mercado e produz relatórios HTML
 e um resumo Telegram.
+
+> **Identidade canónica:** Fenzobot é um projeto/produto da **Fenzo Intelligence**,
+> constituída por Hugo e Guerra. `Sharp Signals` e `Project Roland` são designações
+> históricas **SUPERSEDED** como nomes ativos desde `CHANGE-2026-09-04-025`.
+> Identificadores técnicos e artefactos históricos que ainda contenham esses nomes
+> são preservados para compatibilidade e audit trail; não representam a identidade
+> atual do projeto.
 
 > **Estado do produto:** o *pricing* de mercado, fair odds e expected edge são
 > experimentais e estão em validação fora da amostra. O bot não executa apostas
@@ -51,6 +58,8 @@ publicar. Entre 80% e 95% é publicada como degradada; a partir de 95% é normal
 | `src/pricing.py` | De-vig, residual em logit, fair odds, expected edge e gates de qualidade. |
 | `src/calibration_store.py` | Snapshots pré-jogo imutáveis, liquidação e métricas de calibração. |
 | `src/paper_trading.py` | Carteira PAPER append-only, liquidação e histórico em unidades. |
+| `src/market_ledger.py` | Ledger temporal append-only das odds já recolhidas, linkage e CLV. |
+| `src/market_memory_report.py` | Vista SHADOW reconstruível: mercado, closing e Market+Fenzobot. |
 | `src/cache_store.py` | Cache JSON versionada, com TTL e escrita atómica. |
 | `src/analyze.py` | Política seletiva, cache, fallback e validação do output LLM. |
 | `src/run_metrics.py` | Telemetria de execução, custo LLM estimado e alertas. |
@@ -77,7 +86,7 @@ em logit:
 
 A qualidade reduz o residual em caso de poucos fatores, massa efetiva baixa,
 cobertura insuficiente, resolução de identidade incerta ou falha crítica de
-dados. O resultado apresenta *Sharp estimate*, fair odd e expected edge para
+dados. O resultado apresenta *Fenzobot estimate*, fair odd e expected edge para
 os dois lados, sempre com a etiqueta **EXPERIMENTAL — EM VALIDAÇÃO**.
 
 O estado PAPER depende da validade factual e de edge positivo no lado escolhido
@@ -95,7 +104,8 @@ que por si só crie uma entrada PAPER.
   pré-live. A auditoria `CHANGE-2026-08-30-010` mostrou que o campo `addTime`
   pode ficar congelado mesmo quando as odds mudam; por isso é guardado como
   metadado, enquanto a frescura operacional é a hora da resposta observada
-  nesta execução. A The Odds API é uma comparação independente opcional, não
+  nesta execução. A The Odds API é uma comparação independente opcional, `OFF`
+  por defeito (`THE_ODDS_API_ENABLED=0`), não
   é misturada com o preço RapidAPI e a sua ausência não bloqueia pricing/PAPER.
   Sem um par RapidAPI válido, o relatório mantém a análise factual como
   `PRICING_UNAVAILABLE` e bloqueia edge/PAPER.
@@ -129,6 +139,22 @@ unidades e segmentos por mercado/perfil sem misturar estes dados com sinais
 PAPER automáticos, reconstruído/backtest ou REAL. A configuração está em
 `docs/PAPER_22BET_SYNC.md`.
 
+### Market Memory
+
+O `CHANGE-2026-09-03-024` acrescenta um Market-Time Ledger sem novas chamadas
+API. Todas as Moneylines válidas já presentes nas respostas do pipeline e do
+Odds Monitor são normalizadas em JSONL diário append-only, com odds originais,
+de-vig, captura UTC, bookmaker, frescura, ordem dos jogadores e hash de
+proveniência. Snapshot e PAPER congelam o ID da observação de entrada; o
+settlement pode ligar a última cotação comparável anterior ao início e calcular
+CLV. Falhas desta camada são não bloqueantes e deixam Market Memory como N/D.
+
+Após 45 dias, por omissão, ficheiros diários fechados são comprimidos e
+verificados em `data/market_ledger/archive/`, sem sobrescrever arquivos. A vista
+`data/market_ledger/derived/market-memory-v1.json` compara, em modo SHADOW, o
+baseline de mercado com a estimativa Fenzobot congelada. O contrato completo está
+em `MARKET_MEMORY_CONTRACT.md`.
+
 ## Relatórios e distribuição
 
 O HTML de produção é gerado por `build_report_html_v2`. Mostra estado do
@@ -137,6 +163,8 @@ falha de análise produz layout factual reduzido, não um sinal inventado.
 
 Os ficheiros entram em `docs/relatorios/`; `docs/index.html` reúne a execução
 do dia e GitHub Pages serve `https://sharp-signals.github.io/Tennis`.
+Esse endereço conserva o identificador técnico legacy do repositório e **não é
+o nome canónico do projeto**.
 
 O Telegram recebe um resumo por grupos de decisão, com links para cada
 relatório. Mensagens longas são divididas abaixo do limite do Telegram.
@@ -166,10 +194,14 @@ publicar relatórios parciais.
 
 ### Secrets necessários
 
-`RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
+`RAPIDAPI_KEY`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`, `TELEGRAPH_ACCESS_TOKEN` e `REPORT_EMAIL_APP_PASSWORD`.
 O último é uma App Password da conta Gmail `fenzobot@gmail.com`, não a sua
 palavra-passe normal.
+
+`ODDS_API_KEY` é opcional e só é lida quando
+`THE_ODDS_API_ENABLED=1`; a configuração de produção mantém esta integração
+desativada por defeito.
 
 ## Desenvolvimento
 
@@ -190,4 +222,4 @@ decisão, o relatório, a carteira PAPER e a calibração histórica.
 - Valores em falta devem permanecer visíveis como indisponíveis; não devem ser
   preenchidos com estimativas silenciosas.
 
-Projeto pessoal de análise informativa.
+**Fenzobot — projeto da Fenzo Intelligence (Hugo e Guerra).**

@@ -183,6 +183,10 @@ class PreliveOperationalContractTests(unittest.TestCase):
             "odds_captured_at_utc": "2026-08-28T09:59:00+00:00",
             "odds_capture_kind": "current_at_capture",
             "odds_bookmaker": "Book A",
+            "event_key": "atp:77",
+            "entry_market_observation_id": "observation-77",
+            "market_memory_status": "RECORDED",
+            "market_memory_eligible": True,
         })
         snapshot = calibration_store.build_snapshot(payload, {})
         self.assertEqual(snapshot["odds_provenance"]["captured_at_utc"], payload["odds_captured_at_utc"])
@@ -191,6 +195,9 @@ class PreliveOperationalContractTests(unittest.TestCase):
         entry = paper_trading.build_entries(payload)[0]
         self.assertEqual(entry["pregame"]["odds_provenance"]["capture_kind"], "current_at_capture")
         self.assertEqual(entry["pregame"]["odds_provenance"]["bookmaker"], "Book A")
+        self.assertEqual(entry["pregame"]["event_key"], "atp:77")
+        self.assertEqual(entry["pregame"]["entry_market_observation_id"], "observation-77")
+        self.assertTrue(entry["pregame"]["market_memory_eligible"])
 
     def test_later_data_does_not_mutate_original_paper_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:

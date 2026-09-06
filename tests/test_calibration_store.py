@@ -29,6 +29,21 @@ class CalibrationStoreTests(unittest.TestCase):
             saved = json.loads(path.read_text(encoding="utf-8"))["snapshots"]
             self.assertEqual(saved[0]["market_odds_decimal"]["A"], 1.8)
 
+    def test_market_observation_link_is_frozen_with_snapshot(self):
+        payload = self._payload()
+        payload.update({
+            "event_key": "atp:m1",
+            "entry_market_observation_id": "observation-1",
+            "reference_market_observation_ids": ["reference-1"],
+            "market_memory_status": "RECORDED",
+            "market_memory_eligible": True,
+        })
+        snapshot = calibration_store.build_snapshot(payload)
+        self.assertEqual(snapshot["event_key"], "atp:m1")
+        self.assertEqual(snapshot["entry_market_observation_id"], "observation-1")
+        self.assertEqual(snapshot["reference_market_observation_ids"], ["reference-1"])
+        self.assertTrue(snapshot["market_memory_eligible"])
+
     def test_settlement_updates_only_outcome(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "snapshots.json"

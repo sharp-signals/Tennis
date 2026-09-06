@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from . import market_ledger
+
 
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/paper_trades.json")
@@ -103,6 +105,7 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         entry_key = f"{snapshot_key}:{market_type.casefold()}:{side}:{line if line is not None else 'na'}"
         pregame = {
             "snapshot_key": snapshot_key,
+            "event_key": payload.get("event_key") or snapshot_key,
             "report_id": payload.get("report_id"),
             "match_id": payload.get("match_id"),
             "tour": payload.get("tour"),
@@ -131,6 +134,9 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "configuration_fingerprint"
             ),
             "decision_contract_version": decision.get("contract_version"),
+            "entry_market_observation_id": payload.get("entry_market_observation_id"),
+            "market_memory_status": payload.get("market_memory_status") or "UNAVAILABLE",
+            "market_memory_eligible": bool(payload.get("market_memory_eligible")),
             "market_odds_decimal": copy.deepcopy(payload.get("market_odds_decimal")),
             "odds_provenance": {
                 "source": payload.get("odds_source"),
@@ -198,7 +204,12 @@ def _game_margin(result: Any, selected_is_player1: bool) -> int | None:
     return margin if selected_is_player1 else -margin
 
 
-def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:
+def settle_from_matches(
+    matches: Iterable[Mapping[str, Any]],
+    path: Path = DEFAULT_PATH,
+    *,
+    ledger_root: Path = market_ledger.DEFAULT_ROOT,
+) -> int:
     completed = []
     for match in matches:
         if match.get("match_winner") is None:
@@ -259,13 +270,34 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
                 pnl = float(odd) - 1.0 if result == "WIN" else -1.0 if result == "LOSS" else 0.0
             except (TypeError, ValueError):
                 pnl = None
+            market_memory = None
+            market_memory_error = None
+            if market_type == "moneyline" and pregame.get("market_memory_eligible"):
+                try:
+                    market_memory = market_ledger.clv_for_pregame(pregame, root=ledger_root)
+                except Exception as exc:
+                    # O outcome/PAPER continua a ser liquidado mesmo que o
+                    # ledger esteja ausente ou corrompido.
+                    market_memory_error = f"{type(exc).__name__}:{exc}"
             entry["settlement"] = {
                 "result": result,
                 "pnl_units": round(pnl, 4) if pnl is not None else None,
                 "match_result": match.get("result"),
                 "winner_id": winner_id,
-                "closing_odd": None,
-                "clv_pct": None,
+                "entry_market_observation_id": pregame.get("entry_market_observation_id"),
+                "closing_market_observation_id": (market_memory or {}).get("closing_market_observation_id"),
+                "entry_market_probability": (market_memory or {}).get("entry_market_probability"),
+                "last_valid_prestart_market_probability": (market_memory or {}).get("last_valid_prestart_market_probability"),
+                "closing_odd": (market_memory or {}).get("closing_odd"),
+                "clv_probability_pp": (market_memory or {}).get("clv_probability_pp"),
+                "clv_price_pct": (market_memory or {}).get("clv_price_pct"),
+                "clv_pct": (market_memory or {}).get("clv_pct"),
+                "market_memory_status": (
+                    "AVAILABLE" if market_memory else
+                    "INELIGIBLE" if "market_memory_eligible" in pregame and not pregame.get("market_memory_eligible") else
+                    "UNAVAILABLE"
+                ),
+                "market_memory_error": market_memory_error,
                 "settled_at_utc": _utc_now(),
             }
             settled += 1
@@ -287,6 +319,8 @@ def _summary(entries: list[Mapping[str, Any]]) -> dict[str, Any]:
     odds = [float(value) for value in odds if isinstance(value, (int, float))]
     edges = [(entry.get("pregame") or {}).get("expected_edge_pct") for entry in entries]
     edges = [float(value) for value in edges if isinstance(value, (int, float))]
+    clv_values = [(entry.get("settlement") or {}).get("clv_probability_pp") for entry in settled]
+    clv_values = [float(value) for value in clv_values if isinstance(value, (int, float))]
     equity = peak = drawdown = 0.0
     cumulative = []
     for entry in sorted(settled, key=lambda item: (item.get("pregame") or {}).get("analyzed_at_utc") or ""):
@@ -310,7 +344,8 @@ def _summary(entries: list[Mapping[str, Any]]) -> dict[str, Any]:
         "yield_pct": round(100 * units / len(pnl_values), 2) if pnl_values else None,
         "average_odd": round(sum(odds) / len(odds), 3) if odds else None,
         "average_edge_pct": round(sum(edges) / len(edges), 2) if edges else None,
-        "clv_pct": None,
+        "clv_pct": round(sum(clv_values) / len(clv_values), 4) if clv_values else None,
+        "clv_sample_size": len(clv_values),
         "max_drawdown_units": round(drawdown, 4) if pnl_values else None,
         "cumulative": cumulative,
     }
@@ -331,6 +366,6 @@ def compute_history(
         "MANUAL_22BET": read_manual_22bet_history(manual_22bet_path),
         "BACKTEST_RECONSTRUCTED": None,
         "REAL": None,
-        "history_version": "paper-history-v1",
+        "history_version": "paper-history-v2-market-memory",
         "excluded_integrity_entries": len(exclusions),
     }

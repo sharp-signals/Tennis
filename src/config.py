@@ -23,8 +23,24 @@ RAPIDAPI_BASE = f"https://{RAPIDAPI_HOST}/tennis/v2"
 # continua a proteger contra consumo desproporcionado — há folga de sobra.
 RAPIDAPI_MAX_CALLS_PER_RUN = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_RUN", "2250"))
 RAPIDAPI_MAX_CALLS_PER_DAY = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_DAY", "4500"))
+RAPIDAPI_OPERATIONAL_RESERVE = int(os.environ.get("RAPIDAPI_OPERATIONAL_RESERVE", "1500"))
+RAPIDAPI_BACKFILL_GLOBAL_CEILING = int(
+    os.environ.get(
+        "RAPIDAPI_BACKFILL_GLOBAL_CEILING",
+        str(RAPIDAPI_MAX_CALLS_PER_DAY - RAPIDAPI_OPERATIONAL_RESERVE),
+    )
+)
 if RAPIDAPI_MAX_CALLS_PER_RUN <= 0 or RAPIDAPI_MAX_CALLS_PER_DAY <= 0:
     raise ValueError("Os limites RapidAPI têm de ser inteiros positivos.")
+if not (
+    0 <= RAPIDAPI_OPERATIONAL_RESERVE <= RAPIDAPI_MAX_CALLS_PER_DAY
+    and 0 <= RAPIDAPI_BACKFILL_GLOBAL_CEILING <= RAPIDAPI_MAX_CALLS_PER_DAY
+    and RAPIDAPI_BACKFILL_GLOBAL_CEILING
+    <= RAPIDAPI_MAX_CALLS_PER_DAY - RAPIDAPI_OPERATIONAL_RESERVE
+):
+    raise ValueError(
+        "O ceiling de backfill tem de preservar a reserva operacional dentro do limite diário."
+    )
 
 # Tiers a incluir no bot. Confirmado manualmente: "ATP 250" é o valor exato
 # devolvido pelo campo "tier" do endpoint getTournamentInfo.
@@ -110,6 +126,11 @@ TOURS_TO_FOLLOW = ("atp", "wta")
 # Já não decide "que jogos existem" — só tenta enriquecer com odds quando
 # o jogo (por nomes dos jogadores) também aparecer aqui. Se não aparecer,
 # o campo de odds fica None, tal como qualquer outro dado em falta.
+# CHANGE-2026-09-03-024: fica OFF por defeito. A presença acidental do secret
+# não autoriza chamadas nem cria uma dependência paga para o pipeline v1.
+THE_ODDS_API_ENABLED = os.environ.get("THE_ODDS_API_ENABLED", "0").strip().casefold() in {
+    "1", "true", "yes", "on",
+}
 # Chaves ATP e WTA, alinhadas com os tours seguidos pelo pipeline.
 ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_aus_open_singles", "tennis_atp_french_open",

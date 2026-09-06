@@ -49,6 +49,7 @@ import pandas as pd
 import requests
 
 from .cache_store import JsonCacheStore
+from .market_ledger import payload_sha256
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
     FIXTURES_CACHE_MAX_AGE_HOURS,
@@ -57,7 +58,9 @@ from .config import (
     HISTORY_YEARS_TO_LOAD,
     MAX_FIXTURE_PAGES,
     ODDS_API_TENNIS_SPORT_KEYS,
+    THE_ODDS_API_ENABLED,
     RAPIDAPI_BASE,
+    RAPIDAPI_BACKFILL_GLOBAL_CEILING,
     RAPIDAPI_HOST,
     RAPIDAPI_MAX_CALLS_PER_DAY,
     RAPIDAPI_MAX_CALLS_PER_RUN,
@@ -126,8 +129,10 @@ _RAPIDAPI_HEADERS = {
 # Contador de chamadas à RapidAPI por execução.
 _RAPIDAPI_CALL_COUNT = {"n": 0}
 _RAPIDAPI_ENDPOINT_CALLS: dict[str, int] = {}
+_RAPIDAPI_PURPOSE_CALLS: dict[str, int] = {}
 _RAPIDAPI_RECORDED_TODAY = {"n": 0}
 _RAPIDAPI_BUDGET_EXCEEDED = {"value": False}
+_RAPIDAPI_BACKFILL_BUDGET_EXCEEDED = {"value": False}
 RAPIDAPI_MIN_INTERVAL = 0.35
 _RAPIDAPI_LAST_CALL = {"t": 0.0}
 _RAPIDAPI_LOCK = threading.Lock()
@@ -138,6 +143,10 @@ RAPIDAPI_CHECKPOINT_EVERY = 10
 
 class RapidAPIBudgetExceeded(RuntimeError):
     """A execução atingiu o orçamento configurado antes do pedido seguinte."""
+
+
+class RapidAPIBackfillBudgetExceeded(RapidAPIBudgetExceeded):
+    """O backfill atingiu o teto subordinado, preservando a reserva operacional."""
 
 
 def _load_recorded_today_calls() -> int:
@@ -177,7 +186,8 @@ def _write_rapidapi_checkpoint() -> None:
 def persist_rapidapi_usage(*, status: str, matches: int = 0) -> dict:
     """Fecha o checkpoint numa entrada histórica, incluindo runs falhadas."""
     entry = {"timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-             "calls": get_rapidapi_call_count(), "matches": int(matches), "status": status}
+             "calls": get_rapidapi_call_count(), "matches": int(matches), "status": status,
+             "purpose_calls": get_rapidapi_purpose_counts()}
     try:
         with open(RAPIDAPI_USAGE_PATH, "r", encoding="utf-8") as handle:
             history = json.load(handle)
@@ -206,10 +216,18 @@ def clear_rapidapi_checkpoint() -> None:
         pass
 
 
-def _reserve_rapidapi_call() -> None:
+def _reserve_rapidapi_call(*, purpose: str = "operational") -> None:
     """Reserva atomicamente uma chamada real, incluindo tentativas após 429."""
+    if purpose not in {"operational", "backfill"}:
+        raise ValueError(f"Propósito RapidAPI inválido: {purpose!r}")
     projected_run = _RAPIDAPI_CALL_COUNT["n"] + 1
     projected_day = _RAPIDAPI_RECORDED_TODAY["n"] + projected_run
+    if purpose == "backfill" and projected_day > RAPIDAPI_BACKFILL_GLOBAL_CEILING:
+        _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = True
+        raise RapidAPIBackfillBudgetExceeded(
+            "Ceiling histórico RapidAPI atingido; reserva operacional preservada "
+            f"(dia={projected_day - 1}/{RAPIDAPI_BACKFILL_GLOBAL_CEILING})."
+        )
     if (
         projected_run > RAPIDAPI_MAX_CALLS_PER_RUN
         or projected_day > RAPIDAPI_MAX_CALLS_PER_DAY
@@ -221,11 +239,12 @@ def _reserve_rapidapi_call() -> None:
             f"dia={projected_day - 1}/{RAPIDAPI_MAX_CALLS_PER_DAY})."
         )
     _RAPIDAPI_CALL_COUNT["n"] = projected_run
+    _RAPIDAPI_PURPOSE_CALLS[purpose] = _RAPIDAPI_PURPOSE_CALLS.get(purpose, 0) + 1
     if projected_run == 1 or projected_run % RAPIDAPI_CHECKPOINT_EVERY == 0:
         _write_rapidapi_checkpoint()
 
 
-def _rapidapi_get(url, **kwargs):
+def _rapidapi_get(url, *, rapidapi_purpose: str = "operational", **kwargs):
     """Wrapper único com orçamento, contador real, anti-429 e retry.
 
     CORREÇÃO (16/08/2026): reconstruído a partir dos testes do Hugo depois
@@ -237,7 +256,7 @@ def _rapidapi_get(url, **kwargs):
     resp = None
     for tentativa in range(3):
         with _RAPIDAPI_LOCK:
-            _reserve_rapidapi_call()
+            _reserve_rapidapi_call(purpose=rapidapi_purpose)
             endpoint = urlparse(str(url)).path
             _RAPIDAPI_ENDPOINT_CALLS[endpoint] = _RAPIDAPI_ENDPOINT_CALLS.get(endpoint, 0) + 1
             elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
@@ -284,16 +303,26 @@ def get_rapidapi_endpoint_counts() -> dict[str, int]:
     return dict(sorted(_RAPIDAPI_ENDPOINT_CALLS.items()))
 
 
+def get_rapidapi_purpose_counts() -> dict[str, int]:
+    return dict(sorted(_RAPIDAPI_PURPOSE_CALLS.items()))
+
+
 def reset_rapidapi_call_count() -> None:
     _RAPIDAPI_CALL_COUNT["n"] = 0
     _RAPIDAPI_ENDPOINT_CALLS.clear()
+    _RAPIDAPI_PURPOSE_CALLS.clear()
     _RAPIDAPI_RECORDED_TODAY["n"] = _load_recorded_today_calls()
     _RAPIDAPI_BUDGET_EXCEEDED["value"] = False
+    _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = False
     _write_rapidapi_checkpoint()
 
 
 def rapidapi_budget_exceeded() -> bool:
     return _RAPIDAPI_BUDGET_EXCEEDED["value"]
+
+
+def rapidapi_backfill_budget_exceeded() -> bool:
+    return _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"]
 
 
 _BROWSER_HEADERS = {
@@ -472,6 +501,7 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                 for event in page_results:
                     if isinstance(event, dict):
                         event = dict(event)
+                        event["_raw_payload_sha256"] = payload_sha256(event)
                         event["_odds_captured_at_utc"] = captured_at_utc
                         event["_odds_endpoint"] = url
                         novos.append(event)
@@ -511,6 +541,7 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
             for event in page_results:
                 if isinstance(event, dict):
                     event = dict(event)
+                    event["_raw_payload_sha256"] = payload_sha256(event)
                     event["_odds_captured_at_utc"] = captured_at_utc
                     event["_odds_endpoint"] = url
                     events.append(event)
@@ -569,6 +600,7 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
                     "n1": n1, "n2": n2, "o1": oa, "o2": ob,
                     "captured_at_utc": event.get("_odds_captured_at_utc"),
                     "endpoint": event.get("_odds_endpoint"),
+                    "raw_payload_sha256": event.get("_raw_payload_sha256"),
                 }
                 _RAPIDAPI_EMBEDDED_ODDS[f"*:{key}"] = registo
                 n_indexados += 1
@@ -675,6 +707,9 @@ def _the_odds_sport_keys_for_match(match: dict) -> list[str]:
 
 def prepare_the_odds_market_index(matches: list[dict]) -> None:
     """Carrega uma vez por execução as Moneylines atuais da The Odds API."""
+    if not THE_ODDS_API_ENABLED:
+        print("[odds] The Odds API desativada por defeito (THE_ODDS_API_ENABLED=0).")
+        return
     if not ODDS_API_KEY:
         print("[odds] The Odds API indisponível: ODDS_API_KEY ausente.")
         return
@@ -728,6 +763,8 @@ def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
     A idade é avaliada no mercado quando disponível (schema atual da API) e
     no bookmaker apenas para compatibilidade com respostas mais antigas.
     """
+    if not THE_ODDS_API_ENABLED:
+        return None, None
     event = _the_odds_event_for_match(match)
     if not event:
         return None, None
@@ -756,20 +793,41 @@ def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
         if set(outcome_map) != {player_a, player_b}:
             continue
         overround = (1 / outcome_map[player_a]) + (1 / outcome_map[player_b]) - 1
-        candidates.append((age, overround, str(bookmaker.get("title") or bookmaker.get("key") or "N/D"), outcome_map, captured))
+        candidates.append((
+            age, overround,
+            str(bookmaker.get("title") or bookmaker.get("key") or "N/D"),
+            outcome_map, captured,
+        ))
     if not candidates:
         return None, None
     age, _overround, bookmaker, odds, captured = min(candidates, key=lambda item: (item[0], item[1], item[2]))
+    captured_at_utc = _odds_capture_timestamp()
+    raw_hash = payload_sha256(event)
     return odds, {
         "source": "The Odds API / bookmaker market",
         "endpoint": f"{ODDS_API_BASE}/sports/.../odds",
         "event_id": event.get("id"),
-        "captured_at_utc": _odds_capture_timestamp(),
+        "captured_at_utc": captured_at_utc,
         "capture_kind": "provider_last_update_verified",
         "provider_timestamp": captured,
         "bookmaker": bookmaker,
         "from_cache": False,
         "cache_age_seconds": age,
+        "freshness_status": "FRESH",
+        "identity_mapping_status": "VERIFIED",
+        "raw_payload_sha256": raw_hash,
+        "market_quotes": [
+            {
+                "bookmaker": item_bookmaker,
+                "odds": dict(item_odds),
+                "provider_timestamp": item_captured,
+                "provider_timestamp_status": "AVAILABLE",
+                "freshness_status": "FRESH",
+                "identity_mapping_status": "VERIFIED",
+                "raw_payload_sha256": raw_hash,
+            }
+            for item_age, _item_overround, item_bookmaker, item_odds, item_captured in candidates
+        ],
     }
 
 
@@ -821,6 +879,11 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
         "bookmaker": None,
         "from_cache": True,
         "cache_age_seconds": _odds_cache_age_seconds(embedded.get("captured_at_utc")),
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME",
+        "identity_mapping_status": "VERIFIED",
+        "raw_payload_sha256": embedded.get("raw_payload_sha256"),
+        "provider_side_a": "player1" if _normalize_name(player_a) == _normalize_name(embedded["n1"]) else "player2",
+        "provider_side_b": "player2" if _normalize_name(player_a) == _normalize_name(embedded["n1"]) else "player1",
     }
     print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
     return odds, provenance
@@ -1063,7 +1126,8 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     try:
         response = _rapidapi_get(url)
         response.raise_for_status()
-        market = ((response.json() or {}).get("result") or {}).get("Full Time Result") or {}
+        response_payload = response.json() or {}
+        market = (response_payload.get("result") or {}).get("Full Time Result") or {}
     except (requests.RequestException, ValueError, RapidAPIBudgetExceeded) as exc:
         print(f"[aviso] odds frescas RapidAPI indisponíveis para {player_a} vs {player_b}: {exc}")
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
@@ -1096,22 +1160,52 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     # event/get; nunca à ordem arbitrária do fixture do nosso pipeline.
     if _normalize_name(event.get("participant1")) == _normalize_name(player_a):
         odds = {player_a: odd_a, player_b: odd_b}
+        participant1_is_a = True
     elif _normalize_name(event.get("participant1")) == _normalize_name(player_b):
         odds = {player_a: odd_b, player_b: odd_a}
+        participant1_is_a = False
     else:  # defesa adicional: não há mapeamento seguro, logo não há pricing
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
         return None, None
+    captured_at_utc = _odds_capture_timestamp()
+    raw_hash = payload_sha256(response_payload)
+
+    def _mapped_quote(item):
+        _quote_overround, quote_bookmaker, quote_od1, quote_od2, quote_provider_at = item
+        quote_odds = (
+            {player_a: quote_od1, player_b: quote_od2}
+            if participant1_is_a else
+            {player_a: quote_od2, player_b: quote_od1}
+        )
+        return {
+            "bookmaker": quote_bookmaker,
+            "odds": quote_odds,
+            "provider_timestamp": quote_provider_at.isoformat(timespec="seconds") if quote_provider_at else None,
+            "provider_timestamp_status": "unreliable_for_freshness",
+            "freshness_status": "OBSERVED_AT_CAPTURE",
+            "identity_mapping_status": "VERIFIED",
+            "provider_side_a": "od1" if participant1_is_a else "od2",
+            "provider_side_b": "od2" if participant1_is_a else "od1",
+            "raw_payload_sha256": raw_hash,
+        }
+
     provenance = {
         "source": "RapidAPI Tennis API / recent-odds",
         "endpoint": url,
         "event_id": event_id,
-        "captured_at_utc": _odds_capture_timestamp(),
+        "captured_at_utc": captured_at_utc,
         "capture_kind": "rapidapi_response_observed_at_capture",
         "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
         "provider_timestamp_status": "unreliable_for_freshness",
         "bookmaker": bookmaker,
         "from_cache": False,
         "cache_age_seconds": 0,
+        "freshness_status": "OBSERVED_AT_CAPTURE",
+        "identity_mapping_status": "VERIFIED",
+        "provider_side_a": "od1" if participant1_is_a else "od2",
+        "provider_side_b": "od2" if participant1_is_a else "od1",
+        "raw_payload_sha256": raw_hash,
+        "market_quotes": [_mapped_quote(item) for item in candidates],
     }
     _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance}
     print(f"[odds] {player_a} vs {player_b} | RapidAPI recent-odds observado · {bookmaker} | {odds}")

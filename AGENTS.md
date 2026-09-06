@@ -1,6 +1,15 @@
-# AGENTS.md — Sharp Signals / Project Roland
+# AGENTS.md — Fenzobot / Fenzo Intelligence
 
 Este ficheiro define as regras permanentes para qualquer agente/Codex que trabalhe neste repositório.
+
+## 0. Identidade canónica
+
+- **Fenzo Intelligence** é a estrutura/entidade deste projeto e é constituída por Hugo e Guerra.
+- **Fenzobot** é o nome canónico deste projeto/produto.
+- `Sharp Signals` e `Project Roland` são designações históricas **SUPERSEDED** como nomes ativos desde `CHANGE-2026-09-04-025`.
+- Não reintroduzir essas designações como identidade atual em documentação, UI, relatórios ou comunicação futura.
+- Não reescrever o histórico: commits, PRs, CHANGE-IDs, snapshots, relatórios e identificadores técnicos legacy mantêm os nomes originais quando necessários para audit trail ou compatibilidade.
+- O owner/URL técnico `sharp-signals` do repositório é um identificador legacy de infraestrutura, não o nome canónico do projeto.
 
 ## 1. Papel do agente
 
@@ -38,7 +47,7 @@ Exemplos: pesos, fatores, edge, paper logic, tratamento de dados, critérios de 
 Exige `CHANGE-ID`/brief explícito. Não alterar nada fora desse brief sem reportar primeiro.
 
 ### Level 3 — estrutural/constitucional
-Exemplos: definição do Fenzobot, pricing/calibração, arquitetura de dados, execução real, claims, metodologia central.
+Exemplos: definição do Fenzobot, identidade canónica, pricing/calibração, arquitetura de dados, execução real, claims, metodologia central.
 
 Antes de qualquer alteração Level 3, ler `docs/governance/CONSTITUTION.md` e confirmar que a alteração e o respetivo registo seguem a Constituição.
 
@@ -68,7 +77,7 @@ Quando a seleção automática de modelo não estiver disponível, sinalizar no 
 ## 6. Git e branches
 
 - Não desenvolver diretamente em `main` para mudanças materiais.
-- Preferir uma branch por `CHANGE-ID`, por exemplo: `change/SS-2026-028-null-data`.
+- Preferir uma branch por `CHANGE-ID`, por exemplo: `change/CHANGE-2026-09-04-025-canonical-identity-fenzobot`.
 - Evitar que dois agentes trabalhem simultaneamente na mesma alteração/branch.
 - Commits devem ser pequenos, coerentes e descritivos.
 - Não apagar histórico operacional, snapshots ou PAPER ledger para “limpar” o repositório.
@@ -107,4 +116,4 @@ Devolver um relatório curto com:
 
 ## 10. Regra final
 
-**O BRAIN decide; o Codex executa; o GitHub regista; os testes verificam; o Canon preserva a decisão.**
+**O BRAIN decide; o Codex executa; o GitHub regista; os testes verificam; o Fenzobot — Project Canon preserva a decisão.**

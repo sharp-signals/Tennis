@@ -97,6 +97,17 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
         self.assertEqual(provenance["capture_kind"], "rapidapi_response_observed_at_capture")
         self.assertEqual(provenance["provider_timestamp_status"], "unreliable_for_freshness")
+        self.assertTrue(provenance["raw_payload_sha256"])
+        self.assertEqual(len(provenance["market_quotes"]), 1)
+
+    def test_the_odds_api_is_off_by_default_even_when_secret_exists(self):
+        with patch.object(fetch_data, "THE_ODDS_API_ENABLED", False), \
+                patch.object(fetch_data, "ODDS_API_KEY", "configured-but-not-authorized"), \
+                patch.object(fetch_data.requests, "get") as request:
+            fetch_data.prepare_the_odds_market_index([{
+                "_tour": "atp", "tournament_name": "U.S. Open - New York",
+            }])
+        request.assert_not_called()
 
     def test_the_odds_pricing_uses_fresh_market_timestamp_and_same_bookmaker_pair(self):
         match = {
@@ -112,7 +123,8 @@ class MatchInputTests(unittest.TestCase):
                 ]}],
             }],
         }
-        with patch.dict(fetch_data._THE_ODDS_EVENTS, {"tennis_atp_us_open": [event]}, clear=True):
+        with patch.object(fetch_data, "THE_ODDS_API_ENABLED", True), \
+                patch.dict(fetch_data._THE_ODDS_EVENTS, {"tennis_atp_us_open": [event]}, clear=True):
             odds, provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
         self.assertEqual(odds, {"Alice Player": 1.28, "Bea Player": 4.10})
         self.assertEqual(provenance["bookmaker"], "Test Book")
@@ -132,7 +144,8 @@ class MatchInputTests(unittest.TestCase):
                 ]}],
             }],
         }
-        with patch.dict(fetch_data._THE_ODDS_EVENTS, {"tennis_atp_us_open": [event]}, clear=True):
+        with patch.object(fetch_data, "THE_ODDS_API_ENABLED", True), \
+                patch.dict(fetch_data._THE_ODDS_EVENTS, {"tennis_atp_us_open": [event]}, clear=True):
             odds, provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
         self.assertIsNone(odds)
         self.assertIsNone(provenance)

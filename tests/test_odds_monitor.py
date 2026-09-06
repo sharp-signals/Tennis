@@ -170,6 +170,73 @@ class OddsMonitorTests(unittest.TestCase):
         self.assertFalse(second)
         self.assertEqual(len(lines), 1)
 
+    def test_event_resolution_preserves_verified_provider_order(self):
+        start = datetime.now(timezone.utc) + timedelta(hours=12)
+        entry = {
+            "key": "atp:1:moneyline:a:na",
+            "pregame": {
+                "match_id": 1, "tour": "atp", "commence_time_utc": start.isoformat(),
+                "players": {
+                    "a": {"id": 10, "name": "Alpha One"},
+                    "b": {"id": 20, "name": "Beta Two"},
+                },
+            },
+        }
+        event_map = {"events": {}}
+        response = {
+            "ok": True, "http_status": 200, "access": "allowed", "error": None,
+            "payload": {"event": {
+                "eventId": "event-1", "participant1": "Beta Two", "participant2": "Alpha One",
+                "status": "scheduled", "startTime": start.isoformat(),
+            }},
+        }
+        with patch.object(odds_monitor, "_request", return_value=response):
+            event_id, resolution = odds_monitor._resolve_event(entry, event_map)
+        self.assertEqual(event_id, "event-1")
+        self.assertEqual(resolution["participant1"], "Beta Two")
+        self.assertEqual(event_map["events"][entry["key"]]["identity_mapping_status"], "VERIFIED")
+
+    def test_ledger_normalization_reuses_monitor_payload_without_network_calls(self):
+        entry = {
+            "key": "atp:1:moneyline:a:na",
+            "pregame": {
+                "snapshot_key": "atp:1", "match_id": 1, "tour": "atp",
+                "commence_time_utc": "2026-09-04T15:00:00+00:00",
+                "players": {
+                    "a": {"id": 10, "name": "Alpha One"},
+                    "b": {"id": 20, "name": "Beta Two"},
+                },
+            },
+        }
+        match = odds_monitor._entry_to_match(entry)
+        payload = {"result": {"Full Time Result": {
+            "Book A": {"od1": "1.70", "od2": "2.20", "addTime": None},
+        }}}
+        snapshot = {
+            "captured_at_utc": "2026-09-04T12:00:00+00:00",
+            "event_id": "event-1",
+            "event_resolution": {
+                "participant1": "Beta Two", "participant2": "Alpha One",
+                "identity_mapping_status": "VERIFIED",
+            },
+            "market_observation": {"available": False},
+            "endpoints": {
+                "recent_odds": odds_monitor._annotate_recent_odds(
+                    {"payload": payload},
+                    captured_at=datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc),
+                ),
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(odds_monitor, "_request", side_effect=AssertionError("network not allowed")):
+            result = odds_monitor._persist_market_ledger_best_effort(
+                entry, match, snapshot, ledger_root=Path(tmp),
+            )
+            observations = odds_monitor.market_ledger.read_observations(root=Path(tmp))
+        self.assertEqual(result["recorded"], 1)
+        self.assertEqual(observations[0]["selections"][0]["raw_decimal_odd"], 2.2)
+        self.assertEqual(observations[0]["selections"][1]["raw_decimal_odd"], 1.7)
+
 
 if __name__ == "__main__":
     unittest.main()
