@@ -4,15 +4,15 @@
   "evaluation": {
     "market_only": {
       "accuracy_pct": 75.0,
-      "brier_score": 0.137241,
-      "log_loss": 0.4496,
-      "sample_size": 8
+      "brier_score": 0.171119,
+      "log_loss": 0.523395,
+      "sample_size": 12
     },
     "market_plus_sharp": {
-      "accuracy_pct": 70.41,
-      "brier_score": 0.18672,
-      "log_loss": 0.549271,
-      "sample_size": 98
+      "accuracy_pct": 70.59,
+      "brier_score": 0.188081,
+      "log_loss": 0.552663,
+      "sample_size": 102
     }
   },
   "evaluation_by_pricing_version": {
@@ -67,15 +67,15 @@
     "market-residual-v0.3:f46ec3e2aa6f92a9": {
       "market_only": {
         "accuracy_pct": 75.0,
-        "brier_score": 0.137241,
-        "log_loss": 0.4496,
-        "sample_size": 8
+        "brier_score": 0.171119,
+        "log_loss": 0.523395,
+        "sample_size": 12
       },
       "market_plus_sharp": {
-        "accuracy_pct": 78.46,
-        "brier_score": 0.161347,
-        "log_loss": 0.491092,
-        "sample_size": 65
+        "accuracy_pct": 78.26,
+        "brier_score": 0.164829,
+        "log_loss": 0.499478,
+        "sample_size": 69
       },
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3"
@@ -3048,12 +3048,12 @@
       "outcome_side": null,
       "paper": [
         {
-          "closing_market_observation_id": null,
-          "clv_price_pct": null,
-          "clv_probability_pp": null,
+          "closing_market_observation_id": "353f5fd74461fbd308d962269c5cbc4781eb68385b03b7deedcb5ec706bafd6e",
+          "clv_price_pct": 0.0,
+          "clv_probability_pp": 0.0,
           "entry_market_observation_id": "ce5f3734ea99e84b3bdc37e09a5feec83a7ca1681c4c16ab976b47e98cc02af5",
-          "entry_market_probability": null,
-          "last_valid_prestart_market_probability": null,
+          "entry_market_probability": 0.71836045,
+          "last_valid_prestart_market_probability": 0.71836045,
           "paper_key": "wta:821:moneyline:a:na",
           "selected_side": "a"
         }
@@ -13417,12 +13417,12 @@
       "outcome_side": "a",
       "paper": [
         {
-          "closing_market_observation_id": null,
-          "clv_price_pct": null,
-          "clv_probability_pp": null,
+          "closing_market_observation_id": "4eebe87f45e337f41fb9e11f37be2b62e2b6d59e20e5eaca8b9b0125b4fef3d0",
+          "clv_price_pct": 0.0,
+          "clv_probability_pp": 0.0,
           "entry_market_observation_id": "1557e909872f085f4c8099f14b8e47679f353b287b1ddcc28963bf06f438d082",
-          "entry_market_probability": null,
-          "last_valid_prestart_market_probability": null,
+          "entry_market_probability": 0.43093637,
+          "last_valid_prestart_market_probability": 0.43093637,
           "paper_key": "wta:941:moneyline:b:na",
           "selected_side": "b"
         }
@@ -13509,7 +13509,7 @@
         "b": 0.4461
       },
       "match_id": 1032,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -13548,7 +13548,7 @@
         "b": 0.5547
       },
       "match_id": 1407,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [],
       "players": {
         "a": {
@@ -13590,7 +13590,7 @@
         "b": 0.4815
       },
       "match_id": 1414,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [
         {
           "closing_market_observation_id": "fbea1305394411621e1b8246bb6f1356c86cd0b37384657c9d0ea94f907bd46c",
@@ -13643,12 +13643,12 @@
       "outcome_side": "a",
       "paper": [
         {
-          "closing_market_observation_id": null,
-          "clv_price_pct": null,
-          "clv_probability_pp": null,
+          "closing_market_observation_id": "dab748b79525b5392ae923233cf63f098f065fa0bcad009753aa2c44693ae7a8",
+          "clv_price_pct": 0.0,
+          "clv_probability_pp": 0.0,
           "entry_market_observation_id": "7ce31820dea392107fd10cb83675ead43226c23978a50d7c48ab62a7ea529431",
-          "entry_market_probability": null,
-          "last_valid_prestart_market_probability": null,
+          "entry_market_probability": 0.68181818,
+          "last_valid_prestart_market_probability": 0.68181818,
           "paper_key": "atp:1421:moneyline:a:na",
           "selected_side": "a"
         }
@@ -13690,7 +13690,7 @@
         "b": 0.4685
       },
       "match_id": 1030,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -13851,11 +13851,77 @@
       "report_id": "68e607cac42628c85e18",
       "scheduled_start_utc": "2026-09-06T18:00:00+00:00",
       "snapshot_key": "wta:1023"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "event_key": "atp:1229",
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_id": 1229,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 24008,
+          "name": "Alexander Zverev"
+        },
+        "b": {
+          "id": 76127,
+          "name": "Luciano Darderi"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "da5bcdb47fc6c8d10f67",
+      "scheduled_start_utc": "2026-09-07T18:00:00+00:00",
+      "snapshot_key": "atp:1229"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "event_key": "wta:1036",
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_id": 1036,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 80381,
+          "name": "Iva Jovic"
+        },
+        "b": {
+          "id": 54663,
+          "name": "Cori Gauff"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "53ad14152e8fb7a3ea00",
+      "scheduled_start_utc": "2026-09-07T18:00:00+00:00",
+      "snapshot_key": "wta:1036"
     }
   ],
-  "generated_at_utc": "2026-09-06T05:34:29+00:00",
+  "generated_at_utc": "2026-09-06T17:34:14+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 753,
+  "observation_count": 805,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
