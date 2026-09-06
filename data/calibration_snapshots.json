@@ -200311,7 +200311,12 @@
         "raw_payload_sha256": "dd889d724d78c98e26676a05a9d26d684cd874f1a448f3204f96b3225800cdc5",
         "source": "RapidAPI Tennis API / recent-odds"
       },
-      "outcome": null,
+      "outcome": {
+        "result": "6-7(4) 6-3 6-0 6-3",
+        "settled_at_utc": "2026-09-06T05:34:28+00:00",
+        "winner_id": 88766,
+        "winner_side": "a"
+      },
       "player_a": {
         "id": 88766,
         "name": "Alexander Blockx"
@@ -203437,7 +203442,12 @@
         "raw_payload_sha256": "e486eda7b690a962f97a424b04bcfac7e16d0dd15086f43e5146a1bc3616d772",
         "source": "RapidAPI Tennis API / recent-odds"
       },
-      "outcome": null,
+      "outcome": {
+        "result": "6-7(4) 6-3 6-0 6-3",
+        "settled_at_utc": "2026-09-06T05:34:28+00:00",
+        "winner_id": 88766,
+        "winner_side": "a"
+      },
       "player_a": {
         "id": 88766,
         "name": "Alexander Blockx"
@@ -204936,7 +204946,12 @@
         "raw_payload_sha256": "a2c0047c0eaed1c2ab6495324dde403de2cfdb995a9c0e24f76acfff519a2382",
         "source": "RapidAPI Tennis API / recent-odds"
       },
-      "outcome": null,
+      "outcome": {
+        "result": "6-2 7-6(5)",
+        "settled_at_utc": "2026-09-06T05:34:28+00:00",
+        "winner_id": 77934,
+        "winner_side": "a"
+      },
       "player_a": {
         "id": 77934,
         "name": "Mirra Andreeva"
@@ -206523,7 +206538,706 @@
       "tour": "atp",
       "tournament": "U.S. Open - New York",
       "tournament_id": 21349
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-06T05:34:25+00:00",
+      "commence_time_utc": "2026-09-06T18:00:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "wta:1023",
+      "key": "wta:1023",
+      "market_memory_eligible": false,
+      "market_memory_status": "UNAVAILABLE",
+      "market_odds_decimal": null,
+      "match_id": 1023,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "historial",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 7,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "superfície",
+              "Mirra Andreeva"
+            ],
+            [
+              "recuperação pós-1º set",
+              "Mirra Andreeva"
+            ],
+            [
+              "confronto direto",
+              "Mirra Andreeva"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 72.0,
+              "amostra_a": 72,
+              "amostra_b": 217,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 40,
+              "valor_b": 30
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 4
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.8,
+              "peso_antes_cap": 5.6,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 5.6,
+              "valor_a": 70.0,
+              "valor_b": 50.0
+            },
+            "h2h": {
+              "amostra": 4,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 3,
+              "valor_b": 1
+            },
+            "h2h_piso": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "amostra": "3/7 edições",
+              "confianca_amostra": 0.775,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "historial",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 1.859,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 1.859,
+              "valor_a": "59%",
+              "valor_b": "48%"
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 70.9,
+              "valor_b": 52.5
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 0,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.4,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 71.0,
+              "valor_b": 45.3
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "A vem de outro piso sem rodagem",
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Anastasia Potapova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 2.222,
+              "valor_a": "clay",
+              "valor_b": "hard"
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 3.111,
+              "valor_a": 61.2,
+              "valor_b": 24.3
+            },
+            "piso": {
+              "amostra": 122,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 8.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 8.0,
+              "valor_a": 71.3,
+              "valor_b": 52.0
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.091,
+              "pontos_a": 5443,
+              "pontos_b": 1756,
+              "valor_a": 5.0,
+              "valor_b": 25.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Anastasia Potapova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.909,
+              "valor_a": 25.5,
+              "valor_b": 85.7
+            },
+            "recuperacao_sets": {
+              "disponivel": true,
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 9
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.667,
+              "valor_a": 61.5,
+              "valor_b": 48.6
+            },
+            "servico_carreira": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 3,
+              "valor_a": 58.0,
+              "valor_b": 58.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 57.5,
+              "valor_b": 46.8
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 38,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 88,
+          "inclinacao_modelo_b": 12,
+          "indice_evidencia_a": 88,
+          "indice_evidencia_b": 12,
+          "indice_favorece": "Mirra Andreeva",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 58.859,
+          "mercado_favorece": null,
+          "n_fatores": 13,
+          "player_a": "Mirra Andreeva",
+          "player_b": "Anastasia Potapova",
+          "prob_mercado_a": null,
+          "prob_mercado_b": null,
+          "tipo": "evidence_only"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 72,
+            "amostra_b": 217,
+            "diff": 10,
+            "lider": "Mirra Andreeva",
+            "valor_a": 40,
+            "valor_b": 30
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 20.0,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 70.0,
+            "valor_b": 50.0
+          },
+          "frescura": {
+            "jogos_7d_a": 3,
+            "jogos_7d_b": 3,
+            "mais_fresco": "igual",
+            "sets_7d_a": 6,
+            "sets_7d_b": 7
+          },
+          "h2h": {
+            "a_wins": 3,
+            "b_wins": 1,
+            "lider": "Mirra Andreeva",
+            "total": 4
+          },
+          "h2h_piso": {
+            "a_wins": 1,
+            "b_wins": 1,
+            "lider": "igual",
+            "total": 2
+          },
+          "indoor_outdoor": {
+            "amostra_a": 165,
+            "amostra_b": 238,
+            "diff": 18.4,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 70.9,
+            "valor_b": 52.5
+          },
+          "nivel_adversario": {
+            "amostra_a": 103,
+            "amostra_b": 37,
+            "diff": 36.900000000000006,
+            "lider": "Mirra Andreeva",
+            "valor_a": 61.2,
+            "valor_b": 24.3
+          },
+          "piso": {
+            "amostra_a": 122,
+            "amostra_b": 221,
+            "diff": 19.3,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 71.3,
+            "valor_b": 52.0
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 0,
+            "top50_b": 0,
+            "valor_a": 0,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 20.0,
+            "lider": "Mirra Andreeva",
+            "pontos_a": 5443,
+            "pontos_b": 1756,
+            "valor_a": 5.0,
+            "valor_b": 25.0
+          },
+          "ranking_evolucao": {
+            "diff": -60.2,
+            "lider": "Anastasia Potapova",
+            "valor_a": 25.5,
+            "valor_b": 85.7
+          },
+          "sazonal": {
+            "amostra_a": 13,
+            "amostra_b": 37,
+            "diff": 12.9,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 61.5,
+            "valor_b": 48.6
+          },
+          "servico_carreira": {
+            "amostra_a": 40,
+            "amostra_b": 30,
+            "diff": 0.0,
+            "lider": "igual",
+            "unidade": "%",
+            "valor_a": 58.0,
+            "valor_b": 58.0
+          },
+          "tiebreak": {
+            "amostra_a": 40,
+            "amostra_b": 77,
+            "diff": 10.7,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 57.5,
+            "valor_b": 46.8
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 4,
+          "coverage_pct": 60.0,
+          "excluded_missing_odds": 4,
+          "excluded_missing_odds_wins": 3,
+          "expected_wins": 4.28,
+          "matches": 6,
+          "odds_eligible_matches": 6,
+          "overall_wins": 7,
+          "performance_vs_market": -0.28,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 4,
+          "coverage_pct": 90.0,
+          "excluded_missing_odds": 1,
+          "excluded_missing_odds_wins": 1,
+          "expected_wins": 5.0,
+          "matches": 9,
+          "odds_eligible_matches": 9,
+          "overall_wins": 5,
+          "performance_vs_market": -1.0,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 59.55,
+          "matches": 60,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 71.56,
+          "matches": 45,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "reason": "missing_or_invalid_two_way_moneyline",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 19,
+              "available_weight": 123.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 85.4,
+              "weighted_ratio": 0.854167
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "state": "PRICING_UNAVAILABLE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 34.0,
+          "bp_saved_pct": 48.0,
+          "first_serve_won_pct": 58.0,
+          "matches": 40,
+          "opponent_first_serve_won_pct": 30.0,
+          "opponent_second_serve_won_pct": 49.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 40.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 37.0,
+          "bp_saved_pct": 47.0,
+          "first_serve_won_pct": 58.0,
+          "matches": 30,
+          "opponent_first_serve_won_pct": 32.0,
+          "opponent_second_serve_won_pct": 51.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 37.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 5443,
+          "rank": 5
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 1756,
+          "rank": 25
+        },
+        "recent_form_a": {
+          "losses": 3,
+          "matches": 10,
+          "wins": 7
+        },
+        "recent_form_b": {
+          "losses": 5,
+          "matches": 10,
+          "wins": 5
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 34.0,
+          "avg_break_points_saved_pct": 48.0,
+          "avg_first_serve_in_pct": 61.8,
+          "avg_first_serve_won_pct": 58.0,
+          "avg_second_serve_won_pct": 40.0,
+          "matches_used": 40
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 37.0,
+          "avg_break_points_saved_pct": 47.0,
+          "avg_first_serve_in_pct": 59.3,
+          "avg_first_serve_won_pct": 58.0,
+          "avg_second_serve_won_pct": 37.0,
+          "matches_used": 30
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 39.3,
+            "matches_lost_set1": 56,
+            "matches_lost_set1_won_overall": 22
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 28.6,
+            "matches_lost_set1": 154,
+            "matches_lost_set1_won_overall": 44
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": -0.6,
+          "recent_win_pct": 70.7,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -7.3,
+          "recent_win_pct": 44.7,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": null,
+        "capture_kind": null,
+        "captured_at_utc": null,
+        "endpoint": null,
+        "event_id": null,
+        "from_cache": null,
+        "provider_timestamp": null,
+        "raw_payload_sha256": null,
+        "source": null
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 77934,
+        "name": "Mirra Andreeva"
+      },
+      "player_b": {
+        "id": 40156,
+        "name": "Anastasia Potapova"
+      },
+      "pricing": {
+        "available": false,
+        "candidate": false,
+        "candidate_side": null,
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "reason": "missing_or_invalid_two_way_moneyline",
+        "status": "unavailable",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "68e607cac42628c85e18",
+      "surface": "Hard",
+      "tour": "wta",
+      "tournament": "U.S. Open - New York",
+      "tournament_id": 16743
     }
   ],
-  "updated_at_utc": "2026-09-05T17:34:51+00:00"
+  "updated_at_utc": "2026-09-06T05:34:28+00:00"
 }

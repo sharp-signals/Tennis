@@ -3,16 +3,16 @@
   "claims": "EXPERIMENTAL_NOT_VALIDATED",
   "evaluation": {
     "market_only": {
-      "accuracy_pct": 100.0,
-      "brier_score": 0.099104,
-      "log_loss": 0.370787,
-      "sample_size": 5
+      "accuracy_pct": 75.0,
+      "brier_score": 0.137241,
+      "log_loss": 0.4496,
+      "sample_size": 8
     },
     "market_plus_sharp": {
-      "accuracy_pct": 71.58,
-      "brier_score": 0.185814,
-      "log_loss": 0.547411,
-      "sample_size": 95
+      "accuracy_pct": 70.41,
+      "brier_score": 0.18672,
+      "log_loss": 0.549271,
+      "sample_size": 98
     }
   },
   "evaluation_by_pricing_version": {
@@ -66,16 +66,16 @@
     },
     "market-residual-v0.3:f46ec3e2aa6f92a9": {
       "market_only": {
-        "accuracy_pct": 100.0,
-        "brier_score": 0.099104,
-        "log_loss": 0.370787,
-        "sample_size": 5
+        "accuracy_pct": 75.0,
+        "brier_score": 0.137241,
+        "log_loss": 0.4496,
+        "sample_size": 8
       },
       "market_plus_sharp": {
-        "accuracy_pct": 80.65,
-        "brier_score": 0.158731,
-        "log_loss": 0.485427,
-        "sample_size": 62
+        "accuracy_pct": 78.46,
+        "brier_score": 0.161347,
+        "log_loss": 0.491092,
+        "sample_size": 65
       },
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3"
@@ -3046,7 +3046,18 @@
       "market_plus_sharp_probabilities": null,
       "match_id": 821,
       "outcome_side": null,
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "ce5f3734ea99e84b3bdc37e09a5feec83a7ca1681c4c16ab976b47e98cc02af5",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "wta:821:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 6019,
@@ -7513,12 +7524,12 @@
       "outcome_side": "b",
       "paper": [
         {
-          "closing_market_observation_id": "39cecec8b8a5d0368534416545e2dd77e5620817c731bc8dff1ed5b6890aef7f",
-          "clv_price_pct": 0.0,
-          "clv_probability_pp": 0.0,
+          "closing_market_observation_id": "f3b5fca236908f5307d99dfa4dd10b9505a1ddf1334de20f341eac46f6328c9c",
+          "clv_price_pct": -51.5273,
+          "clv_probability_pp": -37.4059,
           "entry_market_observation_id": "edaf54ada5fff650204909b231816ee56859e2f28b575fc97f628d4dcec13195",
           "entry_market_probability": 0.71836045,
-          "last_valid_prestart_market_probability": 0.71836045,
+          "last_valid_prestart_market_probability": 0.34430138,
           "paper_key": "wta:855:moneyline:a:na",
           "selected_side": "a"
         }
@@ -7755,7 +7766,7 @@
       "outcome_side": "b",
       "paper": [
         {
-          "closing_market_observation_id": "d46b56ef515c42630a2ef21377cf5231011c78408dce4b4e0ce38d10a8c1dddd",
+          "closing_market_observation_id": "191ae122b68687d927c6076f3265c2cc33161140361a33283c43b0b9969fcaf7",
           "clv_price_pct": 2.2506,
           "clv_probability_pp": 1.7067,
           "entry_market_observation_id": "a13e958b2d516db328b4cd336a10b49528842f9a79fc96e875567745d7845bd7",
@@ -13317,7 +13328,7 @@
           "selected_side": "a"
         },
         {
-          "closing_market_observation_id": "8da57f3db925b15fd923e5b526fba8bbf2132ee5abe119e84f85601498287b84",
+          "closing_market_observation_id": "2315988add6de184bf909577e3f157452bfe4ca85e5586d386665420bc8a6980",
           "clv_price_pct": 0.0,
           "clv_probability_pp": 0.0,
           "entry_market_observation_id": "5e466ef715019d3f4eaa4e2408af05d476ed06ddc5f9c640eb8ed5432c33a139",
@@ -13404,7 +13415,18 @@
       },
       "match_id": 941,
       "outcome_side": "a",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "1557e909872f085f4c8099f14b8e47679f353b287b1ddcc28963bf06f438d082",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "wta:941:moneyline:b:na",
+          "selected_side": "b"
+        }
+      ],
       "players": {
         "a": {
           "id": 47742,
@@ -13445,7 +13467,7 @@
         "b": 0.5498
       },
       "match_id": 1416,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -13556,10 +13578,10 @@
         "b": 0.4309363683393688
       },
       "event_key": "atp:1414",
-      "last_valid_prestart_market_observation_id": "56dc7cbd1bfc7c5eb937ae2297d709620b087418c3169bf5db29ab679fd6bd1d",
+      "last_valid_prestart_market_observation_id": "fbea1305394411621e1b8246bb6f1356c86cd0b37384657c9d0ea94f907bd46c",
       "last_valid_prestart_market_probabilities": {
-        "a": 0.5690636316606312,
-        "b": 0.4309363683393688
+        "a": 0.5874840357598977,
+        "b": 0.4125159642401021
       },
       "market_only_prediction": "a",
       "market_plus_sharp_prediction": "a",
@@ -13571,12 +13593,12 @@
       "outcome_side": null,
       "paper": [
         {
-          "closing_market_observation_id": "56dc7cbd1bfc7c5eb937ae2297d709620b087418c3169bf5db29ab679fd6bd1d",
-          "clv_price_pct": 0.0,
-          "clv_probability_pp": 0.0,
+          "closing_market_observation_id": "fbea1305394411621e1b8246bb6f1356c86cd0b37384657c9d0ea94f907bd46c",
+          "clv_price_pct": -4.3478,
+          "clv_probability_pp": -1.842,
           "entry_market_observation_id": "6efeb4ed30dc6d22fa604dc49d677a45c1ddb7f858cad33a4f7b5239ebda9444",
           "entry_market_probability": 0.43093637,
-          "last_valid_prestart_market_probability": 0.43093637,
+          "last_valid_prestart_market_probability": 0.41251596,
           "paper_key": "atp:1414:moneyline:b:na",
           "selected_side": "b"
         }
@@ -13618,8 +13640,19 @@
         "b": 0.5498
       },
       "match_id": 1421,
-      "outcome_side": null,
-      "paper": [],
+      "outcome_side": "a",
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "7ce31820dea392107fd10cb83675ead43226c23978a50d7c48ab62a7ea529431",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "atp:1421:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 88766,
@@ -13696,7 +13729,7 @@
         "b": 0.20420000000000002
       },
       "match_id": 1019,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -13785,11 +13818,44 @@
       "report_id": "fa9c81cd866be5fc231c",
       "scheduled_start_utc": "2026-09-06T18:00:00+00:00",
       "snapshot_key": "atp:1432"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "event_key": "wta:1023",
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_id": 1023,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 77934,
+          "name": "Mirra Andreeva"
+        },
+        "b": {
+          "id": 40156,
+          "name": "Anastasia Potapova"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "68e607cac42628c85e18",
+      "scheduled_start_utc": "2026-09-06T18:00:00+00:00",
+      "snapshot_key": "wta:1023"
     }
   ],
-  "generated_at_utc": "2026-09-05T17:34:53+00:00",
+  "generated_at_utc": "2026-09-06T05:34:29+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 702,
+  "observation_count": 753,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
