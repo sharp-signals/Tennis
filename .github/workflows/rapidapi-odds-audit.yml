@@ -51,7 +51,7 @@ jobs:
           --event-date "${{ inputs.event_date }}"
           --tour "${{ inputs.tour }}"
       - name: Guardar resultado da auditoria
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rapidapi-odds-audit
           path: artifacts/rapidapi_odds_audit/result.json

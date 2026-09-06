@@ -142,7 +142,7 @@ jobs:
 
       - name: Upload audit/pilot artefacts (ephemeral warehouse, not durable storage)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: historical-${{ inputs.mode }}-${{ github.run_id }}
           path: |
