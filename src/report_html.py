@@ -2980,6 +2980,8 @@ def _mod_decision_box(payload):
 def _mod_system_history(payload):
     history = _d(payload.get("paper_history"))
     paper = _d(history.get("PAPER"))
+    manual_document = _d(history.get("MANUAL_22BET"))
+    manual = _d(manual_document.get("summary"))
 
     def value(raw, suffix=""):
         if raw is None:
@@ -3028,9 +3030,61 @@ def _mod_system_history(payload):
     )
     paper_market_line = market_line("Moneyline", ml)
     paper_html = (
-        f'<p>{_esc(paper_status)}</p>' if not total_entries else
+        '<p>Ainda não há sinais PAPER técnicos registados.</p>' if not total_entries else
         f'<div class="history-metrics">{cells}</div><div class="history-split">{_esc(paper_status or paper_market_line)}</div>'
-        '<div class="history-split">A odd média é calculada apenas sobre entradas PAPER válidas; não representa backtest/reconstruído.</div>'
+        '<div class="history-split">Carteira técnica gerada pelo bot; não representa o registo manual 22Bet nem reconstruído.</div>'
+    )
+
+    manual_total = int(manual.get("total_entries") or 0)
+    manual_settled = int(manual.get("settled") or (manual.get("wins") or 0) + (manual.get("losses") or 0))
+    manual_pending = int(manual.get("pending") or max(0, manual_total - manual_settled))
+    manual_metrics = (
+        ("Entradas 22Bet", value(manual_total)),
+        ("Liquidadas", value(manual_settled)),
+        ("Pendentes", value(manual_pending)),
+        ("W–L liquidado", f'{value(manual.get("wins"))}–{value(manual.get("losses"))}'),
+        ("Win rate liquidado", value(manual.get("win_rate_pct"), "%")),
+        ("Resultado acumulado", value(manual.get("units"), " u")),
+        ("ROI liquidado", value(manual.get("roi_pct"), "%")),
+        ("Odd média das entradas", value(manual.get("average_odd"))),
+    )
+    manual_cells = "".join(
+        f'<div><span>{_esc(label)}</span><b>{_esc(raw)}</b></div>'
+        for label, raw in manual_metrics
+    )
+    manual_market_parts = []
+    for label in ("Moneyline", "Handicap games", "Handicap sets"):
+        data = _d(_d(manual_document.get("by_market")).get(label))
+        if not data.get("total_entries"):
+            continue
+        manual_market_parts.append(
+            f'{label}: {value(data.get("total_entries"))} entradas · '
+            f'{value(data.get("wins"))}–{value(data.get("losses"))} · '
+            f'{value(data.get("roi_pct"), "%")} ROI'
+        )
+    manual_side_parts = []
+    for label in ("Favorito", "Underdog"):
+        data = _d(_d(manual_document.get("by_side")).get(label))
+        if not data.get("total_entries"):
+            continue
+        manual_side_parts.append(
+            f'{label}: {value(data.get("total_entries"))} entradas · '
+            f'{value(data.get("roi_pct"), "%")} ROI'
+        )
+    source = _d(manual_document.get("source"))
+    source_url = str(source.get("url") or "")
+    source_link = (
+        f'<a class="history-sheet-link" href="{_esc(source_url)}" target="_blank" rel="noopener">'
+        'Abrir registo PAPER Trading 22Bet</a>'
+        if source_url.startswith("https://docs.google.com/spreadsheets/") else ""
+    )
+    manual_html = (
+        '<p>O registo manual 22Bet ainda não foi sincronizado.</p>'
+        if not manual_total else
+        f'<div class="history-metrics">{manual_cells}</div>'
+        f'<div class="history-split">{" · ".join(manual_market_parts)}</div>'
+        f'<div class="history-split">{" · ".join(manual_side_parts)}</div>'
+        f'<div class="history-split">Fonte operacional manual: 22Bet. {source_link}</div>'
     )
     reconstructed_html = (
         f'<p>{_esc(reconstructed_text)}</p>' if reconstructed_text else
@@ -3039,8 +3093,9 @@ def _mod_system_history(payload):
     )
     return (
         '<details class="system-history"><summary>Histórico do sistema'
-        '<span class="more-hint">PAPER, reconstruído e REAL sem misturar universos</span></summary>'
-        f'<div class="system-history-body"><h4>PAPER</h4>{paper_html}'
+        '<span class="more-hint">PAPER 22Bet, sinais técnicos, reconstruído e REAL separados</span></summary>'
+        f'<div class="system-history-body"><h4>PAPER 22Bet · registo manual</h4>{manual_html}'
+        f'<h4>Sinais PAPER do sistema · técnico</h4>{paper_html}'
         f'<h4>Reconstruído / backtest</h4>{reconstructed_html}'
         '<h4>REAL</h4><p>Ainda sem histórico REAL. Não é misturado com PAPER nem com reconstruído.</p></div></details>'
     )
@@ -4856,6 +4911,7 @@ def _css_editorial():
 .decision-head{display:flex;gap:9px;align-items:center;font-size:14px;letter-spacing:.3px}.decision-primary{font-size:15px;font-weight:750;margin:11px 0 8px}.decision-grid{display:flex;flex-wrap:wrap;gap:7px 18px;color:var(--dim);font-size:12px}.decision-grid b{color:var(--text)}.decision-note{color:var(--dim);font-size:11px;margin-top:8px}.decision-reasons{margin:8px 0 0;padding-left:19px;color:var(--dim);font-size:12px;line-height:1.6}
 .system-history{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:0 0 14px}.system-history>summary{cursor:pointer;padding:13px 16px;font-weight:700;list-style:none}.system-history>summary::-webkit-details-marker{display:none}.system-history>summary::before{content:"▸ ";color:var(--a)}.system-history[open]>summary::before{content:"▾ "}.system-history-body{padding:0 16px 16px}.system-history h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--a);margin:13px 0 8px}.system-history p,.history-split{color:var(--dim);font-size:11px;margin:6px 0}.history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.history-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.history-metrics span{display:block;color:var(--dim);font-size:9px}.history-metrics b{font-size:13px}
 @media(max-width:640px){.history-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-grid{display:grid;grid-template-columns:1fr 1fr}}
+.history-sheet-link{display:inline-block;color:var(--mint);font-weight:700;margin-left:4px}
 .pricing-block{background:linear-gradient(145deg,rgba(74,163,223,.14),var(--surface) 42%);border:1px solid var(--a);border-radius:14px;padding:18px;margin:0 0 16px;box-shadow:0 7px 24px rgba(0,0,0,.24)}
 .pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}.pricing-kicker{color:var(--a);font-size:12px;font-weight:800;letter-spacing:1.2px}.pricing-path{color:var(--dim);font-size:10px;margin-top:4px}.pricing-status{flex:0 0 auto;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;letter-spacing:.45px}
 .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.pricing-player{background:rgba(7,20,38,.66);border:1px solid var(--line);border-top:3px solid var(--a);border-radius:11px;padding:13px}.pricing-player.b{border-top-color:var(--b)}.pricing-player-name{font-size:14px;font-weight:800;margin-bottom:10px}.pricing-player.a .pricing-player-name{color:var(--a)}.pricing-player.b .pricing-player-name{color:var(--b)}
