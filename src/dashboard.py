@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 from urllib.parse import quote
 
-from . import calibration_store, paper_trading, run_metrics
+from . import calibration_store, paper_trading, report_html, run_metrics
 
 
 CHANGE_ID = "CHANGE-2026-09-06-027"
@@ -51,18 +51,41 @@ class _TitleParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self._inside = False
         self.parts: list[str] = []
+        self.report_color: str | None = None
+        self.historical_color: str | None = None
+        self._decision_depth = 0
+        self._decision_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag.casefold() == "title":
             self._inside = True
+        attributes = {str(name).casefold(): value for name, value in attrs}
+        if tag.casefold() == "meta" and attributes.get("name") == report_html.REPORT_COLOR_META_NAME:
+            color = str(attributes.get("content") or "").upper()
+            if color in {"GREEN", "YELLOW", "RED", "UNAVAILABLE"}:
+                self.report_color = color
+        classes = str(attributes.get("class") or "").split()
+        if tag.casefold() == "div" and "decision-head" in classes and not self._decision_depth:
+            self._decision_depth = 1
+            self._decision_parts = []
+        elif self._decision_depth:
+            self._decision_depth += 1
 
     def handle_endtag(self, tag: str) -> None:
         if tag.casefold() == "title":
             self._inside = False
+        if self._decision_depth:
+            self._decision_depth -= 1
+            if not self._decision_depth and self.historical_color is None:
+                self.historical_color = report_html.historical_report_color_from_decision_head(
+                    " ".join(self._decision_parts)
+                )
 
     def handle_data(self, data: str) -> None:
         if self._inside:
             self.parts.append(data)
+        if self._decision_depth:
+            self._decision_parts.append(data)
 
     @property
     def title(self) -> str | None:
@@ -125,17 +148,19 @@ def _latest_timestamp(values: Iterable[Any]) -> str | None:
     return max(valid).isoformat(timespec="seconds") if valid else None
 
 
-def _safe_title(path: Path) -> str:
+def _safe_report_metadata(path: Path) -> tuple[str, str | None, str | None]:
+    parser: _TitleParser | None = None
     try:
         with path.open("r", encoding="utf-8", errors="replace") as handle:
             content = handle.read(65536)
         parser = _TitleParser()
         parser.feed(content)
-        if parser.title:
-            return parser.title
     except (OSError, UnicodeError):
         pass
-    return path.stem.replace("-vs-", " vs ").replace("-", " ").strip() or "Relatório"
+    fallback = path.stem.replace("-vs-", " vs ").replace("-", " ").strip() or "Relatório"
+    if parser is None:
+        return fallback, None, None
+    return parser.title or fallback, parser.report_color, parser.historical_color
 
 
 def _report_date(path: Path) -> str | None:
@@ -208,7 +233,7 @@ def _build_reports(
         report_id = str(snapshot.get("report_id")) if snapshot else None
         snapshot_key = str(snapshot.get("key")) if snapshot and snapshot.get("key") else None
         report_day = _report_date(path)
-        title = _safe_title(path)
+        title, self_described_color, historical_color = _safe_report_metadata(path)
         if snapshot:
             player_a = _mapping(snapshot.get("player_a")).get("name") or snapshot.get("player_a")
             player_b = _mapping(snapshot.get("player_b")).get("name") or snapshot.get("player_b")
@@ -220,16 +245,28 @@ def _build_reports(
                 _mapping(_mapping(snapshot.get("validation")).get("cohorts")).get("GREEN_STRONG_V1")
             )
             is_green = membership.get("eligible") is True or bool(snapshot_key and snapshot_key in green_keys)
+        if snapshot:
+            color = _report_color(snapshot)
+            linkage = "EXACT_REPORT_ID"
+        elif self_described_color is not None:
+            color = self_described_color
+            linkage = "SELF_DESCRIBED_REPORT"
+        elif historical_color is not None:
+            color = historical_color
+            linkage = "HISTORICAL_DOM_CONTRACT"
+        else:
+            color = "UNAVAILABLE"
+            linkage = "LEGACY_UNLINKED"
         reports.append({
             "title": title,
             "date": report_day,
             "scheduled_start_utc": snapshot.get("commence_time_utc") if snapshot else None,
-            "color": _report_color(snapshot),
+            "color": color,
             "green_strong": is_green,
             "paper_technical": bool(
                 snapshot and (report_id in paper_report_ids or snapshot_key in paper_snapshot_keys)
             ),
-            "linkage": "EXACT_REPORT_ID" if snapshot else "LEGACY_UNLINKED",
+            "linkage": linkage,
             "url": f"../relatorios/{quote(path.name)}",
         })
     return reports, {
@@ -504,13 +541,22 @@ def _market_memory(
 
 
 def _system_health(history: list[Any] | None) -> dict[str, Any]:
+    def classify(entry: Mapping[str, Any], alerts: list[str]) -> str:
+        raw_status = str(entry.get("status") or "").casefold()
+        if raw_status == "failed":
+            return "FAILED"
+        if raw_status == "degraded" or alerts:
+            return "DEGRADED"
+        if raw_status in {"success", "no_eligible_matches"}:
+            return "HEALTHY"
+        return "UNKNOWN"
+
     entries = [dict(row) for row in history or [] if isinstance(row, Mapping)]
     if not entries:
         return {"status": "UNKNOWN", "latest": None, "alerts": [], "recent_runs": []}
     latest = entries[-1]
     alerts = run_metrics.health_alerts(latest)
-    raw_status = str(latest.get("status") or "").casefold()
-    status = "FAILED" if raw_status == "failed" else "DEGRADED" if alerts else "HEALTHY"
+    status = classify(latest, alerts)
     allowed = (
         "timestamp", "status", "phase", "eligible", "processed", "analysis_failed",
         "reports_failed", "rapidapi_calls", "llm_calls", "llm_estimated_cost_usd", "duration_seconds",
@@ -518,9 +564,7 @@ def _system_health(history: list[Any] | None) -> dict[str, Any]:
     recent = []
     for entry in entries[-20:]:
         entry_alerts = run_metrics.health_alerts(entry)
-        entry_raw = str(entry.get("status") or "").casefold()
-        entry_status = "FAILED" if entry_raw == "failed" else "DEGRADED" if entry_alerts else "HEALTHY"
-        recent.append({"timestamp": entry.get("timestamp"), "status": entry_status})
+        recent.append({"timestamp": entry.get("timestamp"), "status": classify(entry, entry_alerts)})
     return {
         "status": status,
         "latest": {field: latest.get(field) for field in allowed},
@@ -702,9 +746,10 @@ const val=(v,s='')=>v===null||v===undefined?'N/D':`${{typeof v==='number'?nf.for
 const pct=v=>val(v,'%'); const prob=v=>v===null||v===undefined?'N/D':pct(100*v);
 const fmtTime=v=>{{if(!v)return'N/D';const d=new Date(v);return Number.isNaN(d.valueOf())?'N/D':d.toLocaleString('pt-PT',{{dateStyle:'short',timeStyle:'short'}})}};
 const dayLabel=v=>v==='UNAVAILABLE'?'DATA N/D':new Date(v+'T12:00:00Z').toLocaleDateString('pt-PT',{{day:'2-digit',month:'short',year:'numeric'}}).toUpperCase();
+const linkageLabel=v=>({{EXACT_REPORT_ID:'ligação exata',SELF_DESCRIBED_REPORT:'metadata canónica do relatório',HISTORICAL_DOM_CONTRACT:'contrato HTML histórico',LEGACY_UNLINKED:'legacy · metadata N/D'}}[v]||'metadata N/D');
 const metric=(label,value,suffix='',detail='')=>`<div class="metric"><span>${{esc(label)}}</span><strong>${{val(value,suffix)}}</strong>${{detail?`<small>${{esc(detail)}}</small>`:''}}</div>`;
 const cards=items=>`<div class="cards">${{items.map(x=>`<${{x.filter?'button':'div'}} class="card ${{x.cls||''}}" ${{x.filter?`data-filter="${{x.filter}}" title="Filtrar relatórios deste dia"`:''}}><div class="label">${{esc(x.label)}}</div><div class="value">${{val(x.value)}}</div></${{x.filter?'button':'div'}}>`).join('')}}</div>`;
-function renderSidebar(){{const host=document.getElementById('days');if(!DATA.days.length){{host.innerHTML='<div class="empty">Sem relatórios disponíveis.</div>';return}}host.innerHTML=DATA.days.map((day,i)=>{{const c=day.counts;const reports=day.reports.filter(r=>day.date!==state.day||state.filter==='ALL'||r.color===state.filter);return `<details class="day" ${{day.date===state.day||(!state.day&&i===0)?'open':''}} data-day="${{esc(day.date)}}"><summary><div class="day-head"><span>▾ ${{dayLabel(day.date)}}</span><span>${{c.reports}}</span></div><div class="day-meta">${{c.reports}} reports · 🟢${{c.GREEN}} · 🟡${{c.YELLOW}} · 🔴${{c.RED}} · GS ${{c.GREEN_STRONG}}</div></summary><div class="reports">${{reports.length?reports.map(r=>`<a class="report" href="${{esc(r.url)}}"><div class="report-top"><i class="dot ${{r.color}}"></i><span class="report-title">${{esc(r.title)}}</span>${{r.green_strong?'<b class="badge gs">GS</b>':''}}${{r.paper_technical?'<b class="badge">PAPER</b>':''}}</div><div class="report-meta">${{fmtTime(r.scheduled_start_utc)}} · ${{r.linkage==='EXACT_REPORT_ID'?'ligação exata':'legacy · metadata N/D'}}</div></a>`).join(''):'<div class="empty">Sem relatórios neste filtro.</div>'}}</div></details>`}}).join('');host.querySelectorAll('.day').forEach(el=>el.addEventListener('toggle',()=>{{if(el.open&&el.dataset.day!==state.day){{state.day=el.dataset.day;state.scope='DAY';state.filter='ALL';render()}}}}))}}
+function renderSidebar(){{const host=document.getElementById('days');if(!DATA.days.length){{host.innerHTML='<div class="empty">Sem relatórios disponíveis.</div>';return}}host.innerHTML=DATA.days.map((day,i)=>{{const c=day.counts;const reports=day.reports.filter(r=>day.date!==state.day||state.filter==='ALL'||r.color===state.filter);return `<details class="day" ${{day.date===state.day||(!state.day&&i===0)?'open':''}} data-day="${{esc(day.date)}}"><summary><div class="day-head"><span>▾ ${{dayLabel(day.date)}}</span><span>${{c.reports}}</span></div><div class="day-meta">${{c.reports}} reports · 🟢${{c.GREEN}} · 🟡${{c.YELLOW}} · 🔴${{c.RED}} · GS ${{c.GREEN_STRONG}}</div></summary><div class="reports">${{reports.length?reports.map(r=>`<a class="report" href="${{esc(r.url)}}"><div class="report-top"><i class="dot ${{r.color}}"></i><span class="report-title">${{esc(r.title)}}</span>${{r.green_strong?'<b class="badge gs">GS</b>':''}}${{r.paper_technical?'<b class="badge">PAPER</b>':''}}</div><div class="report-meta">${{fmtTime(r.scheduled_start_utc)}} · ${{linkageLabel(r.linkage)}}</div></a>`).join(''):'<div class="empty">Sem relatórios neste filtro.</div>'}}</div></details>`}}).join('');host.querySelectorAll('.day').forEach(el=>el.addEventListener('toggle',()=>{{if(el.open&&el.dataset.day!==state.day){{state.day=el.dataset.day;state.scope='DAY';state.filter='ALL';render()}}}}))}}
 function panel(title,eyebrow,body,cls=''){{return `<article class="panel ${{cls}}"><h2>${{esc(title)}}</h2><div class="eyebrow">${{esc(eyebrow)}}</div>${{body}}</article>`}}
 function summaryRows(obj){{return `<div class="rows">${{[['Entradas',obj.total_entries],['Liquidadas',obj.settled],['Pendentes',obj.pending],['W–L',obj.wins==null||obj.losses==null?null:`${{obj.wins}}–${{obj.losses}}`],['Win rate',obj.win_rate_pct==null?null:pct(obj.win_rate_pct)],['Unidades',obj.units],['ROI',obj.roi_pct==null?null:pct(obj.roi_pct)],['Odd média',obj.average_odd]].map(([k,v])=>`<div class="row"><span>${{k}}</span><b>${{v==null?'N/D':v}}</b></div>`).join('')}}</div>`}}
 function globalView(){{const g=DATA.global,h=DATA.report_history,gs=DATA.green_strong_v1,gu=DATA.guerra_selection_v1,mm=DATA.market_memory,pt=DATA.paper_technical,p22=DATA.paper_22bet,sh=DATA.system_health;let out=cards([{{label:'Relatórios',value:g.total_reports}},{{label:'Snapshots',value:g.total_snapshots}},{{label:'Liquidados',value:g.settled_snapshots}},{{label:'Verdes',value:g.report_colors.GREEN,cls:'GREEN'}},{{label:'Amarelos',value:g.report_colors.YELLOW,cls:'YELLOW'}},{{label:'Vermelhos',value:g.report_colors.RED,cls:'RED'}},{{label:'GREEN_STRONG',value:g.green_strong_candidates}},{{label:'PAPER técnico',value:g.paper_technical_entries}},{{label:'PAPER 22Bet',value:g.paper_22bet_entries}},{{label:'Market obs.',value:g.market_observations}}]);out+='<div class="grid">';

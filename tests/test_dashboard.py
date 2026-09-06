@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src import dashboard, run_metrics
+from src import dashboard, report_html, run_metrics
 
 
 NOW = "2026-09-06T20:00:00+00:00"
@@ -62,10 +62,31 @@ class DashboardTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def _report(self, filename: str, title: str) -> Path:
+    def _report(
+        self,
+        filename: str,
+        title: str,
+        *,
+        color: str | None = None,
+        decision_state: str | None = None,
+    ) -> Path:
         path = self.root / "docs/relatorios" / filename
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"<!doctype html><title>{title}</title><p>body</p>", encoding="utf-8")
+        marker = (
+            f'<meta name="{report_html.REPORT_COLOR_META_NAME}" content="{color}">'
+            if color is not None else ""
+        )
+        decision = ""
+        if decision_state is not None:
+            label, css_class, ball, _color = report_html.REPORT_DECISION_PRESENTATION[decision_state]
+            decision = (
+                f'<section class="decision-box {css_class}"><div class="decision-head">'
+                f'<span>{ball}</span><b>{label}</b></div></section>'
+            )
+        path.write_text(
+            f"<!doctype html><head>{marker}<title>{title}</title></head><body>{decision}</body>",
+            encoding="utf-8",
+        )
         return path
 
     def _base_sources(self) -> None:
@@ -267,6 +288,19 @@ class DashboardTests(unittest.TestCase):
         write_json(path, value)
         self.assertEqual(self.build()["system_health"]["status"], "FAILED")
 
+    def test_unrecognized_or_missing_run_status_is_unknown(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["status"] = "future-state"
+        write_json(path, value)
+        result = self.build()["system_health"]
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["recent_runs"][-1]["status"], "UNKNOWN")
+        value[-1].pop("status")
+        write_json(path, value)
+        self.assertEqual(self.build()["system_health"]["status"], "UNKNOWN")
+
     def test_legacy_report_is_listed_without_fuzzy_linkage(self):
         self._base_sources()
         self._report("alpha-vs-beta-2026-09-05.html", "Alpha 1 vs Beta 1")
@@ -281,6 +315,61 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
         self.assertEqual(report["color"], "GREEN")
         self.assertTrue(report["paper_technical"])
+
+    def test_exact_report_id_has_priority_over_self_described_color(self):
+        self._base_sources()
+        path = self.root / "docs/relatorios" / f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html"
+        path.unlink()
+        self._report(path.name, "Alpha vs Beta", color="RED")
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "GREEN")
+
+    def test_rerun_with_new_report_id_uses_self_described_canonical_color(self):
+        self._base_sources()
+        self._report("alpha-vs-beta-2026-09-06-33333333333333333333.html", "Alpha rerun", color="RED")
+        rerun = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha rerun")
+        self.assertEqual(rerun["linkage"], "SELF_DESCRIBED_REPORT")
+        self.assertEqual(rerun["color"], "RED")
+        self.assertFalse(rerun["green_strong"])
+        self.assertFalse(rerun["paper_technical"])
+
+    def test_known_historical_dom_contract_is_not_a_css_class_shortcut(self):
+        self._base_sources()
+        self._report(
+            "known-vs-contract-2026-09-05-44444444444444444444.html",
+            "Known contract",
+            decision_state="EDGE_NEGATIVE",
+        )
+        known = next(row for day in self.build()["days"] for row in day["reports"] if row["title"] == "Known contract")
+        self.assertEqual(known["linkage"], "HISTORICAL_DOM_CONTRACT")
+        self.assertEqual(known["color"], "RED")
+        self.assertFalse(known["green_strong"])
+        self.assertFalse(known["paper_technical"])
+
+        fake = self._report("fake-vs-class-2026-09-05.html", "Fake class")
+        fake.write_text(
+            '<!doctype html><title>Fake class</title><section class="decision-box negative">not canonical</section>',
+            encoding="utf-8",
+        )
+        fake_row = next(row for day in self.build()["days"] for row in day["reports"] if row["title"] == "Fake class")
+        self.assertEqual(fake_row["linkage"], "LEGACY_UNLINKED")
+        self.assertEqual(fake_row["color"], "UNAVAILABLE")
+
+    def test_supported_report_markers_reduce_unavailable_without_inference(self):
+        self._base_sources()
+        for index, color in enumerate(("GREEN", "YELLOW", "RED", "GREEN", "RED")):
+            self._report(
+                f"marked-{index}-vs-player-2026-09-05-{index + 5:020x}.html",
+                f"Marked {index}",
+                color=color,
+            )
+        self._report("unknown-vs-player-2026-09-05.html", "Unknown legacy")
+        day = next(item for item in self.build()["days"] if item["date"] == "2026-09-05")
+        self.assertEqual(day["counts"]["UNAVAILABLE"], 1)
+        self.assertLess(day["counts"]["UNAVAILABLE"], day["counts"]["reports"] / 2)
+        self.assertEqual(day["counts"]["GREEN_STRONG"], 0)
+        self.assertEqual(day["counts"]["PAPER_TECHNICAL"], 0)
 
     def test_private_sheet_fields_never_enter_outputs(self):
         self._base_sources()
