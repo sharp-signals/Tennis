@@ -67,6 +67,30 @@ class ReportStateTests(unittest.TestCase):
         legacy_conviction = {**strong, "tipo": "conviccao"}
         self.assertEqual(report_html.detetar_estado({}, {}, legacy_conviction)[0], "alinhado")
 
+    def test_canonical_report_color_reuses_the_decision_presentation_contract(self):
+        expected = {
+            "EDGE_POSITIVE": "GREEN",
+            "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": "YELLOW",
+            "EDGE_NEGATIVE": "RED",
+            "EDGE_ZERO": "UNAVAILABLE",
+            "REPORT_NULL": "UNAVAILABLE",
+            "PRICING_UNAVAILABLE": "YELLOW",
+        }
+        for state, color in expected.items():
+            with self.subTest(state=state):
+                payload = {"prelive_decision": {"state": state}}
+                label, _css_class, ball, presentation_color = report_html.REPORT_DECISION_PRESENTATION[state]
+                self.assertEqual(report_html.canonical_report_color(payload), color)
+                self.assertEqual(presentation_color, color)
+                self.assertEqual(
+                    report_html.historical_report_color_from_decision_head(f"{ball} {label}"),
+                    color,
+                )
+
+        self.assertIsNone(
+            report_html.historical_report_color_from_decision_head("🔴 texto não canónico")
+        )
+
     def test_divergence_normalization_preserves_diagnostic_fields(self):
         raw = {
             "prob_mercado_a": 60,
@@ -122,6 +146,10 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Todos os relatórios", html)
         self.assertIn("Dashboard", html)
         self.assertIn("https://sharp-signals.github.io/Tennis/dashboard/", html)
+        self.assertIn(
+            '<meta name="fenzobot-report-color" content="YELLOW">',
+            html,
+        )
         self.assertIn("PREÇO DE MERCADO INDISPONÍVEL", html)
         self.assertNotIn('<script>alert("a")</script>', html)
         self.assertNotIn('<img src=x onerror="alert(1)">', html)
