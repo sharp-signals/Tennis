@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.calibration_store import settle_from_matches
-from src import market_ledger, market_memory_report
+from src import green_strong_validation, market_ledger, market_memory_report
 from src.paper_trading import settle_from_matches as settle_paper_from_matches
 
 
@@ -54,6 +54,12 @@ if __name__ == "__main__":
             "Market Memory atualizado: "
             f"{report['observation_count']} observações; {len(archived)} dia(s) arquivado(s)."
         )
+        green = green_strong_validation.build_and_write(
+            memory_report=report,
+            manual_path=ROOT / "data" / "manual_paper_22bet.json",
+            output_path=ROOT / "data" / "validation" / "green-strong-v1.json",
+        )
+        print(f"GREEN_STRONG_V1 atualizado: {green['metrics']['sample_size']} candidato(s).")
     except Exception as exc:
         # O contrato do CHANGE exige degradação aberta: settlement e PAPER
         # continuam válidos; apenas Market Memory/CLV fica indisponível.

@@ -33,6 +33,8 @@ jobs:
         run: ruff check src tests scripts
       - name: Procurar segredos versionados
         run: python scripts/check_secrets.py
+      - name: Validar sincronização privada PAPER 22Bet
+        run: node --test scripts/google_apps_script/sync_paper_22bet.test.js
       - name: Auditar vulnerabilidades conhecidas
         run: pip-audit -r requirements.lock
       - name: Correr testes e medir cobertura

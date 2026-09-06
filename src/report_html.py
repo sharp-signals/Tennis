@@ -2977,11 +2977,48 @@ def _mod_decision_box(payload):
     )
 
 
+def _mod_green_strong_candidate(payload):
+    membership = _d(_d(_d(payload.get("validation")).get("cohorts")).get("GREEN_STRONG_V1"))
+    if membership.get("eligible") is not True:
+        return ""
+    source = _d(membership.get("source"))
+    snapshot_key = source.get("snapshot_key") or payload.get("snapshot_key") or "UNAVAILABLE"
+    probabilities = _d(source.get("market_probabilities"))
+    side = membership.get("selected_side")
+    other = "b" if side == "a" else "a"
+    try:
+        is_underdog = (
+            side in {"a", "b"}
+            and float(probabilities[side]) < float(probabilities[other])
+        )
+    except (KeyError, TypeError, ValueError):
+        is_underdog = False
+    underdog_rule = (
+        ' Sendo o lado Fenzobot o underdog, uma eventual seleção GUERRA_SELECTION_V1 usa duas legs manuais '
+        'para este snapshot: Moneyline direto + Handicap games positivo, sempre com linha e odds reais 22Bet.'
+        if is_underdog else ""
+    )
+    return (
+        '<section class="green-strong-candidate">'
+        '<div class="green-strong-title">GREEN_STRONG_V1 — candidato à validação</div>'
+        '<p>Registo prospetivo SHADOW; não é prova de vantagem nem recomendação de execução.</p>'
+        f'<div class="green-strong-id">Snapshot {_esc(snapshot_key)} · Validação {_esc(membership.get("validation_id") or "UNAVAILABLE")}</div>'
+        '<div class="green-strong-check"><b>Revisão manual 22Bet</b> · Moneyline ≥ 1.75 pode ser considerada; '
+        'abaixo de 1.75 encaminhar apenas para revisão de handicap. Confirmar preço, cobertura equivalente e contexto; '
+        f'nenhuma entrada ou handicap é automático.{_esc(underdog_rule)}</div></section>'
+    )
+
+
 def _mod_system_history(payload):
     history = _d(payload.get("paper_history"))
     paper = _d(history.get("PAPER"))
     manual_document = _d(history.get("MANUAL_22BET"))
     manual = _d(manual_document.get("summary"))
+    green_report = _d(payload.get("green_strong_history"))
+    green_metrics = _d(green_report.get("metrics"))
+    guerra = _d(green_report.get("guerra_selection_v1"))
+    guerra_summary = _d(guerra.get("summary"))
+    guerra_pairs = _d(guerra.get("underdog_pair_completeness"))
 
     def value(raw, suffix=""):
         if raw is None:
@@ -3091,12 +3128,22 @@ def _mod_system_history(payload):
         '<p>Ainda sem amostra reconstruída liquidada suficiente para métricas. '
         'Este bloco é reconstruído a partir de snapshots resolvidos; não é o PAPER nem histórico REAL.</p>'
     )
+    validation_html = (
+        f'<p>GREEN_STRONG_V1: {_esc(green_metrics.get("sample_size", 0))} candidatos prospetivos · '
+        f'{_esc(green_metrics.get("settled_sample_size", 0))} liquidados · '
+        f'win rate {_esc(value(green_metrics.get("win_rate_pct"), "%"))}. '
+        f'GUERRA_SELECTION_V1: {_esc(guerra.get("selected_candidates", 0))} candidatos únicos · '
+        f'{_esc(guerra.get("paper_entries", guerra_summary.get("total_entries", 0)))} entradas PAPER · '
+        f'{_esc(guerra_pairs.get("complete_moneyline_positive_handicap_pairs", 0))} pares underdog completos.</p>'
+        '<p>SHADOW experimental; amostra e métricas descritivas não demonstram edge.</p>'
+    )
     return (
         '<details class="system-history"><summary>Histórico do sistema'
         '<span class="more-hint">PAPER 22Bet, sinais técnicos, reconstruído e REAL separados</span></summary>'
         f'<div class="system-history-body"><h4>PAPER 22Bet · registo manual</h4>{manual_html}'
         f'<h4>Sinais PAPER do sistema · técnico</h4>{paper_html}'
         f'<h4>Reconstruído / backtest</h4>{reconstructed_html}'
+        f'<h4>Validação prospetiva · GREEN_STRONG_V1</h4>{validation_html}'
         '<h4>REAL</h4><p>Ainda sem histórico REAL. Não é misturado com PAPER nem com reconstruído.</p></div></details>'
     )
 def _mod_fatores(payload, div):
@@ -4909,6 +4956,7 @@ def _css_editorial():
 .decision-box{border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px;background:var(--surface)}
 .decision-box.positive{border-color:var(--mint);background:linear-gradient(145deg,rgba(63,185,168,.15),var(--surface) 46%)}.decision-box.negative{border-color:var(--error);background:linear-gradient(145deg,rgba(224,108,91,.13),var(--surface) 46%)}.decision-box.zero{border-color:#8b96a3}.decision-box.null{border-color:#05070a;background:#090b0e;box-shadow:inset 0 0 0 1px #252a31}
 .decision-head{display:flex;gap:9px;align-items:center;font-size:14px;letter-spacing:.3px}.decision-primary{font-size:15px;font-weight:750;margin:11px 0 8px}.decision-grid{display:flex;flex-wrap:wrap;gap:7px 18px;color:var(--dim);font-size:12px}.decision-grid b{color:var(--text)}.decision-note{color:var(--dim);font-size:11px;margin-top:8px}.decision-reasons{margin:8px 0 0;padding-left:19px;color:var(--dim);font-size:12px;line-height:1.6}
+.green-strong-candidate{border:1px solid var(--mint);border-radius:12px;padding:13px 16px;margin:0 0 14px;background:rgba(63,185,168,.08)}.green-strong-title{color:var(--mint);font-size:12px;font-weight:850;letter-spacing:.45px}.green-strong-candidate p,.green-strong-id,.green-strong-check{font-size:10px;color:var(--dim);line-height:1.5;margin:7px 0 0}.green-strong-id{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.green-strong-check{border-top:1px solid rgba(63,185,168,.28);padding-top:7px}.green-strong-check b{color:var(--text)}
 .system-history{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:0 0 14px}.system-history>summary{cursor:pointer;padding:13px 16px;font-weight:700;list-style:none}.system-history>summary::-webkit-details-marker{display:none}.system-history>summary::before{content:"▸ ";color:var(--a)}.system-history[open]>summary::before{content:"▾ "}.system-history-body{padding:0 16px 16px}.system-history h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--a);margin:13px 0 8px}.system-history p,.history-split{color:var(--dim);font-size:11px;margin:6px 0}.history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.history-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.history-metrics span{display:block;color:var(--dim);font-size:9px}.history-metrics b{font-size:13px}
 @media(max-width:640px){.history-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-grid{display:grid;grid-template-columns:1fr 1fr}}
 .history-sheet-link{display:inline-block;color:var(--mint);font-weight:700;margin-left:4px}
@@ -5318,6 +5366,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_header(payload, div, estado))
     partes.append(_mod_handicap_reference_header(payload))
     partes.append(_mod_decision_box(payload))
+    partes.append(_mod_green_strong_candidate(payload))
     partes.append(_mod_system_history(payload))
     # A nova cadeia market -> Sharp estimate -> fair odd -> expected edge e a
     # leitura economica principal. A faixa indicative_odds fica apenas como

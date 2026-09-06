@@ -1,5 +1,7 @@
 # Market Memory / Market-Time Ledger
 
+> `GREEN_STRONG_V1` reutiliza este ledger sem novas chamadas. Consulte [docs/GREEN_STRONG_VALIDATION.md](docs/GREEN_STRONG_VALIDATION.md). A entrada é a probabilidade congelada no pricing; closing só serve para avaliação posterior, nunca para classificar.
+
 **CHANGE-ID:** `CHANGE-2026-09-03-024`
 
 **Nível:** 3 — arquitetura central de dados
