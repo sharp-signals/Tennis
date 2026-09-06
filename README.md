@@ -132,6 +132,13 @@ histórico de acerto e os intervalos de Wilson só são mostrados quando existe
 amostra suficiente. Isto permite validação OOS sem reescrever informação
 pré-jogo.
 
+O registo operacional manual **PAPER 22Bet** é separado da carteira técnica
+automática. A Sheet oficial publica apenas métricas agregadas em
+`data/manual_paper_22bet.json`; os relatórios mostram entradas, W–L, ROI,
+unidades e segmentos por mercado/perfil sem misturar estes dados com sinais
+PAPER automáticos, reconstruído/backtest ou REAL. A configuração está em
+`docs/PAPER_22BET_SYNC.md`.
+
 ### Market Memory
 
 O `CHANGE-2026-09-03-024` acrescenta um Market-Time Ledger sem novas chamadas

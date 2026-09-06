@@ -478,9 +478,30 @@ class ReportRenderingTests(unittest.TestCase):
 
     def test_system_history_keeps_universes_separate_without_empty_market_rows(self):
         html = report_html._mod_system_history({"paper_history": {"PAPER": {"total_entries": 0}}})
-        self.assertIn("Ainda não há entradas PAPER registadas.", html)
+        self.assertIn("O registo manual 22Bet ainda não foi sincronizado.", html)
+        self.assertIn("Ainda não há sinais PAPER técnicos registados.", html)
         self.assertIn("Ainda sem histórico REAL.", html)
         self.assertNotIn("Handicap: N/D", html)
+
+    def test_system_history_shows_manual_22bet_separately_with_source_link(self):
+        html = report_html._mod_system_history({"paper_history": {
+            "PAPER": {"total_entries": 2, "settled": 2, "wins": 1, "losses": 1},
+            "MANUAL_22BET": {
+                "source": {"url": "https://docs.google.com/spreadsheets/d/example"},
+                "summary": {
+                    "total_entries": 40, "settled": 36, "pending": 4,
+                    "wins": 25, "losses": 11, "units": 12.88,
+                    "roi_pct": 35.78, "average_odd": 1.945,
+                },
+                "by_market": {"Moneyline": {"total_entries": 15, "wins": 11, "losses": 3, "roi_pct": 64.86}},
+                "by_side": {"Underdog": {"total_entries": 20, "roi_pct": 59.47}},
+            },
+        }})
+        self.assertIn("PAPER 22Bet · registo manual", html)
+        self.assertIn("12.88 u", html)
+        self.assertIn("Moneyline: 15 entradas · 11–3 · 64.86% ROI", html)
+        self.assertIn("Abrir registo PAPER Trading 22Bet", html)
+        self.assertIn("Sinais PAPER do sistema · técnico", html)
 
     def test_calibrated_odds_range_is_demoted_behind_primary_pricing(self):
         payload = {

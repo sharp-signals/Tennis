@@ -18,6 +18,8 @@ from . import market_ledger
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/paper_trades.json")
 DEFAULT_EXCLUSIONS_PATH = Path("data/paper_integrity_exclusions.json")
+MANUAL_22BET_SCHEMA_VERSION = 1
+DEFAULT_MANUAL_22BET_PATH = Path("data/manual_paper_22bet.json")
 _LOCK = threading.Lock()
 
 
@@ -37,6 +39,25 @@ def _read(path: Path) -> dict[str, Any]:
 
 def read_entries(path: Path = DEFAULT_PATH) -> list[dict[str, Any]]:
     return copy.deepcopy(_read(path)["entries"])
+
+
+def read_manual_22bet_history(path: Path = DEFAULT_MANUAL_22BET_PATH) -> dict[str, Any] | None:
+    """Lê o resumo publicado pela Sheet oficial de PAPER 22Bet.
+
+    Este documento não é uma carteira gerada pelo bot nem liquida entradas
+    automaticamente. É apenas uma projeção auditável do registo manual, para
+    ser mostrado separado dos sinais PAPER técnicos e do backtest.
+    """
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(document, Mapping) or document.get("schema_version") != MANUAL_22BET_SCHEMA_VERSION:
+        return None
+    summary = document.get("summary")
+    if not isinstance(summary, Mapping) or not isinstance(summary.get("total_entries"), int):
+        return None
+    return copy.deepcopy(dict(document))
 
 
 def excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
@@ -330,7 +351,10 @@ def _summary(entries: list[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
-def compute_history(path: Path = DEFAULT_PATH) -> dict[str, Any]:
+def compute_history(
+    path: Path = DEFAULT_PATH,
+    manual_22bet_path: Path = DEFAULT_MANUAL_22BET_PATH,
+) -> dict[str, Any]:
     exclusions = excluded_keys()
     entries = [entry for entry in _read(path)["entries"] if str(entry.get("key")) not in exclusions]
     by_market = {}
@@ -339,6 +363,7 @@ def compute_history(path: Path = DEFAULT_PATH) -> dict[str, Any]:
         by_market[kind] = _summary(subset) if subset else None
     return {
         "PAPER": {**_summary(entries), "by_market": by_market, "edge_buckets": None},
+        "MANUAL_22BET": read_manual_22bet_history(manual_22bet_path),
         "BACKTEST_RECONSTRUCTED": None,
         "REAL": None,
         "history_version": "paper-history-v2-market-memory",

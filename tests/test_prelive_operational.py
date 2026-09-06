@@ -1,4 +1,5 @@
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -236,6 +237,26 @@ class PreliveOperationalContractTests(unittest.TestCase):
             second["pregame"]["match_id"] = 88
             paper_trading.append_entries([second], path)
             self.assertEqual(len(paper_trading.read_entries(path)), 2)
+
+    def test_manual_22bet_history_is_loaded_separately_from_system_paper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manual_path = Path(tmp) / "manual_22bet.json"
+            manual_path.write_text(json.dumps({
+                "schema_version": 1,
+                "source": {"url": "https://docs.google.com/spreadsheets/d/example"},
+                "summary": {"total_entries": 3, "settled": 2, "wins": 2, "losses": 0},
+                "by_market": {"Moneyline": {"total_entries": 3}},
+            }), encoding="utf-8")
+            history = paper_trading.compute_history(Path(tmp) / "system.json", manual_path)
+            self.assertEqual(history["PAPER"]["total_entries"], 0)
+            self.assertEqual(history["MANUAL_22BET"]["summary"]["total_entries"], 3)
+
+    def test_invalid_manual_22bet_history_is_not_treated_as_system_paper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manual_path = Path(tmp) / "manual_22bet.json"
+            manual_path.write_text('{"schema_version": 9}', encoding="utf-8")
+            history = paper_trading.compute_history(Path(tmp) / "system.json", manual_path)
+            self.assertIsNone(history["MANUAL_22BET"])
 
     def test_moneyline_and_handicap_are_separate_entries(self):
         payload = self.payload()
