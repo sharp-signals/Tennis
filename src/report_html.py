@@ -2353,6 +2353,7 @@ body {{ background:var(--bg); color:var(--text);
 .report-nav {{ max-width:1080px; margin:0 auto 10px; }}
 .report-nav a {{ color:var(--dim); text-decoration:none; font-size:14px; }}
 .report-nav a:hover, .report-nav a:focus {{ color:var(--text); text-decoration:underline; }}
+.report-nav .nav-sep {{ color:var(--line); margin:0 8px; }}
 .sr-only {{ position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }}
 .num {{ font-variant-numeric:tabular-nums; }}
@@ -5506,6 +5507,8 @@ def _pagina(a, b, corpo):
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">
   <a href="{_esc(SITE_BASE_URL)}/">← Todos os relatórios</a>
+  <span class="nav-sep" aria-hidden="true">·</span>
+  <a href="{_esc(SITE_BASE_URL)}/dashboard/">Dashboard</a>
 </nav>
 <main>
 <h1 class="sr-only">{_esc(a)} vs {_esc(b)}</h1>
