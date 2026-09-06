@@ -23,8 +23,9 @@ A tag fica em `validation.cohorts.GREEN_STRONG_V1` e guarda contrato, instante, 
 - Não existe teto `1.90`.
 - Cobertura equivalente, preço compensatório e decisão final continuam humanos.
 - A proteção advisory de 20% do underdog permanece informativa, não é um gate.
+- Quando o lado `GREEN_STRONG_V1` é o underdog e Guerra seleciona o caso, registam-se duas entradas manuais para o mesmo snapshot: Moneyline direto e Handicap games positivo. Linha e odds são sempre as realmente observadas na 22Bet; o sistema não as escolhe.
 
-A Sheet mantém as 15 colunas existentes. O instalador de menu acrescenta cinco colunas opcionais de forma idempotente. Da Sheet, o repositório recebe apenas agregados: nunca nomes, snapshot keys, notas ou linhas individuais. A vista técnica da coorte publica os keys gerados pelo Fenzobot estritamente para permitir a validação exata.
+A Sheet mantém as 15 colunas existentes. O instalador de menu acrescenta seis colunas opcionais de forma idempotente, incluindo `22Bet Handicap Games Line` para validar que a segunda leg é positiva sem adivinhar uma coluna legacy. Duas rows podem usar o mesmo snapshot key. A taxa de seleção conta keys únicos; `paper_entries` conta legs. A completude dos pares underdog é publicada apenas em contagens agregadas. Da Sheet, o repositório nunca recebe nomes, snapshot keys, notas ou linhas individuais. A vista técnica da coorte publica os keys gerados pelo Fenzobot estritamente para permitir a validação exata.
 
 ## Limites
 

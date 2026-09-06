@@ -303,6 +303,7 @@ def build_report(*, memory_report: Mapping[str, Any], manual_path: Path = DEFAUL
             "status": membership.get("status") or ("ELIGIBLE" if membership.get("eligible") is True else "INELIGIBLE"),
             "validation_id": membership.get("validation_id"),
             "selected_side": membership.get("selected_side"),
+            "selected_side_market_position": row.get("selected_side_market_position") or "UNAVAILABLE",
             "reason_codes": membership.get("reason_codes") or [],
         })
         if membership.get("eligible") is True:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -159,6 +160,30 @@ def upsert_snapshots(snapshots: Iterable[Mapping[str, Any]], path: Path = DEFAUL
         document["updated_at_utc"] = _utc_now()
         _write(path, document)
         return added
+
+
+def read_snapshots_by_key(
+    keys: Iterable[str], path: Path = DEFAULT_PATH,
+) -> dict[str, dict[str, Any]]:
+    """Devolve a primeira fotografia persistida para cada key pedida."""
+    wanted = {str(key) for key in keys if key}
+    with _LOCK:
+        document = _read(path)
+        return {
+            str(item["key"]): copy.deepcopy(dict(item))
+            for item in document["snapshots"]
+            if item.get("key") is not None and str(item["key"]) in wanted
+        }
+
+
+def apply_persisted_validation(
+    payload: dict[str, Any], persisted_snapshot: Mapping[str, Any] | None,
+) -> None:
+    """Liga ao relatório só a classification realmente aceite no store."""
+    payload.pop("validation", None)
+    validation = (persisted_snapshot or {}).get("validation")
+    if isinstance(validation, Mapping):
+        payload["validation"] = copy.deepcopy(dict(validation))
 
 
 def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:

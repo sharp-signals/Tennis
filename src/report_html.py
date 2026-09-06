@@ -2983,6 +2983,21 @@ def _mod_green_strong_candidate(payload):
         return ""
     source = _d(membership.get("source"))
     snapshot_key = source.get("snapshot_key") or payload.get("snapshot_key") or "UNAVAILABLE"
+    probabilities = _d(source.get("market_probabilities"))
+    side = membership.get("selected_side")
+    other = "b" if side == "a" else "a"
+    try:
+        is_underdog = (
+            side in {"a", "b"}
+            and float(probabilities[side]) < float(probabilities[other])
+        )
+    except (KeyError, TypeError, ValueError):
+        is_underdog = False
+    underdog_rule = (
+        ' Sendo o lado Fenzobot o underdog, uma eventual seleção GUERRA_SELECTION_V1 usa duas legs manuais '
+        'para este snapshot: Moneyline direto + Handicap games positivo, sempre com linha e odds reais 22Bet.'
+        if is_underdog else ""
+    )
     return (
         '<section class="green-strong-candidate">'
         '<div class="green-strong-title">GREEN_STRONG_V1 — candidato à validação</div>'
@@ -2990,7 +3005,7 @@ def _mod_green_strong_candidate(payload):
         f'<div class="green-strong-id">Snapshot {_esc(snapshot_key)} · Validação {_esc(membership.get("validation_id") or "UNAVAILABLE")}</div>'
         '<div class="green-strong-check"><b>Revisão manual 22Bet</b> · Moneyline ≥ 1.75 pode ser considerada; '
         'abaixo de 1.75 encaminhar apenas para revisão de handicap. Confirmar preço, cobertura equivalente e contexto; '
-        'nenhuma entrada ou handicap é automático.</div></section>'
+        f'nenhuma entrada ou handicap é automático.{_esc(underdog_rule)}</div></section>'
     )
 
 
@@ -3003,6 +3018,7 @@ def _mod_system_history(payload):
     green_metrics = _d(green_report.get("metrics"))
     guerra = _d(green_report.get("guerra_selection_v1"))
     guerra_summary = _d(guerra.get("summary"))
+    guerra_pairs = _d(guerra.get("underdog_pair_completeness"))
 
     def value(raw, suffix=""):
         if raw is None:
@@ -3116,7 +3132,9 @@ def _mod_system_history(payload):
         f'<p>GREEN_STRONG_V1: {_esc(green_metrics.get("sample_size", 0))} candidatos prospetivos · '
         f'{_esc(green_metrics.get("settled_sample_size", 0))} liquidados · '
         f'win rate {_esc(value(green_metrics.get("win_rate_pct"), "%"))}. '
-        f'GUERRA_SELECTION_V1: {_esc(guerra_summary.get("total_entries", 0))} seleções ligadas ex-ante.</p>'
+        f'GUERRA_SELECTION_V1: {_esc(guerra.get("selected_candidates", 0))} candidatos únicos · '
+        f'{_esc(guerra.get("paper_entries", guerra_summary.get("total_entries", 0)))} entradas PAPER · '
+        f'{_esc(guerra_pairs.get("complete_moneyline_positive_handicap_pairs", 0))} pares underdog completos.</p>'
         '<p>SHADOW experimental; amostra e métricas descritivas não demonstram edge.</p>'
     )
     return (

@@ -130,6 +130,34 @@ class GreenStrongClassificationTests(unittest.TestCase):
             self.assertNotIn("validation", next(row for row in rows if row["key"] == "old"))
             self.assertIn("cohorts", next(row for row in rows if row["key"] == "wta:901")["validation"])
 
+    def test_legacy_first_snapshot_controls_rerun_badge_and_derived_cohort(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshots_path = root / "snapshots.json"
+            legacy = {
+                "key": "wta:901", "event_key": "wta:901", "match_id": 901,
+                "analyzed_at_utc": "2026-09-01T10:00:00+00:00",
+                "commence_time_utc": "2026-09-07T12:00:00+00:00", "outcome": None,
+            }
+            calibration_store.upsert_snapshots([legacy], snapshots_path)
+            rerun_payload = eligible_payload()
+            discarded = calibration_store.build_snapshot(
+                rerun_payload, analyzed_at_utc="2026-09-06T10:00:00+00:00"
+            )
+            rerun_payload["validation"] = discarded["validation"]
+            self.assertEqual(calibration_store.upsert_snapshots([discarded], snapshots_path), 0)
+            persisted = calibration_store.read_snapshots_by_key(["wta:901"], snapshots_path)["wta:901"]
+            calibration_store.apply_persisted_validation(rerun_payload, persisted)
+            self.assertNotIn("validation", rerun_payload)
+            self.assertEqual(_mod_green_strong_candidate(rerun_payload), "")
+            memory = market_memory_report.build_report(
+                ledger_root=root / "ledger", snapshots_path=snapshots_path,
+                paper_path=root / "paper.json",
+            )
+            derived = green_strong_validation.build_report(memory_report=memory)
+            self.assertNotIn("GREEN_STRONG_V1", memory["evaluation_by_cohort"])
+            self.assertEqual(derived["metrics"]["sample_size"], 0)
+
 
 class GreenStrongReportingTests(unittest.TestCase):
     def test_metrics_use_pricing_entry_and_comparable_closing_only(self):
@@ -166,6 +194,14 @@ class GreenStrongReportingTests(unittest.TestCase):
         self.assertIn("candidato à validação", html)
         membership["eligible"] = False
         self.assertEqual(_mod_green_strong_candidate({"validation": {"cohorts": {"GREEN_STRONG_V1": membership}}}), "")
+
+    def test_underdog_badge_explains_two_manual_legs(self):
+        membership = self._membership()
+        membership["source"]["market_probabilities"] = {"a": .40, "b": .60}
+        html = _mod_green_strong_candidate({"validation": {"cohorts": {"GREEN_STRONG_V1": membership}}})
+        self.assertIn("duas legs manuais", html)
+        self.assertIn("Moneyline direto + Handicap games positivo", html)
+        self.assertIn("nenhuma entrada ou handicap é automático", html)
 
     @staticmethod
     def _membership():

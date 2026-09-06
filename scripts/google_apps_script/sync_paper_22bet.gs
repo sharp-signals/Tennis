@@ -20,7 +20,7 @@ const PAPER_22BET_SYNC = {
   validationPath: 'data/validation/green-strong-v1.json',
   trackingHeaders: [
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
-    '22Bet Moneyline Review Odd', 'Validation Status',
+    '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
   ],
 };
 
@@ -153,6 +153,8 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const guerraByMarket = {};
   const guerraBySide = {};
   const guerraReviewRoutes = {};
+  const selectedSnapshotKeys = {};
+  const underdogPairs = {};
   const linkage = {LINKED_EX_ANTE: 0, SNAPSHOT_NOT_FOUND: 0, NOT_GREEN_STRONG: 0, SELECTION_AFTER_START: 0, MISSING_SELECTION_TIMESTAMP: 0, UNAVAILABLE: 0};
   rows.forEach((row, offset) => {
     if (!(row[0] && row[1] && row[5]) || !tracking.complete || String(row[tracking.strategy] || '').trim() !== 'GUERRA_SELECTION_V1') return;
@@ -160,6 +162,9 @@ function buildPaperTradingPayload_(token, repository, branch) {
     linkage[status] = (linkage[status] || 0) + 1;
     sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(status);
     if (status !== 'LINKED_EX_ANTE') return;
+    const snapshotKey = String(row[tracking.snapshot]).trim();
+    const cohort = green.byKey[snapshotKey] || {};
+    selectedSnapshotKeys[snapshotKey] = true;
     const market = row[5] === 'Vencedor' ? 'Moneyline' : String(row[5]);
     const side = String(row[7] || 'Sem perfil');
     const route = moneylineReviewRoute_(row[tracking.reviewOdd]);
@@ -169,12 +174,43 @@ function buildPaperTradingPayload_(token, repository, branch) {
     addRowToStats_(guerraByMarket[market], row);
     addRowToStats_(guerraBySide[side], row);
     guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
+    if (cohort.selected_side_market_position === 'UNDERDOG') {
+      if (!underdogPairs[snapshotKey]) underdogPairs[snapshotKey] = {moneyline: false, positiveHandicap: false};
+      const leg = manualLegType_(row, tracking);
+      if (leg === 'MONEYLINE') underdogPairs[snapshotKey].moneyline = true;
+      if (leg === 'POSITIVE_HANDICAP_GAMES') underdogPairs[snapshotKey].positiveHandicap = true;
+    }
   });
 
+  const pairValues = Object.keys(underdogPairs).map(key => underdogPairs[key]);
+  const pairCompleteness = {
+    underdog_selected_candidates: pairValues.length,
+    complete_moneyline_positive_handicap_pairs: pairValues.filter(pair => pair.moneyline && pair.positiveHandicap).length,
+    moneyline_only: pairValues.filter(pair => pair.moneyline && !pair.positiveHandicap).length,
+    positive_handicap_only: pairValues.filter(pair => !pair.moneyline && pair.positiveHandicap).length,
+    incomplete_or_unrecognized: pairValues.filter(pair => !pair.moneyline && !pair.positiveHandicap).length,
+  };
+  const selectedCandidates = Object.keys(selectedSnapshotKeys).length;
+  const strategyAggregate = {
+    summary: finishStats_(guerraStats),
+    paper_entries: guerraStats.total_entries,
+    selected_candidates: selectedCandidates,
+    by_market: finishCollection_(guerraByMarket),
+    by_side: finishCollection_(guerraBySide),
+    moneyline_review_routes: guerraReviewRoutes,
+    underdog_pair_completeness: pairCompleteness,
+    linkage: linkage,
+    eligible_green_strong: green.eligibleCount,
+    selection_rate_pct: green.eligibleCount ? Math.round(10000 * selectedCandidates / green.eligibleCount) / 100 : null,
+    status: tracking.complete && green.available ? 'AVAILABLE' : 'UNAVAILABLE',
+  };
   const fingerprintRows = tracking.complete ? activeRows.map(row => row.filter((value, index) => index !== tracking.status)) : activeRows;
   const fingerprint = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,
-    JSON.stringify(fingerprintRows),
+    semanticFingerprintMaterial_(fingerprintRows, {
+      summary: finishStats_(summary), by_market: finishCollection_(byMarket),
+      by_side: finishCollection_(bySide), by_strategy: strategyAggregate,
+    }),
   ).map(byte => ('0' + (byte & 0xff).toString(16)).slice(-2)).join('');
   return {
     schema_version: 2,
@@ -189,16 +225,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     by_market: finishCollection_(byMarket),
     by_side: finishCollection_(bySide),
     by_strategy: {
-      GUERRA_SELECTION_V1: {
-        summary: finishStats_(guerraStats),
-        by_market: finishCollection_(guerraByMarket),
-        by_side: finishCollection_(guerraBySide),
-        moneyline_review_routes: guerraReviewRoutes,
-        linkage: linkage,
-        eligible_green_strong: green.eligibleCount,
-        selection_rate_pct: green.eligibleCount ? Math.round(10000 * guerraStats.total_entries / green.eligibleCount) / 100 : null,
-        status: tracking.complete && green.available ? 'AVAILABLE' : 'UNAVAILABLE',
-      },
+      GUERRA_SELECTION_V1: strategyAggregate,
     },
   };
 }
@@ -209,9 +236,26 @@ function trackingIndexes_(headers) {
   return {
     snapshot: indexes['Fenzobot Snapshot Key'], strategy: indexes['Selection Strategy'],
     selectedAt: indexes['Selected At UTC'], reviewOdd: indexes['22Bet Moneyline Review Odd'],
+    handicapLine: indexes['22Bet Handicap Games Line'],
     status: indexes['Validation Status'],
     complete: PAPER_22BET_SYNC.trackingHeaders.every(header => indexes[header] >= 0),
   };
+}
+
+function manualLegType_(row, tracking) {
+  const market = row[5] === 'Vencedor' ? 'moneyline' : String(row[5] || '').trim().toLowerCase();
+  const odd = Number(row[9]);
+  if (!Number.isFinite(odd) || odd <= 1) return 'UNAVAILABLE';
+  if (market === 'moneyline') return 'MONEYLINE';
+  const line = Number(row[tracking.handicapLine]);
+  if (market.indexOf('handicap') >= 0 && market.indexOf('game') >= 0 && Number.isFinite(line) && line > 0) {
+    return 'POSITIVE_HANDICAP_GAMES';
+  }
+  return 'UNAVAILABLE';
+}
+
+function semanticFingerprintMaterial_(rowsWithoutValidationStatus, publicAggregates) {
+  return JSON.stringify({sheet_rows: rowsWithoutValidationStatus, aggregates: publicAggregates});
 }
 
 function trackingColumnMap_(sheet) {

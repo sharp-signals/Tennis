@@ -1944,10 +1944,18 @@ def run() -> None:
         payload["snapshot_key"] = snapshot["key"]
         payload["report_id"] = snapshot["report_id"]
         payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
-        payload["validation"] = snapshot.get("validation")
         snapshots.append(snapshot)
     added_snapshots = calibration_store.upsert_snapshots(snapshots)
     print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
+    persisted_snapshots = calibration_store.read_snapshots_by_key(
+        (snapshot["key"] for snapshot in snapshots)
+    )
+    for payload, _ in analyses:
+        # O badge e qualquer consumo downstream seguem exclusivamente a
+        # primeira fotografia aceite pelo first-write-wins. Um rerun nunca
+        # expõe a classificação de um snapshot calculado mas descartado.
+        persisted = persisted_snapshots.get(str(payload.get("snapshot_key")))
+        calibration_store.apply_persisted_validation(payload, persisted)
 
     paper_entries = [
         entry for payload, _ in analyses for entry in paper_trading.build_entries(payload)
