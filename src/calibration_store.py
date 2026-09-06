@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .green_strong_validation import COHORT_NAME, classify_snapshot
+
 
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/calibration_snapshots.json")
@@ -45,6 +47,16 @@ def _snapshot_key(payload: Mapping[str, Any]) -> str:
     return "fallback:" + hashlib.sha256(material.encode("utf-8")).hexdigest()[:24]
 
 
+def _match_format(payload: Mapping[str, Any]) -> str | None:
+    raw = payload.get("match_format") or payload.get("best_of")
+    normalized = str(raw or "").upper().replace("BEST_OF_", "BO").replace("BEST OF ", "BO")
+    if normalized in {"3", "BO3"}:
+        return "BO3"
+    if normalized in {"5", "BO5"}:
+        return "BO5"
+    return None
+
+
 def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None = None,
                    analyzed_at_utc: str | None = None) -> dict[str, Any]:
     """Cria uma fotografia compacta apenas com informacao conhecida pre-jogo."""
@@ -60,6 +72,7 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
         "tournament_id": payload.get("tournament_id"),
         "tournament": payload.get("tournament"),
         "surface": payload.get("surface"),
+        "match_format": _match_format(payload),
         "commence_time_utc": payload.get("commence_time_utc"),
         "analyzed_at_utc": analyzed_at,
         "player_a": {"id": payload.get("player_a_id"), "name": payload.get("player_a")},
@@ -89,6 +102,16 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
             key: result.get(key) for key in ("flag", "signal_strength") if result and result.get(key) is not None
         },
         "outcome": None,
+    }
+    snapshot["validation"] = {
+        "cohorts": {
+            COHORT_NAME: classify_snapshot(
+                payload,
+                snapshot_key=key,
+                classified_at_utc=analyzed_at,
+                prospective=True,
+            )
+        }
     }
     return snapshot
 

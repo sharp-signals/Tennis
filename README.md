@@ -1,5 +1,7 @@
 # 🎾 Fenzobot — Tennis Pre-Live Bot
 
+> A validação prospetiva `GREEN_STRONG_V1` e a seleção humana opcional `GUERRA_SELECTION_V1` estão em [docs/GREEN_STRONG_VALIDATION.md](docs/GREEN_STRONG_VALIDATION.md). Não alteram PAPER/SHADOW/REAL, pricing ou chamadas externas.
+
 Sistema pré-live para jogos ATP/WTA. Recolhe dados factuais, calcula um índice
 determinístico de evidência, confronta-o com o mercado e produz relatórios HTML
 e um resumo Telegram.

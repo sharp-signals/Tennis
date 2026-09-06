@@ -17,12 +17,18 @@ const PAPER_22BET_SYNC = {
   targetPath: 'data/manual_paper_22bet.json',
   defaultRepository: 'sharp-signals/Tennis',
   defaultBranch: 'main',
+  validationPath: 'data/validation/green-strong-v1.json',
+  trackingHeaders: [
+    'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
+    '22Bet Moneyline Review Odd', 'Validation Status',
+  ],
 };
 
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Fenzobot')
     .addItem('Sincronizar métricas PAPER 22Bet', 'syncPaperTradingToGitHub')
+    .addItem('Instalar colunas GREEN_STRONG_V1', 'installGreenStrongTrackingColumns')
     .addItem('Ativar sincronização automática', 'installPaperTradingSync')
     .addToUi();
 }
@@ -34,7 +40,7 @@ function syncPaperTradingToGitHub() {
 
   const repository = properties.getProperty('GITHUB_REPOSITORY') || PAPER_22BET_SYNC.defaultRepository;
   const branch = properties.getProperty('GITHUB_BRANCH') || PAPER_22BET_SYNC.defaultBranch;
-  const payload = buildPaperTradingPayload_();
+  const payload = buildPaperTradingPayload_(token, repository, branch);
   const apiUrl = 'https://api.github.com/repos/' + repository + '/contents/' + PAPER_22BET_SYNC.targetPath;
   const headers = {
     Authorization: 'Bearer ' + token,
@@ -78,6 +84,38 @@ function syncPaperTradingToGitHub() {
   return 'Métricas PAPER 22Bet sincronizadas com sucesso.';
 }
 
+function installGreenStrongTrackingColumns() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PAPER_22BET_SYNC.sheetName);
+  if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
+  let next = headers.length;
+  missingTrackingHeaders_(headers).forEach(header => {
+    if (headers.indexOf(header) === -1) {
+      sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn + next).setValue(header);
+      headers.push(header);
+      next += 1;
+    }
+  });
+  return 'Colunas GREEN_STRONG_V1 instaladas sem alterar as 15 colunas existentes.';
+}
+
+function missingTrackingHeaders_(headers) {
+  return PAPER_22BET_SYNC.trackingHeaders.filter(header => headers.indexOf(header) === -1);
+}
+
+function onEdit(e) {
+  if (!e || !e.range || e.range.getSheet().getName() !== PAPER_22BET_SYNC.sheetName) return;
+  if (e.range.getRow() <= PAPER_22BET_SYNC.headerRow || !e.value) return;
+  const sheet = e.range.getSheet();
+  const map = trackingColumnMap_(sheet);
+  if (map['Fenzobot Snapshot Key'] !== e.range.getColumn()) return;
+  const stampColumn = map['Selected At UTC'];
+  if (!stampColumn) return;
+  const stampCell = sheet.getRange(e.range.getRow(), stampColumn);
+  if (!stampCell.getValue()) stampCell.setValue(new Date().toISOString());
+}
+
 function installPaperTradingSync() {
   ScriptApp.getProjectTriggers()
     .filter(trigger => trigger.getHandlerFunction() === 'syncPaperTradingToGitHub')
@@ -86,13 +124,15 @@ function installPaperTradingSync() {
   return 'Sincronização automática ativada: verifica a Sheet a cada 30 minutos e só publica se houver alterações.';
 }
 
-function buildPaperTradingPayload_() {
+function buildPaperTradingPayload_(token, repository, branch) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName);
   if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
   const lastRow = sheet.getLastRow();
   const rowCount = Math.max(0, lastRow - PAPER_22BET_SYNC.headerRow);
-  const rows = rowCount ? sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, PAPER_22BET_SYNC.firstColumn, rowCount, PAPER_22BET_SYNC.columnCount).getValues() : [];
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
+  const rows = rowCount ? sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, PAPER_22BET_SYNC.firstColumn, rowCount, width).getValues() : [];
   const activeRows = rows.filter(row => row[0] && row[1] && row[5]);
   const summary = newStats_();
   const byMarket = {};
@@ -107,12 +147,37 @@ function buildPaperTradingPayload_() {
     addRowToStats_(bySide[side], row);
   });
 
+  const tracking = trackingIndexes_(headers);
+  const green = tracking.complete ? fetchGreenStrongIndex_(token, repository, branch) : {byKey: {}, eligibleCount: null, available: false};
+  const guerraStats = newStats_();
+  const guerraByMarket = {};
+  const guerraBySide = {};
+  const guerraReviewRoutes = {};
+  const linkage = {LINKED_EX_ANTE: 0, SNAPSHOT_NOT_FOUND: 0, NOT_GREEN_STRONG: 0, SELECTION_AFTER_START: 0, MISSING_SELECTION_TIMESTAMP: 0, UNAVAILABLE: 0};
+  rows.forEach((row, offset) => {
+    if (!(row[0] && row[1] && row[5]) || !tracking.complete || String(row[tracking.strategy] || '').trim() !== 'GUERRA_SELECTION_V1') return;
+    const status = validateGuerraSelection_(row, tracking, green.byKey, green.available);
+    linkage[status] = (linkage[status] || 0) + 1;
+    sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(status);
+    if (status !== 'LINKED_EX_ANTE') return;
+    const market = row[5] === 'Vencedor' ? 'Moneyline' : String(row[5]);
+    const side = String(row[7] || 'Sem perfil');
+    const route = moneylineReviewRoute_(row[tracking.reviewOdd]);
+    if (!guerraByMarket[market]) guerraByMarket[market] = newStats_();
+    if (!guerraBySide[side]) guerraBySide[side] = newStats_();
+    addRowToStats_(guerraStats, row);
+    addRowToStats_(guerraByMarket[market], row);
+    addRowToStats_(guerraBySide[side], row);
+    guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
+  });
+
+  const fingerprintRows = tracking.complete ? activeRows.map(row => row.filter((value, index) => index !== tracking.status)) : activeRows;
   const fingerprint = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,
-    JSON.stringify(activeRows),
+    JSON.stringify(fingerprintRows),
   ).map(byte => ('0' + (byte & 0xff).toString(16)).slice(-2)).join('');
   return {
-    schema_version: 1,
+    schema_version: 2,
     source: {
       label: 'Track Record PAPER Trading — 22Bet',
       url: spreadsheet.getUrl(),
@@ -123,7 +188,75 @@ function buildPaperTradingPayload_() {
     summary: finishStats_(summary),
     by_market: finishCollection_(byMarket),
     by_side: finishCollection_(bySide),
+    by_strategy: {
+      GUERRA_SELECTION_V1: {
+        summary: finishStats_(guerraStats),
+        by_market: finishCollection_(guerraByMarket),
+        by_side: finishCollection_(guerraBySide),
+        moneyline_review_routes: guerraReviewRoutes,
+        linkage: linkage,
+        eligible_green_strong: green.eligibleCount,
+        selection_rate_pct: green.eligibleCount ? Math.round(10000 * guerraStats.total_entries / green.eligibleCount) / 100 : null,
+        status: tracking.complete && green.available ? 'AVAILABLE' : 'UNAVAILABLE',
+      },
+    },
   };
+}
+
+function trackingIndexes_(headers) {
+  const indexes = {};
+  PAPER_22BET_SYNC.trackingHeaders.forEach(header => indexes[header] = headers.indexOf(header));
+  return {
+    snapshot: indexes['Fenzobot Snapshot Key'], strategy: indexes['Selection Strategy'],
+    selectedAt: indexes['Selected At UTC'], reviewOdd: indexes['22Bet Moneyline Review Odd'],
+    status: indexes['Validation Status'],
+    complete: PAPER_22BET_SYNC.trackingHeaders.every(header => indexes[header] >= 0),
+  };
+}
+
+function trackingColumnMap_(sheet) {
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, width).getValues()[0];
+  const result = {};
+  headers.forEach((header, index) => result[String(header)] = index + 1);
+  return result;
+}
+
+function validateGuerraSelection_(row, tracking, byKey, indexAvailable) {
+  if (!tracking.complete) return 'UNAVAILABLE';
+  if (indexAvailable === false) return 'UNAVAILABLE';
+  const key = String(row[tracking.snapshot] || '').trim();
+  if (!key || !Object.prototype.hasOwnProperty.call(byKey, key)) return 'SNAPSHOT_NOT_FOUND';
+  const cohort = byKey[key];
+  if (!cohort.eligible) return 'NOT_GREEN_STRONG';
+  const selectedAt = new Date(row[tracking.selectedAt]);
+  if (!row[tracking.selectedAt] || Number.isNaN(selectedAt.getTime())) return 'MISSING_SELECTION_TIMESTAMP';
+  const start = new Date(cohort.commence_time_utc);
+  if (Number.isNaN(start.getTime())) return 'UNAVAILABLE';
+  return selectedAt.getTime() < start.getTime() ? 'LINKED_EX_ANTE' : 'SELECTION_AFTER_START';
+}
+
+function moneylineReviewRoute_(rawOdd) {
+  const odd = Number(rawOdd);
+  if (!Number.isFinite(odd) || odd <= 1) return 'UNAVAILABLE';
+  return odd >= 1.75 ? 'MONEYLINE_MANUAL_REVIEW' : 'HANDICAP_MANUAL_REVIEW';
+}
+
+function fetchGreenStrongIndex_(token, repository, branch) {
+  if (!token || !repository) return {byKey: {}, eligibleCount: null, available: false};
+  const url = 'https://api.github.com/repos/' + repository + '/contents/' + PAPER_22BET_SYNC.validationPath + '?ref=' + encodeURIComponent(branch);
+  const response = UrlFetchApp.fetch(url, {method: 'get', headers: {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json'}, muteHttpExceptions: true});
+  if (response.getResponseCode() !== 200) return {byKey: {}, eligibleCount: null, available: false};
+  try {
+    const body = JSON.parse(response.getContentText());
+    const document = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(body.content || '')).getDataAsString());
+    const rows = document.prospective_classifications || [];
+    const byKey = {};
+    rows.forEach(row => { if (row.snapshot_key) byKey[String(row.snapshot_key)] = row; });
+    return {byKey: byKey, eligibleCount: rows.filter(row => row.eligible === true).length, available: true};
+  } catch (error) {
+    return {byKey: {}, eligibleCount: null, available: false};
+  }
 }
 
 function newStats_() {

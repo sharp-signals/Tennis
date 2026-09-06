@@ -18,7 +18,7 @@ from . import market_ledger
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/paper_trades.json")
 DEFAULT_EXCLUSIONS_PATH = Path("data/paper_integrity_exclusions.json")
-MANUAL_22BET_SCHEMA_VERSION = 1
+MANUAL_22BET_SCHEMA_VERSIONS = {1, 2}
 DEFAULT_MANUAL_22BET_PATH = Path("data/manual_paper_22bet.json")
 _LOCK = threading.Lock()
 
@@ -52,7 +52,7 @@ def read_manual_22bet_history(path: Path = DEFAULT_MANUAL_22BET_PATH) -> dict[st
         document = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
-    if not isinstance(document, Mapping) or document.get("schema_version") != MANUAL_22BET_SCHEMA_VERSION:
+    if not isinstance(document, Mapping) or document.get("schema_version") not in MANUAL_22BET_SCHEMA_VERSIONS:
         return None
     summary = document.get("summary")
     if not isinstance(summary, Mapping) or not isinstance(summary.get("total_entries"), int):

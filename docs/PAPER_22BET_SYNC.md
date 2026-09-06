@@ -1,5 +1,13 @@
 # Sincronização do PAPER Trading 22Bet
 
+## Seleção manual GUERRA_SELECTION_V1
+
+O menu `Instalar colunas GREEN_STRONG_V1` acrescenta cinco colunas opcionais sem modificar as 15 existentes: snapshot key, estratégia, timestamp, odd Moneyline de revisão e estado. É idempotente; o timestamp é gravado uma única vez ao introduzir um novo key.
+
+Uma linha só entra no agregado da estratégia com correspondência exata a uma tag prospetiva e timestamp anterior ao início. Estados: `LINKED_EX_ANTE`, `SNAPSHOT_NOT_FOUND`, `NOT_GREEN_STRONG`, `SELECTION_AFTER_START`, `MISSING_SELECTION_TIMESTAMP` e `UNAVAILABLE`. Não há associação aproximada.
+
+O JSON público contém somente agregados em `by_strategy.GUERRA_SELECTION_V1`; nunca nomes, keys, notas ou linhas. Ver [GREEN_STRONG_VALIDATION.md](GREEN_STRONG_VALIDATION.md).
+
 CHANGE-2026-09-06-023
 
 A Sheet `Track_Record_Tennis_22Bet` é o registo operacional manual. O relatório do Fenzobot lê apenas o resumo publicado em `data/manual_paper_22bet.json`; nunca lê a Sheet privada durante uma execução do bot.

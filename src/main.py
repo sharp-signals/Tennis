@@ -55,6 +55,8 @@ from . import fetch_data
 from . import run_metrics
 from . import calibration_store
 from . import market_ledger
+from . import market_memory_report
+from . import green_strong_validation
 from . import player_images
 from . import paper_trading
 from .analyze import analyze_match
@@ -1942,6 +1944,7 @@ def run() -> None:
         payload["snapshot_key"] = snapshot["key"]
         payload["report_id"] = snapshot["report_id"]
         payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
+        payload["validation"] = snapshot.get("validation")
         snapshots.append(snapshot)
     added_snapshots = calibration_store.upsert_snapshots(snapshots)
     print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
@@ -1951,6 +1954,17 @@ def run() -> None:
     ]
     added_paper = paper_trading.append_entries(paper_entries)
     print(f"[paper] {added_paper} entrada(s) PAPER nova(s) guardada(s).")
+    try:
+        memory = market_memory_report.build_and_write()
+        green_report = green_strong_validation.build_and_write(memory_report=memory)
+        print(
+            "[green-strong] vista prospetiva atualizada: "
+            f"{green_report['metrics']['sample_size']} candidato(s)."
+        )
+    except Exception as exc:
+        # A validação é SHADOW e nunca bloqueia decisão ou PAPER técnico.
+        print(f"[green-strong] atualização não bloqueante indisponível: {type(exc).__name__}: {exc}")
+        green_report = None
     try:
         archived_days = market_ledger.rotate_archives()
         if archived_days:
@@ -2001,6 +2015,8 @@ def run() -> None:
             payload["system_accuracy"] = _system_accuracy
         if _paper_history:
             payload["paper_history"] = _paper_history
+        if green_report:
+            payload["green_strong_history"] = green_report
         # Versão imutável: a identidade inclui o instante do snapshot. Uma
         # nova execução cria outro relatório; nunca substitui o original.
         slug = _slugify(

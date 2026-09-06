@@ -46,16 +46,18 @@ def _probabilities(observation: Mapping[str, Any] | None) -> dict[str, float] | 
     return values if set(values) == {"a", "b"} else None
 
 
-def _sharp_probabilities(snapshot: Mapping[str, Any]) -> dict[str, float] | None:
+def _pricing_probabilities(snapshot: Mapping[str, Any], *, sharp: bool) -> dict[str, float] | None:
     pricing = snapshot.get("pricing")
     if not isinstance(pricing, Mapping) or not pricing.get("available"):
         return None
     result = {}
     players = pricing.get("players") if isinstance(pricing.get("players"), Mapping) else {}
     for side in ("a", "b"):
-        value = (players.get(side) or {}).get("sharp_estimate_pct") if isinstance(players.get(side), Mapping) else None
+        nested_key = "sharp_estimate_pct" if sharp else "market_probability_pct"
+        flat_key = f"sharp_estimate_{side}" if sharp else f"market_probability_{side}"
+        value = (players.get(side) or {}).get(nested_key) if isinstance(players.get(side), Mapping) else None
         if value is None:
-            value = pricing.get(f"sharp_estimate_{side}")
+            value = pricing.get(flat_key)
             scale = 1.0
         else:
             scale = 100.0
@@ -74,7 +76,7 @@ def _prediction(probabilities: Mapping[str, float] | None) -> str | None:
     return "a" if probabilities["a"] > probabilities["b"] else "b"
 
 
-def _evaluation(rows: list[Mapping[str, Any]], probability_field: str) -> dict[str, Any]:
+def evaluate_probabilities(rows: list[Mapping[str, Any]], probability_field: str) -> dict[str, Any]:
     observations = []
     for row in rows:
         outcome = row.get("outcome_side")
@@ -133,7 +135,20 @@ def build_report(
         closing = market_ledger.last_comparable_prestart(lookup, root=ledger_root)
         closing_probabilities = _probabilities(closing)
         outcome_side = (snapshot.get("outcome") or {}).get("winner_side")
-        sharp_probabilities = _sharp_probabilities(snapshot)
+        sharp_probabilities = _pricing_probabilities(snapshot, sharp=True)
+        pricing_market_probabilities = _pricing_probabilities(snapshot, sharp=False)
+        validation = snapshot.get("validation") if isinstance(snapshot.get("validation"), Mapping) else {}
+        memberships = validation.get("cohorts") if isinstance(validation.get("cohorts"), Mapping) else {}
+        selected_side = None
+        for membership in memberships.values():
+            if isinstance(membership, Mapping) and membership.get("eligible") is True:
+                selected_side = membership.get("selected_side")
+                break
+        market_position = None
+        if selected_side in {"a", "b"} and pricing_market_probabilities:
+            other = "b" if selected_side == "a" else "a"
+            if pricing_market_probabilities[selected_side] != pricing_market_probabilities[other]:
+                market_position = "FAVORITE" if pricing_market_probabilities[selected_side] > pricing_market_probabilities[other] else "UNDERDOG"
         paper = paper_by_snapshot.get(str(snapshot.get("key") or ""), [])
         paper_links = []
         for paper_entry in paper:
@@ -149,7 +164,7 @@ def build_report(
                 "clv_probability_pp": (derived_clv or {}).get("clv_probability_pp"),
                 "clv_price_pct": (derived_clv or {}).get("clv_price_pct"),
             })
-        rows.append({
+        row = {
             "event_key": event,
             "snapshot_key": snapshot.get("key"),
             "report_id": snapshot.get("report_id"),
@@ -172,7 +187,24 @@ def build_report(
                 "closing_market": "AVAILABLE" if closing_probabilities else "UNAVAILABLE",
                 "market_plus_sharp": "AVAILABLE" if sharp_probabilities else "UNAVAILABLE",
             },
-        })
+        }
+        if memberships:
+            row.update({
+                "tour": snapshot.get("tour"),
+                "surface": snapshot.get("surface"),
+                "match_format": snapshot.get("match_format"),
+                "pricing_market_probabilities": pricing_market_probabilities,
+                "fenzobot_probabilities": sharp_probabilities,
+                "selected_side": selected_side,
+                "selected_side_market_position": market_position,
+                "cohort_memberships": dict(memberships),
+                "cohort_code_revision": next((
+                    (membership.get("source") or {}).get("code_revision")
+                    for membership in memberships.values()
+                    if isinstance(membership, Mapping) and membership.get("eligible") is True
+                ), None),
+            })
+        rows.append(row)
 
     grouped: dict[str, list[Mapping[str, Any]]] = {}
     for row in rows:
@@ -190,17 +222,48 @@ def build_report(
         "observation_count": len(observations),
         "events": rows,
         "evaluation": {
-            "market_only": _evaluation(rows, "entry_market_probabilities"),
-            "market_plus_sharp": _evaluation(rows, "market_plus_sharp_probabilities"),
+            "market_only": evaluate_probabilities(rows, "entry_market_probabilities"),
+            "market_plus_sharp": evaluate_probabilities(rows, "market_plus_sharp_probabilities"),
         },
         "evaluation_by_pricing_version": {
             key: {
                 "pricing_model_version": subset[0].get("pricing_model_version"),
                 "pricing_configuration_fingerprint": subset[0].get("pricing_configuration_fingerprint"),
-                "market_only": _evaluation(subset, "entry_market_probabilities"),
-                "market_plus_sharp": _evaluation(subset, "market_plus_sharp_probabilities"),
+                "market_only": evaluate_probabilities(subset, "entry_market_probabilities"),
+                "market_plus_sharp": evaluate_probabilities(subset, "market_plus_sharp_probabilities"),
             }
             for key, subset in sorted(grouped.items())
+        },
+        "evaluation_by_cohort": {
+            cohort: {
+                "sample_size": len(subset),
+                "market_only": evaluate_probabilities(subset, "pricing_market_probabilities"),
+                "market_plus_fenzobot": evaluate_probabilities(subset, "fenzobot_probabilities"),
+                "paired_delta": {
+                    metric: (
+                        round(
+                            evaluate_probabilities(subset, "fenzobot_probabilities")[metric]
+                            - evaluate_probabilities(subset, "pricing_market_probabilities")[metric],
+                            6,
+                        )
+                        if evaluate_probabilities(subset, "fenzobot_probabilities")[metric] is not None
+                        and evaluate_probabilities(subset, "pricing_market_probabilities")[metric] is not None
+                        else None
+                    )
+                    for metric in ("brier_score", "log_loss")
+                },
+            }
+            for cohort in sorted({
+                name
+                for row in rows
+                for name, membership in (row.get("cohort_memberships") or {}).items()
+                if isinstance(membership, Mapping) and membership.get("eligible") is True
+            })
+            for subset in [[
+                row for row in rows
+                if isinstance((row.get("cohort_memberships") or {}).get(cohort), Mapping)
+                and (row.get("cohort_memberships") or {})[cohort].get("eligible") is True
+            ]]
         },
         "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred.",
     }
