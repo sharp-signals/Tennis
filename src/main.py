@@ -57,6 +57,7 @@ from . import calibration_store
 from . import market_ledger
 from . import market_memory_report
 from . import green_strong_validation
+from . import dashboard
 from . import player_images
 from . import paper_trading
 from .analyze import analyze_match
@@ -1678,6 +1679,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
 body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',system-ui,sans-serif;margin:0;padding:0 16px 50px;}}
 .head{{max-width:760px;margin:0 auto;padding:28px 0 10px;border-bottom:2px solid {COLORS['steel']};}}
 .head h1{{font-size:22px;margin:0;}} .head p{{color:{COLORS['text_dim']};margin:6px 0 0;font-size:14px;}}
+.dash-link{{display:inline-block;margin-top:10px;color:{COLORS['steel']};text-decoration:none;font-size:13px;font-weight:650;}}
+.dash-link:hover,.dash-link:focus{{text-decoration:underline;}}
 .filters{{max-width:760px;margin:16px auto 0;display:grid;grid-template-columns:1fr 170px;gap:10px;}}
 .filters input,.filters select{{background:{COLORS['surface']};color:{COLORS['text']};border:1px solid {COLORS['line']};border-radius:8px;padding:10px 12px;font:inherit;}}
 .filters input:focus,.filters select:focus{{outline:2px solid {COLORS['steel']};outline-offset:1px;}}
@@ -1692,7 +1695,7 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
 @media(max-width:600px){{.filters{{grid-template-columns:1fr;}}.idx-card{{align-items:flex-start;}}}}
 </style></head>
 <body>
-<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p></div>
+<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p><a class="dash-link" href="{html.escape(f'{SITE_BASE_URL}/dashboard/')}">Fenzobot Control Dashboard →</a></div>
 <div class="filters">
   <input id="search" type="search" placeholder="Pesquisar jogador ou torneio" aria-label="Pesquisar relatórios"/>
   <select id="priority" aria-label="Filtrar por prioridade">
@@ -2205,6 +2208,17 @@ def main() -> None:
                     print(f"[aviso] falha ao enviar alerta de saúde: {alert_exc}")
         except Exception as metrics_exc:
             print(f"[aviso] falha ao persistir métricas operacionais: {metrics_exc}")
+        dashboard_status = dashboard.build_and_write_best_effort()
+        if dashboard_status.get("status") == "AVAILABLE":
+            print(
+                "[dashboard] vista read-only atualizada: "
+                f"{dashboard_status.get('semantic_fingerprint', '')[:12]}"
+            )
+        else:
+            print(
+                "[dashboard] atualização não bloqueante indisponível: "
+                f"{dashboard_status.get('error', 'erro desconhecido')}"
+            )
     if failure is not None:
         raise failure
 

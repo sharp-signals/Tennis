@@ -6,6 +6,8 @@
 body{background:#14161a;color:#e6e9ef;font-family:'Segoe UI',system-ui,sans-serif;margin:0;padding:0 16px 50px;}
 .head{max-width:760px;margin:0 auto;padding:28px 0 10px;border-bottom:2px solid #5b9bd5;}
 .head h1{font-size:22px;margin:0;} .head p{color:#9aa3b2;margin:6px 0 0;font-size:14px;}
+.dash-link{display:inline-block;margin-top:10px;color:#5b9bd5;text-decoration:none;font-size:13px;font-weight:650;}
+.dash-link:hover,.dash-link:focus{text-decoration:underline;}
 .filters{max-width:760px;margin:16px auto 0;display:grid;grid-template-columns:1fr 170px;gap:10px;}
 .filters input,.filters select{background:#1c1f26;color:#e6e9ef;border:1px solid #2c313b;border-radius:8px;padding:10px 12px;font:inherit;}
 .filters input:focus,.filters select:focus{outline:2px solid #5b9bd5;outline-offset:1px;}
@@ -20,7 +22,7 @@ body{background:#14161a;color:#e6e9ef;font-family:'Segoe UI',system-ui,sans-seri
 @media(max-width:600px){.filters{grid-template-columns:1fr;}.idx-card{align-items:flex-start;}}
 </style></head>
 <body>
-<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>2026-09-06 · 9 jogos</p></div>
+<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>2026-09-06 · 9 jogos</p><a class="dash-link" href="https://sharp-signals.github.io/Tennis/dashboard/">Fenzobot Control Dashboard →</a></div>
 <div class="filters">
   <input id="search" type="search" placeholder="Pesquisar jogador ou torneio" aria-label="Pesquisar relatórios"/>
   <select id="priority" aria-label="Filtrar por prioridade">
