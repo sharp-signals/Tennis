@@ -9498,7 +9498,18 @@
       },
       "match_id": 1243,
       "outcome_side": "b",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "a7703d0af47fcdb8029464b12848babfa0e450b54be249e9f0c551ded72ff186",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "atp:1243:moneyline:b:na",
+          "selected_side": "b"
+        }
+      ],
       "players": {
         "a": {
           "id": 58149,
@@ -13644,12 +13655,12 @@
       "outcome_side": "a",
       "paper": [
         {
-          "closing_market_observation_id": "d9bc1a655d7a5dbd96d1f6ce59378ac0d6a8d442f1df503dd51d6117f73ca238",
-          "clv_price_pct": 2.7146,
-          "clv_probability_pp": 1.9475,
+          "closing_market_observation_id": "ca6a8b504948468cb69d3da8993974f76338f3c9f8a2c3587569d12341e8accc",
+          "clv_price_pct": 39.8601,
+          "clv_probability_pp": 30.8368,
           "entry_market_observation_id": "7ce31820dea392107fd10cb83675ead43226c23978a50d7c48ab62a7ea529431",
           "entry_market_probability": 0.68181818,
-          "last_valid_prestart_market_probability": 0.70129301,
+          "last_valid_prestart_market_probability": 0.99018637,
           "paper_key": "atp:1421:moneyline:a:na",
           "selected_side": "a"
         }
@@ -13918,11 +13929,87 @@
       "report_id": "53ad14152e8fb7a3ea00",
       "scheduled_start_utc": "2026-09-07T18:00:00+00:00",
       "snapshot_key": "wta:1036"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-09-07T05:33:57+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "PRICING_UNAVAILABLE",
+            "PROBABILITIES_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "8965f115a56c1a88b812aaa4a671fd75dd9445b8",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_UNAVAILABLE",
+            "divergence_level": 0,
+            "divergence_type": "evidence_only",
+            "fenzobot_probabilities": "UNAVAILABLE",
+            "github_run_id": "34087230736",
+            "market_probabilities": "UNAVAILABLE",
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "wta:1037"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "2f83ffc63608c8841700bcb6"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "event_key": "wta:1037",
+      "fenzobot_probabilities": null,
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_format": "BO3",
+      "match_id": 1037,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 80381,
+          "name": "Iva Jovic"
+        },
+        "b": {
+          "id": 54663,
+          "name": "Cori Gauff"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": null,
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "3c4269395abbabbd0866",
+      "scheduled_start_utc": "2026-09-08T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "wta:1037",
+      "surface": "Hard",
+      "tour": "wta"
     }
   ],
-  "generated_at_utc": "2026-09-06T21:41:47+00:00",
+  "generated_at_utc": "2026-09-07T05:34:03+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 846,
+  "observation_count": 868,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
