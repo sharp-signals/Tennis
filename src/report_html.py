@@ -67,12 +67,20 @@ REPORT_DECISION_PRESENTATION = {
 }
 
 
-def canonical_report_color(payload: dict) -> str:
-    """Cor operacional exibida pelo report, sem reinterpretar a decisão."""
-    state = (payload.get("prelive_decision") or {}).get("state") or "REPORT_NULL"
+def canonical_report_color_from_state(state: object) -> str:
+    """Mapeia o estado pela unica apresentacao canonica do report."""
+    if not isinstance(state, str):
+        state = "REPORT_NULL"
     return REPORT_DECISION_PRESENTATION.get(
         state, REPORT_DECISION_PRESENTATION["REPORT_NULL"]
     )[3]
+
+
+def canonical_report_color(payload: dict) -> str:
+    """Cor operacional exibida pelo report, sem reinterpretar a decisao."""
+    decision = payload.get("prelive_decision")
+    state = decision.get("state") if isinstance(decision, dict) else None
+    return canonical_report_color_from_state(state)
 
 
 def historical_report_color_from_decision_head(text: str) -> str | None:

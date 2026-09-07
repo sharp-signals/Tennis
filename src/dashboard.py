@@ -175,9 +175,16 @@ def _report_date(path: Path) -> str | None:
     return value
 
 
-def _report_color(snapshot: Mapping[str, Any] | None) -> str:
-    flag = _mapping(_mapping(snapshot).get("analysis")).get("flag")
-    return {"🟢": "GREEN", "🟡": "YELLOW", "🔴": "RED"}.get(flag, "UNAVAILABLE")
+def _report_color(
+    snapshot: Mapping[str, Any] | None,
+    self_described_color: str | None,
+    historical_color: str | None,
+) -> str:
+    """Resolve uma única cor canónica; ``analysis.flag`` não participa."""
+    decision = _mapping(_mapping(_mapping(snapshot).get("metrics")).get("prelive_decision"))
+    if "state" in decision:
+        return report_html.canonical_report_color_from_state(decision.get("state"))
+    return self_described_color or historical_color or "UNAVAILABLE"
 
 
 def _green_snapshot_keys(green: Mapping[str, Any]) -> set[str]:
@@ -245,17 +252,14 @@ def _build_reports(
                 _mapping(_mapping(snapshot.get("validation")).get("cohorts")).get("GREEN_STRONG_V1")
             )
             is_green = membership.get("eligible") is True or bool(snapshot_key and snapshot_key in green_keys)
+        color = _report_color(snapshot, self_described_color, historical_color)
         if snapshot:
-            color = _report_color(snapshot)
             linkage = "EXACT_REPORT_ID"
         elif self_described_color is not None:
-            color = self_described_color
             linkage = "SELF_DESCRIBED_REPORT"
         elif historical_color is not None:
-            color = historical_color
             linkage = "HISTORICAL_DOM_CONTRACT"
         else:
-            color = "UNAVAILABLE"
             linkage = "LEGACY_UNLINKED"
         reports.append({
             "title": title,
