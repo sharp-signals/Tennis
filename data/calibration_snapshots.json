@@ -205756,7 +205756,12 @@
         "raw_payload_sha256": null,
         "source": null
       },
-      "outcome": null,
+      "outcome": {
+        "result": "6-2 6-3 6-4",
+        "settled_at_utc": "2026-09-07T17:34:10+00:00",
+        "winner_id": 87562,
+        "winner_side": "a"
+      },
       "player_a": {
         "id": 87562,
         "name": "Ben Shelton"
@@ -206470,7 +206475,12 @@
         "raw_payload_sha256": "a9b9902a50e1e7ef9a7e771920822c546f6f31b53c02a5fdea5315a1b471a893",
         "source": "RapidAPI Tennis API / recent-odds"
       },
-      "outcome": null,
+      "outcome": {
+        "result": "7-6(6) 6-4 6-4",
+        "settled_at_utc": "2026-09-07T17:34:10+00:00",
+        "winner_id": 92985,
+        "winner_side": "a"
+      },
       "player_a": {
         "id": 92985,
         "name": "Alex Michelsen"
@@ -209358,7 +209368,884 @@
           }
         }
       }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-07T17:33:56+00:00",
+      "commence_time_utc": "2026-09-08T18:30:00+00:00",
+      "entry_market_observation_id": "00be8896e0ccec6857831c56e02014f53f3ef86794e075b7b2fc29f9d8ae40cf",
+      "event_key": "atp:1426",
+      "key": "atp:1426",
+      "market_memory_eligible": true,
+      "market_memory_status": "RECORDED",
+      "market_odds_decimal": {
+        "Ben Shelton": 4.0,
+        "Carlos Alcaraz": 1.25
+      },
+      "match_format": "BO5",
+      "match_id": 1426,
+      "metrics": {
+        "deciding_set_stats_a": {
+          "bo3": {
+            "matches_went_the_distance": 79,
+            "win_rate_pct": 55.7,
+            "wins": 44
+          },
+          "bo5": {
+            "matches_went_the_distance": 11,
+            "win_rate_pct": 63.6,
+            "wins": 7
+          }
+        },
+        "deciding_set_stats_b": {
+          "bo3": {
+            "matches_went_the_distance": 82,
+            "win_rate_pct": 68.3,
+            "wins": 56
+          },
+          "bo5": {
+            "matches_went_the_distance": 16,
+            "win_rate_pct": 93.8,
+            "wins": 15
+          }
+        },
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "historial",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 7,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "resiliência em sets",
+              "Carlos Alcaraz"
+            ],
+            [
+              "matchup de mão",
+              "Carlos Alcaraz"
+            ],
+            [
+              "superfície",
+              "Carlos Alcaraz"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 22.0,
+              "amostra_a": 22,
+              "amostra_b": 23,
+              "confianca_amostra": 0.856,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.994,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 5.873,
+              "valor_a": 40.9,
+              "valor_b": 56.5
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 4
+            },
+            "forma_recente": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7,
+              "valor_a": 90.0,
+              "valor_b": 90.0
+            },
+            "h2h": {
+              "amostra": 3,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.75,
+              "peso_antes_cap": 4.5,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.5,
+              "valor_a": 0,
+              "valor_b": 3
+            },
+            "h2h_piso": {
+              "amostra": 2,
+              "confianca_amostra": 0.577,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.667,
+              "peso_antes_cap": 4.619,
+              "peso_base_aplicado": 12.0,
+              "peso_base_configurado": 12.0,
+              "peso_efetivo": 4.619,
+              "valor_a": 0,
+              "valor_b": 2
+            },
+            "historico_torneio": {
+              "amostra": "6/6 edições",
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "historial",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.447,
+              "peso_antes_cap": 2.68,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.68,
+              "valor_a": "79%",
+              "valor_b": "92%"
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 62.3,
+              "valor_b": 83.2
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 1,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 8.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 8.0,
+              "valor_a": 61.8,
+              "valor_b": 78.0
+            },
+            "mudanca_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "nenhum em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 3.294,
+              "valor_a": 27.3,
+              "valor_b": 68.8
+            },
+            "piso": {
+              "amostra": 156,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 8.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 8.0,
+              "valor_a": 66.0,
+              "valor_b": 82.1
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 0.5,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Ben Shelton",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 4.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 1.882,
+              "valor_a": 13,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "pontos_a": 3480,
+              "pontos_b": 7160,
+              "valor_a": 9.0,
+              "valor_b": 3.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Ben Shelton",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.444,
+              "peso_antes_cap": 2.665,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.665,
+              "valor_a": -15.9,
+              "valor_b": -42.6
+            },
+            "recuperacao_sets": {
+              "amostra": 113,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.933,
+              "peso_antes_cap": 8.4,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 8.229,
+              "valor_a": 58,
+              "valor_b": 72
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.824,
+              "valor_a": 68.4,
+              "valor_b": 86.8
+            },
+            "servico_carreira": {
+              "amostra": 16.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Ben Shelton",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.0,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 3.0,
+              "valor_a": 74.0,
+              "valor_b": 63.0
+            },
+            "servico_recente": {
+              "amostra": 1.0,
+              "confianca_amostra": 0.707,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Ben Shelton",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.536,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 3.536,
+              "valor_a": 75.4,
+              "valor_b": 64.4
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Carlos Alcaraz",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.898,
+              "valor_a": 54.0,
+              "valor_b": 60.4
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 35,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 15,
+          "inclinacao_modelo_b": 85,
+          "indice_evidencia_a": 15,
+          "indice_evidencia_b": 85,
+          "indice_favorece": "Carlos Alcaraz",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 74.999,
+          "mercado_favorece": "Carlos Alcaraz",
+          "n_fatores": 16,
+          "player_a": "Ben Shelton",
+          "player_b": "Carlos Alcaraz",
+          "prob_mercado_a": 24,
+          "prob_mercado_b": 76,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 22,
+            "amostra_b": 23,
+            "diff": -15.600000000000001,
+            "lider": "Carlos Alcaraz",
+            "valor_a": 40.9,
+            "valor_b": 56.5
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 0.0,
+            "lider": "igual",
+            "unidade": "%",
+            "valor_a": 90.0,
+            "valor_b": 90.0
+          },
+          "frescura": {
+            "jogos_7d_a": 3,
+            "jogos_7d_b": 3,
+            "mais_fresco": "igual",
+            "sets_7d_a": 11,
+            "sets_7d_b": 10
+          },
+          "h2h": {
+            "a_wins": 0,
+            "b_wins": 3,
+            "lider": "Carlos Alcaraz",
+            "total": 3
+          },
+          "h2h_piso": {
+            "a_wins": 0,
+            "b_wins": 2,
+            "lider": "Carlos Alcaraz",
+            "total": 2
+          },
+          "indoor_outdoor": {
+            "amostra_a": 207,
+            "amostra_b": 322,
+            "diff": 20.9,
+            "lider": "Carlos Alcaraz",
+            "unidade": "%",
+            "valor_a": 62.3,
+            "valor_b": 83.2
+          },
+          "nivel_adversario": {
+            "amostra_a": 33,
+            "amostra_b": 80,
+            "diff": -41.5,
+            "lider": "Carlos Alcaraz",
+            "valor_a": 27.3,
+            "valor_b": 68.8
+          },
+          "piso": {
+            "amostra_a": 156,
+            "amostra_b": 173,
+            "diff": 16.1,
+            "lider": "Carlos Alcaraz",
+            "unidade": "%",
+            "valor_a": 66.0,
+            "valor_b": 82.1
+          },
+          "qualidade_vitorias": {
+            "lider": "Ben Shelton",
+            "top10_a": 1,
+            "top10_b": 0,
+            "top20_a": 4,
+            "top20_b": 0,
+            "top50_a": 8,
+            "top50_b": 0,
+            "valor_a": 13,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 6.0,
+            "lider": "Carlos Alcaraz",
+            "pontos_a": 3480,
+            "pontos_b": 7160,
+            "valor_a": 9.0,
+            "valor_b": 3.0
+          },
+          "ranking_evolucao": {
+            "diff": 26.650000000000002,
+            "lider": "Ben Shelton",
+            "valor_a": -15.9,
+            "valor_b": -42.6
+          },
+          "sazonal": {
+            "amostra_a": 19,
+            "amostra_b": 53,
+            "diff": 18.4,
+            "lider": "Carlos Alcaraz",
+            "unidade": "%",
+            "valor_a": 68.4,
+            "valor_b": 86.8
+          },
+          "servico_carreira": {
+            "amostra_a": 37,
+            "amostra_b": 16,
+            "diff": 11.0,
+            "lider": "Ben Shelton",
+            "unidade": "%",
+            "valor_a": 74.0,
+            "valor_b": 63.0
+          },
+          "servico_recente": {
+            "amostra_a": 2,
+            "amostra_b": 1,
+            "diff": 11.0,
+            "lider": "Ben Shelton",
+            "unidade": "%",
+            "valor_a": 75.4,
+            "valor_b": 64.4
+          },
+          "tiebreak": {
+            "amostra_a": 174,
+            "amostra_b": 159,
+            "diff": 6.4,
+            "lider": "Carlos Alcaraz",
+            "unidade": "%",
+            "valor_a": 54.0,
+            "valor_b": 60.4
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 5,
+          "coverage_pct": 50.0,
+          "excluded_missing_odds": 5,
+          "excluded_missing_odds_wins": 4,
+          "expected_wins": 3.55,
+          "matches": 5,
+          "odds_eligible_matches": 5,
+          "overall_wins": 9,
+          "performance_vs_market": 1.45,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 5,
+          "coverage_pct": 50.0,
+          "excluded_missing_odds": 5,
+          "excluded_missing_odds_wins": 4,
+          "expected_wins": 4.49,
+          "matches": 5,
+          "odds_eligible_matches": 5,
+          "overall_wins": 9,
+          "performance_vs_market": 0.51,
+          "sample_status": "limitado",
+          "total_recent_matches": 10
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 57.64,
+          "matches": 59,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 36.05,
+          "matches": 42,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "expected_edge_pct": -0.26,
+          "fenzobot_index": 85,
+          "market": {
+            "expected_edge_pct": -0.26,
+            "fair_odd": 1.253,
+            "line": null,
+            "market": "Moneyline Carlos Alcaraz",
+            "market_type": "Moneyline",
+            "odd": 1.25,
+            "player": "Carlos Alcaraz",
+            "sharp_estimate_pct": 79.79,
+            "side": "b"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Carlos Alcaraz",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 19,
+              "available_weight": 123.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 85.4,
+              "weighted_ratio": 0.854167
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "b",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 23.0,
+          "bp_saved_pct": 60.0,
+          "first_serve_won_pct": 74.0,
+          "matches": 37,
+          "opponent_first_serve_won_pct": 21.0,
+          "opponent_second_serve_won_pct": 41.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 53.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 31.0,
+          "bp_saved_pct": 51.0,
+          "first_serve_won_pct": 63.0,
+          "matches": 16,
+          "opponent_first_serve_won_pct": 28.0,
+          "opponent_second_serve_won_pct": 41.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 42.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 3480,
+          "rank": 9
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 7160,
+          "rank": 3
+        },
+        "recent_form_a": {
+          "losses": 1,
+          "matches": 10,
+          "wins": 9
+        },
+        "recent_form_b": {
+          "losses": 1,
+          "matches": 10,
+          "wins": 9
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 23.0,
+          "avg_break_points_saved_pct": 60.0,
+          "avg_first_serve_in_pct": 62.7,
+          "avg_first_serve_won_pct": 74.0,
+          "avg_second_serve_won_pct": 53.0,
+          "matches_used": 37
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 31.0,
+          "avg_break_points_saved_pct": 51.0,
+          "avg_first_serve_in_pct": 62.4,
+          "avg_first_serve_won_pct": 63.0,
+          "avg_second_serve_won_pct": 42.0,
+          "matches_used": 16
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 33.7,
+            "matches_lost_set1": 86,
+            "matches_lost_set1_won_overall": 29
+          },
+          "bo5": {
+            "comeback_rate_pct": 40.9,
+            "matches_lost_set1": 22,
+            "matches_lost_set1_won_overall": 9
+          }
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 40.6,
+            "matches_lost_set1": 69,
+            "matches_lost_set1_won_overall": 28
+          },
+          "bo5": {
+            "comeback_rate_pct": 56.5,
+            "matches_lost_set1": 23,
+            "matches_lost_set1_won_overall": 13
+          }
+        },
+        "surface_momentum_a": {
+          "delta_pp": 5.2,
+          "recent_win_pct": 71.2,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": 6.1,
+          "recent_win_pct": 88.2,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": "Bet365",
+        "cache_age_seconds": 0,
+        "capture_kind": "rapidapi_response_observed_at_capture",
+        "captured_at_utc": "2026-09-07T17:33:44+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3907557",
+        "event_id": "3907557",
+        "from_cache": false,
+        "provider_timestamp": "2026-09-07T12:35:27+00:00",
+        "raw_payload_sha256": "d96d0de49227311ea74099cbe1fd230d08c293870e5e5d3bca3659fab6b70b57",
+        "source": "RapidAPI Tennis API / recent-odds"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 87562,
+        "name": "Ben Shelton"
+      },
+      "player_b": {
+        "id": 68074,
+        "name": "Carlos Alcaraz"
+      },
+      "pricing": {
+        "adjustment_pp_a": -3.5983975432034407,
+        "adjustment_pp_b": 3.5983975432034407,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 75.0,
+          "factor_count": 16,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 1.0,
+          "internal_quality": 1.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.1915549493471853,
+        "expected_edge_b": -0.0026390783290045627,
+        "fair_odd_a": 4.947769791861578,
+        "fair_odd_b": 1.2533075768656834,
+        "market_odd_a": 4.0,
+        "market_odd_b": 1.25,
+        "market_overround_pct": 5.0,
+        "market_probability_a": 0.23809523809523808,
+        "market_probability_b": 0.7619047619047619,
+        "mathematical_edge_side": "b",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": -3.6,
+            "expected_edge_pct": -19.16,
+            "fair_odd": 4.948,
+            "market_odd": 4.0,
+            "market_probability_pct": 23.81,
+            "sharp_estimate_pct": 20.21
+          },
+          "b": {
+            "adjustment_pp": 3.6,
+            "expected_edge_pct": -0.26,
+            "fair_odd": 1.253,
+            "market_odd": 1.25,
+            "market_probability_pct": 76.19,
+            "sharp_estimate_pct": 79.79
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 1.0,
+        "residual_logit": -0.21,
+        "sharp_estimate_a": 0.20211126266320367,
+        "sharp_estimate_b": 0.7978887373367963,
+        "signed_strength": -0.7,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "a61baa24cdbf52d3a332",
+      "surface": "Hard",
+      "tour": "atp",
+      "tournament": "U.S. Open - New York",
+      "tournament_id": 21349,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-09-07T17:33:56+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Carlos Alcaraz",
+            "selected_side": "b",
+            "source": {
+              "code_revision": "b684e58dfbed3ab91bf06aa66edcb15ddaba842c",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 0,
+              "divergence_type": "alinhamento",
+              "fenzobot_probabilities": {
+                "a": 0.2021,
+                "b": 0.7979
+              },
+              "github_run_id": "34148056422",
+              "market_probabilities": {
+                "a": 0.23809999999999998,
+                "b": 0.7619
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "atp:1426"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "5095741b109577c54610ba00"
+          }
+        }
+      }
     }
   ],
-  "updated_at_utc": "2026-09-07T05:33:57+00:00"
+  "updated_at_utc": "2026-09-07T17:34:10+00:00"
 }

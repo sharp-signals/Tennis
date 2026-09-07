@@ -3856,7 +3856,23 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 21349
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": "ca6a8b504948468cb69d3da8993974f76338f3c9f8a2c3587569d12341e8accc",
+        "closing_odd": 1.001,
+        "clv_pct": 30.8368,
+        "clv_price_pct": 39.8601,
+        "clv_probability_pp": 30.8368,
+        "entry_market_observation_id": "7ce31820dea392107fd10cb83675ead43226c23978a50d7c48ab62a7ea529431",
+        "entry_market_probability": 0.68181818,
+        "last_valid_prestart_market_probability": 0.99018637,
+        "market_memory_error": null,
+        "market_memory_status": "AVAILABLE",
+        "match_result": "6-2 6-3 6-4",
+        "pnl_units": 0.4,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-07T17:34:11+00:00",
+        "winner_id": 87562
+      }
     },
     {
       "key": "wta:821:moneyline:a:na",
@@ -3923,7 +3939,23 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 16743
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": "f635db42c9114950c17931378766646e244eb5211aff21c13d8abbce37cbcee3",
+        "closing_odd": 1.333,
+        "clv_pct": 0.0,
+        "clv_price_pct": 0.0,
+        "clv_probability_pp": 0.0,
+        "entry_market_observation_id": "ce5f3734ea99e84b3bdc37e09a5feec83a7ca1681c4c16ab976b47e98cc02af5",
+        "entry_market_probability": 0.71836045,
+        "last_valid_prestart_market_probability": 0.71836045,
+        "market_memory_error": null,
+        "market_memory_status": "AVAILABLE",
+        "match_result": "6-3 6-4",
+        "pnl_units": 0.333,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-07T17:34:11+00:00",
+        "winner_id": 11712
+      }
     },
     {
       "key": "wta:941:moneyline:b:na",
@@ -3990,7 +4022,23 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 16743
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": "415e783f72f85e5b7d1ecb788702975d8c237555dc0948a491d21b8a88bf4349",
+        "closing_odd": 1.1,
+        "clv_pct": 43.3261,
+        "clv_price_pct": 100.0,
+        "clv_probability_pp": 43.3261,
+        "entry_market_observation_id": "1557e909872f085f4c8099f14b8e47679f353b287b1ddcc28963bf06f438d082",
+        "entry_market_probability": 0.43093637,
+        "last_valid_prestart_market_probability": 0.86419753,
+        "market_memory_error": null,
+        "market_memory_status": "AVAILABLE",
+        "match_result": "7-5 5-7 6-4",
+        "pnl_units": 1.2,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-07T17:34:11+00:00",
+        "winner_id": 66597
+      }
     },
     {
       "key": "atp:1243:moneyline:b:na",
@@ -4058,8 +4106,142 @@
         "tournament_id": 21349
       },
       "settlement": null
+    },
+    {
+      "key": "atp:1265:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-07T17:33:56+00:00",
+        "commence_time_utc": "2026-09-08T18:30:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "8c059a01198b75f7ae3700b87dc5bf15223bcf7b25579de7dff64b8e29f5ad1c",
+        "event_key": "atp:1265",
+        "expected_edge_pct": 2.28,
+        "fair_odd": 1.603,
+        "fenzobot_index": 80,
+        "line": null,
+        "market": "Moneyline Frances Tiafoe",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Alex Michelsen": 2.27,
+          "Frances Tiafoe": 1.64
+        },
+        "market_type": "Moneyline",
+        "match_id": 1265,
+        "odd": 1.64,
+        "odds_provenance": {
+          "bookmaker": "DraftKings",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-07T17:33:41+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3906823",
+          "event_id": "3906823",
+          "from_cache": false,
+          "provider_timestamp": "2026-09-07T11:52:31+00:00",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "players": {
+          "a": {
+            "id": 29939,
+            "name": "Frances Tiafoe"
+          },
+          "b": {
+            "id": 92985,
+            "name": "Alex Michelsen"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "3ae113e222d37b1555e7",
+        "selected_player": "Frances Tiafoe",
+        "selected_side": "a",
+        "sharp_estimate_pct": 62.37,
+        "snapshot_key": "atp:1265",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "U.S. Open - New York",
+        "tournament_id": 21349
+      },
+      "settlement": null
+    },
+    {
+      "key": "wta:866:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-07T17:33:56+00:00",
+        "commence_time_utc": "2026-09-08T18:30:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "5dcd51d0d1e49e77ab5051ce18de4adae9ff475e6b521bc43abf266b22b8d19c",
+        "event_key": "wta:866",
+        "expected_edge_pct": 0.39,
+        "fair_odd": 1.394,
+        "fenzobot_index": 78,
+        "line": null,
+        "market": "Moneyline Aryna Sabalenka",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Aryna Sabalenka": 1.4,
+          "Linda Noskova": 3.0
+        },
+        "market_type": "Moneyline",
+        "match_id": 866,
+        "odd": 1.4,
+        "odds_provenance": {
+          "bookmaker": "Bet365",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-07T17:33:39+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3906108",
+          "event_id": "3906108",
+          "from_cache": false,
+          "provider_timestamp": "2026-09-07T10:50:57+00:00",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "players": {
+          "a": {
+            "id": 18455,
+            "name": "Aryna Sabalenka"
+          },
+          "b": {
+            "id": 66597,
+            "name": "Linda Noskova"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "8042eb8617bd48b39945",
+        "selected_player": "Aryna Sabalenka",
+        "selected_side": "a",
+        "sharp_estimate_pct": 71.71,
+        "snapshot_key": "wta:866",
+        "surface": "Hard",
+        "tour": "wta",
+        "tournament": "U.S. Open - New York",
+        "tournament_id": 16743
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-07T05:33:57+00:00"
+  "updated_at_utc": "2026-09-07T17:34:11+00:00"
 }

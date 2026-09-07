@@ -3,16 +3,16 @@
   "claims": "EXPERIMENTAL_NOT_VALIDATED",
   "evaluation": {
     "market_only": {
-      "accuracy_pct": 75.0,
-      "brier_score": 0.171119,
-      "log_loss": 0.523395,
-      "sample_size": 12
+      "accuracy_pct": 76.92,
+      "brier_score": 0.164181,
+      "log_loss": 0.508884,
+      "sample_size": 13
     },
     "market_plus_sharp": {
-      "accuracy_pct": 70.59,
-      "brier_score": 0.188081,
-      "log_loss": 0.552663,
-      "sample_size": 102
+      "accuracy_pct": 70.87,
+      "brier_score": 0.186842,
+      "log_loss": 0.550037,
+      "sample_size": 103
     }
   },
   "evaluation_by_cohort": {},
@@ -67,16 +67,16 @@
     },
     "market-residual-v0.3:f46ec3e2aa6f92a9": {
       "market_only": {
-        "accuracy_pct": 75.0,
-        "brier_score": 0.171119,
-        "log_loss": 0.523395,
-        "sample_size": 12
+        "accuracy_pct": 76.92,
+        "brier_score": 0.164181,
+        "log_loss": 0.508884,
+        "sample_size": 13
       },
       "market_plus_sharp": {
-        "accuracy_pct": 78.26,
-        "brier_score": 0.164829,
-        "log_loss": 0.499478,
-        "sample_size": 69
+        "accuracy_pct": 78.57,
+        "brier_score": 0.163338,
+        "log_loss": 0.496375,
+        "sample_size": 70
       },
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3"
@@ -6951,7 +6951,18 @@
       "market_plus_sharp_probabilities": null,
       "match_id": 866,
       "outcome_side": "a",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "5dcd51d0d1e49e77ab5051ce18de4adae9ff475e6b521bc43abf266b22b8d19c",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "wta:866:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 37410,
@@ -8699,7 +8710,18 @@
       "market_plus_sharp_probabilities": null,
       "match_id": 1265,
       "outcome_side": "a",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "8c059a01198b75f7ae3700b87dc5bf15223bcf7b25579de7dff64b8e29f5ad1c",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "atp:1265:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 96765,
@@ -9500,12 +9522,12 @@
       "outcome_side": "b",
       "paper": [
         {
-          "closing_market_observation_id": null,
-          "clv_price_pct": null,
-          "clv_probability_pp": null,
+          "closing_market_observation_id": "12e8334a2b936ae07a4172581c9ea33ad7b9acd577c4e652447ef6f3b15207a0",
+          "clv_price_pct": 0.6579,
+          "clv_probability_pp": 0.4313,
           "entry_market_observation_id": "a7703d0af47fcdb8029464b12848babfa0e450b54be249e9f0c551ded72ff186",
-          "entry_market_probability": null,
-          "last_valid_prestart_market_probability": null,
+          "entry_market_probability": 0.62222222,
+          "last_valid_prestart_market_probability": 0.62653563,
           "paper_key": "atp:1243:moneyline:b:na",
           "selected_side": "b"
         }
@@ -13774,7 +13796,7 @@
       "market_plus_sharp_prediction": null,
       "market_plus_sharp_probabilities": null,
       "match_id": 1418,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -13813,7 +13835,7 @@
         "b": 0.2459
       },
       "match_id": 1432,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -14005,11 +14027,101 @@
       "snapshot_key": "wta:1037",
       "surface": "Hard",
       "tour": "wta"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-09-07T17:33:56+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Carlos Alcaraz",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "b684e58dfbed3ab91bf06aa66edcb15ddaba842c",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "EDGE_NEGATIVE",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.2021,
+              "b": 0.7979
+            },
+            "github_run_id": "34148056422",
+            "market_probabilities": {
+              "a": 0.23809999999999998,
+              "b": 0.7619
+            },
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "atp:1426"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "5095741b109577c54610ba00"
+        }
+      },
+      "entry_market_observation_id": "00be8896e0ccec6857831c56e02014f53f3ef86794e075b7b2fc29f9d8ae40cf",
+      "entry_market_probabilities": {
+        "a": 0.23809523809523808,
+        "b": 0.7619047619047619
+      },
+      "event_key": "atp:1426",
+      "fenzobot_probabilities": {
+        "a": 0.2021,
+        "b": 0.7979
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "b",
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.2021,
+        "b": 0.7979
+      },
+      "match_format": "BO5",
+      "match_id": 1426,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 87562,
+          "name": "Ben Shelton"
+        },
+        "b": {
+          "id": 68074,
+          "name": "Carlos Alcaraz"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": {
+        "a": 0.23809999999999998,
+        "b": 0.7619
+      },
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "a61baa24cdbf52d3a332",
+      "scheduled_start_utc": "2026-09-08T18:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "atp:1426",
+      "surface": "Hard",
+      "tour": "atp"
     }
   ],
-  "generated_at_utc": "2026-09-07T05:34:03+00:00",
+  "generated_at_utc": "2026-09-07T17:34:12+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 868,
+  "observation_count": 889,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
