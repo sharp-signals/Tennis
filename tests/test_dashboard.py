@@ -23,7 +23,15 @@ def write_json(path: Path, value) -> None:
     path.write_text(json.dumps(value), encoding="utf-8")
 
 
-def snapshot(report_id: str, key: str, flag: str, *, outcome=None, green=False):
+def snapshot(
+    report_id: str,
+    key: str,
+    flag: str,
+    decision_state: str,
+    *,
+    outcome=None,
+    green=False,
+):
     value = {
         "key": key,
         "report_id": report_id,
@@ -32,7 +40,7 @@ def snapshot(report_id: str, key: str, flag: str, *, outcome=None, green=False):
         "player_b": {"name": f"Beta {report_id[0]}"},
         "analysis": {"flag": flag},
         "outcome": outcome,
-        "metrics": {},
+        "metrics": {"prelive_decision": {"state": decision_state}},
     }
     if green:
         value["validation"] = {"cohorts": {"GREEN_STRONG_V1": {"eligible": True}}}
@@ -91,8 +99,12 @@ class DashboardTests(unittest.TestCase):
 
     def _base_sources(self) -> None:
         snapshots = [
-            snapshot(RID_GREEN, "atp:1", "🟢", outcome={"winner_side": "a"}),
-            snapshot(RID_YELLOW, "wta:2", "🟡", green=True),
+            snapshot(
+                RID_GREEN, "atp:1", "🟢", "EDGE_POSITIVE", outcome={"winner_side": "a"}
+            ),
+            snapshot(
+                RID_YELLOW, "wta:2", "🟡", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT", green=True
+            ),
         ]
         write_json(self.root / "data/calibration_snapshots.json", {
             "snapshots": snapshots, "updated_at_utc": NOW,
@@ -324,6 +336,57 @@ class DashboardTests(unittest.TestCase):
         report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
         self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
         self.assertEqual(report["color"], "GREEN")
+
+    def test_exact_report_color_uses_decision_state_not_analysis_flag(self):
+        self._base_sources()
+        path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["analysis"]["flag"] = "🟢"
+        value["snapshots"][0]["metrics"]["prelive_decision"]["state"] = "EDGE_NEGATIVE"
+        write_json(path, value)
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "RED")
+        self.assertTrue(report["paper_technical"])
+
+    def test_exact_legacy_snapshot_uses_report_contract_not_analysis_flag(self):
+        self._base_sources()
+        snapshots_path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(snapshots_path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["metrics"].pop("prelive_decision")
+        write_json(snapshots_path, value)
+        report_path = self.root / "docs/relatorios" / f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html"
+        report_path.unlink()
+        self._report(report_path.name, "Alpha vs Beta", decision_state="EDGE_NEGATIVE")
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "RED")
+        self.assertTrue(report["paper_technical"])
+
+    def test_exact_legacy_snapshot_prefers_self_described_report_color(self):
+        self._base_sources()
+        snapshots_path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(snapshots_path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["metrics"].pop("prelive_decision")
+        write_json(snapshots_path, value)
+        report_path = self.root / "docs/relatorios" / f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html"
+        report_path.unlink()
+        self._report(report_path.name, "Alpha vs Beta", color="YELLOW")
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "YELLOW")
+        self.assertTrue(report["paper_technical"])
+
+    def test_exact_legacy_snapshot_without_report_contract_is_unavailable(self):
+        self._base_sources()
+        snapshots_path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(snapshots_path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["metrics"].pop("prelive_decision")
+        write_json(snapshots_path, value)
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "UNAVAILABLE")
+        self.assertTrue(report["paper_technical"])
 
     def test_rerun_with_new_report_id_uses_self_described_canonical_color(self):
         self._base_sources()

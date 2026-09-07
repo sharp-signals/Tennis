@@ -81,6 +81,7 @@ class ReportStateTests(unittest.TestCase):
                 payload = {"prelive_decision": {"state": state}}
                 label, _css_class, ball, presentation_color = report_html.REPORT_DECISION_PRESENTATION[state]
                 self.assertEqual(report_html.canonical_report_color(payload), color)
+                self.assertEqual(report_html.canonical_report_color_from_state(state), color)
                 self.assertEqual(presentation_color, color)
                 self.assertEqual(
                     report_html.historical_report_color_from_decision_head(f"{ball} {label}"),
