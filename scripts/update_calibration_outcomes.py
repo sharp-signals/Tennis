@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.calibration_store import settle_from_matches
-from src import green_strong_validation, market_ledger, market_memory_report
+from src import dashboard, green_strong_validation, market_ledger, market_memory_report
 from src.paper_trading import settle_from_matches as settle_paper_from_matches
 
 
@@ -64,3 +64,9 @@ if __name__ == "__main__":
         # O contrato do CHANGE exige degradação aberta: settlement e PAPER
         # continuam válidos; apenas Market Memory/CLV fica indisponível.
         print(f"[market-memory] atualização não bloqueante indisponível: {type(exc).__name__}: {exc}")
+
+    dashboard_status = dashboard.build_and_write_best_effort(root=ROOT)
+    if dashboard_status["status"] == "AVAILABLE":
+        print("Dashboard read-only atualizado após settlement.")
+    else:
+        print(f"[dashboard] atualização não bloqueante indisponível: {dashboard_status['error']}")

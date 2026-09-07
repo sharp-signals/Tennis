@@ -32,6 +32,8 @@ class SiteIndexTests(unittest.TestCase):
         self.assertIn('id="search"', generated)
         self.assertIn('id="priority"', generated)
         self.assertIn('data-level="3"', generated)
+        self.assertIn("Fenzobot Control Dashboard", generated)
+        self.assertIn("https://sharp-signals.github.io/Tennis/dashboard/", generated)
         self.assertIn("A &lt;script&gt;", generated)
         self.assertNotIn("A <script>", generated)
 

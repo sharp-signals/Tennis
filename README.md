@@ -65,6 +65,7 @@ publicar. Entre 80% e 95% é publicada como degradada; a partir de 95% é normal
 | `src/cache_store.py` | Cache JSON versionada, com TTL e escrita atómica. |
 | `src/analyze.py` | Política seletiva, cache, fallback e validação do output LLM. |
 | `src/run_metrics.py` | Telemetria de execução, custo LLM estimado e alertas. |
+| `src/dashboard.py` | Projeção read-only dos artefactos existentes para o Control Dashboard estático. |
 
 ## Motor Fenzobot
 
@@ -167,6 +168,12 @@ Os ficheiros entram em `docs/relatorios/`; `docs/index.html` reúne a execução
 do dia e GitHub Pages serve `https://sharp-signals.github.io/Tennis`.
 Esse endereço conserva o identificador técnico legacy do repositório e **não é
 o nome canónico do projeto**.
+
+O **Fenzobot Control Dashboard** é reconstruído offline em
+`docs/dashboard/index.html` e publicado em `/Tennis/dashboard/`. É uma vista
+observacional derivada: não cria decisões, não executa apostas e não expõe
+linhas privadas do PAPER 22Bet. A ausência de uma fonte degrada apenas o painel
+respetivo para `N/D`; a geração nunca bloqueia o pipeline ou o settlement.
 
 O Telegram recebe um resumo por grupos de decisão, com links para cada
 relatório. Mensagens longas são divididas abaixo do limite do Telegram.

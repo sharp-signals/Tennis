@@ -54,6 +54,43 @@ COLORS = {
     "line": "#2c313b",
 }
 
+REPORT_COLOR_META_NAME = "fenzobot-report-color"
+REPORT_DECISION_PRESENTATION = {
+    "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
+    "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": (
+        "EDGE POSITIVO — COBERTURA INSUFICIENTE PARA PAPER", "zero", "🟡", "YELLOW",
+    ),
+    "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴", "RED"),
+    "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪", "UNAVAILABLE"),
+    "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
+    "PRICING_UNAVAILABLE": ("PREÇO DE MERCADO INDISPONÍVEL", "zero", "🟡", "YELLOW"),
+}
+
+
+def canonical_report_color_from_state(state: object) -> str:
+    """Mapeia o estado pela unica apresentacao canonica do report."""
+    if not isinstance(state, str):
+        state = "REPORT_NULL"
+    return REPORT_DECISION_PRESENTATION.get(
+        state, REPORT_DECISION_PRESENTATION["REPORT_NULL"]
+    )[3]
+
+
+def canonical_report_color(payload: dict) -> str:
+    """Cor operacional exibida pelo report, sem reinterpretar a decisao."""
+    decision = payload.get("prelive_decision")
+    state = decision.get("state") if isinstance(decision, dict) else None
+    return canonical_report_color_from_state(state)
+
+
+def historical_report_color_from_decision_head(text: str) -> str | None:
+    """Reconhece apenas a assinatura textual completa do contrato V2 conhecido."""
+    normalized = " ".join(str(text).split())
+    for label, _css_class, ball, color in REPORT_DECISION_PRESENTATION.values():
+        if normalized == f"{ball} {label}":
+            return color
+    return None
+
 
 def _esc(text) -> str:
     return html.escape(str(text if text is not None else ""))
@@ -1668,6 +1705,7 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
         flag = {3: "🟢", 2: "🟡", 1: "🟡", 0: "🔴"}.get(_nivel_flag, "🔴")
     _label_flag = {3: "oportunidade", 2: "a acompanhar", 1: "a acompanhar",
                    0: "mercado eficiente"}.get(_nivel_flag if (_mvm_flag and _mvm_flag.get("market")) else -1, "sinal")
+    v1_report_color = {"🟢": "GREEN", "🟡": "YELLOW", "🔴": "RED"}.get(flag, "UNAVAILABLE")
 
     # Grau de confiança global (0-100) com cor por faixa
     # Confiança: dois eixos separados (auditoria) — cobertura de dados e
@@ -1864,6 +1902,7 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="{REPORT_COLOR_META_NAME}" content="{v1_report_color}"/>
 <title>{a} vs {b}</title>
 <style>
 :root {{
@@ -2353,6 +2392,7 @@ body {{ background:var(--bg); color:var(--text);
 .report-nav {{ max-width:1080px; margin:0 auto 10px; }}
 .report-nav a {{ color:var(--dim); text-decoration:none; font-size:14px; }}
 .report-nav a:hover, .report-nav a:focus {{ color:var(--text); text-decoration:underline; }}
+.report-nav .nav-sep {{ color:var(--line); margin:0 8px; }}
 .sr-only {{ position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }}
 .num {{ font-variant-numeric:tabular-nums; }}
@@ -2925,15 +2965,9 @@ def _mod_decision_box(payload):
     state = decision.get("state") or "REPORT_NULL"
     coverage = _d(decision.get("coverage"))
     coverage_text = f'{coverage.get("weighted_pct", 0):g}% · {coverage.get("status", "insuficiente")}'
-    labels = {
-        "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢"),
-        "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": ("EDGE POSITIVO — COBERTURA INSUFICIENTE PARA PAPER", "zero", "🟡"),
-        "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴"),
-        "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪"),
-        "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫"),
-        "PRICING_UNAVAILABLE": ("PREÇO DE MERCADO INDISPONÍVEL", "zero", "🟡"),
-    }
-    label, css_class, ball = labels.get(state, labels["REPORT_NULL"])
+    label, css_class, ball, _color = REPORT_DECISION_PRESENTATION.get(
+        state, REPORT_DECISION_PRESENTATION["REPORT_NULL"]
+    )
     if state in {"EDGE_POSITIVE", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT"}:
         market = _d(decision.get("market"))
         edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
@@ -5410,7 +5444,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         partes.append(_mod_fadiga(payload))
         partes.append(_mod_photo_credits(payload))
         partes.append('</div>')
-        return _pagina(a, b, "".join(partes))
+        return _pagina(a, b, "".join(partes), canonical_report_color(payload))
 
     # Os cenários vivem no Mapa de Ações como gatilhos condicionais.
     # 4. Mercado e indicadores (só com odds)
@@ -5442,7 +5476,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_action_map(payload, div, result))
     partes.append(_mod_photo_credits(payload))
     partes.append('</div>')
-    return _pagina(a, b, "".join(partes))
+    return _pagina(a, b, "".join(partes), canonical_report_color(payload))
 
 
 def _impact_toggle_script():
@@ -5496,16 +5530,20 @@ def _impact_toggle_script():
 </script>"""
 
 
-def _pagina(a, b, corpo):
+def _pagina(a, b, corpo, report_color="UNAVAILABLE"):
     hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    report_color = report_color if report_color in {"GREEN", "YELLOW", "RED", "UNAVAILABLE"} else "UNAVAILABLE"
     return f"""<!DOCTYPE html>
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="{REPORT_COLOR_META_NAME}" content="{report_color}">
 <title>{_esc(a)} vs {_esc(b)}</title>
 <style>{_css()}{_css_editorial()}</style></head>
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">
   <a href="{_esc(SITE_BASE_URL)}/">← Todos os relatórios</a>
+  <span class="nav-sep" aria-hidden="true">·</span>
+  <a href="{_esc(SITE_BASE_URL)}/dashboard/">Dashboard</a>
 </nav>
 <main>
 <h1 class="sr-only">{_esc(a)} vs {_esc(b)}</h1>
