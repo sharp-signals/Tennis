@@ -249,15 +249,25 @@ function paperTradingSpreadsheet_() {
   if (!spreadsheetId) {
     throw new Error('Falta GOOGLE_SHEETS_SPREADSHEET_ID nas Propriedades do script.');
   }
+  let spreadsheet = null;
   if (typeof SpreadsheetApp.openById === 'function') {
-    return SpreadsheetApp.openById(spreadsheetId);
+    spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    if (spreadsheet) return spreadsheet;
+  }
+  // Em alguns projetos autónomos a abertura por ID pode devolver nulo apesar
+  // de a conta ter acesso; repetir pela URL canónica da mesma Sheet.
+  if (typeof SpreadsheetApp.openByUrl === 'function') {
+    spreadsheet = SpreadsheetApp.openByUrl(
+      'https://docs.google.com/spreadsheets/d/' + spreadsheetId + '/edit',
+    );
+    if (spreadsheet) return spreadsheet;
   }
   // Compatibilidade com execução bound e com o simulador Node dos testes.
   if (typeof SpreadsheetApp.getActiveSpreadsheet === 'function') {
     const active = SpreadsheetApp.getActiveSpreadsheet();
     if (active) return active;
   }
-  throw new Error('Não foi possível abrir a Sheet PAPER 22Bet.');
+  throw new Error('Não foi possível abrir a Sheet PAPER 22Bet. Confirme o ID e o acesso da conta fenzobot@gmail.com.');
 }
 
 function trackingIndexes_(headers) {

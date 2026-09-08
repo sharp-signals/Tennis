@@ -65,6 +65,21 @@ test('standalone sync opens the configured Sheet ID', () => {
   assert.equal(context.paperTradingSpreadsheet_(), expected);
 });
 
+test('standalone sync retries by canonical URL when ID lookup is empty', () => {
+  const expected = {getSheetByName: () => null};
+  context.PropertiesService = {getScriptProperties: () => ({
+    getProperty: (key) => key === 'GOOGLE_SHEETS_SPREADSHEET_ID' ? 'fallback-sheet-id' : null,
+  })};
+  context.SpreadsheetApp = {
+    openById: () => null,
+    openByUrl: (url) => {
+      assert.equal(url, 'https://docs.google.com/spreadsheets/d/fallback-sheet-id/edit');
+      return expected;
+    },
+  };
+  assert.equal(context.paperTradingSpreadsheet_(), expected);
+});
+
 test('underdog pair counts one candidate, two PAPER legs and one complete pair', () => {
   const headers = Array.from({length: 15}, (_, index) => 'Legacy ' + index).concat(
     ['Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status'],
