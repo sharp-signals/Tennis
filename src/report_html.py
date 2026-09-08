@@ -2992,9 +2992,18 @@ def _mod_decision_box(payload):
             f'<div class="decision-note">Não entra em PAPER. Cobertura {_esc(coverage_text)}.</div>'
         )
     elif state == "PRICING_UNAVAILABLE":
+        reason = str(decision.get("reason") or "")
+        unavailable_messages = {
+            "event_identity_unavailable": "O evento de odds não pôde ser associado com segurança aos dois jogadores.",
+            "event_lookup_http_error": "A consulta de associação do evento devolveu uma resposta inválida.",
+            "event_lookup_request_failed": "A consulta de associação do evento falhou temporariamente.",
+            "recent_odds_request_failed": "A consulta de odds atuais falhou temporariamente.",
+            "recent_odds_missing_valid_two_way_moneyline": "O mercado devolveu odds incompletas ou inválidas para um dos dois jogadores.",
+        }
+        detail = unavailable_messages.get(reason, "Não foi recebida uma cotação atual verificável para os dois jogadores.")
         body = (
             '<div class="decision-primary">Análise factual disponível; edge e PAPER bloqueados por ausência de cotação fresca verificável.</div>'
-            f'<div class="decision-note">{_esc(decision.get("reason") or "Preço de mercado indisponível")} · Cobertura {_esc(coverage_text)}.</div>'
+            f'<div class="decision-note">{_esc(detail)} · Cobertura {_esc(coverage_text)}.</div>'
         )
     else:
         assessment = _d(decision.get("report_assessment"))

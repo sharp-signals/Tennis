@@ -366,6 +366,7 @@ _RAPIDAPI_EVENT_INDEX_READY: set[str] = set()
 _RAPIDAPI_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_FRESH_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_EVENT_LOOKUP_CACHE: dict[str, Optional[dict]] = {}
+_RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS: dict[str, dict] = {}
 _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
 # Mantém a causa de uma descoberta impossibilitada. Uma lista vazia só é
@@ -411,7 +412,13 @@ def _event_match_key(player1_id, player2_id, tournament_id, round_id=None):
 
 
 def _event_names_key(player1: str, player2: str) -> tuple[str, str]:
-    return tuple(sorted((_normalize_name(player1), _normalize_name(player2))))
+    """Chave bilateral para uma identidade de evento, com aliases auditados.
+
+    Isto não é fuzzy matching: só nomes explicitamente revistos são
+    canónicos aqui. Mantemos a dupla de participantes, a data e o estado
+    pré-live como condições obrigatórias antes de aceitar qualquer odd.
+    """
+    return tuple(sorted((_rapidapi_event_identity_name(player1), _rapidapi_event_identity_name(player2))))
 
 
 def upcoming_discovery_failed() -> bool:
@@ -1074,21 +1081,40 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
     if cache_key in _RAPIDAPI_EVENT_LOOKUP_CACHE:
         return _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key]
 
+    attempted_names: list[tuple[str, str]] = []
+    last_failure = "event_identity_unavailable"
     for offset in (0, -1, 1):
         date_only = (start + timedelta(days=offset)).date().isoformat()
-        for left, right in ((player_a, player_b), (player_b, player_a)):
+        pairs = []
+        for first in _rapidapi_event_name_variants(player_a):
+            for second in _rapidapi_event_name_variants(player_b):
+                pairs.extend(((first, second), (second, first)))
+        for left, right in dict.fromkeys(pairs):
+            attempted_names.append((left, right))
             url = f"{RAPIDAPI_EXTEND_BASE}/event/get/{quote(left, safe='')}/{quote(right, safe='')}/{date_only}"
             try:
                 response = _rapidapi_get(url)
                 if response.status_code != 200:
+                    last_failure = "event_lookup_http_error"
                     continue
                 record = _validated_event_record(response.json() or {}, match)
                 if record:
+                    _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS[cache_key] = {
+                        "availability_status": "VERIFIED",
+                        "event_lookup_name_variants": attempted_names,
+                    }
                     _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = record
                     return record
+                last_failure = "event_identity_unavailable"
             except (requests.RequestException, ValueError, RapidAPIBudgetExceeded):
+                last_failure = "event_lookup_request_failed"
                 continue
     _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = None
+    _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS[cache_key] = {
+        "availability_status": "UNAVAILABLE",
+        "unavailable_reason": last_failure,
+        "event_lookup_name_variants": attempted_names,
+    }
     return None
 
 
@@ -1112,7 +1138,22 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     event = _rapidapi_event_record_for_match(match)
     event_id = str(event.get("event_id")) if event and event.get("valid") and event.get("event_id") else None
     if not event_id or not player_a or not player_b:
-        return None, None
+        cache_key = str(match.get("id") or f"{player_a}|{player_b}|{str(match.get('date') or '')[:10]}")
+        diagnostic = dict(_RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS.get(cache_key) or {})
+        diagnostic.setdefault("availability_status", "UNAVAILABLE")
+        diagnostic.setdefault("unavailable_reason", "event_identity_unavailable")
+        diagnostic.update({
+            "source": "RapidAPI Tennis API / event lookup",
+            "endpoint": "event/get/{participant1}/{participant2}/{date}",
+            "event_id": None,
+            "bookmaker": None,
+            "from_cache": False,
+        })
+        print(
+            f"[aviso] odds operacionais indisponíveis para {player_a} vs {player_b}: "
+            f"{diagnostic['unavailable_reason']}."
+        )
+        return None, diagnostic
     if event_id in _RAPIDAPI_FRESH_ODDS_CACHE:
         cached = _RAPIDAPI_FRESH_ODDS_CACHE[event_id]
         if not cached:
@@ -1131,7 +1172,15 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     except (requests.RequestException, ValueError, RapidAPIBudgetExceeded) as exc:
         print(f"[aviso] odds frescas RapidAPI indisponíveis para {player_a} vs {player_b}: {exc}")
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, None
+        return None, {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "bookmaker": None,
+            "from_cache": False,
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": "recent_odds_request_failed",
+        }
 
     candidates = []
     for bookmaker, quote_data in market.items():
@@ -1153,7 +1202,15 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     if not candidates:
         print(f"[aviso] sem par Moneyline recente e identificável para {player_a} vs {player_b}.")
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, None
+        return None, {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "bookmaker": None,
+            "from_cache": False,
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": "recent_odds_missing_valid_two_way_moneyline",
+        }
 
     _overround, bookmaker, odd_a, odd_b, provider_at = min(candidates, key=lambda item: (item[0], item[1]))
     # ``od1``/``od2`` pertencem explicitamente à ordem confirmada pelo
@@ -1593,6 +1650,42 @@ def _normalize_name(name: str) -> str:
     # mais permissivo.
     clean = "".join(c if c.isalnum() else " " for c in ascii_name)
     return " ".join(clean.lower().split())
+
+
+# A camada de fixtures e a camada Extend da RapidAPI nem sempre usam o mesmo
+# nome público. Esta tabela é deliberadamente pequena, bidirecional e não
+# aceita aproximações por apelido. Cada entrada deve ter sido vista num feed
+# real antes de ser adicionada.
+_RAPIDAPI_EVENT_NAME_ALIASES = {
+    "cori gauff": ("Coco Gauff",),
+    "coco gauff": ("Cori Gauff",),
+}
+_RAPIDAPI_EVENT_NAME_CANONICAL = {
+    "cori gauff": "coco gauff",
+    "coco gauff": "coco gauff",
+}
+
+
+def _rapidapi_event_identity_name(name: object) -> str:
+    normalized = _normalize_name(str(name or ""))
+    return _RAPIDAPI_EVENT_NAME_CANONICAL.get(normalized, normalized)
+
+
+def _rapidapi_event_name_variants(name: object) -> list[str]:
+    """Devolve o nome do fixture e aliases exactos aceites pelo endpoint."""
+    value = str(name or "").strip()
+    if not value:
+        return []
+    variants = [value, *_RAPIDAPI_EVENT_NAME_ALIASES.get(_normalize_name(value), ())]
+    # Desduplica pela forma normalizada, sem alterar a grafia enviada à API.
+    seen: set[str] = set()
+    result = []
+    for item in variants:
+        normalized = _normalize_name(item)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(item)
+    return result
 
 
 def _normalize_surface_family(surface: object) -> Optional[str]:
