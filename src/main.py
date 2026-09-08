@@ -1489,6 +1489,8 @@ def _build_match_payload(match: dict) -> dict:
         "odds_from_cache": odds_provenance.get("from_cache") if odds else None,
         "odds_cache_age_seconds": odds_provenance.get("cache_age_seconds") if odds else None,
         "odds_raw_payload_sha256": odds_provenance.get("raw_payload_sha256") if odds else None,
+        "odds_availability_status": odds_provenance.get("availability_status") or ("AVAILABLE" if odds else "UNAVAILABLE"),
+        "odds_unavailable_reason": odds_provenance.get("unavailable_reason") if not odds else None,
         "odds_movement": odds_movement,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
@@ -1597,6 +1599,12 @@ def _build_match_payload(match: dict) -> dict:
         payload["pricing"] = estimate_market_residual_pricing(
             payload, payload.get("divergencia")
         )
+        if (
+            isinstance(payload["pricing"], dict)
+            and not payload["pricing"].get("available")
+            and payload.get("odds_unavailable_reason")
+        ):
+            payload["pricing"]["reason"] = payload["odds_unavailable_reason"]
     except Exception as exc:
         print(f"[aviso:pricing] pricing residual indisponível para "
               f"{payload.get('player_a')} vs {payload.get('player_b')}: {exc}")

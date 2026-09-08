@@ -100,6 +100,59 @@ class MatchInputTests(unittest.TestCase):
         self.assertTrue(provenance["raw_payload_sha256"])
         self.assertEqual(len(provenance["market_quotes"]), 1)
 
+    def test_event_lookup_accepts_audited_cori_coco_alias_without_relaxing_pair_validation(self):
+        match = {
+            "id": 9001,
+            "date": "2026-09-09T15:00:00+00:00",
+            "player1": {"name": "Mirra Andreeva"},
+            "player2": {"name": "Cori Gauff"},
+        }
+
+        class Response:
+            status_code = 200
+
+            def __init__(self, payload):
+                self.payload = payload
+
+            def json(self):
+                return self.payload
+
+        calls = []
+
+        def lookup(url):
+            calls.append(url)
+            if "Coco%20Gauff" in url:
+                return Response({"result": {
+                    "id": "coco-event",
+                    "participant1": "Mirra Andreeva",
+                    "participant2": "Coco Gauff",
+                    "status": "scheduled",
+                    "startTime": "2026-09-09T15:00:00+00:00",
+                }})
+            return Response({"result": {}})
+
+        with patch.object(fetch_data, "_rapidapi_get", side_effect=lookup), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS, {}, clear=True):
+            record = fetch_data._rapidapi_event_record_for_match(match)
+
+        self.assertTrue(record["valid"])
+        self.assertEqual(record["event_id"], "coco-event")
+        self.assertTrue(any("Coco%20Gauff" in url for url in calls))
+
+    def test_recent_odds_exposes_event_lookup_failure_reason(self):
+        match = {
+            "id": 91,
+            "date": "2026-09-09T15:00:00+00:00",
+            "player1": {"name": "Alice Player"},
+            "player2": {"name": "Bea Player"},
+        }
+        with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=None), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS, {}, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+        self.assertIsNone(odds)
+        self.assertEqual(provenance["unavailable_reason"], "event_identity_unavailable")
+
     def test_the_odds_api_is_off_by_default_even_when_secret_exists(self):
         with patch.object(fetch_data, "THE_ODDS_API_ENABLED", False), \
                 patch.object(fetch_data, "ODDS_API_KEY", "configured-but-not-authorized"), \
