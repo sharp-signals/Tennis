@@ -6,6 +6,8 @@
  * Antes de usar, definir nas Propriedades do script:
  * - GITHUB_TOKEN: fine-grained token com Contents: Read and write no Tennis
  * - GITHUB_REPOSITORY: sharp-signals/Tennis
+ * - GOOGLE_SHEETS_SPREADSHEET_ID: ID da Sheet PAPER 22Bet (opcional;
+ *   usa a Sheet oficial por omissão, para suportar projeto Apps Script autónomo)
  * Opcional: GITHUB_BRANCH (por omissão, main)
  */
 
@@ -17,6 +19,7 @@ const PAPER_22BET_SYNC = {
   targetPath: 'data/manual_paper_22bet.json',
   defaultRepository: 'sharp-signals/Tennis',
   defaultBranch: 'main',
+  defaultSpreadsheetId: '1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U',
   validationPath: 'data/validation/green-strong-v1.json',
   trackingHeaders: [
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
@@ -85,7 +88,7 @@ function syncPaperTradingToGitHub() {
 }
 
 function installGreenStrongTrackingColumns() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PAPER_22BET_SYNC.sheetName);
+  const sheet = paperTradingSpreadsheet_().getSheetByName(PAPER_22BET_SYNC.sheetName);
   if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
   const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
@@ -125,7 +128,7 @@ function installPaperTradingSync() {
 }
 
 function buildPaperTradingPayload_(token, repository, branch) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = paperTradingSpreadsheet_();
   const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName);
   if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
   const lastRow = sheet.getLastRow();
@@ -228,6 +231,43 @@ function buildPaperTradingPayload_(token, repository, branch) {
       GUERRA_SELECTION_V1: strategyAggregate,
     },
   };
+}
+
+/**
+ * Resolve a Sheet sem depender de um Apps Script associado ao ficheiro.
+ * Isto permite criar o projeto diretamente em script.google.com quando o
+ * projeto bound original deixou de estar acessível.
+ */
+function paperTradingSpreadsheet_() {
+  const properties = typeof PropertiesService !== 'undefined'
+    ? PropertiesService.getScriptProperties()
+    : null;
+  const configuredId = properties
+    ? properties.getProperty('GOOGLE_SHEETS_SPREADSHEET_ID')
+    : null;
+  const spreadsheetId = configuredId || PAPER_22BET_SYNC.defaultSpreadsheetId;
+  if (!spreadsheetId) {
+    throw new Error('Falta GOOGLE_SHEETS_SPREADSHEET_ID nas Propriedades do script.');
+  }
+  let spreadsheet = null;
+  if (typeof SpreadsheetApp.openById === 'function') {
+    spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    if (spreadsheet) return spreadsheet;
+  }
+  // Em alguns projetos autónomos a abertura por ID pode devolver nulo apesar
+  // de a conta ter acesso; repetir pela URL canónica da mesma Sheet.
+  if (typeof SpreadsheetApp.openByUrl === 'function') {
+    spreadsheet = SpreadsheetApp.openByUrl(
+      'https://docs.google.com/spreadsheets/d/' + spreadsheetId + '/edit',
+    );
+    if (spreadsheet) return spreadsheet;
+  }
+  // Compatibilidade com execução bound e com o simulador Node dos testes.
+  if (typeof SpreadsheetApp.getActiveSpreadsheet === 'function') {
+    const active = SpreadsheetApp.getActiveSpreadsheet();
+    if (active) return active;
+  }
+  throw new Error('Não foi possível abrir a Sheet PAPER 22Bet. Confirme o ID e o acesso da conta fenzobot@gmail.com.');
 }
 
 function trackingIndexes_(headers) {
