@@ -1,4 +1,136 @@
 {
+  "audit_v1": {
+    "change_id": "CHANGE-2026-09-08-030",
+    "contract_version": "audit-observability-v1",
+    "green_diagnostics": {
+      "decision_positive": 1,
+      "direction_strong": 0,
+      "eligible": 0,
+      "eligible_settled": 0,
+      "exclusion_reason_counts": {
+        "DECISION_STATE_NOT_EDGE_POSITIVE": 3,
+        "DIVERGENCE_LEVEL_NOT_STRONG": 4,
+        "DIVERGENCE_TYPE_NOT_DIRECTION": 4,
+        "PAPER_NOT_ELIGIBLE": 3,
+        "PRICING_UNAVAILABLE": 1,
+        "PROBABILITIES_UNAVAILABLE": 1,
+        "SELECTED_PLAYER_UNAVAILABLE": 1,
+        "SELECTED_SIDE_UNAVAILABLE": 1
+      },
+      "legacy_or_not_prospective": 390,
+      "note": "Independent stored gates, not an inferred sequential funnel; reasons may overlap.",
+      "prospectively_classified": 4,
+      "status": "AVAILABLE",
+      "total_snapshots": 394
+    },
+    "last_refresh_attempt": {
+      "attempted_at_utc": "2026-09-08T20:43:34+00:00",
+      "green_strong": "AVAILABLE",
+      "market_memory": "AVAILABLE"
+    },
+    "ledger_status": "AVAILABLE",
+    "llm": {
+      "llm_external_requests": null,
+      "llm_mode": null,
+      "llm_provider_invocations": null
+    },
+    "paired_comparison": {
+      "by_code_revision": {
+        "UNAVAILABLE": {
+          "delta": {
+            "brier_score": -0.006463,
+            "log_loss": -0.017938
+          },
+          "fenzobot": {
+            "accuracy_pct": 76.92,
+            "brier_score": 0.157718,
+            "log_loss": 0.490946,
+            "sample_size": 13
+          },
+          "market": {
+            "accuracy_pct": 76.92,
+            "brier_score": 0.164181,
+            "log_loss": 0.508884,
+            "sample_size": 13
+          },
+          "sample_size": 13
+        }
+      },
+      "by_pricing_version": {
+        "[\"market-residual-v0.3\", \"f46ec3e2aa6f92a9\"]": {
+          "delta": {
+            "brier_score": -0.006463,
+            "log_loss": -0.017938
+          },
+          "fenzobot": {
+            "accuracy_pct": 76.92,
+            "brier_score": 0.157718,
+            "log_loss": 0.490946,
+            "sample_size": 13
+          },
+          "market": {
+            "accuracy_pct": 76.92,
+            "brier_score": 0.164181,
+            "log_loss": 0.508884,
+            "sample_size": 13
+          },
+          "sample_size": 13
+        }
+      },
+      "change_id": "CHANGE-2026-09-08-030",
+      "claims": "EXPERIMENTAL_NOT_VALIDATED",
+      "contract_version": "PAIRED_PRICING_MARKET_V1",
+      "delta": {
+        "brier_score": -0.006463,
+        "log_loss": -0.017938
+      },
+      "eligibility_hash": "9062d17ca9f1328471e1bd78bdde44c5d70d43ca8a7d1efaed7b2255e79915f2",
+      "eligible_forecasts": 16,
+      "exclusions": {
+        "ENTRY_LINK_UNAVAILABLE": 40,
+        "FROZEN_PROBABILITIES_UNAVAILABLE": 284,
+        "TEMPORAL_PROVENANCE_INVALID": 54
+      },
+      "fenzobot": {
+        "accuracy_pct": 76.92,
+        "brier_score": 0.157718,
+        "log_loss": 0.490946,
+        "sample_size": 13
+      },
+      "market": {
+        "accuracy_pct": 76.92,
+        "brier_score": 0.164181,
+        "log_loss": 0.508884,
+        "sample_size": 13
+      },
+      "mode": "RETROSPECTIVE_DESCRIPTIVE",
+      "pending_or_unresolved": 3,
+      "probability_basis": "FROZEN_PRICING_FULL_PRECISION",
+      "sample_size": 13,
+      "scored_snapshot_keys_hash": "e99ec44cdde32c17e062c82750bef9d539003debf8371eabde86236107aaef0a",
+      "status": "AVAILABLE",
+      "total_snapshots": 394
+    },
+    "source_quality": {
+      "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
+      "first_ledger_capture_utc": "2026-09-03T17:34:09+00:00",
+      "fresh": 3.0,
+      "last_monitor_capture_utc": "2026-09-08T19:54:53+00:00",
+      "stale": 2.0,
+      "unknown": 0.0
+    },
+    "units": {
+      "paper_entries": "LEGS_NOT_INDEPENDENT_MATCHES",
+      "selected_candidates": "UNIQUE_SNAPSHOT_KEYS",
+      "total_reports": "HTML_FILES_INCLUDING_RERUNS",
+      "total_snapshots": "STORED_SNAPSHOTS"
+    },
+    "unknown_colors_by_linkage": {
+      "EXACT_REPORT_ID": 10,
+      "HISTORICAL_DOM_CONTRACT": 116,
+      "LEGACY_UNLINKED": 926
+    }
+  },
   "change_id": "CHANGE-2026-09-06-027",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
@@ -18597,10 +18729,10 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-08T17:34:05+00:00",
+  "generated_at_utc": "2026-09-08T20:43:36+00:00",
   "global": {
     "green_strong_candidates": 0,
-    "market_observations": 1000,
+    "market_observations": 1043,
     "paper_22bet_entries": 42,
     "paper_technical_entries": 57,
     "report_colors": {
@@ -18620,7 +18752,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-08T17:34:05+00:00",
+    "generated_at_utc": "2026-09-08T20:43:36+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -18673,7 +18805,7 @@
     "distinct_events": 394,
     "events_with_comparable_closing": 7,
     "events_with_entry_market": 16,
-    "generated_at_utc": "2026-09-08T17:34:05+00:00",
+    "generated_at_utc": "2026-09-08T20:43:36+00:00",
     "market_only": {
       "accuracy_pct": 76.92,
       "brier_score": 0.164181,
@@ -18805,11 +18937,11 @@
       },
       {
         "date": "2026-09-08",
-        "observations": 84
+        "observations": 127
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 1000
+    "total_observations": 1043
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -18940,20 +19072,20 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "e436b34883fd9969afec2e1fd32d93f96fb9383cc1cd76b6e6cc8fc53595fc91",
+  "semantic_fingerprint": "90a8d421801c6bf0db4a6d2977a632e62e57f733d897e02fc31360e3f118b295",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-08T17:34:05+00:00"
+      "updated_at_utc": "2026-09-08T20:43:36+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-08T17:33:40+00:00"
+      "updated_at_utc": "2026-09-08T19:54:52+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-08T17:34:05+00:00"
+      "updated_at_utc": "2026-09-08T20:43:36+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",

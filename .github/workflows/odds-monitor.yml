@@ -54,11 +54,15 @@ jobs:
         # o monitor possa importar ``src.fetch_data`` no runner do GitHub.
         run: python -m scripts.odds_monitor
 
+      - name: Atualizar vistas derivadas sem aquisição
+        run: python -m scripts.refresh_observability
+        continue-on-error: true
+
       - name: Persistir observações e telemetria
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/odds_monitor/ data/market_ledger/ data/rapidapi_usage_log.json 2>/dev/null || true
+          git add data/odds_monitor/ data/market_ledger/ data/rapidapi_usage_log.json data/dashboard/ docs/dashboard/ data/validation/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: atualizar histórico SHADOW de odds [skip ci]"
             git pull --rebase --autostash origin main

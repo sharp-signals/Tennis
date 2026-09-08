@@ -47,6 +47,7 @@ def reset() -> None:
     global _STARTED_AT
     with _LOCK:
         _COUNTERS.clear()
+        _COUNTERS.update(llm_provider_invocations=0, llm_external_requests=0)
         _CONTEXT.clear()
         _STARTED_AT = time.monotonic()
 

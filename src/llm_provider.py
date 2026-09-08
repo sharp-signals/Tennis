@@ -13,6 +13,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
+from . import run_metrics
+
 from .config import (
     ALLOW_PAID_LLM,
     CLAUDE_MODEL,
@@ -102,6 +104,8 @@ class AnthropicProvider(LLMProvider):
         # 400 confirmado em log real, 30/30 chamadas falharam). O modelo em
         # uso não aceita prefill (comum em modelos com extended thinking).
         # Mantido o resto do reforço (prompt + max_tokens menor).
+        # One SDK request attempt, not a claim about transport retries or billing.
+        run_metrics.increment("llm_external_requests")
         response = client.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=max_tokens,

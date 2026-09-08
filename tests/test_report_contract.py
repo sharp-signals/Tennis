@@ -551,7 +551,7 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("SHARP PRICING — MARKET RESIDUAL", html)
+        self.assertIn("FENZOBOT PRICING — MARKET RESIDUAL", html)
         self.assertIn("Expected edge", html)
         self.assertNotIn("Faixa indicativa calibrada", html)
         self.assertNotIn("Veredicto de mercado", html)
@@ -572,7 +572,7 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("SHARP PRICING — MARKET RESIDUAL", html)
+        self.assertIn("FENZOBOT PRICING — MARKET RESIDUAL", html)
         self.assertIn("EXPERIMENTAL — EM VALIDAÇÃO", html)
         self.assertNotIn("Faixa indicativa em calibração", html)
         self.assertNotIn("Veredicto de mercado", html)

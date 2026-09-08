@@ -232,3 +232,7 @@ decisão, o relatório, a carteira PAPER e a calibração histórica.
   preenchidos com estimativas silenciosas.
 
 **Fenzobot — projeto da Fenzo Intelligence (Hugo e Guerra).**
+
+### Continuidade das métricas e auditoria
+
+O CHANGE-2026-09-08-030 acrescenta observabilidade e uma comparação emparelhada descritiva, sem substituir métricas legacy ou alterar decisões. Consulte [o contrato de continuidade](docs/AUDIT_METRIC_CONTINUITY.md). `python -m scripts.refresh_observability` reconstrói apenas vistas locais, sem aquisição ou settlement.
