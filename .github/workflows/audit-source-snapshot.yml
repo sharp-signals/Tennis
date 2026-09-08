@@ -31,6 +31,20 @@ jobs:
           git fetch origin main
           git merge --no-edit origin/main
           python scripts/_apply_change030.py
+          python - <<'PY'
+          from pathlib import Path
+          edits = {
+              'src/report_html.py': [('Sharp adjustment</span>', 'Fenzobot adjustment</span>'), ('estimativa Sharp</div>', 'estimativa Fenzobot</div>')],
+              'tests/test_pricing.py': [('"Sharp estimate"', '"Fenzobot estimate"'), ('"Fiabilidade das fontes"', '"Coeficiente de fonte (pricing)"')],
+          }
+          for filename, replacements in edits.items():
+              path = Path(filename)
+              content = path.read_text(encoding='utf-8')
+              for old, new in replacements:
+                  assert old in content, (filename, old)
+                  content = content.replace(old, new)
+              path.write_text(content, encoding='utf-8')
+          PY
       - run: pip install -r requirements.lock -r requirements-dev.txt
       - name: Full offline validation and continuity
         run: |
