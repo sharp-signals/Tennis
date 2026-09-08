@@ -61,13 +61,22 @@ jobs:
           python -m scripts.check_metric_continuity --baseline-ref origin/main | tee "$RUNNER_TEMP/continuity-after.json"
           git diff --exit-code -- data/calibration_snapshots.json data/paper_trades.json data/manual_paper_22bet.json data/market_ledger/observations/ data/market_ledger/archive/ docs/relatorios/
           git diff --check
-      - name: Save only reviewed changes to the PR branch, never main
+      - name: Publish source only within the runner contents permission
         run: |
-          git rm .github/workflows/audit-source-snapshot.yml scripts/_apply_change030.py
-          git add src/ tests/ scripts/ README.md docs/AUDIT_METRIC_CONTINUITY.md .github/workflows/odds-monitor.yml .github/workflows/refresh-observability.yml data/dashboard/ docs/dashboard/ data/validation/ data/market_ledger/derived/
+          # Workflow edits are published separately through the authorised connector.
+          cp .github/workflows/odds-monitor.yml "$RUNNER_TEMP/odds-monitor.approved.yml"
+          git restore --source=HEAD -- .github/workflows/
+          git rm scripts/_apply_change030.py
+          git add src/ tests/ scripts/ README.md docs/AUDIT_METRIC_CONTINUITY.md data/dashboard/ docs/dashboard/ data/validation/ data/market_ledger/derived/
+          if git diff --cached --name-only | grep -q '^.github/workflows/'; then
+            echo 'Refusing workflow publication with the contents-only runner token'
+            exit 1
+          fi
           git commit -m 'CHANGE-2026-09-08-030: implement audit remediation with metric parity'
-          git push origin HEAD:change/CHANGE-2026-09-08-030-audit-remediation
           git archive --format=tar HEAD > "$RUNNER_TEMP/change030-reviewed-source.tar"
+          git rev-parse HEAD > "$RUNNER_TEMP/validated-commit.txt"
+          git rev-parse origin/main > "$RUNNER_TEMP/validated-base.txt"
+          git push origin HEAD:change/CHANGE-2026-09-08-030-audit-remediation
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -78,4 +87,6 @@ jobs:
             ${{ runner.temp }}/continuity-*.json
             ${{ runner.temp }}/refresh.json
             ${{ runner.temp }}/change030-reviewed-source.tar
+            ${{ runner.temp }}/odds-monitor.approved.yml
+            ${{ runner.temp }}/validated-*.txt
           retention-days: 7
