@@ -21,7 +21,7 @@ class RunMetricsTests(unittest.TestCase):
         run_metrics.increment("llm_input_tokens", 120)
         self.assertEqual(
             run_metrics.snapshot(),
-            {"llm_calls": 1, "llm_input_tokens": 120},
+            {"llm_calls": 1, "llm_input_tokens": 120, "llm_provider_invocations": 0, "llm_external_requests": 0},
         )
 
     def test_append_is_atomic_and_retains_bounded_history(self) -> None:

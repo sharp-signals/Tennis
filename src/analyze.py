@@ -842,6 +842,8 @@ def analyze_match(match_data: dict) -> dict:
             )
 
     run_metrics.increment("llm_calls")
+    run_metrics.increment("llm_provider_invocations")
+    run_metrics.update_context(llm_mode=provider.name)
     print(
         f"[llm_call:{provider.name}] "
         f"{match_data.get('player_a', '?')} vs "

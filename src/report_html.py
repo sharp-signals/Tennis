@@ -2976,7 +2976,7 @@ def _mod_decision_box(payload):
             f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
             f'<div class="decision-grid"><span>Mercado <b>{_esc(market.get("market"))}</b></span>'
             f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
-            f'<span>Cobertura <b>{_esc(coverage_text)}</b></span></div>'
+            f'<span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
             + (
                 '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
                 if state == "EDGE_POSITIVE" else
@@ -3466,8 +3466,8 @@ def _mod_market_residual_pricing(payload):
             f'<div class="pricing-player-name">{_esc(name)}</div>'
             '<div class="pricing-metrics">'
             f'<div><span>Market probability</span><b>{fmt(data.get("market_probability_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>Sharp estimate</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>Sharp adjustment</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
+            f'<div><span>Fenzobot estimate</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>Fenzobot adjustment</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
             f'<div><span>Fair odd</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
             f'<div><span>Market odd</span><b>{fmt(data.get("market_odd"), 2)}</b></div>'
             f'<div class="pricing-edge{edge_class}"><span>Expected edge</span>'
@@ -3495,8 +3495,9 @@ def _mod_market_residual_pricing(payload):
     return (
         '<section class="pricing-block">'
         '<div class="pricing-head"><div>'
-        '<div class="pricing-kicker">SHARP PRICING — MARKET RESIDUAL</div>'
-        '<div class="pricing-path">Mercado sem margem → ajuste residual limitado → estimativa Sharp</div>'
+        '<div class="pricing-kicker">FENZOBOT PRICING — MARKET RESIDUAL</div>'
+        '<p class="pricing-disclaimer">PAPER técnico automático e revisão manual 22Bet são estratégias separadas. As coberturas operacional e de pricing têm bases distintas.</p>'
+        '<div class="pricing-path">Mercado sem margem → ajuste residual limitado → estimativa Fenzobot</div>'
         '</div><span class="pricing-status">EXPERIMENTAL — EM VALIDAÇÃO</span></div>'
         f'<div class="pricing-grid">{card("a", payload.get("player_a", "A"))}'
         f'{card("b", payload.get("player_b", "B"))}</div>'
@@ -3505,8 +3506,8 @@ def _mod_market_residual_pricing(payload):
         f'<span>Qualidade da evidência <b>{quality_pct:.0f}%</b></span>'
         f'<span><b>{int(evidence.get("factor_count") or 0)}</b> fatores</span>'
         f'<span>Massa efetiva <b>{fmt(evidence.get("effective_mass"), 1)}</b></span>'
-        f'<span>Cobertura <b>{coverage_pct:.0f}%</b></span>'
-        f'<span>Fiabilidade das fontes <b>{source_pct:.0f}%</b></span>'
+        f'<span>Cobertura do pricing <b>{coverage_pct:.0f}%</b></span>'
+        f'<span>Coeficiente de fonte (pricing) <b>{source_pct:.0f}%</b></span>'
         f'<span>Overround observado <b>{fmt(overround, 2, suffix="%")}</b></span>'
         f'<span>{_esc(version)} · config {_esc(fingerprint)}</span>'
         '</div>'
@@ -5041,15 +5042,15 @@ def _mod_header_editorial(payload):
     h2h = f"H2H {overall.get('a_wins',0)}â€“{overall.get('b_wins',0)}" if overall.get("total_matches") else "H2H â€”"
     when = ""
     try:
-        when = datetime.fromisoformat(str(payload.get("commence_time_utc", "")).replace("Z", "+00:00")).strftime("%d/%m Â· %H:%M UTC")
+        when = datetime.fromisoformat(str(payload.get("commence_time_utc", "")).replace("Z", "+00:00")).strftime("%d/%m · %H:%M UTC")
     except (TypeError, ValueError):
         pass
     w = _d(payload.get("weather")); weather = []
     if w.get("temp_c") is not None: weather.append(f"{w['temp_c']:.0f}Â°C")
     if w.get("humidity") is not None: weather.append(f"{w['humidity']:.0f}% HR")
     if w.get("wind_kmh") is not None: weather.append(f"vento {w['wind_kmh']:.0f} km/h")
-    meta_a = " Â· ".join(str(x) for x in (payload.get("player_a_country"), rank_a, form_a) if x); meta_b = " Â· ".join(str(x) for x in (payload.get("player_b_country"), rank_b, form_b) if x)
-    return f'<div class="mh"><div class="mh-kicker">Match Preview Â· {_esc(when)}</div><div class="mh-top"><div><div class="mh-name">{a}</div><div class="mh-sub">{_esc(meta_a)}</div></div><div><div class="mh-vs">VS</div><div class="mh-tourn">{tourn}<br>{tier} Â· {surf}</div></div><div><div class="mh-name b">{b}</div><div class="mh-sub b">{_esc(meta_b)}</div></div></div><div class="mh-context"><div>{_esc(" Â· ".join(weather))}</div><div class="mh-h2h">{h2h}</div><div class="b">{tier} Â· {surf}</div></div></div>'
+    meta_a = " · ".join(str(x) for x in (payload.get("player_a_country"), rank_a, form_a) if x); meta_b = " · ".join(str(x) for x in (payload.get("player_b_country"), rank_b, form_b) if x)
+    return f'<div class="mh"><div class="mh-kicker">Match Preview · {_esc(when)}</div><div class="mh-top"><div><div class="mh-name">{a}</div><div class="mh-sub">{_esc(meta_a)}</div></div><div><div class="mh-vs">VS</div><div class="mh-tourn">{tourn}<br>{tier} · {surf}</div></div><div><div class="mh-name b">{b}</div><div class="mh-sub b">{_esc(meta_b)}</div></div></div><div class="mh-context"><div>{_esc(" · ".join(weather))}</div><div class="mh-h2h">{h2h}</div><div class="b">{tier} · {surf}</div></div></div>'
 
 
 def _mod_match_intro(result):
@@ -5065,7 +5066,7 @@ def _mod_at_glance(payload):
     ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{int(v) if float(v)==int(v) else v}")
     fa,fb=_d(payload.get("recent_form_a")),_d(payload.get("recent_form_b")); add("Forma recente",100*fa.get("wins",0)/fa.get("matches") if fa.get("matches") else None,100*fb.get("wins",0)/fb.get("matches") if fb.get("matches") else None,True,lambda v:f"{v:.0f}%")
     surface=payload.get("surface"); sa=_d(_d(payload.get("surface_stats_a")).get(surface)); sb=_d(_d(payload.get("surface_stats_b")).get(surface)); add(f"Em {surface}" if surface else "SuperfÃ­cie",100*sa.get("wins",0)/sa.get("matches") if sa.get("matches") else None,100*sb.get("wins",0)/sb.get("matches") if sb.get("matches") else None,True,lambda v:f"{v:.0f}%")
-    fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga Â· sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
+    fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga · sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
     pa,pb=_d(payload.get("pressure_profile_a")),_d(payload.get("pressure_profile_b")); add("1.Âº serviÃ§o ganho",pa.get("first_serve_won_pct"),pb.get("first_serve_won_pct"),True,lambda v:f"{v:.0f}%")
     da,db=_d(payload.get("deciding_set_stats_a")),_d(payload.get("deciding_set_stats_b")); add("Sets decisivos",da.get("deciding_set_win_pct"),db.get("deciding_set_win_pct"),True,lambda v:f"{v:.0f}%")
     if not rows: return ""
@@ -5110,12 +5111,15 @@ def _mod_market_provenance(payload):
     parts = []
     if payload.get("odds_source"):
         parts.append(f"Fonte: {_esc(payload['odds_source'])}")
-    if payload.get("odds_endpoint"):
-        parts.append(f"Endpoint: {_esc(payload['odds_endpoint'])}")
+    endpoint_detail = (
+        f'<details><summary>Proveniência técnica — endpoint</summary><p style="overflow-wrap:anywhere">'
+        f'{_esc(payload["odds_endpoint"])}</p></details>'
+        if payload.get("odds_endpoint") else ""
+    )
     if payload.get("odds_event_id"):
         parts.append(f"Evento: {_esc(payload['odds_event_id'])}")
     if payload.get("odds_captured_at_utc"):
-        parts.append(f"Captura Sharp Signals: {_esc(payload['odds_captured_at_utc'])}")
+        parts.append(f"Captura Fenzobot: {_esc(payload['odds_captured_at_utc'])}")
     if payload.get("odds_capture_kind") == "feed_observed_at_capture":
         parts.append("Tipo: feed observado nesta execução (hora do bookmaker N/D)")
     parts.append(f"Timestamp do provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
@@ -5126,7 +5130,7 @@ def _mod_market_provenance(payload):
         if isinstance(age, (int, float)):
             cache += f" ({int(age)} s)"
         parts.append(f"Cache: {cache}")
-    return f'<div class="mh-odds-meta">{" Â· ".join(parts)}</div>' if parts else ""
+    return f'<div class="mh-odds-meta">{" · ".join(parts)}{endpoint_detail}</div>' if parts else ""
 
 
 def _mod_h2h_timeline(payload):
