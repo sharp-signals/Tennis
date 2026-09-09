@@ -1030,12 +1030,13 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     if not isinstance(embedded, dict):
         return None, None
 
-    source_names = {
-        _normalize_name(embedded.get("n1")),
-        _normalize_name(embedded.get("n2")),
-    }
-    expected_names = {_normalize_name(player_a), _normalize_name(player_b)}
-    if "" in source_names or source_names != expected_names:
+    # O índice por apelido já pode localizar o par; aqui confirmamos ambos os
+    # jogadores pelas identidades canónicas auditadas. Não exigir a grafia
+    # literal evita descartar uma quote válida quando a RapidAPI devolve, por
+    # exemplo, ``Sabalenka A.`` em vez de ``Aryna Sabalenka``.
+    source_identity = _event_names_key(embedded.get("n1"), embedded.get("n2"))
+    expected_identity = _event_names_key(player_a, player_b)
+    if not all(source_identity) or source_identity != expected_identity:
         return None, None
     try:
         odd_1 = float(embedded.get("o1"))
@@ -1045,10 +1046,15 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     if odd_1 <= 1 or odd_2 <= 1:
         return None, None
 
-    if _normalize_name(player_a) == _normalize_name(embedded["n1"]):
+    player_a_identity = _rapidapi_event_identity_name(player_a)
+    embedded_first_identity = _rapidapi_event_identity_name(embedded["n1"])
+    if player_a_identity == embedded_first_identity:
         odds = {player_a: odd_1, player_b: odd_2}
-    else:
+    elif player_a_identity == _rapidapi_event_identity_name(embedded["n2"]):
         odds = {player_a: odd_2, player_b: odd_1}
+    else:
+        # Defesa adicional: uma chave de apelidos não autoriza inferir lados.
+        return None, None
     provenance = {
         "source": "RapidAPI Tennis API / embedded upcoming feed",
         "endpoint": embedded.get("endpoint") or "N/D",
@@ -1062,8 +1068,8 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
         "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME",
         "identity_mapping_status": "VERIFIED",
         "raw_payload_sha256": embedded.get("raw_payload_sha256"),
-        "provider_side_a": "player1" if _normalize_name(player_a) == _normalize_name(embedded["n1"]) else "player2",
-        "provider_side_b": "player2" if _normalize_name(player_a) == _normalize_name(embedded["n1"]) else "player1",
+        "provider_side_a": "player1" if player_a_identity == embedded_first_identity else "player2",
+        "provider_side_b": "player2" if player_a_identity == embedded_first_identity else "player1",
     }
     print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
     return odds, provenance
