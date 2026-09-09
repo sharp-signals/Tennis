@@ -781,6 +781,12 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
             if key:
                 registo = {
                     "n1": n1, "n2": n2, "o1": oa, "o2": ob,
+                    # Os IDs deste mesmo feed são uma prova de identidade
+                    # mais forte do que a grafia exibida do nome. Guardamo-los
+                    # para não perder uma quote válida só porque o fornecedor
+                    # encurtou, inverteu ou transliterou um nome.
+                    "p1_id": p1.get("id") or p1.get("playerId"),
+                    "p2_id": p2.get("id") or p2.get("playerId"),
                     "captured_at_utc": event.get("_odds_captured_at_utc"),
                     "endpoint": event.get("_odds_endpoint"),
                     "raw_payload_sha256": event.get("_raw_payload_sha256"),
@@ -1036,7 +1042,33 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
 
     # A chave por apelido apenas encontra uma candidata. A autorização para
     # usar a quote requer ambos os jogadores e a sua orientação verificados.
-    orientation = _rapidapi_pair_orientation(player_a, player_b, embedded.get("n1"), embedded.get("n2"))
+    # IDs do próprio feed, quando existem, prevalecem sobre a grafia: são
+    # imunes a abreviações/transliterações e continuam a rejeitar homónimos.
+    fixture_a_id = (match.get("player1Id")
+                    or (match.get("player1") or {}).get("id"))
+    fixture_b_id = (match.get("player2Id")
+                    or (match.get("player2") or {}).get("id"))
+    provider_a_id = embedded.get("p1_id")
+    provider_b_id = embedded.get("p2_id")
+    id_orientation = _rapidapi_pair_orientation_by_ids(
+        fixture_a_id, fixture_b_id, provider_a_id, provider_b_id,
+    )
+    ids_are_complete = all(value not in (None, "") for value in (
+        fixture_a_id, fixture_b_id, provider_a_id, provider_b_id,
+    ))
+    name_orientation = _rapidapi_pair_orientation(
+        player_a, player_b, embedded.get("n1"), embedded.get("n2"),
+    )
+    if id_orientation:
+        orientation = id_orientation
+        identity_mapping_status = "VERIFIED_PROVIDER_PLAYER_IDS"
+    elif ids_are_complete:
+        # Ambos os lados declararam IDs mas não correspondem: não deixar que
+        # um apelido igual converta uma quote de outro encontro em pricing.
+        return None, None
+    else:
+        orientation = name_orientation
+        identity_mapping_status = "VERIFIED_PROVIDER_NAMES"
     if not orientation:
         return None, None
     try:
@@ -1062,7 +1094,7 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
         "from_cache": True,
         "cache_age_seconds": _odds_cache_age_seconds(embedded.get("captured_at_utc")),
         "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME",
-        "identity_mapping_status": "VERIFIED",
+        "identity_mapping_status": identity_mapping_status,
         "raw_payload_sha256": embedded.get("raw_payload_sha256"),
         "provider_side_a": "player1" if orientation == "direct" else "player2",
         "provider_side_b": "player2" if orientation == "direct" else "player1",
@@ -1944,6 +1976,22 @@ def _rapidapi_pair_orientation(expected_a: object, expected_b: object,
         return "direct"
     if (_rapidapi_provider_name_matches(expected_a, provider_b)
             and _rapidapi_provider_name_matches(expected_b, provider_a)):
+        return "reverse"
+    return None
+
+
+def _rapidapi_pair_orientation_by_ids(expected_a: object, expected_b: object,
+                                      provider_a: object, provider_b: object) -> Optional[str]:
+    """Confirma a ordem do par por IDs, sem inferir quando falta um deles."""
+    values = (expected_a, expected_b, provider_a, provider_b)
+    if any(value in (None, "") for value in values):
+        return None
+    ea, eb, pa, pb = (str(value).strip() for value in values)
+    if not all((ea, eb, pa, pb)) or ea == eb or pa == pb:
+        return None
+    if ea == pa and eb == pb:
+        return "direct"
+    if ea == pb and eb == pa:
         return "reverse"
     return None
 
