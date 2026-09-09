@@ -1898,22 +1898,32 @@ def _normalize_name(name: str) -> str:
 # aceita aproximações por apelido. Cada entrada deve ter sido vista num feed
 # real antes de ser adicionada.
 _RAPIDAPI_EVENT_NAME_ALIASES = {
-    "cori gauff": ("Coco Gauff",),
-    "coco gauff": ("Cori Gauff",),
+    "cori gauff": ("Coco Gauff", "C. Gauff"),
+    "coco gauff": ("Cori Gauff", "C. Gauff"),
+    "c gauff": ("Cori Gauff", "Coco Gauff"),
     # Confirmados na cache de perfis devolvida pela própria RapidAPI.
     # São variantes explícitas para o endpoint event/get, não fuzzy matching.
-    "aryna sabalenka": ("Sabalenka A.",),
+    "aryna sabalenka": ("Sabalenka A.", "A. Sabalenka"),
     "sabalenka a": ("Aryna Sabalenka",),
-    "jessica pegula": ("Pegula J.",),
+    "a sabalenka": ("Aryna Sabalenka",),
+    "jessica pegula": ("Pegula J.", "J. Pegula"),
     "pegula j": ("Jessica Pegula",),
+    "j pegula": ("Jessica Pegula",),
+    "elena rybakina": ("E. Rybakina",),
+    "e rybakina": ("Elena Rybakina",),
 }
 _RAPIDAPI_EVENT_NAME_CANONICAL = {
     "cori gauff": "coco gauff",
     "coco gauff": "coco gauff",
+    "c gauff": "coco gauff",
     "aryna sabalenka": "aryna sabalenka",
     "sabalenka a": "aryna sabalenka",
+    "a sabalenka": "aryna sabalenka",
     "jessica pegula": "jessica pegula",
     "pegula j": "jessica pegula",
+    "j pegula": "jessica pegula",
+    "elena rybakina": "elena rybakina",
+    "e rybakina": "elena rybakina",
 }
 
 

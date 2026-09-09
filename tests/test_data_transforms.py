@@ -226,11 +226,19 @@ class MatchInputTests(unittest.TestCase):
     def test_event_lookup_uses_confirmed_rapidapi_short_name_aliases(self):
         self.assertEqual(
             fetch_data._rapidapi_event_name_variants("Aryna Sabalenka"),
-            ["Aryna Sabalenka", "Sabalenka A."],
+            ["Aryna Sabalenka", "Sabalenka A.", "A. Sabalenka"],
         )
         self.assertEqual(
             fetch_data._event_names_key("Sabalenka A.", "Pegula J."),
             fetch_data._event_names_key("Aryna Sabalenka", "Jessica Pegula"),
+        )
+        self.assertEqual(
+            fetch_data._event_names_key("A. Sabalenka", "J. Pegula"),
+            fetch_data._event_names_key("Aryna Sabalenka", "Jessica Pegula"),
+        )
+        self.assertEqual(
+            fetch_data._event_names_key("C. Gauff", "E. Rybakina"),
+            fetch_data._event_names_key("Cori Gauff", "Elena Rybakina"),
         )
 
     def test_embedded_odds_accept_confirmed_short_names_and_preserve_sides(self):
@@ -241,7 +249,7 @@ class MatchInputTests(unittest.TestCase):
         }
         key = fetch_data._odds_names_key("Aryna Sabalenka", "Jessica Pegula")
         embedded = {f"*:{key}": {
-            "n1": "Sabalenka A.", "n2": "Pegula J.", "o1": 1.44, "o2": 2.80,
+            "n1": "A. Sabalenka", "n2": "J. Pegula", "o1": 1.44, "o2": 2.80,
         }}
         with patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
             odds, provenance = fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
