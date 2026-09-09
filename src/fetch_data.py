@@ -716,8 +716,12 @@ def _prepare_rapidapi_event_bridge(matches: list[dict]) -> None:
         tour_matches = [item for item in matches if str(item.get("_tour") or "").casefold() == tour]
         for match in tour_matches:
             for candidate in candidates:
-                record = (_validated_event_record(candidate, match)
-                          or _validated_event_record_by_match_id(candidate, match))
+                # Quando o feed inclui ``matchId`` verificável, essa é a
+                # identidade mais forte e deve prevalecer sobre o texto
+                # abreviado dos participantes. Só sem matchId válido usamos
+                # a validação estrita pelos nomes.
+                record = (_validated_event_record_by_match_id(candidate, match)
+                          or _validated_event_record(candidate, match))
                 if not record or not record.get("valid"):
                     continue
                 fixture_id = match.get("id")
