@@ -172,9 +172,9 @@ class MarketResidualPricingTests(unittest.TestCase):
             payload, {}, lambda _: payload["divergencia"]
         )
         for expected in (
-            "Market probability", "Sharp estimate", "Fair odd", "Market odd",
+            "Market probability", "Fenzobot estimate", "Fair odd", "Market odd",
             "Expected edge", "EXPERIMENTAL", "Estimativa experimental em desenvolvimento",
-            "Cobertura", "Fiabilidade das fontes",
+            "Cobertura", "Coeficiente de fonte (pricing)",
         ):
             self.assertIn(expected, html)
         self.assertNotIn("Veredicto de mercado", html)
