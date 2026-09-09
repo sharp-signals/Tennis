@@ -1030,13 +1030,10 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     if not isinstance(embedded, dict):
         return None, None
 
-    # O índice por apelido já pode localizar o par; aqui confirmamos ambos os
-    # jogadores pelas identidades canónicas auditadas. Não exigir a grafia
-    # literal evita descartar uma quote válida quando a RapidAPI devolve, por
-    # exemplo, ``Sabalenka A.`` em vez de ``Aryna Sabalenka``.
-    source_identity = _event_names_key(embedded.get("n1"), embedded.get("n2"))
-    expected_identity = _event_names_key(player_a, player_b)
-    if not all(source_identity) or source_identity != expected_identity:
+    # A chave por apelido apenas encontra uma candidata. A autorização para
+    # usar a quote requer ambos os jogadores e a sua orientação verificados.
+    orientation = _rapidapi_pair_orientation(player_a, player_b, embedded.get("n1"), embedded.get("n2"))
+    if not orientation:
         return None, None
     try:
         odd_1 = float(embedded.get("o1"))
@@ -1046,15 +1043,10 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     if odd_1 <= 1 or odd_2 <= 1:
         return None, None
 
-    player_a_identity = _rapidapi_event_identity_name(player_a)
-    embedded_first_identity = _rapidapi_event_identity_name(embedded["n1"])
-    if player_a_identity == embedded_first_identity:
+    if orientation == "direct":
         odds = {player_a: odd_1, player_b: odd_2}
-    elif player_a_identity == _rapidapi_event_identity_name(embedded["n2"]):
-        odds = {player_a: odd_2, player_b: odd_1}
     else:
-        # Defesa adicional: uma chave de apelidos não autoriza inferir lados.
-        return None, None
+        odds = {player_a: odd_2, player_b: odd_1}
     provenance = {
         "source": "RapidAPI Tennis API / embedded upcoming feed",
         "endpoint": embedded.get("endpoint") or "N/D",
@@ -1068,8 +1060,8 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
         "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME",
         "identity_mapping_status": "VERIFIED",
         "raw_payload_sha256": embedded.get("raw_payload_sha256"),
-        "provider_side_a": "player1" if player_a_identity == embedded_first_identity else "player2",
-        "provider_side_b": "player2" if player_a_identity == embedded_first_identity else "player1",
+        "provider_side_a": "player1" if orientation == "direct" else "player2",
+        "provider_side_b": "player2" if orientation == "direct" else "player1",
     }
     print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
     return odds, provenance
@@ -1163,7 +1155,6 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
     """
     expected_a = str((match.get("player1") or {}).get("name") or "").strip()
     expected_b = str((match.get("player2") or {}).get("name") or "").strip()
-    expected_names = _event_names_key(expected_a, expected_b)
     try:
         fixture_start = datetime.fromisoformat(str(match.get("date") or "").replace("Z", "+00:00"))
         fixture_start = fixture_start.replace(tzinfo=timezone.utc) if fixture_start.tzinfo is None else fixture_start.astimezone(timezone.utc)
@@ -1177,7 +1168,8 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
         second = _event_person_name(node.get("participant2") or node.get("player2") or node.get("away"))
         if event_id in (None, "") or not first or not second:
             continue
-        if _event_names_key(first, second) != expected_names:
+        orientation = _rapidapi_pair_orientation(expected_a, expected_b, first, second)
+        if not orientation:
             continue
         status = next((node.get(key) for key in ("status", "state", "matchStatus", "match_status") if node.get(key) is not None), None)
         if status is not None and str(status).strip().casefold() in _EVENT_NON_PRELIVE_STATUSES:
@@ -1231,8 +1223,10 @@ def _validated_event_record_by_match_id(payload: object, match: dict) -> Optiona
             continue
         first, second = (expected_a, expected_b) if orientation == "direct" else (expected_b, expected_a)
         return {
-            "valid": True, "event_id": str(event_id), "participant1": first,
-            "participant2": second, "event_status": str(status or "scheduled"),
+            "valid": True, "event_id": str(event_id),
+            "participant1": expected_a if orientation == "direct" else expected_b,
+            "participant2": expected_b if orientation == "direct" else expected_a,
+            "event_status": str(status or "scheduled"),
             "event_start": event_start.isoformat() if event_start else None,
             "identity_source": "verified_match_id",
         }
@@ -1912,13 +1906,53 @@ def _rapidapi_event_identity_name(name: object) -> str:
     return f"{initial}:{surname}"
 
 
+_RAPIDAPI_EXACT_NAME_ALIASES = {
+    "cori gauff": "coco gauff",
+    "coco gauff": "coco gauff",
+}
+
+
+def _rapidapi_exact_name_key(name: object) -> str:
+    """Nome completo normalizado, com apenas aliases públicos auditados."""
+    normalized = _normalize_name(str(name or ""))
+    return _RAPIDAPI_EXACT_NAME_ALIASES.get(normalized, normalized)
+
+
+def _rapidapi_is_initial_name_form(name: object) -> bool:
+    tokens = _normalize_name(str(name or "")).split()
+    return len(tokens) >= 2 and (len(tokens[0]) == 1 or len(tokens[-1]) == 1)
+
+
+def _rapidapi_provider_name_matches(expected: object, provider: object) -> bool:
+    """Aceita abreviação só quando o fornecedor a apresentou explicitamente."""
+    if _rapidapi_exact_name_key(expected) == _rapidapi_exact_name_key(provider):
+        return bool(_rapidapi_exact_name_key(expected))
+    return (_rapidapi_is_initial_name_form(provider)
+            and _rapidapi_event_identity_name(expected) == _rapidapi_event_identity_name(provider))
+
+
+def _rapidapi_pair_orientation(expected_a: object, expected_b: object,
+                                provider_a: object, provider_b: object) -> Optional[str]:
+    if (_rapidapi_provider_name_matches(expected_a, provider_a)
+            and _rapidapi_provider_name_matches(expected_b, provider_b)):
+        return "direct"
+    if (_rapidapi_provider_name_matches(expected_a, provider_b)
+            and _rapidapi_provider_name_matches(expected_b, provider_a)):
+        return "reverse"
+    return None
+
+
 def _rapidapi_event_name_variants(name: object) -> list[str]:
     """Devolve grafias estruturais completas e por inicial para qualquer nome."""
     value = str(name or "").strip()
     if not value:
         return []
     tokens = _normalize_name(value).split()
-    variants = [value]
+    aliases = {
+        "cori gauff": ("Coco Gauff",),
+        "coco gauff": ("Cori Gauff",),
+    }
+    variants = [value, *aliases.get(_normalize_name(value), ())]
     if len(tokens) >= 2:
         if len(tokens[-1]) == 1:
             initial = tokens[-1].upper()
