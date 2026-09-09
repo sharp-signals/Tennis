@@ -639,6 +639,71 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     return events
 
 
+def _fetch_extend_event_bridge_records(tour: str) -> list[dict]:
+    """Obtém a lista Extend pré-live, usada apenas como ponte de identidade.
+
+    Ao contrário do feed ``ms-api/upcoming`` (que é útil para observação mas
+    não autoriza pricing), este endpoint expõe ``eventId``/participantes da
+    camada que serve ``recent-odds``. Não lemos odds daqui: usamos unicamente
+    a associação verificável entre a fixture e o evento.
+    """
+    if not RAPIDAPI_KEY or tour not in {"atp", "wta"}:
+        return []
+    events: list[dict] = []
+    page = 1
+    while page <= _ALL_UPCOMING_MAX_PAGES:
+        url = f"{RAPIDAPI_EXTEND_BASE}/events/upcoming/{tour}"
+        try:
+            response, pagination_supported = _get_upcoming_page(url, page=page, limit=100)
+            payload = response.json() or {}
+            rows = payload.get("matches") or payload.get("results") or payload.get("events") or []
+            if page == 1:
+                print(f"[diag] extend-events/{tour}: HTTP {response.status_code}, "
+                      f"events_pag1={len(rows) if isinstance(rows, list) else 0}, url={url}")
+            if not isinstance(rows, list):
+                break
+            events.extend(row for row in rows if isinstance(row, dict))
+            if not pagination_supported or len(rows) < 100 or not rows:
+                break
+            page += 1
+        except requests.RequestException as exc:
+            print(f"[aviso] falha a obter extend-events/{tour} para identidade de odds: {exc}")
+            break
+    return events
+
+
+def _prepare_rapidapi_event_bridge(matches: list[dict]) -> None:
+    """Indexa eventIds atuais só após validar jogadores, hora e estado."""
+    bridge_marker = "__EVENT_BRIDGE__"
+    if bridge_marker in _RAPIDAPI_EVENT_INDEX_READY:
+        return
+    indexed = 0
+    for tour in sorted({str(item.get("_tour") or "").casefold() for item in matches} & {"atp", "wta"}):
+        candidates = _fetch_extend_event_bridge_records(tour)
+        tour_matches = [item for item in matches if str(item.get("_tour") or "").casefold() == tour]
+        for match in tour_matches:
+            for candidate in candidates:
+                record = _validated_event_record(candidate, match)
+                if not record or not record.get("valid"):
+                    continue
+                fixture_id = match.get("id")
+                if fixture_id not in (None, ""):
+                    _RAPIDAPI_EVENT_INDEX[f"{tour}:fixture:{fixture_id}"] = record
+                p1 = match.get("player1") or {}
+                p2 = match.get("player2") or {}
+                pid1 = match.get("player1Id", p1.get("id"))
+                pid2 = match.get("player2Id", p2.get("id"))
+                tid = match.get("tournamentId") or match.get("tournament_id")
+                rid = match.get("roundId") or match.get("round_id")
+                for key in (_event_match_key(pid1, pid2, tid, rid), _event_match_key(pid2, pid1, tid, rid)):
+                    if key:
+                        _RAPIDAPI_EVENT_INDEX[f"{tour}:{key}"] = record
+                indexed += 1
+                break
+    _RAPIDAPI_EVENT_INDEX_READY.add(bridge_marker)
+    print(f"[info] RapidAPI event bridge: {indexed}/{len(matches)} fixture(s) com eventId verificado.")
+
+
 def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
     """
     Prepara, uma vez por execução, as odds de cada jogo a partir da lista de
@@ -702,6 +767,7 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
             k = _odds_names_key(pa, pb)
             if k and f"*:{k}" not in _RAPIDAPI_EMBEDDED_ODDS:
                 print(f"[diag] sem odds: {pa} vs {pb} (chave {k})")
+        _prepare_rapidapi_event_bridge(matches)
     return
 
     # (código antigo por tour — já não usado, mantido comentado abaixo)
@@ -1125,6 +1191,9 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
     tid = match.get("tournamentId") or match.get("tournament_id")
     rid = match.get("roundId") or match.get("round_id")
 
+    index_keys = []
+    if match.get("id") not in (None, ""):
+        index_keys.append(f"{tour}:fixture:{match['id']}")
     for key in (
         _event_match_key(pid1, pid2, tid, rid),
         _event_match_key(pid2, pid1, tid, rid),
@@ -1132,11 +1201,13 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
         _event_match_key(pid2, pid1, tid),
     ):
         if key:
-            event_id = _RAPIDAPI_EVENT_INDEX.get(f"{tour}:{key}")
-            if event_id:
-                # Índices legados não guardam participantes/estado; não podem
-                # autorizar pricing sem a verificação do endpoint event/get.
-                break
+            index_keys.append(f"{tour}:{key}")
+    for index_key in index_keys:
+        indexed = _RAPIDAPI_EVENT_INDEX.get(index_key)
+        if isinstance(indexed, dict) and indexed.get("valid"):
+            # O registo foi validado contra esta fixture no mesmo run; a
+            # ordem dos participantes permite mapear od1/od2 sem inferência.
+            return dict(indexed)
 
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
