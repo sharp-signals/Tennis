@@ -1893,51 +1893,46 @@ def _normalize_name(name: str) -> str:
     return " ".join(clean.lower().split())
 
 
-# A camada de fixtures e a camada Extend da RapidAPI nem sempre usam o mesmo
-# nome público. Esta tabela é deliberadamente pequena, bidirecional e não
-# aceita aproximações por apelido. Cada entrada deve ter sido vista num feed
-# real antes de ser adicionada.
-_RAPIDAPI_EVENT_NAME_ALIASES = {
-    "cori gauff": ("Coco Gauff", "C. Gauff"),
-    "coco gauff": ("Cori Gauff", "C. Gauff"),
-    "c gauff": ("Cori Gauff", "Coco Gauff"),
-    # Confirmados na cache de perfis devolvida pela própria RapidAPI.
-    # São variantes explícitas para o endpoint event/get, não fuzzy matching.
-    "aryna sabalenka": ("Sabalenka A.", "A. Sabalenka"),
-    "sabalenka a": ("Aryna Sabalenka",),
-    "a sabalenka": ("Aryna Sabalenka",),
-    "jessica pegula": ("Pegula J.", "J. Pegula"),
-    "pegula j": ("Jessica Pegula",),
-    "j pegula": ("Jessica Pegula",),
-    "elena rybakina": ("E. Rybakina",),
-    "e rybakina": ("Elena Rybakina",),
-}
-_RAPIDAPI_EVENT_NAME_CANONICAL = {
-    "cori gauff": "coco gauff",
-    "coco gauff": "coco gauff",
-    "c gauff": "coco gauff",
-    "aryna sabalenka": "aryna sabalenka",
-    "sabalenka a": "aryna sabalenka",
-    "a sabalenka": "aryna sabalenka",
-    "jessica pegula": "jessica pegula",
-    "pegula j": "jessica pegula",
-    "j pegula": "jessica pegula",
-    "elena rybakina": "elena rybakina",
-    "e rybakina": "elena rybakina",
-}
-
-
 def _rapidapi_event_identity_name(name: object) -> str:
+    """Chave determinística para formatos completo/inicial da RapidAPI.
+
+    A API alterna entre ``Nome Apelido``, ``N. Apelido`` e ``Apelido N.``.
+    Reduzimos todos para ``inicial:apelido-final``. Isto não é fuzzy matching:
+    ambos os jogadores do encontro têm de coincidir exatamente nesta chave,
+    além dos restantes controlos de identidade, tempo e estado.
+    """
     normalized = _normalize_name(str(name or ""))
-    return _RAPIDAPI_EVENT_NAME_CANONICAL.get(normalized, normalized)
+    tokens = normalized.split()
+    if len(tokens) < 2:
+        return normalized
+    if len(tokens[-1]) == 1:
+        initial, surname = tokens[-1], tokens[-2]
+    else:
+        initial, surname = tokens[0][0], tokens[-1]
+    return f"{initial}:{surname}"
 
 
 def _rapidapi_event_name_variants(name: object) -> list[str]:
-    """Devolve o nome do fixture e aliases exactos aceites pelo endpoint."""
+    """Devolve grafias estruturais completas e por inicial para qualquer nome."""
     value = str(name or "").strip()
     if not value:
         return []
-    variants = [value, *_RAPIDAPI_EVENT_NAME_ALIASES.get(_normalize_name(value), ())]
+    tokens = _normalize_name(value).split()
+    variants = [value]
+    if len(tokens) >= 2:
+        if len(tokens[-1]) == 1:
+            initial = tokens[-1].upper()
+            surname_tokens = tokens[:-1]
+        else:
+            initial = tokens[0][0].upper()
+            surname_tokens = tokens[1:]
+        surname = " ".join(part.capitalize() for part in surname_tokens)
+        if surname:
+            variants.extend((f"{initial}. {surname}", f"{surname} {initial}."))
+            # Alguns feeds omitem nomes intermédios; a identidade continua a
+            # exigir a mesma inicial e o mesmo apelido final nos dois lados.
+            final_surname = surname_tokens[-1].capitalize()
+            variants.extend((f"{initial}. {final_surname}", f"{final_surname} {initial}."))
     # Desduplica pela forma normalizada, sem alterar a grafia enviada à API.
     seen: set[str] = set()
     result = []

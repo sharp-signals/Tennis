@@ -223,22 +223,22 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(record["participant2"], "Aryna Sabalenka")
         self.assertEqual(record["identity_source"], "verified_match_id")
 
-    def test_event_lookup_uses_confirmed_rapidapi_short_name_aliases(self):
+    def test_event_lookup_uses_generic_full_and_initial_surname_forms(self):
         self.assertEqual(
             fetch_data._rapidapi_event_name_variants("Aryna Sabalenka"),
-            ["Aryna Sabalenka", "Sabalenka A.", "A. Sabalenka"],
-        )
-        self.assertEqual(
-            fetch_data._event_names_key("Sabalenka A.", "Pegula J."),
-            fetch_data._event_names_key("Aryna Sabalenka", "Jessica Pegula"),
+            ["Aryna Sabalenka", "A. Sabalenka", "Sabalenka A."],
         )
         self.assertEqual(
             fetch_data._event_names_key("A. Sabalenka", "J. Pegula"),
             fetch_data._event_names_key("Aryna Sabalenka", "Jessica Pegula"),
         )
         self.assertEqual(
-            fetch_data._event_names_key("C. Gauff", "E. Rybakina"),
-            fetch_data._event_names_key("Cori Gauff", "Elena Rybakina"),
+            fetch_data._event_names_key("Sabalenka A.", "Pegula J."),
+            fetch_data._event_names_key("Aryna Sabalenka", "Jessica Pegula"),
+        )
+        self.assertEqual(
+            fetch_data._event_names_key("T. M. Etcheverry", "A. Zverev"),
+            fetch_data._event_names_key("Tomas Martin Etcheverry", "Alexander Zverev"),
         )
 
     def test_embedded_odds_accept_confirmed_short_names_and_preserve_sides(self):
