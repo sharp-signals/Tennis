@@ -223,6 +223,16 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(record["participant2"], "Aryna Sabalenka")
         self.assertEqual(record["identity_source"], "verified_match_id")
 
+    def test_event_lookup_uses_confirmed_rapidapi_short_name_aliases(self):
+        self.assertEqual(
+            fetch_data._rapidapi_event_name_variants("Aryna Sabalenka"),
+            ["Aryna Sabalenka", "Sabalenka A."],
+        )
+        self.assertEqual(
+            fetch_data._event_names_key("Sabalenka A.", "Pegula J."),
+            fetch_data._event_names_key("Aryna Sabalenka", "Jessica Pegula"),
+        )
+
     def test_prelive_lookup_does_not_reject_delayed_fixture_only_for_its_scheduled_time(self):
         match = {
             "id": 9011,
