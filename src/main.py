@@ -254,7 +254,12 @@ def _prelive_start_evidence(match: dict) -> tuple[bool, dict]:
 
 
 def _filter_prelive_matches(matches: list[dict]) -> list[dict]:
-    """Exclui jogos com evidência de início antes de qualquer análise."""
+    """Exclui jogos com prova factual de início antes de qualquer análise.
+
+    A hora marcada não basta: chuva, atrasos e mudanças de court podem deixar
+    uma fixture ``scheduled`` depois dessa hora. Só estado live/terminal,
+    flag live ou score/resultado são evidência suficiente para excluir.
+    """
     eligible = []
     for match in matches:
         started, evidence = _prelive_start_evidence(match)
