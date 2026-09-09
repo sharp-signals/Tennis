@@ -418,6 +418,39 @@ def _event_match_key(player1_id, player2_id, tournament_id, round_id=None):
     return "-".join(parts)
 
 
+def _event_match_id_orientation(node: dict, match: dict) -> Optional[str]:
+    """Confirma a fixture pelo ``matchId`` estrutural do fornecedor.
+
+    O endpoint Extend pode abreviar os nomes apresentados. Nessa situação,
+    nomes textuais não são uma base segura para ligar odds. O ``matchId`` é a
+    chave estrutural ``player1-player2-tournament-round`` da própria API; só
+    aceitamos uma igualdade exata (incluindo a orientação dos jogadores),
+    nunca uma aproximação por nomes.
+    """
+    candidate_key = str(node.get("matchId") or node.get("match_id") or "").strip()
+    if not candidate_key:
+        return None
+    p1 = match.get("player1") or {}
+    p2 = match.get("player2") or {}
+    pid1 = match.get("player1Id", p1.get("id"))
+    pid2 = match.get("player2Id", p2.get("id"))
+    tournament_id = match.get("tournamentId") or match.get("tournament_id")
+    round_id = match.get("roundId") or match.get("round_id")
+    direct = {
+        _event_match_key(pid1, pid2, tournament_id, round_id),
+        _event_match_key(pid1, pid2, tournament_id),
+    }
+    reverse = {
+        _event_match_key(pid2, pid1, tournament_id, round_id),
+        _event_match_key(pid2, pid1, tournament_id),
+    }
+    if candidate_key in direct:
+        return "direct"
+    if candidate_key in reverse:
+        return "reverse"
+    return None
+
+
 def _event_names_key(player1: str, player2: str) -> tuple[str, str]:
     """Chave bilateral para uma identidade de evento, com aliases auditados.
 
@@ -683,7 +716,8 @@ def _prepare_rapidapi_event_bridge(matches: list[dict]) -> None:
         tour_matches = [item for item in matches if str(item.get("_tour") or "").casefold() == tour]
         for match in tour_matches:
             for candidate in candidates:
-                record = _validated_event_record(candidate, match)
+                record = (_validated_event_record(candidate, match)
+                          or _validated_event_record_by_match_id(candidate, match))
                 if not record or not record.get("valid"):
                     continue
                 fixture_id = match.get("id")
@@ -1156,6 +1190,45 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
             "valid": True, "event_id": str(event_id), "participant1": first,
             "participant2": second, "event_status": str(status or "scheduled"),
             "event_start": event_start.isoformat() if event_start else None,
+        }
+    return rejected
+
+
+def _validated_event_record_by_match_id(payload: object, match: dict) -> Optional[dict]:
+    """Valida um evento pré-live pelo matchId, mantendo a ordem das odds.
+
+    É um fallback estrito para o feed Extend: útil apenas quando os nomes
+    exibidos pelo fornecedor são abreviados. A igualdade do matchId inclui os
+    IDs dos dois jogadores, torneio e (quando fornecido) ronda.
+    """
+    expected_a = str((match.get("player1") or {}).get("name") or "").strip()
+    expected_b = str((match.get("player2") or {}).get("name") or "").strip()
+    fixture_start = _fixture_start_utc(match)
+    rejected = None
+    for node in _iter_event_dicts(payload):
+        orientation = _event_match_id_orientation(node, match)
+        if not orientation:
+            continue
+        event_id = node.get("eventId") or node.get("event_id") or node.get("id")
+        if event_id in (None, ""):
+            continue
+        status = next((node.get(key) for key in ("status", "state", "matchStatus", "match_status") if node.get(key) is not None), None)
+        if status is not None and str(status).strip().casefold() in _EVENT_NON_PRELIVE_STATUSES:
+            rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": str(status)}
+            continue
+        if node.get("live") not in (None, False, 0, "0", "false", "False", ""):
+            rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": "live"}
+            continue
+        event_start = _event_start(next((node.get(key) for key in ("startTimestamp", "start_time", "startTime", "date", "commence_time") if node.get(key) is not None), None))
+        if fixture_start and event_start and abs((event_start - fixture_start).total_seconds()) > 36 * 3600:
+            rejected = {"valid": False, "reason": "event_time_mismatch", "event_id": str(event_id), "event_start": event_start.isoformat()}
+            continue
+        first, second = (expected_a, expected_b) if orientation == "direct" else (expected_b, expected_a)
+        return {
+            "valid": True, "event_id": str(event_id), "participant1": first,
+            "participant2": second, "event_status": str(status or "scheduled"),
+            "event_start": event_start.isoformat() if event_start else None,
+            "identity_source": "verified_match_id",
         }
     return rejected
 
