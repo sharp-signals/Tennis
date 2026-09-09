@@ -8,20 +8,20 @@
       "eligible": 0,
       "eligible_settled": 0,
       "exclusion_reason_counts": {
-        "DECISION_STATE_NOT_EDGE_POSITIVE": 3,
-        "DIVERGENCE_LEVEL_NOT_STRONG": 4,
-        "DIVERGENCE_TYPE_NOT_DIRECTION": 4,
-        "PAPER_NOT_ELIGIBLE": 3,
-        "PRICING_UNAVAILABLE": 1,
-        "PROBABILITIES_UNAVAILABLE": 1,
-        "SELECTED_PLAYER_UNAVAILABLE": 1,
-        "SELECTED_SIDE_UNAVAILABLE": 1
+        "DECISION_STATE_NOT_EDGE_POSITIVE": 4,
+        "DIVERGENCE_LEVEL_NOT_STRONG": 5,
+        "DIVERGENCE_TYPE_NOT_DIRECTION": 5,
+        "PAPER_NOT_ELIGIBLE": 4,
+        "PRICING_UNAVAILABLE": 2,
+        "PROBABILITIES_UNAVAILABLE": 2,
+        "SELECTED_PLAYER_UNAVAILABLE": 2,
+        "SELECTED_SIDE_UNAVAILABLE": 2
       },
       "legacy_or_not_prospective": 390,
       "note": "Independent stored gates, not an inferred sequential funnel; reasons may overlap.",
-      "prospectively_classified": 4,
+      "prospectively_classified": 5,
       "status": "AVAILABLE",
-      "total_snapshots": 394
+      "total_snapshots": 395
     },
     "last_refresh_attempt": {
       "attempted_at_utc": "2026-09-09T01:18:02+00:00",
@@ -30,9 +30,9 @@
     },
     "ledger_status": "AVAILABLE",
     "llm": {
-      "llm_external_requests": null,
-      "llm_mode": null,
-      "llm_provider_invocations": null
+      "llm_external_requests": 0,
+      "llm_mode": "disabled",
+      "llm_provider_invocations": 5
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -88,7 +88,7 @@
       "eligible_forecasts": 16,
       "exclusions": {
         "ENTRY_LINK_UNAVAILABLE": 40,
-        "FROZEN_PROBABILITIES_UNAVAILABLE": 284,
+        "FROZEN_PROBABILITIES_UNAVAILABLE": 285,
         "TEMPORAL_PROVENANCE_INVALID": 54
       },
       "fenzobot": {
@@ -109,7 +109,7 @@
       "sample_size": 13,
       "scored_snapshot_keys_hash": "e99ec44cdde32c17e062c82750bef9d539003debf8371eabde86236107aaef0a",
       "status": "AVAILABLE",
-      "total_snapshots": 394
+      "total_snapshots": 395
     },
     "source_quality": {
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
@@ -134,6 +134,70 @@
   "change_id": "CHANGE-2026-09-06-027",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "counts": {
+        "GREEN": 0,
+        "GREEN_STRONG": 0,
+        "PAPER_TECHNICAL": 0,
+        "RED": 3,
+        "UNAVAILABLE": 0,
+        "YELLOW": 2,
+        "reports": 5
+      },
+      "date": "2026-09-09",
+      "reports": [
+        {
+          "color": "RED",
+          "date": "2026-09-09",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexander Zverev vs Botic Van De Zandschulp",
+          "url": "../relatorios/alexander-zverev-vs-botic-van-de-zandschulp-2026-09-09-3d3a3e57f28fce0947e3.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-09",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Karen Khachanov vs Alexander Blockx",
+          "url": "../relatorios/karen-khachanov-vs-alexander-blockx-2026-09-09-99dc67a510f52b480e8b.html"
+        },
+        {
+          "color": "YELLOW",
+          "date": "2026-09-09",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Mirra Andreeva vs Cori Gauff",
+          "url": "../relatorios/mirra-andreeva-vs-cori-gauff-2026-09-09-4e98d17705de6092abf7.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-09",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Qinwen Zheng vs Elena Rybakina",
+          "url": "../relatorios/qinwen-zheng-vs-elena-rybakina-2026-09-09-114a3c0651feb4d9972a.html"
+        },
+        {
+          "color": "YELLOW",
+          "date": "2026-09-09",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-09T06:00:00+00:00",
+          "title": "Ben Shelton vs Carlos Alcaraz",
+          "url": "../relatorios/ben-shelton-vs-carlos-alcaraz-2026-09-09-c48f8f9cf689175eca6d.html"
+        }
+      ]
+    },
     {
       "counts": {
         "GREEN": 3,
@@ -18729,21 +18793,21 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-09T01:18:03+00:00",
+  "generated_at_utc": "2026-09-09T05:34:20+00:00",
   "global": {
     "green_strong_candidates": 0,
-    "market_observations": 1043,
+    "market_observations": 1049,
     "paper_22bet_entries": 42,
     "paper_technical_entries": 57,
     "report_colors": {
       "GREEN": 121,
-      "RED": 490,
+      "RED": 493,
       "UNAVAILABLE": 1052,
-      "YELLOW": 146
+      "YELLOW": 148
     },
     "settled_snapshots": 369,
-    "total_reports": 1809,
-    "total_snapshots": 394
+    "total_reports": 1814,
+    "total_snapshots": 395
   },
   "green_strong_v1": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
@@ -18752,7 +18816,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-09T01:18:03+00:00",
+    "generated_at_utc": "2026-09-09T05:34:20+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -18801,11 +18865,11 @@
   "market_memory": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
     "closing_coverage_denominator": "DISTINCT_EVENTS",
-    "closing_coverage_pct": 1.78,
-    "distinct_events": 394,
+    "closing_coverage_pct": 1.77,
+    "distinct_events": 395,
     "events_with_comparable_closing": 7,
     "events_with_entry_market": 16,
-    "generated_at_utc": "2026-09-09T01:18:03+00:00",
+    "generated_at_utc": "2026-09-09T05:34:20+00:00",
     "market_only": {
       "accuracy_pct": 76.92,
       "brier_score": 0.164181,
@@ -18937,11 +19001,11 @@
       },
       {
         "date": "2026-09-09",
-        "observations": 0
+        "observations": 6
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 1043
+    "total_observations": 1049
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -19067,25 +19131,25 @@
     },
     "snapshot_universe": {
       "settled": 369,
-      "total": 394
+      "total": 395
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "52b918a9da676524d0d43e716cab24ad87d928aa74c8f4a989bbea2c221bd4d6",
+  "semantic_fingerprint": "9269692f243ae0e68a1bb81630849d67c709433748287c5ac6fc1e91cf95be03",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-09T01:18:03+00:00"
+      "updated_at_utc": "2026-09-09T05:34:20+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-08T19:54:52+00:00"
+      "updated_at_utc": "2026-09-09T05:33:37+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-09T01:18:03+00:00"
+      "updated_at_utc": "2026-09-09T05:34:20+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -19097,37 +19161,33 @@
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-08"
+      "updated_at_utc": "2026-09-09"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-08T17:33:53+00:00"
+      "updated_at_utc": "2026-09-09T05:34:07+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-08T17:34:03+00:00"
+      "updated_at_utc": "2026-09-09T05:34:03+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 35.789,
+      "duration_seconds": 53.99,
       "eligible": 5,
       "llm_calls": 5,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
       "processed": 5,
-      "rapidapi_calls": 62,
+      "rapidapi_calls": 68,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-09-08T17:33:53+00:00"
+      "timestamp": "2026-09-09T05:34:07+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-08-31T20:59:53+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-08-31T22:03:10+00:00"
@@ -19203,6 +19263,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-08T17:33:53+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-09T05:34:07+00:00"
       }
     ],
     "status": "HEALTHY"
