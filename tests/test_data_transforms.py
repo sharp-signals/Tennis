@@ -193,6 +193,46 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(record["event_id"], "event-bridge-1")
         self.assertEqual(record["participant1"], "Jessica Pegula")
 
+    def test_extend_bridge_accepts_abbreviated_display_names_only_with_exact_match_id(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9013, "_tour": "wta", "date": future,
+            "tournamentId": 55, "roundId": 3,
+            "player1Id": 101, "player2Id": 202,
+            "player1": {"id": 101, "name": "Aryna Sabalenka"},
+            "player2": {"id": 202, "name": "Jessica Pegula"},
+        }
+        candidate = {
+            "id": "event-bridge-short-names", "participant1": "J. Pegula",
+            "participant2": "A. Sabalenka", "status": "scheduled",
+            "startTime": future, "matchId": "202-101-55-3",
+        }
+        identity_store = Mock()
+        identity_store.get_entry.return_value = None
+        with patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=[]), \
+                patch.object(fetch_data, "_fetch_extend_event_bridge_records", return_value=[candidate]), \
+                patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, {}, clear=True), \
+                patch.object(fetch_data, "_RAPIDAPI_EVENT_INDEX_READY", set()):
+            fetch_data.prepare_rapidapi_odds_index([match])
+            record = fetch_data._rapidapi_event_record_for_match(match)
+        self.assertTrue(record["valid"])
+        self.assertEqual(record["event_id"], "event-bridge-short-names")
+        self.assertEqual(record["participant1"], "Jessica Pegula")
+        self.assertEqual(record["participant2"], "Aryna Sabalenka")
+        self.assertEqual(record["identity_source"], "verified_match_id")
+
+    def test_event_lookup_uses_confirmed_rapidapi_short_name_aliases(self):
+        self.assertEqual(
+            fetch_data._rapidapi_event_name_variants("Aryna Sabalenka"),
+            ["Aryna Sabalenka", "Sabalenka A."],
+        )
+        self.assertEqual(
+            fetch_data._event_names_key("Sabalenka A.", "Pegula J."),
+            fetch_data._event_names_key("Aryna Sabalenka", "Jessica Pegula"),
+        )
+
     def test_prelive_lookup_does_not_reject_delayed_fixture_only_for_its_scheduled_time(self):
         match = {
             "id": 9011,
