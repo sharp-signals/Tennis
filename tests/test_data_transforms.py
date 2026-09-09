@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 
@@ -101,9 +101,10 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(len(provenance["market_quotes"]), 1)
 
     def test_event_lookup_accepts_audited_cori_coco_alias_without_relaxing_pair_validation(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
         match = {
             "id": 9001,
-            "date": "2026-09-09T15:00:00+00:00",
+            "date": future,
             "player1": {"name": "Mirra Andreeva"},
             "player2": {"name": "Cori Gauff"},
         }
@@ -127,11 +128,14 @@ class MatchInputTests(unittest.TestCase):
                     "participant1": "Mirra Andreeva",
                     "participant2": "Coco Gauff",
                     "status": "scheduled",
-                    "startTime": "2026-09-09T15:00:00+00:00",
+                    "startTime": future,
                 }})
             return Response({"result": {}})
 
+        identity_store = Mock()
+        identity_store.get_entry.return_value = None
         with patch.object(fetch_data, "_rapidapi_get", side_effect=lookup), \
+                patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
                 patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {}, clear=True), \
                 patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS, {}, clear=True):
             record = fetch_data._rapidapi_event_record_for_match(match)
@@ -139,6 +143,76 @@ class MatchInputTests(unittest.TestCase):
         self.assertTrue(record["valid"])
         self.assertEqual(record["event_id"], "coco-event")
         self.assertTrue(any("Coco%20Gauff" in url for url in calls))
+
+    def test_persistent_verified_event_identity_is_reused_only_for_same_future_fixture(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9010,
+            "date": future,
+            "player1": {"name": "Alice Player"},
+            "player2": {"name": "Bea Player"},
+        }
+        store = Mock()
+        store.get_entry.return_value = {
+            "event_id": "saved-event",
+            "participant1": "Bea Player",
+            "participant2": "Alice Player",
+            "event_start": future,
+        }
+        with patch.object(fetch_data, "_EVENT_IDENTITY_STORE", store):
+            record = fetch_data._cached_event_record_for_match(match)
+        self.assertTrue(record["valid"])
+        self.assertEqual(record["event_id"], "saved-event")
+        self.assertEqual(record["participant1"], "Bea Player")
+
+    def test_extend_upcoming_bridge_resolves_event_without_name_lookup(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9012, "_tour": "wta", "date": future,
+            "tournamentId": 55, "roundId": 3,
+            "player1Id": 101, "player2Id": 202,
+            "player1": {"id": 101, "name": "Aryna Sabalenka"},
+            "player2": {"id": 202, "name": "Jessica Pegula"},
+        }
+        candidate = {
+            "id": "event-bridge-1", "participant1": "Jessica Pegula",
+            "participant2": "Aryna Sabalenka", "status": "scheduled",
+            "startTime": future, "matchId": "202-101-55-3",
+        }
+        identity_store = Mock()
+        identity_store.get_entry.return_value = None
+        with patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=[]), \
+                patch.object(fetch_data, "_fetch_extend_event_bridge_records", return_value=[candidate]), \
+                patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, {}, clear=True), \
+                patch.object(fetch_data, "_RAPIDAPI_EVENT_INDEX_READY", set()):
+            fetch_data.prepare_rapidapi_odds_index([match])
+            record = fetch_data._rapidapi_event_record_for_match(match)
+        self.assertTrue(record["valid"])
+        self.assertEqual(record["event_id"], "event-bridge-1")
+        self.assertEqual(record["participant1"], "Jessica Pegula")
+
+    def test_prelive_lookup_does_not_reject_delayed_fixture_only_for_its_scheduled_time(self):
+        match = {
+            "id": 9011,
+            "date": "2000-01-01T00:00:00+00:00",
+            "player1": {"name": "Alice Player"},
+            "player2": {"name": "Bea Player"},
+        }
+        identity_store = Mock()
+        identity_store.get_entry.return_value = None
+        with patch.object(fetch_data, "_rapidapi_get") as lookup, \
+                patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {}, clear=True):
+            lookup.return_value.status_code = 200
+            lookup.return_value.json.return_value = {"result": {
+                "id": "delayed-event", "participant1": "Alice Player",
+                "participant2": "Bea Player", "status": "scheduled",
+                "startTime": "2000-01-01T00:00:00+00:00",
+            }}
+            record = fetch_data._rapidapi_event_record_for_match(match)
+        self.assertTrue(record["valid"])
 
     def test_recent_odds_exposes_event_lookup_failure_reason(self):
         match = {
@@ -295,6 +369,13 @@ class MatchInputTests(unittest.TestCase):
             {"id": 7, "state": "unknown", "score": "6-4"},
         ]
         self.assertEqual([item["id"] for item in main._filter_prelive_matches(fixtures)], [1])
+
+    def test_prelive_filter_keeps_scheduled_fixture_when_its_time_has_passed(self):
+        fixtures = [
+            {"id": 1, "date": "2000-01-01T00:00:00Z", "status": "scheduled"},
+            {"id": 2, "date": "2099-01-01T00:00:00Z", "status": "scheduled"},
+        ]
+        self.assertEqual([item["id"] for item in main._filter_prelive_matches(fixtures)], [1, 2])
 
 
 class DeterministicStatisticTests(unittest.TestCase):
