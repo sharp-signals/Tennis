@@ -1185,8 +1185,10 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
             rejected = {"valid": False, "reason": "event_time_mismatch", "event_id": str(event_id), "event_start": event_start.isoformat()}
             continue
         return {
-            "valid": True, "event_id": str(event_id), "participant1": first,
-            "participant2": second, "event_status": str(status or "scheduled"),
+            "valid": True, "event_id": str(event_id),
+            "participant1": expected_a if orientation == "direct" else expected_b,
+            "participant2": expected_b if orientation == "direct" else expected_a,
+            "event_status": str(status or "scheduled"),
             "event_start": event_start.isoformat() if event_start else None,
         }
     return rejected
