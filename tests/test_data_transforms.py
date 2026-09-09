@@ -256,6 +256,22 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(odds, {"Aryna Sabalenka": 1.44, "Jessica Pegula": 2.80})
         self.assertEqual(provenance["provider_side_a"], "player1")
 
+    def test_embedded_odds_use_verified_player_ids_when_provider_names_differ(self):
+        match = {
+            "_tour": "wta", "player1Id": 101, "player2Id": 202,
+            "player1": {"id": 101, "name": "Aryna Sabalenka"},
+            "player2": {"id": 202, "name": "Jessica Pegula"},
+        }
+        key = fetch_data._odds_names_key("Aryna Sabalenka", "Jessica Pegula")
+        embedded = {f"*:{key}": {
+            "n1": "A. Saba", "n2": "J. Peg", "p1_id": "202", "p2_id": "101",
+            "o1": 2.80, "o2": 1.44,
+        }}
+        with patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Aryna Sabalenka": 1.44, "Jessica Pegula": 2.80})
+        self.assertEqual(provenance["identity_mapping_status"], "VERIFIED_PROVIDER_PLAYER_IDS")
+
     def test_prelive_lookup_does_not_reject_delayed_fixture_only_for_its_scheduled_time(self):
         match = {
             "id": 9011,
