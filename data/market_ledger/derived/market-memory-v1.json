@@ -14398,11 +14398,87 @@
       "snapshot_key": "atp:1429",
       "surface": "Hard",
       "tour": "atp"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-09-09T21:58:39+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "PRICING_UNAVAILABLE",
+            "PROBABILITIES_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "e5bfd95d5a95c23b513f18687ead96c318ac742c",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_UNAVAILABLE",
+            "divergence_level": 0,
+            "divergence_type": "evidence_only",
+            "fenzobot_probabilities": "UNAVAILABLE",
+            "github_run_id": "34409668236",
+            "market_probabilities": "UNAVAILABLE",
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "wta:959"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "be1756e509ce617508cafa65"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "event_key": "wta:959",
+      "fenzobot_probabilities": null,
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_format": "BO3",
+      "match_id": 959,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 54663,
+          "name": "Cori Gauff"
+        },
+        "b": {
+          "id": 36558,
+          "name": "Elena Rybakina"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": null,
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "cd7c39060df9bca49dad",
+      "scheduled_start_utc": "2026-09-11T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "wta:959",
+      "surface": "Hard",
+      "tour": "wta"
     }
   ],
-  "generated_at_utc": "2026-09-09T21:14:47+00:00",
+  "generated_at_utc": "2026-09-09T21:58:53+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 1073,
+  "observation_count": 1080,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."

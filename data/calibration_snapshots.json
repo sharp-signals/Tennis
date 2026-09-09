@@ -212828,7 +212828,703 @@
           }
         }
       }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-09T21:58:39+00:00",
+      "commence_time_utc": "2026-09-11T02:00:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "wta:959",
+      "key": "wta:959",
+      "market_memory_eligible": false,
+      "market_memory_status": "UNAVAILABLE",
+      "market_odds_decimal": null,
+      "match_format": "BO3",
+      "match_id": 959,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_ligeira",
+            "nivel": 0,
+            "texto": "Alinhamento ligeira"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "ranking_fam",
+              "resiliencia"
+            ],
+            "active_family_count": 4,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "evolução de ranking",
+              "Elena Rybakina"
+            ],
+            [
+              "forma recente",
+              "Cori Gauff"
+            ],
+            [
+              "tie-break",
+              "Cori Gauff"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 157.0,
+              "disponivel": true,
+              "lider": "Cori Gauff",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 7,
+              "valor_a": 32,
+              "valor_b": 31
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 4
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Cori Gauff",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.8,
+              "peso_antes_cap": 5.6,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 5.6,
+              "valor_a": 100.0,
+              "valor_b": 80.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": true,
+              "lider": null,
+              "motivo_exclusao": "abaixo do limiar (<8 p.p.)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "disponivel": true,
+              "lider": "Cori Gauff",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 6,
+              "valor_a": 72.4,
+              "valor_b": 70.1
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 1,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "disponivel": true,
+              "lider": "Elena Rybakina",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 8
+            },
+            "mudanca_piso": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "ambos em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Elena Rybakina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.81,
+              "valor_a": 47.3,
+              "valor_b": 55.9
+            },
+            "piso": {
+              "disponivel": true,
+              "lider": "Cori Gauff",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 8,
+              "valor_a": 71.6,
+              "valor_b": 70.4
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 0.866,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Cori Gauff",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.928,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.781,
+              "valor_a": 5,
+              "valor_b": 1
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Elena Rybakina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.441,
+              "peso_antes_cap": 2.206,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 2.206,
+              "pontos_a": 6704,
+              "pontos_b": 8141,
+              "valor_a": 4.0,
+              "valor_b": 2.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Elena Rybakina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": -8.2,
+              "valor_b": 67.2
+            },
+            "recuperacao_sets": {
+              "amostra": 132,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Cori Gauff",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.467,
+              "peso_antes_cap": 4.2,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 4.2,
+              "valor_a": 65,
+              "valor_b": 58
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Cori Gauff",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.409,
+              "valor_a": 78.4,
+              "valor_b": 62.7
+            },
+            "servico_carreira": {
+              "amostra": 41.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Elena Rybakina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.0,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 3.0,
+              "valor_a": 58.0,
+              "valor_b": 64.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Cori Gauff",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 64.8,
+              "valor_b": 54.5
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 9,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 59,
+          "inclinacao_modelo_b": 41,
+          "indice_evidencia_a": 59,
+          "indice_evidencia_b": 41,
+          "indice_favorece": "Cori Gauff",
+          "intensidade_indicadores": "ligeira",
+          "intensidade_nivel": 1,
+          "massa_evidencia": 34.006,
+          "mercado_favorece": null,
+          "n_fatores": 9,
+          "player_a": "Cori Gauff",
+          "player_b": "Elena Rybakina",
+          "prob_mercado_a": null,
+          "prob_mercado_b": null,
+          "tipo": "evidence_only"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 157,
+            "amostra_b": 201,
+            "diff": 1,
+            "lider": "Cori Gauff",
+            "valor_a": 32,
+            "valor_b": 31
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 20.0,
+            "lider": "Cori Gauff",
+            "unidade": "%",
+            "valor_a": 100.0,
+            "valor_b": 80.0
+          },
+          "frescura": {
+            "jogos_7d_a": 4,
+            "jogos_7d_b": 4,
+            "mais_fresco": "igual",
+            "sets_7d_a": 9,
+            "sets_7d_b": 9
+          },
+          "h2h": {
+            "a_wins": 1,
+            "b_wins": 1,
+            "lider": "igual",
+            "total": 2
+          },
+          "h2h_piso": {
+            "a_wins": 1,
+            "b_wins": 1,
+            "lider": "igual",
+            "total": 2
+          },
+          "indoor_outdoor": {
+            "amostra_a": 351,
+            "amostra_b": 375,
+            "diff": 2.2,
+            "lider": "Cori Gauff",
+            "unidade": "%",
+            "valor_a": 72.4,
+            "valor_b": 70.1
+          },
+          "nivel_adversario": {
+            "amostra_a": 74,
+            "amostra_b": 68,
+            "diff": -8.600000000000001,
+            "lider": "Elena Rybakina",
+            "valor_a": 47.3,
+            "valor_b": 55.9
+          },
+          "piso": {
+            "amostra_a": 257,
+            "amostra_b": 307,
+            "diff": 1.2,
+            "lider": "Cori Gauff",
+            "unidade": "%",
+            "valor_a": 71.6,
+            "valor_b": 70.4
+          },
+          "qualidade_vitorias": {
+            "lider": "Cori Gauff",
+            "top10_a": 1,
+            "top10_b": 0,
+            "top20_a": 2,
+            "top20_b": 0,
+            "top50_a": 2,
+            "top50_b": 1,
+            "valor_a": 5,
+            "valor_b": 1
+          },
+          "ranking": {
+            "diff": 2.0,
+            "lider": "Elena Rybakina",
+            "pontos_a": 6704,
+            "pontos_b": 8141,
+            "valor_a": 4.0,
+            "valor_b": 2.0
+          },
+          "ranking_evolucao": {
+            "diff": -75.4,
+            "lider": "Elena Rybakina",
+            "valor_a": -8.2,
+            "valor_b": 67.2
+          },
+          "sazonal": {
+            "amostra_a": 37,
+            "amostra_b": 51,
+            "diff": 15.6,
+            "lider": "Cori Gauff",
+            "unidade": "%",
+            "valor_a": 78.4,
+            "valor_b": 62.7
+          },
+          "servico_carreira": {
+            "amostra_a": 41,
+            "amostra_b": 42,
+            "diff": 6.0,
+            "lider": "Elena Rybakina",
+            "unidade": "%",
+            "valor_a": 58.0,
+            "valor_b": 64.0
+          },
+          "tiebreak": {
+            "amostra_a": 91,
+            "amostra_b": 134,
+            "diff": 10.4,
+            "lider": "Cori Gauff",
+            "unidade": "%",
+            "valor_a": 64.8,
+            "valor_b": 54.5
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 32,
+          "coverage_pct": 46.0,
+          "excluded_missing_odds": 54,
+          "excluded_missing_odds_wins": 45,
+          "expected_wins": 31.41,
+          "matches": 46,
+          "odds_eligible_matches": 46,
+          "overall_wins": 77,
+          "performance_vs_market": 0.59,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 34,
+          "coverage_pct": 49.0,
+          "excluded_missing_odds": 51,
+          "excluded_missing_odds_wins": 45,
+          "expected_wins": 34.5,
+          "matches": 49,
+          "odds_eligible_matches": 49,
+          "overall_wins": 79,
+          "performance_vs_market": -0.5,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 45.57,
+          "matches": 69,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 51.99,
+          "matches": 75,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "reason": "event_identity_unavailable",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 19,
+              "available_weight": 123.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 85.4,
+              "weighted_ratio": 0.854167
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "state": "PRICING_UNAVAILABLE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 40.0,
+          "bp_saved_pct": 52.0,
+          "first_serve_won_pct": 58.0,
+          "matches": 41,
+          "opponent_first_serve_won_pct": 31.0,
+          "opponent_second_serve_won_pct": 52.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 41.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 32.0,
+          "bp_saved_pct": 52.0,
+          "first_serve_won_pct": 64.0,
+          "matches": 42,
+          "opponent_first_serve_won_pct": 26.0,
+          "opponent_second_serve_won_pct": 49.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 46.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 6704,
+          "rank": 4
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 8141,
+          "rank": 2
+        },
+        "recent_form_a": {
+          "losses": 0,
+          "matches": 10,
+          "wins": 10
+        },
+        "recent_form_b": {
+          "losses": 2,
+          "matches": 10,
+          "wins": 8
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 40.0,
+          "avg_break_points_saved_pct": 52.0,
+          "avg_first_serve_in_pct": 61.4,
+          "avg_first_serve_won_pct": 58.0,
+          "avg_second_serve_won_pct": 41.0,
+          "matches_used": 41
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 32.0,
+          "avg_break_points_saved_pct": 52.0,
+          "avg_first_serve_in_pct": 58.6,
+          "avg_first_serve_won_pct": 64.0,
+          "avg_second_serve_won_pct": 46.0,
+          "matches_used": 42
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 34.6,
+            "matches_lost_set1": 136,
+            "matches_lost_set1_won_overall": 47
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 34.6,
+            "matches_lost_set1": 133,
+            "matches_lost_set1_won_overall": 46
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": 5.5,
+          "recent_win_pct": 77.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": 6.3,
+          "recent_win_pct": 76.7,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": null,
+        "capture_kind": null,
+        "captured_at_utc": null,
+        "endpoint": null,
+        "event_id": null,
+        "from_cache": null,
+        "provider_timestamp": null,
+        "raw_payload_sha256": null,
+        "source": null
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 54663,
+        "name": "Cori Gauff"
+      },
+      "player_b": {
+        "id": 36558,
+        "name": "Elena Rybakina"
+      },
+      "pricing": {
+        "available": false,
+        "candidate": false,
+        "candidate_side": null,
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "reason": "event_identity_unavailable",
+        "status": "unavailable",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "cd7c39060df9bca49dad",
+      "surface": "Hard",
+      "tour": "wta",
+      "tournament": "U.S. Open - New York",
+      "tournament_id": 16743,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-09-09T21:58:39+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG",
+              "SELECTED_SIDE_UNAVAILABLE",
+              "PRICING_UNAVAILABLE",
+              "PROBABILITIES_UNAVAILABLE",
+              "SELECTED_PLAYER_UNAVAILABLE"
+            ],
+            "selected_player": null,
+            "selected_side": null,
+            "source": {
+              "code_revision": "e5bfd95d5a95c23b513f18687ead96c318ac742c",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "PRICING_UNAVAILABLE",
+              "divergence_level": 0,
+              "divergence_type": "evidence_only",
+              "fenzobot_probabilities": "UNAVAILABLE",
+              "github_run_id": "34409668236",
+              "market_probabilities": "UNAVAILABLE",
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "wta:959"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "be1756e509ce617508cafa65"
+          }
+        }
+      }
     }
   ],
-  "updated_at_utc": "2026-09-09T21:13:53+00:00"
+  "updated_at_utc": "2026-09-09T21:58:39+00:00"
 }
