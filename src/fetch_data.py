@@ -374,6 +374,13 @@ _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execuçã
 _UPCOMING_DISCOVERY_FAILURES: list[str] = []
 _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
 _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
+# A ponte fixture ID -> eventId é devolvida por ``event/get`` e é necessária
+# para interpretar od1/od2 do ``recent-odds``. Persistimos apenas uma ponte
+# cuja identidade foi verificada (os dois jogadores e a hora); nunca odds.
+# Isto evita que uma falha transitória do endpoint de pesquisa por nomes faça
+# desaparecer um preço operacional que o bot já tinha associado corretamente.
+_EVENT_IDENTITY_STORE = JsonCacheStore("data/cache")
+_EVENT_IDENTITY_PATH = _EVENT_IDENTITY_STORE.entity_path("rapidapi_event_identity.json")
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
 ODDS_API_BASE = "https://api.the-odds-api.com/v4"
@@ -419,6 +426,72 @@ def _event_names_key(player1: str, player2: str) -> tuple[str, str]:
     pré-live como condições obrigatórias antes de aceitar qualquer odd.
     """
     return tuple(sorted((_rapidapi_event_identity_name(player1), _rapidapi_event_identity_name(player2))))
+
+
+def _rapidapi_event_cache_key(match: dict) -> str:
+    """Chave persistente de uma fixture, sem usar nomes aproximados."""
+    fixture_id = match.get("id")
+    if fixture_id not in (None, ""):
+        return f"fixture:{fixture_id}"
+    p1 = str((match.get("player1") or {}).get("name") or "").strip()
+    p2 = str((match.get("player2") or {}).get("name") or "").strip()
+    return f"pair:{'|'.join(_event_names_key(p1, p2))}:{str(match.get('date') or '')[:10]}"
+
+
+def _fixture_start_utc(match: dict) -> Optional[datetime]:
+    return _event_start(match.get("date"))
+
+
+def _cached_event_record_for_match(match: dict) -> Optional[dict]:
+    """Lê uma associação anterior, apenas se ainda provar a mesma fixture."""
+    try:
+        saved = _EVENT_IDENTITY_STORE.get_entry(
+            _EVENT_IDENTITY_PATH,
+            _rapidapi_event_cache_key(match),
+            max_age_hours=168,
+        )
+    except (OSError, ValueError):
+        return None
+    if not isinstance(saved, dict) or not saved.get("event_id"):
+        return None
+    p1 = str((match.get("player1") or {}).get("name") or "").strip()
+    p2 = str((match.get("player2") or {}).get("name") or "").strip()
+    if _event_names_key(saved.get("participant1", ""), saved.get("participant2", "")) != _event_names_key(p1, p2):
+        return None
+    fixture_start = _fixture_start_utc(match)
+    saved_start = _event_start(saved.get("event_start"))
+    if fixture_start and saved_start and abs((fixture_start - saved_start).total_seconds()) > 36 * 3600:
+        return None
+    return {
+        "valid": True,
+        "event_id": str(saved["event_id"]),
+        "participant1": str(saved["participant1"]),
+        "participant2": str(saved["participant2"]),
+        "event_status": "scheduled",
+        "event_start": saved_start.isoformat() if saved_start else None,
+        "identity_cache": "verified_persistent",
+    }
+
+
+def _persist_event_record(match: dict, record: dict) -> None:
+    """Guarda apenas uma associação já validada por ``event/get``."""
+    if not record.get("valid") or not record.get("event_id"):
+        return
+    try:
+        _EVENT_IDENTITY_STORE.set_entry(
+            _EVENT_IDENTITY_PATH,
+            _rapidapi_event_cache_key(match),
+            {
+                "event_id": str(record["event_id"]),
+                "participant1": str(record["participant1"]),
+                "participant2": str(record["participant2"]),
+                "event_start": record.get("event_start"),
+            },
+            metadata={"purpose": "verified RapidAPI event identity; no odds"},
+        )
+    except (OSError, ValueError):
+        # Cache é uma otimização. Uma falha de escrita não pode bloquear odds.
+        return
 
 
 def upcoming_discovery_failed() -> bool:
@@ -1008,9 +1081,8 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
             rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": "live"}
             continue
         event_start = _event_start(next((node.get(key) for key in ("startTimestamp", "start_time", "startTime", "date", "commence_time") if node.get(key) is not None), None))
-        if event_start and event_start <= datetime.now(timezone.utc):
-            rejected = {"valid": False, "reason": "event_start_in_past", "event_id": str(event_id), "event_start": event_start.isoformat()}
-            continue
+        # Uma hora agendada já ultrapassada não é prova de início: o jogo
+        # pode estar atrasado. Só estado/live/score autoriza exclusão.
         if fixture_start and event_start and abs((event_start - fixture_start).total_seconds()) > 36 * 3600:
             rejected = {"valid": False, "reason": "event_time_mismatch", "event_id": str(event_id), "event_start": event_start.isoformat()}
             continue
@@ -1081,8 +1153,19 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
     if cache_key in _RAPIDAPI_EVENT_LOOKUP_CACHE:
         return _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key]
 
+    persisted = _cached_event_record_for_match(match)
+    if persisted:
+        _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = persisted
+        _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS[cache_key] = {
+            "availability_status": "VERIFIED" if persisted.get("valid") else "REJECTED",
+            "unavailable_reason": persisted.get("reason"),
+            "identity_cache": persisted.get("identity_cache"),
+        }
+        return persisted
+
     attempted_names: list[tuple[str, str]] = []
     last_failure = "event_identity_unavailable"
+    rejected_record: Optional[dict] = None
     for offset in (0, -1, 1):
         date_only = (start + timedelta(days=offset)).date().isoformat()
         pairs = []
@@ -1099,23 +1182,28 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
                     continue
                 record = _validated_event_record(response.json() or {}, match)
                 if record:
+                    if not record.get("valid"):
+                        rejected_record = record
+                        last_failure = str(record.get("reason") or "event_not_prelive")
+                        continue
                     _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS[cache_key] = {
                         "availability_status": "VERIFIED",
                         "event_lookup_name_variants": attempted_names,
                     }
                     _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = record
+                    _persist_event_record(match, record)
                     return record
                 last_failure = "event_identity_unavailable"
             except (requests.RequestException, ValueError, RapidAPIBudgetExceeded):
                 last_failure = "event_lookup_request_failed"
                 continue
-    _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = None
+    _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = rejected_record
     _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS[cache_key] = {
-        "availability_status": "UNAVAILABLE",
+        "availability_status": "REJECTED" if rejected_record else "UNAVAILABLE",
         "unavailable_reason": last_failure,
         "event_lookup_name_variants": attempted_names,
     }
-    return None
+    return rejected_record
 
 
 def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
@@ -1141,7 +1229,10 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         cache_key = str(match.get("id") or f"{player_a}|{player_b}|{str(match.get('date') or '')[:10]}")
         diagnostic = dict(_RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS.get(cache_key) or {})
         diagnostic.setdefault("availability_status", "UNAVAILABLE")
-        diagnostic.setdefault("unavailable_reason", "event_identity_unavailable")
+        diagnostic.setdefault(
+            "unavailable_reason",
+            str((event or {}).get("reason") or "event_identity_unavailable"),
+        )
         diagnostic.update({
             "source": "RapidAPI Tennis API / event lookup",
             "endpoint": "event/get/{participant1}/{participant2}/{date}",
