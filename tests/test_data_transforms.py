@@ -203,6 +203,35 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(record["event_id"], "event-bridge-1")
         self.assertEqual(record["participant1"], "Jessica Pegula")
 
+    def test_embedded_event_id_prevents_an_extra_extend_index_call(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9014, "_tour": "wta", "date": future,
+            "player1Id": 18455, "player2Id": 11712,
+            "player1": {"id": 18455, "name": "Aryna Sabalenka"},
+            "player2": {"id": 11712, "name": "Jessica Pegula"},
+        }
+        embedded = {
+            "eventId": "embedded-event", "_tour": "wta", "status": "scheduled",
+            "startTime": future,
+            "player1": {"id": 18455, "name": "A. Sabalenka"},
+            "player2": {"id": 11712, "name": "J. Pegula"},
+        }
+        identity_store = Mock()
+        identity_store.get_entry.return_value = None
+        with patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=[embedded]), \
+                patch.object(fetch_data, "_fetch_extend_event_bridge_records") as extend_index, \
+                patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, {}, clear=True), \
+                patch.object(fetch_data, "_ALL_UPCOMING_EVENTS_CACHE", [embedded]), \
+                patch.object(fetch_data, "_RAPIDAPI_EVENT_INDEX_READY", set()):
+            fetch_data.prepare_rapidapi_odds_index([match])
+            record = fetch_data._rapidapi_event_record_for_match(match)
+        self.assertEqual(record["event_id"], "embedded-event")
+        self.assertEqual(record["identity_index_source"], "embedded_upcoming")
+        extend_index.assert_not_called()
+
     def test_extend_bridge_accepts_abbreviated_display_names_only_with_exact_match_id(self):
         future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
         match = {
@@ -232,6 +261,133 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(record["participant1"], "Jessica Pegula")
         self.assertEqual(record["participant2"], "Aryna Sabalenka")
         self.assertEqual(record["identity_source"], "verified_match_id")
+
+    def test_identity_bridge_prefers_bilateral_player_ids_for_wta_and_atp_controls(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        cases = (
+            ("wta", 18455, "Aryna Sabalenka", 11712, "Jessica Pegula"),
+            ("wta", 54663, "Cori Gauff", 36558, "Elena Rybakina"),
+            ("atp", 1001, "Alexander Zverev", 1002, "Karen Khachanov"),
+            ("atp", 1003, "Frances Tiafoe", 1004, "Ben Shelton"),
+        )
+        identity_store = Mock()
+        identity_store.get_entry.return_value = None
+        for index, (tour, first_id, first_name, second_id, second_name) in enumerate(cases):
+            match = {
+                "id": 9200 + index, "_tour": tour, "date": future,
+                "player1Id": first_id, "player2Id": second_id,
+                "player1": {"id": first_id, "name": first_name},
+                "player2": {"id": second_id, "name": second_name},
+            }
+            candidate = {
+                "eventId": f"verified-{index}", "status": "scheduled", "startTime": future,
+                "participant1": {"id": second_id, "name": f"{second_name.split()[-1]} X."},
+                "participant2": {"id": first_id, "name": f"{first_name.split()[-1]} Y."},
+            }
+            with self.subTest(first_name=first_name), \
+                    patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=[]), \
+                    patch.object(fetch_data, "_fetch_extend_event_bridge_records", return_value=[candidate]), \
+                    patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
+                    patch.object(fetch_data, "_rapidapi_get") as individual_lookup, \
+                    patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), \
+                    patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, {}, clear=True), \
+                    patch.object(fetch_data, "_ALL_UPCOMING_EVENTS_CACHE", []), \
+                    patch.object(fetch_data, "_RAPIDAPI_EVENT_INDEX_READY", set()):
+                fetch_data.prepare_rapidapi_odds_index([match])
+                record = fetch_data._rapidapi_event_record_for_match(match)
+            self.assertEqual(record["event_id"], f"verified-{index}")
+            self.assertEqual(record["identity_source"], "verified_player_ids")
+            individual_lookup.assert_not_called()
+
+    def test_event_lookup_is_bounded_and_does_not_generate_initial_combinations(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9300, "_tour": "wta", "date": future,
+            "player1": {"name": "Aryna Sabalenka"},
+            "player2": {"name": "Jessica Pegula"},
+        }
+
+        class EmptyResponse:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return {"result": {}}
+
+        calls = []
+        identity_store = Mock()
+        identity_store.get_entry.return_value = None
+        with patch.object(fetch_data, "_rapidapi_get", side_effect=lambda url: calls.append(url) or EmptyResponse()), \
+                patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS, {}, clear=True):
+            record = fetch_data._rapidapi_event_record_for_match(match)
+            metrics = fetch_data.get_rapidapi_identity_metrics()
+        self.assertIsNone(record)
+        self.assertLessEqual(len(calls), fetch_data.RAPIDAPI_EVENT_FALLBACK_MAX_ATTEMPTS)
+        self.assertTrue(all("A.%20Sabalenka" not in url and "J.%20Pegula" not in url for url in calls))
+        self.assertEqual(metrics["by_tour"]["wta"]["lookup_attempts"], len(calls))
+
+    def test_complete_provider_ids_cannot_be_overridden_by_matching_names(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "_tour": "wta", "date": future, "player1Id": 18455, "player2Id": 11712,
+            "player1": {"id": 18455, "name": "Aryna Sabalenka"},
+            "player2": {"id": 11712, "name": "Jessica Pegula"},
+        }
+        wrong = {
+            "eventId": "wrong", "startTime": future, "status": "scheduled",
+            "participant1": {"id": 999, "name": "Aryna Sabalenka"},
+            "participant2": {"id": 998, "name": "Jessica Pegula"},
+        }
+        self.assertIsNone(fetch_data._validated_event_record(wrong, match))
+
+    def test_partial_conflicting_provider_id_cannot_be_overridden_by_names(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "_tour": "wta", "date": future, "player1Id": 18455, "player2Id": 11712,
+            "player1": {"id": 18455, "name": "Aryna Sabalenka"},
+            "player2": {"id": 11712, "name": "Jessica Pegula"},
+        }
+        wrong = {
+            "eventId": "wrong", "startTime": future, "status": "scheduled",
+            "participant1": {"id": 999, "name": "Aryna Sabalenka"},
+            "participant2": {"name": "Jessica Pegula"},
+        }
+        self.assertIsNone(fetch_data._validated_event_record(wrong, match))
+
+    def test_wta_h2h_500_does_not_block_independent_player_history(self):
+        class Response:
+            status_code = 200
+
+            def __init__(self, payload=None, fails=False):
+                self.payload = payload or {}
+                self.fails = fails
+
+            def raise_for_status(self):
+                if self.fails:
+                    raise fetch_data.requests.HTTPError("500 WTA h2h")
+
+            def json(self):
+                return self.payload
+
+        recent = [{"id": 1, "player1Id": 18455, "player2Id": 88, "match_winner": 18455}]
+
+        def route(url):
+            if "/wta/h2h/stats/" in url:
+                return Response(fails=True)
+            if "/wta/player/past-matches/18455" in url:
+                return Response({"data": recent})
+            self.fail(f"unexpected endpoint: {url}")
+
+        with patch.object(fetch_data, "RAPIDAPI_KEY", "test"), \
+                patch.object(fetch_data, "_rapidapi_get", side_effect=route), \
+                patch.object(fetch_data, "_read_player_cache_entry", return_value=None), \
+                patch.object(fetch_data, "_write_player_cache_entry"), \
+                patch.dict(fetch_data._H2H_CACHE, {}, clear=True), \
+                patch.dict(fetch_data._RECENT_MATCHES_CACHE, {}, clear=True):
+            self.assertIsNone(fetch_data.fetch_h2h_stats("wta", 18455, 11712))
+            self.assertEqual(fetch_data.fetch_player_recent_matches("wta", 18455), recent)
 
     def test_event_lookup_uses_generic_full_and_initial_surname_forms(self):
         self.assertEqual(

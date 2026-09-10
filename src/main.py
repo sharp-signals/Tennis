@@ -1162,6 +1162,11 @@ def _build_match_payload(match: dict) -> dict:
 
     # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
     _recent_a_cache = _recent_b_cache = None
+    _h2h_matches = _h2h_api = None
+    _form_api_a = _form_api_b = None
+    _surface_api_a = _surface_api_b = None
+    _rs_a = _rs_b = None
+    _srv_a = _srv_b = None
     h2h_history = recent_history_a = recent_history_b = None
     market_form_a = market_form_b = None
     opposition_quality_a = opposition_quality_b = None
@@ -1192,12 +1197,14 @@ def _build_match_payload(match: dict) -> dict:
             # (Sackmann) se a RapidAPI não tiver o dado. Antes era ao contrário
             # — e o Sackmann partido, por devolver valores errados mas não
             # vazios, ganhava sempre. Agora a RapidAPI manda.
-            if _fa.get("form"): form_a = _fa["form"]
-            if _fb.get("form"): form_b = _fb["form"]
+            _form_api_a, _form_api_b = _fa.get("form"), _fb.get("form")
+            _surface_api_a, _surface_api_b = _fa.get("surface"), _fb.get("surface")
+            if _form_api_a: form_a = _form_api_a
+            if _form_api_b: form_b = _form_api_b
             if _fa.get("season"): season_a = _fa["season"]
             if _fb.get("season"): season_b = _fb["season"]
-            if _fa.get("surface"): surface_a = _fa["surface"]
-            if _fb.get("surface"): surface_b = _fb["surface"]
+            if _surface_api_a: surface_a = _surface_api_a
+            if _surface_api_b: surface_b = _surface_api_b
 
             # COMPARAÇÃO DE FONTES: registar onde Sackmann e RapidAPI divergem
             # (a RapidAPI já ganhou acima; isto é só para SABER). Compara o
@@ -1262,11 +1269,13 @@ def _build_match_payload(match: dict) -> dict:
             key = fetch_data._normalize_name(player_name)
             if key in official:
                 r = official[key]
-                return {"rank": r["rank"], "points": r["points"], "as_of": "oficial (ao vivo)"}
-        return fetch_data.get_player_ranking(history, player_name)
+                return ({"rank": r["rank"], "points": r["points"], "as_of": "oficial (ao vivo)"},
+                        "rapidapi_official_ranking")
+        historical = fetch_data.get_player_ranking(history, player_name)
+        return historical, "local_history" if historical is not None else None
 
-    rank_a = _resolve_ranking(player_a)
-    rank_b = _resolve_ranking(player_b)
+    rank_a, _rank_source_a = _resolve_ranking(player_a)
+    rank_b, _rank_source_b = _resolve_ranking(player_b)
     # DIAGNÓSTICO (15/08/2026, a pedido — "ranking: sem dados" em jogos WTA
     # onde as jogadoras são claramente top-100, o que não devia acontecer).
     # Diz-nos se o problema é o ranking oficial não ter a jogadora, ou a
@@ -1456,6 +1465,95 @@ def _build_match_payload(match: dict) -> dict:
     surface_momentum_a = fetch_data.compute_surface_momentum(rich_a, surface, start.year)
     surface_momentum_b = fetch_data.compute_surface_momentum(rich_b, surface, start.year)
 
+    def _coverage(value, source, *, unavailable_reason="source_unavailable"):
+        if value is None:
+            return {"status": "UNAVAILABLE", "source": source, "reason": unavailable_reason}
+        return {"status": "AVAILABLE", "source": source, "reason": None}
+
+    def _historical_coverage(recent_rows, resolved_name):
+        if isinstance(recent_rows, list) and recent_rows:
+            return _coverage(recent_rows, "rapidapi_player_past_matches")
+        if resolved_name is not None and not history.empty:
+            return _coverage(True, "local_history")
+        return _coverage(None, None, unavailable_reason="no_verified_historical_matches")
+
+    if isinstance(_h2h_matches, list) and _h2h_matches:
+        _h2h_coverage = _coverage(_h2h_matches, "rapidapi_h2h_matches")
+    elif h2h is not None:
+        _h2h_coverage = _coverage(h2h, "local_history")
+    elif isinstance(_h2h_matches, list):
+        _h2h_coverage = {
+            "status": "NONE_OBSERVED", "source": "rapidapi_h2h_matches",
+            "reason": "no_prior_head_to_head_observed",
+        }
+    else:
+        _h2h_coverage = _coverage(
+            None, None, unavailable_reason="h2h_endpoint_and_local_history_unavailable",
+        )
+
+    data_coverage = {
+        "ranking": {
+            "a": _coverage(rank_a, _rank_source_a, unavailable_reason="ranking_unavailable"),
+            "b": _coverage(rank_b, _rank_source_b, unavailable_reason="ranking_unavailable"),
+        },
+        "historical_matches": {
+            "a": _historical_coverage(_recent_a_cache, _resolved_a),
+            "b": _historical_coverage(_recent_b_cache, _resolved_b),
+        },
+        "h2h": _h2h_coverage,
+        "recent_form": {
+            "a": _coverage(
+                form_a, "rapidapi_player_past_matches" if _form_api_a else "local_history",
+                unavailable_reason="recent_form_unavailable",
+            ),
+            "b": _coverage(
+                form_b, "rapidapi_player_past_matches" if _form_api_b else "local_history",
+                unavailable_reason="recent_form_unavailable",
+            ),
+        },
+        "service_return": {
+            "a": _coverage(
+                serve_a, "rapidapi_recent_stats" if _srv_a else "local_history",
+                unavailable_reason="service_return_unavailable",
+            ),
+            "b": _coverage(
+                serve_b, "rapidapi_recent_stats" if _srv_b else "local_history",
+                unavailable_reason="service_return_unavailable",
+            ),
+        },
+        "surface": {
+            "a": _coverage(
+                surface_a, "rapidapi_player_past_matches" if _surface_api_a else "local_history",
+                unavailable_reason="surface_record_unavailable",
+            ),
+            "b": _coverage(
+                surface_b, "rapidapi_player_past_matches" if _surface_api_b else "local_history",
+                unavailable_reason="surface_record_unavailable",
+            ),
+        },
+        "tournament_record": {
+            "a": _coverage(
+                tournament_record_a, "rapidapi_tournament_record",
+                unavailable_reason="tournament_record_unavailable",
+            ),
+            "b": _coverage(
+                tournament_record_b, "rapidapi_tournament_record",
+                unavailable_reason="tournament_record_unavailable",
+            ),
+        },
+    }
+    coverage_states = []
+    for family in data_coverage.values():
+        if isinstance(family, dict) and "status" in family:
+            coverage_states.append(family["status"])
+        else:
+            coverage_states.extend(
+                side.get("status") for side in family.values() if isinstance(side, dict)
+            )
+    report_data_status = "COMPLETE" if all(
+        state in {"AVAILABLE", "NONE_OBSERVED"} for state in coverage_states
+    ) else "DEGRADED"
+
     payload = {
         "match_id": match.get("id"),
         "tournament_id": _tournament_id,
@@ -1498,6 +1596,8 @@ def _build_match_payload(match: dict) -> dict:
         "odds_unavailable_reason": odds_provenance.get("unavailable_reason") if not odds else None,
         "odds_market_integrity": odds_provenance.get("market_integrity"),
         "odds_movement": odds_movement,
+        "data_coverage": data_coverage,
+        "report_data_status": report_data_status,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
         "h2h_history": h2h_history,
@@ -1760,6 +1860,15 @@ def run() -> None:
         print("[info] contador RapidAPI local não disponível em fetch_data.py; a execução continua.")
     run_metrics.update_context(phase="fetching_fixtures")
     raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
+    def _tour_counts(items):
+        counts = {"atp": 0, "wta": 0}
+        for item in items:
+            tour_name = str(item.get("_tour") or "").casefold()
+            if tour_name in counts:
+                counts[tour_name] += 1
+        return counts
+
+    run_metrics.update_context(fixtures_discovered_by_tour=_tour_counts(raw_matches))
     print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
     raw_matches = _deduplicate_matches(raw_matches)
     print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
@@ -1767,7 +1876,9 @@ def run() -> None:
     windowed = _filter_matches_in_window(raw_matches)
     windowed = _filter_prelive_matches(windowed)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
-    run_metrics.update_context(eligible=len(eligible), phase="filtering")
+    run_metrics.update_context(
+        eligible=len(eligible), eligible_by_tour=_tour_counts(eligible), phase="filtering",
+    )
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
 
@@ -1807,7 +1918,12 @@ def run() -> None:
         match["_rapidapi_event_integrity"] = integrity
         verified_eligible.append(match)
     eligible = verified_eligible
-    run_metrics.update_context(eligible=len(eligible), phase="event_integrity")
+    run_metrics.update_context(
+        eligible=len(eligible),
+        post_identity_eligible_by_tour=_tour_counts(eligible),
+        event_identity=fetch_data.get_rapidapi_identity_metrics(),
+        phase="event_integrity",
+    )
     if not eligible:
         run_metrics.update_context(status="no_eligible_matches", phase="complete")
         fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
@@ -1915,6 +2031,35 @@ def run() -> None:
         processing_ratio=round(processing_ratio, 4),
         analysis_error_counts=dict(sorted(error_counts.items())),
         analysis_error_samples=analysis_errors[:5],
+    )
+    market_by_tour = {
+        "atp": {"available": 0, "unavailable": 0, "unavailable_by_reason": {}},
+        "wta": {"available": 0, "unavailable": 0, "unavailable_by_reason": {}},
+    }
+    reports_by_tour = {
+        "atp": {"complete": 0, "degraded": 0},
+        "wta": {"complete": 0, "degraded": 0},
+    }
+    for payload, _result in analyses:
+        tour_name = str(payload.get("tour") or "").casefold()
+        if tour_name not in market_by_tour:
+            continue
+        if payload.get("market_odds_decimal"):
+            market_by_tour[tour_name]["available"] += 1
+        else:
+            market_by_tour[tour_name]["unavailable"] += 1
+            reason = str(payload.get("odds_unavailable_reason") or "unknown")
+            reasons = market_by_tour[tour_name]["unavailable_by_reason"]
+            reasons[reason] = reasons.get(reason, 0) + 1
+        status_key = "complete" if payload.get("report_data_status") == "COMPLETE" else "degraded"
+        reports_by_tour[tour_name][status_key] += 1
+    run_metrics.update_context(
+        market_coverage_by_tour=market_by_tour,
+        report_data_status_by_tour=reports_by_tour,
+        rapidapi_calls_per_processed=(
+            round(fetch_data.get_rapidapi_call_count() / len(analyses), 3)
+            if analyses else None
+        ),
     )
 
     # Nunca publicar um relatório parcial como se fosse uma execução normal
@@ -2210,6 +2355,8 @@ def main() -> None:
             metrics = run_metrics.append_run(context={
                 "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
                 "rapidapi_calls_by_endpoint": fetch_data.get_rapidapi_endpoint_counts(),
+                "rapidapi_calls_by_endpoint_family": fetch_data.get_rapidapi_endpoint_family_counts(),
+                "event_identity": fetch_data.get_rapidapi_identity_metrics(),
             })
             print(f"[metrics] {json.dumps(metrics, ensure_ascii=False, sort_keys=True)}")
             alerts = run_metrics.health_alerts(metrics)

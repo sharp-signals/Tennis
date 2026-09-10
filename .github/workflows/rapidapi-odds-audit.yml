@@ -20,6 +20,19 @@ on:
         required: true
         type: choice
         options: [atp, wta]
+      player_a_id:
+        description: ID estável do primeiro jogador
+        required: true
+        type: string
+      player_b_id:
+        description: ID estável do segundo jogador
+        required: true
+        type: string
+      audit_the_odds:
+        description: Comparação controlada The Odds API (OFF por defeito)
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   audit:
@@ -41,6 +54,8 @@ jobs:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           RAPIDAPI_MAX_CALLS_PER_RUN: "20"
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          THE_ODDS_API_ENABLED: ${{ inputs.audit_the_odds && '1' || '0' }}
           LLM_MODE: disabled
           LLM_POLICY: never
           ALLOW_PAID_LLM: "0"
@@ -50,6 +65,9 @@ jobs:
           --player-b "${{ inputs.player_b }}"
           --event-date "${{ inputs.event_date }}"
           --tour "${{ inputs.tour }}"
+          --player-a-id "${{ inputs.player_a_id }}"
+          --player-b-id "${{ inputs.player_b_id }}"
+          ${{ inputs.audit_the_odds && '--audit-the-odds' || '' }}
       - name: Guardar resultado da auditoria
         uses: actions/upload-artifact@v7
         with:
