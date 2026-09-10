@@ -115,6 +115,9 @@ def _match_from_audit_input(
         "id": row.get("id") or f"audit:{tour}:{event_date}:{player_a}:{player_b}",
         "_tour": tour,
         "date": start,
+        "tournament_name": (
+            tournament.get("name") if isinstance(tournament, dict) else str(tournament or "")
+        ) or row.get("tournamentName"),
         "player1Id": player_a_id,
         "player2Id": player_b_id,
         "player1": {"id": player_a_id, "name": player_a},
@@ -139,6 +142,11 @@ def _embedded_summary(event: dict[str, Any] | None) -> dict[str, Any]:
         "market_integrity_compatible": False,
         "paper_eligible": False,
     }
+
+
+def _market_integrity_compatible(provenance: dict[str, Any] | None) -> bool:
+    status = str((provenance or {}).get("market_integrity", {}).get("status") or "").upper()
+    return status in {"AVAILABLE", "PASS"}
 
 
 def audit(
@@ -196,9 +204,7 @@ def audit(
         odds, provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
         endpoints["recent_odds"] = {
             "available": bool(odds), "odds": odds, "provenance": provenance,
-            "market_integrity_compatible": bool(
-                (provenance or {}).get("market_integrity", {}).get("status") == "PASS"
-            ),
+            "market_integrity_compatible": _market_integrity_compatible(provenance),
         }
         endpoints["compare"] = _request(
             f"{fetch_data.RAPIDAPI_EXTEND_BASE}/odds/compare/{event_id}", params={"market_id": 1},
