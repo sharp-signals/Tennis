@@ -32,7 +32,7 @@
     "llm": {
       "llm_external_requests": 0,
       "llm_mode": "disabled",
-      "llm_provider_invocations": 3
+      "llm_provider_invocations": 2
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -134,6 +134,40 @@
   "change_id": "CHANGE-2026-09-06-027",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "counts": {
+        "GREEN": 0,
+        "GREEN_STRONG": 0,
+        "PAPER_TECHNICAL": 0,
+        "RED": 0,
+        "UNAVAILABLE": 0,
+        "YELLOW": 2,
+        "reports": 2
+      },
+      "date": "2026-09-10",
+      "reports": [
+        {
+          "color": "YELLOW",
+          "date": "2026-09-10",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Aryna Sabalenka vs Jessica Pegula",
+          "url": "../relatorios/aryna-sabalenka-vs-jessica-pegula-2026-09-10-88113b07dfe874133d90.html"
+        },
+        {
+          "color": "YELLOW",
+          "date": "2026-09-10",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Cori Gauff vs Elena Rybakina",
+          "url": "../relatorios/cori-gauff-vs-elena-rybakina-2026-09-10-b1b648bf3a21a484397f.html"
+        }
+      ]
+    },
     {
       "counts": {
         "GREEN": 2,
@@ -19143,7 +19177,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-10T01:11:24+00:00",
+  "generated_at_utc": "2026-09-10T05:34:37+00:00",
   "global": {
     "green_strong_candidates": 0,
     "market_observations": 1131,
@@ -19153,10 +19187,10 @@
       "GREEN": 123,
       "RED": 510,
       "UNAVAILABLE": 1052,
-      "YELLOW": 164
+      "YELLOW": 166
     },
     "settled_snapshots": 369,
-    "total_reports": 1849,
+    "total_reports": 1851,
     "total_snapshots": 396
   },
   "green_strong_v1": {
@@ -19166,7 +19200,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-10T01:11:24+00:00",
+    "generated_at_utc": "2026-09-10T05:34:37+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -19219,7 +19253,7 @@
     "distinct_events": 396,
     "events_with_comparable_closing": 7,
     "events_with_entry_market": 16,
-    "generated_at_utc": "2026-09-10T01:11:24+00:00",
+    "generated_at_utc": "2026-09-10T05:34:37+00:00",
     "market_only": {
       "accuracy_pct": 76.92,
       "brier_score": 0.164181,
@@ -19486,11 +19520,11 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "46ed420fe7fe95f9805dcaf0c85b192c880c044900e3821d7dca42a54d7f9986",
+  "semantic_fingerprint": "cdb1bffb4b1e6b5dc7c2781aeefa562f13b587ab81d5132209b8dd18cefa1d24",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-10T01:11:24+00:00"
+      "updated_at_utc": "2026-09-10T05:34:37+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
@@ -19499,7 +19533,7 @@
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-10T01:11:24+00:00"
+      "updated_at_utc": "2026-09-10T05:34:37+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -19511,37 +19545,33 @@
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-09"
+      "updated_at_utc": "2026-09-10"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-09T23:18:02+00:00"
+      "updated_at_utc": "2026-09-10T05:34:29+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-09T23:17:56+00:00"
+      "updated_at_utc": "2026-09-10T05:34:23+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 98.921,
-      "eligible": 4,
-      "llm_calls": 3,
+      "duration_seconds": 70.265,
+      "eligible": 2,
+      "llm_calls": 2,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": 4,
-      "rapidapi_calls": 158,
+      "processed": 2,
+      "rapidapi_calls": 160,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-09-09T23:18:02+00:00"
+      "timestamp": "2026-09-10T05:34:29+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-04T17:35:55+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-04T17:46:34+00:00"
@@ -19617,6 +19647,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-09T23:18:02+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-10T05:34:29+00:00"
       }
     ],
     "status": "HEALTHY"
