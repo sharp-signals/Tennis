@@ -26,6 +26,7 @@ ASSET_DIR = ROOT / "docs" / "assets" / "players"
 REVIEW_PATH = ROOT / "data" / "player_images_review.json"
 USER_AGENT = "SharpSignalsTennis/1.0 (https://github.com/sharp-signals/Tennis)"
 ALLOWED_LICENSES = ("CC BY", "CC0", "PUBLIC DOMAIN", "PDM")
+PRESERVED_REVIEW_REASONS = {"LICENSED_SOURCE_UNAVAILABLE"}
 
 
 def _normalise(value: str) -> str:
@@ -126,6 +127,14 @@ def _write_registry(registry: dict[str, dict]) -> None:
     )
 
 
+def _review_reason(existing: dict | None, observed: str) -> str:
+    """Preserva reason codes curados até existir uma resolução válida."""
+    existing_reason = str((existing or {}).get("reason") or "")
+    if existing_reason in PRESERVED_REVIEW_REASONS:
+        return existing_reason
+    return str(observed or "")
+
+
 def _record_review(item: dict) -> None:
     try:
         document = json.loads(REVIEW_PATH.read_text(encoding="utf-8"))
@@ -133,6 +142,12 @@ def _record_review(item: dict) -> None:
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         review = []
     key = (str(item.get("tour")), str(item.get("player_id")))
+    existing = next((
+        entry for entry in review
+        if (str(entry.get("tour")), str(entry.get("player_id"))) == key
+    ), None)
+    item = dict(item)
+    item["reason"] = _review_reason(existing, str(item.get("reason") or ""))
     review = [entry for entry in review
               if (str(entry.get("tour")), str(entry.get("player_id"))) != key]
     review.append(item)
@@ -251,9 +266,11 @@ def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
                 }
                 summary["added"] += 1
             except (requests.RequestException, ValueError, OSError) as exc:
+                previous_review = review.get(review_key)
                 review[review_key] = {
                     "tour": tour, "player_id": player_id, "name": name,
-                    "rank": item.get("rank"), "reason": str(exc),
+                    "rank": item.get("rank"),
+                    "reason": _review_reason(previous_review, str(exc)),
                 }
                 summary["review"] += 1
             time.sleep(delay)
