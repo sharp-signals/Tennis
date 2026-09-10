@@ -24,8 +24,10 @@ WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 ASSET_DIR = ROOT / "docs" / "assets" / "players"
 REVIEW_PATH = ROOT / "data" / "player_images_review.json"
+CURATED_REVIEW_PATH = ROOT / "data" / "player_image_review_overrides.json"
 USER_AGENT = "SharpSignalsTennis/1.0 (https://github.com/sharp-signals/Tennis)"
 ALLOWED_LICENSES = ("CC BY", "CC0", "PUBLIC DOMAIN", "PDM")
+PRESERVED_REVIEW_REASONS = {"LICENSED_SOURCE_UNAVAILABLE"}
 
 
 def _normalise(value: str) -> str:
@@ -126,15 +128,54 @@ def _write_registry(registry: dict[str, dict]) -> None:
     )
 
 
+def _load_curated_review_reasons(path: Path | None = None) -> dict[tuple[str, str], str]:
+    """Carrega decisões manuais de review separadas da fila transitória."""
+    source = path or CURATED_REVIEW_PATH
+    try:
+        document = json.loads(source.read_text(encoding="utf-8"))
+        items = document.get("players", []) if isinstance(document, dict) else []
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        items = []
+    curated: dict[tuple[str, str], str] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        tour = str(item.get("tour") or "").casefold()
+        player_id = item.get("player_id")
+        reason = str(item.get("reason") or "")
+        if tour and player_id not in (None, "") and reason in PRESERVED_REVIEW_REASONS:
+            curated[(tour, str(player_id))] = reason
+    return curated
+
+
+def _review_reason(existing: dict | None, observed: str, *, curated_reason: str | None = None) -> str:
+    """Preserva reason codes curados até existir uma resolução válida."""
+    if curated_reason in PRESERVED_REVIEW_REASONS:
+        return str(curated_reason)
+    existing_reason = str((existing or {}).get("reason") or "")
+    if existing_reason in PRESERVED_REVIEW_REASONS:
+        return existing_reason
+    return str(observed or "")
+
+
 def _record_review(item: dict) -> None:
     try:
         document = json.loads(REVIEW_PATH.read_text(encoding="utf-8"))
         review = document.get("players", []) if isinstance(document, dict) else []
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         review = []
-    key = (str(item.get("tour")), str(item.get("player_id")))
+    key = (str(item.get("tour") or "").casefold(), str(item.get("player_id")))
+    existing = next((
+        entry for entry in review
+        if (str(entry.get("tour") or "").casefold(), str(entry.get("player_id"))) == key
+    ), None)
+    curated_reason = _load_curated_review_reasons().get(key)
+    item = dict(item)
+    item["reason"] = _review_reason(
+        existing, str(item.get("reason") or ""), curated_reason=curated_reason,
+    )
     review = [entry for entry in review
-              if (str(entry.get("tour")), str(entry.get("player_id"))) != key]
+              if (str(entry.get("tour") or "").casefold(), str(entry.get("player_id"))) != key]
     review.append(item)
     REVIEW_PATH.write_text(
         json.dumps({"players": review}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
@@ -209,6 +250,7 @@ def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
     registry = player_images.load_registry()
     overrides = player_images.load_manual_overrides()
     review = _load_review()
+    curated_review_reasons = _load_curated_review_reasons()
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
@@ -251,9 +293,15 @@ def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
                 }
                 summary["added"] += 1
             except (requests.RequestException, ValueError, OSError) as exc:
+                previous_review = review.get(review_key)
                 review[review_key] = {
                     "tour": tour, "player_id": player_id, "name": name,
-                    "rank": item.get("rank"), "reason": str(exc),
+                    "rank": item.get("rank"),
+                    "reason": _review_reason(
+                        previous_review,
+                        str(exc),
+                        curated_reason=curated_review_reasons.get(review_key),
+                    ),
                 }
                 summary["review"] += 1
             time.sleep(delay)
