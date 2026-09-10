@@ -14,6 +14,7 @@ import math
 import os
 import re
 import tempfile
+import unicodedata
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
@@ -24,7 +25,7 @@ from urllib.parse import quote
 from . import audit_observability, dashboard_ui, calibration_store, paper_trading, report_html, run_metrics
 
 
-CHANGE_ID = "CHANGE-2026-09-06-027"
+CHANGE_ID = "CHANGE-2026-09-10-037"
 SCHEMA_VERSION = 1
 MODE = "READ_ONLY_DERIVED_DASHBOARD"
 CLAIMS = "OBSERVATIONAL_ONLY"
@@ -205,6 +206,78 @@ def _linked_snapshot(path: Path, snapshots_by_report: Mapping[str, Mapping[str, 
     return candidates[0] if len(candidates) == 1 else None
 
 
+def _normalized_match_title(value: Any) -> str:
+    """Normaliza apenas a identidade de fallback; nunca faz fuzzy matching."""
+    decomposed = unicodedata.normalize("NFKD", str(value or ""))
+    ascii_value = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_value.casefold()).split())
+
+
+def _public_match_key(kind: str, value: str) -> str:
+    """Expõe uma chave estável sem publicar snapshot/event keys internos."""
+    digest = hashlib.sha256(f"{kind}:{value}".encode("utf-8")).hexdigest()[:20]
+    return f"{kind.lower()}:{digest}"
+
+
+def _canonical_match_identity(snapshot: Mapping[str, Any] | None) -> tuple[str | None, str | None]:
+    if not snapshot:
+        return None, None
+    for field, source in (("key", "SNAPSHOT_KEY"), ("event_key", "EVENT_KEY")):
+        value = snapshot.get(field)
+        if value not in (None, ""):
+            return f"{field}:{value}", source
+    match_id = snapshot.get("match_id")
+    if match_id not in (None, ""):
+        tour = str(snapshot.get("tour") or "unknown").casefold()
+        return f"match_id:{tour}:{match_id}", "MATCH_ID"
+    return None, None
+
+
+def _resolve_match_keys(reports: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+    """Resolve agrupamento determinístico e remove identidades privadas transitórias.
+
+    Um rerun sem ligação canónica pode juntar-se a uma identidade canónica apenas
+    quando date+title aponta inequivocamente para uma única chave canónica. Se
+    existirem duas identidades canónicas para o mesmo título/dia, o fallback fica
+    separado em vez de inventar uma correspondência.
+    """
+    if reports is None:
+        return None
+    canonical_by_fallback: dict[str, set[str]] = {}
+    for report in reports:
+        canonical = report.get("_canonical_identity")
+        fallback = str(report.get("_fallback_signature") or "")
+        if canonical and fallback:
+            canonical_by_fallback.setdefault(fallback, set()).add(str(canonical))
+
+    resolved: list[dict[str, Any]] = []
+    for original in reports:
+        report = dict(original)
+        canonical = report.pop("_canonical_identity", None)
+        fallback = str(report.pop("_fallback_signature", ""))
+        canonical_candidates = canonical_by_fallback.get(fallback, set())
+        if canonical:
+            match_key = _public_match_key("CANONICAL", str(canonical))
+            source = str(report.pop("_canonical_source", "CANONICAL_ID"))
+            fallback_used = False
+        elif len(canonical_candidates) == 1:
+            match_key = _public_match_key("CANONICAL", next(iter(canonical_candidates)))
+            source = "DATE_NORMALIZED_TITLE_TO_CANONICAL"
+            fallback_used = True
+        else:
+            match_key = _public_match_key("FALLBACK", fallback)
+            source = "DATE_NORMALIZED_TITLE"
+            fallback_used = True
+        report.pop("_canonical_source", None)
+        report["match_key"] = match_key
+        report["match_key_source"] = source
+        report["match_key_fallback"] = fallback_used
+        if not canonical and len(canonical_candidates) > 1:
+            report["match_key_ambiguity"] = "MULTIPLE_CANONICAL_IDENTITIES"
+        resolved.append(report)
+    return resolved
+
+
 def _build_reports(
     reports_dir: Path,
     snapshots: list[Mapping[str, Any]],
@@ -261,7 +334,9 @@ def _build_reports(
             linkage = "HISTORICAL_DOM_CONTRACT"
         else:
             linkage = "LEGACY_UNLINKED"
-        reports.append({
+        canonical_identity, canonical_source = _canonical_match_identity(snapshot)
+        fallback_signature = f"{report_day or 'UNAVAILABLE'}:{_normalized_match_title(title)}"
+        report = {
             "title": title,
             "date": report_day,
             "scheduled_start_utc": snapshot.get("commence_time_utc") if snapshot else None,
@@ -272,8 +347,14 @@ def _build_reports(
             ),
             "linkage": linkage,
             "url": f"../relatorios/{quote(path.name)}",
-        })
-    return reports, {
+            "_canonical_identity": canonical_identity,
+            "_canonical_source": canonical_source,
+            "_fallback_signature": fallback_signature,
+        }
+        if report_id:
+            report["report_id"] = report_id
+        reports.append(report)
+    return _resolve_match_keys(reports), {
         "status": "AVAILABLE",
         "updated_at_utc": max((item["date"] for item in reports if item["date"]), default=None),
     }
@@ -289,10 +370,61 @@ def _group_days(reports: list[Mapping[str, Any]] | None) -> list[dict[str, Any]]
     result = []
     for day, items in sorted(grouped.items(), reverse=True):
         colors = Counter(str(item.get("color") or "UNAVAILABLE") for item in items)
+        ordered_items = sorted(items, key=lambda item: (item.get("scheduled_start_utc") or "", item["title"], item["url"]))
+        matchup_groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+        for index, item in enumerate(ordered_items):
+            matchup_groups.setdefault(str(item["match_key"]), []).append((index, item))
+        matchups = []
+        for match_key, indexed_versions in matchup_groups.items():
+            version_indexes = [index for index, _item in indexed_versions]
+            ordered_versions = [item for _index, item in indexed_versions]
+            exact = next((item for item in ordered_versions if item.get("linkage") == "EXACT_REPORT_ID"), None)
+            representative = exact or ordered_versions[0]
+            matchup = {
+                "match_key": match_key,
+                "match_key_source": (
+                    representative.get("match_key_source")
+                    if exact
+                    else (
+                        "DATE_NORMALIZED_TITLE"
+                        if all(item.get("match_key_fallback") for item in ordered_versions)
+                        else representative.get("match_key_source")
+                    )
+                ),
+                "match_key_fallback": all(item.get("match_key_fallback") for item in ordered_versions),
+                "fallback_version_count": sum(
+                    item.get("match_key_fallback") is True for item in ordered_versions
+                ),
+                "title": representative.get("title"),
+                "date": day,
+                "scheduled_start_utc": representative.get("scheduled_start_utc"),
+                "version_count": len(ordered_versions),
+                "colors": dict(Counter(str(item.get("color") or "UNAVAILABLE") for item in ordered_versions)),
+                "green_strong": any(item.get("green_strong") is True for item in ordered_versions),
+                "paper_technical": any(item.get("paper_technical") is True for item in ordered_versions),
+                "version_indexes": version_indexes,
+            }
+            ambiguity = next(
+                (item.get("match_key_ambiguity") for item in ordered_versions if item.get("match_key_ambiguity")),
+                None,
+            )
+            if ambiguity:
+                matchup["match_key_ambiguity"] = ambiguity
+            matchups.append(matchup)
+        matchups.sort(key=lambda item: (item.get("scheduled_start_utc") or "", item.get("title") or ""))
+        public_items = []
+        for item in ordered_items:
+            public_item = dict(item)
+            for internal_field in (
+                "match_key", "match_key_source", "match_key_fallback", "match_key_ambiguity",
+            ):
+                public_item.pop(internal_field, None)
+            public_items.append(public_item)
         result.append({
             "date": day,
             "counts": {
                 "reports": len(items),
+                "matchups": len(matchups),
                 "GREEN": colors["GREEN"],
                 "YELLOW": colors["YELLOW"],
                 "RED": colors["RED"],
@@ -300,7 +432,9 @@ def _group_days(reports: list[Mapping[str, Any]] | None) -> list[dict[str, Any]]
                 "GREEN_STRONG": sum(item.get("green_strong") is True for item in items),
                 "PAPER_TECHNICAL": sum(item.get("paper_technical") is True for item in items),
             },
-            "reports": sorted(items, key=lambda item: (item.get("scheduled_start_utc") or "", item["title"])),
+            "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+            "reports": public_items,
+            "matchups": matchups,
         })
     return result
 
@@ -691,6 +825,10 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
         },
         "global": {
             "total_reports": len(reports) if reports is not None else None,
+            "distinct_matchups": (
+                len({str(report.get("match_key")) for report in reports})
+                if reports is not None else None
+            ),
             "total_snapshots": len(snapshots) if snapshots_status["status"] == "AVAILABLE" else None,
             "settled_snapshots": settled_snapshots,
             "report_colors": {
@@ -711,6 +849,16 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
         "paper_technical": technical,
         "paper_22bet": manual,
         "system_health": health,
+        "report_grouping": {
+            "contract_version": "MATCH_VERSION_GROUPING_V1",
+            "change_id": CHANGE_ID,
+            "version_count_field": "global.total_reports",
+            "matchup_count_field": "global.distinct_matchups",
+            "canonical_precedence": ["SNAPSHOT_KEY", "EVENT_KEY", "MATCH_ID"],
+            "fallback": "date + normalized title (exact normalization; no fuzzy matching)",
+            "fallback_is_explicit": True,
+            "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+        },
         "days": days,
     }
     try:
@@ -754,8 +902,10 @@ button,a{{font:inherit}}button{{color:inherit}}.shell{{min-height:100vh;display:
 .day{{border:1px solid var(--line);border-radius:12px;margin:0 0 10px;background:var(--panel);overflow:hidden}}.day[open]{{border-color:#365573}}
 .day summary{{cursor:pointer;padding:12px 13px;list-style:none}}.day summary::-webkit-details-marker{{display:none}}.day-head{{display:flex;justify-content:space-between;gap:10px;font-weight:700}}
 .day-meta{{color:var(--dim);font-size:12px;margin-top:4px}}.reports{{border-top:1px solid var(--line);padding:7px}}
-.report{{display:block;color:var(--text);text-decoration:none;border-radius:8px;padding:9px 8px;margin:2px 0}}.report:hover,.report:focus{{background:#1a2939;outline:none}}
-.report-top{{display:flex;gap:7px;align-items:center}}.report-title{{font-size:13px;font-weight:650;min-width:0}}.report-meta{{font-size:11px;color:var(--dim);margin:3px 0 0 20px}}
+.report{{display:block;color:var(--text);text-decoration:none;border-radius:8px;padding:9px 8px;margin:2px 0;min-width:0}}.report:hover,.report:focus{{background:#1a2939;outline:none}}
+.report-top{{display:flex;gap:7px;align-items:center;min-width:0}}.report-title{{font-size:13px;font-weight:650;min-width:0;overflow-wrap:anywhere}}.report-meta{{font-size:11px;color:var(--dim);margin:3px 0 0 20px;overflow-wrap:anywhere}}
+.matchup{{display:block;border-radius:9px;margin:2px 0;min-width:0;overflow:hidden}}.matchup>summary{{list-style:none;cursor:pointer;padding:9px 8px}}.matchup>summary::-webkit-details-marker{{display:none}}.matchup[open]{{background:#121f2d}}.matchup[open]>summary{{border-bottom:1px solid var(--line)}}
+.matchup.single>.report{{margin:0}}.matchup-count{{margin-left:auto;color:var(--dim);font-size:10px;white-space:nowrap}}.versions{{padding:4px 7px 7px 18px;min-width:0}}.version{{border-left:2px solid #2c465e;padding-left:10px}}.matchup-dots{{display:inline-flex;gap:3px;flex:0 0 auto}}.matchup-source{{font-size:10px;color:var(--dim)}}
 .dot{{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#647386}}.dot.GREEN{{background:var(--green)}}.dot.YELLOW{{background:var(--yellow)}}.dot.RED{{background:var(--red)}}
 .badge{{display:inline-flex;border:1px solid #3a526b;border-radius:999px;padding:1px 6px;font-size:9px;letter-spacing:.04em;margin-left:4px;color:#bdd3e7}}.badge.gs{{border-color:#278b70;color:var(--green)}}
 .main{{min-width:0;padding:28px clamp(20px,3vw,48px) 60px}}.top{{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}}
@@ -791,10 +941,12 @@ const dayLabel=v=>v==='UNAVAILABLE'?'DATA N/D':new Date(v+'T12:00:00Z').toLocale
 const linkageLabel=v=>({{EXACT_REPORT_ID:'ligação exata',SELF_DESCRIBED_REPORT:'metadata canónica do relatório',HISTORICAL_DOM_CONTRACT:'contrato HTML histórico',LEGACY_UNLINKED:'legacy · metadata N/D'}}[v]||'metadata N/D');
 const metric=(label,value,suffix='',detail='')=>`<div class="metric"><span>${{esc(label)}}</span><strong>${{/Brier|Loss/i.test(label)&&typeof value==='number'?(value>0&&label.startsWith('Δ')?'+':'')+value.toLocaleString('pt-PT',{{minimumFractionDigits:6,maximumFractionDigits:6}}):val(value,suffix)}}</strong>${{detail?`<small>${{esc(detail)}}</small>`:''}}</div>`;
 const cards=items=>`<div class="cards">${{items.map(x=>`<${{x.filter?'button':'div'}} class="card ${{x.cls||''}}" ${{x.filter?`data-filter="${{x.filter}}" title="Filtrar relatórios deste dia"`:''}}><div class="label">${{esc(x.label)}}</div><div class="value">${{val(x.value)}}</div></${{x.filter?'button':'div'}}>`).join('')}}</div>`;
-function renderSidebar(){{const host=document.getElementById('days');if(!DATA.days.length){{host.innerHTML='<div class="empty">Sem relatórios disponíveis.</div>';return}}host.innerHTML=DATA.days.map((day,i)=>{{const c=day.counts;const reports=day.reports.filter(r=>day.date!==state.day||state.filter==='ALL'||r.color===state.filter);return `<details class="day" ${{day.date===state.day||(!state.day&&i===0)?'open':''}} data-day="${{esc(day.date)}}"><summary><div class="day-head"><span>▾ ${{dayLabel(day.date)}}</span><span>${{c.reports}}</span></div><div class="day-meta">${{c.reports}} reports · 🟢${{c.GREEN}} · 🟡${{c.YELLOW}} · 🔴${{c.RED}} · GS ${{c.GREEN_STRONG}}</div></summary><div class="reports">${{reports.length?reports.map(r=>`<a class="report" href="${{esc(r.url)}}"><div class="report-top"><i class="dot ${{r.color}}"></i><span class="report-title">${{esc(r.title)}}</span>${{r.green_strong?'<b class="badge gs">GS</b>':''}}${{r.paper_technical?'<b class="badge">PAPER</b>':''}}</div><div class="report-meta">${{fmtTime(r.scheduled_start_utc)}} · ${{linkageLabel(r.linkage)}}</div></a>`).join(''):'<div class="empty">Sem relatórios neste filtro.</div>'}}</div></details>`}}).join('');host.querySelectorAll('.day').forEach(el=>el.addEventListener('toggle',()=>{{if(el.open&&el.dataset.day!==state.day){{state.day=el.dataset.day;state.scope='DAY';state.filter='ALL';render()}}}}))}}
+function versionMeta(v,index){{const parts=[`Relatório ${{index+1}}`,v.color,linkageLabel(v.linkage)];if(v.report_id)parts.push(`ID ${{v.report_id}}`);if(v.scheduled_start_utc)parts.push(`Jogo ${{fmtTime(v.scheduled_start_utc)}}`);return parts.join(' · ')}}
+function renderMatchup(day,matchup,filterActive){{const allVersions=matchup.version_indexes.map(index=>day.reports[index]);const versions=allVersions.filter(v=>filterActive==='ALL'||v.color===filterActive);if(!versions.length)return'';const colors=[...new Set(versions.map(v=>v.color))];const dots=`<span class="matchup-dots">${{colors.map(color=>`<i class="dot ${{color}}"></i>`).join('')}}</span>`;const badges=`${{matchup.green_strong?'<b class="badge gs">GS</b>':''}}${{matchup.paper_technical?'<b class="badge">PAPER</b>':''}}`;const source=matchup.match_key_fallback?'agrupamento por data + título normalizado':matchup.fallback_version_count?`identificador canónico · ${{matchup.fallback_version_count}} versão(ões) associada(s) por data + título`:'identificador canónico';if(matchup.version_count===1){{const v=versions[0];return `<div class="matchup single"><a class="report" href="${{esc(v.url)}}"><div class="report-top">${{dots}}<span class="report-title">${{esc(matchup.title)}}</span>${{badges}}</div><div class="report-meta">${{versionMeta(v,0)}} · ${{source}}</div></a></div>`}}return `<details class="matchup"><summary><div class="report-top">${{dots}}<span class="report-title">${{esc(matchup.title)}}</span>${{badges}}<span class="matchup-count">${{versions.length===matchup.version_count?matchup.version_count:`${{versions.length}}/${{matchup.version_count}}`}} versões</span></div><div class="report-meta">${{source}}</div></summary><div class="versions">${{versions.map((v,index)=>`<a class="report version" href="${{esc(v.url)}}"><div class="report-top"><i class="dot ${{v.color}}"></i><span class="report-title">Abrir relatório</span></div><div class="report-meta">${{versionMeta(v,index)}}</div></a>`).join('')}}</div></details>`}}
+function renderSidebar(){{const host=document.getElementById('days');if(!DATA.days.length){{host.innerHTML='<div class="empty">Sem relatórios disponíveis.</div>';return}}host.innerHTML=DATA.days.map((day,i)=>{{const c=day.counts;const filterActive=day.date===state.day?state.filter:'ALL';const matchups=day.matchups.map(m=>renderMatchup(day,m,filterActive)).filter(Boolean);return `<details class="day" ${{day.date===state.day||(!state.day&&i===0)?'open':''}} data-day="${{esc(day.date)}}"><summary><div class="day-head"><span>▾ ${{dayLabel(day.date)}}</span><span>${{c.matchups}} jogos</span></div><div class="day-meta">${{c.matchups}} jogos · ${{c.reports}} versões · 🟢${{c.GREEN}} · 🟡${{c.YELLOW}} · 🔴${{c.RED}} · GS ${{c.GREEN_STRONG}}</div></summary><div class="reports">${{matchups.length?matchups.join(''):'<div class="empty">Sem versões neste filtro.</div>'}}</div></details>`}}).join('');host.querySelectorAll('.day').forEach(el=>el.addEventListener('toggle',()=>{{if(el.open&&el.dataset.day!==state.day){{state.day=el.dataset.day;state.scope='DAY';state.filter='ALL';render()}}}}))}}
 function panel(title,eyebrow,body,cls=''){{return `<article class="panel ${{cls}}"><h2>${{esc(title)}}</h2><div class="eyebrow">${{esc(eyebrow)}}</div>${{body}}</article>`}}
 function summaryRows(obj){{return `<div class="rows">${{[['Entradas',obj.total_entries],['Liquidadas',obj.settled],['Pendentes',obj.pending],['W–L',obj.wins==null||obj.losses==null?null:`${{obj.wins}}–${{obj.losses}}`],['Win rate',obj.win_rate_pct==null?null:pct(obj.win_rate_pct)],['Unidades',obj.units],['ROI',obj.roi_pct==null?null:pct(obj.roi_pct)],['Odd média',obj.average_odd]].map(([k,v])=>`<div class="row"><span>${{k}}</span><b>${{v==null?'N/D':v}}</b></div>`).join('')}}</div>`}}
-function legacyGlobalView(){{const g=DATA.global,h=DATA.report_history,gs=DATA.green_strong_v1,gu=DATA.guerra_selection_v1,mm=DATA.market_memory,pt=DATA.paper_technical,p22=DATA.paper_22bet,sh=DATA.system_health;let out=cards([{{label:'Relatórios',value:g.total_reports}},{{label:'Snapshots',value:g.total_snapshots}},{{label:'Liquidados',value:g.settled_snapshots}},{{label:'Verdes',value:g.report_colors.GREEN,cls:'GREEN'}},{{label:'Amarelos',value:g.report_colors.YELLOW,cls:'YELLOW'}},{{label:'Vermelhos',value:g.report_colors.RED,cls:'RED'}},{{label:'GREEN_STRONG',value:g.green_strong_candidates}},{{label:'PAPER técnico',value:g.paper_technical_entries}},{{label:'PAPER 22Bet',value:g.paper_22bet_entries}},{{label:'Market obs.',value:g.market_observations}}]);out+='<div class="grid">';
+function legacyGlobalView(){{const g=DATA.global,h=DATA.report_history,gs=DATA.green_strong_v1,gu=DATA.guerra_selection_v1,mm=DATA.market_memory,pt=DATA.paper_technical,p22=DATA.paper_22bet,sh=DATA.system_health;let out=cards([{{label:'Jogos distintos',value:g.distinct_matchups}},{{label:'Versões de relatório',value:g.total_reports}},{{label:'Snapshots',value:g.total_snapshots}},{{label:'Liquidados',value:g.settled_snapshots}},{{label:'Versões verdes',value:g.report_colors.GREEN,cls:'GREEN'}},{{label:'Versões amarelas',value:g.report_colors.YELLOW,cls:'YELLOW'}},{{label:'Versões vermelhas',value:g.report_colors.RED,cls:'RED'}},{{label:'GREEN_STRONG',value:g.green_strong_candidates}},{{label:'PAPER técnico',value:g.paper_technical_entries}},{{label:'PAPER 22Bet',value:g.paper_22bet_entries}},{{label:'Market obs.',value:g.market_observations}}]);out+='<div class="grid">';
 out+=panel('Histórico dos relatórios','Snapshot universe',`<div class="metrics">${{metric('Snapshots',h.snapshot_universe.total)}}${{metric('Liquidados',h.snapshot_universe.settled)}}</div><div class="split"><div><h3>Divergência</h3>${{h.divergence?`${{metric('Acertos',h.divergence.acertos)}}${{metric('N',h.divergence.total)}}${{metric('Taxa',h.divergence.taxa_pct,'%')}}${{metric('Intervalo',h.divergence.intervalo_pct?.join('–')||null,'%')}}`:'<div class="empty">N/D — amostra mínima não atingida ou fonte indisponível.</div>'}}</div><div><h3>Alinhamento</h3>${{h.alignment?`${{metric('Acertos',h.alignment.acertos)}}${{metric('N',h.alignment.total)}}${{metric('Taxa',h.alignment.taxa_pct,'%')}}${{metric('Intervalo',h.alignment.intervalo_pct?.join('–')||null,'%')}}`:'<div class="empty">N/D — amostra mínima não atingida ou fonte indisponível.</div>'}}</div></div>`);
 const zero=gs.sample.candidates===0;out+=panel('GREEN_STRONG_V1','Prospective shadow validation',`${{zero?'<div class="note warning">N=0 — acumulação prospetiva iniciada. Sem conclusão possível.</div>':''}}<div class="metrics">${{metric('Candidatos',gs.sample.candidates)}}${{metric('Liquidados',gs.sample.settled)}}${{metric('Pendentes',gs.sample.pending)}}${{metric('Mercado médio',gs.forecast.average_market_probability==null?null:100*gs.forecast.average_market_probability,'%')}}${{metric('Fenzobot médio',gs.forecast.average_fenzobot_probability==null?null:100*gs.forecast.average_fenzobot_probability,'%')}}${{metric('Win rate observado',gs.forecast.observed_win_rate_pct,'%')}}</div><h3>Proper scoring</h3><div class="metrics">${{metric('Market Brier',gs.proper_scoring.market_brier,'',`N=${{val(gs.proper_scoring.market_n)}}`)}}${{metric('Fenzobot Brier',gs.proper_scoring.fenzobot_brier,'',`N=${{val(gs.proper_scoring.fenzobot_n)}}`)}}${{metric('Δ Brier',gs.proper_scoring.delta_brier)}}${{metric('Market Log Loss',gs.proper_scoring.market_log_loss)}}${{metric('Fenzobot Log Loss',gs.proper_scoring.fenzobot_log_loss)}}${{metric('Δ Log Loss',gs.proper_scoring.delta_log_loss)}}</div><h3>Market movement</h3><div class="metrics">${{metric('Closing comparável N',gs.market_movement.comparable_closing_n)}}${{metric('Movimento médio',gs.market_movement.average_probability_pp,' p.p.')}}${{metric('Mediana',gs.market_movement.median_probability_pp,' p.p.')}}${{metric('Na direção Fenzobot',gs.market_movement.positive_direction_pct,'%')}}</div>`, 'wide feature');
 out+=panel('GUERRA_SELECTION_V1','Manual paper strategy',`${{gu.status!=='AVAILABLE'?'<div class="note">N/D — agregado público ainda indisponível.</div>':''}}<div class="metrics">${{metric('GS elegíveis',gu.eligible_green_strong)}}${{metric('Candidatos selecionados',gu.selected_candidates)}}${{metric('Taxa de seleção',gu.selection_rate_pct,'%')}}${{metric('Entradas / legs',gu.paper_entries)}}</div>${{summaryRows(gu.summary)}}<h3>Completude underdog</h3><div class="metrics">${{metric('Underdogs selecionados',gu.underdog_pair_completeness.underdog_selected_candidates)}}${{metric('Pares completos',gu.underdog_pair_completeness.complete_moneyline_positive_handicap_pairs)}}${{metric('Só Moneyline',gu.underdog_pair_completeness.moneyline_only)}}${{metric('Só handicap +',gu.underdog_pair_completeness.positive_handicap_only)}}${{metric('Incompleto / N/D',gu.underdog_pair_completeness.incomplete_or_unrecognized)}}</div>`);
@@ -802,7 +954,7 @@ const bars=mm.observations_by_day||[];const max=Math.max(1,...bars.map(x=>x.obse
 out+=panel('PAPER técnico','Universo PAPER automático',summaryRows(pt));out+=panel('PAPER manual 22Bet','Agregados públicos apenas',`${{summaryRows(p22)}}<div class="note">22Bet source synced at: ${{fmtTime(p22.synced_at_utc)}}</div><h3>Mercados</h3><div class="rows">${{Object.entries(p22.by_market||{{}}).map(([k,v])=>`<div class="row"><span>${{esc(k)}}</span><b>${{val(v.total_entries)}} entradas</b></div>`).join('')||'<div class="empty">N/D</div>'}}</div>`);
 const latest=sh.latest||{{}};const pts=(sh.recent_runs||[]).map((x,i,a)=>`${{a.length<2?0:100*i/(a.length-1)}},${{x.status==='HEALTHY'?8:x.status==='DEGRADED'?28:48}}`).join(' ');out+=panel('System Health','Alertas existentes · sem thresholds novos',`<span class="health ${{sh.status}}">${{sh.status}}</span><div class="metrics" style="margin-top:12px">${{metric('Timestamp',latest.timestamp?fmtTime(latest.timestamp):null)}}${{metric('Fase',latest.phase)}}${{metric('Elegíveis',latest.eligible)}}${{metric('Processados',latest.processed)}}${{metric('Analysis failed',latest.analysis_failed)}}${{metric('Reports failed',latest.reports_failed)}}${{metric('RapidAPI calls',latest.rapidapi_calls)}}${{metric('LLM calls',latest.llm_calls)}}${{metric('Custo LLM USD',latest.llm_estimated_cost_usd)}}${{metric('Duração',latest.duration_seconds,' s')}}</div>${{sh.alerts.length?`<div class="note warning">${{sh.alerts.map(esc).join('<br>')}}</div>`:''}}<svg class="spark" viewBox="0 0 100 55" preserveAspectRatio="none" aria-label="Saúde das últimas runs"><polyline fill="none" stroke="#58a6d8" stroke-width="2" points="${{pts}}"/></svg>`,'wide');
 out+=panel('Frescura das fontes','Momento conhecido de cada artefacto',`<div class="fresh">${{Object.entries(DATA.source_freshness).map(([name,src])=>`<div><b>${{esc(name)}}</b><small>${{esc(src.status)}} · ${{src.updated_at_utc?fmtTime(src.updated_at_utc):'N/D'}}</small></div>`).join('')}}</div>`,'wide');return out+'</div>'}}
-function legacyDayView(){{const day=DATA.days.find(x=>x.date===state.day);if(!day)return'<div class="empty">Dia não disponível.</div>';const c=day.counts;return `<h2>${{dayLabel(day.date)}}</h2>${{cards([{{label:'Relatórios',value:c.reports}},{{label:'Verdes',value:c.GREEN,cls:'GREEN',filter:'GREEN'}},{{label:'Amarelos',value:c.YELLOW,cls:'YELLOW',filter:'YELLOW'}},{{label:'Vermelhos',value:c.RED,cls:'RED',filter:'RED'}},{{label:'N/D',value:c.UNAVAILABLE,filter:'UNAVAILABLE'}},{{label:'GREEN_STRONG',value:c.GREEN_STRONG}},{{label:'PAPER técnico',value:c.PAPER_TECHNICAL}}])}}<div class="filter-note">${{state.filter==='ALL'?'Clique num card de cor para filtrar a lista do dia.':`Filtro ativo: ${{esc(state.filter)}} · `+'<button class="filter-clear">limpar</button>'}}</div><div class="panel"><h2>Leitura do dia</h2><div class="eyebrow">Estado visual não é validação</div><p>GREEN_STRONG e PAPER técnico são universos separados da cor operacional do relatório. GUERRA_SELECTION_V1 não é mostrado por jogo porque a fonte pública é deliberadamente agregada.</p></div>`}}
+function legacyDayView(){{const day=DATA.days.find(x=>x.date===state.day);if(!day)return'<div class="empty">Dia não disponível.</div>';const c=day.counts;return `<h2>${{dayLabel(day.date)}}</h2>${{cards([{{label:'Jogos distintos',value:c.matchups}},{{label:'Versões de relatório',value:c.reports}},{{label:'Versões verdes',value:c.GREEN,cls:'GREEN',filter:'GREEN'}},{{label:'Versões amarelas',value:c.YELLOW,cls:'YELLOW',filter:'YELLOW'}},{{label:'Versões vermelhas',value:c.RED,cls:'RED',filter:'RED'}},{{label:'Versões N/D',value:c.UNAVAILABLE,filter:'UNAVAILABLE'}},{{label:'GREEN_STRONG',value:c.GREEN_STRONG}},{{label:'PAPER técnico',value:c.PAPER_TECHNICAL}}])}}<div class="filter-note">${{state.filter==='ALL'?'Os filtros de cor contam e mostram versões dentro de cada jogo agrupado.':`Filtro de versões ativo: ${{esc(state.filter)}} · `+'<button class="filter-clear">limpar</button>'}}</div><div class="panel"><h2>Leitura do dia</h2><div class="eyebrow">Estado visual não é validação</div><p>As cores são classificações de versões de relatório; não representam jogos adicionais. GREEN_STRONG e PAPER técnico são universos separados da cor operacional. GUERRA_SELECTION_V1 não é mostrado por jogo porque a fonte pública é deliberadamente agregada.</p></div>`}}
 function render(){{document.getElementById('generated').textContent='Gerado em '+fmtTime(DATA.generated_at_utc);document.getElementById('day-toggle').classList.toggle('active',state.scope==='DAY');document.getElementById('global-toggle').classList.toggle('active',state.scope==='GLOBAL');document.getElementById('content').innerHTML=state.scope==='GLOBAL'?globalView():dayView();document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{{state.filter=b.dataset.filter;render()}}));document.querySelector('.filter-clear')?.addEventListener('click',()=>{{state.filter='ALL';render()}});renderSidebar()}}
 {dashboard_ui.JS}
 document.getElementById('day-toggle').addEventListener('click',()=>{{state.scope='DAY';render()}});document.getElementById('global-toggle').addEventListener('click',()=>{{state.scope='GLOBAL';state.filter='ALL';render()}});render();

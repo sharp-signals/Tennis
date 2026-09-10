@@ -498,6 +498,160 @@ class DashboardTests(unittest.TestCase):
         days = self.build()["days"]
         self.assertEqual([day["date"] for day in days], ["2026-09-06", "2026-09-05"])
 
+    def test_three_versions_of_same_matchup_keep_report_count_and_group_once(self):
+        for index, color in enumerate(("GREEN", "YELLOW", "RED"), start=1):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{index:020d}.html",
+                "Alpha vs Beta",
+                color=color,
+            )
+        result = self.build()
+        day = result["days"][0]
+        self.assertEqual(day["counts"]["reports"], 3)
+        self.assertEqual(day["counts"]["matchups"], 1)
+        self.assertEqual(len(day["matchups"]), 1)
+        self.assertEqual(day["matchups"][0]["version_count"], 3)
+        self.assertEqual(len(day["matchups"][0]["version_indexes"]), 3)
+        self.assertEqual(result["global"]["total_reports"], 3)
+        self.assertEqual(result["global"]["distinct_matchups"], 1)
+
+    def test_two_matchups_and_five_versions_have_explicit_daily_counts(self):
+        for index in range(3):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{index + 1:020d}.html",
+                "Alpha vs Beta",
+                color="GREEN",
+            )
+        for index in range(2):
+            self._report(
+                f"gamma-vs-delta-2026-09-06-{index + 11:020d}.html",
+                "Gamma vs Delta",
+                color="RED",
+            )
+        day = self.build()["days"][0]
+        self.assertEqual(day["counts"]["matchups"], 2)
+        self.assertEqual(day["counts"]["reports"], 5)
+        self.assertEqual(sorted(row["version_count"] for row in day["matchups"]), [2, 3])
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn("${c.matchups} jogos · ${c.reports} versões", rendered)
+
+    def test_different_report_ids_with_same_snapshot_key_group_together(self):
+        report_ids = ("33333333333333333331", "33333333333333333332")
+        snapshots = [snapshot(report_id, "atp:shared", "🟢", "EDGE_POSITIVE") for report_id in report_ids]
+        write_json(self.root / "data/calibration_snapshots.json", {"snapshots": snapshots})
+        for report_id in report_ids:
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{report_id}.html",
+                "Alpha vs Beta",
+                color="RED",
+            )
+        result = self.build()
+        matchup = result["days"][0]["matchups"][0]
+        self.assertEqual(result["days"][0]["counts"]["matchups"], 1)
+        self.assertEqual(matchup["version_count"], 2)
+        self.assertEqual(matchup["match_key_source"], "SNAPSHOT_KEY")
+        self.assertFalse(matchup["match_key_fallback"])
+
+    def test_self_described_fallback_groups_only_within_same_date(self):
+        for day in ("2026-09-05", "2026-09-06"):
+            for index in range(2):
+                self._report(
+                    f"alpha-vs-beta-{day}-{index + 41:020d}.html",
+                    "Álpha vs Béta",
+                    color="YELLOW",
+                )
+        result = self.build()
+        self.assertEqual(result["global"]["total_reports"], 4)
+        self.assertEqual(result["global"]["distinct_matchups"], 2)
+        for day in result["days"]:
+            self.assertEqual(day["counts"]["matchups"], 1)
+            self.assertTrue(day["matchups"][0]["match_key_fallback"])
+            self.assertEqual(day["matchups"][0]["match_key_source"], "DATE_NORMALIZED_TITLE")
+
+    def test_canonical_identifiers_take_precedence_over_identical_title_fallback(self):
+        first = snapshot("44444444444444444441", "atp:event-a", "🟢", "EDGE_POSITIVE")
+        second = snapshot("44444444444444444442", "atp:event-b", "🟢", "EDGE_POSITIVE")
+        for item in (first, second):
+            item["player_a"] = {"name": "Alpha"}
+            item["player_b"] = {"name": "Beta"}
+        write_json(self.root / "data/calibration_snapshots.json", {"snapshots": [first, second]})
+        for report_id in (first["report_id"], second["report_id"]):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{report_id}.html",
+                "Alpha vs Beta",
+                color="GREEN",
+            )
+        day = self.build()["days"][0]
+        self.assertEqual(day["counts"]["reports"], 2)
+        self.assertEqual(day["counts"]["matchups"], 2)
+        self.assertEqual({row["match_key_source"] for row in day["matchups"]}, {"SNAPSHOT_KEY"})
+
+    def test_unlinked_rerun_joins_one_unambiguous_canonical_matchup(self):
+        linked = snapshot("55555555555555555551", "wta:event-a", "🟡", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT")
+        linked["player_a"] = {"name": "Alpha"}
+        linked["player_b"] = {"name": "Beta"}
+        write_json(self.root / "data/calibration_snapshots.json", {"snapshots": [linked]})
+        self._report(
+            f"alpha-vs-beta-2026-09-06-{linked['report_id']}.html",
+            "Alpha vs Beta",
+            color="YELLOW",
+        )
+        self._report(
+            "alpha-vs-beta-2026-09-06-55555555555555555552.html",
+            "Alpha vs Beta",
+            color="YELLOW",
+        )
+        day = self.build()["days"][0]
+        matchup = day["matchups"][0]
+        self.assertEqual(day["counts"], {
+            "reports": 2,
+            "matchups": 1,
+            "GREEN": 0,
+            "YELLOW": 2,
+            "RED": 0,
+            "UNAVAILABLE": 0,
+            "GREEN_STRONG": 0,
+            "PAPER_TECHNICAL": 0,
+        })
+        self.assertEqual(matchup["match_key_source"], "SNAPSHOT_KEY")
+        self.assertFalse(matchup["match_key_fallback"])
+        self.assertEqual(matchup["fallback_version_count"], 1)
+        self.assertEqual(matchup["version_count"], 2)
+
+    def test_color_counts_remain_version_based_and_filter_semantics_are_explicit(self):
+        for index, color in enumerate(("GREEN", "GREEN", "RED"), start=51):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{index:020d}.html",
+                "Alpha vs Beta",
+                color=color,
+            )
+        result = self.build()
+        day = result["days"][0]
+        self.assertEqual(day["counts"]["GREEN"], 2)
+        self.assertEqual(day["counts"]["RED"], 1)
+        self.assertEqual(day["counts"]["matchups"], 1)
+        self.assertEqual(day["color_filter_semantics"], "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS")
+        self.assertEqual(result["report_grouping"]["color_filter_semantics"], day["color_filter_semantics"])
+
+    def test_all_historical_urls_remain_in_flat_and_grouped_views(self):
+        self._base_sources()
+        result = self.build()
+        flat_urls = {report["url"] for day in result["days"] for report in day["reports"]}
+        grouped_urls = {
+            day["reports"][index]["url"]
+            for day in result["days"]
+            for matchup in day["matchups"]
+            for index in matchup["version_indexes"]
+        }
+        self.assertEqual(grouped_urls, flat_urls)
+
+    def test_dashboard_cards_distinguish_matchups_from_report_versions(self):
+        self._base_sources()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn("Jogos distintos", rendered)
+        self.assertIn("Versões de relatório", rendered)
+        self.assertNotIn("mais recente", rendered.casefold())
+
     def test_rendering_and_filters_do_not_mutate_data(self):
         self._base_sources()
         result = self.build()
