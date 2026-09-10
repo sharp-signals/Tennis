@@ -123,12 +123,8 @@ class PlayerImageRegistryTests(unittest.TestCase):
         self.assertIn("Sem fotografia de Alexander Blockx", html)
         self.assertIn(">AB</div>", html)
 
-        review = json.loads(sync_player_images.REVIEW_PATH.read_text(encoding="utf-8"))
-        blockx = next(
-            item for item in review["players"]
-            if item.get("tour") == "atp" and item.get("player_id") == 88766
-        )
-        self.assertEqual(blockx["reason"], "LICENSED_SOURCE_UNAVAILABLE")
+        curated = sync_player_images._load_curated_review_reasons()
+        self.assertEqual(curated[("atp", "88766")], "LICENSED_SOURCE_UNAVAILABLE")
 
     def test_asset_outside_player_directory_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -144,15 +140,22 @@ class PlayerImageRegistryTests(unittest.TestCase):
 
             self.assertIsNone(actual)
 
-    def test_record_review_preserves_curated_unavailable_reason(self):
+    def test_record_review_restores_curated_unavailable_reason(self):
         with tempfile.TemporaryDirectory() as directory:
-            review_path = Path(directory) / "player_images_review.json"
+            root = Path(directory)
+            review_path = root / "player_images_review.json"
+            curated_path = root / "player_image_review_overrides.json"
             review_path.write_text(json.dumps({"players": [{
                 "tour": "atp", "player_id": 88766, "name": "Alexander Blockx",
-                "rank": 34, "reason": "LICENSED_SOURCE_UNAVAILABLE",
+                "rank": 34, "reason": "jogador sem fotografia P18 no Wikidata",
+            }]}), encoding="utf-8")
+            curated_path.write_text(json.dumps({"players": [{
+                "tour": "atp", "player_id": 88766, "name": "Alexander Blockx",
+                "reason": "LICENSED_SOURCE_UNAVAILABLE",
             }]}), encoding="utf-8")
 
-            with patch.object(sync_player_images, "REVIEW_PATH", review_path):
+            with patch.object(sync_player_images, "REVIEW_PATH", review_path), \
+                    patch.object(sync_player_images, "CURATED_REVIEW_PATH", curated_path):
                 sync_player_images._record_review({
                     "tour": "atp", "player_id": 88766, "name": "Alexander Blockx",
                     "rank": 34, "reason": "jogador sem fotografia P18 no Wikidata",
@@ -167,10 +170,15 @@ class PlayerImageRegistryTests(unittest.TestCase):
             root = Path(directory)
             registry_path = root / "player_images.json"
             review_path = root / "player_images_review.json"
+            curated_path = root / "player_image_review_overrides.json"
             registry_path.write_text('{"schema_version": 1, "players": {}}', encoding="utf-8")
             review_path.write_text(json.dumps({"players": [{
                 "tour": "atp", "player_id": 88766, "name": "Alexander Blockx",
-                "rank": 116, "reason": "LICENSED_SOURCE_UNAVAILABLE",
+                "rank": 116, "reason": "jogador sem fotografia P18 no Wikidata",
+            }]}), encoding="utf-8")
+            curated_path.write_text(json.dumps({"players": [{
+                "tour": "atp", "player_id": 88766, "name": "Alexander Blockx",
+                "reason": "LICENSED_SOURCE_UNAVAILABLE",
             }]}), encoding="utf-8")
             ranking = {"Alexander Blockx": {
                 "player_id": 88766, "name": "Alexander Blockx", "rank": 116,
@@ -178,6 +186,7 @@ class PlayerImageRegistryTests(unittest.TestCase):
 
             with patch.object(player_images, "REGISTRY_PATH", registry_path), \
                     patch.object(sync_player_images, "REVIEW_PATH", review_path), \
+                    patch.object(sync_player_images, "CURATED_REVIEW_PATH", curated_path), \
                     patch.object(player_images, "load_manual_overrides", return_value={}), \
                     patch.object(sync_player_images.fetch_data, "fetch_official_ranking", return_value=ranking), \
                     patch.object(sync_player_images, "_find_wikidata_item", return_value=(None, "sem P18")):
