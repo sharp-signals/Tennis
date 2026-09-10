@@ -4188,7 +4188,23 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 21349
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": "b48f5122b30fc508c39d2b9c98df52798fab8e19aec5156c2bf8e3682c166ad8",
+        "closing_odd": 1.59,
+        "clv_pct": 1.7922,
+        "clv_price_pct": 3.1447,
+        "clv_probability_pp": 1.7922,
+        "entry_market_observation_id": "8c059a01198b75f7ae3700b87dc5bf15223bcf7b25579de7dff64b8e29f5ad1c",
+        "entry_market_probability": 0.58056266,
+        "last_valid_prestart_market_probability": 0.59848485,
+        "market_memory_error": null,
+        "market_memory_status": "AVAILABLE",
+        "match_result": "5-7 3-6 7-5 6-3 7-6(6)",
+        "pnl_units": 0.64,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-10T17:35:09+00:00",
+        "winner_id": 29939
+      }
     },
     {
       "key": "wta:866:moneyline:a:na",
@@ -4338,7 +4354,23 @@
         "tournament": "U.S. Open - New York",
         "tournament_id": 21349
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": "fb31ad32645400d5c8485048e1de3090467d1e7f4d9f895e8e45f0c205cb5234",
+        "closing_odd": 5.25,
+        "clv_pct": -40.9128,
+        "clv_price_pct": -69.3333,
+        "clv_probability_pp": -40.9128,
+        "entry_market_observation_id": "7eda627f46f4106ff9d576d48d7b0f70b626831c5f2acda1ef3dbd1a4f7e2843",
+        "entry_market_probability": 0.59137056,
+        "last_valid_prestart_market_probability": 0.18224299,
+        "market_memory_error": null,
+        "market_memory_status": "AVAILABLE",
+        "match_result": "5-7 3-6 7-5 6-3 7-6(6)",
+        "pnl_units": 0.61,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-10T17:35:09+00:00",
+        "winner_id": 29939
+      }
     },
     {
       "key": "wta:864:moneyline:a:na",
@@ -4489,8 +4521,166 @@
         "tournament_id": 21349
       },
       "settlement": null
+    },
+    {
+      "key": "atp:1263:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-10T17:34:52+00:00",
+        "commence_time_utc": "2026-09-11T23:00:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "0f30f0ebcda3e5c78691ecac2cd1f5b4596dd1a3f7c1d0bed4ac9887e06bd441",
+        "event_key": "atp:1263",
+        "expected_edge_pct": 0.25,
+        "fair_odd": 1.297,
+        "fenzobot_index": 86,
+        "line": null,
+        "market": "Moneyline Ben Shelton",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Ben Shelton": 1.3,
+          "Frances Tiafoe": 3.53
+        },
+        "market_type": "Moneyline",
+        "match_id": 1263,
+        "odd": 1.3,
+        "odds_provenance": {
+          "bookmaker": "DraftKings",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-10T17:34:25+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3946176",
+          "event_id": "3946176",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 0.1682,
+            "median_devig_probability_a": 0.26999223602484473,
+            "minimum_operational_bookmakers": 2,
+            "policy_version": "market-quote-integrity-v1",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "provider_timestamp": "2026-09-10T13:24:32+00:00",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "players": {
+          "a": {
+            "id": 29939,
+            "name": "Frances Tiafoe"
+          },
+          "b": {
+            "id": 87562,
+            "name": "Ben Shelton"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "54e3500c656d187f97e5",
+        "selected_player": "Ben Shelton",
+        "selected_side": "b",
+        "sharp_estimate_pct": 77.12,
+        "snapshot_key": "atp:1263",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "U.S. Open - New York",
+        "tournament_id": 21349
+      },
+      "settlement": null
+    },
+    {
+      "key": "atp:1222:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-10T17:34:52+00:00",
+        "commence_time_utc": "2026-09-11T19:00:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "6d8d689280184926a1d3547fd44965185ec2f43bd15ef302d68858a3d51bdb0d",
+        "event_key": "atp:1222",
+        "expected_edge_pct": 0.49,
+        "fair_odd": 1.194,
+        "fenzobot_index": 100,
+        "line": null,
+        "market": "Moneyline Alexander Zverev",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Alexander Zverev": 1.2,
+          "Karen Khachanov": 4.58
+        },
+        "market_type": "Moneyline",
+        "match_id": 1222,
+        "odd": 1.2,
+        "odds_provenance": {
+          "bookmaker": "DraftKings",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-10T17:34:24+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3948969",
+          "event_id": "3948969",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 1.8511,
+            "median_devig_probability_a": 0.8016430093817306,
+            "minimum_operational_bookmakers": 2,
+            "policy_version": "market-quote-integrity-v1",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "provider_timestamp": "2026-09-10T14:20:08+00:00",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "players": {
+          "a": {
+            "id": 24008,
+            "name": "Alexander Zverev"
+          },
+          "b": {
+            "id": 25543,
+            "name": "Karen Khachanov"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "41a3d5f5727af8f1f4d7",
+        "selected_player": "Alexander Zverev",
+        "selected_side": "a",
+        "sharp_estimate_pct": 83.75,
+        "snapshot_key": "atp:1222",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "U.S. Open - New York",
+        "tournament_id": 21349
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-09T23:05:56+00:00"
+  "updated_at_utc": "2026-09-10T17:35:09+00:00"
 }

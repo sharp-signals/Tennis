@@ -9,16 +9,16 @@
   },
   "evaluation": {
     "market_only": {
-      "accuracy_pct": 76.92,
-      "brier_score": 0.164181,
-      "log_loss": 0.508884,
-      "sample_size": 13
+      "accuracy_pct": 68.75,
+      "brier_score": 0.217385,
+      "log_loss": 0.628454,
+      "sample_size": 16
     },
     "market_plus_sharp": {
-      "accuracy_pct": 70.87,
-      "brier_score": 0.186842,
-      "log_loss": 0.550037,
-      "sample_size": 103
+      "accuracy_pct": 69.81,
+      "brier_score": 0.194967,
+      "log_loss": 0.569372,
+      "sample_size": 106
     }
   },
   "evaluation_by_cohort": {},
@@ -73,16 +73,16 @@
     },
     "market-residual-v0.3:f46ec3e2aa6f92a9": {
       "market_only": {
-        "accuracy_pct": 76.92,
-        "brier_score": 0.164181,
-        "log_loss": 0.508884,
-        "sample_size": 13
+        "accuracy_pct": 68.75,
+        "brier_score": 0.217385,
+        "log_loss": 0.628454,
+        "sample_size": 16
       },
       "market_plus_sharp": {
-        "accuracy_pct": 78.57,
-        "brier_score": 0.163338,
-        "log_loss": 0.496375,
-        "sample_size": 70
+        "accuracy_pct": 76.71,
+        "brier_score": 0.176102,
+        "log_loss": 0.526655,
+        "sample_size": 73
       },
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3"
@@ -380,7 +380,18 @@
       "market_plus_sharp_probabilities": null,
       "match_id": 1263,
       "outcome_side": "b",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "0f30f0ebcda3e5c78691ecac2cd1f5b4596dd1a3f7c1d0bed4ac9887e06bd441",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "atp:1263:moneyline:b:na",
+          "selected_side": "b"
+        }
+      ],
       "players": {
         "a": {
           "id": 31392,
@@ -8803,7 +8814,18 @@
       "market_plus_sharp_probabilities": null,
       "match_id": 1222,
       "outcome_side": "a",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "6d8d689280184926a1d3547fd44965185ec2f43bd15ef302d68858a3d51bdb0d",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "atp:1222:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 24249,
@@ -14124,7 +14146,7 @@
       },
       "match_format": "BO5",
       "match_id": 1426,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -14217,7 +14239,7 @@
       },
       "match_format": "BO5",
       "match_id": 1425,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -14308,7 +14330,7 @@
       },
       "match_format": "BO5",
       "match_id": 1264,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [
         {
           "closing_market_observation_id": "fb31ad32645400d5c8485048e1de3090467d1e7f4d9f895e8e45f0c205cb5234",
@@ -14398,7 +14420,7 @@
       "market_plus_sharp_probabilities": null,
       "match_format": "BO5",
       "match_id": 1429,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -14498,9 +14520,9 @@
       "tour": "wta"
     }
   ],
-  "generated_at_utc": "2026-09-10T15:27:58+00:00",
+  "generated_at_utc": "2026-09-10T17:35:12+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 1131,
+  "observation_count": 1135,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
