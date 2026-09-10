@@ -144,6 +144,24 @@ class PlayerImageRegistryTests(unittest.TestCase):
 
             self.assertIsNone(actual)
 
+    def test_record_review_preserves_curated_unavailable_reason(self):
+        with tempfile.TemporaryDirectory() as directory:
+            review_path = Path(directory) / "player_images_review.json"
+            review_path.write_text(json.dumps({"players": [{
+                "tour": "atp", "player_id": 88766, "name": "Alexander Blockx",
+                "rank": 34, "reason": "LICENSED_SOURCE_UNAVAILABLE",
+            }]}), encoding="utf-8")
+
+            with patch.object(sync_player_images, "REVIEW_PATH", review_path):
+                sync_player_images._record_review({
+                    "tour": "atp", "player_id": 88766, "name": "Alexander Blockx",
+                    "rank": 34, "reason": "jogador sem fotografia P18 no Wikidata",
+                })
+
+            review = json.loads(review_path.read_text(encoding="utf-8"))["players"]
+            blockx = next(item for item in review if item.get("player_id") == 88766)
+            self.assertEqual(blockx["reason"], "LICENSED_SOURCE_UNAVAILABLE")
+
     def test_sync_keeps_player_in_review_when_no_valid_override_or_commons_image_exists(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -166,7 +184,8 @@ class PlayerImageRegistryTests(unittest.TestCase):
                 sync_player_images.sync(limit=1, tours=("atp",), delay=0)
 
             review = json.loads(review_path.read_text(encoding="utf-8"))["players"]
-            self.assertTrue(any(item.get("player_id") == 88766 for item in review))
+            blockx = next(item for item in review if item.get("player_id") == 88766)
+            self.assertEqual(blockx["reason"], "LICENSED_SOURCE_UNAVAILABLE")
 
     def test_missing_image_is_downloaded_and_added_to_registry(self):
         with tempfile.TemporaryDirectory() as directory:
