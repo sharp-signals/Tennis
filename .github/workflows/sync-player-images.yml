@@ -39,13 +39,12 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          # O checkpoint inflight é transitório e é removido por
-          # persist_rapidapi_usage() no fim de uma execução bem-sucedida.
-          # Tal como nos restantes workflows, a ausência desse path não pode
-          # fazer falhar a publicação do acervo.
+          # Este passo só corre depois de sync_player_images.py terminar com
+          # sucesso. Nessa saída, persist_rapidapi_usage() já removeu o
+          # checkpoint transitório data/rapidapi_usage_inflight.json; por isso
+          # publicamos apenas os artefactos persistentes da execução.
           git add data/player_images.json data/player_images_review.json \
-            data/rapidapi_usage_log.json data/rapidapi_usage_inflight.json \
-            docs/assets/players/ 2>/dev/null || true
+            data/rapidapi_usage_log.json docs/assets/players/
           # Só tentar commit quando há alterações efetivamente staged.
           if ! git diff --cached --quiet; then
             git commit -m "chore: sincronizar fotografias top 200 ATP/WTA [skip ci]"
