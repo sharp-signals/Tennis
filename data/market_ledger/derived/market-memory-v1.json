@@ -1,6 +1,12 @@
 {
   "change_id": "CHANGE-2026-09-03-024",
   "claims": "EXPERIMENTAL_NOT_VALIDATED",
+  "data_quality_exclusions": {
+    "by_reason": {
+      "MARKET_BOUNDARY_SENTINEL": 1
+    },
+    "count": 1
+  },
   "evaluation": {
     "market_only": {
       "accuracy_pct": 76.92,
@@ -9935,6 +9941,11 @@
         "entry_market": "UNAVAILABLE",
         "market_plus_sharp": "AVAILABLE"
       },
+      "data_quality": {
+        "excluded_from_validation": true,
+        "reason_code": "MARKET_BOUNDARY_SENTINEL",
+        "status": "DATA_QUALITY_INVALID"
+      },
       "entry_market_observation_id": null,
       "entry_market_probabilities": null,
       "event_key": "atp:1241",
@@ -14487,7 +14498,7 @@
       "tour": "wta"
     }
   ],
-  "generated_at_utc": "2026-09-10T15:02:25+00:00",
+  "generated_at_utc": "2026-09-10T15:27:58+00:00",
   "mode": "SHADOW_ANALYTICS",
   "observation_count": 1131,
   "schema_version": 1,

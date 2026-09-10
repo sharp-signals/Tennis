@@ -332,13 +332,22 @@ def _paper_technical(
     paper_status: Mapping[str, Any],
     paper_path: Path,
     manual_path: Path,
+    exclusions_path: Path,
 ) -> dict[str, Any]:
     if paper_status.get("status") != "AVAILABLE":
-        return {"status": "UNAVAILABLE", **_copy_summary({}), "by_market": {}}
+        return {
+            "status": "UNAVAILABLE", **_copy_summary({}), "by_market": {},
+            "excluded_integrity_entries": None, "excluded_data_quality_entries": None,
+            "data_quality_exclusions_by_reason": {},
+        }
     try:
-        history = paper_trading.compute_history(paper_path, manual_path)
+        history = paper_trading.compute_history(paper_path, manual_path, exclusions_path)
     except Exception as exc:
-        return {"status": "UNAVAILABLE", "error": type(exc).__name__, **_copy_summary({}), "by_market": {}}
+        return {
+            "status": "UNAVAILABLE", "error": type(exc).__name__, **_copy_summary({}), "by_market": {},
+            "excluded_integrity_entries": None, "excluded_data_quality_entries": None,
+            "data_quality_exclusions_by_reason": {},
+        }
     paper = _mapping(history.get("PAPER"))
     return {
         "status": "AVAILABLE",
@@ -346,6 +355,12 @@ def _paper_technical(
         "by_market": {
             str(name): (_copy_summary(value) if isinstance(value, Mapping) else None)
             for name, value in _mapping(paper.get("by_market")).items()
+        },
+        "excluded_integrity_entries": _finite_number(history.get("excluded_integrity_entries")),
+        "excluded_data_quality_entries": _finite_number(history.get("excluded_data_quality_entries")),
+        "data_quality_exclusions_by_reason": {
+            str(reason): _finite_number(count)
+            for reason, count in _mapping(history.get("data_quality_exclusions_by_reason")).items()
         },
     }
 
@@ -440,6 +455,15 @@ def _green_strong(document: Mapping[str, Any] | None) -> dict[str, Any]:
             "average_probability_pp": _finite_number(movement.get("average_probability_pp")),
             "median_probability_pp": _finite_number(movement.get("median_probability_pp")),
             "positive_direction_pct": _finite_number(movement.get("positive_direction_pct")),
+        },
+        "data_quality_exclusions": {
+            "count": _finite_number(_mapping(document.get("data_quality_exclusions")).get("count")),
+            "by_reason": {
+                str(reason): _finite_number(count)
+                for reason, count in _mapping(
+                    _mapping(document.get("data_quality_exclusions")).get("by_reason")
+                ).items()
+            },
         },
     }
 
@@ -609,7 +633,12 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
     ) if snapshots_status["status"] == "AVAILABLE" else None
     colors = Counter(str(report.get("color")) for report in reports or [])
     green_panel = _green_strong(green_mapping if green_status["status"] == "AVAILABLE" else None)
-    technical = _paper_technical(paper_status, root / "data/paper_trades.json", root / "data/manual_paper_22bet.json")
+    technical = _paper_technical(
+        paper_status,
+        root / "data/paper_trades.json",
+        root / "data/manual_paper_22bet.json",
+        root / "data/validation/market-integrity-exclusions-v1.json",
+    )
     manual = _paper_22bet(_mapping(manual_doc) if manual_status["status"] == "AVAILABLE" else None)
     market = _market_memory(
         _mapping(memory_doc) if memory_status["status"] == "AVAILABLE" else None,
@@ -617,7 +646,10 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
         generated_at,
     )
     try:
-        accuracy = calibration_store.compute_system_accuracy(root / "data/calibration_snapshots.json")
+        accuracy = calibration_store.compute_system_accuracy(
+            root / "data/calibration_snapshots.json",
+            root / "data/validation/market-integrity-exclusions-v1.json",
+        )
     except Exception:
         accuracy = None
     report_history = {

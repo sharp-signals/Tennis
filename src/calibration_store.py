@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from . import market_integrity
 from .green_strong_validation import COHORT_NAME, classify_snapshot
 
 
@@ -94,6 +95,7 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
             "from_cache": payload.get("odds_from_cache"),
             "cache_age_seconds": payload.get("odds_cache_age_seconds"),
             "raw_payload_sha256": payload.get("odds_raw_payload_sha256"),
+            "market_integrity": copy.deepcopy(payload.get("odds_market_integrity")),
         },
         # Congelado antes do encontro, juntamente com a configuracao/hash que
         # o produziu. Uma repeticao nunca substitui esta primeira estimativa.
@@ -259,7 +261,10 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
         return settled
 
 
-def compute_system_accuracy(path: Path = DEFAULT_PATH) -> dict[str, Any] | None:
+def compute_system_accuracy(
+    path: Path = DEFAULT_PATH,
+    exclusions_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
+) -> dict[str, Any] | None:
     """
     NOVO (22/08/2026, a pedido): histórico de acerto do PRÓPRIO sistema, a
     partir dos snapshots já resolvidos. Não é opinião — é o registo real do
@@ -273,7 +278,11 @@ def compute_system_accuracy(path: Path = DEFAULT_PATH) -> dict[str, Any] | None:
     disso a taxa é ruído). None se não houver dados de todo.
     """
     document = _read(path)
-    snaps = [s for s in document.get("snapshots", []) if s.get("outcome")]
+    excluded = market_integrity.excluded_snapshot_keys(exclusions_path)
+    snaps = [
+        s for s in document.get("snapshots", [])
+        if s.get("outcome") and str(s.get("key") or "") not in excluded
+    ]
     if not snaps:
         return None
 
@@ -338,7 +347,8 @@ def _wilson_interval(wins: int, total: int, z: float = 1.96) -> tuple[float, flo
 
 def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
                              path: Path = DEFAULT_PATH, min_samples: int = 30,
-                             bucket_width: int = 10) -> dict[str, Any] | None:
+                             bucket_width: int = 10, *,
+                             exclusions_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH) -> dict[str, Any] | None:
     """Estima uma faixa de odds, preferindo resultados já liquidados.
 
     A calibração usa o lado com maior índice em cada encontro, uma observação
@@ -364,7 +374,10 @@ def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
         bucket_low, bucket_high = 90, 100
 
     observations: list[bool] = []
+    excluded = market_integrity.excluded_snapshot_keys(exclusions_path)
     for snapshot in _read(path)["snapshots"]:
+        if str(snapshot.get("key") or "") in excluded:
+            continue
         outcome = snapshot.get("outcome") or {}
         metrics = snapshot.get("metrics") or {}
         historical = metrics.get("divergencia") or {}

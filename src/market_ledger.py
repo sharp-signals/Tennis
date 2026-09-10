@@ -184,11 +184,19 @@ def build_observation(
         provenance.get("freshness_status")
         or ("OBSERVED_AT_CAPTURE" if provenance.get("capture_kind") else "UNKNOWN")
     ).upper()
+    integrity_status = str(provenance.get("market_integrity_status") or "NOT_EVALUATED").upper()
+    integrity_reason_codes = [
+        str(reason)
+        for reason in (provenance.get("market_integrity_reason_codes") or [])
+        if reason
+    ]
+    integrity_gate_passed = provenance.get("operational_pricing_eligible") is not False
     clv_eligible = (
         prestart_status == "PRESTART"
         and bookmaker_status == "IDENTIFIED"
         and mapping_status == "VERIFIED"
         and freshness_status not in {"STALE", "UNKNOWN", "UNAVAILABLE"}
+        and integrity_gate_passed
     )
     ineligible_reasons = []
     if prestart_status != "PRESTART":
@@ -199,6 +207,8 @@ def build_observation(
         ineligible_reasons.append("IDENTITY_MAPPING_UNVERIFIED")
     if freshness_status in {"STALE", "UNKNOWN", "UNAVAILABLE"}:
         ineligible_reasons.append(f"FRESHNESS_{freshness_status}")
+    if not integrity_gate_passed:
+        ineligible_reasons.extend(integrity_reason_codes or [f"MARKET_INTEGRITY_{integrity_status}"])
 
     observation = {
         "schema_version": SCHEMA_VERSION,
@@ -254,6 +264,11 @@ def build_observation(
             },
         ],
         "overround": overround,
+        "market_integrity": {
+            "status": integrity_status,
+            "reason_codes": integrity_reason_codes,
+            "operational_pricing_eligible": integrity_gate_passed,
+        },
         "eligibility": {
             "market_memory": clv_eligible,
             "clv": clv_eligible,
@@ -336,11 +351,13 @@ def record_market_batch_best_effort(
     root: Path = DEFAULT_ROOT,
 ) -> dict[str, Any]:
     """Persiste todas as quotes ja obtidas e nunca propaga falhas ao pipeline."""
-    if not odds or not provenance:
+    if not provenance:
         return {"status": "UNAVAILABLE", "entry_observation_id": None, "observation_ids": [], "errors": []}
     raw_quotes = provenance.get("market_quotes")
+    if not odds and not (isinstance(raw_quotes, list) and raw_quotes):
+        return {"status": "UNAVAILABLE", "entry_observation_id": None, "observation_ids": [], "errors": []}
     quotes = list(raw_quotes) if isinstance(raw_quotes, list) and raw_quotes else [{
-        "odds": dict(odds),
+        "odds": dict(odds or {}),
         "bookmaker": provenance.get("bookmaker"),
         "provider_timestamp": provenance.get("provider_timestamp"),
         "raw_payload_sha256": provenance.get("raw_payload_sha256"),
@@ -351,7 +368,7 @@ def record_market_batch_best_effort(
     errors: list[str] = []
     selected_id = None
     selected_eligible = False
-    selected_bookmaker = str(provenance.get("bookmaker") or "")
+    selected_bookmaker = str(provenance.get("bookmaker") or "") if odds else ""
     for quote in quotes:
         if not isinstance(quote, Mapping):
             continue
@@ -364,6 +381,8 @@ def record_market_batch_best_effort(
             "bookmaker", "provider_timestamp", "provider_timestamp_status",
             "freshness_status", "raw_payload_sha256", "provider_side_a", "provider_side_b",
             "identity_mapping_status",
+            "market_integrity_status", "market_integrity_reason_codes",
+            "operational_pricing_eligible",
         ):
             if key in quote:
                 quote_provenance[key] = quote.get(key)
@@ -374,12 +393,12 @@ def record_market_batch_best_effort(
             append_observation(observation, root=root)
             observation_id = observation["observation_id"]
             ids.append(observation_id)
-            if str(quote_provenance.get("bookmaker") or "") == selected_bookmaker and dict(quote_odds) == dict(odds):
+            if odds and str(quote_provenance.get("bookmaker") or "") == selected_bookmaker and dict(quote_odds) == dict(odds):
                 selected_id = observation_id
                 selected_eligible = bool((observation.get("eligibility") or {}).get("market_memory"))
         except Exception as exc:  # best effort por contrato; erro fica observavel
             errors.append(f"{type(exc).__name__}:{exc}")
-    if selected_id is None:
+    if odds and selected_id is None:
         errors.append("selected_entry_observation_not_persisted")
     return {
         "status": "RECORDED" if ids and not errors else "PARTIAL" if ids else "INELIGIBLE",

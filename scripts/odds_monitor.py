@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from src import fetch_data, market_ledger, paper_trading
+from src import fetch_data, market_integrity, market_ledger, paper_trading
 
 PAPER_PATH = Path(os.environ.get("ODDS_MONITOR_PAPER_PATH", "data/paper_trades.json"))
 OUTPUT_DIR = Path(os.environ.get("ODDS_MONITOR_OUTPUT_DIR", "data/odds_monitor"))
@@ -189,6 +189,29 @@ def _request(url: str, *, params: dict[str, Any] | None = None) -> dict[str, Any
 
 
 def _summarize_quotes(quotes: list[dict[str, Any]]) -> dict[str, Any]:
+    gate = market_integrity.evaluate_moneyline_market([
+        {
+            "bookmaker": item.get("bookmaker"),
+            "odd_a": item.get("od1"),
+            "odd_b": item.get("od2"),
+            "provider_timestamp": item.get("provider_timestamp"),
+        }
+        for item in quotes
+    ])
+    assessed = {
+        str(item.get("bookmaker") or ""): item
+        for item in [*(gate.get("rejected_candidates") or []), *(gate.get("valid_candidates") or [])]
+    }
+    for quote in quotes:
+        candidate = assessed.get(str(quote.get("bookmaker") or ""), {})
+        quote["market_integrity_status"] = candidate.get("integrity_status") or (
+            "REJECTED" if candidate.get("reason_code") else "UNAVAILABLE"
+        )
+        quote["market_integrity_reason_codes"] = (
+            [candidate["reason_code"]] if candidate.get("reason_code") else []
+        )
+        quote["operational_pricing_eligible"] = bool(candidate.get("operational_pricing_eligible"))
+        quote["devig_probability_a"] = candidate.get("devig_probability_a")
     fresh = sum(1 for item in quotes if item.get("freshness") == "FRESH")
     stale = sum(1 for item in quotes if item.get("freshness") == "STALE")
     unknown = sum(1 for item in quotes if item.get("freshness") == "UNKNOWN")
@@ -200,6 +223,14 @@ def _summarize_quotes(quotes: list[dict[str, Any]]) -> dict[str, Any]:
         "stale_count": stale,
         "unknown_count": unknown,
         "freshest_quote_age_seconds": min(ages) if ages else None,
+        "market_integrity": {
+            key: gate.get(key)
+            for key in (
+                "policy_version", "status", "reason_code", "candidate_count",
+                "valid_candidate_count", "coherent_bookmaker_count",
+                "minimum_operational_bookmakers", "median_devig_probability_a", "dispersion_pp",
+            )
+        },
         "quotes": quotes,
     }
 
@@ -442,12 +473,15 @@ def _mapped_provider_odds(
     actual = {fetch_data._normalize_name(participant1), fetch_data._normalize_name(participant2)}
     if expected != actual:
         return None, "UNVERIFIED"
-    try:
-        od1, od2 = float(quote.get("od1")), float(quote.get("od2"))
-    except (TypeError, ValueError):
+    validated = market_integrity.validate_moneyline_candidate({
+        "bookmaker": quote.get("bookmaker"),
+        "odd_a": quote.get("od1"),
+        "odd_b": quote.get("od2"),
+        "provider_timestamp": quote.get("provider_timestamp"),
+    })
+    if not validated.get("valid"):
         return None, "VERIFIED"
-    if od1 <= 1 or od2 <= 1:
-        return None, "VERIFIED"
+    od1, od2 = float(validated["odd_a"]), float(validated["odd_b"])
     if fetch_data._normalize_name(participant1) == fetch_data._normalize_name(player_a):
         return {player_a: od1, player_b: od2}, "VERIFIED"
     return {player_a: od2, player_b: od1}, "VERIFIED"
@@ -528,6 +562,9 @@ def _persist_market_ledger_best_effort(
                     "provider_side_b": "od2" if fetch_data._normalize_name(resolution.get("participant1")) == fetch_data._normalize_name((match.get("player1") or {}).get("name")) else "od1",
                     "raw_payload_sha256": raw_hash,
                     "github_run_id": os.environ.get("ODDS_MONITOR_GITHUB_RUN_ID"),
+                    "market_integrity_status": quote.get("market_integrity_status"),
+                    "market_integrity_reason_codes": quote.get("market_integrity_reason_codes") or [],
+                    "operational_pricing_eligible": bool(quote.get("operational_pricing_eligible")),
                 },
                 role="SHADOW_MONITOR",
                 pipeline="ODDS_MONITOR",

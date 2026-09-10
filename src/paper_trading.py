@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_ledger
+from . import market_integrity, market_ledger
 
 
 SCHEMA_VERSION = 1
@@ -60,8 +60,7 @@ def read_manual_22bet_history(path: Path = DEFAULT_MANUAL_22BET_PATH) -> dict[st
     return copy.deepcopy(dict(document))
 
 
-def excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
-    """Chaves anuladas por incidente de integridade, sem reescrever PAPER."""
+def _legacy_excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
@@ -70,6 +69,14 @@ def excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
     if not isinstance(records, list):
         return set()
     return {str(item.get("paper_key")) for item in records if isinstance(item, Mapping) and item.get("paper_key")}
+
+
+def excluded_keys(
+    path: Path = DEFAULT_EXCLUSIONS_PATH,
+    market_integrity_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
+) -> set[str]:
+    """Chaves em quarentena aditiva, sem reescrever a carteira PAPER."""
+    return _legacy_excluded_keys(path) | market_integrity.excluded_paper_keys(market_integrity_path)
 
 
 def _write(path: Path, document: Mapping[str, Any]) -> None:
@@ -148,6 +155,7 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "bookmaker": payload.get("odds_bookmaker"),
                 "from_cache": payload.get("odds_from_cache"),
                 "cache_age_seconds": payload.get("odds_cache_age_seconds"),
+                "market_integrity": copy.deepcopy(payload.get("odds_market_integrity")),
             },
         }
         entries.append({
@@ -354,13 +362,22 @@ def _summary(entries: list[Mapping[str, Any]]) -> dict[str, Any]:
 def compute_history(
     path: Path = DEFAULT_PATH,
     manual_22bet_path: Path = DEFAULT_MANUAL_22BET_PATH,
+    market_integrity_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
 ) -> dict[str, Any]:
-    exclusions = excluded_keys()
+    data_quality_records = market_integrity.read_exclusions(market_integrity_path)
+    data_quality_keys = {
+        str(item["paper_key"]) for item in data_quality_records if item.get("paper_key")
+    }
+    exclusions = _legacy_excluded_keys() | data_quality_keys
     entries = [entry for entry in _read(path)["entries"] if str(entry.get("key")) not in exclusions]
     by_market = {}
     for kind in ("Moneyline", "Handicap"):
         subset = [entry for entry in entries if str((entry.get("pregame") or {}).get("market_type")) == kind]
         by_market[kind] = _summary(subset) if subset else None
+    reasons: dict[str, int] = {}
+    for item in data_quality_records:
+        reason = str(item.get("reason_code") or "UNSPECIFIED")
+        reasons[reason] = reasons.get(reason, 0) + 1
     return {
         "PAPER": {**_summary(entries), "by_market": by_market, "edge_buckets": None},
         "MANUAL_22BET": read_manual_22bet_history(manual_22bet_path),
@@ -368,4 +385,6 @@ def compute_history(
         "REAL": None,
         "history_version": "paper-history-v2-market-memory",
         "excluded_integrity_entries": len(exclusions),
+        "excluded_data_quality_entries": len(data_quality_keys),
+        "data_quality_exclusions_by_reason": dict(sorted(reasons.items())),
     }

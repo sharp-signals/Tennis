@@ -49,6 +49,7 @@ import pandas as pd
 import requests
 
 from .cache_store import JsonCacheStore
+from . import market_integrity
 from .market_ledger import payload_sha256
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
@@ -1434,7 +1435,8 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         provenance = dict(cached["provenance"])
         provenance["from_cache"] = True
         provenance["cache_age_seconds"] = _odds_cache_age_seconds(provenance.get("captured_at_utc"))
-        return dict(cached["odds"]), provenance
+        cached_odds = cached.get("odds")
+        return dict(cached_odds) if isinstance(cached_odds, dict) else None, provenance
 
     url = f"{RAPIDAPI_EXTEND_BASE}/event/recent-odds/get/{event_id}"
     try:
@@ -1455,69 +1457,101 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "unavailable_reason": "recent_odds_request_failed",
         }
 
+    # Normaliza todos os candidatos para a ordem local A/B antes do gate.
+    # Assim, a mediana e as probabilidades de-vig auditadas referem-se sempre
+    # ao ``player_a`` do snapshot, mesmo quando o provider lista esse jogador
+    # como participant2.
+    if _normalize_name(event.get("participant1")) == _normalize_name(player_a):
+        participant1_is_a = True
+    elif _normalize_name(event.get("participant1")) == _normalize_name(player_b):
+        participant1_is_a = False
+    else:  # defesa adicional: não há mapeamento seguro, logo não há pricing
+        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
+        return None, None
+
     candidates = []
     for bookmaker, quote_data in market.items():
         if not isinstance(quote_data, dict):
             continue
         try:
-            odd_a, odd_b = float(quote_data.get("od1")), float(quote_data.get("od2"))
-        except (TypeError, ValueError):
-            continue
-        if odd_a <= 1 or odd_b <= 1:
-            continue
-        try:
             provider_at = datetime.fromtimestamp(float(quote_data.get("addTime")), tz=timezone.utc)
         except (TypeError, ValueError, OverflowError, OSError):
             provider_at = None
-        overround = (1 / odd_a) + (1 / odd_b) - 1
-        candidates.append((overround, str(bookmaker), odd_a, odd_b, provider_at))
+        candidates.append({
+            "bookmaker": str(bookmaker),
+            "odd_a": quote_data.get("od1") if participant1_is_a else quote_data.get("od2"),
+            "odd_b": quote_data.get("od2") if participant1_is_a else quote_data.get("od1"),
+            "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
+        })
 
-    if not candidates:
-        print(f"[aviso] sem par Moneyline recente e identificável para {player_a} vs {player_b}.")
-        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, {
-            "source": "RapidAPI Tennis API / recent-odds",
-            "endpoint": url,
-            "event_id": event_id,
-            "bookmaker": None,
-            "from_cache": False,
-            "availability_status": "UNAVAILABLE",
-            "unavailable_reason": "recent_odds_missing_valid_two_way_moneyline",
-        }
-
-    _overround, bookmaker, odd_a, odd_b, provider_at = min(candidates, key=lambda item: (item[0], item[1]))
-    # ``od1``/``od2`` pertencem explicitamente à ordem confirmada pelo
-    # event/get; nunca à ordem arbitrária do fixture do nosso pipeline.
-    if _normalize_name(event.get("participant1")) == _normalize_name(player_a):
-        odds = {player_a: odd_a, player_b: odd_b}
-        participant1_is_a = True
-    elif _normalize_name(event.get("participant1")) == _normalize_name(player_b):
-        odds = {player_a: odd_b, player_b: odd_a}
-        participant1_is_a = False
-    else:  # defesa adicional: não há mapeamento seguro, logo não há pricing
-        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, None
+    gate = market_integrity.evaluate_moneyline_market(candidates)
+    selected = gate.get("selected")
     captured_at_utc = _odds_capture_timestamp()
     raw_hash = payload_sha256(response_payload)
 
     def _mapped_quote(item):
-        _quote_overround, quote_bookmaker, quote_od1, quote_od2, quote_provider_at = item
-        quote_odds = (
-            {player_a: quote_od1, player_b: quote_od2}
-            if participant1_is_a else
-            {player_a: quote_od2, player_b: quote_od1}
-        )
+        quote_odds = {player_a: item["odd_a"], player_b: item["odd_b"]}
         return {
-            "bookmaker": quote_bookmaker,
+            "bookmaker": item.get("bookmaker"),
             "odds": quote_odds,
-            "provider_timestamp": quote_provider_at.isoformat(timespec="seconds") if quote_provider_at else None,
+            "provider_timestamp": item.get("provider_timestamp"),
             "provider_timestamp_status": "unreliable_for_freshness",
             "freshness_status": "OBSERVED_AT_CAPTURE",
             "identity_mapping_status": "VERIFIED",
             "provider_side_a": "od1" if participant1_is_a else "od2",
             "provider_side_b": "od2" if participant1_is_a else "od1",
             "raw_payload_sha256": raw_hash,
+            "market_integrity_status": item.get("integrity_status"),
+            "market_integrity_reason_codes": [item["reason_code"]] if item.get("reason_code") else [],
+            "operational_pricing_eligible": bool(item.get("operational_pricing_eligible")),
         }
+
+    market_quotes = [_mapped_quote(item) for item in gate.get("valid_candidates") or []]
+    integrity_summary = {
+        key: gate.get(key)
+        for key in (
+            "policy_version", "status", "reason_code", "candidate_count",
+            "valid_candidate_count", "coherent_bookmaker_count",
+            "minimum_operational_bookmakers", "median_devig_probability_a", "dispersion_pp",
+        )
+    }
+    integrity_summary["rejected_candidates"] = [
+        {key: item.get(key) for key in ("bookmaker", "odd_a", "odd_b", "reason_code")}
+        for item in gate.get("rejected_candidates") or []
+    ]
+
+    if not isinstance(selected, dict):
+        reason = str(gate.get("reason_code") or market_integrity.NO_VALID_MONEYLINE_CANDIDATE)
+        print(
+            f"[aviso] Moneyline operacional indisponível para {player_a} vs {player_b}: "
+            f"{reason}."
+        )
+        provenance = {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "captured_at_utc": captured_at_utc,
+            "capture_kind": "rapidapi_response_observed_at_capture",
+            "provider_timestamp": None,
+            "provider_timestamp_status": "unreliable_for_freshness",
+            "bookmaker": None,
+            "from_cache": False,
+            "cache_age_seconds": 0,
+            "freshness_status": "OBSERVED_AT_CAPTURE",
+            "identity_mapping_status": "VERIFIED",
+            "raw_payload_sha256": raw_hash,
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": reason,
+            "market_integrity": integrity_summary,
+            "market_quotes": market_quotes,
+        }
+        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": None, "provenance": provenance}
+        return None, provenance
+
+    bookmaker = str(selected["bookmaker"])
+    odd_a, odd_b = float(selected["odd_a"]), float(selected["odd_b"])
+    provider_at = selected.get("provider_timestamp")
+    odds = {player_a: odd_a, player_b: odd_b}
 
     provenance = {
         "source": "RapidAPI Tennis API / recent-odds",
@@ -1525,7 +1559,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         "event_id": event_id,
         "captured_at_utc": captured_at_utc,
         "capture_kind": "rapidapi_response_observed_at_capture",
-        "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
+        "provider_timestamp": provider_at,
         "provider_timestamp_status": "unreliable_for_freshness",
         "bookmaker": bookmaker,
         "from_cache": False,
@@ -1535,7 +1569,10 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         "provider_side_a": "od1" if participant1_is_a else "od2",
         "provider_side_b": "od2" if participant1_is_a else "od1",
         "raw_payload_sha256": raw_hash,
-        "market_quotes": [_mapped_quote(item) for item in candidates],
+        "availability_status": "AVAILABLE",
+        "unavailable_reason": None,
+        "market_integrity": integrity_summary,
+        "market_quotes": market_quotes,
     }
     _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance}
     print(f"[odds] {player_a} vs {player_b} | RapidAPI recent-odds observado · {bookmaker} | {odds}")

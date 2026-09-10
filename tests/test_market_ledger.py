@@ -157,6 +157,30 @@ class MarketLedgerTests(unittest.TestCase):
         self.assertIsNone(result["entry_observation_id"])
         self.assertIn("disk full", " ".join(result["errors"]))
 
+    def test_single_bookmaker_is_persisted_without_operational_entry_link(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            provenance = self.provenance()
+            provenance.update({
+                "bookmaker": None,
+                "market_quotes": [{
+                    "bookmaker": "Book A",
+                    "odds": {"Alpha One": 1.8, "Beta Two": 2.1},
+                    "market_integrity_status": "OBSERVATION_ONLY",
+                    "market_integrity_reason_codes": ["INSUFFICIENT_BOOKMAKER_CONSENSUS"],
+                    "operational_pricing_eligible": False,
+                }],
+            })
+            result = market_ledger.record_market_batch_best_effort(
+                self.match(), None, provenance,
+                role="OPERATIONAL_PRICING", pipeline="PRELIVE", root=Path(tmp),
+            )
+            observations = market_ledger.read_observations(root=Path(tmp))
+        self.assertEqual(result["status"], "RECORDED")
+        self.assertIsNone(result["entry_observation_id"])
+        self.assertEqual(len(observations), 1)
+        self.assertFalse(observations[0]["eligibility"]["market_memory"])
+        self.assertIn("INSUFFICIENT_BOOKMAKER_CONSENSUS", observations[0]["eligibility"]["reasons"])
+
     def test_rotation_compresses_closed_days_and_preserves_records(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

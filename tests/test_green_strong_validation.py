@@ -188,6 +188,27 @@ class GreenStrongReportingTests(unittest.TestCase):
         self.assertEqual(report["metrics"]["sample_size"], 0)
         self.assertEqual(len(report["prospective_classifications"]), 1)
 
+    def test_data_quality_invalid_row_remains_auditable_but_not_in_metrics(self):
+        report = green_strong_validation.build_report(memory_report={
+            "events": [{
+                "snapshot_key": "atp:1241",
+                "cohort_memberships": {"GREEN_STRONG_V1": self._membership()},
+                "data_quality": {
+                    "status": "DATA_QUALITY_INVALID",
+                    "reason_code": "MARKET_BOUNDARY_SENTINEL",
+                    "excluded_from_validation": True,
+                },
+            }],
+            "data_quality_exclusions": {
+                "count": 1,
+                "by_reason": {"MARKET_BOUNDARY_SENTINEL": 1},
+            },
+        })
+        self.assertEqual(report["metrics"]["sample_size"], 0)
+        self.assertEqual(len(report["prospective_classifications"]), 1)
+        self.assertTrue(report["prospective_classifications"][0]["excluded_from_validation"])
+        self.assertEqual(report["data_quality_exclusions"]["count"], 1)
+
     def test_report_badge_only_for_eligible_snapshot(self):
         membership = self._membership()
         html = _mod_green_strong_candidate({"validation": {"cohorts": {"GREEN_STRONG_V1": membership}}})

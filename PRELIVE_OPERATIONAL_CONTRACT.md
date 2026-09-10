@@ -76,6 +76,15 @@ auditoria `CHANGE-2026-08-30-010` provou que pode permanecer antigo enquanto
 `od1`/`od2` continuam a acompanhar o mercado. RapidAPI `upcoming` nunca pode
 preencher pricing, edge ou PAPER.
 
+Desde `CHANGE-2026-09-10-036`, cada candidato passa também pelo Market Quote
+Integrity Gate. Pares incompletos, não finitos, iguais/inferiores a 1.0 e o
+padrão-limite `min <= 1.01` com `max >= 10.0` são rejeitados. O preço
+operacional exige pelo menos dois bookmakers coerentes: com três ou mais,
+candidatos a mais de 15 p.p. da mediana de-vig são rejeitados; dispersão final
+superior a 15 p.p. bloqueia o mercado. A seleção usa proximidade à mediana,
+depois overround e nome. Um bookmaker isolado pode ser preservado como
+observação, mas não alimenta pricing, edge ou PAPER.
+
 A The Odds API fornece apenas uma comparação independente de mercado quando
 estiver explicitamente ativada; desde o `CHANGE-2026-09-03-024` está `OFF` por
 defeito. Não substitui, não faz média e não bloqueia o preço

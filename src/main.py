@@ -1496,6 +1496,7 @@ def _build_match_payload(match: dict) -> dict:
         "odds_raw_payload_sha256": odds_provenance.get("raw_payload_sha256") if odds else None,
         "odds_availability_status": odds_provenance.get("availability_status") or ("AVAILABLE" if odds else "UNAVAILABLE"),
         "odds_unavailable_reason": odds_provenance.get("unavailable_reason") if not odds else None,
+        "odds_market_integrity": odds_provenance.get("market_integrity"),
         "odds_movement": odds_movement,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,

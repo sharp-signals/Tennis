@@ -107,6 +107,30 @@ class OddsMonitorTests(unittest.TestCase):
         self.assertEqual(quote["quote_age_seconds"], 300)
         self.assertEqual(annotated["quote_quality"]["fresh_count"], 1)
 
+    def test_recent_odds_exposes_boundary_sentinel_reason(self):
+        captured = datetime(2026, 9, 10, 0, 5, tzinfo=timezone.utc)
+        result = {"payload": {"result": {"Full Time Result": {
+            "Bet365": {"addTime": None, "od1": "1.001", "od2": "101"},
+        }}}}
+        annotated = odds_monitor._annotate_recent_odds(result, captured_at=captured)
+        quote = annotated["quote_quality"]["quotes"][0]
+        self.assertEqual(quote["market_integrity_reason_codes"], ["MARKET_BOUNDARY_SENTINEL"])
+        self.assertFalse(quote["operational_pricing_eligible"])
+        self.assertEqual(
+            annotated["quote_quality"]["market_integrity"]["reason_code"],
+            "MARKET_BOUNDARY_SENTINEL",
+        )
+
+    def test_provider_mapping_rejects_boundary_sentinel(self):
+        match = {"player1": {"name": "Alpha"}, "player2": {"name": "Beta"}}
+        odds, status = odds_monitor._mapped_provider_odds(
+            match,
+            {"participant1": "Alpha", "participant2": "Beta"},
+            {"bookmaker": "Bet365", "od1": "1.001", "od2": "101"},
+        )
+        self.assertIsNone(odds)
+        self.assertEqual(status, "VERIFIED")
+
     def test_arbitrage_with_stale_best_odds_is_not_current_eligible(self):
         compare = {
             "quote_quality": {

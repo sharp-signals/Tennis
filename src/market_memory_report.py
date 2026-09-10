@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import market_ledger
+from . import market_integrity, market_ledger
 
 
 SCHEMA_VERSION = 1
@@ -110,11 +110,18 @@ def build_report(
     ledger_root: Path = market_ledger.DEFAULT_ROOT,
     snapshots_path: Path = DEFAULT_SNAPSHOTS_PATH,
     paper_path: Path = DEFAULT_PAPER_PATH,
+    exclusions_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
 ) -> dict[str, Any]:
     observations = market_ledger.read_observations(root=ledger_root)
     by_id = {item["observation_id"]: item for item in observations}
     snapshots = _read_list(snapshots_path, "snapshots")
     paper_entries = _read_list(paper_path, "entries")
+    exclusion_records = market_integrity.read_exclusions(exclusions_path)
+    exclusions_by_snapshot = {
+        str(item["snapshot_key"]): item
+        for item in exclusion_records
+        if item.get("snapshot_key")
+    }
     paper_by_snapshot: dict[str, list[dict[str, Any]]] = {}
     for entry in paper_entries:
         pregame = entry.get("pregame") or {}
@@ -123,6 +130,8 @@ def build_report(
     rows = []
     for snapshot in snapshots:
         event = str(snapshot.get("event_key") or snapshot.get("key") or "")
+        snapshot_key = str(snapshot.get("key") or "")
+        data_quality_exclusion = exclusions_by_snapshot.get(snapshot_key)
         entry_id = snapshot.get("entry_market_observation_id")
         entry_observation = by_id.get(str(entry_id)) if entry_id else None
         entry_probabilities = _probabilities(entry_observation)
@@ -188,6 +197,12 @@ def build_report(
                 "market_plus_sharp": "AVAILABLE" if sharp_probabilities else "UNAVAILABLE",
             },
         }
+        if data_quality_exclusion:
+            row["data_quality"] = {
+                "status": "DATA_QUALITY_INVALID",
+                "reason_code": data_quality_exclusion.get("reason_code"),
+                "excluded_from_validation": True,
+            }
         if memberships:
             row.update({
                 "tour": snapshot.get("tour"),
@@ -206,8 +221,15 @@ def build_report(
             })
         rows.append(row)
 
+    evaluation_rows = [
+        row for row in rows
+        if not (
+            isinstance(row.get("data_quality"), Mapping)
+            and row["data_quality"].get("excluded_from_validation")
+        )
+    ]
     grouped: dict[str, list[Mapping[str, Any]]] = {}
-    for row in rows:
+    for row in evaluation_rows:
         version = str(row.get("pricing_model_version") or "UNAVAILABLE")
         fingerprint = str(row.get("pricing_configuration_fingerprint") or "UNAVAILABLE")
         grouped.setdefault(f"{version}:{fingerprint}", []).append(row)
@@ -222,8 +244,8 @@ def build_report(
         "observation_count": len(observations),
         "events": rows,
         "evaluation": {
-            "market_only": evaluate_probabilities(rows, "entry_market_probabilities"),
-            "market_plus_sharp": evaluate_probabilities(rows, "market_plus_sharp_probabilities"),
+            "market_only": evaluate_probabilities(evaluation_rows, "entry_market_probabilities"),
+            "market_plus_sharp": evaluate_probabilities(evaluation_rows, "market_plus_sharp_probabilities"),
         },
         "evaluation_by_pricing_version": {
             key: {
@@ -255,15 +277,28 @@ def build_report(
             }
             for cohort in sorted({
                 name
-                for row in rows
+                for row in evaluation_rows
                 for name, membership in (row.get("cohort_memberships") or {}).items()
                 if isinstance(membership, Mapping) and membership.get("eligible") is True
             })
             for subset in [[
-                row for row in rows
+                row for row in evaluation_rows
                 if isinstance((row.get("cohort_memberships") or {}).get(cohort), Mapping)
                 and (row.get("cohort_memberships") or {})[cohort].get("eligible") is True
             ]]
+        },
+        "data_quality_exclusions": {
+            "count": len(exclusions_by_snapshot),
+            "by_reason": {
+                reason: sum(
+                    str(item.get("reason_code") or "UNSPECIFIED") == reason
+                    for item in exclusion_records
+                )
+                for reason in sorted({
+                    str(item.get("reason_code") or "UNSPECIFIED")
+                    for item in exclusion_records
+                })
+            },
         },
         "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred.",
     }
