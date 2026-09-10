@@ -2999,6 +2999,14 @@ def _mod_decision_box(payload):
             "event_lookup_request_failed": "A consulta de associação do evento falhou temporariamente.",
             "recent_odds_request_failed": "A consulta de odds atuais falhou temporariamente.",
             "recent_odds_missing_valid_two_way_moneyline": "O mercado devolveu odds incompletas ou inválidas para um dos dois jogadores.",
+            "MARKET_BOUNDARY_SENTINEL": "A cotação apresentava o padrão-limite inválido do fornecedor e foi rejeitada.",
+            "NO_VALID_MONEYLINE_CANDIDATE": "Nenhum bookmaker devolveu um par Moneyline estruturalmente válido.",
+            "INSUFFICIENT_BOOKMAKER_CONSENSUS": "Só existia um bookmaker válido; a cotação fica observável, mas não pode alimentar pricing ou PAPER.",
+            "CROSS_BOOK_DISPERSION": "Os bookmakers válidos divergiam mais de 15 p.p.; o preço operacional foi bloqueado.",
+            "MONEYLINE_INCOMPLETE": "As cotações Moneyline estavam incompletas e foram rejeitadas.",
+            "MONEYLINE_NON_NUMERIC": "As cotações Moneyline não eram numéricas e foram rejeitadas.",
+            "MONEYLINE_NON_FINITE": "As cotações Moneyline não eram finitas e foram rejeitadas.",
+            "MONEYLINE_ODDS_AT_OR_BELOW_ONE": "As cotações Moneyline tinham valores iguais ou inferiores a 1.0 e foram rejeitadas.",
         }
         detail = unavailable_messages.get(reason, "Não foi recebida uma cotação atual verificável para os dois jogadores.")
         body = (

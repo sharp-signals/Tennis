@@ -136,6 +136,28 @@ class CalibrationStoreTests(unittest.TestCase):
             self.assertLess(actual["players"]["a"]["odds_low"], actual["players"]["a"]["odds_high"])
             self.assertGreater(actual["players"]["b"]["odds_low"], 1)
 
+    def test_quarantined_snapshot_is_excluded_from_calibration_samples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshots = root / "snapshots.json"
+            exclusions = root / "exclusions.json"
+            snapshots.write_text(json.dumps({"schema_version": 1, "snapshots": [
+                {"key": "atp:1241", "metrics": {"divergencia": {
+                    "indice_evidencia_a": 72, "indice_evidencia_b": 28,
+                }}, "outcome": {"winner_side": "a"}},
+                {"key": "atp:2", "metrics": {"divergencia": {
+                    "indice_evidencia_a": 72, "indice_evidencia_b": 28,
+                }}, "outcome": {"winner_side": "b"}},
+            ]}), encoding="utf-8")
+            exclusions.write_text(json.dumps({"exclusions": [{
+                "snapshot_key": "atp:1241", "reason_code": "MARKET_BOUNDARY_SENTINEL",
+            }]}), encoding="utf-8")
+            actual = calibration_store.estimate_indicative_odds(
+                {"indice_evidencia_a": 72, "indice_evidencia_b": 28}, snapshots,
+                min_samples=3, exclusions_path=exclusions,
+            )
+        self.assertEqual(actual["sample_size"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

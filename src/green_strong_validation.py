@@ -306,7 +306,11 @@ def build_report(*, memory_report: Mapping[str, Any], manual_path: Path = DEFAUL
             "selected_side_market_position": row.get("selected_side_market_position") or "UNAVAILABLE",
             "reason_codes": membership.get("reason_codes") or [],
         })
-        if membership.get("eligible") is True:
+        data_quality = _mapping(row.get("data_quality"))
+        if data_quality.get("excluded_from_validation"):
+            classifications[-1]["data_quality_status"] = data_quality.get("status") or "DATA_QUALITY_INVALID"
+            classifications[-1]["excluded_from_validation"] = True
+        if membership.get("eligible") is True and not data_quality.get("excluded_from_validation"):
             eligible.append(row)
     metrics = _cohort_metrics(eligible)
     manual = dict(_manual_strategy(manual_path))
@@ -324,6 +328,7 @@ def build_report(*, memory_report: Mapping[str, Any], manual_path: Path = DEFAUL
         "metrics": metrics,
         "segments": _segments(eligible),
         "guerra_selection_v1": manual or {"status": "UNAVAILABLE"},
+        "data_quality_exclusions": dict(memory_report.get("data_quality_exclusions") or {}),
         "unavailable_semantics": "Missing or contradictory evidence remains UNAVAILABLE and is never inferred.",
     }
 

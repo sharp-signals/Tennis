@@ -109,6 +109,36 @@ class MarketMemoryReportTests(unittest.TestCase):
             self.assertEqual(saved["settlement"]["market_memory_status"], "UNAVAILABLE")
             self.assertIn("MarketLedgerError", saved["settlement"]["market_memory_error"])
 
+    def test_data_quality_quarantine_keeps_event_visible_but_excludes_evaluation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshots = root / "snapshots.json"
+            exclusions = root / "exclusions.json"
+            snapshots.write_text(json.dumps({"snapshots": [{
+                "key": "atp:1241", "event_key": "atp:1241", "report_id": "incident",
+                "commence_time_utc": "2026-09-10T01:00:00+00:00",
+                "pricing": {
+                    "available": True, "model_version": "v", "configuration_fingerprint": "fp",
+                    "players": {
+                        "a": {"market_probability_pct": 99.0, "sharp_estimate_pct": 98.0},
+                        "b": {"market_probability_pct": 1.0, "sharp_estimate_pct": 2.0},
+                    },
+                },
+                "outcome": {"winner_side": "a"},
+            }]}), encoding="utf-8")
+            exclusions.write_text(json.dumps({"exclusions": [{
+                "snapshot_key": "atp:1241", "paper_key": "atp:1241:moneyline:b:na",
+                "reason_code": "MARKET_BOUNDARY_SENTINEL",
+            }]}), encoding="utf-8")
+            report = market_memory_report.build_report(
+                ledger_root=root / "ledger", snapshots_path=snapshots,
+                paper_path=root / "paper.json", exclusions_path=exclusions,
+            )
+        self.assertEqual(len(report["events"]), 1)
+        self.assertEqual(report["events"][0]["data_quality"]["status"], "DATA_QUALITY_INVALID")
+        self.assertEqual(report["evaluation"]["market_plus_sharp"]["sample_size"], 0)
+        self.assertEqual(report["data_quality_exclusions"]["count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
