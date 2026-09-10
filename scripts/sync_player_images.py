@@ -141,6 +141,28 @@ def _record_review(item: dict) -> None:
     )
 
 
+def _load_review() -> dict[tuple[str, str], dict]:
+    try:
+        document = json.loads(REVIEW_PATH.read_text(encoding="utf-8"))
+        review = document.get("players", []) if isinstance(document, dict) else []
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        review = []
+    return {
+        (str(item.get("tour")), str(item.get("player_id"))): item
+        for item in review if isinstance(item, dict)
+    }
+
+
+def _write_review(review: dict[tuple[str, str], dict]) -> None:
+    players = sorted(review.values(), key=lambda item: (
+        str(item.get("tour")), item.get("rank") is None, item.get("rank") or 999999,
+        str(item.get("name")),
+    ))
+    REVIEW_PATH.write_text(
+        json.dumps({"players": players}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+    )
+
+
 def ensure_player_image(tour: str, player_id, name: str, *, rank=None,
                         registry: dict[str, dict] | None = None,
                         session: requests.Session | None = None) -> dict | None:
@@ -185,7 +207,8 @@ def ensure_player_image(tour: str, player_id, name: str, *, rank=None,
 
 def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
     registry = player_images.load_registry()
-    review = []
+    overrides = player_images.load_manual_overrides()
+    review = _load_review()
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
@@ -197,11 +220,15 @@ def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
         summary["requested"] += len(entries)
         for item in entries:
             player_id, name = item.get("player_id"), item.get("name")
-            key = f"{tour}:{player_id}"
             if not player_id or not name:
                 continue
-            if key in registry:
+            key = f"{tour}:{player_id}"
+            review_key = (tour, str(player_id))
+            if player_images.find_player_image(
+                tour, player_id, name, registry, overrides=overrides,
+            ):
                 summary["existing"] += 1
+                review.pop(review_key, None)
                 continue
             try:
                 wikidata_id, reason = _find_wikidata_item(session, name)
@@ -224,15 +251,15 @@ def sync(limit: int = 200, tours=("atp", "wta"), delay: float = 0.08) -> dict:
                 }
                 summary["added"] += 1
             except (requests.RequestException, ValueError, OSError) as exc:
-                review.append({"tour": tour, "player_id": player_id, "name": name,
-                               "rank": item.get("rank"), "reason": str(exc)})
+                review[review_key] = {
+                    "tour": tour, "player_id": player_id, "name": name,
+                    "rank": item.get("rank"), "reason": str(exc),
+                }
                 summary["review"] += 1
             time.sleep(delay)
 
     _write_registry(registry)
-    REVIEW_PATH.write_text(
-        json.dumps({"players": review}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
-    )
+    _write_review(review)
     return summary
 
 

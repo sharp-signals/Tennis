@@ -2948,7 +2948,11 @@ def _mod_photo_credits(payload):
         if not image.get("path"):
             continue
         name = payload.get(f"player_{side}", "Jogador")
-        modified = "; miniatura/enquadramento adaptado" if image.get("modified") else ""
+        modifications = image.get("modifications")
+        if modifications:
+            modified = f"; {_esc(modifications)}"
+        else:
+            modified = "; miniatura/enquadramento adaptado" if image.get("modified") else ""
         credits.append(
             f'{_esc(name)}: <a href="{_esc(image.get("source_url", "#"))}">{_esc(image.get("author", "autor desconhecido"))}</a>, '
             f'<a href="{_esc(image.get("license_url", "#"))}">{_esc(image.get("license", "licença na origem"))}</a>{modified}'
