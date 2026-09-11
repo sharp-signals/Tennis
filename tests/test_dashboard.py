@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src import dashboard, report_html, run_metrics
+from src import dashboard, dashboard_ui, report_html, run_metrics
 
 
 NOW = "2026-09-06T20:00:00+00:00"
@@ -231,15 +231,59 @@ class DashboardTests(unittest.TestCase):
         value["guerra_selection_v1"] = {
             "status": "AVAILABLE", "eligible_green_strong": 5, "selected_candidates": 2,
             "selection_rate_pct": 40.0, "paper_entries": 3, "summary": summary(3, 2, 1, 2, 0),
+            "flat_stake_simulation": {
+                "status": "AVAILABLE", "stake_per_entry_eur": 10,
+                "included_resolved_entries": 2, "pending_entries": 1, "void_entries": 0,
+                "excluded_entries": 0, "resolved_stake_eur": 20,
+                "pending_exposure_eur": 10, "net_profit_eur": 9,
+                "roi_pct": 45, "exclusion_reasons": {},
+            },
             "snapshot_keys": ["PRIVATE-KEY"], "names": ["PRIVATE-NAME"], "notes": "PRIVATE-NOTE",
         }
         write_json(path, value)
         result = self.build()
         serialized = json.dumps(result)
         self.assertEqual(result["guerra_selection_v1"]["selected_candidates"], 2)
+        self.assertEqual(result["guerra_selection_v1"]["flat_stake_simulation"]["net_profit_eur"], 9)
         self.assertNotIn("PRIVATE-KEY", serialized)
         self.assertNotIn("PRIVATE-NAME", serialized)
         self.assertNotIn("PRIVATE-NOTE", serialized)
+
+    def test_flat_stake_simulation_is_allowlisted_and_rendered_with_required_warning(self):
+        self._base_sources()
+        path = self.root / "data/validation/green-strong-v1.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["guerra_selection_v1"] = {
+            "status": "AVAILABLE", "summary": {},
+            "flat_stake_simulation": {
+                "status": "DEGRADED", "stake_per_entry_eur": 10,
+                "included_resolved_entries": 4, "pending_entries": 1,
+                "void_entries": 1, "excluded_entries": 2,
+                "resolved_stake_eur": 40, "pending_exposure_eur": 10,
+                "net_profit_eur": 7.5, "roi_pct": 18.75,
+                "exclusion_reasons": {"INVALID_DECIMAL_ODD": 1, "UNRECOGNIZED_RESULT": 1},
+                "private_rows": ["PRIVATE-ROW"],
+            },
+        }
+        write_json(path, value)
+        result = self.build()
+        simulation = result["guerra_selection_v1"]["flat_stake_simulation"]
+        self.assertEqual(simulation["status"], "DEGRADED")
+        self.assertEqual(simulation["resolved_stake_eur"], 40)
+        self.assertNotIn("PRIVATE-ROW", json.dumps(result))
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Se apostássemos €10 em cada aposta GUERRA", rendered)
+        self.assertIn("€10 por aposta/leg; não é dinheiro real", rendered)
+        self.assertIn("INVALID_DECIMAL_ODD", rendered)
+
+    def test_zero_guerra_sample_is_unavailable_without_zero_profit_conclusion(self):
+        self._base_sources()
+        result = self.build()
+        simulation = result["guerra_selection_v1"]["flat_stake_simulation"]
+        self.assertEqual(simulation["status"], "UNAVAILABLE")
+        self.assertIsNone(simulation["net_profit_eur"])
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Ainda sem amostra válida — não interpretar como resultado €0", rendered)
 
     def test_underdog_pair_completeness_is_copied(self):
         self._base_sources()
@@ -491,6 +535,42 @@ class DashboardTests(unittest.TestCase):
         self.assertIn('id="global-toggle"', rendered)
         self.assertIn('id="day-toggle"', rendered)
         self.assertIn("Histórico de relatórios", rendered)
+
+    def test_guidance_dictionary_covers_every_required_metric_family(self):
+        required = {
+            "Jogos distintos", "Versões de relatório", "Snapshots", "Liquidados",
+            "Taxa", "Intervalo", "Mercado médio", "Win rate observado",
+            "Market Brier", "Fenzobot Brier", "Δ Brier", "Δ Log Loss",
+            "Closing comparável N", "Movimento médio", "Na direção Fenzobot",
+            "GS elegíveis", "Candidatos selecionados", "Taxa de seleção", "Entradas / legs",
+            "W–L", "Unidades", "ROI", "Odd média", "Market-only N",
+            "Market + Fenzobot N", "RapidAPI calls", "LLM calls", "Custo LLM USD",
+            "Duração", "Frescura da fonte", "Timestamp da fonte",
+            "Resultado acumulado", "Total apostado concluído", "Em aberto", "ROI stake fixa",
+        }
+        self.assertEqual(required - set(dashboard_ui.METRIC_HELP), set())
+        self.assertEqual(
+            {
+                "REPORT_HISTORY", "GREEN_STRONG_V1", "GUERRA_SELECTION_V1",
+                "PAIRED_COMPARISON", "MARKET_MEMORY", "PAPER_TECHNICAL",
+                "PAPER_22BET", "SYSTEM_HEALTH", "SOURCE_FRESHNESS",
+            } - set(dashboard_ui.PANEL_GUIDANCE),
+            set(),
+        )
+
+    def test_guidance_is_visible_progressive_and_keyboard_accessible(self):
+        self._base_sources()
+        result = self.build()
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("guidance_v1", result)
+        self.assertIn("HEALTHY/OK não certifica qualidade das odds", rendered)
+        self.assertIn('class=\"dashboard-legend\"', rendered)
+        self.assertIn('class=\"help-trigger\"', rendered)
+        self.assertIn('type=\"button\"', rendered)
+        self.assertIn('aria-expanded=\"false\"', rendered)
+        self.assertIn("event.key!=='Escape'", rendered)
+        self.assertIn("@media(max-width:560px)", rendered)
+        self.assertIn("overflow-wrap:anywhere", rendered)
 
     def test_sidebar_groups_days_descending(self):
         self._base_sources()
