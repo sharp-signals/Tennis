@@ -32,7 +32,7 @@
     "llm": {
       "llm_external_requests": 0,
       "llm_mode": "disabled",
-      "llm_provider_invocations": 2
+      "llm_provider_invocations": 3
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -175,23 +175,24 @@
     {
       "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
       "counts": {
-        "GREEN": 2,
+        "GREEN": 3,
         "GREEN_STRONG": 0,
         "PAPER_TECHNICAL": 0,
-        "RED": 0,
+        "RED": 2,
         "UNAVAILABLE": 0,
         "YELLOW": 0,
-        "matchups": 2,
-        "reports": 2
+        "matchups": 3,
+        "reports": 5
       },
       "date": "2026-09-11",
       "matchups": [
         {
           "colors": {
-            "GREEN": 1
+            "GREEN": 1,
+            "RED": 1
           },
           "date": "2026-09-11",
-          "fallback_version_count": 1,
+          "fallback_version_count": 2,
           "green_strong": false,
           "match_key": "fallback:e2f920e584e495038e22",
           "match_key_fallback": true,
@@ -199,9 +200,10 @@
           "paper_technical": false,
           "scheduled_start_utc": null,
           "title": "Alexander Zverev vs Karen Khachanov",
-          "version_count": 1,
+          "version_count": 2,
           "version_indexes": [
-            0
+            0,
+            1
           ]
         },
         {
@@ -211,19 +213,49 @@
           "date": "2026-09-11",
           "fallback_version_count": 1,
           "green_strong": false,
+          "match_key": "fallback:b5b6d005fc4a9d223e46",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Aryna Sabalenka vs Elena Rybakina",
+          "version_count": 1,
+          "version_indexes": [
+            2
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1,
+            "RED": 1
+          },
+          "date": "2026-09-11",
+          "fallback_version_count": 2,
+          "green_strong": false,
           "match_key": "fallback:c8c602f98782d5ee0ed0",
           "match_key_fallback": true,
           "match_key_source": "DATE_NORMALIZED_TITLE",
           "paper_technical": false,
           "scheduled_start_utc": null,
           "title": "Frances Tiafoe vs Ben Shelton",
-          "version_count": 1,
+          "version_count": 2,
           "version_indexes": [
-            1
+            3,
+            4
           ]
         }
       ],
       "reports": [
+        {
+          "color": "RED",
+          "date": "2026-09-11",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexander Zverev vs Karen Khachanov",
+          "url": "../relatorios/alexander-zverev-vs-karen-khachanov-2026-09-11-3409eaf197c32955f9e8.html"
+        },
         {
           "color": "GREEN",
           "date": "2026-09-11",
@@ -241,8 +273,28 @@
           "linkage": "SELF_DESCRIBED_REPORT",
           "paper_technical": false,
           "scheduled_start_utc": null,
+          "title": "Aryna Sabalenka vs Elena Rybakina",
+          "url": "../relatorios/aryna-sabalenka-vs-elena-rybakina-2026-09-11-235cabf72c559b05c0d1.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-09-11",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
           "title": "Frances Tiafoe vs Ben Shelton",
           "url": "../relatorios/frances-tiafoe-vs-ben-shelton-2026-09-11-8a3f05fd80f430365de7.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-11",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Frances Tiafoe vs Ben Shelton",
+          "url": "../relatorios/frances-tiafoe-vs-ben-shelton-2026-09-11-c95f844cc6db2bbd218a.html"
         }
       ]
     },
@@ -45992,21 +46044,21 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-11T15:04:52+00:00",
+  "generated_at_utc": "2026-09-11T17:34:49+00:00",
   "global": {
-    "distinct_matchups": 1442,
+    "distinct_matchups": 1443,
     "green_strong_candidates": 0,
-    "market_observations": 1229,
+    "market_observations": 1235,
     "paper_22bet_entries": 44,
-    "paper_technical_entries": 61,
+    "paper_technical_entries": 62,
     "report_colors": {
-      "GREEN": 127,
-      "RED": 510,
+      "GREEN": 128,
+      "RED": 512,
       "UNAVAILABLE": 1052,
       "YELLOW": 168
     },
-    "settled_snapshots": 373,
-    "total_reports": 1857,
+    "settled_snapshots": 374,
+    "total_reports": 1860,
     "total_snapshots": 396
   },
   "green_strong_v1": {
@@ -46022,7 +46074,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-11T15:04:52+00:00",
+    "generated_at_utc": "2026-09-11T17:34:49+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -46075,7 +46127,7 @@
     "distinct_events": 396,
     "events_with_comparable_closing": 7,
     "events_with_entry_market": 16,
-    "generated_at_utc": "2026-09-11T15:04:52+00:00",
+    "generated_at_utc": "2026-09-11T17:34:49+00:00",
     "market_only": {
       "accuracy_pct": 68.75,
       "brier_score": 0.217385,
@@ -46207,11 +46259,11 @@
       },
       {
         "date": "2026-09-11",
-        "observations": 74
+        "observations": 80
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 1229
+    "total_observations": 1235
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -46287,17 +46339,17 @@
     "yield_pct": null
   },
   "paper_technical": {
-    "average_odd": 1.568,
+    "average_odd": 1.571,
     "by_market": {
       "Handicap": null,
       "Moneyline": {
-        "average_odd": 1.568,
+        "average_odd": 1.571,
         "losses": 19,
-        "pending": 5,
+        "pending": 6,
         "pushes": 0,
         "roi_pct": -0.31,
         "settled": 56,
-        "total_entries": 61,
+        "total_entries": 62,
         "units": -0.171,
         "win_rate_pct": 66.07,
         "wins": 37,
@@ -46310,12 +46362,12 @@
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
     "losses": 19,
-    "pending": 5,
+    "pending": 6,
     "pushes": 0,
     "roi_pct": -0.31,
     "settled": 56,
     "status": "AVAILABLE",
-    "total_entries": 61,
+    "total_entries": 62,
     "units": -0.171,
     "win_rate_pct": 66.07,
     "wins": 37,
@@ -46355,26 +46407,26 @@
       "total": 38
     },
     "snapshot_universe": {
-      "settled": 373,
+      "settled": 374,
       "total": 396
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "c6710bd059fdd21e10767de1e097e7cd6981f00becf850703da21d0f65a71937",
+  "semantic_fingerprint": "93a031bc433c5b6cea82818ff0e6189179a68ce23955371b363e442cbba8b8d6",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T15:04:52+00:00"
+      "updated_at_utc": "2026-09-11T17:34:49+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T15:04:47+00:00"
+      "updated_at_utc": "2026-09-11T17:34:02+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T15:04:52+00:00"
+      "updated_at_utc": "2026-09-11T17:34:49+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -46382,7 +46434,7 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T05:33:33+00:00"
+      "updated_at_utc": "2026-09-11T17:34:32+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
@@ -46390,33 +46442,29 @@
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T05:33:37+00:00"
+      "updated_at_utc": "2026-09-11T17:34:38+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T05:33:32+00:00"
+      "updated_at_utc": "2026-09-11T17:34:46+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 27.234,
-      "eligible": 2,
-      "llm_calls": 2,
+      "duration_seconds": 83.534,
+      "eligible": 3,
+      "llm_calls": 3,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": 2,
-      "rapidapi_calls": 29,
+      "processed": 3,
+      "rapidapi_calls": 52,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-09-11T05:33:37+00:00"
+      "timestamp": "2026-09-11T17:34:38+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-05T17:34:51+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-06T05:34:28+00:00"
@@ -46492,6 +46540,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-11T05:33:37+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-11T17:34:38+00:00"
       }
     ],
     "status": "HEALTHY"

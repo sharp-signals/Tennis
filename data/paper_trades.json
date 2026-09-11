@@ -4837,8 +4837,87 @@
         "tournament_id": 21349
       },
       "settlement": null
+    },
+    {
+      "key": "wta:858:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-11T17:34:32+00:00",
+        "commence_time_utc": "2026-09-12T20:00:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "a4d43616e1fc1de40d6ac1a9fd92321e9937827bf8232446e35604be3781d326",
+        "event_key": "wta:858",
+        "expected_edge_pct": 4.06,
+        "fair_odd": 1.66,
+        "fenzobot_index": 79,
+        "line": null,
+        "market": "Moneyline Aryna Sabalenka",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Aryna Sabalenka": 1.727,
+          "Elena Rybakina": 2.2
+        },
+        "market_type": "Moneyline",
+        "match_id": 858,
+        "odd": 1.727,
+        "odds_provenance": {
+          "bookmaker": "Bet365",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-11T17:34:02+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3951249",
+          "event_id": "3951249",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 0.5667,
+            "median_devig_probability_a": 0.5630577812520356,
+            "minimum_operational_bookmakers": 2,
+            "policy_version": "market-quote-integrity-v1",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "provider_timestamp": "2026-09-11T05:28:44+00:00",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "players": {
+          "a": {
+            "id": 18455,
+            "name": "Aryna Sabalenka"
+          },
+          "b": {
+            "id": 36558,
+            "name": "Elena Rybakina"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "235cabf72c559b05c0d1",
+        "selected_player": "Aryna Sabalenka",
+        "selected_side": "a",
+        "sharp_estimate_pct": 60.25,
+        "snapshot_key": "wta:858",
+        "surface": "Hard",
+        "tour": "wta",
+        "tournament": "U.S. Open - New York",
+        "tournament_id": 16743
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-11T05:33:33+00:00"
+  "updated_at_utc": "2026-09-11T17:34:32+00:00"
 }
