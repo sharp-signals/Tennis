@@ -12,6 +12,19 @@ Quando o selecionado é underdog, a metodologia usa duas rows com o mesmo key: M
 
 O fingerprint é semântico: inclui os agregados e estados de linkage derivados, mas exclui o timestamp de sincronização e a coluna `Validation Status` escrita pelo próprio script. Assim, uma alteração do índice GREEN_STRONG volta a publicar o resumo mesmo que as rows privadas não tenham mudado.
 
+### Simulação pública de stake fixa
+
+`by_strategy.GUERRA_SELECTION_V1.flat_stake_simulation` simula €10 por cada
+row/leg `LINKED_EX_ANTE`, sem reutilizar o stake ou lucro real da Sheet. Uma
+vitória vale `10 × (odd − 1)`, uma derrota `−10`, um `VOID` vale zero e uma
+entrada pendente representa €10 de exposição aberta. Logo, um underdog com
+Moneyline e handicap positivo representa €20 de exposição.
+
+Odds decimais inválidas (`<= 1`) e resultados não reconhecidos são excluídos
+com reason codes agregados e tornam o bloco `DEGRADED`. Sem seleções válidas, o
+estado é `UNAVAILABLE` e lucro/ROI ficam `null`, nunca apresentados como uma
+conclusão de €0. A publicação continua sem nomes, keys ou linhas individuais.
+
 CHANGE-2026-09-06-023
 
 A Sheet `Track_Record_Tennis_22Bet` é o registo operacional manual. O relatório do Fenzobot lê apenas o resumo publicado em `data/manual_paper_22bet.json`; nunca lê a Sheet privada durante uma execução do bot.

@@ -156,6 +156,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const guerraByMarket = {};
   const guerraBySide = {};
   const guerraReviewRoutes = {};
+  const flatStakeSimulation = newFlatStakeSimulation_();
   const selectedSnapshotKeys = {};
   const underdogPairs = {};
   const linkage = {LINKED_EX_ANTE: 0, SNAPSHOT_NOT_FOUND: 0, NOT_GREEN_STRONG: 0, SELECTION_AFTER_START: 0, MISSING_SELECTION_TIMESTAMP: 0, UNAVAILABLE: 0};
@@ -174,6 +175,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     if (!guerraByMarket[market]) guerraByMarket[market] = newStats_();
     if (!guerraBySide[side]) guerraBySide[side] = newStats_();
     addRowToStats_(guerraStats, row);
+    addRowToFlatStakeSimulation_(flatStakeSimulation, row);
     addRowToStats_(guerraByMarket[market], row);
     addRowToStats_(guerraBySide[side], row);
     guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
@@ -206,6 +208,10 @@ function buildPaperTradingPayload_(token, repository, branch) {
     eligible_green_strong: green.eligibleCount,
     selection_rate_pct: green.eligibleCount ? Math.round(10000 * selectedCandidates / green.eligibleCount) / 100 : null,
     status: tracking.complete && green.available ? 'AVAILABLE' : 'UNAVAILABLE',
+    flat_stake_simulation: finishFlatStakeSimulation_(
+      flatStakeSimulation,
+      tracking.complete && green.available,
+    ),
   };
   const fingerprintRows = tracking.complete ? activeRows.map(row => row.filter((value, index) => index !== tracking.status)) : activeRows;
   const fingerprint = Utilities.computeDigest(
@@ -388,4 +394,67 @@ function finishCollection_(collection) {
   const result = {};
   Object.keys(collection).forEach(key => result[key] = finishStats_(collection[key]));
   return result;
+}
+
+function newFlatStakeSimulation_() {
+  return {
+    includedResolvedEntries: 0,
+    pendingEntries: 0,
+    voidEntries: 0,
+    excludedEntries: 0,
+    netProfitEur: 0,
+    exclusionReasons: {},
+  };
+}
+
+function excludeFlatStakeEntry_(simulation, reason) {
+  simulation.excludedEntries += 1;
+  simulation.exclusionReasons[reason] = (simulation.exclusionReasons[reason] || 0) + 1;
+}
+
+function addRowToFlatStakeSimulation_(simulation, row) {
+  const stake = 10;
+  const odd = Number(row[9]);
+  const result = String(row[12] || '').trim().toUpperCase();
+  if (!Number.isFinite(odd) || odd <= 1) {
+    excludeFlatStakeEntry_(simulation, 'INVALID_DECIMAL_ODD');
+    return;
+  }
+  if (result === '' || result === 'PENDENTE' || result === 'PENDING') {
+    simulation.pendingEntries += 1;
+    return;
+  }
+  if (result !== 'GANHOU' && result !== 'PERDEU' && result !== 'VOID') {
+    excludeFlatStakeEntry_(simulation, 'UNRECOGNIZED_RESULT');
+    return;
+  }
+  simulation.includedResolvedEntries += 1;
+  if (result === 'VOID') {
+    simulation.voidEntries += 1;
+    return;
+  }
+  simulation.netProfitEur += result === 'GANHOU' ? stake * (odd - 1) : -stake;
+}
+
+function finishFlatStakeSimulation_(simulation, sourceAvailable) {
+  const round = value => Math.round(value * 100) / 100;
+  const validEntries = simulation.includedResolvedEntries + simulation.pendingEntries;
+  const observedEntries = validEntries + simulation.excludedEntries;
+  const resolvedStake = 10 * simulation.includedResolvedEntries;
+  let status = 'AVAILABLE';
+  if (!sourceAvailable || observedEntries === 0) status = 'UNAVAILABLE';
+  else if (simulation.excludedEntries > 0) status = 'DEGRADED';
+  return {
+    status: status,
+    stake_per_entry_eur: 10.0,
+    included_resolved_entries: simulation.includedResolvedEntries,
+    pending_entries: simulation.pendingEntries,
+    void_entries: simulation.voidEntries,
+    excluded_entries: simulation.excludedEntries,
+    resolved_stake_eur: resolvedStake,
+    pending_exposure_eur: 10 * simulation.pendingEntries,
+    net_profit_eur: simulation.includedResolvedEntries ? round(simulation.netProfitEur) : null,
+    roi_pct: resolvedStake ? round(100 * simulation.netProfitEur / resolvedStake) : null,
+    exclusion_reasons: simulation.exclusionReasons,
+  };
 }

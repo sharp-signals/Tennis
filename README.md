@@ -174,6 +174,9 @@ O **Fenzobot Control Dashboard** é reconstruído offline em
 observacional derivada: não cria decisões, não executa apostas e não expõe
 linhas privadas do PAPER 22Bet. A ausência de uma fonte degrada apenas o painel
 respetivo para `N/D`; a geração nunca bloqueia o pipeline ou o settlement.
+Inclui ajuda contextual em português para distinguir execução, qualidade dos
+dados e validação, além de uma simulação observacional GUERRA com stake fixa de
+€10 por leg `LINKED_EX_ANTE`; essa simulação não usa dinheiro nem stakes reais.
 
 O Telegram recebe um resumo por grupos de decisão, com links para cada
 relatório. Mensagens longas são divididas abaixo do limite do Telegram.

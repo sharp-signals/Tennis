@@ -85,9 +85,9 @@ test('underdog pair counts one candidate, two PAPER legs and one complete pair',
     ['Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status'],
   );
   const moneyline = row('wta:pair', '2026-09-07T10:00:00Z');
-  moneyline[0] = 'Alpha'; moneyline[1] = 'Beta'; moneyline[5] = 'Vencedor'; moneyline[7] = 'Underdog'; moneyline[9] = 2.1; moneyline[18] = 2.1;
+  moneyline[0] = 'Alpha'; moneyline[1] = 'Beta'; moneyline[5] = 'Vencedor'; moneyline[7] = 'Underdog'; moneyline[9] = 2.1; moneyline[12] = 'GANHOU'; moneyline[18] = 2.1;
   const handicap = row('wta:pair', '2026-09-07T10:00:00Z');
-  handicap[0] = 'Alpha'; handicap[1] = 'Beta'; handicap[5] = 'Handicap games'; handicap[7] = 'Underdog'; handicap[9] = 1.9; handicap[19] = 3.5;
+  handicap[0] = 'Alpha'; handicap[1] = 'Beta'; handicap[5] = 'Handicap games'; handicap[7] = 'Underdog'; handicap[9] = 1.9; handicap[12] = 'PERDEU'; handicap[19] = 3.5;
   const rows = [moneyline, handicap];
   const sheet = {
     getLastRow: () => 7,
@@ -116,9 +116,58 @@ test('underdog pair counts one candidate, two PAPER legs and one complete pair',
   assert.equal(strategy.paper_entries, 2);
   assert.equal(strategy.selection_rate_pct, 100);
   assert.equal(strategy.underdog_pair_completeness.complete_moneyline_positive_handicap_pairs, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(strategy.flat_stake_simulation)), {
+    status: 'AVAILABLE', stake_per_entry_eur: 10,
+    included_resolved_entries: 2, pending_entries: 0, void_entries: 0,
+    excluded_entries: 0, resolved_stake_eur: 20, pending_exposure_eur: 0,
+    net_profit_eur: 1, roi_pct: 5, exclusion_reasons: {},
+  });
   assert.notEqual(unavailable.data_fingerprint, payload.data_fingerprint);
   assert.equal(unavailable.by_strategy.GUERRA_SELECTION_V1.paper_entries, 0);
+  assert.equal(unavailable.by_strategy.GUERRA_SELECTION_V1.flat_stake_simulation.excluded_entries, 0);
+  assert.equal(unavailable.by_strategy.GUERRA_SELECTION_V1.flat_stake_simulation.status, 'UNAVAILABLE');
   assert.doesNotMatch(JSON.stringify(strategy), /wta:pair|Alpha|Beta/);
+});
+
+test('flat stake simulation handles win, loss, void and pending independently of real stake', () => {
+  const simulation = context.newFlatStakeSimulation_();
+  const win = Array(15).fill(''); win[9] = 2.0; win[10] = 999; win[12] = 'GANHOU'; win[13] = -500;
+  const secondWin = Array(15).fill(''); secondWin[9] = 1.75; secondWin[12] = 'GANHOU';
+  const loss = Array(15).fill(''); loss[9] = 4.0; loss[12] = 'PERDEU';
+  const voided = Array(15).fill(''); voided[9] = 1.8; voided[12] = 'VOID';
+  const pending = Array(15).fill(''); pending[9] = 2.2; pending[12] = 'PENDENTE';
+  [win, secondWin, loss, voided, pending].forEach(value => context.addRowToFlatStakeSimulation_(simulation, value));
+  const result = context.finishFlatStakeSimulation_(simulation, true);
+  assert.equal(result.included_resolved_entries, 4);
+  assert.equal(result.pending_entries, 1);
+  assert.equal(result.void_entries, 1);
+  assert.equal(result.resolved_stake_eur, 40);
+  assert.equal(result.pending_exposure_eur, 10);
+  assert.equal(result.net_profit_eur, 7.5);
+  assert.equal(result.roi_pct, 18.75);
+  assert.equal(result.status, 'AVAILABLE');
+});
+
+test('invalid odds and unknown results degrade the flat simulation with typed aggregate reasons', () => {
+  const simulation = context.newFlatStakeSimulation_();
+  const invalidOdd = Array(15).fill(''); invalidOdd[9] = 1; invalidOdd[12] = 'GANHOU';
+  const unknownResult = Array(15).fill(''); unknownResult[9] = 2; unknownResult[12] = 'CANCELADO?';
+  context.addRowToFlatStakeSimulation_(simulation, invalidOdd);
+  context.addRowToFlatStakeSimulation_(simulation, unknownResult);
+  const result = context.finishFlatStakeSimulation_(simulation, true);
+  assert.equal(result.status, 'DEGRADED');
+  assert.equal(result.excluded_entries, 2);
+  assert.equal(result.net_profit_eur, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.exclusion_reasons)), {
+    INVALID_DECIMAL_ODD: 1, UNRECOGNIZED_RESULT: 1,
+  });
+});
+
+test('zero selections are unavailable and never imply zero profit', () => {
+  const result = context.finishFlatStakeSimulation_(context.newFlatStakeSimulation_(), true);
+  assert.equal(result.status, 'UNAVAILABLE');
+  assert.equal(result.net_profit_eur, null);
+  assert.equal(result.roi_pct, null);
 });
 
 test('published source contains no individual selection fields', () => {

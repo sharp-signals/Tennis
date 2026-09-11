@@ -11,6 +11,18 @@ from pathlib import Path
 from src import dashboard
 
 
+def _legacy_projection(value: dict) -> dict:
+    """Remove apenas campos aditivos posteriores ao baseline comparado."""
+    value.pop('semantic_fingerprint', None)
+    value.pop('audit_v1', None)
+    value.pop('guidance_v1', None)
+    value.pop('change_id', None)
+    strategy = value.get('guerra_selection_v1')
+    if isinstance(strategy, dict):
+        strategy.pop('flat_stake_simulation', None)
+    return value
+
+
 def check(baseline_ref: str, root: Path = Path('.')) -> dict:
     source = subprocess.check_output(['git', 'show', f'{baseline_ref}:src/dashboard.py'], cwd=root, text=True)
     # Trusted reviewed project code, isolated module; primary inputs are not changed.
@@ -24,8 +36,7 @@ def check(baseline_ref: str, root: Path = Path('.')) -> dict:
         expected = baseline.build_dashboard(root=root, generated_at_utc=at)
         actual = dashboard.build_dashboard(root=root, generated_at_utc=at)
     for value in (expected, actual):
-        value.pop('semantic_fingerprint', None)
-        value.pop('audit_v1', None)
+        _legacy_projection(value)
     if expected != actual:
         raise AssertionError('Legacy dashboard metric parity failed; do not release')
     return {'legacy_metrics_equal': True, 'baseline_ref': baseline_ref,
