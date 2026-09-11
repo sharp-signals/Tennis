@@ -32,7 +32,7 @@
     "llm": {
       "llm_external_requests": 0,
       "llm_mode": "disabled",
-      "llm_provider_invocations": 4
+      "llm_provider_invocations": 2
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -172,6 +172,80 @@
   "change_id": "CHANGE-2026-09-10-037",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+      "counts": {
+        "GREEN": 2,
+        "GREEN_STRONG": 0,
+        "PAPER_TECHNICAL": 0,
+        "RED": 0,
+        "UNAVAILABLE": 0,
+        "YELLOW": 0,
+        "matchups": 2,
+        "reports": 2
+      },
+      "date": "2026-09-11",
+      "matchups": [
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-09-11",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:e2f920e584e495038e22",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexander Zverev vs Karen Khachanov",
+          "version_count": 1,
+          "version_indexes": [
+            0
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-09-11",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:c8c602f98782d5ee0ed0",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Frances Tiafoe vs Ben Shelton",
+          "version_count": 1,
+          "version_indexes": [
+            1
+          ]
+        }
+      ],
+      "reports": [
+        {
+          "color": "GREEN",
+          "date": "2026-09-11",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexander Zverev vs Karen Khachanov",
+          "url": "../relatorios/alexander-zverev-vs-karen-khachanov-2026-09-11-c21dc71374745995daf1.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-09-11",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Frances Tiafoe vs Ben Shelton",
+          "url": "../relatorios/frances-tiafoe-vs-ben-shelton-2026-09-11-8a3f05fd80f430365de7.html"
+        }
+      ]
+    },
     {
       "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
       "counts": {
@@ -7195,7 +7269,7 @@
       "counts": {
         "GREEN": 11,
         "GREEN_STRONG": 0,
-        "PAPER_TECHNICAL": 0,
+        "PAPER_TECHNICAL": 1,
         "RED": 45,
         "UNAVAILABLE": 3,
         "YELLOW": 28,
@@ -8444,7 +8518,7 @@
           "match_key": "canonical:c90680369c43b2bc7a72",
           "match_key_fallback": false,
           "match_key_source": "SNAPSHOT_KEY",
-          "paper_technical": false,
+          "paper_technical": true,
           "scheduled_start_utc": "2026-09-02T18:00:00+00:00",
           "title": "Alexei Popyrin vs Alejandro Tabilo",
           "version_count": 1,
@@ -9425,7 +9499,7 @@
           "date": "2026-09-01",
           "green_strong": false,
           "linkage": "EXACT_REPORT_ID",
-          "paper_technical": false,
+          "paper_technical": true,
           "report_id": "3d965cb9b9d21c30e37e",
           "scheduled_start_utc": "2026-09-02T18:00:00+00:00",
           "title": "Alexei Popyrin vs Alejandro Tabilo",
@@ -13015,7 +13089,7 @@
       "counts": {
         "GREEN": 12,
         "GREEN_STRONG": 0,
-        "PAPER_TECHNICAL": 1,
+        "PAPER_TECHNICAL": 2,
         "RED": 83,
         "UNAVAILABLE": 20,
         "YELLOW": 8,
@@ -13998,7 +14072,7 @@
           "match_key": "canonical:6286cf1dd8ca2207a46e",
           "match_key_fallback": false,
           "match_key_source": "SNAPSHOT_KEY",
-          "paper_technical": false,
+          "paper_technical": true,
           "scheduled_start_utc": "2026-08-30T20:30:00+00:00",
           "title": "Daniil Medvedev vs Hugo Gaston",
           "version_count": 2,
@@ -15350,7 +15424,7 @@
           "date": "2026-08-30",
           "green_strong": false,
           "linkage": "EXACT_REPORT_ID",
-          "paper_technical": false,
+          "paper_technical": true,
           "report_id": "1a31ca99ee64ee4d6e1d",
           "scheduled_start_utc": "2026-08-30T20:30:00+00:00",
           "title": "Daniil Medvedev vs Hugo Gaston",
@@ -45918,21 +45992,21 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-11T01:13:01+00:00",
+  "generated_at_utc": "2026-09-11T05:33:45+00:00",
   "global": {
-    "distinct_matchups": 1440,
+    "distinct_matchups": 1442,
     "green_strong_candidates": 0,
-    "market_observations": 1165,
+    "market_observations": 1169,
     "paper_22bet_entries": 44,
-    "paper_technical_entries": 59,
+    "paper_technical_entries": 61,
     "report_colors": {
-      "GREEN": 125,
+      "GREEN": 127,
       "RED": 510,
       "UNAVAILABLE": 1052,
       "YELLOW": 168
     },
     "settled_snapshots": 373,
-    "total_reports": 1855,
+    "total_reports": 1857,
     "total_snapshots": 396
   },
   "green_strong_v1": {
@@ -45948,7 +46022,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-11T01:13:01+00:00",
+    "generated_at_utc": "2026-09-11T05:33:45+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -46001,7 +46075,7 @@
     "distinct_events": 396,
     "events_with_comparable_closing": 7,
     "events_with_entry_market": 16,
-    "generated_at_utc": "2026-09-11T01:13:00+00:00",
+    "generated_at_utc": "2026-09-11T05:33:45+00:00",
     "market_only": {
       "accuracy_pct": 68.75,
       "brier_score": 0.217385,
@@ -46133,11 +46207,11 @@
       },
       {
         "date": "2026-09-11",
-        "observations": 10
+        "observations": 14
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 1165
+    "total_observations": 1169
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -46213,17 +46287,17 @@
     "yield_pct": null
   },
   "paper_technical": {
-    "average_odd": 1.578,
+    "average_odd": 1.568,
     "by_market": {
       "Handicap": null,
       "Moneyline": {
-        "average_odd": 1.578,
+        "average_odd": 1.568,
         "losses": 19,
-        "pending": 3,
+        "pending": 5,
         "pushes": 0,
         "roi_pct": -0.31,
         "settled": 56,
-        "total_entries": 59,
+        "total_entries": 61,
         "units": -0.171,
         "win_rate_pct": 66.07,
         "wins": 37,
@@ -46236,12 +46310,12 @@
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
     "losses": 19,
-    "pending": 3,
+    "pending": 5,
     "pushes": 0,
     "roi_pct": -0.31,
     "settled": 56,
     "status": "AVAILABLE",
-    "total_entries": 59,
+    "total_entries": 61,
     "units": -0.171,
     "win_rate_pct": 66.07,
     "wins": 37,
@@ -46287,20 +46361,20 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "b7ceb592cecc25bdbba2d48c0a2114e8cc84098df2490357199815f206e0210b",
+  "semantic_fingerprint": "92ea9617c6bab22ce5d73c19a4ce076b6c115e2a600d26f164a7d1ae2170e196",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T01:13:01+00:00"
+      "updated_at_utc": "2026-09-11T05:33:45+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T01:12:56+00:00"
+      "updated_at_utc": "2026-09-11T05:33:25+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T01:13:00+00:00"
+      "updated_at_utc": "2026-09-11T05:33:45+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -46308,41 +46382,37 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-10T17:35:09+00:00"
+      "updated_at_utc": "2026-09-11T05:33:33+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-10"
+      "updated_at_utc": "2026-09-11"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-10T17:34:58+00:00"
+      "updated_at_utc": "2026-09-11T05:33:37+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-10T17:35:09+00:00"
+      "updated_at_utc": "2026-09-11T05:33:32+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 96.089,
-      "eligible": 4,
-      "llm_calls": 4,
+      "duration_seconds": 27.234,
+      "eligible": 2,
+      "llm_calls": 2,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": 4,
-      "rapidapi_calls": 184,
+      "processed": 2,
+      "rapidapi_calls": 29,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-09-10T17:34:58+00:00"
+      "timestamp": "2026-09-11T05:33:37+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-05T05:36:11+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-05T17:34:51+00:00"
@@ -46418,6 +46488,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-10T17:34:58+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-11T05:33:37+00:00"
       }
     ],
     "status": "HEALTHY"
