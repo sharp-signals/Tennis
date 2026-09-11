@@ -345,7 +345,10 @@ def get_rapidapi_identity_metrics() -> dict:
         row = by_tour.setdefault(tour, {
             "matches": 0, "verified": 0, "unverified": 0,
             "rejected": 0, "lookup_attempts": 0, "fallback_calls": 0,
-            "cache_hits": 0, "cache_misses": 0, "unavailable_by_reason": {},
+            "cache_hits": 0, "cache_misses": 0,
+            "index_resolutions": 0, "persistent_cache_hits": 0,
+            "in_run_cache_hits": 0, "fallback_after_miss": 0,
+            "unavailable_by_reason": {},
         })
         row["matches"] += 1
         status = str(item.get("availability_status") or "UNAVAILABLE").upper()
@@ -357,9 +360,13 @@ def get_rapidapi_identity_metrics() -> dict:
             row["unverified"] += 1
         row["lookup_attempts"] += int(item.get("lookup_attempts") or 0)
         row["fallback_calls"] += int(item.get("identity_api_calls") or 0)
-        cache_status = item.get("cache_status")
-        row["cache_hits"] += int(cache_status == "HIT")
-        row["cache_misses"] += int(cache_status == "MISS")
+        resolution_path = item.get("resolution_path")
+        row["index_resolutions"] += int(resolution_path == "index")
+        row["persistent_cache_hits"] += int(resolution_path == "persistent_cache")
+        row["in_run_cache_hits"] += int(resolution_path == "in_run_cache")
+        row["fallback_after_miss"] += int(resolution_path == "fallback_after_miss")
+        row["cache_hits"] += int(resolution_path in {"persistent_cache", "in_run_cache"})
+        row["cache_misses"] += int(item.get("cache_status") == "MISS")
         reason = item.get("unavailable_reason")
         if reason:
             reasons = row["unavailable_by_reason"]
@@ -368,7 +375,9 @@ def get_rapidapi_identity_metrics() -> dict:
         by_tour.setdefault(tour, {
             "matches": 0, "verified": 0, "unverified": 0, "rejected": 0,
             "lookup_attempts": 0, "fallback_calls": 0, "cache_hits": 0,
-            "cache_misses": 0, "unavailable_by_reason": {},
+            "cache_misses": 0, "index_resolutions": 0,
+            "persistent_cache_hits": 0, "in_run_cache_hits": 0,
+            "fallback_after_miss": 0, "unavailable_by_reason": {},
         })["shared_index_calls"] = calls
     total_hits = sum(item["cache_hits"] for item in by_tour.values())
     total_misses = sum(item["cache_misses"] for item in by_tour.values())
@@ -1590,7 +1599,9 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
                     if indexed.get("identity_index_source") else
                     indexed.get("identity_source") or "verified_run_index"
                 ),
-                cache_status="HIT",
+                resolution_path="index",
+                index_source=indexed.get("identity_index_source") or "verified_run_index",
+                cache_status="NOT_APPLICABLE",
                 unavailable_reason=None,
             )
             return dict(indexed)
@@ -1614,6 +1625,7 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
                 match,
                 availability_status="VERIFIED" if cached and cached.get("valid") else "UNAVAILABLE",
                 identity_source="in_run_cache",
+                resolution_path="in_run_cache",
                 cache_status="HIT",
                 unavailable_reason=(cached or {}).get("reason") if cached else "event_identity_unavailable",
             )
@@ -1627,12 +1639,15 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
             availability_status="VERIFIED" if persisted.get("valid") else "REJECTED",
             unavailable_reason=persisted.get("reason"),
             identity_source=persisted.get("identity_cache"),
+            resolution_path="persistent_cache",
             cache_status="HIT",
         )
         return persisted
 
     attempts = _rapidapi_event_fallback_attempts(player_a, player_b, start)
-    _record_event_identity_diagnostic(match, cache_status="MISS")
+    _record_event_identity_diagnostic(
+        match, cache_status="MISS", resolution_path="fallback_after_miss",
+    )
     last_failure = "event_identity_unavailable"
     rejected_record: Optional[dict] = None
     attempted_methods: list[str] = []
@@ -4893,31 +4908,74 @@ def fetch_h2h_matches(tour: str, player1_id: int, player2_id: int) -> Optional[l
 
 
 def fetch_h2h_stats(tour: str, player1_id: int, player2_id: int) -> Optional[dict]:
+    data, _coverage = fetch_h2h_stats_with_coverage(tour, player1_id, player2_id)
+    return data
+
+
+def fetch_h2h_stats_with_coverage(
+    tour: str, player1_id: int, player2_id: int,
+) -> tuple[Optional[dict], dict]:
     """
     Stats agregadas do confronto direto (serviço, resposta, break points,
     sets decisivos, tiebreaks, por piso/tier) — específicas a este par de
-    jogadores, via matchstat. Independente do Sackmann.
+    jogadores, via matchstat. Devolve também proveniência explícita para que
+    uma falha desta família não seja confundida com perda do H2H factual.
     """
+    endpoint_family = f"{tour}/h2h/stats"
+    source = f"rapidapi_{tour}_h2h_stats"
+
+    def _coverage(
+        status: str,
+        *,
+        reason: Optional[str] = None,
+        http_status: Optional[int] = None,
+        cache_status: str = "MISS",
+    ) -> dict:
+        result = {
+            "status": status,
+            "source": source,
+            "endpoint_family": endpoint_family,
+            "reason": reason,
+            "cache_status": cache_status,
+        }
+        if http_status is not None:
+            result["http_status"] = int(http_status)
+        return result
+
     cache_key = f"stats:{_h2h_cache_key(tour, player1_id, player2_id)}"
     cached = _H2H_CACHE.get(cache_key)
     if cached is not None:
         age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
         if age_hours < H2H_CACHE_MAX_AGE_HOURS:
-            return cached["data"]
+            data = cached["data"]
+            return data, _coverage(
+                "AVAILABLE" if data else "UNAVAILABLE",
+                reason=None if data else "provider_data_unavailable",
+                cache_status="HIT",
+            )
 
     if not RAPIDAPI_KEY:
-        return None
+        return None, _coverage("UNAVAILABLE", reason="rapidapi_key_unavailable")
 
     url = f"{RAPIDAPI_BASE}/{tour}/h2h/stats/{player1_id}/{player2_id}/"
+    resp = None
     try:
         resp = _rapidapi_get(url)
         resp.raise_for_status()
         data = resp.json().get("data")
         _H2H_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
-        return data
+        return data, _coverage(
+            "AVAILABLE" if data else "UNAVAILABLE",
+            reason=None if data else "provider_data_unavailable",
+        )
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter h2h/stats ({tour}, {player1_id} vs {player2_id}): {exc}")
-        return None
+        response = getattr(exc, "response", None) or resp
+        http_status = getattr(response, "status_code", None)
+        reason = f"http_{http_status}" if http_status is not None else "request_error"
+        return None, _coverage(
+            "UNAVAILABLE", reason=reason, http_status=http_status,
+        )
 
 
 # --------------------------------------------------------------------- #

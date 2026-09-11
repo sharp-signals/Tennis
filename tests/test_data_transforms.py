@@ -224,13 +224,64 @@ class MatchInputTests(unittest.TestCase):
                 patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
                 patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), \
                 patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS, {}, clear=True), \
                 patch.object(fetch_data, "_ALL_UPCOMING_EVENTS_CACHE", [embedded]), \
                 patch.object(fetch_data, "_RAPIDAPI_EVENT_INDEX_READY", set()):
             fetch_data.prepare_rapidapi_odds_index([match])
             record = fetch_data._rapidapi_event_record_for_match(match)
+            metrics = fetch_data.get_rapidapi_identity_metrics()
         self.assertEqual(record["event_id"], "embedded-event")
         self.assertEqual(record["identity_index_source"], "embedded_upcoming")
+        self.assertEqual(metrics["by_tour"]["wta"]["index_resolutions"], 1)
+        self.assertEqual(metrics["by_tour"]["wta"]["cache_hits"], 0)
+        self.assertEqual(metrics["matches"][0]["cache_status"], "NOT_APPLICABLE")
         extend_index.assert_not_called()
+
+    def test_persistent_event_identity_is_reported_as_cache_hit(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9015, "_tour": "wta", "date": future,
+            "player1": {"name": "Aryna Sabalenka"},
+            "player2": {"name": "Jessica Pegula"},
+        }
+        identity_store = Mock()
+        identity_store.get_entry.return_value = {
+            "event_id": "persisted-event", "participant1": "Aryna Sabalenka",
+            "participant2": "Jessica Pegula", "event_start": future,
+        }
+        with patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {}, clear=True), \
+                patch.dict(fetch_data._RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS, {}, clear=True):
+            record = fetch_data._rapidapi_event_record_for_match(match)
+            metrics = fetch_data.get_rapidapi_identity_metrics()
+        self.assertEqual(record["event_id"], "persisted-event")
+        self.assertEqual(metrics["by_tour"]["wta"]["persistent_cache_hits"], 1)
+        self.assertEqual(metrics["by_tour"]["wta"]["cache_hits"], 1)
+        self.assertEqual(metrics["by_tour"]["wta"]["cache_misses"], 0)
+
+    def test_in_run_event_identity_is_reported_separately(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9016, "_tour": "wta", "date": future,
+            "player1": {"name": "Aryna Sabalenka"},
+            "player2": {"name": "Jessica Pegula"},
+        }
+        cached = {
+            "valid": True, "event_id": "run-event", "participant1": "Aryna Sabalenka",
+            "participant2": "Jessica Pegula", "event_start": future,
+        }
+        with patch.dict(
+            fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {"9016": cached}, clear=True,
+        ), patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), patch.dict(
+            fetch_data._RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS, {}, clear=True,
+        ):
+            record = fetch_data._rapidapi_event_record_for_match(match)
+            metrics = fetch_data.get_rapidapi_identity_metrics()
+        self.assertEqual(record["event_id"], "run-event")
+        self.assertEqual(metrics["by_tour"]["wta"]["in_run_cache_hits"], 1)
+        self.assertEqual(metrics["by_tour"]["wta"]["persistent_cache_hits"], 0)
 
     def test_extend_bridge_accepts_abbreviated_display_names_only_with_exact_match_id(self):
         future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
@@ -327,6 +378,9 @@ class MatchInputTests(unittest.TestCase):
         self.assertLessEqual(len(calls), fetch_data.RAPIDAPI_EVENT_FALLBACK_MAX_ATTEMPTS)
         self.assertTrue(all("A.%20Sabalenka" not in url and "J.%20Pegula" not in url for url in calls))
         self.assertEqual(metrics["by_tour"]["wta"]["lookup_attempts"], len(calls))
+        self.assertEqual(metrics["by_tour"]["wta"]["cache_misses"], 1)
+        self.assertEqual(metrics["by_tour"]["wta"]["fallback_after_miss"], 1)
+        self.assertEqual(metrics["by_tour"]["wta"]["cache_hits"], 0)
 
     def test_complete_provider_ids_cannot_be_overridden_by_matching_names(self):
         future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
@@ -356,28 +410,43 @@ class MatchInputTests(unittest.TestCase):
         }
         self.assertIsNone(fetch_data._validated_event_record(wrong, match))
 
-    def test_wta_h2h_500_does_not_block_independent_player_history(self):
+    def test_wta_h2h_stats_500_degrades_only_its_coverage_family(self):
         class Response:
-            status_code = 200
-
-            def __init__(self, payload=None, fails=False):
+            def __init__(self, payload=None, status_code=200):
                 self.payload = payload or {}
-                self.fails = fails
+                self.status_code = status_code
 
             def raise_for_status(self):
-                if self.fails:
-                    raise fetch_data.requests.HTTPError("500 WTA h2h")
+                if self.status_code >= 400:
+                    error = fetch_data.requests.HTTPError(f"{self.status_code} WTA h2h")
+                    error.response = self
+                    raise error
 
             def json(self):
                 return self.payload
 
-        recent = [{"id": 1, "player1Id": 18455, "player2Id": 88, "match_winner": 18455}]
+        h2h_matches = [{
+            "id": 1, "date": "2026-08-01T12:00:00+00:00",
+            "player1Id": 18455, "player2Id": 11712, "match_winner": 18455,
+        }]
+        recent_a = [{
+            "id": 2, "date": "2026-09-08T12:00:00+00:00", "court": "hard",
+            "player1Id": 18455, "player2Id": 88, "match_winner": 18455,
+        }]
+        recent_b = [{
+            "id": 3, "date": "2026-09-08T14:00:00+00:00", "court": "hard",
+            "player1Id": 11712, "player2Id": 99, "match_winner": 11712,
+        }]
 
         def route(url):
             if "/wta/h2h/stats/" in url:
-                return Response(fails=True)
+                return Response(status_code=500)
+            if "/wta/h2h/matches/" in url:
+                return Response({"data": h2h_matches})
             if "/wta/player/past-matches/18455" in url:
-                return Response({"data": recent})
+                return Response({"data": recent_a})
+            if "/wta/player/past-matches/11712" in url:
+                return Response({"data": recent_b})
             self.fail(f"unexpected endpoint: {url}")
 
         with patch.object(fetch_data, "RAPIDAPI_KEY", "test"), \
@@ -386,8 +455,35 @@ class MatchInputTests(unittest.TestCase):
                 patch.object(fetch_data, "_write_player_cache_entry"), \
                 patch.dict(fetch_data._H2H_CACHE, {}, clear=True), \
                 patch.dict(fetch_data._RECENT_MATCHES_CACHE, {}, clear=True):
-            self.assertIsNone(fetch_data.fetch_h2h_stats("wta", 18455, 11712))
-            self.assertEqual(fetch_data.fetch_player_recent_matches("wta", 18455), recent)
+            rich_stats, rich_coverage = fetch_data.fetch_h2h_stats_with_coverage(
+                "wta", 18455, 11712,
+            )
+            actual_h2h_matches = fetch_data.fetch_h2h_matches("wta", 18455, 11712)
+            actual_recent_a = fetch_data.fetch_player_recent_matches("wta", 18455)
+            actual_recent_b = fetch_data.fetch_player_recent_matches("wta", 11712)
+
+        start = datetime(2026, 9, 11, tzinfo=timezone.utc)
+        form_a = fetch_data.compute_form_from_recent(actual_recent_a, 18455, start, 10, "hard")["form"]
+        form_b = fetch_data.compute_form_from_recent(actual_recent_b, 11712, start, 10, "hard")["form"]
+        h2h = fetch_data.compute_h2h_from_api(actual_h2h_matches, 18455, 11712)
+        available = {"status": "AVAILABLE", "source": "independent_test_source", "reason": None}
+        coverage = {
+            "h2h_rich_stats": rich_coverage,
+            "h2h": {"status": "AVAILABLE", "source": "rapidapi_h2h_matches", "reason": None},
+            "historical_matches": {"a": available, "b": available},
+            "recent_form": {"a": available, "b": available},
+            "ranking": {"a": available, "b": available},
+        }
+
+        self.assertIsNone(rich_stats)
+        self.assertEqual(rich_coverage["status"], "UNAVAILABLE")
+        self.assertEqual(rich_coverage["endpoint_family"], "wta/h2h/stats")
+        self.assertEqual(rich_coverage["reason"], "http_500")
+        self.assertEqual(rich_coverage["http_status"], 500)
+        self.assertEqual(h2h["overall"], {"a_wins": 1, "b_wins": 0, "total_matches": 1})
+        self.assertEqual(form_a, {"wins": 1, "losses": 0, "matches": 1})
+        self.assertEqual(form_b, {"wins": 1, "losses": 0, "matches": 1})
+        self.assertEqual(main._report_data_status(coverage), "DEGRADED")
 
     def test_event_lookup_uses_generic_full_and_initial_surname_forms(self):
         self.assertEqual(

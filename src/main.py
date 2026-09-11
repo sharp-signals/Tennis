@@ -1022,6 +1022,22 @@ def _compact_match_history(matches, player_id=None, limit=10, *, tour=None,
     return compact[:limit]
 
 
+def _report_data_status(data_coverage: dict) -> str:
+    """Resume cobertura sem transformar ausência parcial em dados neutros."""
+    coverage_states = []
+    for family in data_coverage.values():
+        if isinstance(family, dict) and "status" in family:
+            coverage_states.append(family["status"])
+        elif isinstance(family, dict):
+            coverage_states.extend(
+                side.get("status") for side in family.values() if isinstance(side, dict)
+            )
+    complete_states = {"AVAILABLE", "NONE_OBSERVED", "NOT_APPLICABLE"}
+    return "COMPLETE" if coverage_states and all(
+        state in complete_states for state in coverage_states
+    ) else "DEGRADED"
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -1117,8 +1133,23 @@ def _build_match_payload(match: dict) -> dict:
 
     # H2H rico via matchstat (stats de serviço/resposta específicas do confronto)
     h2h_rich_stats = None
+    h2h_rich_stats_coverage = {
+        "status": "NOT_APPLICABLE",
+        "source": None,
+        "endpoint_family": f"{tour}/h2h/stats",
+        "reason": "wta_only_endpoint",
+    }
     if tour == "wta" and _pid_a is not None and _pid_b is not None:
-        h2h_rich_stats = fetch_data.fetch_h2h_stats(tour, _pid_a, _pid_b)
+        h2h_rich_stats, h2h_rich_stats_coverage = (
+            fetch_data.fetch_h2h_stats_with_coverage(tour, _pid_a, _pid_b)
+        )
+    elif tour == "wta":
+        h2h_rich_stats_coverage = {
+            "status": "UNAVAILABLE",
+            "source": "rapidapi_wta_h2h_stats",
+            "endpoint_family": "wta/h2h/stats",
+            "reason": "player_identity_unavailable",
+        }
 
     # Dados básicos: do histórico (ATP, via TennisMyLife). Para WTA — ou
     # sempre que o histórico não tiver o jogador — usamos a RapidAPI, que
@@ -1501,6 +1532,7 @@ def _build_match_payload(match: dict) -> dict:
             "b": _historical_coverage(_recent_b_cache, _resolved_b),
         },
         "h2h": _h2h_coverage,
+        "h2h_rich_stats": h2h_rich_stats_coverage,
         "recent_form": {
             "a": _coverage(
                 form_a, "rapidapi_player_past_matches" if _form_api_a else "local_history",
@@ -1542,17 +1574,7 @@ def _build_match_payload(match: dict) -> dict:
             ),
         },
     }
-    coverage_states = []
-    for family in data_coverage.values():
-        if isinstance(family, dict) and "status" in family:
-            coverage_states.append(family["status"])
-        else:
-            coverage_states.extend(
-                side.get("status") for side in family.values() if isinstance(side, dict)
-            )
-    report_data_status = "COMPLETE" if all(
-        state in {"AVAILABLE", "NONE_OBSERVED"} for state in coverage_states
-    ) else "DEGRADED"
+    report_data_status = _report_data_status(data_coverage)
 
     payload = {
         "match_id": match.get("id"),
