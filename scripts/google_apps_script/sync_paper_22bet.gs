@@ -58,7 +58,9 @@ function syncPaperTradingToGitHub() {
   if (existingResponse.getResponseCode() === 200) {
     const existing = JSON.parse(existingResponse.getContentText());
     sha = existing.sha;
-    const decoded = Utilities.newBlob(Utilities.base64DecodeWebSafe(existing.content || '')).getDataAsString();
+    const decoded = Utilities.newBlob(
+      Utilities.base64Decode(String(existing.content || '').replace(/\s/g, '')),
+    ).getDataAsString();
     try {
       const previous = JSON.parse(decoded);
       if (previous.data_fingerprint === payload.data_fingerprint) {
@@ -73,7 +75,10 @@ function syncPaperTradingToGitHub() {
 
   const body = {
     message: 'chore: sincronizar métricas PAPER 22Bet [skip ci]',
-    content: Utilities.base64EncodeWebSafe(JSON.stringify(payload, null, 2)),
+    content: Utilities.base64Encode(
+      JSON.stringify(payload, null, 2),
+      Utilities.Charset.UTF_8,
+    ),
     branch: branch,
   };
   if (sha) body.sha = sha;
@@ -339,7 +344,11 @@ function fetchGreenStrongIndex_(token, repository, branch) {
   if (response.getResponseCode() !== 200) return {byKey: {}, eligibleCount: null, available: false};
   try {
     const body = JSON.parse(response.getContentText());
-    const document = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(body.content || '')).getDataAsString());
+    const document = JSON.parse(
+      Utilities.newBlob(
+        Utilities.base64Decode(String(body.content || '').replace(/\s/g, '')),
+      ).getDataAsString(),
+    );
     const rows = document.prospective_classifications || [];
     const byKey = {};
     rows.forEach(row => { if (row.snapshot_key) byKey[String(row.snapshot_key)] = row; });
