@@ -80,13 +80,20 @@ class OperationalBoundaryTests(unittest.TestCase):
         with patch.object(main, "run", side_effect=RuntimeError("boom")), \
              patch.object(main.fetch_data, "get_rapidapi_call_count", return_value=7), \
              patch.object(main.fetch_data, "get_rapidapi_endpoint_counts", return_value={}), \
+             patch.object(main.fetch_data, "get_rapidapi_endpoint_family_counts", return_value={}), \
+             patch.object(main.fetch_data, "get_rapidapi_identity_metrics", return_value={}), \
              patch.object(main.fetch_data, "persist_rapidapi_usage") as persist_usage, \
              patch.object(main.run_metrics, "append_run", return_value=metric_entry) as append_run, \
              patch.object(main.run_metrics, "health_alerts", return_value=["execução falhou"]):
             with self.assertRaisesRegex(RuntimeError, "boom"):
                 main.main()
         persist_usage.assert_called_once_with(status="failed", matches=0)
-        append_run.assert_called_once_with(context={"rapidapi_calls": 7, "rapidapi_calls_by_endpoint": {}})
+        append_run.assert_called_once_with(context={
+            "rapidapi_calls": 7,
+            "rapidapi_calls_by_endpoint": {},
+            "rapidapi_calls_by_endpoint_family": {},
+            "event_identity": {},
+        })
 
     def test_discovery_outage_is_not_reported_as_no_eligible_matches(self):
         with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
