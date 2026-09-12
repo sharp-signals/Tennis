@@ -5059,8 +5059,88 @@
         "tournament_id": 21349
       },
       "settlement": null
+    },
+    {
+      "key": "wta:1107:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-12T22:35:37+00:00",
+        "commence_time_utc": "2026-09-13T16:00:00+00:00",
+        "coverage": {
+          "available_factors": 18,
+          "available_weight": 117.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 81.2,
+          "weighted_ratio": 0.8125
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "b4c725a01ed6eae411338a20af0c62251b8fdff4de3d42496021ee4499abc2ef",
+        "event_key": "wta:1107",
+        "expected_edge_pct": 2.44,
+        "fair_odd": 1.347,
+        "fenzobot_index": 92,
+        "line": null,
+        "market": "Moneyline Taylor Townsend",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Tatjana Maria": 3.09,
+          "Taylor Townsend": 1.38
+        },
+        "market_type": "Moneyline",
+        "match_id": 1107,
+        "odd": 1.38,
+        "odds_provenance": {
+          "bookmaker": "DraftKings",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-12T22:35:01+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3955783",
+          "event_id": "3955783",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.30872483221476504,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "single_bookmaker",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "provider_timestamp": "2026-09-12T20:34:32+00:00",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "players": {
+          "a": {
+            "id": 4110,
+            "name": "Tatjana Maria"
+          },
+          "b": {
+            "id": 13621,
+            "name": "Taylor Townsend"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "ec71bbd618eac4557edc",
+        "selected_player": "Taylor Townsend",
+        "selected_side": "b",
+        "sharp_estimate_pct": 74.23,
+        "snapshot_key": "wta:1107",
+        "surface": "Hard",
+        "tour": "wta",
+        "tournament": "Guadalajara Open Akron - Guadalajara",
+        "tournament_id": 16745
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-12T17:34:58+00:00"
+  "updated_at_utc": "2026-09-12T22:35:37+00:00"
 }
