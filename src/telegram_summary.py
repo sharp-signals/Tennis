@@ -32,7 +32,7 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
         return 1, "⚪", f"{a} vs {b} — edge exatamente 0,0% em {player} · excluído"
     if state == "PRICING_UNAVAILABLE":
         reason = html.escape(str(decision.get("reason") or "preço de mercado indisponível"))
-        return 0, "🟡", f"{a} vs {b} — <b>PREÇO INDISPONÍVEL</b> · análise factual disponível · {reason}"
+        return 0.5, "🟡", f"{a} vs {b} — <b>MERCADO PENDENTE</b> · análise factual disponível · reconsulta automática · {reason}"
     reason = html.escape(str(decision.get("reason") or "dados insuficientes"))
     return 0, "⚫", f"{a} vs {b} — <b>RELATÓRIO NULO</b> · {reason}"
 

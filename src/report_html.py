@@ -63,7 +63,7 @@ REPORT_DECISION_PRESENTATION = {
     "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴", "RED"),
     "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪", "UNAVAILABLE"),
     "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
-    "PRICING_UNAVAILABLE": ("PREÇO DE MERCADO INDISPONÍVEL", "zero", "🟡", "YELLOW"),
+    "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
 }
 
 
@@ -3014,8 +3014,8 @@ def _mod_decision_box(payload):
         }
         detail = unavailable_messages.get(reason, "Não foi recebida uma cotação atual verificável para os dois jogadores.")
         body = (
-            '<div class="decision-primary">Análise factual disponível; edge e PAPER bloqueados por ausência de cotação fresca verificável.</div>'
-            f'<div class="decision-note">{_esc(detail)} · Cobertura {_esc(coverage_text)}.</div>'
+            '<div class="decision-primary">Análise factual disponível; edge e PAPER aguardam uma cotação bilateral verificável.</div>'
+            f'<div class="decision-note">{_esc(detail)} · O mercado entra em reconsulta automática; não cria PAPER. Cobertura {_esc(coverage_text)}.</div>'
         )
     else:
         assessment = _d(decision.get("report_assessment"))
