@@ -9,10 +9,15 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-CHANGE_ID = "CHANGE-2026-09-10-036"
-POLICY_VERSION = "market-quote-integrity-v1"
+CHANGE_ID = "CHANGE-2026-09-12-040"
+POLICY_VERSION = "market-quote-integrity-v2"
 CONSENSUS_MAX_DISTANCE = 0.15
-MIN_OPERATIONAL_BOOKMAKERS = 2
+# Uma cotação bilateral válida, ligada a um evento pré-live verificado, é
+# suficiente para produzir o relatório/pricing. Dois ou mais bookmakers
+# continuam a ser necessários apenas para chamar ao resultado "consenso".
+# Bloquear todo o relatório por haver apenas um bookmaker descartava mercados
+# reais que a própria RapidAPI expõe (ex.: WTA Guadalajara).
+MIN_OPERATIONAL_BOOKMAKERS = 1
 DEFAULT_EXCLUSIONS_PATH = Path("data/validation/market-integrity-exclusions-v1.json")
 
 MARKET_BOUNDARY_SENTINEL = "MARKET_BOUNDARY_SENTINEL"
@@ -120,11 +125,33 @@ def evaluate_moneyline_market(candidates: Iterable[Mapping[str, Any]]) -> dict[s
             else:
                 survivors.append(candidate)
 
-    if len(survivors) < MIN_OPERATIONAL_BOOKMAKERS:
-        for candidate in survivors:
-            candidate["integrity_status"] = "OBSERVATION_ONLY"
-            candidate["reason_code"] = INSUFFICIENT_BOOKMAKER_CONSENSUS
-        return unavailable(INSUFFICIENT_BOOKMAKER_CONSENSUS, median_a=initial_median)
+    if not survivors:
+        return unavailable(NO_VALID_MONEYLINE_CANDIDATE, median_a=initial_median)
+
+    # Não há consenso a medir com uma só casa, mas existe uma Moneyline
+    # bilateral estruturalmente válida e observada nesta execução. Mantemos a
+    # proveniência explícita para que o relatório não a apresente como média
+    # de mercado nem como arbitragem.
+    if len(survivors) == 1:
+        selected = survivors[0]
+        selected["integrity_status"] = "SINGLE_BOOKMAKER_OPERATIONAL"
+        selected["reason_code"] = None
+        selected["operational_pricing_eligible"] = True
+        return {
+            "status": "AVAILABLE",
+            "policy_version": POLICY_VERSION,
+            "reason_code": None,
+            "pricing_basis": "single_bookmaker",
+            "selected": dict(selected),
+            "valid_candidates": valid,
+            "rejected_candidates": rejected,
+            "candidate_count": len(checked),
+            "valid_candidate_count": len(valid),
+            "coherent_bookmaker_count": 1,
+            "minimum_operational_bookmakers": MIN_OPERATIONAL_BOOKMAKERS,
+            "median_devig_probability_a": initial_median,
+            "dispersion_pp": None,
+        }
 
     probabilities = [candidate["devig_probability_a"] for candidate in survivors]
     dispersion = max(probabilities) - min(probabilities)
@@ -156,6 +183,7 @@ def evaluate_moneyline_market(candidates: Iterable[Mapping[str, Any]]) -> dict[s
         "status": "AVAILABLE",
         "policy_version": POLICY_VERSION,
         "reason_code": None,
+        "pricing_basis": "cross_bookmaker_consensus",
         "selected": dict(selected),
         "valid_candidates": valid,
         "rejected_candidates": rejected,

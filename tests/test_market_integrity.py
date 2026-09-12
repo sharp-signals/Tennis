@@ -71,13 +71,40 @@ class MarketIntegrityGateTests(unittest.TestCase):
         self.assertEqual(result["reason_code"], market_integrity.CROSS_BOOK_DISPERSION)
         self.assertIsNone(result["selected"])
 
-    def test_one_bookmaker_is_observation_only(self):
+    def test_one_valid_bookmaker_allows_operational_price_with_explicit_basis(self):
         result = market_integrity.evaluate_moneyline_market([
             {"bookmaker": "Book A", "odd_a": 1.70, "odd_b": 2.20},
         ])
-        self.assertEqual(result["reason_code"], market_integrity.INSUFFICIENT_BOOKMAKER_CONSENSUS)
-        self.assertEqual(result["valid_candidates"][0]["integrity_status"], "OBSERVATION_ONLY")
-        self.assertFalse(result["valid_candidates"][0]["operational_pricing_eligible"])
+        self.assertEqual(result["status"], "AVAILABLE")
+        self.assertEqual(result["pricing_basis"], "single_bookmaker")
+        self.assertEqual(result["selected"]["integrity_status"], "SINGLE_BOOKMAKER_OPERATIONAL")
+        self.assertTrue(result["selected"]["operational_pricing_eligible"])
+
+    def test_fetch_single_bookmaker_returns_operational_moneyline(self):
+        match = {"player1": {"name": "Peyton Stearns"}, "player2": {"name": "Emiliana Arango"}}
+        event = {
+            "valid": True, "event_id": "3955784",
+            "participant1": "Peyton Stearns", "participant2": "Emiliana Arango",
+        }
+
+        class Response:
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"result": {"Full Time Result": {
+                    "DraftKings": {"od1": "1.35", "od2": "3.22", "addTime": "1789245272"},
+                }}}
+
+        with patch.object(fetch_data, "_rapidapi_event_record_for_match", return_value=event), \
+                patch.object(fetch_data, "_rapidapi_get", return_value=Response()), \
+                patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Peyton Stearns": 1.35, "Emiliana Arango": 3.22})
+        self.assertEqual(provenance["bookmaker"], "DraftKings")
+        self.assertEqual(provenance["market_integrity"]["pricing_basis"], "single_bookmaker")
 
     def test_non_finite_incomplete_and_below_one_are_rejected(self):
         for candidate, reason in (

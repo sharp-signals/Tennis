@@ -1823,6 +1823,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "policy_version", "status", "reason_code", "candidate_count",
             "valid_candidate_count", "coherent_bookmaker_count",
             "minimum_operational_bookmakers", "median_devig_probability_a", "dispersion_pp",
+            "pricing_basis",
         )
     }
     integrity_summary["rejected_candidates"] = [
