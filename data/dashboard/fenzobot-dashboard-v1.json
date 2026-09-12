@@ -32,7 +32,7 @@
     "llm": {
       "llm_external_requests": 0,
       "llm_mode": "disabled",
-      "llm_provider_invocations": 3
+      "llm_provider_invocations": 1
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -172,6 +172,52 @@
   "change_id": "CHANGE-2026-09-11-040",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+      "counts": {
+        "GREEN": 1,
+        "GREEN_STRONG": 0,
+        "PAPER_TECHNICAL": 0,
+        "RED": 0,
+        "UNAVAILABLE": 0,
+        "YELLOW": 0,
+        "matchups": 1,
+        "reports": 1
+      },
+      "date": "2026-09-12",
+      "matchups": [
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-09-12",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:26ab4b59ee1e38ff339a",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Aryna Sabalenka vs Elena Rybakina",
+          "version_count": 1,
+          "version_indexes": [
+            0
+          ]
+        }
+      ],
+      "reports": [
+        {
+          "color": "GREEN",
+          "date": "2026-09-12",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Aryna Sabalenka vs Elena Rybakina",
+          "url": "../relatorios/aryna-sabalenka-vs-elena-rybakina-2026-09-12-733aca8a6f1e1d6bce43.html"
+        }
+      ]
+    },
     {
       "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
       "counts": {
@@ -46044,21 +46090,21 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-12T01:14:52+00:00",
+  "generated_at_utc": "2026-09-12T05:33:51+00:00",
   "global": {
-    "distinct_matchups": 1443,
+    "distinct_matchups": 1444,
     "green_strong_candidates": 0,
-    "market_observations": 1280,
+    "market_observations": 1282,
     "paper_22bet_entries": 45,
     "paper_technical_entries": 62,
     "report_colors": {
-      "GREEN": 128,
+      "GREEN": 129,
       "RED": 512,
       "UNAVAILABLE": 1052,
       "YELLOW": 168
     },
     "settled_snapshots": 374,
-    "total_reports": 1860,
+    "total_reports": 1861,
     "total_snapshots": 396
   },
   "green_strong_v1": {
@@ -46074,7 +46120,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-12T01:14:52+00:00",
+    "generated_at_utc": "2026-09-12T05:33:50+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -46273,7 +46319,7 @@
     "distinct_events": 396,
     "events_with_comparable_closing": 7,
     "events_with_entry_market": 16,
-    "generated_at_utc": "2026-09-12T01:14:52+00:00",
+    "generated_at_utc": "2026-09-12T05:33:50+00:00",
     "market_only": {
       "accuracy_pct": 68.75,
       "brier_score": 0.217385,
@@ -46405,11 +46451,11 @@
       },
       {
         "date": "2026-09-12",
-        "observations": 5
+        "observations": 7
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 1280
+    "total_observations": 1282
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -46559,20 +46605,20 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "a9cef81decc8e437f90dc6aff9e25bab81fccccd848be987d97970f81ffa0877",
+  "semantic_fingerprint": "04ae919629f6302fa85df16e7cdbb9887ef626b8823795e912850105d7a58d52",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-12T01:14:52+00:00"
+      "updated_at_utc": "2026-09-12T05:33:50+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-12T01:14:48+00:00"
+      "updated_at_utc": "2026-09-12T05:33:24+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-12T01:14:52+00:00"
+      "updated_at_utc": "2026-09-12T05:33:50+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -46584,37 +46630,33 @@
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11"
+      "updated_at_utc": "2026-09-12"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T17:34:38+00:00"
+      "updated_at_utc": "2026-09-12T05:33:40+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-11T17:34:46+00:00"
+      "updated_at_utc": "2026-09-12T05:33:34+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 83.534,
-      "eligible": 3,
-      "llm_calls": 3,
+      "duration_seconds": 26.161,
+      "eligible": 1,
+      "llm_calls": 1,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": 3,
-      "rapidapi_calls": 52,
+      "processed": 1,
+      "rapidapi_calls": 30,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-09-11T17:34:38+00:00"
+      "timestamp": "2026-09-12T05:33:40+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-06T05:34:28+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-06T17:34:12+00:00"
@@ -46690,6 +46732,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-11T17:34:38+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-12T05:33:40+00:00"
       }
     ],
     "status": "HEALTHY"
