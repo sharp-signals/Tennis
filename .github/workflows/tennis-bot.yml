@@ -2,7 +2,9 @@ name: Tennis Pre-Live Bot
 
 on:
   # O agendamento é feito pelo Google Apps Script, que dispara este workflow
-  # por ``workflow_dispatch`` às 06:30 e 18:30 Europe/Lisbon. O cron nativo
+  # por ``workflow_dispatch`` às 06:30, 11:30, 15:30 e 18:30 Europe/Lisbon.
+  # O script de referência está em scripts/google_apps_script/prelive_scheduler.gs.
+  # O cron nativo
   # do GitHub pode arrancar horas atrasado, portanto fica deliberadamente
   # desativado para não criar execuções inesperadas nem custo extra.
   workflow_dispatch: {}
