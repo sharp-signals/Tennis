@@ -151,7 +151,7 @@ class ReportRenderingTests(unittest.TestCase):
             '<meta name="fenzobot-report-color" content="YELLOW">',
             html,
         )
-        self.assertIn("PREÇO DE MERCADO INDISPONÍVEL", html)
+        self.assertIn("MERCADO PENDENTE DE ATUALIZAÇÃO", html)
         self.assertNotIn('<script>alert("a")</script>', html)
         self.assertNotIn('<img src=x onerror="alert(1)">', html)
         self.assertNotIn('<svg onload="alert(2)">', html)
