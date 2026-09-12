@@ -470,6 +470,11 @@ _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
 # desaparecer um preço operacional que o bot já tinha associado corretamente.
 _EVENT_IDENTITY_STORE = JsonCacheStore("data/cache")
 _EVENT_IDENTITY_PATH = _EVENT_IDENTITY_STORE.entity_path("rapidapi_event_identity.json")
+# Fila mínima e persistente para mercados que a própria RapidAPI ainda não
+# publicou. Não guarda odds nem faz inferências: conserva apenas a fixture
+# necessária para uma reconsulta leve posterior.
+_PENDING_MARKET_STORE = JsonCacheStore("data/cache")
+_PENDING_MARKET_PATH = _PENDING_MARKET_STORE.entity_path("pending_market_checks.json")
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
 ODDS_API_BASE = "https://api.the-odds-api.com/v4"
@@ -656,6 +661,54 @@ def _persist_event_record(match: dict, record: dict) -> None:
         )
     except (OSError, ValueError):
         # Cache é uma otimização. Uma falha de escrita não pode bloquear odds.
+        return
+
+
+def _pending_market_match(match: dict) -> dict:
+    """Serializa só os campos necessários para voltar a consultar um mercado."""
+    fields = ("id", "_tour", "date", "player1Id", "player2Id", "tournamentId", "roundId")
+    saved = {field: match.get(field) for field in fields if match.get(field) not in (None, "")}
+    for side in ("player1", "player2"):
+        player = match.get(side) or {}
+        saved[side] = {
+            key: player.get(key) for key in ("id", "name") if player.get(key) not in (None, "")
+        }
+    return saved
+
+
+def register_pending_market_check(match: dict, provenance: Optional[dict], *, available: bool) -> None:
+    """Regista o estado de uma consulta de mercado para retry sem reanálise.
+
+    A fila é deliberadamente *fail-open*: se a cache não puder ser escrita, a
+    execução principal continua. Eventos rejeitados por já estarem live nunca
+    entram na fila, porque uma nova consulta não pode torná-los pré-live.
+    """
+    if not isinstance(provenance, dict):
+        return
+    reason = str(provenance.get("unavailable_reason") or "")
+    if reason in {"event_not_prelive", "event_time_mismatch"}:
+        return
+    key = _rapidapi_event_cache_key(match)
+    try:
+        previous = _PENDING_MARKET_STORE.get_entry(
+            _PENDING_MARKET_PATH, key, max_age_hours=168,
+        ) or {}
+        now = _odds_capture_timestamp()
+        data = {
+            "match": _pending_market_match(match),
+            "status": "RESOLVED" if available else "PENDING",
+            "reason": None if available else (reason or "market_unavailable"),
+            "first_seen_at_utc": previous.get("first_seen_at_utc") or now,
+            "last_checked_at_utc": now,
+            "attempts": int(previous.get("attempts") or 0) + (0 if available else 1),
+        }
+        if available:
+            data["resolved_at_utc"] = now
+        _PENDING_MARKET_STORE.set_entry(
+            _PENDING_MARKET_PATH, key, data,
+            metadata={"purpose": "lightweight pre-live market retry; no odds stored"},
+        )
+    except (OSError, ValueError, TypeError):
         return
 
 
@@ -1736,6 +1789,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             f"[aviso] odds operacionais indisponíveis para {player_a} vs {player_b}: "
             f"{diagnostic['unavailable_reason']}."
         )
+        register_pending_market_check(match, diagnostic, available=False)
         return None, diagnostic
     if event_id in _RAPIDAPI_FRESH_ODDS_CACHE:
         cached = _RAPIDAPI_FRESH_ODDS_CACHE[event_id]
@@ -1756,7 +1810,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     except (requests.RequestException, ValueError, RapidAPIBudgetExceeded) as exc:
         print(f"[aviso] odds frescas RapidAPI indisponíveis para {player_a} vs {player_b}: {exc}")
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, {
+        provenance = {
             "source": "RapidAPI Tennis API / recent-odds",
             "endpoint": url,
             "event_id": event_id,
@@ -1766,6 +1820,8 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "availability_status": "UNAVAILABLE",
             "unavailable_reason": "recent_odds_request_failed",
         }
+        register_pending_market_check(match, provenance, available=False)
+        return None, provenance
 
     # Normaliza todos os candidatos para a ordem local A/B antes do gate.
     # Assim, a mediana e as probabilidades de-vig auditadas referem-se sempre
@@ -1777,7 +1833,18 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         participant1_is_a = False
     else:  # defesa adicional: não há mapeamento seguro, logo não há pricing
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, None
+        provenance = {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "event_identity_source": event.get("identity_source"),
+            "bookmaker": None,
+            "from_cache": False,
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": "event_participant_mapping_unavailable",
+        }
+        register_pending_market_check(match, provenance, available=False)
+        return None, provenance
 
     candidates = []
     for bookmaker, quote_data in market.items():
@@ -1858,6 +1925,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "market_quotes": market_quotes,
         }
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": None, "provenance": provenance}
+        register_pending_market_check(match, provenance, available=False)
         return None, provenance
 
     bookmaker = str(selected["bookmaker"])
@@ -1888,6 +1956,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         "market_quotes": market_quotes,
     }
     _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance}
+    register_pending_market_check(match, provenance, available=True)
     print(f"[odds] {player_a} vs {player_b} | RapidAPI recent-odds observado · {bookmaker} | {odds}")
     return odds, provenance
 

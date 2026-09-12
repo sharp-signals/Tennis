@@ -14,7 +14,7 @@ class AuditIntegrationTests(unittest.TestCase):
         original = copy.deepcopy(payload)
         html = report_html._mod_decision_box(payload)
         self.assertIn("associado com segurança aos dois jogadores", html)
-        self.assertIn("edge e PAPER bloqueados", html)
+        self.assertIn("edge e PAPER aguardam", html)
         self.assertEqual(payload, original)
 
     def test_pr120_operational_coverage_remains_explicit(self):
