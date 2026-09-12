@@ -60,6 +60,7 @@ from . import green_strong_validation
 from . import dashboard
 from . import player_images
 from . import paper_trading
+from . import incremental_runs
 from .analyze import analyze_match
 from .pricing import estimate_market_residual_pricing
 from .prelive_decision import assess_report, build_decision
@@ -1952,10 +1953,44 @@ def run() -> None:
         print("[info] Sem jogos pré-live com identidade de evento válida. Nada a enviar.")
         return
 
+    # Execuções intermédias só devem publicar o que mudou: fixture nova,
+    # mercado pendente que ficou disponível, ou movimento material de preço.
+    # A consulta abaixo usa a cache em memória quando _build_match_payload
+    # correr, por isso não duplica a chamada recent-odds dos jogos escolhidos.
+    prior_incremental = incremental_runs.read_entries()
+    historical_snapshots = incremental_runs.snapshot_entries()
+    process_targets = []
+    incremental_reasons: dict[str, int] = {}
+    for match in eligible:
+        current_odds, _provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+        key = incremental_runs.match_key(match)
+        previous = prior_incremental.get(key) or incremental_runs.bootstrap_from_snapshot(
+            match, historical_snapshots,
+        )
+        should_process, reason = incremental_runs.decide(match, current_odds, previous)
+        incremental_reasons[reason] = incremental_reasons.get(reason, 0) + 1
+        if should_process:
+            match["_incremental_reason"] = reason
+            process_targets.append(match)
+
+    run_metrics.update_context(
+        incremental_candidates=len(eligible),
+        incremental_process_targets=len(process_targets),
+        incremental_skipped=len(eligible) - len(process_targets),
+        incremental_reasons=dict(sorted(incremental_reasons.items())),
+        phase="incremental_selection",
+    )
+    if not process_targets:
+        print(
+            "[info] Execução incremental: nenhum jogo novo, pendente resolvido "
+            "ou movimento material de odd. Sem relatórios repetidos."
+        )
+        fetch_data.persist_rapidapi_usage(status="incremental_no_change", matches=0)
+        return
+
     # A The Odds API é apenas uma comparação independente. Só a consultamos
-    # depois de o gate de integridade já ter eliminado fixtures impossíveis,
-    # para não gastar créditos em jogos terminados ou mal mapeados.
-    fetch_data.prepare_the_odds_market_index(eligible)
+    # para os jogos que efetivamente serão publicados, preservando créditos.
+    fetch_data.prepare_the_odds_market_index(process_targets)
 
     # Processar os jogos em PARALELO (resolve a lentidão: antes era um loop
     # sequencial que com muitos jogos chegava a ~30 min). Poucos workers para
@@ -2007,7 +2042,7 @@ def run() -> None:
     analyses = []
     analysis_errors = []
     with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
-        for res, error in executor.map(_process_one, eligible):
+        for res, error in executor.map(_process_one, process_targets):
             if res is not None:
                 analyses.append(res)
             if error is not None:
@@ -2045,7 +2080,7 @@ def run() -> None:
         category = error["category"]
         error_counts[category] = error_counts.get(category, 0) + 1
     processing_status, processing_ratio = _classify_processing_status(
-        len(eligible), len(analyses)
+        len(process_targets), len(analyses)
     )
     run_metrics.update_context(
         processed=len(analyses),
@@ -2098,7 +2133,7 @@ def run() -> None:
         # Anthropic sem créditos). Alertamos e saímos com erro para o
         # GitHub Actions ficar vermelho e o alerta de falha disparar.
         error_msg = (
-            f"⚠️ Tennis Bot: {len(eligible)} jogo(s) elegível(is), mas NENHUMA "
+            f"⚠️ Tennis Bot: {len(process_targets)} jogo(s) a atualizar, mas NENHUMA "
             "análise foi concluída — provável falha da API (créditos? rede?). "
             "Verifica os logs do GitHub Actions."
         )
@@ -2112,7 +2147,7 @@ def run() -> None:
     if processing_status == "failed":
         raise RuntimeError(
             "Execucao com cobertura insuficiente: "
-            f"{len(analyses)}/{len(eligible)} jogos processados "
+            f"{len(analyses)}/{len(process_targets)} jogos processados "
             f"({processing_ratio:.1%}; minimo "
             f"{PROCESSING_FAILURE_BELOW_RATIO:.0%}). Nenhum relatorio parcial "
             "foi publicado."
@@ -2123,6 +2158,16 @@ def run() -> None:
     # repeticao do bot nao reescreve a fotografia original.
     snapshots = []
     for payload, result in analyses:
+        incremental_runs.record_processed(
+            {
+                "_tour": payload.get("tour"),
+                "id": payload.get("match_id"),
+                "date": payload.get("commence_time_utc"),
+                "player1": {"name": payload.get("player_a")},
+                "player2": {"name": payload.get("player_b")},
+            },
+            payload.get("market_odds_decimal"),
+        )
         snapshot = calibration_store.build_snapshot(payload, result)
         # A mesma identidade liga relatório, snapshot e carteira PAPER.
         payload["snapshot_key"] = snapshot["key"]
@@ -2327,13 +2372,13 @@ def run() -> None:
     reports_ok = sum(1 for _, _, url in match_reports if url)
     run_metrics.update_context(
         status=processing_status, phase="complete", processed=len(analyses),
-        analysis_failed=len(eligible) - len(analyses), reports_ok=reports_ok,
+        analysis_failed=len(process_targets) - len(analyses), reports_ok=reports_ok,
         reports_failed=len(match_reports) - reports_ok, telegram_chunks=len(chunks),
     )
     print(
         "[run_summary] "
-        f"eligible={len(eligible)} processed={len(analyses)} "
-        f"analysis_failed={len(eligible) - len(analyses)} "
+        f"eligible={len(eligible)} targets={len(process_targets)} processed={len(analyses)} "
+        f"analysis_failed={len(process_targets) - len(analyses)} "
         f"status={processing_status} processing_ratio={processing_ratio:.1%} "
         f"reports_ok={reports_ok} reports_failed={len(match_reports) - reports_ok} "
         f"telegram_chunks={len(chunks)}"
