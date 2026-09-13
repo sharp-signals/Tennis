@@ -19783,5 +19783,362 @@
     "llm_provider_invocations": 11,
     "duration_seconds": 65.517,
     "llm_estimated_cost_usd": 0.0
+  },
+  {
+    "timestamp": "2026-09-13T00:00:02+00:00",
+    "status": "success",
+    "phase": "complete",
+    "fixtures_discovered_by_tour": {
+      "atp": 1,
+      "wta": 11
+    },
+    "eligible": 11,
+    "eligible_by_tour": {
+      "atp": 1,
+      "wta": 10
+    },
+    "post_identity_eligible_by_tour": {
+      "atp": 1,
+      "wta": 10
+    },
+    "event_identity": {
+      "fallback_attempt_cap_per_match": 6,
+      "by_tour": {
+        "atp": {
+          "matches": 1,
+          "verified": 1,
+          "unverified": 0,
+          "rejected": 0,
+          "lookup_attempts": 0,
+          "fallback_calls": 0,
+          "cache_hits": 1,
+          "cache_misses": 0,
+          "index_resolutions": 0,
+          "persistent_cache_hits": 1,
+          "in_run_cache_hits": 0,
+          "fallback_after_miss": 0,
+          "unavailable_by_reason": {},
+          "shared_index_calls": 1
+        },
+        "wta": {
+          "matches": 10,
+          "verified": 7,
+          "unverified": 3,
+          "rejected": 0,
+          "lookup_attempts": 18,
+          "fallback_calls": 18,
+          "cache_hits": 0,
+          "cache_misses": 3,
+          "index_resolutions": 7,
+          "persistent_cache_hits": 0,
+          "in_run_cache_hits": 0,
+          "fallback_after_miss": 3,
+          "unavailable_by_reason": {
+            "event_identity_not_in_response": 3
+          },
+          "shared_index_calls": 1
+        }
+      },
+      "matches": [
+        {
+          "match_key": "1107",
+          "tour": "wta",
+          "players": [
+            "Tatjana Maria",
+            "Taylor Townsend"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1109",
+          "tour": "wta",
+          "players": [
+            "Nadiya Kichenok",
+            "Nao Hibino"
+          ],
+          "lookup_attempts": 6,
+          "identity_api_calls": 6,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "UNAVAILABLE",
+          "unavailable_reason": "event_identity_not_in_response",
+          "identity_source": "bounded_event_get",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct",
+            "fixture_date_-1_reverse",
+            "fixture_date_+1_direct",
+            "fixture_date_+1_reverse"
+          ]
+        },
+        {
+          "match_key": "1110",
+          "tour": "wta",
+          "players": [
+            "Sara Sorribes Tormo",
+            "Caroline Dolehide"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1116",
+          "tour": "wta",
+          "players": [
+            "Cristina Bucsa",
+            "Bianca Vanessa Andreescu"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1118",
+          "tour": "wta",
+          "players": [
+            "Panna Udvardy",
+            "Lois Boisson"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1121",
+          "tour": "wta",
+          "players": [
+            "Alycia Parks",
+            "Mayar Sherif"
+          ],
+          "lookup_attempts": 6,
+          "identity_api_calls": 6,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "UNAVAILABLE",
+          "unavailable_reason": "event_identity_not_in_response",
+          "identity_source": "bounded_event_get",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct",
+            "fixture_date_-1_reverse",
+            "fixture_date_+1_direct",
+            "fixture_date_+1_reverse"
+          ]
+        },
+        {
+          "match_key": "1127",
+          "tour": "wta",
+          "players": [
+            "Peyton Stearns",
+            "Emiliana Arango"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1128",
+          "tour": "wta",
+          "players": [
+            "Elvina Kalieva",
+            "Kayla Day"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1129",
+          "tour": "wta",
+          "players": [
+            "Elsa Jacquemot",
+            "Liudmila Samsonova"
+          ],
+          "lookup_attempts": 6,
+          "identity_api_calls": 6,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "UNAVAILABLE",
+          "unavailable_reason": "event_identity_not_in_response",
+          "identity_source": "bounded_event_get",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct",
+            "fixture_date_-1_reverse",
+            "fixture_date_+1_direct",
+            "fixture_date_+1_reverse"
+          ]
+        },
+        {
+          "match_key": "1131",
+          "tour": "wta",
+          "players": [
+            "Darja Vidmanova",
+            "Janice Tjen"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1224",
+          "tour": "atp",
+          "players": [
+            "Alexander Zverev",
+            "Ben Shelton"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "verified_persistent",
+          "resolution_path": "persistent_cache",
+          "cache_status": "HIT"
+        }
+      ],
+      "cache_hit_rate": 0.25
+    },
+    "incremental_candidates": 11,
+    "incremental_process_targets": 6,
+    "incremental_skipped": 5,
+    "incremental_reasons": {
+      "pending_market_resolved": 6,
+      "pending_market_still_unavailable": 4,
+      "valid_report_unchanged": 1
+    },
+    "llm_mode": "disabled",
+    "unresolved_historical_players": 0,
+    "unresolved_historical_matches": 0,
+    "unresolved_historical_samples": [],
+    "processed": 6,
+    "analysis_failed": 0,
+    "processing_ratio": 1.0,
+    "analysis_error_counts": {},
+    "analysis_error_samples": [],
+    "market_coverage_by_tour": {
+      "atp": {
+        "available": 0,
+        "unavailable": 0,
+        "unavailable_by_reason": {}
+      },
+      "wta": {
+        "available": 6,
+        "unavailable": 0,
+        "unavailable_by_reason": {}
+      }
+    },
+    "report_data_status_by_tour": {
+      "atp": {
+        "complete": 0,
+        "degraded": 0
+      },
+      "wta": {
+        "complete": 4,
+        "degraded": 2
+      }
+    },
+    "rapidapi_calls_per_processed": 9.5,
+    "reports_ok": 6,
+    "reports_failed": 0,
+    "telegram_chunks": 1,
+    "rapidapi_calls": 57,
+    "rapidapi_calls_by_endpoint": {
+      "/tennis/v2/extend/api/event/get/Alycia%20Parks/Mayar%20Sherif/2026-09-12": 1,
+      "/tennis/v2/extend/api/event/get/Alycia%20Parks/Mayar%20Sherif/2026-09-13": 1,
+      "/tennis/v2/extend/api/event/get/Alycia%20Parks/Mayar%20Sherif/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Elsa%20Jacquemot/Liudmila%20Samsonova/2026-09-12": 1,
+      "/tennis/v2/extend/api/event/get/Elsa%20Jacquemot/Liudmila%20Samsonova/2026-09-13": 1,
+      "/tennis/v2/extend/api/event/get/Elsa%20Jacquemot/Liudmila%20Samsonova/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Elsa%20Jacquemot/2026-09-12": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Elsa%20Jacquemot/2026-09-13": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Elsa%20Jacquemot/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Mayar%20Sherif/Alycia%20Parks/2026-09-12": 1,
+      "/tennis/v2/extend/api/event/get/Mayar%20Sherif/Alycia%20Parks/2026-09-13": 1,
+      "/tennis/v2/extend/api/event/get/Mayar%20Sherif/Alycia%20Parks/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Nadiya%20Kichenok/Nao%20Hibino/2026-09-12": 1,
+      "/tennis/v2/extend/api/event/get/Nadiya%20Kichenok/Nao%20Hibino/2026-09-13": 1,
+      "/tennis/v2/extend/api/event/get/Nadiya%20Kichenok/Nao%20Hibino/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Nao%20Hibino/Nadiya%20Kichenok/2026-09-12": 1,
+      "/tennis/v2/extend/api/event/get/Nao%20Hibino/Nadiya%20Kichenok/2026-09-13": 1,
+      "/tennis/v2/extend/api/event/get/Nao%20Hibino/Nadiya%20Kichenok/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3954197": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955782": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955783": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955784": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955785": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955786": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955787": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3956500": 1,
+      "/tennis/v2/extend/api/events/upcoming/atp": 1,
+      "/tennis/v2/extend/api/events/upcoming/wta": 1,
+      "/tennis/v2/ms-api/upcoming/matches/atp": 4,
+      "/tennis/v2/ms-api/upcoming/matches/wta": 2,
+      "/tennis/v2/wta/h2h/matches/24344/39226/": 1,
+      "/tennis/v2/wta/h2h/matches/4110/13621/": 1,
+      "/tennis/v2/wta/h2h/matches/43866/60758/": 1,
+      "/tennis/v2/wta/h2h/matches/53793/39540/": 1,
+      "/tennis/v2/wta/h2h/matches/55186/30510/": 1,
+      "/tennis/v2/wta/h2h/matches/61710/60341/": 1,
+      "/tennis/v2/wta/h2h/stats/24344/39226/": 1,
+      "/tennis/v2/wta/h2h/stats/4110/13621/": 1,
+      "/tennis/v2/wta/h2h/stats/43866/60758/": 1,
+      "/tennis/v2/wta/h2h/stats/53793/39540/": 1,
+      "/tennis/v2/wta/h2h/stats/55186/30510/": 1,
+      "/tennis/v2/wta/h2h/stats/61710/60341/": 1,
+      "/tennis/v2/wta/player/tournament-record/43866/16745": 1,
+      "/tennis/v2/wta/player/tournament-record/60341/16745": 1,
+      "/tennis/v2/wta/player/tournament-record/60758/16745": 1,
+      "/tennis/v2/wta/ranking/singles/": 4,
+      "/tennis/v2/wta/tournament/info/13974": 1,
+      "/tennis/v2/wta/tournament/info/14383": 1,
+      "/tennis/v2/wta/tournament/info/14505": 1,
+      "/tennis/v2/wta/tournament/info/15977": 1
+    },
+    "rapidapi_calls_by_endpoint_family": {
+      "event_identity": 20,
+      "fixture_discovery": 6,
+      "market_odds": 8,
+      "other": 3,
+      "statistical_enrichment": 16,
+      "tournament_metadata": 4
+    },
+    "llm_calls": 6,
+    "llm_external_requests": 0,
+    "llm_provider_invocations": 6,
+    "duration_seconds": 42.989,
+    "llm_estimated_cost_usd": 0.0
   }
 ]
