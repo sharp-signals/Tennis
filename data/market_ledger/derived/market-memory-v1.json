@@ -16433,11 +16433,101 @@
       "snapshot_key": "wta:1119",
       "surface": "Hard",
       "tour": "wta"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-09-13T17:34:52+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Janice Tjen",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "a47ebdd6490d05ecc1a15781e7a8d77ecfe3c6f9",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "EDGE_NEGATIVE",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.4473,
+              "b": 0.5527000000000001
+            },
+            "github_run_id": "34771919263",
+            "market_probabilities": {
+              "a": 0.4595,
+              "b": 0.5405
+            },
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "wta:829"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "758c2137ca62070c0a52c496"
+        }
+      },
+      "entry_market_observation_id": "838bef68279d46b4f74bd3ef65f7566a0767d46446cd177d1f9af91fe1c26a83",
+      "entry_market_probabilities": {
+        "a": 0.4595300261096606,
+        "b": 0.5404699738903395
+      },
+      "event_key": "wta:829",
+      "fenzobot_probabilities": {
+        "a": 0.4473,
+        "b": 0.5527000000000001
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "b",
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4473,
+        "b": 0.5527000000000001
+      },
+      "match_format": "BO3",
+      "match_id": 829,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 61710,
+          "name": "Darja Vidmanova"
+        },
+        "b": {
+          "id": 60341,
+          "name": "Janice Tjen"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": {
+        "a": 0.4595,
+        "b": 0.5405
+      },
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "a0eef69090f0e9ae44d7",
+      "scheduled_start_utc": "2026-09-13T19:35:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "wta:829",
+      "surface": "Hard",
+      "tour": "wta"
     }
   ],
-  "generated_at_utc": "2026-09-13T14:56:49+00:00",
+  "generated_at_utc": "2026-09-13T17:35:14+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 1428,
+  "observation_count": 1430,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
