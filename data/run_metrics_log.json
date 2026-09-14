@@ -20879,5 +20879,195 @@
     "llm_provider_invocations": 2,
     "duration_seconds": 33.365,
     "llm_estimated_cost_usd": 0.0
+  },
+  {
+    "timestamp": "2026-09-14T05:33:29+00:00",
+    "status": "running",
+    "phase": "incremental_selection",
+    "fixtures_discovered_by_tour": {
+      "atp": 0,
+      "wta": 6
+    },
+    "eligible": 5,
+    "eligible_by_tour": {
+      "atp": 0,
+      "wta": 5
+    },
+    "post_identity_eligible_by_tour": {
+      "atp": 0,
+      "wta": 5
+    },
+    "event_identity": {
+      "fallback_attempt_cap_per_match": 6,
+      "by_tour": {
+        "wta": {
+          "matches": 5,
+          "verified": 2,
+          "unverified": 3,
+          "rejected": 0,
+          "lookup_attempts": 18,
+          "fallback_calls": 18,
+          "cache_hits": 0,
+          "cache_misses": 3,
+          "index_resolutions": 2,
+          "persistent_cache_hits": 0,
+          "in_run_cache_hits": 0,
+          "fallback_after_miss": 3,
+          "unavailable_by_reason": {
+            "event_identity_not_in_response": 3
+          },
+          "shared_index_calls": 1
+        }
+      },
+      "matches": [
+        {
+          "match_key": "804",
+          "tour": "wta",
+          "players": [
+            "Tatjana Maria",
+            "Taylor Townsend"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "821",
+          "tour": "wta",
+          "players": [
+            "Alycia Parks",
+            "Sara Bejlek"
+          ],
+          "lookup_attempts": 6,
+          "identity_api_calls": 6,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "UNAVAILABLE",
+          "unavailable_reason": "event_identity_not_in_response",
+          "identity_source": "bounded_event_get",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct",
+            "fixture_date_-1_reverse",
+            "fixture_date_+1_direct",
+            "fixture_date_+1_reverse"
+          ]
+        },
+        {
+          "match_key": "826",
+          "tour": "wta",
+          "players": [
+            "Diane Parry",
+            "Peyton Stearns"
+          ],
+          "lookup_attempts": 6,
+          "identity_api_calls": 6,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "UNAVAILABLE",
+          "unavailable_reason": "event_identity_not_in_response",
+          "identity_source": "bounded_event_get",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct",
+            "fixture_date_-1_reverse",
+            "fixture_date_+1_direct",
+            "fixture_date_+1_reverse"
+          ]
+        },
+        {
+          "match_key": "828",
+          "tour": "wta",
+          "players": [
+            "Elvina Kalieva",
+            "Kayla Day"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "829",
+          "tour": "wta",
+          "players": [
+            "Elsa Jacquemot",
+            "Liudmila Samsonova"
+          ],
+          "lookup_attempts": 6,
+          "identity_api_calls": 6,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "UNAVAILABLE",
+          "unavailable_reason": "event_identity_not_in_response",
+          "identity_source": "bounded_event_get",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct",
+            "fixture_date_-1_reverse",
+            "fixture_date_+1_direct",
+            "fixture_date_+1_reverse"
+          ]
+        }
+      ],
+      "cache_hit_rate": 0.0
+    },
+    "incremental_candidates": 5,
+    "incremental_process_targets": 0,
+    "incremental_skipped": 5,
+    "incremental_reasons": {
+      "valid_market_temporarily_unavailable": 3,
+      "valid_report_unchanged": 2
+    },
+    "rapidapi_calls": 30,
+    "rapidapi_calls_by_endpoint": {
+      "/tennis/v2/atp/fixtures/tournament/21348": 1,
+      "/tennis/v2/extend/api/event/get/Alycia%20Parks/Sara%20Bejlek/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Alycia%20Parks/Sara%20Bejlek/2026-09-15": 1,
+      "/tennis/v2/extend/api/event/get/Alycia%20Parks/Sara%20Bejlek/2026-09-16": 1,
+      "/tennis/v2/extend/api/event/get/Diane%20Parry/Peyton%20Stearns/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Diane%20Parry/Peyton%20Stearns/2026-09-15": 1,
+      "/tennis/v2/extend/api/event/get/Diane%20Parry/Peyton%20Stearns/2026-09-16": 1,
+      "/tennis/v2/extend/api/event/get/Elsa%20Jacquemot/Liudmila%20Samsonova/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Elsa%20Jacquemot/Liudmila%20Samsonova/2026-09-15": 1,
+      "/tennis/v2/extend/api/event/get/Elsa%20Jacquemot/Liudmila%20Samsonova/2026-09-16": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Elsa%20Jacquemot/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Elsa%20Jacquemot/2026-09-15": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Elsa%20Jacquemot/2026-09-16": 1,
+      "/tennis/v2/extend/api/event/get/Peyton%20Stearns/Diane%20Parry/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Peyton%20Stearns/Diane%20Parry/2026-09-15": 1,
+      "/tennis/v2/extend/api/event/get/Peyton%20Stearns/Diane%20Parry/2026-09-16": 1,
+      "/tennis/v2/extend/api/event/get/Sara%20Bejlek/Alycia%20Parks/2026-09-14": 1,
+      "/tennis/v2/extend/api/event/get/Sara%20Bejlek/Alycia%20Parks/2026-09-15": 1,
+      "/tennis/v2/extend/api/event/get/Sara%20Bejlek/Alycia%20Parks/2026-09-16": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955782": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/3955783": 1,
+      "/tennis/v2/extend/api/events/upcoming/wta": 1,
+      "/tennis/v2/ms-api/upcoming/matches/atp": 3,
+      "/tennis/v2/ms-api/upcoming/matches/wta": 2,
+      "/tennis/v2/wta/fixtures/tournament/16745": 1,
+      "/tennis/v2/wta/tournament/info/17279": 1,
+      "/tennis/v2/wta/tournament/info/17281": 1
+    },
+    "rapidapi_calls_by_endpoint_family": {
+      "event_identity": 19,
+      "fixture_discovery": 7,
+      "market_odds": 2,
+      "tournament_metadata": 2
+    },
+    "llm_external_requests": 0,
+    "llm_provider_invocations": 0,
+    "duration_seconds": 12.307,
+    "llm_estimated_cost_usd": 0.0
   }
 ]
