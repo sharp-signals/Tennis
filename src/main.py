@@ -1083,7 +1083,13 @@ def _build_match_payload(match: dict) -> dict:
     # RapidAPI recent-odds é a observação operacional: a auditoria demonstrou
     # que os preços atualizam, embora o addTime não seja fiável. The Odds API
     # é uma comparação independente, nunca uma mistura de preços.
-    odds, odds_provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+    # As odds embutidas no feed RapidAPI ``upcoming`` são a primeira fonte
+    # operacional quando o par e os IDs dos jogadores foram verificados.
+    # Não exigimos que a camada Extend publique simultaneamente um eventId:
+    # ela pode estar vazia mesmo quando o feed principal já tem as duas odds.
+    # ``fetch_rapidapi_moneyline_with_provenance`` usa recent-odds apenas
+    # como fallback quando a quote embutida não existir ou não for validável.
+    odds, odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
     reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
