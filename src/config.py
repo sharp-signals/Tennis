@@ -157,10 +157,11 @@ ODDS_API_TENNIS_SPORT_KEYS = [
 ]
 
 
-# Janela de antecedência: só considera jogos que arrancam dentro
-# destas horas a partir do momento em que o workflow corre.
+# Janela de antecedência: cobre três dias para detetar cedo todos os jogos
+# já marcados de um torneio, incluindo jogos que antes ficavam fora da janela
+# de 36 horas apesar de já terem mercado publicado.
 LOOKAHEAD_HOURS_MIN = 0
-LOOKAHEAD_HOURS_MAX = 36
+LOOKAHEAD_HOURS_MAX = 72
 
 SURFACES = ["Hard", "Clay", "Grass"]
 
