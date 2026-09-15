@@ -1953,40 +1953,22 @@ def run() -> None:
         print("[info] Sem jogos pré-live com identidade de evento válida. Nada a enviar.")
         return
 
-    # Execuções intermédias só devem publicar o que mudou: fixture nova,
-    # mercado pendente que ficou disponível, ou movimento material de preço.
-    # A consulta abaixo usa a cache em memória quando _build_match_payload
-    # correr, por isso não duplica a chamada recent-odds dos jogos escolhidos.
-    prior_incremental = incremental_runs.read_entries()
-    historical_snapshots = incremental_runs.snapshot_entries()
-    process_targets = []
-    incremental_reasons: dict[str, int] = {}
-    for match in eligible:
-        current_odds, _provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
-        key = incremental_runs.match_key(match)
-        previous = prior_incremental.get(key) or incremental_runs.bootstrap_from_snapshot(
-            match, historical_snapshots,
-        )
-        should_process, reason = incremental_runs.decide(match, current_odds, previous)
-        incremental_reasons[reason] = incremental_reasons.get(reason, 0) + 1
-        if should_process:
-            match["_incremental_reason"] = reason
-            process_targets.append(match)
+    # Publicamos uma fotografia completa em cada execução. Isto mantém os
+    # relatórios e as notificações visíveis mesmo quando o preço não mudou,
+    # permitindo ao operador rever todos os jogos que continuam pré-live.
+    # O estado incremental continua a ser gravado para auditoria, mas deixa de
+    # ser um bloqueio de publicação.
+    process_targets = list(eligible)
+    for match in process_targets:
+        match["_incremental_reason"] = "full_pre_live_run"
 
     run_metrics.update_context(
         incremental_candidates=len(eligible),
         incremental_process_targets=len(process_targets),
-        incremental_skipped=len(eligible) - len(process_targets),
-        incremental_reasons=dict(sorted(incremental_reasons.items())),
-        phase="incremental_selection",
+        incremental_skipped=0,
+        incremental_reasons={"full_pre_live_run": len(process_targets)},
+        phase="full_pre_live_selection",
     )
-    if not process_targets:
-        print(
-            "[info] Execução incremental: nenhum jogo novo, pendente resolvido "
-            "ou movimento material de odd. Sem relatórios repetidos."
-        )
-        fetch_data.persist_rapidapi_usage(status="incremental_no_change", matches=0)
-        return
 
     # A The Odds API é apenas uma comparação independente. Só a consultamos
     # para os jogos que efetivamente serão publicados, preservando créditos.
