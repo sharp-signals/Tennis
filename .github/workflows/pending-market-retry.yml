@@ -44,7 +44,9 @@ jobs:
           RAPIDAPI_MAX_CALLS_PER_RUN: "120"
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
           PENDING_MARKET_RETRY_MAX_PER_RUN: "20"
-        run: python scripts/retry_pending_markets.py
+        # Executar como módulo preserva a raiz do repositório no PYTHONPATH,
+        # permitindo ao script importar `src` no runner do GitHub Actions.
+        run: python -m scripts.retry_pending_markets
 
       - name: Guardar a fila e identidades recuperadas
         run: |
