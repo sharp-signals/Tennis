@@ -16600,11 +16600,101 @@
       "snapshot_key": "wta:829",
       "surface": "Hard",
       "tour": "wta"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-09-17T05:35:58+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Iva Jovic",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "6abe962950d627fa6811e9338bc693a23d4b4f2e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "EDGE_NEGATIVE",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.2346,
+              "b": 0.7654000000000001
+            },
+            "github_run_id": "35186166826",
+            "market_probabilities": {
+              "a": 0.272,
+              "b": 0.728
+            },
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "wta:806"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "c99840a2fa9de04b0cbe8e54"
+        }
+      },
+      "entry_market_observation_id": "c3ffd10d8a2dade13230afeaae8fd83adc86655bde5c7dcce6c4d9f3eed2ab31",
+      "entry_market_probabilities": {
+        "a": 0.2719665271966527,
+        "b": 0.7280334728033473
+      },
+      "event_key": "wta:806",
+      "fenzobot_probabilities": {
+        "a": 0.2346,
+        "b": 0.7654000000000001
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "b",
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.2346,
+        "b": 0.7654000000000001
+      },
+      "match_format": "BO3",
+      "match_id": 806,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 17155,
+          "name": "Magdalena Frech"
+        },
+        "b": {
+          "id": 80381,
+          "name": "Iva Jovic"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": {
+        "a": 0.272,
+        "b": 0.728
+      },
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "7135f9be155bc3f4a4d3",
+      "scheduled_start_utc": "2026-09-17T16:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "wta:806",
+      "surface": "Hard",
+      "tour": "wta"
     }
   ],
-  "generated_at_utc": "2026-09-17T01:32:02+00:00",
+  "generated_at_utc": "2026-09-17T05:36:17+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 1569,
+  "observation_count": 1572,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."

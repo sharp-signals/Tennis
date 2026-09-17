@@ -8,11 +8,11 @@
       "eligible": 0,
       "eligible_settled": 0,
       "exclusion_reason_counts": {
-        "DECISION_STATE_NOT_EDGE_POSITIVE": 29,
-        "DIVERGENCE_LEVEL_NOT_STRONG": 31,
-        "DIVERGENCE_TYPE_NOT_DIRECTION": 30,
+        "DECISION_STATE_NOT_EDGE_POSITIVE": 30,
+        "DIVERGENCE_LEVEL_NOT_STRONG": 32,
+        "DIVERGENCE_TYPE_NOT_DIRECTION": 31,
         "INTEGRITY_CONFLICT": 5,
-        "PAPER_NOT_ELIGIBLE": 29,
+        "PAPER_NOT_ELIGIBLE": 30,
         "PRICING_UNAVAILABLE": 26,
         "PROBABILITIES_UNAVAILABLE": 26,
         "SELECTED_PLAYER_UNAVAILABLE": 26,
@@ -20,9 +20,9 @@
       },
       "legacy_or_not_prospective": 390,
       "note": "Independent stored gates, not an inferred sequential funnel; reasons may overlap.",
-      "prospectively_classified": 31,
+      "prospectively_classified": 32,
       "status": "AVAILABLE",
-      "total_snapshots": 421
+      "total_snapshots": 422
     },
     "last_refresh_attempt": {
       "attempted_at_utc": "2026-09-17T01:31:57+00:00",
@@ -33,7 +33,7 @@
     "llm": {
       "llm_external_requests": 0,
       "llm_mode": "disabled",
-      "llm_provider_invocations": 6
+      "llm_provider_invocations": 3
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -164,7 +164,7 @@
       "eligibility_hash": "7dc801ddec9f6ee03ddc8f5240033400abcf6eb9e6949c9907d0fc5b906fd455",
       "eligible_forecasts": 18,
       "exclusions": {
-        "ENTRY_LINK_UNAVAILABLE": 40,
+        "ENTRY_LINK_UNAVAILABLE": 41,
         "FROZEN_PROBABILITIES_UNAVAILABLE": 309,
         "TEMPORAL_PROVENANCE_INVALID": 54
       },
@@ -186,7 +186,7 @@
       "sample_size": 18,
       "scored_snapshot_keys_hash": "43814702b35118df620982cb91e772aad29b1b8b57bd3a625afb53ada45df5ba",
       "status": "AVAILABLE",
-      "total_snapshots": 421
+      "total_snapshots": 422
     },
     "source_quality": {
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
@@ -212,6 +212,109 @@
   "change_id": "CHANGE-2026-09-11-040",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+      "counts": {
+        "GREEN": 0,
+        "GREEN_STRONG": 0,
+        "PAPER_TECHNICAL": 0,
+        "RED": 3,
+        "UNAVAILABLE": 0,
+        "YELLOW": 0,
+        "matchups": 3,
+        "reports": 3
+      },
+      "date": "2026-09-17",
+      "matchups": [
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-17",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:7d87ad1762e57e6ba339",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Cristina Bucsa vs Sara Bejlek",
+          "version_count": 1,
+          "version_indexes": [
+            0
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-17",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:2957b1b34602348cced5",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Peyton Stearns vs Sloane Stephens",
+          "version_count": 1,
+          "version_indexes": [
+            1
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-17",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:6e207e1e1c57b15ca1da",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-17T16:00:00+00:00",
+          "title": "Magdalena Frech vs Iva Jovic",
+          "version_count": 1,
+          "version_indexes": [
+            2
+          ]
+        }
+      ],
+      "reports": [
+        {
+          "color": "RED",
+          "date": "2026-09-17",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Cristina Bucsa vs Sara Bejlek",
+          "url": "../relatorios/cristina-bucsa-vs-sara-bejlek-2026-09-17-3a94056c80539cdb2a21.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-17",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Peyton Stearns vs Sloane Stephens",
+          "url": "../relatorios/peyton-stearns-vs-sloane-stephens-2026-09-17-a361967995d07cc3b698.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-17",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "7135f9be155bc3f4a4d3",
+          "scheduled_start_utc": "2026-09-17T16:00:00+00:00",
+          "title": "Magdalena Frech vs Iva Jovic",
+          "url": "../relatorios/magdalena-frech-vs-iva-jovic-2026-09-17-7135f9be155bc3f4a4d3.html"
+        }
+      ]
+    },
     {
       "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
       "counts": {
@@ -48071,22 +48174,22 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-17T01:32:02+00:00",
+  "generated_at_utc": "2026-09-17T05:36:18+00:00",
   "global": {
-    "distinct_matchups": 1494,
+    "distinct_matchups": 1497,
     "green_strong_candidates": 0,
-    "market_observations": 1569,
+    "market_observations": 1572,
     "paper_22bet_entries": 50,
     "paper_technical_entries": 72,
     "report_colors": {
       "GREEN": 154,
-      "RED": 541,
+      "RED": 544,
       "UNAVAILABLE": 1179,
       "YELLOW": 80
     },
     "settled_snapshots": 393,
-    "total_reports": 1954,
-    "total_snapshots": 421
+    "total_reports": 1957,
+    "total_snapshots": 422
   },
   "green_strong_v1": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
@@ -48101,7 +48204,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-17T01:32:02+00:00",
+    "generated_at_utc": "2026-09-17T05:36:18+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -48297,10 +48400,10 @@
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
     "closing_coverage_denominator": "DISTINCT_EVENTS",
     "closing_coverage_pct": 1.9,
-    "distinct_events": 421,
+    "distinct_events": 422,
     "events_with_comparable_closing": 8,
-    "events_with_entry_market": 20,
-    "generated_at_utc": "2026-09-17T01:32:02+00:00",
+    "events_with_entry_market": 21,
+    "generated_at_utc": "2026-09-17T05:36:17+00:00",
     "market_only": {
       "accuracy_pct": 72.22,
       "brier_score": 0.210507,
@@ -48432,11 +48535,11 @@
       },
       {
         "date": "2026-09-17",
-        "observations": 0
+        "observations": 3
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 1569
+    "total_observations": 1572
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -48518,15 +48621,15 @@
       "Moneyline": {
         "average_odd": 1.557,
         "losses": 20,
-        "pending": 8,
+        "pending": 6,
         "pushes": 0,
-        "roi_pct": 1.61,
-        "settled": 64,
+        "roi_pct": 3.14,
+        "settled": 66,
         "total_entries": 72,
-        "units": 1.032,
-        "win_rate_pct": 68.75,
-        "wins": 44,
-        "yield_pct": 1.61
+        "units": 2.072,
+        "win_rate_pct": 69.7,
+        "wins": 46,
+        "yield_pct": 3.14
       }
     },
     "data_quality_exclusions_by_reason": {
@@ -48535,16 +48638,16 @@
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
     "losses": 20,
-    "pending": 8,
+    "pending": 6,
     "pushes": 0,
-    "roi_pct": 1.61,
-    "settled": 64,
+    "roi_pct": 3.14,
+    "settled": 66,
     "status": "AVAILABLE",
     "total_entries": 72,
-    "units": 1.032,
-    "win_rate_pct": 68.75,
-    "wins": 44,
-    "yield_pct": 1.61
+    "units": 2.072,
+    "win_rate_pct": 69.7,
+    "wins": 46,
+    "yield_pct": 3.14
   },
   "report_grouping": {
     "canonical_precedence": [
@@ -48581,25 +48684,25 @@
     },
     "snapshot_universe": {
       "settled": 393,
-      "total": 421
+      "total": 422
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "ba9ef3efaa4781b13ee894ab9ee7c942ca21d1bb8df33bd30b15ea56dbfe1dfd",
+  "semantic_fingerprint": "f2849d313a9ec5f6c5e25133f71e8f71099081b609bda28f0549196fa9d36934",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-17T01:32:02+00:00"
+      "updated_at_utc": "2026-09-17T05:36:18+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-16T20:08:07+00:00"
+      "updated_at_utc": "2026-09-17T05:33:22+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-17T01:32:02+00:00"
+      "updated_at_utc": "2026-09-17T05:36:17+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -48607,41 +48710,37 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-16T17:36:45+00:00"
+      "updated_at_utc": "2026-09-17T05:36:14+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-16"
+      "updated_at_utc": "2026-09-17"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-16T17:36:37+00:00"
+      "updated_at_utc": "2026-09-17T05:36:07+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-16T17:36:28+00:00"
+      "updated_at_utc": "2026-09-17T05:35:58+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 195.753,
-      "eligible": 6,
-      "llm_calls": 6,
+      "duration_seconds": 166.693,
+      "eligible": 3,
+      "llm_calls": 3,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": 6,
-      "rapidapi_calls": 44,
+      "processed": 3,
+      "rapidapi_calls": 28,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-09-16T17:36:37+00:00"
+      "timestamp": "2026-09-17T05:36:07+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-10T05:34:29+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-10T17:34:58+00:00"
@@ -48717,6 +48816,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-16T17:36:37+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-17T05:36:07+00:00"
       }
     ],
     "status": "HEALTHY"

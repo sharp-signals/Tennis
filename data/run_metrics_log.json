@@ -23092,5 +23092,180 @@
     "llm_provider_invocations": 6,
     "duration_seconds": 195.753,
     "llm_estimated_cost_usd": 0.0
+  },
+  {
+    "timestamp": "2026-09-17T05:36:07+00:00",
+    "status": "success",
+    "phase": "complete",
+    "fixtures_discovered_by_tour": {
+      "atp": 0,
+      "wta": 4
+    },
+    "eligible": 3,
+    "eligible_by_tour": {
+      "atp": 0,
+      "wta": 3
+    },
+    "post_identity_eligible_by_tour": {
+      "atp": 0,
+      "wta": 3
+    },
+    "event_identity": {
+      "fallback_attempt_cap_per_match": 6,
+      "by_tour": {
+        "wta": {
+          "matches": 3,
+          "verified": 3,
+          "unverified": 0,
+          "rejected": 0,
+          "lookup_attempts": 5,
+          "fallback_calls": 5,
+          "cache_hits": 0,
+          "cache_misses": 3,
+          "index_resolutions": 0,
+          "persistent_cache_hits": 0,
+          "in_run_cache_hits": 0,
+          "fallback_after_miss": 3,
+          "unavailable_by_reason": {},
+          "shared_index_calls": 1
+        }
+      },
+      "matches": [
+        {
+          "match_key": "806",
+          "tour": "wta",
+          "players": [
+            "Magdalena Frech",
+            "Iva Jovic"
+          ],
+          "lookup_attempts": 1,
+          "identity_api_calls": 1,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "VERIFIED",
+          "identity_source": "bounded_event_get:fixture_exact_direct",
+          "attempted_methods": [
+            "fixture_exact_direct"
+          ]
+        },
+        {
+          "match_key": "811",
+          "tour": "wta",
+          "players": [
+            "Cristina Bucsa",
+            "Sara Bejlek"
+          ],
+          "lookup_attempts": 1,
+          "identity_api_calls": 1,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "VERIFIED",
+          "identity_source": "bounded_event_get:fixture_exact_direct",
+          "attempted_methods": [
+            "fixture_exact_direct"
+          ]
+        },
+        {
+          "match_key": "827",
+          "tour": "wta",
+          "players": [
+            "Peyton Stearns",
+            "Sloane Stephens"
+          ],
+          "lookup_attempts": 3,
+          "identity_api_calls": 3,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "VERIFIED",
+          "identity_source": "bounded_event_get:fixture_date_-1_direct",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct"
+          ]
+        }
+      ],
+      "cache_hit_rate": 0.0
+    },
+    "incremental_candidates": 3,
+    "incremental_process_targets": 3,
+    "incremental_skipped": 0,
+    "incremental_reasons": {
+      "full_pre_live_run": 3
+    },
+    "llm_mode": "disabled",
+    "unresolved_historical_players": 0,
+    "unresolved_historical_matches": 0,
+    "unresolved_historical_samples": [],
+    "processed": 3,
+    "analysis_failed": 0,
+    "processing_ratio": 1.0,
+    "analysis_error_counts": {},
+    "analysis_error_samples": [],
+    "market_coverage_by_tour": {
+      "atp": {
+        "available": 0,
+        "unavailable": 0,
+        "unavailable_by_reason": {}
+      },
+      "wta": {
+        "available": 3,
+        "unavailable": 0,
+        "unavailable_by_reason": {}
+      }
+    },
+    "report_data_status_by_tour": {
+      "atp": {
+        "complete": 0,
+        "degraded": 0
+      },
+      "wta": {
+        "complete": 3,
+        "degraded": 0
+      }
+    },
+    "rapidapi_calls_per_processed": 9.333,
+    "reports_ok": 3,
+    "reports_failed": 0,
+    "telegram_chunks": 1,
+    "rapidapi_calls": 28,
+    "rapidapi_calls_by_endpoint": {
+      "/tennis/v2/atp/fixtures/tournament/21348": 1,
+      "/tennis/v2/extend/api/event/get/Cristina%20Bucsa/Sara%20Bejlek/2026-09-17": 1,
+      "/tennis/v2/extend/api/event/get/Magdalena%20Frech/Iva%20Jovic/2026-09-17": 1,
+      "/tennis/v2/extend/api/event/get/Peyton%20Stearns/Sloane%20Stephens/2026-09-17": 1,
+      "/tennis/v2/extend/api/event/get/Peyton%20Stearns/Sloane%20Stephens/2026-09-18": 1,
+      "/tennis/v2/extend/api/event/get/Sloane%20Stephens/Peyton%20Stearns/2026-09-18": 1,
+      "/tennis/v2/extend/api/events/upcoming/wta": 1,
+      "/tennis/v2/ms-api/upcoming/matches/atp": 3,
+      "/tennis/v2/ms-api/upcoming/matches/wta": 2,
+      "/tennis/v2/wta/fixtures/tournament/16745": 1,
+      "/tennis/v2/wta/h2h/matches/17155/80381/": 1,
+      "/tennis/v2/wta/h2h/matches/24344/71163/": 1,
+      "/tennis/v2/wta/h2h/matches/53793/10033/": 1,
+      "/tennis/v2/wta/h2h/stats/17155/80381/": 1,
+      "/tennis/v2/wta/h2h/stats/24344/71163/": 1,
+      "/tennis/v2/wta/h2h/stats/53793/10033/": 1,
+      "/tennis/v2/wta/player/past-matches/10033": 1,
+      "/tennis/v2/wta/player/past-matches/17155": 1,
+      "/tennis/v2/wta/player/past-matches/24344": 1,
+      "/tennis/v2/wta/player/past-matches/53793": 1,
+      "/tennis/v2/wta/player/past-matches/71163": 1,
+      "/tennis/v2/wta/player/past-matches/80381": 1,
+      "/tennis/v2/wta/ranking/singles/": 1,
+      "/tennis/v2/wta/tournament/info/14527": 1,
+      "/tennis/v2/wta/tournament/info/15249": 1
+    },
+    "rapidapi_calls_by_endpoint_family": {
+      "event_identity": 6,
+      "fixture_discovery": 7,
+      "statistical_enrichment": 13,
+      "tournament_metadata": 2
+    },
+    "llm_calls": 3,
+    "llm_external_requests": 0,
+    "llm_provider_invocations": 3,
+    "duration_seconds": 166.693,
+    "llm_estimated_cost_usd": 0.0
   }
 ]
