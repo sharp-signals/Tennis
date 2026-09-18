@@ -33,7 +33,7 @@
     "llm": {
       "llm_external_requests": 0,
       "llm_mode": "disabled",
-      "llm_provider_invocations": 4
+      "llm_provider_invocations": 1
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -212,6 +212,52 @@
   "change_id": "CHANGE-2026-09-11-040",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+      "counts": {
+        "GREEN": 1,
+        "GREEN_STRONG": 0,
+        "PAPER_TECHNICAL": 0,
+        "RED": 0,
+        "UNAVAILABLE": 0,
+        "YELLOW": 0,
+        "matchups": 1,
+        "reports": 1
+      },
+      "date": "2026-09-18",
+      "matchups": [
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-09-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:470ef8012a6206969871",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Cristina Bucsa vs Iva Jovic",
+          "version_count": 1,
+          "version_indexes": [
+            0
+          ]
+        }
+      ],
+      "reports": [
+        {
+          "color": "GREEN",
+          "date": "2026-09-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Cristina Bucsa vs Iva Jovic",
+          "url": "../relatorios/cristina-bucsa-vs-iva-jovic-2026-09-18-5987cf6661c272df14fb.html"
+        }
+      ]
+    },
     {
       "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
       "counts": {
@@ -48235,21 +48281,21 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-18T01:19:43+00:00",
+  "generated_at_utc": "2026-09-18T05:35:52+00:00",
   "global": {
-    "distinct_matchups": 1498,
+    "distinct_matchups": 1499,
     "green_strong_candidates": 0,
-    "market_observations": 1576,
+    "market_observations": 1577,
     "paper_22bet_entries": 50,
-    "paper_technical_entries": 72,
+    "paper_technical_entries": 73,
     "report_colors": {
-      "GREEN": 154,
+      "GREEN": 155,
       "RED": 548,
       "UNAVAILABLE": 1179,
       "YELLOW": 80
     },
-    "settled_snapshots": 393,
-    "total_reports": 1961,
+    "settled_snapshots": 394,
+    "total_reports": 1962,
     "total_snapshots": 422
   },
   "green_strong_v1": {
@@ -48265,7 +48311,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-18T01:19:43+00:00",
+    "generated_at_utc": "2026-09-18T05:35:52+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -48464,18 +48510,18 @@
     "distinct_events": 422,
     "events_with_comparable_closing": 8,
     "events_with_entry_market": 21,
-    "generated_at_utc": "2026-09-18T01:19:43+00:00",
+    "generated_at_utc": "2026-09-18T05:35:52+00:00",
     "market_only": {
-      "accuracy_pct": 72.22,
-      "brier_score": 0.210507,
-      "log_loss": 0.613903,
-      "sample_size": 18
+      "accuracy_pct": 73.68,
+      "brier_score": 0.20332,
+      "log_loss": 0.598298,
+      "sample_size": 19
     },
     "market_plus_fenzobot": {
-      "accuracy_pct": 70.37,
-      "brier_score": 0.193855,
-      "log_loss": 0.567158,
-      "sample_size": 108
+      "accuracy_pct": 70.64,
+      "brier_score": 0.192581,
+      "log_loss": 0.564407,
+      "sample_size": 109
     },
     "observations_by_day": [
       {
@@ -48596,11 +48642,11 @@
       },
       {
         "date": "2026-09-18",
-        "observations": 0
+        "observations": 1
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 1576
+    "total_observations": 1577
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -48676,17 +48722,17 @@
     "yield_pct": null
   },
   "paper_technical": {
-    "average_odd": 1.557,
+    "average_odd": 1.553,
     "by_market": {
       "Handicap": null,
       "Moneyline": {
-        "average_odd": 1.557,
+        "average_odd": 1.553,
         "losses": 20,
-        "pending": 5,
+        "pending": 6,
         "pushes": 0,
         "roi_pct": 3.61,
         "settled": 67,
-        "total_entries": 72,
+        "total_entries": 73,
         "units": 2.422,
         "win_rate_pct": 70.15,
         "wins": 47,
@@ -48699,12 +48745,12 @@
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
     "losses": 20,
-    "pending": 5,
+    "pending": 6,
     "pushes": 0,
     "roi_pct": 3.61,
     "settled": 67,
     "status": "AVAILABLE",
-    "total_entries": 72,
+    "total_entries": 73,
     "units": 2.422,
     "win_rate_pct": 70.15,
     "wins": 47,
@@ -48726,13 +48772,13 @@
   },
   "report_history": {
     "alignment": {
-      "acertos": 199,
+      "acertos": 200,
       "intervalo_pct": [
-        65.0,
-        75.6
+        65.1,
+        75.7
       ],
-      "taxa_pct": 70.6,
-      "total": 282
+      "taxa_pct": 70.7,
+      "total": 283
     },
     "divergence": {
       "acertos": 18,
@@ -48744,26 +48790,26 @@
       "total": 38
     },
     "snapshot_universe": {
-      "settled": 393,
+      "settled": 394,
       "total": 422
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "1225697b714e5dc3334efff3b04e8b808a24df01f0dbf35db85f149b095d5327",
+  "semantic_fingerprint": "10890c233b7494295bf38e51ab2a2b1982cd3b62072f2d647f4c393f5c08028b",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-18T01:19:43+00:00"
+      "updated_at_utc": "2026-09-18T05:35:52+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-17T17:33:21+00:00"
+      "updated_at_utc": "2026-09-18T05:33:17+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-18T01:19:43+00:00"
+      "updated_at_utc": "2026-09-18T05:35:52+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -48771,41 +48817,37 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-17T17:34:06+00:00"
+      "updated_at_utc": "2026-09-18T05:35:27+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-17"
+      "updated_at_utc": "2026-09-18"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-17T17:33:55+00:00"
+      "updated_at_utc": "2026-09-18T05:35:35+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-17T17:33:48+00:00"
+      "updated_at_utc": "2026-09-18T05:35:46+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 34.909,
-      "eligible": 4,
-      "llm_calls": 4,
+      "duration_seconds": 139.162,
+      "eligible": 1,
+      "llm_calls": 1,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": 4,
-      "rapidapi_calls": 37,
+      "processed": 1,
+      "rapidapi_calls": 16,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-09-17T17:33:55+00:00"
+      "timestamp": "2026-09-18T05:35:35+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-11T05:33:37+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-11T17:34:38+00:00"
@@ -48881,6 +48923,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-17T17:33:55+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-18T05:35:35+00:00"
       }
     ],
     "status": "HEALTHY"
