@@ -5874,7 +5874,23 @@
         "tournament": "Guadalajara Open Akron - Guadalajara",
         "tournament_id": 16745
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": null,
+        "closing_odd": null,
+        "clv_pct": null,
+        "clv_price_pct": null,
+        "clv_probability_pp": null,
+        "entry_market_observation_id": "088160e1d0904dcc20b65a2a51f8939e980a2f90300a74f83e749469ecfc55bc",
+        "entry_market_probability": null,
+        "last_valid_prestart_market_probability": null,
+        "market_memory_error": null,
+        "market_memory_status": "INELIGIBLE",
+        "match_result": "6-4 6-1",
+        "pnl_units": 0.26,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-19T05:34:52+00:00",
+        "winner_id": 80381
+      }
     },
     {
       "key": "wta:812:moneyline:a:na",
@@ -5942,9 +5958,93 @@
         "tournament": "Guadalajara Open Akron - Guadalajara",
         "tournament_id": 16745
       },
+      "settlement": {
+        "closing_market_observation_id": null,
+        "closing_odd": null,
+        "clv_pct": null,
+        "clv_price_pct": null,
+        "clv_probability_pp": null,
+        "entry_market_observation_id": "211db80baf1823fc354f74370d237d623d4212f7c0d9cf2e6abda3ce7f102232",
+        "entry_market_probability": null,
+        "last_valid_prestart_market_probability": null,
+        "market_memory_error": null,
+        "market_memory_status": "INELIGIBLE",
+        "match_result": "7-6(7) 6-2",
+        "pnl_units": -1.0,
+        "result": "LOSS",
+        "settled_at_utc": "2026-09-19T05:34:52+00:00",
+        "winner_id": 53793
+      }
+    },
+    {
+      "key": "wta:827:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-19T05:34:32+00:00",
+        "commence_time_utc": "2026-09-19T23:00:00+00:00",
+        "coverage": {
+          "available_factors": 16,
+          "available_weight": 99.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 68.8,
+          "weighted_ratio": 0.6875
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "1a169ed4a9b2aab0e218cc611b28cee5da5c3e25e5176469524a88fe6d92c65e",
+        "event_key": "wta:827",
+        "expected_edge_pct": 1.83,
+        "fair_odd": 1.296,
+        "fenzobot_index": 98,
+        "line": null,
+        "market": "Moneyline Iva Jovic",
+        "market_memory_eligible": false,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Iva Jovic": 1.32,
+          "Peyton Stearns": 3.34
+        },
+        "market_type": "Moneyline",
+        "match_id": 827,
+        "odd": 1.32,
+        "odds_provenance": {
+          "bookmaker": null,
+          "cache_age_seconds": 71,
+          "capture_kind": "feed_observed_at_capture",
+          "captured_at_utc": "2026-09-19T05:33:16+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+          "event_id": null,
+          "from_cache": true,
+          "market_integrity": null,
+          "provider_timestamp": null,
+          "source": "RapidAPI Tennis API / embedded upcoming feed"
+        },
+        "players": {
+          "a": {
+            "id": 53793,
+            "name": "Peyton Stearns"
+          },
+          "b": {
+            "id": 80381,
+            "name": "Iva Jovic"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "05cfa36e768fbde76298",
+        "selected_player": "Iva Jovic",
+        "selected_side": "b",
+        "sharp_estimate_pct": 77.14,
+        "snapshot_key": "wta:827",
+        "surface": "Hard",
+        "tour": "wta",
+        "tournament": "Guadalajara Open Akron - Guadalajara",
+        "tournament_id": 16745
+      },
       "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-18T17:35:02+00:00"
+  "updated_at_utc": "2026-09-19T05:34:52+00:00"
 }
