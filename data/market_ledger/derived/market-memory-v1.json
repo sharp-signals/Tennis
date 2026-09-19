@@ -3459,7 +3459,18 @@
       "market_plus_sharp_probabilities": null,
       "match_id": 933,
       "outcome_side": "b",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "d71ec2272e26bad0a83563e529696f4997a22fee8af202d86f04c9ae443f14eb",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "wta:933:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 66597,
@@ -11824,7 +11835,18 @@
       },
       "match_id": 928,
       "outcome_side": "b",
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "fbc5a0bc400329bccadc00210cd4a0b6d99e72454045b71e182c08448da2be69",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "wta:928:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 64343,
@@ -16722,11 +16744,110 @@
       "snapshot_key": "wta:806",
       "surface": "Hard",
       "tour": "wta"
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-09-19T17:35:02+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Janice Tjen",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "766b7cf71a4562d9db5e13fb94c9abe49091ab08",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "EDGE_POSITIVE",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.2364,
+              "b": 0.7636
+            },
+            "github_run_id": "35458425785",
+            "market_probabilities": {
+              "a": 0.28850000000000003,
+              "b": 0.7115
+            },
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "wta:939"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "d4ebea1c5564261eb75bf665"
+        }
+      },
+      "entry_market_observation_id": "4ef6d9d38dc1bc484acc9ff0c7f5f889e9ef25231ca0d1fb6670e9d952333a38",
+      "entry_market_probabilities": {
+        "a": 0.2885032537960954,
+        "b": 0.7114967462039045
+      },
+      "event_key": "wta:939",
+      "fenzobot_probabilities": {
+        "a": 0.2364,
+        "b": 0.7636
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "b",
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.2364,
+        "b": 0.7636
+      },
+      "match_format": "BO3",
+      "match_id": 939,
+      "outcome_side": null,
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "4ef6d9d38dc1bc484acc9ff0c7f5f889e9ef25231ca0d1fb6670e9d952333a38",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "wta:939:moneyline:b:na",
+          "selected_side": "b"
+        }
+      ],
+      "players": {
+        "a": {
+          "id": 45540,
+          "name": "Alycia Parks"
+        },
+        "b": {
+          "id": 60341,
+          "name": "Janice Tjen"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": {
+        "a": 0.28850000000000003,
+        "b": 0.7115
+      },
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "cc1bca8d2a6e81c7755b",
+      "scheduled_start_utc": "2026-09-21T03:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "wta:939",
+      "surface": "I.hard",
+      "tour": "wta"
     }
   ],
-  "generated_at_utc": "2026-09-19T14:30:56+00:00",
+  "generated_at_utc": "2026-09-19T17:35:28+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 1631,
+  "observation_count": 1644,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
