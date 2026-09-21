@@ -278,6 +278,9 @@ def build_observation(
             "cache_age_seconds": provenance.get("cache_age_seconds"),
             "prestart_status": prestart_status,
             "identity_mapping_status": mapping_status,
+            "event_identity_validation_basis": provenance.get(
+                "event_identity_validation_basis"
+            ),
             "pipeline": pipeline,
             "github_run_id": provenance.get("github_run_id") or os.environ.get("GITHUB_RUN_ID"),
         },
@@ -422,7 +425,7 @@ def record_market_batch_best_effort(
         for key in (
             "bookmaker", "provider_timestamp", "provider_timestamp_status",
             "freshness_status", "raw_payload_sha256", "provider_side_a", "provider_side_b",
-            "identity_mapping_status",
+            "identity_mapping_status", "event_identity_validation_basis",
             "market_integrity_status", "market_integrity_reason_codes",
             "operational_pricing_eligible",
         ):

@@ -35,6 +35,7 @@ class MarketLedgerTests(unittest.TestCase):
             "bookmaker": bookmaker,
             "freshness_status": "FRESH",
             "identity_mapping_status": "VERIFIED",
+            "event_identity_validation_basis": "PLAYER_IDS",
             "operational_pricing_eligible": True,
             "raw_payload_sha256": market_ledger.payload_sha256({"raw": 1}),
         }
@@ -56,6 +57,10 @@ class MarketLedgerTests(unittest.TestCase):
         self.assertEqual(observation["selections"][0]["raw_decimal_odd"], 1.8)
         self.assertAlmostEqual(sum(item["devig_probability"] for item in observation["selections"]), 1.0)
         self.assertTrue(observation["provenance"]["raw_payload_sha256"])
+        self.assertEqual(
+            observation["capture"]["event_identity_validation_basis"],
+            "PLAYER_IDS",
+        )
         self.assertTrue(observation["eligibility"]["clv"])
 
     def test_append_is_idempotent_but_later_capture_is_new_observation(self):

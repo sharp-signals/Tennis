@@ -111,8 +111,11 @@ e não é reclassificado.
 alterar `rapidapi-recent-gated-v1` nem a fingerprint
 `d8679462537d9f461ca7`. Uma instância singles nova só pode receber uma key
 opaca `mi2_<uuid4-hex>` quando existirem `tour`, `tournament_id`, os dois
-player IDs factuais e um discriminador forte: `event_id` bilateralmente
-validado ou `round_id` factual. O ID é mintado uma vez e nunca é recalculado a
+player IDs factuais e um discriminador forte: `event_id` com validation basis
+explícita `PLAYER_IDS`/`STRUCTURAL_MATCH_ID`, ou `round_id` factual. O estado
+genérico `VERIFIED` e a basis `EXACT_NAMES` podem continuar válidos para o
+contrato de pricing, mas nunca são prova forte para identity v2. O ID é mintado
+uma vez e nunca é recalculado a
 partir de hora, nomes, round, orientação A/B ou identificadores do provider.
 
 Os estados são `CANONICAL_STRONG`, `CANONICAL_RESOLVED`,

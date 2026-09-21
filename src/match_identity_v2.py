@@ -29,7 +29,13 @@ IDENTITY_PROVISIONAL = "IDENTITY_PROVISIONAL"
 IDENTITY_INSUFFICIENT = "IDENTITY_INSUFFICIENT"
 IDENTITY_CONFLICT = "IDENTITY_CONFLICT"
 CANONICAL_STATES = {CANONICAL_STRONG, CANONICAL_RESOLVED}
-_BILATERAL_EVENT_MAPPING_STATES = {"VERIFIED", "VERIFIED_PROVIDER_PLAYER_IDS"}
+EVENT_VALIDATION_PLAYER_IDS = "PLAYER_IDS"
+EVENT_VALIDATION_STRUCTURAL_MATCH_ID = "STRUCTURAL_MATCH_ID"
+EVENT_VALIDATION_EXACT_NAMES = "EXACT_NAMES"
+_STRONG_EVENT_VALIDATION_BASES = {
+    EVENT_VALIDATION_PLAYER_IDS,
+    EVENT_VALIDATION_STRUCTURAL_MATCH_ID,
+}
 
 ALIAS_EVENT_ID = "EVENT_ID"
 ALIAS_MATCH_ID = "MATCH_ID"
@@ -232,9 +238,19 @@ def is_canonical(result: Mapping[str, Any]) -> bool:
     )
 
 
-def event_id_is_bilaterally_validated(mapping_status: Any) -> bool:
-    """Only explicit player-ID-based provider mappings are strong evidence."""
-    return str(mapping_status or "").strip().upper() in _BILATERAL_EVENT_MAPPING_STATES
+def event_id_is_strong_identity_evidence(provenance: Mapping[str, Any]) -> bool:
+    """Require an event ID and an explicit structural validation basis.
+
+    Pricing may independently accept a generic ``VERIFIED`` mapping produced
+    from exact names. Canonical identity v2 is deliberately stricter: generic
+    mapping status, textual aliases and names plus time are never strong.
+    """
+    if not isinstance(provenance, Mapping) or not provenance.get("event_id"):
+        return False
+    basis = str(
+        provenance.get("event_identity_validation_basis") or ""
+    ).strip().upper()
+    return basis in _STRONG_EVENT_VALIDATION_BASES
 
 
 def _aliases(

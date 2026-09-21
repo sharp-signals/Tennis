@@ -54,12 +54,18 @@ def simulate(root: Path) -> dict[str, Any]:
                 str((event.get("player_b") or {}).get("id")),
             )))
             legacy_pairs[str(event.get("event_key") or "UNAVAILABLE")].add(pair)
-            mapping_status = capture.get("identity_mapping_status")
+            identity_provenance = {
+                "event_id": event.get("provider_event_id"),
+                "identity_mapping_status": capture.get("identity_mapping_status"),
+                "event_identity_validation_basis": capture.get(
+                    "event_identity_validation_basis"
+                ),
+            }
             result = match_identity_v2.resolve_observation(
                 _match_from_observation(row),
                 event_id=event.get("provider_event_id"),
-                event_id_validated=match_identity_v2.event_id_is_bilaterally_validated(
-                    mapping_status
+                event_id_validated=match_identity_v2.event_id_is_strong_identity_evidence(
+                    identity_provenance
                 ),
                 provider=str((row.get("source") or {}).get("provider") or "UNKNOWN"),
                 observed_at_utc=str(capture.get("captured_at_utc") or "") or None,

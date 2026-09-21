@@ -1128,11 +1128,13 @@ def _build_match_payload(match: dict) -> dict:
     # CHANGE-049: identidade prospetiva mint-once. A resolução reutiliza apenas
     # evidence já obtida pelo pipeline e não introduz chamadas externas. Uma
     # falha do registry mantém o relatório factual, mas bloqueia snapshot/PAPER.
+    # Pricing may retain an exact-name mapping under CHANGE-050, but identity
+    # v2 consumes the independent structural validation basis and may be more
+    # conservative. Preserve a non-strong event as provisional evidence
+    # instead of upgrading generic ``VERIFIED``.
     identity_provenance = (
         odds_provenance
-        if match_identity_v2.event_id_is_bilaterally_validated(
-            odds_provenance.get("identity_mapping_status")
-        )
+        if odds_provenance.get("event_id")
         else embedded_provenance
     )
     identity_observed_at = (
@@ -1142,8 +1144,8 @@ def _build_match_payload(match: dict) -> dict:
     identity_result = match_identity_v2.resolve_observation(
         match,
         event_id=identity_provenance.get("event_id"),
-        event_id_validated=match_identity_v2.event_id_is_bilaterally_validated(
-            identity_provenance.get("identity_mapping_status")
+        event_id_validated=match_identity_v2.event_id_is_strong_identity_evidence(
+            identity_provenance
         ),
         provider="RapidAPI",
         observed_at_utc=identity_observed_at,

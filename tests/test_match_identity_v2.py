@@ -8,6 +8,7 @@ from unittest.mock import patch
 from src import (
     calibration_store,
     dashboard,
+    fetch_data,
     main,
     market_integrity,
     market_ledger,
@@ -250,6 +251,104 @@ class MatchIdentityV2Tests(unittest.TestCase):
     def test_unverified_event_id_cannot_mint(self):
         result = self.resolve(event_id="event-a", event_id_validated=False)
         self.assertEqual(result["identity_status"], identity.IDENTITY_PROVISIONAL)
+
+    def test_event_validation_basis_decision_table_fails_closed(self):
+        for basis, expected in (
+            (identity.EVENT_VALIDATION_PLAYER_IDS, True),
+            (identity.EVENT_VALIDATION_STRUCTURAL_MATCH_ID, True),
+            (identity.EVENT_VALIDATION_EXACT_NAMES, False),
+            ("UNKNOWN", False),
+            (None, False),
+        ):
+            with self.subTest(basis=basis):
+                provenance = {
+                    "event_id": "event-a",
+                    "identity_mapping_status": "VERIFIED",
+                    "event_identity_validation_basis": basis,
+                }
+                self.assertIs(
+                    identity.event_id_is_strong_identity_evidence(provenance),
+                    expected,
+                )
+        self.assertFalse(identity.event_id_is_strong_identity_evidence({
+            "identity_mapping_status": "VERIFIED",
+            "event_identity_validation_basis": identity.EVENT_VALIDATION_PLAYER_IDS,
+        }))
+
+    def test_exact_names_and_scheduled_start_remain_provisional(self):
+        provenance = {
+            "event_id": "event-by-name",
+            "identity_mapping_status": "VERIFIED",
+            "event_identity_validation_basis": identity.EVENT_VALIDATION_EXACT_NAMES,
+        }
+        result = self.resolve(
+            event_id=provenance["event_id"],
+            event_id_validated=identity.event_id_is_strong_identity_evidence(
+                provenance
+            ),
+        )
+        self.assertEqual(result["identity_status"], identity.IDENTITY_PROVISIONAL)
+        self.assertIsNone(result["canonical_match_instance_id"])
+        self.assertFalse(identity.is_canonical(result))
+        payload = {
+            **result,
+            "match_id": 501,
+            "tour": "wta",
+            "tournament_id": 77,
+            "player_a_id": 10,
+            "player_b_id": 20,
+            "prelive_decision": {
+                "state": "EDGE_POSITIVE",
+                "paper_eligible": True,
+                "paper_markets": [{"market_type": "Moneyline"}],
+            },
+        }
+        with self.assertRaisesRegex(ValueError, "identity_v2_not_canonical"):
+            calibration_store.build_snapshot(payload, {})
+        self.assertEqual(paper_trading.build_entries(payload), [])
+
+    def test_player_id_event_validation_can_mint(self):
+        provenance = {
+            "event_id": "event-by-ids",
+            "identity_mapping_status": "VERIFIED",
+            "event_identity_validation_basis": identity.EVENT_VALIDATION_PLAYER_IDS,
+        }
+        result = self.resolve(
+            event_id=provenance["event_id"],
+            event_id_validated=identity.event_id_is_strong_identity_evidence(
+                provenance
+            ),
+        )
+        self.assertEqual(result["identity_status"], identity.CANONICAL_STRONG)
+        self.assertTrue(identity.is_canonical(result))
+
+    def test_structural_match_id_basis_proves_bilateral_context(self):
+        observation = self.observation(roundId=4)
+        provider = {
+            "eventId": "event-structural",
+            "matchId": "10-20-77-4",
+            "participant1": "A. One",
+            "participant2": "B. Two",
+            "status": "scheduled",
+            "startTime": observation["date"],
+        }
+        record = fetch_data._validated_event_record_by_match_id(
+            provider, observation, require_explicit_event_id=True,
+        )
+        self.assertEqual(
+            record["event_identity_validation_basis"],
+            identity.EVENT_VALIDATION_STRUCTURAL_MATCH_ID,
+        )
+        self.assertTrue(identity.event_id_is_strong_identity_evidence({
+            "event_id": record["event_id"],
+            "event_identity_validation_basis": record[
+                "event_identity_validation_basis"
+            ],
+        }))
+        provider["matchId"] = "10-99-77-4"
+        self.assertIsNone(fetch_data._validated_event_record_by_match_id(
+            provider, observation, require_explicit_event_id=True,
+        ))
 
     def test_existing_match_alias_requires_structural_coherence(self):
         first = self.resolve(event_id="event-a", event_id_validated=True)
