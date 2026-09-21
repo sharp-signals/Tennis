@@ -1,6 +1,14 @@
 import unittest
 
-from src import report_html
+from src import market_integrity, report_html
+
+
+def _operational_odds_fields():
+    return {
+        "odds_operational_pricing_eligible": True,
+        "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+        "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+    }
 
 
 class ReportStateTests(unittest.TestCase):
@@ -261,6 +269,7 @@ class ReportRenderingTests(unittest.TestCase):
 
     def test_strong_alignment_is_observed_without_claiming_fair_odds_or_handicap(self):
         payload = {
+            **_operational_odds_fields(),
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 1.80, "B": 2.05},
             "features": {
@@ -564,6 +573,7 @@ class ReportRenderingTests(unittest.TestCase):
 
     def test_calibrated_odds_range_is_demoted_behind_primary_pricing(self):
         payload = {
+            **_operational_odds_fields(),
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 2.1, "B": 1.8},
             "features": {"ranking": {"lider": "A", "diff": 10}},
@@ -584,6 +594,7 @@ class ReportRenderingTests(unittest.TestCase):
 
     def test_uncalibrated_odds_range_does_not_define_visible_edge(self):
         payload = {
+            **_operational_odds_fields(),
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 2.1, "B": 1.8},
             "features": {"ranking": {"lider": "A", "diff": 10}},

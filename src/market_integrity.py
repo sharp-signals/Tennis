@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import os
 import statistics
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -11,6 +13,28 @@ from typing import Any, Iterable, Mapping
 
 CHANGE_ID = "CHANGE-2026-09-12-040"
 POLICY_VERSION = "market-quote-integrity-v2"
+ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-09-21-050"
+ODDS_SOURCE_FAMILY = "rapidapi-recent-odds"
+ODDS_SOURCE_CONTRACT_VERSION = "rapidapi-recent-gated-v1"
+ODDS_IDENTITY_POLICY_VERSION = "rapidapi-event-bilateral-v1"
+ODDS_FRESHNESS_SEMANTICS = "observed-at-capture-unverified-age-v1"
+ODDS_BOOKMAKER_POLICY = "single-factual-bookmaker-bilateral-v1"
+
+_ODDS_SOURCE_CONTRACT = {
+    "source_family": ODDS_SOURCE_FAMILY,
+    "source_contract_version": ODDS_SOURCE_CONTRACT_VERSION,
+    "market_integrity_policy_version": POLICY_VERSION,
+    "identity_policy_version": ODDS_IDENTITY_POLICY_VERSION,
+    "freshness_semantics": ODDS_FRESHNESS_SEMANTICS,
+    "bookmaker_policy": ODDS_BOOKMAKER_POLICY,
+}
+ODDS_SOURCE_CONTRACT_FINGERPRINT = hashlib.sha256(
+    json.dumps(
+        _ODDS_SOURCE_CONTRACT,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+).hexdigest()[:20]
 CONSENSUS_MAX_DISTANCE = 0.15
 # Uma cotação bilateral válida, ligada a um evento pré-live verificado, é
 # suficiente para produzir o relatório/pricing. Dois ou mais bookmakers
@@ -30,6 +54,67 @@ NO_VALID_MONEYLINE_CANDIDATE = "NO_VALID_MONEYLINE_CANDIDATE"
 INSUFFICIENT_BOOKMAKER_CONSENSUS = "INSUFFICIENT_BOOKMAKER_CONSENSUS"
 CROSS_BOOK_OUTLIER = "CROSS_BOOK_OUTLIER"
 CROSS_BOOK_DISPERSION = "CROSS_BOOK_DISPERSION"
+
+
+def operational_contract_metadata(captured_at_utc: str | None = None) -> dict[str, Any]:
+    """Metadados prospetivos do contrato operacional, sem reclassificar histórico."""
+    return {
+        "odds_source_contract_version": ODDS_SOURCE_CONTRACT_VERSION,
+        "odds_source_contract_fingerprint": ODDS_SOURCE_CONTRACT_FINGERPRINT,
+        "odds_source_contract": dict(_ODDS_SOURCE_CONTRACT),
+        "odds_contract_activation": {
+            "change_id": ODDS_CONTRACT_CHANGE_ID,
+            "contract_version": ODDS_SOURCE_CONTRACT_VERSION,
+            "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+            "activation_commit": os.environ.get("GITHUB_SHA"),
+            "activation_run_id": os.environ.get("GITHUB_RUN_ID"),
+            "activation_observed_at_utc": captured_at_utc,
+        },
+    }
+
+
+def is_operational_pricing_provenance(provenance: Mapping[str, Any] | None) -> bool:
+    """Fonte única de verdade para eligibility: qualquer ausência falha fechada."""
+    if not isinstance(provenance, Mapping):
+        return False
+    integrity = provenance.get("market_integrity")
+    if not isinstance(integrity, Mapping):
+        return False
+    return all((
+        provenance.get("operational_pricing_eligible") is True,
+        provenance.get("odds_source_contract_version") == ODDS_SOURCE_CONTRACT_VERSION,
+        provenance.get("odds_source_contract_fingerprint") == ODDS_SOURCE_CONTRACT_FINGERPRINT,
+        bool(provenance.get("event_id")),
+        str(provenance.get("identity_mapping_status") or "").upper() == "VERIFIED",
+        bool(str(provenance.get("bookmaker") or "").strip()),
+        provenance.get("freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        integrity.get("policy_version") == POLICY_VERSION,
+        integrity.get("status") == "AVAILABLE",
+    ))
+
+
+def is_operational_pricing_payload(
+    payload: Mapping[str, Any] | None,
+    *,
+    require_pricing_contract: bool = False,
+) -> bool:
+    """Defesa downstream simples baseada na decisão canónica da provenance."""
+    if not isinstance(payload, Mapping):
+        return False
+    eligible = all((
+        payload.get("odds_operational_pricing_eligible") is True,
+        payload.get("odds_source_contract_version") == ODDS_SOURCE_CONTRACT_VERSION,
+        payload.get("odds_source_contract_fingerprint") == ODDS_SOURCE_CONTRACT_FINGERPRINT,
+    ))
+    if not eligible or not require_pricing_contract:
+        return eligible
+    pricing = payload.get("pricing")
+    return bool(
+        isinstance(pricing, Mapping)
+        and pricing.get("available") is True
+        and pricing.get("odds_source_contract_version") == ODDS_SOURCE_CONTRACT_VERSION
+        and pricing.get("odds_source_contract_fingerprint") == ODDS_SOURCE_CONTRACT_FINGERPRINT
+    )
 
 
 def validate_moneyline_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:

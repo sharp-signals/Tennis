@@ -97,6 +97,8 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Cria uma entrada por mercado elegivel, sem alterar o payload."""
+    if not market_integrity.is_operational_pricing_payload(payload):
+        return []
     linkage = payload.get("snapshot_linkage")
     if isinstance(linkage, Mapping) and linkage.get("status") in {"COLLISION", "UNLINKED"}:
         # A decisão pode continuar visível no relatório factual, mas uma
@@ -145,6 +147,10 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             "pricing_configuration_fingerprint": (payload.get("pricing") or {}).get(
                 "configuration_fingerprint"
             ),
+            "odds_source_contract_version": payload.get("odds_source_contract_version"),
+            "odds_source_contract_fingerprint": payload.get("odds_source_contract_fingerprint"),
+            "odds_source_contract": copy.deepcopy(payload.get("odds_source_contract")),
+            "odds_contract_activation": copy.deepcopy(payload.get("odds_contract_activation")),
             "decision_contract_version": decision.get("contract_version"),
             "entry_market_observation_id": payload.get("entry_market_observation_id"),
             "market_memory_status": payload.get("market_memory_status") or "UNAVAILABLE",
@@ -157,10 +163,13 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "captured_at_utc": payload.get("odds_captured_at_utc"),
                 "capture_kind": payload.get("odds_capture_kind"),
                 "provider_timestamp": payload.get("odds_provider_timestamp"),
+                "provider_timestamp_status": payload.get("odds_provider_timestamp_status"),
+                "freshness_status": payload.get("odds_freshness_status"),
                 "bookmaker": payload.get("odds_bookmaker"),
                 "from_cache": payload.get("odds_from_cache"),
                 "cache_age_seconds": payload.get("odds_cache_age_seconds"),
                 "market_integrity": copy.deepcopy(payload.get("odds_market_integrity")),
+                "operational_pricing_eligible": payload.get("odds_operational_pricing_eligible") is True,
             },
         }
         entries.append({

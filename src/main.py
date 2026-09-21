@@ -55,6 +55,7 @@ from . import fetch_data
 from . import run_metrics
 from . import calibration_store
 from . import market_ledger
+from . import market_integrity
 from . import market_memory_report
 from . import green_strong_validation
 from . import dashboard
@@ -1080,18 +1081,40 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # RapidAPI recent-odds é a observação operacional: a auditoria demonstrou
-    # que os preços atualizam, embora o addTime não seja fiável. The Odds API
-    # é uma comparação independente, nunca uma mistura de preços.
-    # As odds embutidas no feed RapidAPI ``upcoming`` são a primeira fonte
-    # operacional quando o par e os IDs dos jogadores foram verificados.
-    # Não exigimos que a camada Extend publique simultaneamente um eventId:
-    # ela pode estar vazia mesmo quando o feed principal já tem as duas odds.
-    # ``fetch_rapidapi_moneyline_with_provenance`` usa recent-odds apenas
-    # como fallback quando a quote embutida não existir ou não for validável.
-    odds, odds_provenance = fetch_data.fetch_rapidapi_moneyline_with_provenance(match)
+    # CHANGE-050: apenas recent-odds com identidade bilateral, bookmaker
+    # único factual e Market Quote Integrity aprovado pode alimentar pricing.
+    # ``observed_at`` prova a captura, não a idade real da quote. Embedded
+    # continua recolhido abaixo, mas apenas como observação SHADOW.
+    odds, odds_provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
     reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
     odds_provenance = odds_provenance or {}
+    operational_pricing_eligible = market_integrity.is_operational_pricing_provenance(
+        odds_provenance
+    )
+    if odds and not operational_pricing_eligible:
+        print(
+            "[aviso:odds-contract] quote rejeitada fail-closed antes do pricing: "
+            f"{player_a} vs {player_b}."
+        )
+        odds = None
+        odds_provenance["availability_status"] = "UNAVAILABLE"
+        odds_provenance["unavailable_reason"] = "operational_odds_contract_rejected"
+
+    embedded_odds, embedded_provenance = (
+        fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    )
+    embedded_market_memory = market_ledger.record_market_batch_best_effort(
+        match,
+        embedded_odds,
+        embedded_provenance,
+        role="SHADOW_MONITOR",
+        pipeline="PRELIVE_EMBEDDED_OBSERVATION",
+    )
+    if embedded_market_memory.get("errors"):
+        print(
+            "[market-memory] observação embedded SHADOW não bloqueante: "
+            + "; ".join(embedded_market_memory["errors"][:3])
+        )
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
     market_memory = market_ledger.record_market_batch_best_effort(
         match,
@@ -1617,6 +1640,7 @@ def _build_match_payload(match: dict) -> dict:
         "odds_capture_kind": odds_provenance.get("capture_kind") if odds else None,
         "odds_provider_timestamp": odds_provenance.get("provider_timestamp") if odds else None,
         "odds_provider_timestamp_status": odds_provenance.get("provider_timestamp_status") if odds else None,
+        "odds_freshness_status": odds_provenance.get("freshness_status") if odds else None,
         "odds_bookmaker": odds_provenance.get("bookmaker") if odds else None,
         "odds_from_cache": odds_provenance.get("from_cache") if odds else None,
         "odds_cache_age_seconds": odds_provenance.get("cache_age_seconds") if odds else None,
@@ -1624,6 +1648,11 @@ def _build_match_payload(match: dict) -> dict:
         "odds_availability_status": odds_provenance.get("availability_status") or ("AVAILABLE" if odds else "UNAVAILABLE"),
         "odds_unavailable_reason": odds_provenance.get("unavailable_reason") if not odds else None,
         "odds_market_integrity": odds_provenance.get("market_integrity"),
+        "odds_operational_pricing_eligible": operational_pricing_eligible if odds else False,
+        "odds_source_contract_version": odds_provenance.get("odds_source_contract_version") if odds else None,
+        "odds_source_contract_fingerprint": odds_provenance.get("odds_source_contract_fingerprint") if odds else None,
+        "odds_source_contract": odds_provenance.get("odds_source_contract") if odds else None,
+        "odds_contract_activation": odds_provenance.get("odds_contract_activation") if odds else None,
         "odds_movement": odds_movement,
         "data_coverage": data_coverage,
         "report_data_status": report_data_status,

@@ -3,7 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import calibration_store, paper_trading, snapshot_identity, snapshot_reconciliation
+from src import (
+    calibration_store,
+    market_integrity,
+    paper_trading,
+    snapshot_identity,
+    snapshot_reconciliation,
+)
 
 
 def payload(*, match_id=861, a_id=1, b_id=2, a="Old A", b="Old B"):
@@ -16,6 +22,9 @@ def payload(*, match_id=861, a_id=1, b_id=2, a="Old A", b="Old B"):
         "player_b_id": b_id,
         "player_a": a,
         "player_b": b,
+        "odds_operational_pricing_eligible": True,
+        "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+        "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
         "prelive_decision": {
             "paper_eligible": True,
             "paper_markets": [{

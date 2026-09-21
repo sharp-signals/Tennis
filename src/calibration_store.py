@@ -91,11 +91,18 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
             "captured_at_utc": payload.get("odds_captured_at_utc"),
             "capture_kind": payload.get("odds_capture_kind"),
             "provider_timestamp": payload.get("odds_provider_timestamp"),
+            "provider_timestamp_status": payload.get("odds_provider_timestamp_status"),
+            "freshness_status": payload.get("odds_freshness_status"),
             "bookmaker": payload.get("odds_bookmaker"),
             "from_cache": payload.get("odds_from_cache"),
             "cache_age_seconds": payload.get("odds_cache_age_seconds"),
             "raw_payload_sha256": payload.get("odds_raw_payload_sha256"),
             "market_integrity": copy.deepcopy(payload.get("odds_market_integrity")),
+            "operational_pricing_eligible": payload.get("odds_operational_pricing_eligible") is True,
+            "odds_source_contract_version": payload.get("odds_source_contract_version"),
+            "odds_source_contract_fingerprint": payload.get("odds_source_contract_fingerprint"),
+            "odds_source_contract": copy.deepcopy(payload.get("odds_source_contract")),
+            "odds_contract_activation": copy.deepcopy(payload.get("odds_contract_activation")),
         },
         # Congelado antes do encontro, juntamente com a configuracao/hash que
         # o produziu. Uma repeticao nunca substitui esta primeira estimativa.

@@ -190,12 +190,13 @@ def build_observation(
         for reason in (provenance.get("market_integrity_reason_codes") or [])
         if reason
     ]
-    integrity_gate_passed = provenance.get("operational_pricing_eligible") is not False
+    integrity_gate_passed = provenance.get("operational_pricing_eligible") is True
+    temporally_comparable = freshness_status == "FRESH"
     clv_eligible = (
         prestart_status == "PRESTART"
         and bookmaker_status == "IDENTIFIED"
         and mapping_status == "VERIFIED"
-        and freshness_status not in {"STALE", "UNKNOWN", "UNAVAILABLE"}
+        and temporally_comparable
         and integrity_gate_passed
     )
     ineligible_reasons = []
@@ -205,10 +206,13 @@ def build_observation(
         ineligible_reasons.append("BOOKMAKER_UNAVAILABLE")
     if mapping_status != "VERIFIED":
         ineligible_reasons.append("IDENTITY_MAPPING_UNVERIFIED")
-    if freshness_status in {"STALE", "UNKNOWN", "UNAVAILABLE"}:
-        ineligible_reasons.append(f"FRESHNESS_{freshness_status}")
+    if not temporally_comparable:
+        ineligible_reasons.append(f"FRESHNESS_NOT_TEMPORALLY_COMPARABLE:{freshness_status}")
     if not integrity_gate_passed:
-        ineligible_reasons.extend(integrity_reason_codes or [f"MARKET_INTEGRITY_{integrity_status}"])
+        ineligible_reasons.extend(
+            integrity_reason_codes
+            or ["OPERATIONAL_PRICING_ELIGIBILITY_NOT_EXPLICIT_TRUE"]
+        )
 
     observation = {
         "schema_version": SCHEMA_VERSION,
@@ -233,6 +237,17 @@ def build_observation(
             "bookmaker": bookmaker,
             "bookmaker_status": bookmaker_status,
             "role": role,
+        },
+        "source_contract": {
+            "version": provenance.get("odds_source_contract_version"),
+            "fingerprint": provenance.get("odds_source_contract_fingerprint"),
+            "components": provenance.get("odds_source_contract"),
+            "activation": provenance.get("odds_contract_activation"),
+            "legacy_status": (
+                None
+                if provenance.get("odds_source_contract_fingerprint")
+                else "LEGACY_PRE_CONTRACT_FINGERPRINT"
+            ),
         },
         "capture": {
             "captured_at_utc": captured,

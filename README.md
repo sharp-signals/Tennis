@@ -27,16 +27,18 @@ e um resumo Telegram.
    explícitas (`FORCED_TOURNAMENT_IDS`).
 2. Obtém fixtures por torneio, remove duplicados e mantém apenas jogos na
    janela `LOOKAHEAD_HOURS_MIN..LOOKAHEAD_HOURS_MAX` (por omissão, 0–36h).
-3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; usa a
-   Moneyline `recent-odds` da RapidAPI, com evento, ordem e bookmaker
-   verificáveis, para pricing/PAPER, e guarda a The Odds API como comparação
+3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; usa
+   exclusivamente a Moneyline `recent-odds` segura da RapidAPI, com evento,
+   ordem, bookmaker bilateral e Market Quote Integrity verificáveis, para
+   pricing/PAPER. Embedded/upcoming permanece observation-only/SHADOW. Guarda
+   a The Odds API como comparação
    independente opcional; constrói, em paralelo, um payload factual por jogo:
    ranking, H2H, superfície, forma, fadiga, serviço/resposta,
    cenários, mãos, estatísticas ricas e qualidade dos dados.
 4. Calcula o índice Fenzobot em Python e avalia se há cobertura factual mínima
    para publicar uma decisão pré-live.
 5. Aplica o *Market-Residual Pricing* experimental apenas sobre um par de odds
-   recente, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
+   estruturalmente válido, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
    `EDGE_ZERO`, `PRICING_UNAVAILABLE` ou `REPORT_NULL`. Um edge positivo só
    entra em PAPER com cobertura ponderada mínima de 60%; abaixo disso fica
    visível como edge positivo sem PAPER.
@@ -101,17 +103,27 @@ que por si só crie uma entrada PAPER.
 - **RapidAPI Matchstat:** descoberta, fixtures, ranking,
   jogos recentes, H2H, perfis e dados ricos. O contador é persistido durante a
   execução; limites por run/dia e retry de timeout, 429 e 503 são obrigatórios.
-  A RapidAPI `all-upcoming` serve exclusivamente para descobrir fixtures e
-  nunca alimenta pricing. O preço operacional é o par da mesma casa em
+  A RapidAPI `all-upcoming` serve para descobrir fixtures e pode produzir
+  observações SHADOW de cobertura/telemetria, mas nunca alimenta pricing. O
+  preço operacional é o par da mesma casa em
   `recent-odds`, depois de confirmar evento, jogadores, ordem e estado
   pré-live. A auditoria `CHANGE-2026-08-30-010` mostrou que o campo `addTime`
   pode ficar congelado mesmo quando as odds mudam; por isso é guardado como
-  metadado, enquanto a frescura operacional é a hora da resposta observada
-  nesta execução. A The Odds API é uma comparação independente opcional, `OFF`
+  metadado. A hora da resposta é `observed_at`, não um timestamp fiável da
+  formação da quote: o estado operacional é
+  `OBSERVED_AT_CAPTURE_UNVERIFIED_AGE`, nunca `FRESH`. Esta semântica permite
+  PAPER quando todos os restantes gates passam, mas não autoriza closing/CLV
+  temporalmente comparável. A The Odds API é uma comparação independente opcional, `OFF`
   por defeito (`THE_ODDS_API_ENABLED=0`), não
   é misturada com o preço RapidAPI e a sua ausência não bloqueia pricing/PAPER.
   Sem um par RapidAPI válido, o relatório mantém a análise factual como
   `PRICING_UNAVAILABLE` e bloqueia edge/PAPER.
+- **Contrato de odds:** `rapidapi-recent-gated-v1` exige event identity,
+  orientação bilateral, duas odds do mesmo bookmaker, Market Quote Integrity
+  e `operational_pricing_eligible=True` explícito. Um bookmaker factual é
+  suficiente desde o CHANGE-040; não é consenso. Versão e fingerprint seguem
+  pricing, snapshot, PAPER e Ledger apenas prospetivamente. Ausência da flag
+  falha fechada e o histórico anterior não recebe fingerprint retrospetiva.
 - **Históricos:** TennisMyLife, Sackmann e tennis-data.co.uk são usados como
   complemento/fallback consoante o tour e a métrica. Nunca se inventa um valor
   quando uma fonte falha.
