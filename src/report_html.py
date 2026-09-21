@@ -55,6 +55,8 @@ COLORS = {
 }
 
 REPORT_COLOR_META_NAME = "fenzobot-report-color"
+REPORT_SNAPSHOT_LINKAGE_META_NAME = "fenzobot-snapshot-linkage"
+REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME = "fenzobot-snapshot-linkage-reason"
 REPORT_DECISION_PRESENTATION = {
     "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
     "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": (
@@ -5469,7 +5471,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         partes.append(_mod_fadiga(payload))
         partes.append(_mod_photo_credits(payload))
         partes.append('</div>')
-        return _pagina(a, b, "".join(partes), canonical_report_color(payload))
+        return _pagina(
+            a, b, "".join(partes), canonical_report_color(payload),
+            payload.get("snapshot_linkage"),
+        )
 
     # Os cenários vivem no Mapa de Ações como gatilhos condicionais.
     # 4. Mercado e indicadores (só com odds)
@@ -5501,7 +5506,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_action_map(payload, div, result))
     partes.append(_mod_photo_credits(payload))
     partes.append('</div>')
-    return _pagina(a, b, "".join(partes), canonical_report_color(payload))
+    return _pagina(
+        a, b, "".join(partes), canonical_report_color(payload),
+        payload.get("snapshot_linkage"),
+    )
 
 
 def _impact_toggle_script():
@@ -5555,14 +5563,31 @@ def _impact_toggle_script():
 </script>"""
 
 
-def _pagina(a, b, corpo, report_color="UNAVAILABLE"):
+def _pagina(a, b, corpo, report_color="UNAVAILABLE", snapshot_linkage=None):
     hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     report_color = report_color if report_color in {"GREEN", "YELLOW", "RED", "UNAVAILABLE"} else "UNAVAILABLE"
+    linkage = snapshot_linkage if isinstance(snapshot_linkage, dict) else {}
+    linkage_status = str(linkage.get("status") or "")
+    linkage_reason = str(linkage.get("reason_code") or "")
+    linkage_meta = ""
+    if linkage_status in {"LINKED", "COLLISION", "UNLINKED"}:
+        linkage_meta += (
+            f'<meta name="{REPORT_SNAPSHOT_LINKAGE_META_NAME}" '
+            f'content="{_esc(linkage_status)}">\n'
+        )
+    if linkage_reason in {
+        "SNAPSHOT_IDENTITY_MATCH", "PROVIDER_MATCH_ID_REUSED",
+        "SNAPSHOT_IDENTITY_INSUFFICIENT", "SNAPSHOT_NOT_PERSISTED",
+    }:
+        linkage_meta += (
+            f'<meta name="{REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME}" '
+            f'content="{_esc(linkage_reason)}">\n'
+        )
     return f"""<!DOCTYPE html>
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="{REPORT_COLOR_META_NAME}" content="{report_color}">
-<title>{_esc(a)} vs {_esc(b)}</title>
+{linkage_meta}<title>{_esc(a)} vs {_esc(b)}</title>
 <style>{_css()}{_css_editorial()}</style></head>
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">

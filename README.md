@@ -129,6 +129,13 @@ tipo de captura), métricas, pricing,
 configuração/fingerprint e resultado da análise. Repetições do mesmo jogo não
 substituem essa fotografia.
 
+Como o provider pode reutilizar o mesmo `match_id`, a key legacy só é ligada a
+uma fotografia existente depois de confirmar bilateralmente os jogadores e o
+contexto disponível. Uma colisão `PROVIDER_MATCH_ID_REUSED` mantém o relatório
+factual, mas bloqueia a herança de validation, a criação de PAPER nessa key e o
+settlement direto. O dashboard expõe estas colisões em
+`SNAPSHOT_COVERAGE_RECONCILIATION_V1`; não é feito backfill ex post.
+
 Depois da run, `scripts/update_calibration_outcomes.py` usa apenas as caches
 locais de jogos concluídos para liquidar snapshots e a carteira PAPER. O
 histórico de acerto e os intervalos de Wilson só são mostrados quando existe

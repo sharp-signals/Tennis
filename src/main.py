@@ -2167,12 +2167,31 @@ def run() -> None:
     persisted_snapshots = calibration_store.read_snapshots_by_key(
         (snapshot["key"] for snapshot in snapshots)
     )
+    linkage_counts = {"linked": 0, "collisions": 0, "unlinked": 0}
+    linkage_reasons: dict[str, int] = {}
     for payload, _ in analyses:
         # O badge e qualquer consumo downstream seguem exclusivamente a
         # primeira fotografia aceite pelo first-write-wins. Um rerun nunca
         # expõe a classificação de um snapshot calculado mas descartado.
         persisted = persisted_snapshots.get(str(payload.get("snapshot_key")))
-        calibration_store.apply_persisted_validation(payload, persisted)
+        linkage = calibration_store.apply_persisted_validation(payload, persisted)
+        status = str(linkage.get("status") or "UNLINKED")
+        bucket = "linked" if status == "LINKED" else "collisions" if status == "COLLISION" else "unlinked"
+        linkage_counts[bucket] += 1
+        reason = str(linkage.get("reason_code") or "SNAPSHOT_IDENTITY_INSUFFICIENT")
+        linkage_reasons[reason] = linkage_reasons.get(reason, 0) + 1
+        if status == "COLLISION":
+            print(
+                "[calibracao] PROVIDER_MATCH_ID_REUSED / SNAPSHOT_IDENTITY_COLLISION: "
+                f"{payload.get('player_a')} vs {payload.get('player_b')} — "
+                "validation antiga e PAPER bloqueados."
+            )
+    run_metrics.update_context(snapshot_reconciliation={
+        "status": "DEGRADED" if linkage_counts["collisions"] or linkage_counts["unlinked"] else "HEALTHY",
+        "counts": linkage_counts,
+        "reason_codes": dict(sorted(linkage_reasons.items())),
+        "time_tolerance_hours": 48,
+    })
 
     paper_entries = [
         entry for payload, _ in analyses for entry in paper_trading.build_entries(payload)

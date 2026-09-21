@@ -77,6 +77,8 @@ class DashboardTests(unittest.TestCase):
         *,
         color: str | None = None,
         decision_state: str | None = None,
+        snapshot_linkage: str | None = None,
+        snapshot_linkage_reason: str | None = None,
     ) -> Path:
         path = self.root / "docs/relatorios" / filename
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -84,6 +86,16 @@ class DashboardTests(unittest.TestCase):
             f'<meta name="{report_html.REPORT_COLOR_META_NAME}" content="{color}">'
             if color is not None else ""
         )
+        if snapshot_linkage is not None:
+            marker += (
+                f'<meta name="{report_html.REPORT_SNAPSHOT_LINKAGE_META_NAME}" '
+                f'content="{snapshot_linkage}">'
+            )
+        if snapshot_linkage_reason is not None:
+            marker += (
+                f'<meta name="{report_html.REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME}" '
+                f'content="{snapshot_linkage_reason}">'
+            )
         decision = ""
         if decision_state is not None:
             label, css_class, ball, _color = report_html.REPORT_DECISION_PRESENTATION[decision_state]
@@ -464,6 +476,25 @@ class DashboardTests(unittest.TestCase):
         self.assertFalse(rerun["green_strong"])
         self.assertFalse(rerun["paper_technical"])
 
+    def test_collision_report_is_self_describing_and_counted_without_snapshot_linkage(self):
+        self._base_sources()
+        self._report(
+            "new-a-vs-new-b-2026-09-06-33333333333333333334.html",
+            "New A vs New B",
+            color="GREEN",
+            snapshot_linkage="COLLISION",
+            snapshot_linkage_reason="PROVIDER_MATCH_ID_REUSED",
+        )
+        result = self.build()
+        row = next(item for item in result["days"][0]["reports"] if item["title"] == "New A vs New B")
+        self.assertEqual(row["linkage"], "SNAPSHOT_IDENTITY_COLLISION")
+        self.assertEqual(row["snapshot_linkage_reason"], "PROVIDER_MATCH_ID_REUSED")
+        self.assertEqual(row["color"], "GREEN")
+        self.assertFalse(row["paper_technical"])
+        self.assertIn("snapshot_reconciliation_v1", result)
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Cobertura jogos → snapshots", rendered)
+
     def test_known_historical_dom_contract_is_not_a_css_class_shortcut(self):
         self._base_sources()
         self._report(
@@ -573,12 +604,16 @@ class DashboardTests(unittest.TestCase):
             "Resultado GREEN", "Stake resolvida GREEN", "Exposição pendente GREEN",
             "ROI GREEN", "Legs resolvidas", "Legs pendentes", "Legs excluídas",
             "Vitórias GREEN", "Derrotas GREEN", "Voids GREEN",
+            "Matchups observados", "Identidades elegíveis", "Ligação exata",
+            "Colisões de ID", "Sem snapshot elegível", "Snapshots criados",
+            "Snapshots liquidados", "Cobertura elegível → snapshot",
         }
         self.assertEqual(required - set(dashboard_ui.METRIC_HELP), set())
         self.assertEqual(
             {
                 "REPORT_HISTORY", "GREEN_STRONG_V1", "GUERRA_SELECTION_V1",
                 "GREEN_MONETIZATION_V1",
+                "SNAPSHOT_RECONCILIATION_V1",
                 "PAIRED_COMPARISON", "MARKET_MEMORY", "PAPER_TECHNICAL",
                 "PAPER_22BET", "SYSTEM_HEALTH", "SOURCE_FRESHNESS",
             } - set(dashboard_ui.PANEL_GUIDANCE),

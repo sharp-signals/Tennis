@@ -127,6 +127,32 @@ class ReportStateTests(unittest.TestCase):
 
 
 class ReportRenderingTests(unittest.TestCase):
+    def test_identity_collision_is_machine_readable_without_publishing_private_detail(self):
+        payload = {
+            "player_a": "New A",
+            "player_b": "New B",
+            "features": {},
+            "snapshot_linkage": {
+                "status": "COLLISION",
+                "reason_code": "PROVIDER_MATCH_ID_REUSED",
+                "detail_code": "SNAPSHOT_IDENTITY_COLLISION",
+                "private_snapshot_key": "wta:861",
+            },
+        }
+
+        html = report_html.build_report_html_v2(payload, {}, lambda _payload: None)
+
+        self.assertIn(
+            '<meta name="fenzobot-snapshot-linkage" content="COLLISION">',
+            html,
+        )
+        self.assertIn(
+            '<meta name="fenzobot-snapshot-linkage-reason" content="PROVIDER_MATCH_ID_REUSED">',
+            html,
+        )
+        self.assertNotIn("SNAPSHOT_IDENTITY_COLLISION", html)
+        self.assertNotIn("wta:861", html)
+
     def test_no_odds_report_is_semantic_safe_and_has_no_market_section(self):
         payload = {
             "player_a": '<script>alert("a")</script>',

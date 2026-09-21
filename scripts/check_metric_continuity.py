@@ -17,10 +17,18 @@ def _legacy_projection(value: dict) -> dict:
     value.pop('audit_v1', None)
     value.pop('guidance_v1', None)
     value.pop('green_monetization_v1', None)
+    value.pop('snapshot_reconciliation_v1', None)
     value.pop('change_id', None)
     strategy = value.get('guerra_selection_v1')
     if isinstance(strategy, dict):
         strategy.pop('flat_stake_simulation', None)
+    for day in value.get('days') or []:
+        if not isinstance(day, dict):
+            continue
+        for report in day.get('reports') or []:
+            if isinstance(report, dict):
+                report.pop('self_described', None)
+                report.pop('snapshot_linkage_reason', None)
     return value
 
 
