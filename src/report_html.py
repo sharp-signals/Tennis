@@ -57,6 +57,9 @@ COLORS = {
 REPORT_COLOR_META_NAME = "fenzobot-report-color"
 REPORT_SNAPSHOT_LINKAGE_META_NAME = "fenzobot-snapshot-linkage"
 REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME = "fenzobot-snapshot-linkage-reason"
+REPORT_IDENTITY_SCHEMA_META_NAME = "fenzobot-identity-schema-version"
+REPORT_IDENTITY_STATUS_META_NAME = "fenzobot-identity-status"
+REPORT_IDENTITY_REASON_META_NAME = "fenzobot-identity-reason-code"
 REPORT_DECISION_PRESENTATION = {
     "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
     "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": (
@@ -2980,6 +2983,13 @@ def _mod_decision_box(payload):
     label, css_class, ball, _color = REPORT_DECISION_PRESENTATION.get(
         state, REPORT_DECISION_PRESENTATION["REPORT_NULL"]
     )
+    identity_gate = _d(decision.get("identity_gate"))
+    identity_blocks_paper = (
+        payload.get("identity_schema_version") == 2
+        and identity_gate.get("paper_eligible") is False
+    )
+    if state == "EDGE_POSITIVE" and identity_blocks_paper:
+        label = "EDGE POSITIVO — IDENTIDADE AINDA NÃO ELEGÍVEL PARA PAPER"
     if state in {"EDGE_POSITIVE", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT"}:
         market = _d(decision.get("market"))
         edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
@@ -2990,7 +3000,14 @@ def _mod_decision_box(payload):
             f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
             f'<span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
             + (
-                '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
+                (
+                    '<div class="decision-note">Não entra em PAPER: identidade canónica ainda não resolvida. '
+                    f'{_esc(identity_gate.get("status") or "IDENTITY_UNAVAILABLE")} · '
+                    f'{_esc(identity_gate.get("reason_code") or "sem reason code")}. '
+                    'Consultar o relatório integral antes de qualquer utilização.</div>'
+                    if identity_blocks_paper else
+                    '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
+                )
                 if state == "EDGE_POSITIVE" else
                 f'<div class="decision-note">Não entra em PAPER: {_esc(decision.get("reason"))}. Consultar o relatório integral antes de qualquer utilização.</div>'
             )
@@ -5483,7 +5500,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         partes.append('</div>')
         return _pagina(
             a, b, "".join(partes), canonical_report_color(payload),
-            payload.get("snapshot_linkage"),
+            payload.get("snapshot_linkage"), payload,
         )
 
     # Os cenários vivem no Mapa de Ações como gatilhos condicionais.
@@ -5518,7 +5535,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append('</div>')
     return _pagina(
         a, b, "".join(partes), canonical_report_color(payload),
-        payload.get("snapshot_linkage"),
+        payload.get("snapshot_linkage"), payload,
     )
 
 
@@ -5573,7 +5590,10 @@ def _impact_toggle_script():
 </script>"""
 
 
-def _pagina(a, b, corpo, report_color="UNAVAILABLE", snapshot_linkage=None):
+def _pagina(
+    a, b, corpo, report_color="UNAVAILABLE", snapshot_linkage=None,
+    identity_metadata=None,
+):
     hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     report_color = report_color if report_color in {"GREEN", "YELLOW", "RED", "UNAVAILABLE"} else "UNAVAILABLE"
     linkage = snapshot_linkage if isinstance(snapshot_linkage, dict) else {}
@@ -5593,11 +5613,26 @@ def _pagina(a, b, corpo, report_color="UNAVAILABLE", snapshot_linkage=None):
             f'<meta name="{REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME}" '
             f'content="{_esc(linkage_reason)}">\n'
         )
+    identity = identity_metadata if isinstance(identity_metadata, dict) else {}
+    identity_meta = ""
+    if identity.get("identity_schema_version") == 2:
+        identity_meta += (
+            f'<meta name="{REPORT_IDENTITY_SCHEMA_META_NAME}" content="2">\n'
+        )
+        identity_meta += (
+            f'<meta name="{REPORT_IDENTITY_STATUS_META_NAME}" '
+            f'content="{_esc(identity.get("identity_status") or "IDENTITY_INSUFFICIENT")}">\n'
+        )
+        if identity.get("identity_reason_code"):
+            identity_meta += (
+                f'<meta name="{REPORT_IDENTITY_REASON_META_NAME}" '
+                f'content="{_esc(identity["identity_reason_code"])}">\n'
+            )
     return f"""<!DOCTYPE html>
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="{REPORT_COLOR_META_NAME}" content="{report_color}">
-{linkage_meta}<title>{_esc(a)} vs {_esc(b)}</title>
+{linkage_meta}{identity_meta}<title>{_esc(a)} vs {_esc(b)}</title>
 <style>{_css()}{_css_editorial()}</style></head>
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">

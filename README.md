@@ -63,6 +63,7 @@ publicar. Entre 80% e 95% é publicada como degradada; a partir de 95% é normal
 | `src/calibration_store.py` | Snapshots pré-jogo imutáveis, liquidação e métricas de calibração. |
 | `src/paper_trading.py` | Carteira PAPER append-only, liquidação e histórico em unidades. |
 | `src/market_ledger.py` | Ledger temporal append-only das odds já recolhidas, linkage e CLV. |
+| `src/match_identity_v2.py` | Resolver prospetivo mint-once para instâncias canónicas de jogos singles. |
 | `src/market_memory_report.py` | Vista SHADOW reconstruível: mercado, closing e Market+Fenzobot. |
 | `src/cache_store.py` | Cache JSON versionada, com TTL e escrita atómica. |
 | `src/analyze.py` | Política seletiva, cache, fallback e validação do output LLM. |
@@ -147,6 +148,23 @@ contexto disponível. Uma colisão `PROVIDER_MATCH_ID_REUSED` mantém o relatór
 factual, mas bloqueia a herança de validation, a criação de PAPER nessa key e o
 settlement direto. O dashboard expõe estas colisões em
 `SNAPSHOT_COVERAGE_RECONCILIATION_V1`; não é feito backfill ex post.
+
+Desde `CHANGE-2026-09-21-049`, objetos novos usam uma identidade canónica v2
+prospetiva quando existe estrutura factual mínima (`tour`, torneio e os dois
+player IDs) e um discriminador forte (`event_id` bilateralmente validado ou
+`round_id`). O resolver minta uma única key opaca `mi2_<uuid4-hex>` e mantém
+`EVENT_ID`/`MATCH_ID` apenas como aliases auditáveis; alterações de hora,
+orientação A/B, nomes ou metadata progressiva nunca recalculam essa key.
+Nomes+hora e `match_id` isolado nunca chegam para criar identidade elegível.
+O `round_id` factual é preservado na instância e resolvido dentro do scope
+bilateral antes de qualquer alias fraco `MATCH_ID`; evidence forte
+incompatível falha fechada em vez de herdar uma instância antiga.
+Estados provisional, insufficient ou conflict mantêm o relatório factual, mas
+falham fechados para snapshot canónico e PAPER. Registry e audit trail vivem em
+`data/match_identity/`; começam vazios, sem backfill, e coexistem com o
+containment legacy do CHANGE-047. O workflow persiste estes dois ficheiros
+tanto no caminho de sucesso como no de falha. Merge/split automático fica fora
+de scope.
 
 Depois da run, `scripts/update_calibration_outcomes.py` usa apenas as caches
 locais de jogos concluídos para liquidar snapshots e a carteira PAPER. O

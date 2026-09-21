@@ -65,7 +65,7 @@ jobs:
           git config user.email "actions@github.com"
           git add data/rapidapi_usage_log.json data/rapidapi_usage_inflight.json \
             data/run_metrics_log.json data/market_ledger/ data/dashboard/ \
-            docs/dashboard/ 2>/dev/null || true
+            data/match_identity/ docs/dashboard/ 2>/dev/null || true
           if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
             git commit -m "chore: preservar telemetria de execução falhada [skip ci]"
             git pull --rebase --autostash origin main
@@ -82,6 +82,7 @@ jobs:
             data/tournament_cache.json data/rapidapi_usage_log.json \
             data/run_metrics_log.json data/calibration_snapshots.json \
             data/paper_trades.json data/market_ledger/ \
+            data/match_identity/ \
             data/validation/ data/dashboard/ docs/dashboard/ \
             data/player_images.json data/player_images_review.json \
             knowledge/players/ docs/ 2>/dev/null || true

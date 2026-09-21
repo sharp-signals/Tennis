@@ -640,6 +640,12 @@ def _cached_event_record_for_match(match: dict) -> Optional[dict]:
         "event_start": saved_start.isoformat() if saved_start else None,
         "identity_cache": "verified_persistent",
         "identity_source": "verified_persistent",
+        # Legacy cache rows intentionally remain usable for pricing but have
+        # no strong identity basis. Identity v2 fails closed until a newly
+        # validated record supplies this field.
+        "event_identity_validation_basis": saved.get(
+            "event_identity_validation_basis"
+        ),
     }
 
 
@@ -656,6 +662,9 @@ def _persist_event_record(match: dict, record: dict) -> None:
                 "participant1": str(record["participant1"]),
                 "participant2": str(record["participant2"]),
                 "event_start": record.get("event_start"),
+                "event_identity_validation_basis": record.get(
+                    "event_identity_validation_basis"
+                ),
             },
             metadata={"purpose": "verified RapidAPI event identity; no odds"},
         )
@@ -1482,6 +1491,9 @@ def _validated_event_record(
             "identity_source": (
                 "verified_player_ids" if id_orientation else "verified_exact_names"
             ),
+            "event_identity_validation_basis": (
+                "PLAYER_IDS" if id_orientation else "EXACT_NAMES"
+            ),
         }
     return rejected
 
@@ -1530,6 +1542,10 @@ def _validated_event_record_by_match_id(
             "event_status": str(status or "scheduled"),
             "event_start": event_start.isoformat() if event_start else None,
             "identity_source": "verified_match_id",
+            # `_event_match_id_orientation` accepts only the deterministic
+            # provider matchId composed from both player IDs, tournament and,
+            # when present, round. This is structural, not textual, evidence.
+            "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
         }
     return rejected
 
@@ -1656,6 +1672,9 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
                 ),
                 resolution_path="index",
                 index_source=indexed.get("identity_index_source") or "verified_run_index",
+                event_identity_validation_basis=indexed.get(
+                    "event_identity_validation_basis"
+                ),
                 cache_status="NOT_APPLICABLE",
                 unavailable_reason=None,
             )
@@ -1682,6 +1701,9 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
                 identity_source="in_run_cache",
                 resolution_path="in_run_cache",
                 cache_status="HIT",
+                event_identity_validation_basis=(cached or {}).get(
+                    "event_identity_validation_basis"
+                ),
                 unavailable_reason=(cached or {}).get("reason") if cached else "event_identity_unavailable",
             )
         return cached
@@ -1696,6 +1718,9 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
             identity_source=persisted.get("identity_cache"),
             resolution_path="persistent_cache",
             cache_status="HIT",
+            event_identity_validation_basis=persisted.get(
+                "event_identity_validation_basis"
+            ),
         )
         return persisted
 
@@ -1727,6 +1752,9 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
                     match,
                     availability_status="VERIFIED",
                     identity_source=record["identity_source"],
+                    event_identity_validation_basis=record.get(
+                        "event_identity_validation_basis"
+                    ),
                     lookup_attempts=len(attempted_methods),
                     identity_api_calls=get_rapidapi_call_count() - calls_before,
                     attempted_methods=list(attempted_methods),
@@ -1819,6 +1847,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "endpoint": url,
             "event_id": event_id,
             "event_identity_source": event.get("identity_source"),
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
             "bookmaker": None,
             "from_cache": False,
             "availability_status": "UNAVAILABLE",
@@ -1844,6 +1875,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "endpoint": url,
             "event_id": event_id,
             "event_identity_source": event.get("identity_source"),
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
             "bookmaker": None,
             "from_cache": False,
             "availability_status": "UNAVAILABLE",
@@ -1883,6 +1917,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "provider_timestamp_status": "unreliable_for_freshness",
             "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
             "identity_mapping_status": "VERIFIED",
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
             "provider_side_a": "od1" if participant1_is_a else "od2",
             "provider_side_b": "od2" if participant1_is_a else "od1",
             "raw_payload_sha256": raw_hash,
@@ -1917,6 +1954,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "endpoint": url,
             "event_id": event_id,
             "event_identity_source": event.get("identity_source"),
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
             "captured_at_utc": captured_at_utc,
             "capture_kind": "rapidapi_response_observed_at_capture",
             "provider_timestamp": None,
@@ -1948,6 +1988,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         "endpoint": url,
         "event_id": event_id,
         "event_identity_source": event.get("identity_source"),
+        "event_identity_validation_basis": event.get(
+            "event_identity_validation_basis"
+        ),
         "captured_at_utc": captured_at_utc,
         "capture_kind": "rapidapi_response_observed_at_capture",
         "provider_timestamp": provider_at,

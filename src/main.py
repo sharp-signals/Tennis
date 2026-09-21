@@ -56,6 +56,7 @@ from . import run_metrics
 from . import calibration_store
 from . import market_ledger
 from . import market_integrity
+from . import match_identity_v2
 from . import market_memory_report
 from . import green_strong_validation
 from . import dashboard
@@ -1040,6 +1041,25 @@ def _report_data_status(data_coverage: dict) -> str:
     ) else "DEGRADED"
 
 
+def _apply_identity_persistence_gate(payload: dict) -> None:
+    """Keep factual pricing visible while blocking persistence without canonical v2 identity."""
+    if payload.get("identity_schema_version") != match_identity_v2.SCHEMA_VERSION:
+        return
+    if match_identity_v2.is_canonical(payload):
+        return
+    decision = payload.get("prelive_decision")
+    if not isinstance(decision, dict):
+        return
+    decision["paper_eligible"] = False
+    decision["paper_markets"] = []
+    decision["identity_gate"] = {
+        "status": payload.get("identity_status"),
+        "reason_code": payload.get("identity_reason_code"),
+        "snapshot_eligible": False,
+        "paper_eligible": False,
+    }
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -1103,8 +1123,38 @@ def _build_match_payload(match: dict) -> dict:
     embedded_odds, embedded_provenance = (
         fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
     )
-    embedded_market_memory = market_ledger.record_market_batch_best_effort(
+    embedded_provenance = embedded_provenance or {}
+
+    # CHANGE-049: identidade prospetiva mint-once. A resolução reutiliza apenas
+    # evidence já obtida pelo pipeline e não introduz chamadas externas. Uma
+    # falha do registry mantém o relatório factual, mas bloqueia snapshot/PAPER.
+    # Pricing may retain an exact-name mapping under CHANGE-050, but identity
+    # v2 consumes the independent structural validation basis and may be more
+    # conservative. Preserve a non-strong event as provisional evidence
+    # instead of upgrading generic ``VERIFIED``.
+    identity_provenance = (
+        odds_provenance
+        if odds_provenance.get("event_id")
+        else embedded_provenance
+    )
+    identity_observed_at = (
+        identity_provenance.get("captured_at_utc")
+        or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    )
+    identity_result = match_identity_v2.resolve_observation(
         match,
+        event_id=identity_provenance.get("event_id"),
+        event_id_validated=match_identity_v2.event_id_is_strong_identity_evidence(
+            identity_provenance
+        ),
+        provider="RapidAPI",
+        observed_at_utc=identity_observed_at,
+    )
+    match_for_ledger = dict(match)
+    match_for_ledger.update(identity_result)
+
+    embedded_market_memory = market_ledger.record_market_batch_best_effort(
+        match_for_ledger,
         embedded_odds,
         embedded_provenance,
         role="SHADOW_MONITOR",
@@ -1117,14 +1167,14 @@ def _build_match_payload(match: dict) -> dict:
         )
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
     market_memory = market_ledger.record_market_batch_best_effort(
-        match,
+        match_for_ledger,
         odds,
         odds_provenance,
         role="OPERATIONAL_PRICING",
         pipeline="PRELIVE",
     )
     reference_market_memory = market_ledger.record_market_batch_best_effort(
-        match,
+        match_for_ledger,
         reference_odds,
         reference_odds_provenance,
         role="REFERENCE_COMPARATOR",
@@ -1607,6 +1657,7 @@ def _build_match_payload(match: dict) -> dict:
     report_data_status = _report_data_status(data_coverage)
 
     payload = {
+        **identity_result,
         "match_id": match.get("id"),
         "tournament_id": _tournament_id,
         "player_a_id": _pid_a,
@@ -1627,7 +1678,7 @@ def _build_match_payload(match: dict) -> dict:
         "market_odds_decimal": odds,
         "reference_market_odds_decimal": reference_odds,
         "reference_odds_provenance": reference_odds_provenance,
-        "event_key": market_ledger.event_key(match),
+        "event_key": market_ledger.event_key(match_for_ledger),
         "entry_market_observation_id": market_memory.get("entry_observation_id"),
         "market_memory_status": market_memory.get("status"),
         "market_memory_eligible": bool(market_memory.get("entry_memory_eligible")),
@@ -1780,6 +1831,7 @@ def _build_match_payload(match: dict) -> dict:
         payload.get("pricing"),
         payload.get("report_assessment"),
     )
+    _apply_identity_persistence_gate(payload)
     if payload["prelive_decision"].get("conflict") == "both_sides_positive_edge":
         print(
             f"[anomalia:edge] ambos os lados positivos em {payload.get('player_a')} vs "
@@ -1813,6 +1865,10 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         href = html.escape(url)
         decision = payload.get("prelive_decision") or {}
         state = decision.get("state")
+        identity_blocks_paper = (
+            payload.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION
+            and (decision.get("identity_gate") or {}).get("paper_eligible") is False
+        )
         level, flag = {
             "EDGE_POSITIVE": (3, "🟢"), "EDGE_NEGATIVE": (2, "🔴"),
             "EDGE_ZERO": (1, "⚪"), "PRICING_UNAVAILABLE": (0, "🟡"),
@@ -1826,10 +1882,17 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
                 level = legacy_level
                 flag = {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚫")
         if state == "EDGE_POSITIVE":
-            line = html.escape(
-                f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
-                f"PAPER {(decision.get('market') or {}).get('market') or 'Moneyline'}"
-            )
+            if identity_blocks_paper:
+                level, flag = 2.5, "🟡"
+                line = html.escape(
+                    f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
+                    "identidade canónica pendente · sem PAPER"
+                )
+            else:
+                line = html.escape(
+                    f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
+                    f"PAPER {(decision.get('market') or {}).get('market') or 'Moneyline'}"
+                )
         elif state == "REPORT_NULL":
             line = html.escape(f"Relatório nulo · {decision.get('reason') or 'dados insuficientes'}")
         elif state == "PRICING_UNAVAILABLE":
@@ -1873,6 +1936,7 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
   <select id="priority" aria-label="Filtrar por prioridade">
     <option value="all">Todas as prioridades</option>
     <option value="3">Edge positivo / PAPER</option><option value="2">Edge negativo</option>
+    <option value="2.5">Edge positivo / sem PAPER</option>
     <option value="1">Edge zero</option><option value="0">Relatório nulo</option>
   </select>
 </div>
@@ -2185,12 +2249,24 @@ def run() -> None:
             },
             payload.get("market_odds_decimal"),
         )
-        snapshot = calibration_store.build_snapshot(payload, result)
-        # A mesma identidade liga relatório, snapshot e carteira PAPER.
-        payload["snapshot_key"] = snapshot["key"]
-        payload["report_id"] = snapshot["report_id"]
-        payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
-        snapshots.append(snapshot)
+        if match_identity_v2.is_canonical(payload):
+            snapshot = calibration_store.build_snapshot(payload, result)
+            # A mesma identidade liga relatório, snapshot e carteira PAPER.
+            payload["snapshot_key"] = snapshot["key"]
+            payload["report_id"] = snapshot["report_id"]
+            payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
+            snapshots.append(snapshot)
+        else:
+            # O relatório factual continua disponível, sem fabricar um
+            # snapshot canónico para identidade provisional/insuficiente.
+            report_identity = calibration_store.report_identity(payload)
+            payload["snapshot_key"] = None
+            payload.update(report_identity)
+            payload["snapshot_linkage"] = {
+                "status": "UNLINKED",
+                "reason_code": payload.get("identity_reason_code")
+                or "IDENTITY_V2_NOT_CANONICAL",
+            }
     added_snapshots = calibration_store.upsert_snapshots(snapshots)
     print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
     persisted_snapshots = calibration_store.read_snapshots_by_key(
@@ -2202,8 +2278,11 @@ def run() -> None:
         # O badge e qualquer consumo downstream seguem exclusivamente a
         # primeira fotografia aceite pelo first-write-wins. Um rerun nunca
         # expõe a classificação de um snapshot calculado mas descartado.
-        persisted = persisted_snapshots.get(str(payload.get("snapshot_key")))
-        linkage = calibration_store.apply_persisted_validation(payload, persisted)
+        if not match_identity_v2.is_canonical(payload):
+            linkage = payload["snapshot_linkage"]
+        else:
+            persisted = persisted_snapshots.get(str(payload.get("snapshot_key")))
+            linkage = calibration_store.apply_persisted_validation(payload, persisted)
         status = str(linkage.get("status") or "UNLINKED")
         bucket = "linked" if status == "LINKED" else "collisions" if status == "COLLISION" else "unlinked"
         linkage_counts[bucket] += 1
@@ -2347,7 +2426,7 @@ def run() -> None:
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
-        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura) · 🔴 {n_value} edge negativo · "
+        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
         f"⚪ {n_watch} edge zero · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
@@ -2355,7 +2434,7 @@ def run() -> None:
 
     # Separadores tornam a lista muito mais legível sem repetir informação.
     previous_group = None
-    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / COBERTURA INSUFICIENTE",
+    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / SEM PAPER",
                    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
                    1: "⚪ EDGE ZERO / EXCLUÍDO", 0.5: "🟡 MERCADO PENDENTE / RECONSULTA AUTOMÁTICA",
                    0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}

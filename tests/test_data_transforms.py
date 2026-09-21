@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 
-from src import fetch_data, main
+from src import fetch_data, main, match_identity_v2
 
 
 class MatchInputTests(unittest.TestCase):
@@ -48,6 +48,55 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(provenance["bookmaker"], "Test Book")
         self.assertEqual(provenance["capture_kind"], "rapidapi_response_observed_at_capture")
         self.assertEqual(provenance["provider_timestamp_status"], "unreliable_for_freshness")
+
+    def test_exact_name_event_remains_valid_for_pricing_but_not_v2_identity(self):
+        future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
+        match = {
+            "id": 9000, "_tour": "atp", "date": future,
+            "tournamentId": 44, "player1Id": 10, "player2Id": 20,
+            "player1": {"id": 10, "name": "Alice Player"},
+            "player2": {"id": 20, "name": "Bea Player"},
+        }
+        event = fetch_data._validated_event_record({"result": {
+            "eventId": "event-by-name",
+            "participant1": "Alice Player",
+            "participant2": "Bea Player",
+            "status": "scheduled",
+            "startTime": future,
+        }}, match, require_explicit_event_id=True)
+
+        class Response:
+            status_code = 200
+
+            @staticmethod
+            def raise_for_status():
+                return None
+
+            @staticmethod
+            def json():
+                timestamp = str(datetime.now(timezone.utc).timestamp())
+                return {"result": {"Full Time Result": {
+                    "Test Book": {"od1": "1.70", "od2": "2.20", "addTime": timestamp},
+                }}}
+
+        with patch.object(
+            fetch_data, "_rapidapi_event_record_for_match", return_value=event,
+        ), patch.object(
+            fetch_data, "_rapidapi_get", return_value=Response(),
+        ), patch.dict(fetch_data._RAPIDAPI_FRESH_ODDS_CACHE, {}, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(
+                match
+            )
+
+        self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
+        self.assertTrue(provenance["operational_pricing_eligible"])
+        self.assertEqual(provenance["identity_mapping_status"], "VERIFIED")
+        self.assertEqual(
+            provenance["event_identity_validation_basis"], "EXACT_NAMES"
+        )
+        self.assertFalse(
+            match_identity_v2.event_id_is_strong_identity_evidence(provenance)
+        )
 
     def test_rapidapi_pricing_maps_odds_using_verified_provider_order(self):
         match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "atp"}
@@ -152,6 +201,12 @@ class MatchInputTests(unittest.TestCase):
 
         self.assertTrue(record["valid"])
         self.assertEqual(record["event_id"], "coco-event")
+        self.assertEqual(record["identity_source"], "bounded_event_get:audited_alias_direct")
+        self.assertEqual(record["event_identity_validation_basis"], "EXACT_NAMES")
+        persisted = identity_store.set_entry.call_args.args[2]
+        self.assertEqual(
+            persisted["event_identity_validation_basis"], "EXACT_NAMES"
+        )
         self.assertTrue(any("Coco%20Gauff" in url for url in calls))
 
     def test_persistent_verified_event_identity_is_reused_only_for_same_future_fixture(self):
@@ -168,12 +223,15 @@ class MatchInputTests(unittest.TestCase):
             "participant1": "Bea Player",
             "participant2": "Alice Player",
             "event_start": future,
+            "event_identity_validation_basis": "PLAYER_IDS",
         }
         with patch.object(fetch_data, "_EVENT_IDENTITY_STORE", store):
             record = fetch_data._cached_event_record_for_match(match)
         self.assertTrue(record["valid"])
         self.assertEqual(record["event_id"], "saved-event")
         self.assertEqual(record["participant1"], "Bea Player")
+        self.assertEqual(record["identity_source"], "verified_persistent")
+        self.assertEqual(record["event_identity_validation_basis"], "PLAYER_IDS")
 
     def test_extend_upcoming_bridge_resolves_event_without_name_lookup(self):
         future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
@@ -202,6 +260,9 @@ class MatchInputTests(unittest.TestCase):
         self.assertTrue(record["valid"])
         self.assertEqual(record["event_id"], "event-bridge-1")
         self.assertEqual(record["participant1"], "Jessica Pegula")
+        self.assertEqual(
+            record["event_identity_validation_basis"], "STRUCTURAL_MATCH_ID"
+        )
 
     def test_embedded_event_id_prevents_an_extra_extend_index_call(self):
         future = (datetime.now(timezone.utc) + pd.Timedelta(hours=4)).isoformat()
@@ -233,6 +294,7 @@ class MatchInputTests(unittest.TestCase):
             metrics = fetch_data.get_rapidapi_identity_metrics()
         self.assertEqual(record["event_id"], "embedded-event")
         self.assertEqual(record["identity_index_source"], "embedded_upcoming")
+        self.assertEqual(record["event_identity_validation_basis"], "PLAYER_IDS")
         self.assertEqual(metrics["by_tour"]["wta"]["index_resolutions"], 1)
         self.assertEqual(metrics["by_tour"]["wta"]["cache_hits"], 0)
         self.assertEqual(metrics["matches"][0]["cache_status"], "NOT_APPLICABLE")
@@ -249,6 +311,7 @@ class MatchInputTests(unittest.TestCase):
         identity_store.get_entry.return_value = {
             "event_id": "persisted-event", "participant1": "Aryna Sabalenka",
             "participant2": "Jessica Pegula", "event_start": future,
+            "event_identity_validation_basis": "EXACT_NAMES",
         }
         with patch.object(fetch_data, "_EVENT_IDENTITY_STORE", identity_store), \
                 patch.dict(fetch_data._RAPIDAPI_EVENT_INDEX, {}, clear=True), \
@@ -257,6 +320,7 @@ class MatchInputTests(unittest.TestCase):
             record = fetch_data._rapidapi_event_record_for_match(match)
             metrics = fetch_data.get_rapidapi_identity_metrics()
         self.assertEqual(record["event_id"], "persisted-event")
+        self.assertEqual(record["event_identity_validation_basis"], "EXACT_NAMES")
         self.assertEqual(metrics["by_tour"]["wta"]["persistent_cache_hits"], 1)
         self.assertEqual(metrics["by_tour"]["wta"]["cache_hits"], 1)
         self.assertEqual(metrics["by_tour"]["wta"]["cache_misses"], 0)
@@ -271,6 +335,7 @@ class MatchInputTests(unittest.TestCase):
         cached = {
             "valid": True, "event_id": "run-event", "participant1": "Aryna Sabalenka",
             "participant2": "Jessica Pegula", "event_start": future,
+            "event_identity_validation_basis": "PLAYER_IDS",
         }
         with patch.dict(
             fetch_data._RAPIDAPI_EVENT_LOOKUP_CACHE, {"9016": cached}, clear=True,
@@ -280,6 +345,7 @@ class MatchInputTests(unittest.TestCase):
             record = fetch_data._rapidapi_event_record_for_match(match)
             metrics = fetch_data.get_rapidapi_identity_metrics()
         self.assertEqual(record["event_id"], "run-event")
+        self.assertEqual(record["event_identity_validation_basis"], "PLAYER_IDS")
         self.assertEqual(metrics["by_tour"]["wta"]["in_run_cache_hits"], 1)
         self.assertEqual(metrics["by_tour"]["wta"]["persistent_cache_hits"], 0)
 
@@ -348,6 +414,7 @@ class MatchInputTests(unittest.TestCase):
                 record = fetch_data._rapidapi_event_record_for_match(match)
             self.assertEqual(record["event_id"], f"verified-{index}")
             self.assertEqual(record["identity_source"], "verified_player_ids")
+            self.assertEqual(record["event_identity_validation_basis"], "PLAYER_IDS")
             individual_lookup.assert_not_called()
 
     def test_event_lookup_is_bounded_and_does_not_generate_initial_combinations(self):
