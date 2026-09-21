@@ -105,6 +105,16 @@ class MarketIntegrityGateTests(unittest.TestCase):
         self.assertEqual(odds, {"Peyton Stearns": 1.35, "Emiliana Arango": 3.22})
         self.assertEqual(provenance["bookmaker"], "DraftKings")
         self.assertEqual(provenance["market_integrity"]["pricing_basis"], "single_bookmaker")
+        self.assertIs(provenance["operational_pricing_eligible"], True)
+        self.assertEqual(
+            provenance["freshness_status"],
+            "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        )
+        self.assertEqual(
+            provenance["odds_source_contract_version"],
+            market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+        )
+        self.assertTrue(market_integrity.is_operational_pricing_provenance(provenance))
 
     def test_non_finite_incomplete_and_below_one_are_rejected(self):
         for candidate, reason in (

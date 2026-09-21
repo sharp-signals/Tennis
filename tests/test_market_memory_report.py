@@ -19,7 +19,8 @@ class MarketMemoryReportTests(unittest.TestCase):
                 "source": "RapidAPI Tennis API / recent-odds",
                 "endpoint": "https://provider.test/recent/9",
                 "event_id": "e9", "capture_kind": "observed", "bookmaker": "Book",
-                "freshness_status": "OBSERVED_AT_CAPTURE", "identity_mapping_status": "VERIFIED",
+                "freshness_status": "FRESH", "identity_mapping_status": "VERIFIED",
+                "operational_pricing_eligible": True,
                 "raw_payload_sha256": market_ledger.payload_sha256({"event": 9}),
             }
             entry_provenance = {**base_provenance, "captured_at_utc": "2026-09-03T10:00:00+00:00"}

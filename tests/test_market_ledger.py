@@ -33,8 +33,9 @@ class MarketLedgerTests(unittest.TestCase):
             "provider_timestamp": "2026-09-03T09:59:00+00:00",
             "provider_timestamp_status": "unreliable_for_freshness",
             "bookmaker": bookmaker,
-            "freshness_status": "OBSERVED_AT_CAPTURE",
+            "freshness_status": "FRESH",
             "identity_mapping_status": "VERIFIED",
+            "operational_pricing_eligible": True,
             "raw_payload_sha256": market_ledger.payload_sha256({"raw": 1}),
         }
 
@@ -90,7 +91,26 @@ class MarketLedgerTests(unittest.TestCase):
         self.assertFalse(no_book["eligibility"]["clv"])
         self.assertIn("BOOKMAKER_UNAVAILABLE", no_book["eligibility"]["reasons"])
         self.assertFalse(stale["eligibility"]["clv"])
-        self.assertIn("FRESHNESS_STALE", stale["eligibility"]["reasons"])
+        self.assertIn(
+            "FRESHNESS_NOT_TEMPORALLY_COMPARABLE:STALE",
+            stale["eligibility"]["reasons"],
+        )
+
+    def test_observed_at_capture_unverified_age_is_not_clv_comparable(self):
+        provenance = self.provenance()
+        provenance["freshness_status"] = "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE"
+        observation = market_ledger.build_observation(
+            self.match(),
+            {"Alpha One": 1.8, "Beta Two": 2.1},
+            provenance,
+            role="OPERATIONAL_PRICING",
+            pipeline="PRELIVE",
+        )
+        self.assertFalse(observation["eligibility"]["clv"])
+        self.assertIn(
+            "FRESHNESS_NOT_TEMPORALLY_COMPARABLE:OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            observation["eligibility"]["reasons"],
+        )
 
     def test_poststart_quote_never_counts_as_closing(self):
         poststart = self.observation(captured="2026-09-03T15:00:00+00:00")

@@ -1,6 +1,8 @@
 # Contrato operacional pré-live do Fenzobot
 
-Versão: `fenzobot-prelive-v1` (30 de agosto de 2026; CHANGE-2026-08-30-011).
+Versão de decisão: `fenzobot-prelive-v1` (30 de agosto de 2026;
+CHANGE-2026-08-30-011). Contrato de source de odds operacional:
+`rapidapi-recent-gated-v1` (CHANGE-2026-09-21-050).
 
 ## Fonte de decisão
 
@@ -17,7 +19,8 @@ lado; não substitui o motor de seleção.
 - `EDGE_NEGATIVE`: edge inferior a zero; excluído.
 - `EDGE_ZERO`: edge exatamente igual a zero; excluído.
 - `PRICING_UNAVAILABLE`: dados factuais válidos, mas sem um par de odds
-  recente e verificável; mostra a análise factual, sem edge e sem PAPER.
+  operacional e estruturalmente verificável; mostra a análise factual, sem
+  edge e sem PAPER.
 - `REPORT_NULL`: dados factuais essenciais insuficientes; sem veredicto e sem
   PAPER. Não é usado apenas porque falta um preço de mercado.
 
@@ -67,23 +70,40 @@ Handicap separadamente. No pipeline atual só Moneyline possui odds e pricing
 próprios. Handicap não entra automaticamente até existir uma fonte real de
 odd/linha e uma regra de edge já aprovada; não foi inventada uma regra.
 
-A fonte operacional para pricing, edge e PAPER é um par Moneyline
+A única fonte RapidAPI operacional para pricing, edge e PAPER é um par Moneyline
 `recent-odds` da RapidAPI, com os dois lados na mesma casa, bookmaker
 identificável, evento/jogadores/ordem confirmados pelo `event/get` e estado
-pré-live válido. O instante de frescura é a resposta recebida pelo bot. O
-campo `addTime` é preservado como metadado, mas não bloqueia a cotação: a
+pré-live válido. `captured_at_utc` indica apenas quando a resposta foi recebida
+pelo bot; não prova quando a quote foi formada ou atualizada. O campo
+`addTime` é preservado como metadado, mas está marcado como não fiável para
+freshness e não bloqueia a cotação: a
 auditoria `CHANGE-2026-08-30-010` provou que pode permanecer antigo enquanto
 `od1`/`od2` continuam a acompanhar o mercado. RapidAPI `upcoming` nunca pode
-preencher pricing, edge ou PAPER.
+preencher pricing, edge ou PAPER; permanece `OBSERVATION_ONLY / SHADOW`.
+
+Uma quote RapidAPI recent elegível recebe
+`OBSERVED_AT_CAPTURE_UNVERIFIED_AGE`: pode ser estruturalmente operacional sem
+ser chamada `FRESH`. Apenas semântica temporal suficiente e explicitamente
+comparável permite closing/CLV; `captured_at_utc` isolado nunca chega.
 
 Desde `CHANGE-2026-09-10-036`, cada candidato passa também pelo Market Quote
 Integrity Gate. Pares incompletos, não finitos, iguais/inferiores a 1.0 e o
 padrão-limite `min <= 1.01` com `max >= 10.0` são rejeitados. O preço
-operacional exige pelo menos dois bookmakers coerentes: com três ou mais,
+operacional exige pelo menos um bookmaker factual com os dois lados. Esta é a
+única parte do CHANGE-036 superseded pelo CHANGE-040. Com três ou mais,
 candidatos a mais de 15 p.p. da mediana de-vig são rejeitados; dispersão final
 superior a 15 p.p. bloqueia o mercado. A seleção usa proximidade à mediana,
-depois overround e nome. Um bookmaker isolado pode ser preservado como
-observação, mas não alimenta pricing, edge ou PAPER.
+depois overround e nome. Um único bookmaker válido fica identificado como
+`SINGLE_BOOKMAKER_OPERATIONAL`; nunca é descrito como consenso. Identidade,
+mesma casa, integridade estrutural e eligibility fail-closed continuam
+obrigatórias.
+
+Só `operational_pricing_eligible is True` autoriza um papel operacional. A
+ausência da flag equivale a rejeição. Pricing, snapshot, PAPER e Market-Time
+Ledger preservam a versão/fingerprint determinística do contrato. O boundary
+é prospetivo: começa na primeira observação pós-merge que transporte a
+fingerprint; histórico anterior permanece `LEGACY / PRE-CONTRACT-FINGERPRINT`
+e não é reclassificado.
 
 A The Odds API fornece apenas uma comparação independente de mercado quando
 estiver explicitamente ativada; desde o `CHANGE-2026-09-03-024` está `OFF` por
@@ -139,7 +159,8 @@ preço e proíbe concluir que há valor de handicap a partir da amostra geral.
   monitorização, liquidação e métricas.
 - `data/market_ledger/`: observações Moneyline já recolhidas, em JSONL diário
   append-only, ligadas por `event_key`/`observation_id`; falhas desta camada não
-  alteram decisão, PAPER ou settlement e deixam Market Memory/CLV como N/D.
+  alteram decisão, PAPER ou settlement. Quotes apenas observadas, sem idade
+  temporal verificável, deixam closing/CLV como N/D.
 - relatórios HTML: nome versionado com `report_id`; uma execução posterior não
   substitui o ficheiro original.
 - `PAPER`, histórico reconstruído/backtest e `REAL` são apresentados

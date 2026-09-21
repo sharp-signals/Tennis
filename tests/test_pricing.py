@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import calibration_store, report_html
+from src import calibration_store, market_integrity, report_html
 from src.pricing import (
     MODEL_VERSION,
     apply_logit_residual,
@@ -24,6 +24,9 @@ class MarketResidualPricingTests(unittest.TestCase):
             "player_b_id": 2,
             "commence_time_utc": "2026-08-27T12:00:00+00:00",
             "market_odds_decimal": {"Jogador A": odd_a, "Jogador B": odd_b},
+            "odds_operational_pricing_eligible": True,
+            "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+            "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
         }
 
     def _divergence(self, index_a=80, factors=4, intensity=3, weight=5.0):

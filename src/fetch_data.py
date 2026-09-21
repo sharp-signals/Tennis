@@ -1255,12 +1255,11 @@ def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
 
 
 def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
-    """Obtém o par do feed ``upcoming`` observado nesta execução.
+    """Obtém o par observation-only do feed ``upcoming`` nesta execução.
 
     A indexação do feed usa apelidos para tolerar a variação de formatos das
-    fontes. Antes de devolver uma cotação para pricing, porém, a identidade é
-    novamente confirmada pelos dois nomes completos normalizados. Isto impede
-    que dois jogadores com o mesmo apelido partilhem acidentalmente uma odd.
+    fontes. A identidade continua a ser confirmada para observabilidade, mas
+    esta fonte não tem bookmaker nem quote timestamp e nunca é operacional.
     """
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
@@ -1331,6 +1330,9 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
         "raw_payload_sha256": embedded.get("raw_payload_sha256"),
         "provider_side_a": "player1" if orientation == "direct" else "player2",
         "provider_side_b": "player2" if orientation == "direct" else "player1",
+        "market_integrity_status": "OBSERVATION_ONLY",
+        "market_integrity_reason_codes": ["EMBEDDED_OBSERVATION_ONLY"],
+        "operational_pricing_eligible": False,
     }
     print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
     return odds, provenance
@@ -1784,7 +1786,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "event_id": None,
             "bookmaker": None,
             "from_cache": diagnostic.get("cache_status") == "HIT",
+            "operational_pricing_eligible": False,
         })
+        diagnostic.update(market_integrity.operational_contract_metadata())
         print(
             f"[aviso] odds operacionais indisponíveis para {player_a} vs {player_b}: "
             f"{diagnostic['unavailable_reason']}."
@@ -1819,7 +1823,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "from_cache": False,
             "availability_status": "UNAVAILABLE",
             "unavailable_reason": "recent_odds_request_failed",
+            "operational_pricing_eligible": False,
         }
+        provenance.update(market_integrity.operational_contract_metadata())
         register_pending_market_check(match, provenance, available=False)
         return None, provenance
 
@@ -1842,7 +1848,9 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "from_cache": False,
             "availability_status": "UNAVAILABLE",
             "unavailable_reason": "event_participant_mapping_unavailable",
+            "operational_pricing_eligible": False,
         }
+        provenance.update(market_integrity.operational_contract_metadata())
         register_pending_market_check(match, provenance, available=False)
         return None, provenance
 
@@ -1873,7 +1881,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "odds": quote_odds,
             "provider_timestamp": item.get("provider_timestamp"),
             "provider_timestamp_status": "unreliable_for_freshness",
-            "freshness_status": "OBSERVED_AT_CAPTURE",
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
             "identity_mapping_status": "VERIFIED",
             "provider_side_a": "od1" if participant1_is_a else "od2",
             "provider_side_b": "od2" if participant1_is_a else "od1",
@@ -1916,14 +1924,16 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "bookmaker": None,
             "from_cache": False,
             "cache_age_seconds": 0,
-            "freshness_status": "OBSERVED_AT_CAPTURE",
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
             "identity_mapping_status": "VERIFIED",
             "raw_payload_sha256": raw_hash,
             "availability_status": "UNAVAILABLE",
             "unavailable_reason": reason,
             "market_integrity": integrity_summary,
             "market_quotes": market_quotes,
+            "operational_pricing_eligible": False,
         }
+        provenance.update(market_integrity.operational_contract_metadata(captured_at_utc))
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": None, "provenance": provenance}
         register_pending_market_check(match, provenance, available=False)
         return None, provenance
@@ -1945,7 +1955,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         "bookmaker": bookmaker,
         "from_cache": False,
         "cache_age_seconds": 0,
-        "freshness_status": "OBSERVED_AT_CAPTURE",
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
         "identity_mapping_status": "VERIFIED",
         "provider_side_a": "od1" if participant1_is_a else "od2",
         "provider_side_b": "od2" if participant1_is_a else "od1",
@@ -1954,7 +1964,12 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         "unavailable_reason": None,
         "market_integrity": integrity_summary,
         "market_quotes": market_quotes,
+        "operational_pricing_eligible": selected.get("operational_pricing_eligible") is True,
     }
+    provenance.update(market_integrity.operational_contract_metadata(captured_at_utc))
+    provenance["operational_pricing_eligible"] = (
+        market_integrity.is_operational_pricing_provenance(provenance)
+    )
     _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance}
     register_pending_market_check(match, provenance, available=True)
     print(f"[odds] {player_a} vs {player_b} | RapidAPI recent-odds observado · {bookmaker} | {odds}")
@@ -1962,8 +1977,10 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
 
 
 def fetch_rapidapi_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
-    """
-    Obtém a Moneyline de um jogo pela RapidAPI. Estratégia robusta:
+    """Path legado non-operational preservado apenas para compatibilidade.
+
+    NÃO usar para pricing/PAPER. Este wrapper pode escolher lados de casas
+    diferentes e existe apenas para audit trail de consumidores antigos:
     1) ODDS EMBUTIDAS na lista upcoming (player.odd) — indexadas por apelidos.
        É a fonte principal: não depende de cruzar eventId (que falhava para
        alguns jogos) nem de uma segunda chamada.
@@ -2041,6 +2058,10 @@ def fetch_rapidapi_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
             "bookmaker": ({player_a: best_a_bookmaker, player_b: best_b_bookmaker} if odds else None),
             "from_cache": False,
             "cache_age_seconds": 0,
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "market_integrity_status": "NOT_EVALUATED_LEGACY",
+            "market_integrity_reason_codes": ["LEGACY_COMPOSITE_NON_OPERATIONAL"],
+            "operational_pricing_eligible": False,
         }
         _RAPIDAPI_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance} if odds else None
         if odds:

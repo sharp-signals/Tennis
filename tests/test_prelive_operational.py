@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import calibration_store, paper_trading
+from src import calibration_store, market_integrity, paper_trading
 from src.telegram_summary import decision_row as _telegram_decision_row, state_counts as telegram_state_counts
 from src.prelive_decision import (
     EDGE_NEGATIVE,
@@ -37,6 +37,17 @@ class PreliveOperationalContractTests(unittest.TestCase):
             "fatigue_signal_a": {"matches_last_7d": 1},
             "fatigue_signal_b": {"matches_last_7d": 1},
             "market_odds_decimal": {"player_a": 2.0, "player_b": 1.9},
+            "odds_operational_pricing_eligible": True,
+            "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+            "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+            "odds_source_contract": market_integrity.operational_contract_metadata()[
+                "odds_source_contract"
+            ],
+            "pricing": {
+                "available": True,
+                "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+                "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+            },
             "snapshot_key": "atp:77",
             "report_id": "report-77",
             "analyzed_at_utc": "2026-08-28T10:00:00+00:00",
