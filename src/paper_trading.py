@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_integrity, market_ledger, snapshot_identity
+from . import market_integrity, market_ledger, match_identity_v2, snapshot_identity
 
 
 SCHEMA_VERSION = 1
@@ -102,6 +102,9 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         require_pricing_contract=True,
     ):
         return []
+    identity_v2 = payload.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION
+    if identity_v2 and not match_identity_v2.is_canonical(payload):
+        return []
     linkage = payload.get("snapshot_linkage")
     if isinstance(linkage, Mapping) and linkage.get("status") in {"COLLISION", "UNLINKED"}:
         # A decisão pode continuar visível no relatório factual, mas uma
@@ -111,6 +114,8 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(decision, Mapping) or not decision.get("paper_eligible"):
         return []
     snapshot_key = str(payload.get("snapshot_key") or "")
+    if identity_v2 and snapshot_key != str(payload.get("canonical_match_instance_id") or ""):
+        return []
     analyzed_at = payload.get("analyzed_at_utc") or _utc_now()
     entries = []
     for market in decision.get("paper_markets") or []:
@@ -122,7 +127,12 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         entry_key = f"{snapshot_key}:{market_type.casefold()}:{side}:{line if line is not None else 'na'}"
         pregame = {
             "snapshot_key": snapshot_key,
-            "event_key": payload.get("event_key") or snapshot_key,
+            "event_key": snapshot_key if identity_v2 else payload.get("event_key") or snapshot_key,
+            "identity_schema_version": payload.get("identity_schema_version"),
+            "canonical_match_instance_id": payload.get("canonical_match_instance_id"),
+            "identity_status": payload.get("identity_status"),
+            "identity_reason_code": payload.get("identity_reason_code"),
+            "legacy_key": payload.get("legacy_key"),
             "report_id": payload.get("report_id"),
             "match_id": payload.get("match_id"),
             "tour": payload.get("tour"),
@@ -234,6 +244,7 @@ def settle_from_matches(
     path: Path = DEFAULT_PATH,
     *,
     ledger_root: Path = market_ledger.DEFAULT_ROOT,
+    identity_registry_path: Path = match_identity_v2.DEFAULT_REGISTRY_PATH,
 ) -> int:
     completed = []
     for match in matches:
@@ -248,6 +259,21 @@ def settle_from_matches(
             by_id.setdefault(str(match.get("id")), []).append(match)
 
     def find(pregame: Mapping[str, Any]):
+        if pregame.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION:
+            canonical_id = str(pregame.get("canonical_match_instance_id") or "")
+            resolved = []
+            for match in completed:
+                event_id = match.get("event_id", match.get("eventId"))
+                result = match_identity_v2.resolve_existing(
+                    match,
+                    canonical_id,
+                    event_id=event_id,
+                    event_id_validated=event_id not in (None, ""),
+                    registry_path=identity_registry_path,
+                )
+                if result.get("canonical_match_instance_id") == canonical_id:
+                    resolved.append(match)
+            return resolved[0] if len(resolved) == 1 else None
         direct = [
             match for match in by_id.get(str(pregame.get("match_id")), [])
             if snapshot_identity.compare(match, pregame)["status"] == snapshot_identity.MATCH

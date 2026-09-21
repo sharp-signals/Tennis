@@ -18,10 +18,14 @@ def _legacy_projection(value: dict) -> dict:
     value.pop('guidance_v1', None)
     value.pop('green_monetization_v1', None)
     value.pop('snapshot_reconciliation_v1', None)
+    value.pop('match_identity_v2', None)
     value.pop('change_id', None)
     strategy = value.get('guerra_selection_v1')
     if isinstance(strategy, dict):
         strategy.pop('flat_stake_simulation', None)
+    freshness = value.get('source_freshness')
+    if isinstance(freshness, dict):
+        freshness.pop('match_identity_v2', None)
     for day in value.get('days') or []:
         if not isinstance(day, dict):
             continue

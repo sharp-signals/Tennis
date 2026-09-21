@@ -7,6 +7,7 @@ pricing, decisao ou PAPER. Os consumidores devem tratar um resultado sem
 
 from __future__ import annotations
 
+import copy
 import gzip
 import hashlib
 import json
@@ -18,6 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from . import match_identity_v2
 from .pricing import de_vig_market_probabilities
 
 
@@ -78,8 +80,8 @@ def _player(match: Mapping[str, Any], side: str) -> dict[str, Any]:
     }
 
 
-def event_key(match: Mapping[str, Any]) -> str:
-    """Identidade partilhada por ledger, snapshot e PAPER."""
+def legacy_event_key(match: Mapping[str, Any]) -> str:
+    """Legacy provider-derived key retained for compatibility and provenance."""
     tour = str(match.get("tour") or match.get("_tour") or "unknown").strip().lower()
     match_id = match.get("match_id", match.get("id"))
     if match_id not in (None, ""):
@@ -93,6 +95,13 @@ def event_key(match: Mapping[str, Any]) -> str:
         "tournament_id": match.get("tournament_id", match.get("tournamentId")),
     }
     return "fallback:" + payload_sha256(material)[:24]
+
+
+def event_key(match: Mapping[str, Any]) -> str:
+    """Canonical v2 key when resolved; otherwise the immutable legacy contract."""
+    if match_identity_v2.is_canonical(match):
+        return str(match["canonical_match_instance_id"])
+    return legacy_event_key(match)
 
 
 def _odd_for_side(odds: Mapping[str, Any], player: Mapping[str, Any], side: str) -> float:
@@ -192,12 +201,15 @@ def build_observation(
     ]
     integrity_gate_passed = provenance.get("operational_pricing_eligible") is True
     temporally_comparable = freshness_status == "FRESH"
+    identity_v2 = match.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION
+    identity_eligible = not identity_v2 or match_identity_v2.is_canonical(match)
     clv_eligible = (
         prestart_status == "PRESTART"
         and bookmaker_status == "IDENTIFIED"
         and mapping_status == "VERIFIED"
         and temporally_comparable
         and integrity_gate_passed
+        and identity_eligible
     )
     ineligible_reasons = []
     if prestart_status != "PRESTART":
@@ -213,6 +225,10 @@ def build_observation(
             integrity_reason_codes
             or ["OPERATIONAL_PRICING_ELIGIBILITY_NOT_EXPLICIT_TRUE"]
         )
+    if not identity_eligible:
+        ineligible_reasons.append(
+            f"IDENTITY_NOT_CANONICAL:{match.get('identity_status') or 'UNAVAILABLE'}"
+        )
 
     observation = {
         "schema_version": SCHEMA_VERSION,
@@ -220,6 +236,7 @@ def build_observation(
         "record_type": "MARKET_OBSERVATION",
         "event": {
             "event_key": event_key(match),
+            "legacy_event_key": legacy_event_key(match) if identity_v2 else None,
             "match_id": match.get("match_id", match.get("id")),
             "provider_event_id": provenance.get("event_id"),
             "tour": match.get("tour") or match.get("_tour"),
@@ -294,6 +311,16 @@ def build_observation(
             "provenance_identifier_kind": identifier_kind,
         },
     }
+    if identity_v2:
+        observation["identity"] = {
+            "schema_version": match_identity_v2.SCHEMA_VERSION,
+            "canonical_match_instance_id": match.get("canonical_match_instance_id"),
+            "status": match.get("identity_status"),
+            "reason_code": match.get("identity_reason_code"),
+            "legacy_key": match.get("legacy_key") or legacy_event_key(match),
+            "persisted": match.get("identity_persisted") is True,
+            "evidence": copy.deepcopy(match.get("identity_evidence")),
+        }
     immutable_material = dict(observation)
     observation_id = payload_sha256(immutable_material)
     observation["observation_id"] = observation_id

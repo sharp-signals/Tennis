@@ -105,6 +105,32 @@ Ledger preservam a versão/fingerprint determinística do contrato. O boundary
 fingerprint; histórico anterior permanece `LEGACY / PRE-CONTRACT-FINGERPRINT`
 e não é reclassificado.
 
+## Identidade canónica prospetiva
+
+`CHANGE-2026-09-21-049` acrescenta o contrato `MATCH_INSTANCE_ID_V2` sem
+alterar `rapidapi-recent-gated-v1` nem a fingerprint
+`d8679462537d9f461ca7`. Uma instância singles nova só pode receber uma key
+opaca `mi2_<uuid4-hex>` quando existirem `tour`, `tournament_id`, os dois
+player IDs factuais e um discriminador forte: `event_id` bilateralmente
+validado ou `round_id` factual. O ID é mintado uma vez e nunca é recalculado a
+partir de hora, nomes, round, orientação A/B ou identificadores do provider.
+
+Os estados são `CANONICAL_STRONG`, `CANONICAL_RESOLVED`,
+`IDENTITY_PROVISIONAL`, `IDENTITY_INSUFFICIENT` e `IDENTITY_CONFLICT`.
+`EVENT_ID` é alias forte apenas quando estrutura e jogadores são coerentes;
+`MATCH_ID` é alias fraco, reutilizável e nunca minta sozinho. Nomes+hora nunca
+autorizam snapshot ou PAPER. Provisional, insufficient e conflict podem gerar
+relatório factual e observação de Ledger, mas não memória operacional,
+snapshot canónico nem PAPER. Doubles são explicitamente unsupported nesta
+versão.
+
+O boundary é a primeira observação de produção pós-merge com schema v2. O
+registry começa vazio, preserva CHANGE-ID, runtime SHA/run ID e instante da
+primeira observação quando disponíveis, e não recebe backfill. Objetos legacy
+continuam no caminho CHANGE-047. Settlement v2 exige resolução bilateral para
+a mesma instância; ambiguidade não liquida. Auto merge/split exige outro
+CHANGE.
+
 A The Odds API fornece apenas uma comparação independente de mercado quando
 estiver explicitamente ativada; desde o `CHANGE-2026-09-03-024` está `OFF` por
 defeito. Não substitui, não faz média e não bloqueia o preço
@@ -161,6 +187,9 @@ preço e proíbe concluir que há valor de handicap a partir da amostra geral.
   append-only, ligadas por `event_key`/`observation_id`; falhas desta camada não
   alteram decisão, PAPER ou settlement. Quotes apenas observadas, sem idade
   temporal verificável, deixam closing/CLV como N/D.
+- `data/match_identity/registry-v2.json`: projeção corrente do resolver
+  mint-once; `events-v2.jsonl` é audit trail append-only. IDs canónicos são
+  internos e não são publicados no HTML, Telegram ou email.
 - relatórios HTML: nome versionado com `report_id`; uma execução posterior não
   substitui o ficheiro original.
 - `PAPER`, histórico reconstruído/backtest e `REAL` são apresentados

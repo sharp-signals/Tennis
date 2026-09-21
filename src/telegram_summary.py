@@ -18,6 +18,13 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
         edge_text = "N/D"
     if state == "EDGE_POSITIVE":
         market = html.escape(str((decision.get("market") or {}).get("market") or "Moneyline"))
+        identity_gate = decision.get("identity_gate") or {}
+        if payload.get("identity_schema_version") == 2 and identity_gate.get("paper_eligible") is False:
+            status = html.escape(str(identity_gate.get("status") or "IDENTITY_UNAVAILABLE"))
+            return 2.5, "🟡", (
+                f"{a} vs {b} — edge positivo {edge_text}, mas identidade canónica pendente "
+                f"({status}) · sem PAPER"
+            )
         return 3, "🟢", f"{a} vs {b} — <b>EDGE POSITIVO {edge_text}</b> · PAPER {market}"
     if state == "EDGE_POSITIVE_COVERAGE_INSUFFICIENT":
         coverage = (decision.get("coverage") or {}).get("weighted_pct")
