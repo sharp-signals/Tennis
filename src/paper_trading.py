@@ -97,7 +97,10 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Cria uma entrada por mercado elegivel, sem alterar o payload."""
-    if not market_integrity.is_operational_pricing_payload(payload):
+    if not market_integrity.is_operational_pricing_payload(
+        payload,
+        require_pricing_contract=True,
+    ):
         return []
     linkage = payload.get("snapshot_linkage")
     if isinstance(linkage, Mapping) and linkage.get("status") in {"COLLISION", "UNLINKED"}:

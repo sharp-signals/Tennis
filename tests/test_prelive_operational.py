@@ -43,6 +43,11 @@ class PreliveOperationalContractTests(unittest.TestCase):
             "odds_source_contract": market_integrity.operational_contract_metadata()[
                 "odds_source_contract"
             ],
+            "pricing": {
+                "available": True,
+                "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+                "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+            },
             "snapshot_key": "atp:77",
             "report_id": "report-77",
             "analyzed_at_utc": "2026-08-28T10:00:00+00:00",

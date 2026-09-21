@@ -95,6 +95,24 @@ class OperationalOddsContractTests(unittest.TestCase):
             },
         }
 
+    def paper_payload(self):
+        payload = self.payload()
+        payload["pricing"] = pricing.estimate_market_residual_pricing(
+            payload,
+            self.divergence(),
+        )
+        payload["prelive_decision"] = {
+            "paper_eligible": True,
+            "paper_markets": [{
+                "market_type": "Moneyline",
+                "market": "Moneyline Alpha One",
+                "side": "a",
+                "player": "Alpha One",
+                "odd": 2.1,
+            }],
+        }
+        return payload
+
     def test_main_uses_safe_recent_path_and_keeps_embedded_shadow_only(self):
         source = inspect.getsource(main._build_match_payload)
         self.assertIn("fetch_rapidapi_recent_moneyline_with_provenance(match)", source)
@@ -157,19 +175,34 @@ class OperationalOddsContractTests(unittest.TestCase):
         payload["odds_operational_pricing_eligible"] = True
         self.assertTrue(pricing.estimate_market_residual_pricing(payload, self.divergence())["available"])
 
+    def test_paper_rejects_payload_without_pricing(self):
+        payload = self.paper_payload()
+        payload.pop("pricing")
+        self.assertEqual(paper_trading.build_entries(payload), [])
+
+    def test_paper_rejects_unavailable_pricing(self):
+        payload = self.paper_payload()
+        payload["pricing"]["available"] = False
+        self.assertEqual(paper_trading.build_entries(payload), [])
+
+    def test_paper_rejects_wrong_pricing_contract_version(self):
+        payload = self.paper_payload()
+        payload["pricing"]["odds_source_contract_version"] = "wrong-contract"
+        self.assertEqual(paper_trading.build_entries(payload), [])
+
+    def test_paper_rejects_wrong_pricing_contract_fingerprint(self):
+        payload = self.paper_payload()
+        payload["pricing"]["odds_source_contract_fingerprint"] = "wrong-fingerprint"
+        self.assertEqual(paper_trading.build_entries(payload), [])
+
+    def test_paper_accepts_matching_payload_and_pricing_contract(self):
+        payload = self.paper_payload()
+        entries = paper_trading.build_entries(payload)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["pregame"]["market_type"], "Moneyline")
+
     def test_contract_version_matches_pricing_snapshot_paper_and_ledger(self):
-        payload = self.payload()
-        payload["pricing"] = pricing.estimate_market_residual_pricing(payload, self.divergence())
-        payload["prelive_decision"] = {
-            "paper_eligible": True,
-            "paper_markets": [{
-                "market_type": "Moneyline",
-                "market": "Moneyline Alpha One",
-                "side": "a",
-                "player": "Alpha One",
-                "odd": 2.1,
-            }],
-        }
+        payload = self.paper_payload()
         snapshot = calibration_store.build_snapshot(payload, {})
         paper = paper_trading.build_entries(payload)[0]
         observation = market_ledger.build_observation(

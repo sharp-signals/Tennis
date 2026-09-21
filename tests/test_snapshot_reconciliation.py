@@ -25,6 +25,11 @@ def payload(*, match_id=861, a_id=1, b_id=2, a="Old A", b="Old B"):
         "odds_operational_pricing_eligible": True,
         "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
         "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+        "pricing": {
+            "available": True,
+            "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+            "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+        },
         "prelive_decision": {
             "paper_eligible": True,
             "paper_markets": [{
