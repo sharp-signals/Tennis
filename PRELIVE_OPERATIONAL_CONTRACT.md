@@ -124,12 +124,23 @@ relatório factual e observação de Ledger, mas não memória operacional,
 snapshot canónico nem PAPER. Doubles são explicitamente unsupported nesta
 versão.
 
+`round_id` factual é guardado na instância e resolvido apenas dentro de
+`tour+tournament_id+canonical player IDs`. Esta evidence forte é consultada
+antes do alias fraco `MATCH_ID`: um match ID reutilizado nunca pode prevalecer
+sobre round ou EVENT_ID incompatível.
+
 O boundary é a primeira observação de produção pós-merge com schema v2. O
 registry começa vazio, preserva CHANGE-ID, runtime SHA/run ID e instante da
-primeira observação quando disponíveis, e não recebe backfill. Objetos legacy
+primeira observação quando disponíveis — mesmo quando essa observação é
+provisional/insufficient/conflict — e não recebe backfill. Objetos legacy
 continuam no caminho CHANGE-047. Settlement v2 exige resolução bilateral para
 a mesma instância; ambiguidade não liquida. Auto merge/split exige outro
 CHANGE.
+
+`data/match_identity/` é publicado pelo workflow em runs bem-sucedidas e
+falhadas. Se o append do audit JSONL falhar no processo, a projeção do registry
+é revertida antes do resultado fail-closed; permanece apenas o risco de crash
+da máquina no intervalo exato entre operações locais persistidas.
 
 A The Odds API fornece apenas uma comparação independente de mercado quando
 estiver explicitamente ativada; desde o `CHANGE-2026-09-03-024` está `OFF` por

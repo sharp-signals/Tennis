@@ -132,6 +132,54 @@ class MatchIdentityV2Tests(unittest.TestCase):
         second = self.resolve(self.observation(roundId=4), event_id="event-a", event_id_validated=True)
         self.assertEqual(first["canonical_match_instance_id"], second["canonical_match_instance_id"])
 
+    def test_round_only_mint_resolves_same_round_after_match_id_change(self):
+        first = self.resolve(self.observation(roundId=4))
+        second = self.resolve(self.observation(id=999, roundId=4))
+        self.assertEqual(second["identity_status"], identity.CANONICAL_RESOLVED)
+        self.assertEqual(first["canonical_match_instance_id"], second["canonical_match_instance_id"])
+
+    def test_round_only_mint_survives_reschedule(self):
+        first = self.resolve(self.observation(roundId=4))
+        second = self.resolve(
+            self.observation(roundId=4, date="2026-09-23T12:00:00+00:00")
+        )
+        self.assertEqual(first["canonical_match_instance_id"], second["canonical_match_instance_id"])
+
+    def test_reused_weak_match_id_cannot_override_different_round(self):
+        first = self.resolve(self.observation(roundId=2))
+        second = self.resolve(self.observation(roundId=5))
+        self.assertEqual(second["identity_status"], identity.CANONICAL_STRONG)
+        self.assertNotEqual(first["canonical_match_instance_id"], second["canonical_match_instance_id"])
+        registry = identity.read_registry(self.registry)
+        weak_bindings = [
+            row for row in registry["aliases"]
+            if row["alias_type"] == identity.ALIAS_MATCH_ID
+            and row["alias_value"] == "501"
+        ]
+        self.assertEqual(len(weak_bindings), 2)
+
+    def test_same_structure_with_distinct_rounds_mints_distinct_instances(self):
+        first = self.resolve(self.observation(roundId=2, id=100))
+        second = self.resolve(self.observation(roundId=5, id=101))
+        self.assertNotEqual(first["canonical_match_instance_id"], second["canonical_match_instance_id"])
+
+    def test_round_minted_then_event_then_round_missing_uses_strong_alias(self):
+        first = self.resolve(self.observation(roundId=4))
+        enriched = self.resolve(
+            self.observation(roundId=4), event_id="event-a", event_id_validated=True,
+        )
+        later = self.resolve(
+            self.observation(id=999, roundId=None),
+            event_id="event-a", event_id_validated=True,
+        )
+        self.assertEqual(first["canonical_match_instance_id"], enriched["canonical_match_instance_id"])
+        self.assertEqual(first["canonical_match_instance_id"], later["canonical_match_instance_id"])
+
+    def test_weak_match_id_cannot_override_distinct_validated_event(self):
+        first = self.resolve(event_id="event-a", event_id_validated=True)
+        second = self.resolve(event_id="event-b", event_id_validated=True)
+        self.assertNotEqual(first["canonical_match_instance_id"], second["canonical_match_instance_id"])
+
     def test_event_id_can_enrich_round_minted_instance_without_remint(self):
         first = self.resolve(self.observation(roundId=4))
         second = self.resolve(self.observation(roundId=4), event_id="event-a", event_id_validated=True)
@@ -142,7 +190,35 @@ class MatchIdentityV2Tests(unittest.TestCase):
         result = self.resolve()
         self.assertEqual(result["identity_status"], identity.IDENTITY_PROVISIONAL)
         self.assertIsNone(result["canonical_match_instance_id"])
-        self.assertFalse(self.registry.exists())
+        registry = identity.read_registry(self.registry)
+        self.assertEqual(registry["instances"], [])
+        self.assertEqual(registry["aliases"], [])
+        self.assertEqual(
+            registry["activation"]["first_observed_at_utc"],
+            "2026-09-22T08:00:00+00:00",
+        )
+
+    def test_provisional_first_observation_activates_once_without_mint(self):
+        first = self.resolve(
+            observed_at_utc="2026-09-22T08:00:00+00:00",
+            runtime_metadata={"runtime_sha": "first-sha", "github_run_id": "101"},
+        )
+        self.assertEqual(first["identity_status"], identity.IDENTITY_PROVISIONAL)
+        registry = identity.read_registry(self.registry)
+        self.assertEqual(registry["instances"], [])
+        self.assertEqual(registry["aliases"], [])
+        self.assertEqual(registry["activation"]["runtime_sha"], "first-sha")
+        self.assertEqual(registry["activation"]["github_run_id"], "101")
+        second = self.resolve(
+            self.observation(roundId=4),
+            observed_at_utc="2026-09-22T09:00:00+00:00",
+            runtime_metadata={"runtime_sha": "second-sha", "github_run_id": "102"},
+        )
+        self.assertTrue(identity.is_canonical(second))
+        activation = identity.read_registry(self.registry)["activation"]
+        self.assertEqual(activation["first_observed_at_utc"], "2026-09-22T08:00:00+00:00")
+        self.assertEqual(activation["runtime_sha"], "first-sha")
+        self.assertEqual(activation["github_run_id"], "101")
 
     def test_names_and_time_without_player_ids_are_insufficient(self):
         value = self.observation(player1Id=None, player2Id=None)
@@ -217,6 +293,46 @@ class MatchIdentityV2Tests(unittest.TestCase):
         self.assertEqual(result["identity_status"], identity.IDENTITY_INSUFFICIENT)
         self.assertFalse(result["identity_persisted"])
         self.assertIsNone(result["canonical_match_instance_id"])
+
+    def test_audit_append_failure_rolls_back_new_instance_and_aliases(self):
+        with patch.object(identity, "_append_events", side_effect=OSError("disk full")):
+            result = self.resolve(event_id="event-a", event_id_validated=True)
+        self.assertEqual(result["identity_status"], identity.IDENTITY_INSUFFICIENT)
+        self.assertFalse(identity.is_canonical(result))
+        registry = identity.read_registry(self.registry)
+        self.assertEqual(registry["instances"], [])
+        self.assertEqual(registry["aliases"], [])
+        payload = self._canonical_payload()
+        payload.update(result)
+        payload["snapshot_key"] = None
+        self.assertEqual(paper_trading.build_entries(payload), [])
+        with self.assertRaisesRegex(ValueError, "identity_v2_not_canonical"):
+            calibration_store.build_snapshot(payload, {})
+
+    def test_audit_append_failure_restores_existing_projection(self):
+        first = self.resolve(event_id="event-a", event_id_validated=True)
+        second_match = self.observation(
+            id=777,
+            player1Id=30,
+            player2Id=40,
+            player1={"id": 30, "name": "Gamma"},
+            player2={"id": 40, "name": "Delta"},
+        )
+        with patch.object(identity, "_append_events", side_effect=OSError("disk full")):
+            failed = self.resolve(
+                second_match, event_id="event-b", event_id_validated=True,
+            )
+        self.assertFalse(identity.is_canonical(failed))
+        registry = identity.read_registry(self.registry)
+        self.assertEqual(len(registry["instances"]), 1)
+        self.assertEqual(
+            registry["instances"][0]["canonical_match_instance_id"],
+            first["canonical_match_instance_id"],
+        )
+        self.assertEqual(
+            {row["alias_value"] for row in registry["aliases"]},
+            {"event-a", "501"},
+        )
 
     def test_registry_and_event_log_are_schema_valid_and_auditable(self):
         result = self.resolve(

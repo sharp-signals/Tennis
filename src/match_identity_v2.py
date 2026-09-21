@@ -265,6 +265,59 @@ def _touch_instance(instances: Mapping[str, dict[str, Any]], canonical_id: str, 
         instance["last_observed_at_utc"] = observed_at
 
 
+def _instance_round_ids(instance: Mapping[str, Any]) -> set[str]:
+    return {
+        str(value) for value in instance.get("round_ids", [])
+        if value not in (None, "")
+    }
+
+
+def _round_is_compatible(instance: Mapping[str, Any], round_value: str | None) -> bool:
+    known = _instance_round_ids(instance)
+    return not round_value or not known or round_value in known
+
+
+def _bind_round(instance: dict[str, Any], round_value: str | None) -> bool:
+    if not round_value:
+        return False
+    known = _instance_round_ids(instance)
+    if round_value in known:
+        return False
+    if known:
+        raise ValueError("round_evidence_conflict")
+    instance["round_ids"] = [round_value]
+    return True
+
+
+def _active_event_aliases(
+    registry: Mapping[str, Any], canonical_id: str, provider: str,
+) -> list[dict[str, Any]]:
+    return [
+        row for row in registry.get("aliases", [])
+        if isinstance(row, dict)
+        and row.get("alias_type") == ALIAS_EVENT_ID
+        and row.get("canonical_match_instance_id") == canonical_id
+        and row.get("status") == ALIAS_ACTIVE
+        and str(row.get("provider")) == provider
+    ]
+
+
+def _strong_evidence_is_compatible(
+    registry: Mapping[str, Any], instance: Mapping[str, Any], *,
+    canonical_id: str, provider: str, event_value: str | None,
+    event_id_validated: bool, round_value: str | None,
+) -> bool:
+    if not _round_is_compatible(instance, round_value):
+        return False
+    if event_value and event_id_validated:
+        existing_events = _active_event_aliases(registry, canonical_id, provider)
+        if existing_events and all(
+            str(row.get("alias_value")) != event_value for row in existing_events
+        ):
+            return False
+    return True
+
+
 def _bind_alias(
     registry: dict[str, Any], *, alias_type: str, alias_value: str,
     canonical_id: str, provider: str, observed_at: str, fingerprint: str,
@@ -334,6 +387,7 @@ def _resolve_locked(
     instances = _instances(registry)
     event_value = str(event_id) if event_id not in (None, "") else None
     match_value = str(match_id) if match_id not in (None, "") else None
+    round_value = str(round_id) if round_id not in (None, "") else None
 
     if event_value and event_id_validated:
         bindings = _aliases(registry, ALIAS_EVENT_ID, event_value, provider)
@@ -355,9 +409,18 @@ def _resolve_locked(
             ), True, ["ALIAS_CONFLICT", "IDENTITY_CONFLICT"]
         if len(compatible) == 1:
             canonical_id = next(iter(compatible))
+            instance = instances[canonical_id]
+            if not _round_is_compatible(instance, round_value):
+                _mark_alias_conflict(bindings, observed_at)
+                return _result(
+                    IDENTITY_CONFLICT, "EVENT_ID_ROUND_EVIDENCE_CONFLICT",
+                    canonical_id=None, legacy=legacy, structure=structure,
+                    evidence=evidence, persisted=False,
+                ), True, ["ALIAS_CONFLICT", "IDENTITY_CONFLICT"]
             _touch_instance(instances, canonical_id, observed_at)
             fingerprint = _fingerprint(structure, evidence)
             added = False
+            round_added = _bind_round(instance, round_value)
             if match_value:
                 added = _bind_alias(
                     registry, alias_type=ALIAS_MATCH_ID, alias_value=match_value,
@@ -369,7 +432,64 @@ def _resolve_locked(
                 canonical_id=canonical_id, legacy=legacy, structure=structure,
                 evidence=evidence, persisted=True,
             )
-            return result, True, (["ALIAS_BOUND"] if added else []) + ["OBSERVATION_RESOLVED"]
+            return result, True, (
+                (["ROUND_EVIDENCE_BOUND"] if round_added else [])
+                + (["ALIAS_BOUND"] if added else [])
+                + ["OBSERVATION_RESOLVED"]
+            )
+
+    # ROUND_ID is strong only inside the bilateral structural scope. It is
+    # resolved before the weak MATCH_ID so a reused provider ID can never
+    # override contradictory factual round evidence.
+    if round_value:
+        round_candidates = [
+            row for row in instances.values()
+            if _structure_matches(row, structure)
+            and round_value in _instance_round_ids(row)
+        ]
+        if len(round_candidates) > 1:
+            return _result(
+                IDENTITY_CONFLICT, "ROUND_ID_MULTIPLE_COMPATIBLE_INSTANCES",
+                canonical_id=None, legacy=legacy, structure=structure,
+                evidence=evidence, persisted=False,
+            ), False, ["IDENTITY_CONFLICT"]
+        if len(round_candidates) == 1:
+            candidate = round_candidates[0]
+            canonical_id = str(candidate["canonical_match_instance_id"])
+            if not _strong_evidence_is_compatible(
+                registry, candidate, canonical_id=canonical_id, provider=provider,
+                event_value=event_value, event_id_validated=event_id_validated,
+                round_value=round_value,
+            ):
+                return _result(
+                    IDENTITY_CONFLICT, "ROUND_EVENT_STRONG_EVIDENCE_CONFLICT",
+                    canonical_id=None, legacy=legacy, structure=structure,
+                    evidence=evidence, persisted=False,
+                ), False, ["IDENTITY_CONFLICT"]
+            fingerprint = _fingerprint(structure, evidence)
+            event_added = False
+            match_added = False
+            if event_value and event_id_validated:
+                event_added = _bind_alias(
+                    registry, alias_type=ALIAS_EVENT_ID, alias_value=event_value,
+                    canonical_id=canonical_id, provider=provider,
+                    observed_at=observed_at, fingerprint=fingerprint,
+                )
+            if match_value:
+                match_added = _bind_alias(
+                    registry, alias_type=ALIAS_MATCH_ID, alias_value=match_value,
+                    canonical_id=canonical_id, provider=provider,
+                    observed_at=observed_at, fingerprint=fingerprint,
+                )
+            _touch_instance(instances, canonical_id, observed_at)
+            return _result(
+                CANONICAL_RESOLVED, "ROUND_ID_STRUCTURAL_MATCH",
+                canonical_id=canonical_id, legacy=legacy, structure=structure,
+                evidence=evidence, persisted=True,
+            ), True, (
+                (["ALIAS_BOUND"] if event_added or match_added else [])
+                + ["OBSERVATION_RESOLVED"]
+            )
 
     if match_value:
         bindings = _aliases(registry, ALIAS_MATCH_ID, match_value, provider)
@@ -378,6 +498,15 @@ def _resolve_locked(
             if row.get("status") == ALIAS_ACTIVE
             and str(row.get("canonical_match_instance_id")) in instances
             and _structure_matches(instances[str(row.get("canonical_match_instance_id"))], structure)
+            and _strong_evidence_is_compatible(
+                registry,
+                instances[str(row.get("canonical_match_instance_id"))],
+                canonical_id=str(row.get("canonical_match_instance_id")),
+                provider=provider,
+                event_value=event_value,
+                event_id_validated=event_id_validated,
+                round_value=round_value,
+            )
         }
         if len(compatible) > 1:
             _mark_alias_conflict(bindings, observed_at)
@@ -388,6 +517,7 @@ def _resolve_locked(
             ), True, ["ALIAS_CONFLICT", "IDENTITY_CONFLICT"]
         if len(compatible) == 1:
             canonical_id = next(iter(compatible))
+            instance = instances[canonical_id]
             fingerprint = _fingerprint(structure, evidence)
             added = False
             novel_strong_event = False
@@ -412,30 +542,30 @@ def _resolve_locked(
                     # earlier binding. Continue to the strong mint path.
                     novel_strong_event = True
             if not novel_strong_event:
+                round_added = _bind_round(instance, round_value)
                 _touch_instance(instances, canonical_id, observed_at)
                 result = _result(
                     CANONICAL_RESOLVED, "MATCH_ID_ALIAS_WITH_STRUCTURAL_MATCH",
                     canonical_id=canonical_id, legacy=legacy, structure=structure,
                     evidence=evidence, persisted=True,
                 )
-                return result, True, (["ALIAS_BOUND"] if added else []) + ["OBSERVATION_RESOLVED"]
+                return result, True, (
+                    (["ROUND_EVIDENCE_BOUND"] if round_added else [])
+                    + (["ALIAS_BOUND"] if added else [])
+                    + ["OBSERVATION_RESOLVED"]
+                )
 
     structural_instances = [
         row for row in instances.values() if _structure_matches(row, structure)
     ]
     if event_value and event_id_validated and len(structural_instances) == 1:
         candidate = structural_instances[0]
-        existing_events = [
-            row for row in registry["aliases"]
-            if row.get("alias_type") == ALIAS_EVENT_ID
-            and row.get("canonical_match_instance_id") == candidate["canonical_match_instance_id"]
-            and row.get("status") == ALIAS_ACTIVE
-            and str(row.get("provider")) == provider
-        ]
-        if not existing_events:
-            canonical_id = candidate["canonical_match_instance_id"]
+        canonical_id = str(candidate["canonical_match_instance_id"])
+        existing_events = _active_event_aliases(registry, canonical_id, provider)
+        if not existing_events and _round_is_compatible(candidate, round_value):
             _touch_instance(instances, canonical_id, observed_at)
             fingerprint = _fingerprint(structure, evidence)
+            round_added = _bind_round(candidate, round_value)
             _bind_alias(
                 registry, alias_type=ALIAS_EVENT_ID, alias_value=event_value,
                 canonical_id=canonical_id, provider=provider,
@@ -451,7 +581,10 @@ def _resolve_locked(
                 CANONICAL_RESOLVED, "EVENT_ID_ENRICHES_UNIQUE_STRUCTURAL_INSTANCE",
                 canonical_id=canonical_id, legacy=legacy, structure=structure,
                 evidence=evidence, persisted=True,
-            ), True, ["ALIAS_BOUND", "OBSERVATION_RESOLVED"]
+            ), True, (
+                (["ROUND_EVIDENCE_BOUND"] if round_added else [])
+                + ["ALIAS_BOUND", "OBSERVATION_RESOLVED"]
+            )
 
     strong = bool(event_value and event_id_validated) or round_id not in (None, "")
     if not allow_mint:
@@ -477,6 +610,7 @@ def _resolve_locked(
         "status": "ACTIVE",
         **copy.deepcopy(structure),
         "strong_discriminator": "EVENT_ID" if event_value and event_id_validated else "ROUND_ID",
+        "round_ids": [round_value] if round_value else [],
         "evidence_fingerprint": fingerprint,
     })
     event_types = ["INSTANCE_MINTED"]
@@ -519,32 +653,66 @@ def resolve_observation(
         "github_run_id": (runtime_metadata or {}).get("github_run_id") or os.environ.get("GITHUB_RUN_ID"),
     }
     with _LOCK:
+        previous_registry: dict[str, Any] | None = None
+        registry_written = False
+        registry_existed = False
+        rollback_path: Path | None = None
         try:
-            registry = _read_registry(registry_path)
+            previous_registry = _read_registry(registry_path)
+            registry = copy.deepcopy(previous_registry)
             result, changed, event_types = _resolve_locked(
                 registry, observation, event_id=str(event_id) if event_id not in (None, "") else None,
                 event_id_validated=event_id_validated, provider=provider,
                 observed_at=observed_at, allow_mint=allow_mint,
             )
-            if changed:
-                activation = registry.setdefault("activation", {})
-                if not activation.get("first_observed_at_utc"):
-                    activation.update({
-                        "mode": "PROSPECTIVE_FIRST_POST_MERGE_OBSERVATION",
-                        "first_observed_at_utc": observed_at,
-                        **runtime,
-                    })
+            activation = registry.setdefault("activation", {})
+            activation_changed = not activation.get("first_observed_at_utc")
+            if activation_changed:
+                activation.update({
+                    "mode": "PROSPECTIVE_FIRST_POST_MERGE_OBSERVATION",
+                    "first_observed_at_utc": observed_at,
+                    **runtime,
+                })
+            if changed or activation_changed:
                 registry["updated_at_utc"] = observed_at
+                registry_existed = registry_path.exists()
+                if registry_existed:
+                    rollback_path = registry_path.with_name(
+                        f".{registry_path.name}.{os.getpid()}."
+                        f"{threading.get_ident()}.rollback"
+                    )
+                    _write_registry(rollback_path, previous_registry)
                 _write_registry(registry_path, registry)
+                registry_written = True
             events = [
                 _event(kind, observed_at=observed_at, result=result, runtime=runtime)
                 for kind in event_types
             ]
             _append_events(events_path, events)
+            if rollback_path is not None:
+                rollback_path.unlink(missing_ok=True)
             if result.get("canonical_match_instance_id"):
                 result["identity_persisted"] = True
             return result
         except Exception as exc:
+            # The registry is the usable projection and the JSONL is its
+            # audit proof. If append fails after a successful projection
+            # write, restore the pre-call projection before returning a
+            # non-canonical result. A machine crash at the exact boundary
+            # between these local fsync operations remains documented risk.
+            if registry_written and previous_registry is not None:
+                try:
+                    if rollback_path is not None and rollback_path.exists():
+                        os.replace(rollback_path, registry_path)
+                    elif not registry_existed:
+                        registry_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+            if rollback_path is not None:
+                try:
+                    rollback_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
             return _result(
                 IDENTITY_INSUFFICIENT,
                 f"IDENTITY_REGISTRY_PERSISTENCE_FAILED:{type(exc).__name__}",
@@ -583,6 +751,14 @@ def resolve_existing(
             "reason_code": "EXPECTED_CANONICAL_STRUCTURE_MISMATCH",
             "canonical_match_instance_id": None,
         }
+    round_id = _value(observation, "round_id", "roundId")
+    round_value = str(round_id) if round_id not in (None, "") else None
+    if round_value and not _round_is_compatible(expected, round_value):
+        return {
+            "status": IDENTITY_CONFLICT,
+            "reason_code": "SETTLEMENT_ROUND_EVIDENCE_CONFLICT",
+            "canonical_match_instance_id": None,
+        }
     if event_id not in (None, "") and event_id_validated:
         event_bindings = _aliases(registry, ALIAS_EVENT_ID, str(event_id), provider)
         event_candidates = {
@@ -604,6 +780,25 @@ def resolve_existing(
             return {
                 "status": IDENTITY_CONFLICT,
                 "reason_code": "SETTLEMENT_EVENT_ALIAS_CONFLICT",
+                "canonical_match_instance_id": None,
+            }
+        round_candidates = {
+            str(row.get("canonical_match_instance_id"))
+            for row in instances.values()
+            if _structure_matches(row, structure)
+            and round_value
+            and round_value in _instance_round_ids(row)
+        }
+        if round_candidates == {str(expected_canonical_id)}:
+            return {
+                "status": CANONICAL_RESOLVED,
+                "reason_code": "SETTLEMENT_ROUND_MATCH",
+                "canonical_match_instance_id": str(expected_canonical_id),
+            }
+        if len(round_candidates) > 1:
+            return {
+                "status": IDENTITY_CONFLICT,
+                "reason_code": "SETTLEMENT_ROUND_IDENTITY_AMBIGUOUS",
                 "canonical_match_instance_id": None,
             }
         expected_events = [
@@ -628,6 +823,25 @@ def resolve_existing(
             "reason_code": "SETTLEMENT_EVENT_ALIAS_UNBOUND",
             "canonical_match_instance_id": None,
         }
+    if round_value:
+        round_candidates = {
+            str(row.get("canonical_match_instance_id"))
+            for row in instances.values()
+            if _structure_matches(row, structure)
+            and round_value in _instance_round_ids(row)
+        }
+        if round_candidates == {str(expected_canonical_id)}:
+            return {
+                "status": CANONICAL_RESOLVED,
+                "reason_code": "SETTLEMENT_ROUND_MATCH",
+                "canonical_match_instance_id": str(expected_canonical_id),
+            }
+        if len(round_candidates) > 1:
+            return {
+                "status": IDENTITY_CONFLICT,
+                "reason_code": "SETTLEMENT_ROUND_IDENTITY_AMBIGUOUS",
+                "canonical_match_instance_id": None,
+            }
     alias_candidates: set[str] = set()
     match_id = _value(observation, "match_id", "id")
     if match_id not in (None, ""):

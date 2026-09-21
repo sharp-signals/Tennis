@@ -156,10 +156,15 @@ player IDs) e um discriminador forte (`event_id` bilateralmente validado ou
 `EVENT_ID`/`MATCH_ID` apenas como aliases auditáveis; alterações de hora,
 orientação A/B, nomes ou metadata progressiva nunca recalculam essa key.
 Nomes+hora e `match_id` isolado nunca chegam para criar identidade elegível.
+O `round_id` factual é preservado na instância e resolvido dentro do scope
+bilateral antes de qualquer alias fraco `MATCH_ID`; evidence forte
+incompatível falha fechada em vez de herdar uma instância antiga.
 Estados provisional, insufficient ou conflict mantêm o relatório factual, mas
 falham fechados para snapshot canónico e PAPER. Registry e audit trail vivem em
 `data/match_identity/`; começam vazios, sem backfill, e coexistem com o
-containment legacy do CHANGE-047. Merge/split automático fica fora de scope.
+containment legacy do CHANGE-047. O workflow persiste estes dois ficheiros
+tanto no caminho de sucesso como no de falha. Merge/split automático fica fora
+de scope.
 
 Depois da run, `scripts/update_calibration_outcomes.py` usa apenas as caches
 locais de jogos concluídos para liquidar snapshots e a carteira PAPER. O
