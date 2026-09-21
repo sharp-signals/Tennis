@@ -49,7 +49,10 @@ class CalibrationStoreTests(unittest.TestCase):
             path = Path(directory) / "snapshots.json"
             snapshot = calibration_store.build_snapshot(self._payload(), analyzed_at_utc="2026-08-16T08:00:00+00:00")
             calibration_store.upsert_snapshots([snapshot], path)
-            match = {"id": "m1", "match_winner": 20, "result_type": "completed", "result": "4-6 6-3 6-2"}
+            match = {
+                "id": "m1", "player1Id": 10, "player2Id": 20,
+                "match_winner": 20, "result_type": "completed", "result": "4-6 6-3 6-2",
+            }
             self.assertEqual(calibration_store.settle_from_matches([match], path), 1)
             saved = json.loads(path.read_text(encoding="utf-8"))["snapshots"][0]
             self.assertEqual(saved["outcome"]["winner_side"], "b")

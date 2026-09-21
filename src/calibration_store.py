@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_integrity
+from . import market_integrity, snapshot_identity
 from .green_strong_validation import COHORT_NAME, classify_snapshot
 
 
@@ -180,17 +180,25 @@ def read_snapshots_by_key(
 
 def apply_persisted_validation(
     payload: dict[str, Any], persisted_snapshot: Mapping[str, Any] | None,
-) -> None:
-    """Liga ao relatório só a classification realmente aceite no store."""
+) -> dict[str, Any]:
+    """Reuse validation only after bilateral event identity is proved."""
     payload.pop("validation", None)
-    validation = (persisted_snapshot or {}).get("validation")
-    if isinstance(validation, Mapping):
-        payload["validation"] = copy.deepcopy(dict(validation))
+    if not isinstance(persisted_snapshot, Mapping):
+        linkage = {"status": "UNLINKED", "reason_code": "SNAPSHOT_NOT_PERSISTED"}
+    else:
+        comparison = snapshot_identity.compare(payload, persisted_snapshot)
+        linkage = snapshot_identity.public_linkage(comparison)
+        if linkage["status"] == "LINKED":
+            validation = persisted_snapshot.get("validation")
+            if isinstance(validation, Mapping):
+                payload["validation"] = copy.deepcopy(dict(validation))
+    payload["snapshot_linkage"] = linkage
+    return linkage
 
 
 def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:
     """Preenche resultados usando jogos terminados; nao altera dados pre-match."""
-    completed = {}
+    completed: dict[str, list[Mapping[str, Any]]] = {}
     completed_by_players: dict[frozenset[str], list[Mapping[str, Any]]] = {}
     for match in matches:
         match_id = match.get("id")
@@ -200,7 +208,7 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
         if str(match.get("result_type") or "").lower() not in {"completed", "finished"}:
             continue
         if match_id is not None:
-            completed[str(match_id)] = match
+            completed.setdefault(str(match_id), []).append(match)
         p1 = match.get("player1Id") or (match.get("player1") or {}).get("id")
         p2 = match.get("player2Id") or (match.get("player2") or {}).get("id")
         if p1 is not None and p2 is not None:
@@ -230,13 +238,32 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
                     dated.append((delta, candidate))
         return min(dated, key=lambda item: item[0])[1] if dated else None
 
+    def direct_match(snapshot):
+        candidates = completed.get(str(snapshot.get("match_id")), [])
+        verified = [
+            match for match in candidates
+            if snapshot_identity.compare(match, snapshot)["status"] == snapshot_identity.MATCH
+        ]
+        if not verified:
+            return None
+        scheduled = parse_time(snapshot.get("commence_time_utc"))
+        ranked = []
+        for match in verified:
+            played = parse_time(match.get("date"))
+            delta = abs((played - scheduled).total_seconds()) if played and scheduled else 0
+            ranked.append((delta, match))
+        return min(ranked, key=lambda item: item[0])[1]
+
     with _LOCK:
         document = _read(path)
         settled = 0
         for snapshot in document["snapshots"]:
             if snapshot.get("outcome") is not None:
                 continue
-            match = completed.get(str(snapshot.get("match_id"))) or fallback_match(snapshot)
+            # Provider IDs are reusable. A direct hit is only evidence after
+            # the player pair/context also match; otherwise use the existing
+            # safe pair+time fallback.
+            match = direct_match(snapshot) or fallback_match(snapshot)
             if not match:
                 continue
             winner_id = match.get("match_winner")

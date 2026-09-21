@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_integrity, market_ledger
+from . import market_integrity, market_ledger, snapshot_identity
 
 
 SCHEMA_VERSION = 1
@@ -97,6 +97,11 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Cria uma entrada por mercado elegivel, sem alterar o payload."""
+    linkage = payload.get("snapshot_linkage")
+    if isinstance(linkage, Mapping) and linkage.get("status") in {"COLLISION", "UNLINKED"}:
+        # A decisão pode continuar visível no relatório factual, mas uma
+        # identidade não ligada nunca cria PAPER sob a key reutilizada.
+        return []
     decision = payload.get("prelive_decision")
     if not isinstance(decision, Mapping) or not decision.get("paper_eligible"):
         return []
@@ -225,12 +230,24 @@ def settle_from_matches(
         if str(match.get("result_type") or "").casefold() not in {"completed", "finished"}:
             continue
         completed.append(match)
-    by_id = {str(match.get("id")): match for match in completed if match.get("id") is not None}
+    by_id: dict[str, list[Mapping[str, Any]]] = {}
+    for match in completed:
+        if match.get("id") is not None:
+            by_id.setdefault(str(match.get("id")), []).append(match)
 
     def find(pregame: Mapping[str, Any]):
-        direct = by_id.get(str(pregame.get("match_id")))
+        direct = [
+            match for match in by_id.get(str(pregame.get("match_id")), [])
+            if snapshot_identity.compare(match, pregame)["status"] == snapshot_identity.MATCH
+        ]
         if direct:
-            return direct
+            scheduled = _parse_time(pregame.get("commence_time_utc"))
+            ranked = []
+            for match in direct:
+                played = _parse_time(match.get("date"))
+                delta = abs((played - scheduled).total_seconds()) if played and scheduled else 0
+                ranked.append((delta, match))
+            return min(ranked, key=lambda item: item[0])[1]
         ids = frozenset(str((pregame.get("players") or {}).get(side, {}).get("id")) for side in ("a", "b"))
         scheduled = _parse_time(pregame.get("commence_time_utc"))
         candidates = []

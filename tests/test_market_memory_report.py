@@ -101,7 +101,8 @@ class MarketMemoryReportTests(unittest.TestCase):
             corrupt.parent.mkdir(parents=True)
             corrupt.write_text("not-json\n", encoding="utf-8")
             settled = paper_trading.settle_from_matches([{
-                "id": 7, "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
+                "id": 7, "player1Id": 1, "player2Id": 2,
+                "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
             }], paper_path, ledger_root=corrupt_root)
             saved = paper_trading.read_entries(paper_path)[0]
             self.assertEqual(settled, 1)

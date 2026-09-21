@@ -168,7 +168,8 @@ class PreliveOperationalContractTests(unittest.TestCase):
             calibration_store.upsert_snapshots([snapshot], path)
             before = copy.deepcopy(calibration_store._read(path)["snapshots"][0])
             calibration_store.settle_from_matches([{
-                "id": 77, "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
+                "id": 77, "player1Id": 1, "player2Id": 2,
+                "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
             }], path)
             after = calibration_store._read(path)["snapshots"][0]
             self.assertEqual(before["metrics"], after["metrics"])
@@ -219,7 +220,8 @@ class PreliveOperationalContractTests(unittest.TestCase):
             original_pregame = copy.deepcopy(entry["pregame"])
             paper_trading.append_entries([entry], path)
             settled = paper_trading.settle_from_matches([{
-                "id": 77, "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
+                "id": 77, "player1Id": 1, "player2Id": 2,
+                "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
             }], path)
             saved = paper_trading.read_entries(path)[0]
             self.assertEqual(settled, 1)

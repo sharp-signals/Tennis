@@ -30,10 +30,11 @@ from . import (
     paper_trading,
     report_html,
     run_metrics,
+    snapshot_reconciliation,
 )
 
 
-CHANGE_ID = "CHANGE-2026-09-21-046"
+CHANGE_ID = "CHANGE-2026-09-21-047"
 REPORT_GROUPING_CHANGE_ID = "CHANGE-2026-09-10-037"
 SCHEMA_VERSION = 1
 MODE = "READ_ONLY_DERIVED_DASHBOARD"
@@ -62,6 +63,8 @@ class _TitleParser(HTMLParser):
         self._inside = False
         self.parts: list[str] = []
         self.report_color: str | None = None
+        self.snapshot_linkage: str | None = None
+        self.snapshot_linkage_reason: str | None = None
         self.historical_color: str | None = None
         self._decision_depth = 0
         self._decision_parts: list[str] = []
@@ -74,6 +77,17 @@ class _TitleParser(HTMLParser):
             color = str(attributes.get("content") or "").upper()
             if color in {"GREEN", "YELLOW", "RED", "UNAVAILABLE"}:
                 self.report_color = color
+        if tag.casefold() == "meta" and attributes.get("name") == report_html.REPORT_SNAPSHOT_LINKAGE_META_NAME:
+            status = str(attributes.get("content") or "").upper()
+            if status in {"LINKED", "COLLISION", "UNLINKED"}:
+                self.snapshot_linkage = status
+        if tag.casefold() == "meta" and attributes.get("name") == report_html.REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME:
+            reason = str(attributes.get("content") or "").upper()
+            if reason in {
+                "SNAPSHOT_IDENTITY_MATCH", "PROVIDER_MATCH_ID_REUSED",
+                "SNAPSHOT_IDENTITY_INSUFFICIENT", "SNAPSHOT_NOT_PERSISTED",
+            }:
+                self.snapshot_linkage_reason = reason
         classes = str(attributes.get("class") or "").split()
         if tag.casefold() == "div" and "decision-head" in classes and not self._decision_depth:
             self._decision_depth = 1
@@ -158,7 +172,9 @@ def _latest_timestamp(values: Iterable[Any]) -> str | None:
     return max(valid).isoformat(timespec="seconds") if valid else None
 
 
-def _safe_report_metadata(path: Path) -> tuple[str, str | None, str | None]:
+def _safe_report_metadata(
+    path: Path,
+) -> tuple[str, str | None, str | None, str | None, str | None]:
     parser: _TitleParser | None = None
     try:
         with path.open("r", encoding="utf-8", errors="replace") as handle:
@@ -169,8 +185,14 @@ def _safe_report_metadata(path: Path) -> tuple[str, str | None, str | None]:
         pass
     fallback = path.stem.replace("-vs-", " vs ").replace("-", " ").strip() or "Relatório"
     if parser is None:
-        return fallback, None, None
-    return parser.title or fallback, parser.report_color, parser.historical_color
+        return fallback, None, None, None, None
+    return (
+        parser.title or fallback,
+        parser.report_color,
+        parser.historical_color,
+        parser.snapshot_linkage,
+        parser.snapshot_linkage_reason,
+    )
 
 
 def _report_date(path: Path) -> str | None:
@@ -322,7 +344,13 @@ def _build_reports(
         report_id = str(snapshot.get("report_id")) if snapshot else None
         snapshot_key = str(snapshot.get("key")) if snapshot and snapshot.get("key") else None
         report_day = _report_date(path)
-        title, self_described_color, historical_color = _safe_report_metadata(path)
+        (
+            title,
+            self_described_color,
+            historical_color,
+            self_described_linkage,
+            self_described_linkage_reason,
+        ) = _safe_report_metadata(path)
         if snapshot:
             player_a = _mapping(snapshot.get("player_a")).get("name") or snapshot.get("player_a")
             player_b = _mapping(snapshot.get("player_b")).get("name") or snapshot.get("player_b")
@@ -337,6 +365,10 @@ def _build_reports(
         color = _report_color(snapshot, self_described_color, historical_color)
         if snapshot:
             linkage = "EXACT_REPORT_ID"
+        elif self_described_linkage == "COLLISION":
+            linkage = "SNAPSHOT_IDENTITY_COLLISION"
+        elif self_described_linkage == "UNLINKED":
+            linkage = "SNAPSHOT_IDENTITY_UNLINKED"
         elif self_described_color is not None:
             linkage = "SELF_DESCRIBED_REPORT"
         elif historical_color is not None:
@@ -360,6 +392,8 @@ def _build_reports(
             "_canonical_source": canonical_source,
             "_fallback_signature": fallback_signature,
         }
+        if self_described_linkage_reason is not None:
+            report["snapshot_linkage_reason"] = self_described_linkage_reason
         if report_id:
             report["report_id"] = report_id
         reports.append(report)
@@ -828,6 +862,13 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
     }
     run_history = runs_doc if isinstance(runs_doc, list) and runs_status["status"] == "AVAILABLE" else None
     health = _system_health(run_history)
+    reconciliation = snapshot_reconciliation.build(
+        reports=reports,
+        days=days,
+        snapshots=snapshots,
+        runs=run_history,
+        generated_at_utc=generated_at,
+    )
     try:
         green_money = green_monetization.build_report(
             paper_path=root / "data/paper_trades.json",
@@ -895,6 +936,7 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
         "market_memory": market,
         "green_strong_v1": green_panel,
         "green_monetization_v1": green_money,
+        "snapshot_reconciliation_v1": reconciliation,
         "guerra_selection_v1": _guerra_selection(green_mapping if green_status["status"] == "AVAILABLE" else None),
         "paper_technical": technical,
         "paper_22bet": manual,
