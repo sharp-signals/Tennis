@@ -1,6 +1,10 @@
 # Sincronização do PAPER Trading 22Bet
 
-## Seleção manual GUERRA_SELECTION_V1
+## Seleção manual GUERRA_SELECTION_V1 — histórico SUPERSEDED
+
+`CHANGE-2026-09-21-046` preserva esta integração e os seus agregados, mas deixa
+de os usar como métrica operacional prospetiva. Não preencher nem reconstruir
+`GREEN_MONETIZATION_V1` a partir destas rows manuais.
 
 O menu `Instalar colunas GREEN_STRONG_V1` acrescenta seis colunas opcionais sem modificar as 15 existentes: snapshot key, estratégia, timestamp, odd Moneyline de revisão, linha real de Handicap games e estado. É idempotente; o timestamp é gravado uma única vez ao introduzir um novo key.
 

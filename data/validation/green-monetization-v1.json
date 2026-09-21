@@ -1,0 +1,58 @@
+{
+  "by_market": {
+    "Moneyline": {
+      "eligible_entries": 83,
+      "losses": 21,
+      "net_profit_eur": 16.82,
+      "pending_entries": 14,
+      "pending_exposure_eur": 140.0,
+      "resolved_entries": 69,
+      "resolved_stake_eur": 690.0,
+      "roi_pct": 2.44,
+      "void_entries": 0,
+      "wins": 48
+    }
+  },
+  "change_id": "CHANGE-2026-09-21-046",
+  "claims": "HISTORICAL_EXPERIMENTAL_SIMULATION_NOT_REAL_NOT_PROOF_OF_FUTURE_EDGE",
+  "deduplication": {
+    "contract": "snapshot_key + market_type + line/selection",
+    "unique_leg_identities": 83
+  },
+  "eligible_entries": 83,
+  "excluded_entries": 3,
+  "exclusion_reasons": {
+    "MARKET_BOUNDARY_SENTINEL": 1,
+    "VOID_DATA_INTEGRITY": 1,
+    "VOID_PRICING_SOURCE": 1
+  },
+  "generated_at_utc": "2026-09-21T10:58:40+00:00",
+  "losses": 21,
+  "metric_id": "GREEN_MONETIZATION_V1",
+  "net_profit_eur": 16.82,
+  "pending_entries": 14,
+  "pending_exposure_eur": 140.0,
+  "resolved_entries": 69,
+  "resolved_stake_eur": 690.0,
+  "roi_pct": 2.44,
+  "schema_version": 1,
+  "source": {
+    "exclusion_manifests": [
+      "data/paper_integrity_exclusions.json",
+      "data/validation/market-integrity-exclusions-v1.json"
+    ],
+    "fingerprint_sha256": "daa4865cd57ef66f95f2fb3f039ed5e0d92a0559dd2c91551a7d0aa708057f25",
+    "paper_path": "data/paper_trades.json",
+    "physical_entries": 86,
+    "universe": "PAPER_TECHNICAL_EDGE_POSITIVE_BASELINE"
+  },
+  "stake_per_leg_eur": 10.0,
+  "status": "DEGRADED",
+  "universes": {
+    "guerra_selection_v1": "SUPERSEDED_NOT_INCLUDED",
+    "paper_technical_source": true,
+    "real": "NOT_INCLUDED"
+  },
+  "void_entries": 0,
+  "wins": 48
+}

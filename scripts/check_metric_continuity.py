@@ -16,6 +16,7 @@ def _legacy_projection(value: dict) -> dict:
     value.pop('semantic_fingerprint', None)
     value.pop('audit_v1', None)
     value.pop('guidance_v1', None)
+    value.pop('green_monetization_v1', None)
     value.pop('change_id', None)
     strategy = value.get('guerra_selection_v1')
     if isinstance(strategy, dict):
