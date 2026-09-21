@@ -14,7 +14,13 @@ A tag fica em `validation.cohorts.GREEN_STRONG_V1` e guarda contrato, instante, 
 
 `data/validation/green-strong-v1.json` é uma vista reconstruível a partir dos snapshots, Market-Time Ledger e liquidações. Mede N, win rate, probabilidades médias, Brier, Log Loss, deltas emparelhados e movimento até à última observação comparável pré-início. Segmentos fixos: ATP/WTA, BO3/BO5 quando comprovado, favorito/underdog, modelo/fingerprint e revisão de código. Todos mostram N; não há ordenação por performance.
 
-## GUERRA_SELECTION_V1
+## GUERRA_SELECTION_V1 — SUPERSEDED
+
+Desde `CHANGE-2026-09-21-046`, esta seleção deixa de ser a métrica operacional
+prospetiva. O histórico e os agregados existentes permanecem imutáveis para
+audit trail, mas não alimentam `GREEN_MONETIZATION_V1` nem novos fluxos.
+
+O contrato histórico era:
 
 É uma seleção humana opcional, separada e restrita a candidatos ligados exatamente pelo snapshot key antes do início. Não altera o PAPER técnico.
 

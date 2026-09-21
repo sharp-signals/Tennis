@@ -22,10 +22,18 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 from urllib.parse import quote
 
-from . import audit_observability, dashboard_ui, calibration_store, paper_trading, report_html, run_metrics
+from . import (
+    audit_observability,
+    calibration_store,
+    dashboard_ui,
+    green_monetization,
+    paper_trading,
+    report_html,
+    run_metrics,
+)
 
 
-CHANGE_ID = "CHANGE-2026-09-11-040"
+CHANGE_ID = "CHANGE-2026-09-21-046"
 REPORT_GROUPING_CHANGE_ID = "CHANGE-2026-09-10-037"
 SCHEMA_VERSION = 1
 MODE = "READ_ONLY_DERIVED_DASHBOARD"
@@ -820,6 +828,23 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
     }
     run_history = runs_doc if isinstance(runs_doc, list) and runs_status["status"] == "AVAILABLE" else None
     health = _system_health(run_history)
+    try:
+        green_money = green_monetization.build_report(
+            paper_path=root / "data/paper_trades.json",
+            legacy_exclusions_path=root / "data/paper_integrity_exclusions.json",
+            market_exclusions_path=root / "data/validation/market-integrity-exclusions-v1.json",
+            generated_at_utc=generated_at,
+        )
+    except Exception as exc:
+        green_money = {
+            "schema_version": green_monetization.SCHEMA_VERSION,
+            "change_id": green_monetization.CHANGE_ID,
+            "metric_id": green_monetization.METRIC_ID,
+            "status": "UNAVAILABLE",
+            "generated_at_utc": generated_at,
+            "claims": "HISTORICAL_EXPERIMENTAL_SIMULATION_NOT_REAL_NOT_PROOF_OF_FUTURE_EDGE",
+            "error": type(exc).__name__,
+        }
 
     snapshots_status["updated_at_utc"] = _source_timestamp(_mapping(snapshots_doc), "updated_at_utc")
     paper_status["updated_at_utc"] = _source_timestamp(_mapping(paper_doc), "updated_at_utc")
@@ -869,6 +894,7 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
         "report_history": report_history,
         "market_memory": market,
         "green_strong_v1": green_panel,
+        "green_monetization_v1": green_money,
         "guerra_selection_v1": _guerra_selection(green_mapping if green_status["status"] == "AVAILABLE" else None),
         "paper_technical": technical,
         "paper_22bet": manual,
@@ -892,6 +918,9 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
         dashboard["audit_v1"] = {"status": "UNAVAILABLE", "error": type(exc).__name__}
     fingerprint_payload = dict(dashboard)
     fingerprint_payload.pop("generated_at_utc", None)
+    green_fingerprint_payload = dict(_mapping(fingerprint_payload.get("green_monetization_v1")))
+    green_fingerprint_payload.pop("generated_at_utc", None)
+    fingerprint_payload["green_monetization_v1"] = green_fingerprint_payload
     dashboard["semantic_fingerprint"] = hashlib.sha256(
         json.dumps(fingerprint_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
@@ -980,7 +1009,7 @@ const bars=mm.observations_by_day||[];const max=Math.max(1,...bars.map(x=>x.obse
 out+=panel('PAPER técnico','Universo PAPER automático',summaryRows(pt),'','PAPER_TECHNICAL');out+=panel('PAPER manual 22Bet','Agregados públicos apenas',`${{summaryRows(p22)}}<div class="note">Fonte 22Bet sincronizada em: ${{fmtTime(p22.synced_at_utc)}}</div><h3>Mercados</h3><div class="rows">${{Object.entries(p22.by_market||{{}}).map(([k,v])=>`<div class="row"><span>${{esc(k)}}</span><b>${{val(v.total_entries)}} entradas</b></div>`).join('')||'<div class="empty">N/D</div>'}}</div>`,'','PAPER_22BET');
 const latest=sh.latest||{{}};const pts=(sh.recent_runs||[]).map((x,i,a)=>`${{a.length<2?0:100*i/(a.length-1)}},${{x.status==='HEALTHY'?8:x.status==='DEGRADED'?28:48}}`).join(' ');out+=panel('Saúde da execução','SYSTEM_HEALTH · alertas existentes',`<span class="health ${{sh.status}}">${{sh.status}}</span><div class="metrics" style="margin-top:12px">${{metric('Timestamp',latest.timestamp?fmtTime(latest.timestamp):null)}}${{metric('Fase',latest.phase)}}${{metric('Elegíveis',latest.eligible)}}${{metric('Processados',latest.processed)}}${{metric('Análises falhadas',latest.analysis_failed)}}${{metric('Relatórios falhados',latest.reports_failed)}}${{metric('RapidAPI calls',latest.rapidapi_calls)}}${{metric('LLM calls',latest.llm_calls)}}${{metric('Custo LLM USD',latest.llm_estimated_cost_usd)}}${{metric('Duração',latest.duration_seconds,' s')}}</div>${{sh.alerts.length?`<div class="note warning">${{sh.alerts.map(esc).join('<br>')}}</div>`:''}}<svg class="spark" viewBox="0 0 100 55" preserveAspectRatio="none" aria-label="Saúde das últimas runs"><polyline fill="none" stroke="#58a6d8" stroke-width="2" points="${{pts}}"/></svg>`,'wide','SYSTEM_HEALTH');
 out+=panel('Frescura das fontes','Momento conhecido de cada artefacto',`<div class="fresh">${{Object.entries(DATA.source_freshness).map(([name,src])=>`<div><b>${{esc(name)}}</b><small>${{esc(src.status)}} · ${{src.updated_at_utc?fmtTime(src.updated_at_utc):'N/D'}}</small>${{src.error?`<small>Motivo: ${{esc(src.error)}}</small>`:''}}${{helpUI('Frescura da fonte')}}</div>`).join('')}}</div>`,'wide','SOURCE_FRESHNESS');return out+'</div>'}}
-function legacyDayView(){{const day=DATA.days.find(x=>x.date===state.day);if(!day)return'<div class="empty">Dia não disponível.</div>';const c=day.counts;return `<h2>${{dayLabel(day.date)}}</h2>${{cards([{{label:'Jogos distintos',value:c.matchups}},{{label:'Versões de relatório',value:c.reports}},{{label:'Versões verdes',value:c.GREEN,cls:'GREEN',filter:'GREEN'}},{{label:'Versões amarelas',value:c.YELLOW,cls:'YELLOW',filter:'YELLOW'}},{{label:'Versões vermelhas',value:c.RED,cls:'RED',filter:'RED'}},{{label:'Versões N/D',value:c.UNAVAILABLE,filter:'UNAVAILABLE'}},{{label:'GREEN_STRONG',value:c.GREEN_STRONG}},{{label:'PAPER técnico',value:c.PAPER_TECHNICAL}}])}}<div class="filter-note">${{state.filter==='ALL'?'Os filtros de cor contam e mostram versões dentro de cada jogo agrupado.':`Filtro de versões ativo: ${{esc(state.filter)}} · `+'<button class="filter-clear">limpar</button>'}}</div>${{panel('Leitura do dia','Estado visual não é validação','<p>As cores são classificações de versões de relatório; não representam jogos adicionais. GREEN_STRONG e PAPER técnico são universos separados da cor operacional. GUERRA_SELECTION_V1 não é mostrado por jogo porque a fonte pública é deliberadamente agregada.</p>','','DAY_READING')}}`}}
+function legacyDayView(){{const day=DATA.days.find(x=>x.date===state.day);if(!day)return'<div class="empty">Dia não disponível.</div>';const c=day.counts;return `<h2>${{dayLabel(day.date)}}</h2>${{cards([{{label:'Jogos distintos',value:c.matchups}},{{label:'Versões de relatório',value:c.reports}},{{label:'Versões verdes',value:c.GREEN,cls:'GREEN',filter:'GREEN'}},{{label:'Versões amarelas',value:c.YELLOW,cls:'YELLOW',filter:'YELLOW'}},{{label:'Versões vermelhas',value:c.RED,cls:'RED',filter:'RED'}},{{label:'Versões N/D',value:c.UNAVAILABLE,filter:'UNAVAILABLE'}},{{label:'GREEN_STRONG',value:c.GREEN_STRONG}},{{label:'PAPER técnico',value:c.PAPER_TECHNICAL}}])}}<div class="filter-note">${{state.filter==='ALL'?'Os filtros de cor contam e mostram versões dentro de cada jogo agrupado.':`Filtro de versões ativo: ${{esc(state.filter)}} · `+'<button class="filter-clear">limpar</button>'}}</div>${{panel('Leitura do dia','Estado visual não é validação','<p>As cores são classificações de versões de relatório; não representam jogos adicionais. GREEN_STRONG, PAPER técnico e a monetização GREEN são universos observacionais separados da cor operacional. GUERRA_SELECTION_V1 permanece apenas como histórico SUPERSEDED.</p>','','DAY_READING')}}`}}
 function render(){{document.getElementById('generated').textContent='Gerado em '+fmtTime(DATA.generated_at_utc);document.getElementById('day-toggle').classList.toggle('active',state.scope==='DAY');document.getElementById('global-toggle').classList.toggle('active',state.scope==='GLOBAL');document.getElementById('content').innerHTML=state.scope==='GLOBAL'?globalView():dayView();document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{{state.filter=b.dataset.filter;render()}}));document.querySelector('.filter-clear')?.addEventListener('click',()=>{{state.filter='ALL';render()}});wireHelp();renderSidebar()}}
 {dashboard_ui.JS}
 document.getElementById('day-toggle').addEventListener('click',()=>{{state.scope='DAY';render()}});document.getElementById('global-toggle').addEventListener('click',()=>{{state.scope='GLOBAL';state.filter='ALL';render()}});render();
@@ -1034,6 +1063,15 @@ def build_and_write(
         and previous.get("generated_at_utc")
     ):
         dashboard["generated_at_utc"] = previous["generated_at_utc"]
+        previous_green = _mapping(previous.get("green_monetization_v1"))
+        if previous_green.get("generated_at_utc"):
+            dashboard["green_monetization_v1"]["generated_at_utc"] = previous_green[
+                "generated_at_utc"
+            ]
+    green_monetization.write_report(
+        _mapping(dashboard.get("green_monetization_v1")),
+        root / green_monetization.DEFAULT_OUTPUT_PATH,
+    )
     json_content = json.dumps(dashboard, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     _atomic_write_text(output, json_content)
     _atomic_write_text(page, render_dashboard_html(dashboard))

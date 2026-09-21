@@ -209,7 +209,7 @@
       "SELF_DESCRIBED_REPORT": 28
     }
   },
-  "change_id": "CHANGE-2026-09-11-040",
+  "change_id": "CHANGE-2026-09-21-046",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
     {
@@ -49779,7 +49779,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-21T10:50:03+00:00",
+  "generated_at_utc": "2026-09-21T10:58:40+00:00",
   "global": {
     "distinct_matchups": 1547,
     "green_strong_candidates": 0,
@@ -49795,6 +49795,64 @@
     "settled_snapshots": 396,
     "total_reports": 2019,
     "total_snapshots": 423
+  },
+  "green_monetization_v1": {
+    "by_market": {
+      "Moneyline": {
+        "eligible_entries": 83,
+        "losses": 21,
+        "net_profit_eur": 16.82,
+        "pending_entries": 14,
+        "pending_exposure_eur": 140.0,
+        "resolved_entries": 69,
+        "resolved_stake_eur": 690.0,
+        "roi_pct": 2.44,
+        "void_entries": 0,
+        "wins": 48
+      }
+    },
+    "change_id": "CHANGE-2026-09-21-046",
+    "claims": "HISTORICAL_EXPERIMENTAL_SIMULATION_NOT_REAL_NOT_PROOF_OF_FUTURE_EDGE",
+    "deduplication": {
+      "contract": "snapshot_key + market_type + line/selection",
+      "unique_leg_identities": 83
+    },
+    "eligible_entries": 83,
+    "excluded_entries": 3,
+    "exclusion_reasons": {
+      "MARKET_BOUNDARY_SENTINEL": 1,
+      "VOID_DATA_INTEGRITY": 1,
+      "VOID_PRICING_SOURCE": 1
+    },
+    "generated_at_utc": "2026-09-21T10:58:40+00:00",
+    "losses": 21,
+    "metric_id": "GREEN_MONETIZATION_V1",
+    "net_profit_eur": 16.82,
+    "pending_entries": 14,
+    "pending_exposure_eur": 140.0,
+    "resolved_entries": 69,
+    "resolved_stake_eur": 690.0,
+    "roi_pct": 2.44,
+    "schema_version": 1,
+    "source": {
+      "exclusion_manifests": [
+        "data/paper_integrity_exclusions.json",
+        "data/validation/market-integrity-exclusions-v1.json"
+      ],
+      "fingerprint_sha256": "daa4865cd57ef66f95f2fb3f039ed5e0d92a0559dd2c91551a7d0aa708057f25",
+      "paper_path": "data/paper_trades.json",
+      "physical_entries": 86,
+      "universe": "PAPER_TECHNICAL_EDGE_POSITIVE_BASELINE"
+    },
+    "stake_per_leg_eur": 10.0,
+    "status": "DEGRADED",
+    "universes": {
+      "guerra_selection_v1": "SUPERSEDED_NOT_INCLUDED",
+      "paper_technical_source": true,
+      "real": "NOT_INCLUDED"
+    },
+    "void_entries": 0,
+    "wins": 48
   },
   "green_strong_v1": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
@@ -49913,6 +49971,7 @@
       "Cobertura closing": "Percentagem de eventos com closing temporalmente comparável.",
       "Com entry market": "Eventos com observação válida representativa do mercado à entrada.",
       "Custo LLM USD": "Estimativa disponível do custo LLM, não uma fatura.",
+      "Derrotas GREEN": "Legs GREEN liquidadas como derrota.",
       "Duração": "Duração total registada para a execução.",
       "Elegíveis": "Jogos que passaram os gates anteriores da execução.",
       "Em aberto": "Exposição simulada de €10 por cada leg válida pendente.",
@@ -49921,6 +49980,7 @@
       "Entradas resolvidas": "Legs válidas com resultado GANHOU, PERDEU ou VOID.",
       "Eventos distintos": "Eventos canónicos distintos cobertos pelas observações.",
       "Excluídas da simulação": "Legs ligadas ex ante excluídas por odd ou resultado inválido.",
+      "Exposição pendente GREEN": "€10 por cada leg GREEN válida ainda sem settlement.",
       "Fase": "Última fase do workflow registada na telemetria.",
       "Fenzobot Brier": "Erro quadrático das probabilidades do Fenzobot. Menor é melhor; compare na mesma amostra.",
       "Fenzobot Log Loss": "Log loss do Fenzobot na mesma amostra. Menor é melhor.",
@@ -49932,6 +49992,9 @@
       "Intervalo": "Faixa de incerteza estatística; não é garantia para o próximo jogo.",
       "Jogos distintos": "Partidas agrupadas; várias versões HTML do mesmo jogo contam uma só vez.",
       "LLM calls": "Invocações LLM registadas; não é custo faturado.",
+      "Legs excluídas": "Registos rejeitados por manifest de integridade, duplicação ou falta de prova factual.",
+      "Legs pendentes": "Legs GREEN válidas ainda sem resultado final; contam apenas como exposição aberta.",
+      "Legs resolvidas": "Legs GREEN válidas com resultado WIN, LOSS, VOID ou PUSH verificável.",
       "Liquidadas": "Entradas cujo resultado final já foi associado; pendentes e voids são apresentados separadamente.",
       "Liquidados": "Snapshots ou entradas cujo resultado final já foi associado, conforme o painel.",
       "Log Loss": "Erro probabilístico que penaliza confiança excessiva. Menor é melhor.",
@@ -49955,11 +50018,14 @@
       "Previsões elegíveis": "Previsões que passaram os critérios de integridade desta comparação.",
       "Processados": "Jogos efetivamente processados nessa execução.",
       "ROI": "Resultado dividido pelo stake da fonte; não é o ROI da simulação fixa.",
+      "ROI GREEN": "Resultado GREEN realizado dividido pela stake resolvida; não inclui exposição pendente.",
       "ROI stake fixa": "Resultado simulado dividido pelo total apostado nas legs concluídas.",
       "RapidAPI calls": "Chamadas RapidAPI da execução; não é o saldo mensal restante.",
       "Relatórios falhados": "Relatórios cuja geração falhou na última execução conhecida.",
+      "Resultado GREEN": "Lucro ou prejuízo realizado da simulação de €10 por leg GREEN válida e liquidada.",
       "Resultado acumulado": "Lucro/prejuízo simulado com €10 por leg válida liquidada; não usa stake real.",
       "Snapshots": "Fotografias pré-jogo persistidas em instantes específicos; não equivalem necessariamente a jogos.",
+      "Stake resolvida GREEN": "€10 por cada leg GREEN válida concluída, incluindo voids.",
       "Só Moneyline": "Underdogs com apenas a leg Moneyline reconhecida.",
       "Só handicap +": "Underdogs com apenas o handicap positivo reconhecido.",
       "Taxa": "Percentagem de acertos observada; deve ser lida com N e intervalo.",
@@ -49975,7 +50041,9 @@
       "Versões de relatório": "Ficheiros HTML produzidos; um jogo pode ter várias versões.",
       "Versões verdes": "Versões cuja decisão canónica é verde. Conta versões, não jogos, e não cria GREEN_STRONG nem PAPER.",
       "Versões vermelhas": "Versões cuja decisão canónica é vermelha. Conta versões, não jogos.",
+      "Vitórias GREEN": "Legs GREEN liquidadas como vitória.",
       "Void": "Legs anuladas: concluídas com resultado simulado zero.",
+      "Voids GREEN": "Legs anuladas/PUSH: concluídas, com P/L simulado igual a zero.",
       "Win rate": "Vitórias divididas por vitórias mais derrotas liquidadas.",
       "Win rate observado": "Percentagem de vitórias observada; não é uma previsão calibrada por si só.",
       "W–L": "Vitórias e derrotas; voids e pendentes ficam fora desta dupla.",
@@ -49984,8 +50052,9 @@
     },
     "panels": {
       "DAY_READING": "As cores classificam versões de relatório, não partidas adicionais. GREEN_STRONG, PAPER técnico e GUERRA são universos separados.",
+      "GREEN_MONETIZATION_V1": "Projeta €10 por leg GREEN auditável a partir do PAPER técnico ex ante. É uma simulação histórica experimental, não dinheiro real nem prova de edge futuro.",
       "GREEN_STRONG_V1": "Acompanha, em modo SHADOW, os casos que cumpriram o contrato GREEN_STRONG. Serve para validar o sinal prospectivamente; não é uma recomendação nem um resultado financeiro.",
-      "GUERRA_SELECTION_V1": "Resume a seleção manual GUERRA e as respetivas legs PAPER ligadas ex ante. A seleção humana, a completude dos pares e a simulação são dimensões diferentes.",
+      "GUERRA_SELECTION_V1": "Histórico preservado da seleção manual GUERRA. Esta metodologia está SUPERSEDED e não alimenta a monetização GREEN.",
       "MARKET_MEMORY": "Mostra as observações de odds já recolhidas e a cobertura temporal disponível. Closing comparável exige uma observação válida anterior ao início; não é automaticamente CLV da 22Bet.",
       "PAIRED_COMPARISON": "Compara mercado e Fenzobot exatamente nos mesmos snapshots elegíveis. Scores menores são melhores, mas uma diferença nesta amostra não prova edge.",
       "PAPER_22BET": "Resume apenas agregados da folha manual 22Bet. Não publica nomes, snapshot keys nem linhas individuais.",
@@ -50294,7 +50363,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "820c7a1261bc91aadec85de381563356385b8c8282e460949381b8599ddd838b",
+  "semantic_fingerprint": "6cc2fcdcc1b803b7066bccdbf4ded6b8c8ae7bf5037af1ed1abf2bbb9e862a3e",
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",

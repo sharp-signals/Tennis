@@ -111,7 +111,11 @@ class DashboardTests(unittest.TestCase):
         })
         write_json(self.root / "data/paper_trades.json", {"schema_version": 1, "entries": [{
             "key": "paper-1",
-            "pregame": {"report_id": RID_GREEN, "snapshot_key": "atp:1", "market_type": "Moneyline", "odd": 2.0},
+            "pregame": {
+                "report_id": RID_GREEN, "snapshot_key": "atp:1",
+                "analyzed_at_utc": NOW, "selected_side": "a",
+                "market_type": "Moneyline", "odd": 2.0,
+            },
             "settlement": {"result": "WIN", "pnl_units": 1.0},
         }], "updated_at_utc": NOW})
         manual_summary = summary(3, 2, 1, 1, 1, units=0.5, roi=25.0, odd=1.9)
@@ -308,6 +312,25 @@ class DashboardTests(unittest.TestCase):
         result = self.build()
         self.assertEqual(result["paper_technical"]["total_entries"], 1)
         self.assertEqual(result["paper_22bet"]["total_entries"], 3)
+
+    def test_green_monetization_is_prominent_and_separate_from_guerra(self):
+        self._base_sources()
+        result = self.build()
+        green = result["green_monetization_v1"]
+        self.assertEqual(green["status"], "AVAILABLE")
+        self.assertEqual(green["eligible_entries"], 1)
+        self.assertEqual(green["resolved_stake_eur"], 10.0)
+        self.assertEqual(green["net_profit_eur"], 10.0)
+        self.assertEqual(green["roi_pct"], 100.0)
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Resultado operacional estimado — €10 por aposta GREEN", rendered)
+        self.assertIn("return greenMonetizationHero()+auditStatus()", rendered)
+        self.assertIn("Histórico GUERRA — SUPERSEDED", rendered)
+        self.assertIn("Não é dinheiro real e não prova edge futuro", rendered)
+        self.assertNotEqual(
+            result["green_monetization_v1"].get("net_profit_eur"),
+            result["guerra_selection_v1"]["flat_stake_simulation"].get("net_profit_eur"),
+        )
 
     def test_market_observation_count_uses_existing_derived_metric(self):
         self._base_sources()
@@ -547,11 +570,15 @@ class DashboardTests(unittest.TestCase):
             "Market + Fenzobot N", "RapidAPI calls", "LLM calls", "Custo LLM USD",
             "Duração", "Frescura da fonte", "Timestamp da fonte",
             "Resultado acumulado", "Total apostado concluído", "Em aberto", "ROI stake fixa",
+            "Resultado GREEN", "Stake resolvida GREEN", "Exposição pendente GREEN",
+            "ROI GREEN", "Legs resolvidas", "Legs pendentes", "Legs excluídas",
+            "Vitórias GREEN", "Derrotas GREEN", "Voids GREEN",
         }
         self.assertEqual(required - set(dashboard_ui.METRIC_HELP), set())
         self.assertEqual(
             {
                 "REPORT_HISTORY", "GREEN_STRONG_V1", "GUERRA_SELECTION_V1",
+                "GREEN_MONETIZATION_V1",
                 "PAIRED_COMPARISON", "MARKET_MEMORY", "PAPER_TECHNICAL",
                 "PAPER_22BET", "SYSTEM_HEALTH", "SOURCE_FRESHNESS",
             } - set(dashboard_ui.PANEL_GUIDANCE),

@@ -1,6 +1,6 @@
 # 🎾 Fenzobot — Tennis Pre-Live Bot
 
-> A validação prospetiva `GREEN_STRONG_V1` e a seleção humana opcional `GUERRA_SELECTION_V1` estão em [docs/GREEN_STRONG_VALIDATION.md](docs/GREEN_STRONG_VALIDATION.md). Não alteram PAPER/SHADOW/REAL, pricing ou chamadas externas.
+> A validação prospetiva `GREEN_STRONG_V1` está em [docs/GREEN_STRONG_VALIDATION.md](docs/GREEN_STRONG_VALIDATION.md). A seleção `GUERRA_SELECTION_V1` permanece preservada como histórico **SUPERSEDED**; a nova projeção económica é `GREEN_MONETIZATION_V1`. Nenhuma destas vistas altera PAPER/SHADOW/REAL, pricing ou chamadas externas.
 
 Sistema pré-live para jogos ATP/WTA. Recolhe dados factuais, calcula um índice
 determinístico de evidência, confronta-o com o mercado e produz relatórios HTML
@@ -175,8 +175,11 @@ observacional derivada: não cria decisões, não executa apostas e não expõe
 linhas privadas do PAPER 22Bet. A ausência de uma fonte degrada apenas o painel
 respetivo para `N/D`; a geração nunca bloqueia o pipeline ou o settlement.
 Inclui ajuda contextual em português para distinguir execução, qualidade dos
-dados e validação, além de uma simulação observacional GUERRA com stake fixa de
-€10 por leg `LINKED_EX_ANTE`; essa simulação não usa dinheiro nem stakes reais.
+dados e validação. O topo apresenta `GREEN_MONETIZATION_V1`, uma simulação
+histórica/experimental de €10 por leg GREEN tecnicamente registada ex ante,
+depois das exclusões de integridade e sem reconstruir odds ou linhas. A seleção
+manual GUERRA continua consultável apenas como histórico **SUPERSEDED**. Estas
+vistas não usam dinheiro real nem demonstram edge futuro.
 
 O Telegram recebe um resumo por grupos de decisão, com links para cada
 relatório. Mensagens longas são divididas abaixo do limite do Telegram.
