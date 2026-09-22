@@ -6110,7 +6110,23 @@
         "tournament": "Singapore Tennis Open - Singapore",
         "tournament_id": 16747
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": null,
+        "closing_odd": null,
+        "clv_pct": null,
+        "clv_price_pct": null,
+        "clv_probability_pp": null,
+        "entry_market_observation_id": "fbc5a0bc400329bccadc00210cd4a0b6d99e72454045b71e182c08448da2be69",
+        "entry_market_probability": null,
+        "last_valid_prestart_market_probability": null,
+        "market_memory_error": null,
+        "market_memory_status": "INELIGIBLE",
+        "match_result": "6-4 6-1",
+        "pnl_units": 0.333,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-22T17:34:34+00:00",
+        "winner_id": 13541
+      }
     },
     {
       "key": "wta:933:moneyline:a:na",
@@ -6330,7 +6346,23 @@
         "tournament": "Singapore Tennis Open - Singapore",
         "tournament_id": 16747
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": null,
+        "closing_odd": null,
+        "clv_pct": null,
+        "clv_price_pct": null,
+        "clv_probability_pp": null,
+        "entry_market_observation_id": "6a1c73fd97cf8196561d6c17ed1c66ccc00b2fa027ff629990edffc532032818",
+        "entry_market_probability": null,
+        "last_valid_prestart_market_probability": null,
+        "market_memory_error": null,
+        "market_memory_status": "INELIGIBLE",
+        "match_result": "6-4 6-1",
+        "pnl_units": 0.333,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-22T17:34:34+00:00",
+        "winner_id": 13541
+      }
     },
     {
       "key": "wta:875:moneyline:a:na",
@@ -6550,7 +6582,23 @@
         "tournament": "Singapore Tennis Open - Singapore",
         "tournament_id": 16747
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": null,
+        "closing_odd": null,
+        "clv_pct": null,
+        "clv_price_pct": null,
+        "clv_probability_pp": null,
+        "entry_market_observation_id": "35b8b0d6617df9c865043597ef8d23a8c84670596295646920dc7381ba539f19",
+        "entry_market_probability": null,
+        "last_valid_prestart_market_probability": null,
+        "market_memory_error": null,
+        "market_memory_status": "INELIGIBLE",
+        "match_result": "6-4 6-1",
+        "pnl_units": 0.333,
+        "result": "WIN",
+        "settled_at_utc": "2026-09-22T17:34:34+00:00",
+        "winner_id": 13541
+      }
     },
     {
       "key": "wta:876:moneyline:a:na",
@@ -6741,8 +6789,114 @@
         "tournament_id": 16747
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_9e87a9dfafc147b48418e99623415985:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-22T17:33:58+00:00",
+        "canonical_match_instance_id": "mi2_9e87a9dfafc147b48418e99623415985",
+        "commence_time_utc": "2026-09-24T02:00:00+00:00",
+        "coverage": {
+          "available_factors": 15,
+          "available_weight": 99.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 68.8,
+          "weighted_ratio": 0.6875
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "9c117ea3c522d6644302450fcbd6346320dabddca92d2315c583b83ca3d38c43",
+        "event_key": "mi2_9e87a9dfafc147b48418e99623415985",
+        "expected_edge_pct": 2.04,
+        "fair_odd": 3.136,
+        "fenzobot_index": 71,
+        "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "wta:822",
+        "line": null,
+        "market": "Moneyline Joanna Garland",
+        "market_memory_eligible": false,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Joanna Garland": 3.2,
+          "Xinyu Wang": 1.363
+        },
+        "market_type": "Moneyline",
+        "match_id": 822,
+        "odd": 3.2,
+        "odds_contract_activation": {
+          "activation_commit": "e758dadd204b5e4c4d5317f670d9856859564fce",
+          "activation_observed_at_utc": "2026-09-22T17:33:34+00:00",
+          "activation_run_id": "35761418035",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-09-21-050",
+          "contract_version": "rapidapi-recent-gated-v1"
+        },
+        "odds_provenance": {
+          "bookmaker": "Bet365",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-22T17:33:34+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/4017212",
+          "event_id": "4017212",
+          "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.7012930089853167,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "single_bookmaker",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-09-22T17:20:52+00:00",
+          "provider_timestamp_status": "unreliable_for_freshness",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "single-factual-bookmaker-bilateral-v1",
+          "freshness_semantics": "observed-at-capture-unverified-age-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "rapidapi-recent-gated-v1",
+          "source_family": "rapidapi-recent-odds"
+        },
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "players": {
+          "a": {
+            "id": 47152,
+            "name": "Xinyu Wang"
+          },
+          "b": {
+            "id": 47998,
+            "name": "Joanna Garland"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "6775f838f619e1413c0f",
+        "selected_player": "Joanna Garland",
+        "selected_side": "b",
+        "sharp_estimate_pct": 31.89,
+        "snapshot_key": "mi2_9e87a9dfafc147b48418e99623415985",
+        "surface": "I.hard",
+        "tour": "wta",
+        "tournament": "Singapore Tennis Open - Singapore",
+        "tournament_id": 16747
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-22T05:33:41+00:00"
+  "updated_at_utc": "2026-09-22T17:34:37+00:00"
 }
