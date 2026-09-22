@@ -6635,8 +6635,114 @@
         "settled_at_utc": "2026-09-21T17:34:28+00:00",
         "winner_id": 12842
       }
+    },
+    {
+      "key": "mi2_ff76c4702e8649f19e9cd325847cf702:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-22T05:33:41+00:00",
+        "canonical_match_instance_id": "mi2_ff76c4702e8649f19e9cd325847cf702",
+        "commence_time_utc": "2026-09-22T12:00:00+00:00",
+        "coverage": {
+          "available_factors": 16,
+          "available_weight": 105.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 72.9,
+          "weighted_ratio": 0.729167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "ffe62ac75716e98a876e2753f7d7e06670d92ada09efcfdbf071af1c55c1b4f1",
+        "event_key": "mi2_ff76c4702e8649f19e9cd325847cf702",
+        "expected_edge_pct": 1.08,
+        "fair_odd": 1.209,
+        "fenzobot_index": 100,
+        "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "wta:812",
+        "line": null,
+        "market": "Moneyline Maria Sakkari",
+        "market_memory_eligible": false,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Linda Fruhvirtova": 4.333,
+          "Maria Sakkari": 1.222
+        },
+        "market_type": "Moneyline",
+        "match_id": 812,
+        "odd": 1.222,
+        "odds_contract_activation": {
+          "activation_commit": "76fdc295c9907d98efabad08529672d9ba8bc57c",
+          "activation_observed_at_utc": "2026-09-22T05:33:23+00:00",
+          "activation_run_id": "35691132600",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-09-21-050",
+          "contract_version": "rapidapi-recent-gated-v1"
+        },
+        "odds_provenance": {
+          "bookmaker": "Bet365",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-22T05:33:23+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/3999050",
+          "event_id": "3999050",
+          "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 1.1794,
+            "median_devig_probability_a": 0.7741211504328003,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-09-22T01:51:29+00:00",
+          "provider_timestamp_status": "unreliable_for_freshness",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "single-factual-bookmaker-bilateral-v1",
+          "freshness_semantics": "observed-at-capture-unverified-age-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "rapidapi-recent-gated-v1",
+          "source_family": "rapidapi-recent-odds"
+        },
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "players": {
+          "a": {
+            "id": 13541,
+            "name": "Maria Sakkari"
+          },
+          "b": {
+            "id": 65912,
+            "name": "Linda Fruhvirtova"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "25d7223d484d857a39cc",
+        "selected_player": "Maria Sakkari",
+        "selected_side": "a",
+        "sharp_estimate_pct": 82.72,
+        "snapshot_key": "mi2_ff76c4702e8649f19e9cd325847cf702",
+        "surface": "I.hard",
+        "tour": "wta",
+        "tournament": "Singapore Tennis Open - Singapore",
+        "tournament_id": 16747
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-21T17:34:28+00:00"
+  "updated_at_utc": "2026-09-22T05:33:41+00:00"
 }
