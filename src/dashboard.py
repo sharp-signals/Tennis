@@ -35,7 +35,7 @@ from . import (
 )
 
 
-CHANGE_ID = "CHANGE-2026-09-21-047"
+CHANGE_ID = "CHANGE-2026-09-23-051"
 REPORT_GROUPING_CHANGE_ID = "CHANGE-2026-09-10-037"
 SCHEMA_VERSION = 1
 MODE = "READ_ONLY_DERIVED_DASHBOARD"
@@ -545,15 +545,149 @@ def _paper_technical(
 
 def _paper_22bet(document: Mapping[str, Any] | None) -> dict[str, Any]:
     if not document:
-        return {"status": "UNAVAILABLE", **_copy_summary({}), "by_market": {}, "by_side": {}, "synced_at_utc": None}
+        return {
+            "status": "UNAVAILABLE",
+            **_copy_summary({}),
+            "by_market": {},
+            "by_side": {},
+            "synced_at_utc": None,
+            "flat_stake_projection": _manual_flat_stake_projection({}),
+        }
     source = _mapping(document.get("source"))
+    summary = _copy_summary(document.get("summary"))
     return {
         "status": "AVAILABLE",
-        **_copy_summary(document.get("summary")),
+        **summary,
         "by_market": _copy_summary_collection(document.get("by_market")),
         "by_side": _copy_summary_collection(document.get("by_side")),
         "synced_at_utc": source.get("synced_at_utc"),
         "reference_bookmaker": source.get("reference_bookmaker") or "22Bet",
+        "flat_stake_projection": _manual_flat_stake_projection(summary),
+    }
+
+
+def _manual_flat_stake_projection(
+    summary: Mapping[str, Any], *, stake_per_entry_eur: float = 10.0
+) -> dict[str, Any]:
+    """Deriva euros apenas dos agregados públicos do PAPER manual."""
+    settled = _finite_number(summary.get("settled"))
+    pending = _finite_number(summary.get("pending"))
+    units = _finite_number(summary.get("units"))
+    source_roi = _finite_number(summary.get("roi_pct"))
+    available = settled is not None and units is not None
+    resolved_stake = settled * stake_per_entry_eur if settled is not None else None
+    net_profit = units * stake_per_entry_eur if units is not None else None
+    roi = (
+        round(100 * net_profit / resolved_stake, 3)
+        if available and resolved_stake and net_profit is not None
+        else source_roi
+    )
+    return {
+        "status": "AVAILABLE" if available and settled > 0 else "UNAVAILABLE",
+        "basis": "paper_22bet.summary",
+        "label": "Simulação €10 por aposta a partir das unidades do PAPER manual",
+        "stake_per_entry_eur": stake_per_entry_eur,
+        "settled_entries": settled,
+        "pending_entries": pending,
+        "resolved_stake_eur": resolved_stake,
+        "pending_exposure_eur": (
+            pending * stake_per_entry_eur if pending is not None else None
+        ),
+        "net_profit_eur": net_profit,
+        "roi_pct": roi,
+    }
+
+
+def _paper_results_comparison(
+    green: Mapping[str, Any], manual: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Compara descritivamente dois universos sem os agregar ou classificar."""
+    projection = _mapping(manual.get("flat_stake_projection"))
+    green_wins = _finite_number(green.get("wins"))
+    green_losses = _finite_number(green.get("losses"))
+    manual_wins = _finite_number(manual.get("wins"))
+    manual_losses = _finite_number(manual.get("losses"))
+    green_resolved = _finite_number(green.get("resolved_entries"))
+    manual_resolved = _finite_number(manual.get("settled"))
+    green_roi = _finite_number(green.get("roi_pct"))
+    manual_roi = _finite_number(projection.get("roi_pct"))
+    green_profit = _finite_number(green.get("net_profit_eur"))
+    manual_profit = _finite_number(projection.get("net_profit_eur"))
+    green_denominator = (
+        green_wins + green_losses
+        if green_wins is not None and green_losses is not None
+        else None
+    )
+    manual_denominator = (
+        manual_wins + manual_losses
+        if manual_wins is not None and manual_losses is not None
+        else None
+    )
+    green_win_rate = (
+        round(100 * green_wins / green_denominator, 3)
+        if green_denominator
+        else None
+    )
+    manual_win_rate = (
+        round(100 * manual_wins / manual_denominator, 3)
+        if manual_denominator
+        else None
+    )
+    required = (
+        green_win_rate,
+        manual_win_rate,
+        green_roi,
+        manual_roi,
+        green_profit,
+        manual_profit,
+        green_resolved,
+        manual_resolved,
+    )
+    if any(value is None for value in required):
+        statement = None
+        status = "UNAVAILABLE"
+    elif (
+        green_win_rate > manual_win_rate
+        and manual_roi > green_roi
+        and manual_profit > green_profit
+        and manual_resolved < green_resolved
+    ):
+        statement = (
+            "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do "
+            "Guerra apresenta maior ROI e resultado acumulado, com menos apostas."
+        )
+        status = "AVAILABLE"
+    else:
+        def metric_clause(green_value: float, manual_value: float, label: str) -> str:
+            if green_value > manual_value:
+                return f"os GREEN apresentam maior {label}"
+            if manual_value > green_value:
+                return f"o PAPER manual do Guerra apresenta maior {label}"
+            return f"os dois universos apresentam o mesmo {label}"
+
+        if green_resolved < manual_resolved:
+            sample_clause = "Os GREEN têm menos apostas resolvidas."
+        elif manual_resolved < green_resolved:
+            sample_clause = "O PAPER manual do Guerra tem menos apostas resolvidas."
+        else:
+            sample_clause = "Ambos têm o mesmo número de apostas resolvidas."
+        statement = (
+            f"Nesta amostra, {metric_clause(green_win_rate, manual_win_rate, 'win rate')}; "
+            f"{metric_clause(green_roi, manual_roi, 'ROI')}; "
+            f"{metric_clause(green_profit, manual_profit, 'resultado acumulado')}. "
+            f"{sample_clause}"
+        )
+        status = "AVAILABLE"
+    return {
+        "change_id": "CHANGE-2026-09-23-051",
+        "status": status,
+        "statement": statement,
+        "disclaimer": (
+            "Amostras diferentes; comparação descritiva, não prova de desempenho futuro."
+        ),
+        "green_win_rate_pct": green_win_rate,
+        "guerra_win_rate_pct": manual_win_rate,
+        "profit_is_never_aggregated": True,
     }
 
 
@@ -960,6 +1094,7 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
             "claims": "HISTORICAL_EXPERIMENTAL_SIMULATION_NOT_REAL_NOT_PROOF_OF_FUTURE_EDGE",
             "error": type(exc).__name__,
         }
+    paper_comparison = _paper_results_comparison(green_money, manual)
 
     snapshots_status["updated_at_utc"] = _source_timestamp(_mapping(snapshots_doc), "updated_at_utc")
     paper_status["updated_at_utc"] = _source_timestamp(_mapping(paper_doc), "updated_at_utc")
@@ -1014,6 +1149,7 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
         "market_memory": market,
         "green_strong_v1": green_panel,
         "green_monetization_v1": green_money,
+        "paper_results_comparison_v1": paper_comparison,
         "snapshot_reconciliation_v1": reconciliation,
         "guerra_selection_v1": _guerra_selection(green_mapping if green_status["status"] == "AVAILABLE" else None),
         "paper_technical": technical,

@@ -19,10 +19,14 @@ def _legacy_projection(value: dict) -> dict:
     value.pop('green_monetization_v1', None)
     value.pop('snapshot_reconciliation_v1', None)
     value.pop('match_identity_v2', None)
+    value.pop('paper_results_comparison_v1', None)
     value.pop('change_id', None)
     strategy = value.get('guerra_selection_v1')
     if isinstance(strategy, dict):
         strategy.pop('flat_stake_simulation', None)
+    manual = value.get('paper_22bet')
+    if isinstance(manual, dict):
+        manual.pop('flat_stake_projection', None)
     freshness = value.get('source_freshness')
     if isinstance(freshness, dict):
         freshness.pop('match_identity_v2', None)
