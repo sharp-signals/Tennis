@@ -658,30 +658,24 @@ def _paper_results_comparison(
         )
         status = "AVAILABLE"
     else:
-        rate_subject = (
-            "os GREEN" if green_win_rate > manual_win_rate else
-            "o PAPER manual do Guerra" if manual_win_rate > green_win_rate else
-            "ambos os universos"
-        )
-        roi_subject = (
-            "os GREEN" if green_roi > manual_roi else
-            "o PAPER manual do Guerra" if manual_roi > green_roi else
-            "ambos os universos"
-        )
-        result_subject = (
-            "os GREEN" if green_profit > manual_profit else
-            "o PAPER manual do Guerra" if manual_profit > green_profit else
-            "ambos os universos"
-        )
-        sample_subject = (
-            "Os GREEN" if green_resolved < manual_resolved else
-            "O PAPER manual do Guerra" if manual_resolved < green_resolved else
-            "Ambos os universos"
-        )
+        def metric_clause(green_value: float, manual_value: float, label: str) -> str:
+            if green_value > manual_value:
+                return f"os GREEN apresentam maior {label}"
+            if manual_value > green_value:
+                return f"o PAPER manual do Guerra apresenta maior {label}"
+            return f"os dois universos apresentam o mesmo {label}"
+
+        if green_resolved < manual_resolved:
+            sample_clause = "Os GREEN têm menos apostas resolvidas."
+        elif manual_resolved < green_resolved:
+            sample_clause = "O PAPER manual do Guerra tem menos apostas resolvidas."
+        else:
+            sample_clause = "Ambos têm o mesmo número de apostas resolvidas."
         statement = (
-            f"Nesta amostra, {rate_subject} apresentam maior win rate; {roi_subject} "
-            f"apresentam maior ROI; {result_subject} apresentam maior resultado acumulado. "
-            f"{sample_subject} têm menos apostas resolvidas."
+            f"Nesta amostra, {metric_clause(green_win_rate, manual_win_rate, 'win rate')}; "
+            f"{metric_clause(green_roi, manual_roi, 'ROI')}; "
+            f"{metric_clause(green_profit, manual_profit, 'resultado acumulado')}. "
+            f"{sample_clause}"
         )
         status = "AVAILABLE"
     return {

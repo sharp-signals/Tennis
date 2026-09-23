@@ -225,6 +225,39 @@ class DashboardTests(unittest.TestCase):
             "snapshot_keys": ["PRIVATE-SNAPSHOT-KEY"],
         })
 
+    @staticmethod
+    def _comparison(
+        *,
+        green_wins=6,
+        green_losses=4,
+        guerra_wins=5,
+        guerra_losses=5,
+        green_roi=10.0,
+        guerra_roi=8.0,
+        green_profit=20.0,
+        guerra_profit=15.0,
+        green_resolved=10,
+        guerra_resolved=8,
+    ):
+        return dashboard._paper_results_comparison(
+            {
+                "wins": green_wins,
+                "losses": green_losses,
+                "resolved_entries": green_resolved,
+                "roi_pct": green_roi,
+                "net_profit_eur": green_profit,
+            },
+            {
+                "wins": guerra_wins,
+                "losses": guerra_losses,
+                "settled": guerra_resolved,
+                "flat_stake_projection": {
+                    "roi_pct": guerra_roi,
+                    "net_profit_eur": guerra_profit,
+                },
+            },
+        )
+
     def build(self):
         return dashboard.build_dashboard(root=self.root, generated_at_utc=NOW)
 
@@ -452,8 +485,81 @@ class DashboardTests(unittest.TestCase):
         )
         self.assertTrue(comparison["profit_is_never_aggregated"])
         self.assertNotIn("combined", json.dumps(comparison).casefold())
-        self.assertNotIn("melhor estratégia", comparison["statement"].casefold())
-        self.assertNotIn("superior", comparison["statement"].casefold())
+        for forbidden in (
+            "melhor estratégia", "superior", "vencedor", "edge comprovado",
+            "expectativa futura",
+        ):
+            self.assertNotIn(forbidden, comparison["statement"].casefold())
+
+    def test_comparison_all_equal_values_use_explicit_tie_copy(self):
+        comparison = self._comparison(
+            green_wins=5,
+            green_losses=5,
+            guerra_wins=5,
+            guerra_losses=5,
+            green_roi=8.0,
+            guerra_roi=8.0,
+            green_profit=15.0,
+            guerra_profit=15.0,
+            green_resolved=10,
+            guerra_resolved=10,
+        )
+        statement = comparison["statement"]
+        self.assertIn("o mesmo win rate", statement)
+        self.assertIn("o mesmo ROI", statement)
+        self.assertIn("o mesmo resultado acumulado", statement)
+        self.assertIn("o mesmo número de apostas resolvidas", statement)
+        self.assertNotIn("maior", statement)
+        self.assertNotIn("menos apostas", statement)
+
+    def test_comparison_single_ties_do_not_claim_greater_for_equal_dimension(self):
+        cases = (
+            (
+                {"green_wins": 5, "green_losses": 5, "guerra_wins": 5, "guerra_losses": 5},
+                "o mesmo win rate",
+                "maior win rate",
+            ),
+            (
+                {"green_roi": 8.0, "guerra_roi": 8.0},
+                "o mesmo ROI",
+                "maior ROI",
+            ),
+            (
+                {"green_profit": 15.0, "guerra_profit": 15.0},
+                "o mesmo resultado acumulado",
+                "maior resultado acumulado",
+            ),
+            (
+                {"green_resolved": 10, "guerra_resolved": 10},
+                "o mesmo número de apostas resolvidas",
+                "menos apostas",
+            ),
+        )
+        for overrides, expected, forbidden in cases:
+            with self.subTest(expected=expected):
+                statement = self._comparison(**overrides)["statement"]
+                self.assertIn(expected, statement)
+                self.assertNotIn(forbidden, statement)
+
+    def test_comparison_two_ties_preserve_non_tied_comparisons(self):
+        statement = self._comparison(
+            green_wins=5,
+            green_losses=5,
+            guerra_wins=5,
+            guerra_losses=5,
+            green_roi=8.0,
+            guerra_roi=8.0,
+            green_profit=20.0,
+            guerra_profit=15.0,
+            green_resolved=10,
+            guerra_resolved=8,
+        )["statement"]
+        self.assertIn("o mesmo win rate", statement)
+        self.assertIn("o mesmo ROI", statement)
+        self.assertIn("os GREEN apresentam maior resultado acumulado", statement)
+        self.assertIn("PAPER manual do Guerra tem menos apostas resolvidas", statement)
+        self.assertNotIn("maior win rate", statement)
+        self.assertNotIn("maior ROI", statement)
 
     def test_guerra_private_rows_names_and_keys_are_never_published(self):
         self._base_sources()
@@ -524,6 +630,38 @@ class DashboardTests(unittest.TestCase):
             panel = self.build()["system_health"]
         self.assertEqual(panel["status"], "DEGRADED")
         self.assertEqual(panel["alerts"], run_metrics.health_alerts(value[-1]))
+
+    def test_simple_status_is_neutral_for_reports_failed_degraded_run(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["reports_failed"] = 1
+        write_json(path, value)
+        result = self.build()
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertEqual(result["system_health"]["status"], "DEGRADED")
+        self.assertIn("Bot com alertas", rendered)
+        self.assertIn("relatórios falhados: 1", rendered)
+        self.assertNotIn("dados secundários", rendered)
+
+    def test_simple_status_is_neutral_for_analysis_failed_degraded_run(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["analysis_failed"] = 1
+        write_json(path, value)
+        result = self.build()
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertEqual(result["system_health"]["status"], "DEGRADED")
+        self.assertIn("Bot com alertas", rendered)
+        self.assertIn("análises falhadas: 1/2 (50%)", rendered)
+        self.assertNotIn("dados secundários", rendered)
+
+    def test_simple_status_keeps_healthy_copy(self):
+        self._base_sources()
+        result = self.build()
+        self.assertEqual(result["system_health"]["status"], "HEALTHY")
+        self.assertIn("Bot operacional", dashboard.render_dashboard_html(result))
 
     def test_failed_run_has_failed_status(self):
         self._base_sources()
