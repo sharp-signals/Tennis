@@ -6895,8 +6895,114 @@
         "tournament_id": 16747
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_22aff2427a2343239d00da1e73bd42df:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-23T05:33:50+00:00",
+        "canonical_match_instance_id": "mi2_22aff2427a2343239d00da1e73bd42df",
+        "commence_time_utc": "2026-09-24T02:00:00+00:00",
+        "coverage": {
+          "available_factors": 14,
+          "available_weight": 87.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 60.4,
+          "weighted_ratio": 0.604167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "308de8d8c8ad8ee44eb52ae85731f582e81b2728e93299296fb55b4501d2110f",
+        "event_key": "mi2_22aff2427a2343239d00da1e73bd42df",
+        "expected_edge_pct": 0.1,
+        "fair_odd": 1.229,
+        "fenzobot_index": 90,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "wta:832",
+        "line": null,
+        "market": "Moneyline Alexandra Eala",
+        "market_memory_eligible": false,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Alexandra Eala": 1.23,
+          "Tatiana Prozorova": 4.23
+        },
+        "market_type": "Moneyline",
+        "match_id": 832,
+        "odd": 1.23,
+        "odds_contract_activation": {
+          "activation_commit": "6135396b88be304c36d044aac0ee4e2b48f4618b",
+          "activation_observed_at_utc": "2026-09-23T05:33:23+00:00",
+          "activation_run_id": "35822857633",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-09-21-050",
+          "contract_version": "rapidapi-recent-gated-v1"
+        },
+        "odds_provenance": {
+          "bookmaker": "DraftKings",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-23T05:33:23+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/4017213",
+          "event_id": "4017213",
+          "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 1.4748,
+            "median_devig_probability_a": 0.21790052053209946,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-09-22T17:14:02+00:00",
+          "provider_timestamp_status": "unreliable_for_freshness",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "single-factual-bookmaker-bilateral-v1",
+          "freshness_semantics": "observed-at-capture-unverified-age-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "rapidapi-recent-gated-v1",
+          "source_family": "rapidapi-recent-odds"
+        },
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "players": {
+          "a": {
+            "id": 72881,
+            "name": "Tatiana Prozorova"
+          },
+          "b": {
+            "id": 67792,
+            "name": "Alexandra Eala"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "42880bb6ba0fdc1f850d",
+        "selected_player": "Alexandra Eala",
+        "selected_side": "b",
+        "sharp_estimate_pct": 81.38,
+        "snapshot_key": "mi2_22aff2427a2343239d00da1e73bd42df",
+        "surface": "I.hard",
+        "tour": "wta",
+        "tournament": "Singapore Tennis Open - Singapore",
+        "tournament_id": 16747
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-22T17:34:37+00:00"
+  "updated_at_utc": "2026-09-23T05:33:50+00:00"
 }
