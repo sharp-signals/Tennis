@@ -241783,7 +241783,1577 @@
           }
         }
       }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-23T17:33:47+00:00",
+      "canonical_match_instance_id": "mi2_adde211195204e50bf9cd8f92db0f504",
+      "commence_time_utc": "2026-09-25T03:00:00+00:00",
+      "entry_market_observation_id": "f904861ea098e8512d56c271a708f36c1df43d9489ee2df8df6510a1871aed1d",
+      "event_key": "mi2_adde211195204e50bf9cd8f92db0f504",
+      "identity_evidence": {
+        "event_id": "4025407",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "38ea032b1c3ff06a238070cb8f2fb3ab9bede4e95f6607328968e3a2a37b6f45",
+        "match_id": "805",
+        "orientation": {
+          "a": 13351,
+          "b": 43323
+        },
+        "provider": "RapidAPI",
+        "round_id": "9",
+        "scheduled_start_utc": "2026-09-25T03:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "13351",
+            "43323"
+          ],
+          "tour": "wta",
+          "tournament_id": "16747"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_adde211195204e50bf9cd8f92db0f504",
+      "legacy_key": "wta:805",
+      "market_memory_eligible": false,
+      "market_memory_status": "RECORDED",
+      "market_odds_decimal": {
+        "Elise Mertens": 1.39,
+        "Maja Chwalinska": 3.04
+      },
+      "match_format": "BO3",
+      "match_id": 805,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_moderada",
+            "nivel": 0,
+            "texto": "Alinhamento moderada"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 5,
+            "structural_factors_available": [
+              "h2h",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "recuperação pós-1º set",
+              "Maja Chwalinska"
+            ],
+            [
+              "indoor/outdoor",
+              "Elise Mertens"
+            ],
+            [
+              "forma recente",
+              "Elise Mertens"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 145.0,
+              "amostra_a": 299,
+              "amostra_b": 145,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Maja Chwalinska",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 21,
+              "valor_b": 24
+            },
+            "fadiga": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 4.0,
+              "peso_efetivo": 2.453,
+              "valor_a": 0,
+              "valor_b": 2
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.8,
+              "peso_antes_cap": 5.6,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 5.6,
+              "valor_a": 60.0,
+              "valor_b": 40.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "Maja Chwalinska",
+              "motivo_exclusao": "amostra insuficiente (1 jogo)",
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 60.9,
+              "valor_b": 55.6
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 20,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Maja Chwalinska",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.2,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 3.2,
+              "valor_a": 50.0,
+              "valor_b": 55.6
+            },
+            "mudanca_piso": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "ambos em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.453,
+              "valor_a": 42.9,
+              "valor_b": 0.0
+            },
+            "piso": {
+              "amostra": 71,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.2,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 3.2,
+              "valor_a": 65.0,
+              "valor_b": 62.0
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 0.354,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.828,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 0.991,
+              "valor_a": 5,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.32,
+              "peso_antes_cap": 1.599,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 1.599,
+              "pontos_a": 2165,
+              "pontos_b": 1888,
+              "valor_a": 19.0,
+              "valor_b": 25.0
+            },
+            "ranking_evolucao": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "recuperacao_sets": {
+              "disponivel": true,
+              "lider": "Maja Chwalinska",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 9
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.103,
+              "valor_a": 53.6,
+              "valor_b": 50.0
+            },
+            "servico_carreira": {
+              "amostra": 15.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Elise Mertens",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.0,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 3.0,
+              "valor_a": 70.0,
+              "valor_b": 60.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Maja Chwalinska",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 49.6,
+              "valor_b": 66.7
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 14,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 64,
+          "inclinacao_modelo_b": 36,
+          "indice_evidencia_a": 64,
+          "indice_evidencia_b": 36,
+          "indice_favorece": "Elise Mertens",
+          "intensidade_indicadores": "moderada",
+          "intensidade_nivel": 2,
+          "massa_evidencia": 42.599,
+          "mercado_favorece": "Elise Mertens",
+          "n_fatores": 12,
+          "player_a": "Elise Mertens",
+          "player_b": "Maja Chwalinska",
+          "prob_mercado_a": 69,
+          "prob_mercado_b": 31,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 299,
+            "amostra_b": 145,
+            "diff": -3,
+            "lider": "Maja Chwalinska",
+            "valor_a": 21,
+            "valor_b": 24
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 20.0,
+            "lider": "Elise Mertens",
+            "unidade": "%",
+            "valor_a": 60.0,
+            "valor_b": 40.0
+          },
+          "frescura": {
+            "jogos_7d_a": 0,
+            "jogos_7d_b": 2,
+            "mais_fresco": "Elise Mertens",
+            "sets_7d_a": 0,
+            "sets_7d_b": 4
+          },
+          "h2h": {
+            "a_wins": 0,
+            "b_wins": 1,
+            "lider": "Maja Chwalinska",
+            "total": 1
+          },
+          "indoor_outdoor": {
+            "amostra_a": 466,
+            "amostra_b": 18,
+            "diff": 5.4,
+            "lider": "Elise Mertens",
+            "unidade": "%",
+            "valor_a": 60.9,
+            "valor_b": 55.6
+          },
+          "nivel_adversario": {
+            "amostra_a": 247,
+            "amostra_b": 3,
+            "diff": 42.9,
+            "lider": "Elise Mertens",
+            "valor_a": 42.9,
+            "valor_b": 0.0
+          },
+          "piso": {
+            "amostra_a": 448,
+            "amostra_b": 71,
+            "diff": 3.0,
+            "lider": "Elise Mertens",
+            "unidade": "%",
+            "valor_a": 65.0,
+            "valor_b": 62.0
+          },
+          "qualidade_vitorias": {
+            "lider": "Elise Mertens",
+            "top10_a": 1,
+            "top10_b": 0,
+            "top20_a": 1,
+            "top20_b": 0,
+            "top50_a": 3,
+            "top50_b": 0,
+            "valor_a": 5,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 6.0,
+            "lider": "Elise Mertens",
+            "pontos_a": 2165,
+            "pontos_b": 1888,
+            "valor_a": 19.0,
+            "valor_b": 25.0
+          },
+          "sazonal": {
+            "amostra_a": 69,
+            "amostra_b": 2,
+            "diff": 3.6,
+            "lider": "Elise Mertens",
+            "unidade": "%",
+            "valor_a": 53.6,
+            "valor_b": 50.0
+          },
+          "servico_carreira": {
+            "amostra_a": 31,
+            "amostra_b": 15,
+            "diff": 10.0,
+            "lider": "Elise Mertens",
+            "unidade": "%",
+            "valor_a": 70.0,
+            "valor_b": 60.0
+          },
+          "tiebreak": {
+            "amostra_a": 115,
+            "amostra_b": 3,
+            "diff": 17.1,
+            "lider": "Maja Chwalinska",
+            "unidade": "%",
+            "valor_a": 49.6,
+            "valor_b": 66.7
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 31,
+          "coverage_pct": 54.0,
+          "excluded_missing_odds": 46,
+          "excluded_missing_odds_wins": 31,
+          "expected_wins": 29.79,
+          "matches": 54,
+          "odds_eligible_matches": 54,
+          "overall_wins": 62,
+          "performance_vs_market": 1.21,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 32,
+          "coverage_pct": 52.0,
+          "excluded_missing_odds": 48,
+          "excluded_missing_odds_wins": 32,
+          "expected_wins": 30.44,
+          "matches": 52,
+          "odds_eligible_matches": 52,
+          "overall_wins": 64,
+          "performance_vs_market": 1.56,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 62.9,
+          "matches": 52,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 103.94,
+          "matches": 18,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.6875
+          },
+          "expected_edge_pct": -2.75,
+          "fenzobot_index": 64,
+          "market": {
+            "expected_edge_pct": -2.75,
+            "fair_odd": 1.429,
+            "line": null,
+            "market": "Moneyline Elise Mertens",
+            "market_type": "Moneyline",
+            "odd": 1.39,
+            "player": "Elise Mertens",
+            "sharp_estimate_pct": 69.96,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Elise Mertens",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 16,
+              "available_weight": 99.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 68.8,
+              "weighted_ratio": 0.6875
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 45.0,
+          "bp_saved_pct": 60.0,
+          "first_serve_won_pct": 70.0,
+          "matches": 31,
+          "opponent_first_serve_won_pct": 35.0,
+          "opponent_second_serve_won_pct": 55.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 45.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 53.0,
+          "bp_saved_pct": 59.0,
+          "first_serve_won_pct": 60.0,
+          "matches": 15,
+          "opponent_first_serve_won_pct": 41.0,
+          "opponent_second_serve_won_pct": 56.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 50.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 2165,
+          "rank": 19
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 1888,
+          "rank": 25
+        },
+        "recent_form_a": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "recent_form_b": {
+          "losses": 6,
+          "matches": 10,
+          "wins": 4
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.6875
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 45.0,
+          "avg_break_points_saved_pct": 60.0,
+          "avg_first_serve_in_pct": 59.2,
+          "avg_first_serve_won_pct": 70.0,
+          "avg_second_serve_won_pct": 45.0,
+          "matches_used": 31
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 53.0,
+          "avg_break_points_saved_pct": 59.0,
+          "avg_first_serve_in_pct": 70.7,
+          "avg_first_serve_won_pct": 60.0,
+          "avg_second_serve_won_pct": 50.0,
+          "matches_used": 15
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 19.7,
+            "matches_lost_set1": 193,
+            "matches_lost_set1_won_overall": 38
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 33.3,
+            "matches_lost_set1": 9,
+            "matches_lost_set1_won_overall": 3
+          },
+          "bo5": null
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": "DraftKings",
+        "cache_age_seconds": 0,
+        "capture_kind": "rapidapi_response_observed_at_capture",
+        "captured_at_utc": "2026-09-23T17:33:27+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/4025407",
+        "event_id": "4025407",
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 2,
+          "coherent_bookmaker_count": 2,
+          "dispersion_pp": 3.0532,
+          "median_devig_probability_a": 0.6709644326895028,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v2",
+          "pricing_basis": "cross_bookmaker_consensus",
+          "reason_code": null,
+          "rejected_candidates": [],
+          "status": "AVAILABLE",
+          "valid_candidate_count": 2
+        },
+        "odds_contract_activation": {
+          "activation_commit": "20bc6ab74b801d4f0cd4e74e329c968130b83168",
+          "activation_observed_at_utc": "2026-09-23T17:33:27+00:00",
+          "activation_run_id": "35896354891",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-09-21-050",
+          "contract_version": "rapidapi-recent-gated-v1"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "single-factual-bookmaker-bilateral-v1",
+          "freshness_semantics": "observed-at-capture-unverified-age-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "rapidapi-recent-gated-v1",
+          "source_family": "rapidapi-recent-odds"
+        },
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": "2026-09-23T08:05:52+00:00",
+        "provider_timestamp_status": "unreliable_for_freshness",
+        "raw_payload_sha256": "d19168ec15f63573680ba6f509b80c40afb0baf93cb60422c8676339fa667339",
+        "source": "RapidAPI Tennis API / recent-odds"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 13351,
+        "name": "Elise Mertens"
+      },
+      "player_b": {
+        "id": 43323,
+        "name": "Maja Chwalinska"
+      },
+      "pricing": {
+        "adjustment_pp_a": 1.3403364639871684,
+        "adjustment_pp_b": -1.3403364639871684,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 42.599,
+          "factor_count": 12,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 0.75,
+          "internal_quality": 0.75,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.02750927800385139,
+        "expected_edge_b": -0.08688618335848342,
+        "fair_odd_a": 1.4293195488249653,
+        "fair_odd_b": 3.329267331844007,
+        "market_odd_a": 1.39,
+        "market_odd_b": 3.04,
+        "market_overround_pct": 4.837,
+        "market_probability_a": 0.6862302483069979,
+        "market_probability_b": 0.3137697516930023,
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 1.34,
+            "expected_edge_pct": -2.75,
+            "fair_odd": 1.429,
+            "market_odd": 1.39,
+            "market_probability_pct": 68.62,
+            "sharp_estimate_pct": 69.96
+          },
+          "b": {
+            "adjustment_pp": -1.34,
+            "expected_edge_pct": -8.69,
+            "fair_odd": 3.329,
+            "market_odd": 3.04,
+            "market_probability_pct": 31.38,
+            "sharp_estimate_pct": 30.04
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 0.75,
+        "residual_logit": 0.063,
+        "sharp_estimate_a": 0.6996336129468695,
+        "sharp_estimate_b": 0.30036638705313046,
+        "signed_strength": 0.28,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "492fdb37dcd73c821625",
+      "surface": "I.hard",
+      "tour": "wta",
+      "tournament": "Singapore Tennis Open - Singapore",
+      "tournament_id": 16747,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-09-23T17:33:47+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Elise Mertens",
+            "selected_side": "a",
+            "source": {
+              "code_revision": "20bc6ab74b801d4f0cd4e74e329c968130b83168",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 0,
+              "divergence_type": "alinhamento",
+              "fenzobot_probabilities": {
+                "a": 0.6995999999999999,
+                "b": 0.3004
+              },
+              "github_run_id": "35896354891",
+              "market_probabilities": {
+                "a": 0.6862,
+                "b": 0.31379999999999997
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_adde211195204e50bf9cd8f92db0f504"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "f630cbbac62c7d0dabbbedb9"
+          }
+        }
+      }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-09-23T17:33:47+00:00",
+      "canonical_match_instance_id": "mi2_3eb86b6561b44900aac86d77639b0b73",
+      "commence_time_utc": "2026-09-25T03:00:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "mi2_3eb86b6561b44900aac86d77639b0b73",
+      "identity_evidence": {
+        "event_id": null,
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "d1a271bf8eccf77ae3365c8fa27a0f13cb9d2d02ea1815498f81be7a3b5a80fe",
+        "match_id": "837",
+        "orientation": {
+          "a": 77934,
+          "b": 49081
+        },
+        "provider": "RapidAPI",
+        "round_id": "9",
+        "scheduled_start_utc": "2026-09-25T03:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "49081",
+            "77934"
+          ],
+          "tour": "wta",
+          "tournament_id": "16747"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_3eb86b6561b44900aac86d77639b0b73",
+      "legacy_key": "wta:837",
+      "market_memory_eligible": false,
+      "market_memory_status": "UNAVAILABLE",
+      "market_odds_decimal": null,
+      "match_format": "BO3",
+      "match_id": 837,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "matchup de mão",
+              "Mirra Andreeva"
+            ],
+            [
+              "recuperação pós-1º set",
+              "Mirra Andreeva"
+            ],
+            [
+              "indoor/outdoor",
+              "Mirra Andreeva"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 72.0,
+              "amostra_a": 72,
+              "amostra_b": 183,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 40,
+              "valor_b": 17
+            },
+            "fadiga": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 4.0,
+              "peso_base_aplicado": 4.0,
+              "peso_base_configurado": 4.0,
+              "peso_efetivo": 1.455,
+              "valor_a": 1,
+              "valor_b": 2
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 2.8,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 70.0,
+              "valor_b": 60.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "amostra": 2,
+              "confianca_amostra": 0.577,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Leylah Annie Fernandez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.667,
+              "peso_antes_cap": 4.619,
+              "peso_base_aplicado": 12.0,
+              "peso_base_configurado": 12.0,
+              "peso_efetivo": 4.619,
+              "valor_a": 0,
+              "valor_b": 2
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 70.9,
+              "valor_b": 50.0
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 1,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 8.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 8.0,
+              "valor_a": 66.7,
+              "valor_b": 0.0
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "A vem de outro piso sem rodagem",
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Leylah Annie Fernandez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 1.818,
+              "valor_a": "clay",
+              "valor_b": "hard"
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.545,
+              "valor_a": 61.2,
+              "valor_b": 26.3
+            },
+            "piso": {
+              "amostra": 122,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.707,
+              "peso_antes_cap": 5.653,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 5.653,
+              "valor_a": 71.3,
+              "valor_b": 60.7
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "pontos_a": 5743,
+              "pontos_b": 1454,
+              "valor_a": 5.0,
+              "valor_b": 31.0
+            },
+            "ranking_evolucao": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "recuperacao_sets": {
+              "amostra": 73,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.6,
+              "peso_antes_cap": 5.4,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 5.4,
+              "valor_a": 60,
+              "valor_b": 51
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.182,
+              "valor_a": 56.2,
+              "valor_b": 40.0
+            },
+            "servico_carreira": {
+              "disponivel": true,
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 3,
+              "valor_a": 68.0,
+              "valor_b": 66.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Mirra Andreeva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 57.5,
+              "valor_b": 50.0
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 39,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 89,
+          "inclinacao_modelo_b": 11,
+          "indice_evidencia_a": 89,
+          "indice_evidencia_b": 11,
+          "indice_favorece": "Mirra Andreeva",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 57.472,
+          "mercado_favorece": null,
+          "n_fatores": 13,
+          "player_a": "Mirra Andreeva",
+          "player_b": "Leylah Annie Fernandez",
+          "prob_mercado_a": null,
+          "prob_mercado_b": null,
+          "tipo": "evidence_only"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 72,
+            "amostra_b": 183,
+            "diff": 23,
+            "lider": "Mirra Andreeva",
+            "valor_a": 40,
+            "valor_b": 17
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 10.0,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 70.0,
+            "valor_b": 60.0
+          },
+          "frescura": {
+            "jogos_7d_a": 1,
+            "jogos_7d_b": 2,
+            "mais_fresco": "Mirra Andreeva",
+            "sets_7d_a": 2,
+            "sets_7d_b": 4
+          },
+          "h2h": {
+            "a_wins": 2,
+            "b_wins": 2,
+            "lider": "igual",
+            "total": 4
+          },
+          "h2h_piso": {
+            "a_wins": 0,
+            "b_wins": 2,
+            "lider": "Leylah Annie Fernandez",
+            "total": 2
+          },
+          "indoor_outdoor": {
+            "amostra_a": 165,
+            "amostra_b": 6,
+            "diff": 20.9,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 70.9,
+            "valor_b": 50.0
+          },
+          "nivel_adversario": {
+            "amostra_a": 103,
+            "amostra_b": 38,
+            "diff": 34.900000000000006,
+            "lider": "Mirra Andreeva",
+            "valor_a": 61.2,
+            "valor_b": 26.3
+          },
+          "piso": {
+            "amostra_a": 122,
+            "amostra_b": 262,
+            "diff": 10.6,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 71.3,
+            "valor_b": 60.7
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 0,
+            "top50_b": 0,
+            "valor_a": 0,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 26.0,
+            "lider": "Mirra Andreeva",
+            "pontos_a": 5743,
+            "pontos_b": 1454,
+            "valor_a": 5.0,
+            "valor_b": 31.0
+          },
+          "sazonal": {
+            "amostra_a": 16,
+            "amostra_b": 5,
+            "diff": 16.2,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 56.2,
+            "valor_b": 40.0
+          },
+          "servico_carreira": {
+            "amostra_a": 39,
+            "amostra_b": 30,
+            "diff": 2.0,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 68.0,
+            "valor_b": 66.0
+          },
+          "tiebreak": {
+            "amostra_a": 40,
+            "amostra_b": 2,
+            "diff": 7.5,
+            "lider": "Mirra Andreeva",
+            "unidade": "%",
+            "valor_a": 57.5,
+            "valor_b": 50.0
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 46,
+          "coverage_pct": 55.0,
+          "excluded_missing_odds": 45,
+          "excluded_missing_odds_wins": 27,
+          "expected_wins": 41.18,
+          "matches": 55,
+          "odds_eligible_matches": 55,
+          "overall_wins": 73,
+          "performance_vs_market": 4.82,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 25,
+          "coverage_pct": 49.0,
+          "excluded_missing_odds": 51,
+          "excluded_missing_odds_wins": 27,
+          "expected_wins": 26.95,
+          "matches": 49,
+          "odds_eligible_matches": 49,
+          "overall_wins": 52,
+          "performance_vs_market": -1.95,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 57.84,
+          "matches": 63,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 56.77,
+          "matches": 53,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 17,
+            "available_weight": 111.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 77.1,
+            "weighted_ratio": 0.770833
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "reason": "event_identity_not_in_response",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 17,
+              "available_weight": 111.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 77.1,
+              "weighted_ratio": 0.770833
+            },
+            "criteria_version": "prelive-validity-v1",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "minimum_weighted_coverage": 0.45,
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "state": "PRICING_UNAVAILABLE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 50.0,
+          "bp_saved_pct": 59.0,
+          "first_serve_won_pct": 68.0,
+          "matches": 39,
+          "opponent_first_serve_won_pct": 39.0,
+          "opponent_second_serve_won_pct": 59.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 49.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 48.0,
+          "bp_saved_pct": 63.0,
+          "first_serve_won_pct": 66.0,
+          "matches": 30,
+          "opponent_first_serve_won_pct": 34.0,
+          "opponent_second_serve_won_pct": 54.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 47.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 5743,
+          "rank": 5
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 1454,
+          "rank": 31
+        },
+        "recent_form_a": {
+          "losses": 3,
+          "matches": 10,
+          "wins": 7
+        },
+        "recent_form_b": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 17,
+            "available_weight": 111.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 77.1,
+            "weighted_ratio": 0.770833
+          },
+          "criteria_version": "prelive-validity-v1",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "minimum_weighted_coverage": 0.45,
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 50.0,
+          "avg_break_points_saved_pct": 59.0,
+          "avg_first_serve_in_pct": 62.9,
+          "avg_first_serve_won_pct": 68.0,
+          "avg_second_serve_won_pct": 49.0,
+          "matches_used": 39
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 48.0,
+          "avg_break_points_saved_pct": 63.0,
+          "avg_first_serve_in_pct": 63.2,
+          "avg_first_serve_won_pct": 66.0,
+          "avg_second_serve_won_pct": 47.0,
+          "matches_used": 30
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 39.3,
+            "matches_lost_set1": 56,
+            "matches_lost_set1_won_overall": 22
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 20.0,
+            "matches_lost_set1": 5,
+            "matches_lost_set1_won_overall": 1
+          },
+          "bo5": null
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": null,
+        "capture_kind": null,
+        "captured_at_utc": null,
+        "endpoint": null,
+        "event_id": null,
+        "freshness_status": null,
+        "from_cache": null,
+        "market_integrity": null,
+        "odds_contract_activation": null,
+        "odds_source_contract": null,
+        "odds_source_contract_fingerprint": null,
+        "odds_source_contract_version": null,
+        "operational_pricing_eligible": false,
+        "provider_timestamp": null,
+        "provider_timestamp_status": null,
+        "raw_payload_sha256": null,
+        "source": null
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 77934,
+        "name": "Mirra Andreeva"
+      },
+      "player_b": {
+        "id": 49081,
+        "name": "Leylah Annie Fernandez"
+      },
+      "pricing": {
+        "available": false,
+        "candidate": false,
+        "candidate_side": null,
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "reason": "event_identity_not_in_response",
+        "status": "unavailable",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "fc1bd00f84af1f70f8eb",
+      "surface": "I.hard",
+      "tour": "wta",
+      "tournament": "Singapore Tennis Open - Singapore",
+      "tournament_id": 16747,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-09-23T17:33:47+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG",
+              "SELECTED_SIDE_UNAVAILABLE",
+              "PRICING_UNAVAILABLE",
+              "PROBABILITIES_UNAVAILABLE",
+              "SELECTED_PLAYER_UNAVAILABLE"
+            ],
+            "selected_player": null,
+            "selected_side": null,
+            "source": {
+              "code_revision": "20bc6ab74b801d4f0cd4e74e329c968130b83168",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "PRICING_UNAVAILABLE",
+              "divergence_level": 0,
+              "divergence_type": "evidence_only",
+              "fenzobot_probabilities": "UNAVAILABLE",
+              "github_run_id": "35896354891",
+              "market_probabilities": "UNAVAILABLE",
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_3eb86b6561b44900aac86d77639b0b73"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "a5df54afeb27b4f68702456b"
+          }
+        }
+      }
     }
   ],
-  "updated_at_utc": "2026-09-23T05:33:50+00:00"
+  "updated_at_utc": "2026-09-23T17:33:47+00:00"
 }
