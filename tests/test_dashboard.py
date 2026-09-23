@@ -185,6 +185,46 @@ class DashboardTests(unittest.TestCase):
         self._report(f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html", "Alpha vs Beta")
         self._report(f"gamma-vs-delta-2026-09-06-{RID_YELLOW}.html", "Gamma vs Delta")
 
+    def _set_manual_reference(self, *, pending: int = 0) -> None:
+        manual_summary = summary(
+            52 + pending, 52, pending, 34, 18, units=14, roi=26.923, odd=1.931
+        )
+        manual_summary["win_rate_pct"] = 65.385
+        write_json(self.root / "data/manual_paper_22bet.json", {
+            "schema_version": 2,
+            "source": {"synced_at_utc": NOW, "reference_bookmaker": "22Bet"},
+            "summary": manual_summary,
+            "by_market": {
+                "Moneyline": {
+                    **summary(16, 16, 0, 12, 4, units=9.28, roi=58, odd=2.086),
+                    "win_rate_pct": 75,
+                },
+                "Handicap games": {
+                    **summary(36, 36, 0, 22, 14, units=4.72, roi=13.111, odd=1.862),
+                    "win_rate_pct": 61.111,
+                },
+            },
+            "by_side": {
+                "Underdog": {
+                    **summary(21, 21, 0, 16, 5, units=11.5, roi=54.762, odd=2.02),
+                    "win_rate_pct": 76.19,
+                },
+                "Favorito": {
+                    **summary(31, 31, 0, 18, 13, units=2.5, roi=8.065, odd=1.871),
+                    "win_rate_pct": 58.065,
+                },
+            },
+            "by_strategy": {
+                "GUERRA_SELECTION_V1": {
+                    "status": "AVAILABLE",
+                    "summary": summary(999, 999, 0, 999, 0, units=999, roi=999, odd=9.99),
+                    "private_rows": ["PRIVATE-GUERRA-ROW"],
+                }
+            },
+            "private_names": ["PRIVATE-PLAYER-NAME"],
+            "snapshot_keys": ["PRIVATE-SNAPSHOT-KEY"],
+        })
+
     def build(self):
         return dashboard.build_dashboard(root=self.root, generated_at_utc=NOW)
 
@@ -335,14 +375,128 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(green["net_profit_eur"], 10.0)
         self.assertEqual(green["roi_pct"], 100.0)
         rendered = dashboard.render_dashboard_html(result)
-        self.assertIn("Resultado operacional estimado — €10 por aposta GREEN", rendered)
-        self.assertIn("return greenMonetizationHero()+auditStatus()", rendered)
+        self.assertIn("Resultados PAPER — visão simples", rendered)
+        self.assertIn("Fonte: green_monetization_v1", rendered)
+        self.assertIn("return paperResultsHero()+simpleSystemStatus()", rendered)
         self.assertIn("Histórico GUERRA — SUPERSEDED", rendered)
-        self.assertIn("Não é dinheiro real e não prova edge futuro", rendered)
+        self.assertIn("Não é dinheiro real", rendered)
         self.assertNotEqual(
             result["green_monetization_v1"].get("net_profit_eur"),
             result["guerra_selection_v1"]["flat_stake_simulation"].get("net_profit_eur"),
         )
+
+    def test_guerra_hero_uses_total_manual_summary_not_superseded_strategy(self):
+        self._base_sources()
+        self._set_manual_reference()
+        result = self.build()
+        manual = result["paper_22bet"]
+        self.assertEqual(manual["total_entries"], 52)
+        self.assertEqual(manual["flat_stake_projection"]["net_profit_eur"], 140.0)
+        self.assertNotEqual(manual["total_entries"], 999)
+        self.assertEqual(result["guerra_selection_v1"]["status"], "UNAVAILABLE")
+
+    def test_manual_units_project_to_ten_euro_profit_and_stake(self):
+        self._base_sources()
+        self._set_manual_reference()
+        projection = self.build()["paper_22bet"]["flat_stake_projection"]
+        self.assertEqual(projection["basis"], "paper_22bet.summary")
+        self.assertEqual(projection["net_profit_eur"], 140.0)
+        self.assertEqual(projection["resolved_stake_eur"], 520.0)
+        self.assertEqual(projection["roi_pct"], 26.923)
+
+    def test_manual_market_and_side_breakdowns_are_preserved(self):
+        self._base_sources()
+        self._set_manual_reference()
+        manual = self.build()["paper_22bet"]
+        self.assertEqual(manual["by_market"]["Moneyline"]["wins"], 12)
+        self.assertEqual(manual["by_market"]["Moneyline"]["units"], 9.28)
+        self.assertEqual(manual["by_market"]["Handicap games"]["losses"], 14)
+        self.assertEqual(manual["by_side"]["Underdog"]["win_rate_pct"], 76.19)
+        self.assertEqual(manual["by_side"]["Favorito"]["roi_pct"], 8.065)
+
+    def test_missing_manual_source_is_unavailable_never_zero_euros(self):
+        self._base_sources()
+        (self.root / "data/manual_paper_22bet.json").unlink()
+        manual = self.build()["paper_22bet"]
+        self.assertEqual(manual["status"], "UNAVAILABLE")
+        self.assertEqual(manual["flat_stake_projection"]["status"], "UNAVAILABLE")
+        self.assertIsNone(manual["flat_stake_projection"]["net_profit_eur"])
+        self.assertIsNone(manual["flat_stake_projection"]["resolved_stake_eur"])
+
+    def test_manual_pending_is_separate_from_resolved_projection(self):
+        self._base_sources()
+        self._set_manual_reference(pending=3)
+        projection = self.build()["paper_22bet"]["flat_stake_projection"]
+        self.assertEqual(projection["settled_entries"], 52)
+        self.assertEqual(projection["pending_entries"], 3)
+        self.assertEqual(projection["resolved_stake_eur"], 520.0)
+        self.assertEqual(projection["pending_exposure_eur"], 30.0)
+
+    def test_comparison_is_descriptive_and_never_combines_profit(self):
+        self._set_manual_reference()
+        manual_doc = json.loads(
+            (self.root / "data/manual_paper_22bet.json").read_text(encoding="utf-8")
+        )
+        manual = dashboard._paper_22bet(manual_doc)
+        comparison = dashboard._paper_results_comparison({
+            "wins": 51,
+            "losses": 24,
+            "resolved_entries": 75,
+            "roi_pct": -0.43,
+            "net_profit_eur": -3.19,
+        }, manual)
+        self.assertEqual(
+            comparison["statement"],
+            "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do "
+            "Guerra apresenta maior ROI e resultado acumulado, com menos apostas.",
+        )
+        self.assertTrue(comparison["profit_is_never_aggregated"])
+        self.assertNotIn("combined", json.dumps(comparison).casefold())
+        self.assertNotIn("melhor estratégia", comparison["statement"].casefold())
+        self.assertNotIn("superior", comparison["statement"].casefold())
+
+    def test_guerra_private_rows_names_and_keys_are_never_published(self):
+        self._base_sources()
+        self._set_manual_reference()
+        serialized = json.dumps(self.build())
+        self.assertNotIn("PRIVATE-GUERRA-ROW", serialized)
+        self.assertNotIn("PRIVATE-PLAYER-NAME", serialized)
+        self.assertNotIn("PRIVATE-SNAPSHOT-KEY", serialized)
+
+    def test_progressive_disclosure_keeps_history_and_technical_metrics(self):
+        self._base_sources()
+        self._set_manual_reference()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn("Ver análise dos GREEN", rendered)
+        self.assertIn("Ver análise do PAPER Guerra", rendered)
+        self.assertIn("Detalhes técnicos e validação", rendered)
+        self.assertIn("Histórico GUERRA — SUPERSEDED", rendered)
+        self.assertIn("GUERRA_SELECTION_V1 · histórico preservado", rendered)
+        self.assertIn("SNAPSHOT_COVERAGE_RECONCILIATION_V1", rendered)
+        self.assertIn("PAIRED_COMPARISON", rendered)
+
+    def test_paper_disclaimer_and_manual_simulation_label_are_visible(self):
+        self._base_sources()
+        self._set_manual_reference()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn(
+            "Simulação €10 por aposta a partir das unidades do PAPER manual",
+            rendered,
+        )
+        self.assertIn(
+            "Amostras diferentes; comparação descritiva, não prova de desempenho futuro.",
+            rendered,
+        )
+        self.assertIn("Não é dinheiro real", rendered)
+
+    def test_paper_hero_mobile_layout_collapses_without_horizontal_overflow(self):
+        self._base_sources()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn(
+            "@media(max-width:720px){.paper-result-grid,.simple-games{grid-template-columns:1fr}",
+            rendered,
+        )
+        self.assertIn(".paper-result-card{min-width:0", rendered)
 
     def test_market_observation_count_uses_existing_derived_metric(self):
         self._base_sources()
@@ -377,7 +531,12 @@ class DashboardTests(unittest.TestCase):
         value = json.loads(path.read_text(encoding="utf-8"))
         value[-1]["status"] = "failed"
         write_json(path, value)
-        self.assertEqual(self.build()["system_health"]["status"], "FAILED")
+        result = self.build()
+        self.assertEqual(result["system_health"]["status"], "FAILED")
+        self.assertIn(
+            "Atenção · falha registada na execução",
+            dashboard.render_dashboard_html(result),
+        )
 
     def test_unrecognized_or_missing_run_status_is_unknown(self):
         self._base_sources()

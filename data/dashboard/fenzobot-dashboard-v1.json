@@ -210,7 +210,7 @@
       "SNAPSHOT_IDENTITY_COLLISION": 3
     }
   },
-  "change_id": "CHANGE-2026-09-21-047",
+  "change_id": "CHANGE-2026-09-23-051",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
     {
@@ -50518,7 +50518,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-23T15:28:55+00:00",
+  "generated_at_utc": "2026-09-23T15:38:51+00:00",
   "global": {
     "distinct_matchups": 1569,
     "green_strong_candidates": 0,
@@ -50563,7 +50563,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-09-23T15:28:55+00:00",
+    "generated_at_utc": "2026-09-23T15:38:51+00:00",
     "losses": 24,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -3.19,
@@ -50699,7 +50699,10 @@
     ],
     "metrics": {
       "Acertos": "Previsões corretas dentro da amostra apresentada.",
+      "Acertos GREEN": "Vitórias GREEN divididas pelas vitórias e derrotas GREEN liquidadas.",
+      "Acertos Guerra": "Vitórias do PAPER manual divididas pelas vitórias e derrotas manuais liquidadas.",
       "Análises falhadas": "Análises que falharam na última execução conhecida.",
+      "Apostas resolvidas": "Entradas com resultado final conhecido no universo indicado; GREEN e Guerra permanecem separados.",
       "Brier": "Erro quadrático médio das probabilidades. Menor é melhor; leia com o N.",
       "Brier Fenzobot": "Brier do Fenzobot calculado apenas na amostra emparelhada.",
       "Brier mercado": "Brier do mercado calculado apenas na amostra emparelhada.",
@@ -50722,6 +50725,7 @@
       "Eventos distintos": "Eventos canónicos distintos cobertos pelas observações.",
       "Excluídas da simulação": "Legs ligadas ex ante excluídas por odd ou resultado inválido.",
       "Exposição pendente GREEN": "€10 por cada leg GREEN válida ainda sem settlement.",
+      "Exposição pendente Guerra": "€10 por cada entrada manual ainda em aberto; é uma projeção, não dinheiro real.",
       "Fase": "Última fase do workflow registada na telemetria.",
       "Fenzobot Brier": "Erro quadrático das probabilidades do Fenzobot. Menor é melhor; compare na mesma amostra.",
       "Fenzobot Log Loss": "Log loss do Fenzobot na mesma amostra. Menor é melhor.",
@@ -50763,16 +50767,19 @@
       "Processados": "Jogos efetivamente processados nessa execução.",
       "ROI": "Resultado dividido pelo stake da fonte; não é o ROI da simulação fixa.",
       "ROI GREEN": "Resultado GREEN realizado dividido pela stake resolvida; não inclui exposição pendente.",
+      "ROI Guerra": "Resultado projetado dividido pela stake resolvida projetada do PAPER manual.",
       "ROI stake fixa": "Resultado simulado dividido pelo total apostado nas legs concluídas.",
       "RapidAPI calls": "Chamadas RapidAPI da execução; não é o saldo mensal restante.",
       "Relatórios falhados": "Relatórios cuja geração falhou na última execução conhecida.",
       "Resultado GREEN": "Lucro ou prejuízo realizado da simulação de €10 por leg GREEN válida e liquidada.",
+      "Resultado Guerra": "Projeção determinística de €10 multiplicada pelas unidades agregadas do PAPER manual; não é dinheiro real.",
       "Resultado acumulado": "Lucro/prejuízo simulado com €10 por leg válida liquidada; não usa stake real.",
       "Sem snapshot elegível": "Identidades elegíveis sem ligação segura por colisão, key ausente ou identidade insuficiente.",
       "Snapshots": "Fotografias pré-jogo persistidas em instantes específicos; não equivalem necessariamente a jogos.",
       "Snapshots criados": "Fotografias realmente first-write persistidas dentro da janela; nunca reconstruídas ex post.",
       "Snapshots liquidados": "Snapshots criados na janela que já têm vencedor bilateralmente validado.",
       "Stake resolvida GREEN": "€10 por cada leg GREEN válida concluída, incluindo voids.",
+      "Stake resolvida Guerra": "€10 por cada entrada manual liquidada no agregado público da Sheet 22Bet.",
       "Só Moneyline": "Underdogs com apenas a leg Moneyline reconhecida.",
       "Só handicap +": "Underdogs com apenas o handicap positivo reconhecido.",
       "Taxa": "Percentagem de acertos observada; deve ser lida com N e intervalo.",
@@ -50805,6 +50812,7 @@
       "MARKET_MEMORY": "Mostra as observações de odds já recolhidas e a cobertura temporal disponível. Closing comparável exige uma observação válida anterior ao início; não é automaticamente CLV da 22Bet.",
       "PAIRED_COMPARISON": "Compara mercado e Fenzobot exatamente nos mesmos snapshots elegíveis. Scores menores são melhores, mas uma diferença nesta amostra não prova edge.",
       "PAPER_22BET": "Resume apenas agregados da folha manual 22Bet. Não publica nomes, snapshot keys nem linhas individuais.",
+      "PAPER_RESULTS_V1": "Compara descritivamente dois universos PAPER independentes. GREEN usa a monetização automática; Guerra usa o resumo manual total da Sheet 22Bet. Os resultados nunca são somados.",
       "PAPER_TECHNICAL": "Resume entradas PAPER geradas pelas regras automáticas existentes. Não representa dinheiro real e permanece separado da seleção manual GUERRA.",
       "REPORT_HISTORY": "Compara o desempenho observado das versões com divergência ou alinhamento. Leia sempre a taxa com N e intervalo; amostras pequenas não demonstram vantagem futura.",
       "SNAPSHOT_RECONCILIATION_V1": "Reconcilia jogos, versões, identidades elegíveis e snapshots numa janela factual. Colisão significa que o provider reutilizou a mesma key para jogadores diferentes; não é ausência silenciosa nem autoriza backfill.",
@@ -51051,6 +51059,18 @@
         "yield_pct": null
       }
     },
+    "flat_stake_projection": {
+      "basis": "paper_22bet.summary",
+      "label": "Simulação €10 por aposta a partir das unidades do PAPER manual",
+      "net_profit_eur": 140.0,
+      "pending_entries": 0,
+      "pending_exposure_eur": 0.0,
+      "resolved_stake_eur": 520.0,
+      "roi_pct": 26.923,
+      "settled_entries": 52,
+      "stake_per_entry_eur": 10.0,
+      "status": "AVAILABLE"
+    },
     "losses": 18,
     "pending": 0,
     "pushes": 0,
@@ -51064,6 +51084,15 @@
     "win_rate_pct": 65.385,
     "wins": 34,
     "yield_pct": null
+  },
+  "paper_results_comparison_v1": {
+    "change_id": "CHANGE-2026-09-23-051",
+    "disclaimer": "Amostras diferentes; comparação descritiva, não prova de desempenho futuro.",
+    "green_win_rate_pct": 68.0,
+    "guerra_win_rate_pct": 65.385,
+    "profit_is_never_aggregated": true,
+    "statement": "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do Guerra apresenta maior ROI e resultado acumulado, com menos apostas.",
+    "status": "AVAILABLE"
   },
   "paper_technical": {
     "average_odd": 1.559,
@@ -51140,7 +51169,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "ecc49d82dac3231e3c5cca5f147bf39e41054c14bf98971be73b52d637d46274",
+  "semantic_fingerprint": "d09b58d631e28c61354b096a31c9b2b43af6ef064c4a4f500c5b327f50a38c1b",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 18,
