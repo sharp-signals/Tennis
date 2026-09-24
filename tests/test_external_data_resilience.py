@@ -142,14 +142,14 @@ class FixtureResilienceTests(unittest.TestCase):
         info = {
             10: {"tier": "ATP 500"},
             20: {"tier": "WTA 250"},
-            99: {"name": "Winston-Salem", "tier": "ATP 250"},
+            99: {"name": "Exceção sintética", "tier": "Tier Experimental"},
         }
         with patch.object(fetch_data, "_fetch_extend_upcoming_events", return_value=events), \
              patch.object(fetch_data, "FORCED_TOURNAMENT_IDS", forced), \
              patch.object(fetch_data, "get_tournament_info", side_effect=lambda tournament_id, _tour: info[tournament_id]):
             actual = fetch_data.discover_tracked_tournaments()
 
-        self.assertEqual(actual, {10: "atp", 99: "atp"})
+        self.assertEqual(actual, {10: "atp", 20: "wta", 99: "atp"})
 
     def test_upcoming_400_with_pagination_retries_without_query_params(self):
         """A mudança de contrato da RapidAPI não pode parecer calendário vazio."""

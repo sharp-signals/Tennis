@@ -27,14 +27,21 @@
 - [ ] **Erste Bank Open - Vienna** (ATP 500) — Hard indoor — **~26 de outubro**
 - [ ] **Rolex Paris Masters** (Masters 1000) — Hard indoor — **~2 a 8 de novembro**
 
-## Fora do âmbito atual (não seguimos, por decisão já tomada)
+## Fora do âmbito atual
 
 - ATP Finals - Turin (tier "Finals", não é Grand Slam/Masters/500 — fora
   de `ALLOWED_TOURNAMENT_TIERS`; podes acrescentar se quiseres alargar o
   âmbito no futuro)
-- Todos os ATP 250 do calendário (Winston-Salem, Los Cabos, Almaty,
-  Bruxelas, Lyon, Estocolmo, etc.) — excluídos desde a decisão de âmbito
-  de 15/07/2026 (falta de odds fiáveis nesse nível)
+
+### Contexto histórico SUPERSEDED
+
+Todos os ATP 250 estiveram excluídos desde a decisão de âmbito de 15/07/2026
+porque a antiga Odds API não oferecia cobertura fiável nesse nível.
+
+**SUPERSEDED por CHANGE-2026-09-24-052:** ATP/WTA 250 passaram a integrar a
+cobertura normal após adoção do contrato operacional RapidAPI recent-odds.
+Isto alarga a descoberta de torneios, mas não garante pricing nem PAPER: sem
+quote operacional válida, esses caminhos continuam bloqueados fail-closed.
 
 ## Nota sobre precisão das datas
 
