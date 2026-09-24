@@ -27221,5 +27221,235 @@
     "llm_provider_invocations": 6,
     "duration_seconds": 42.151,
     "llm_estimated_cost_usd": 0.0
+  },
+  {
+    "timestamp": "2026-09-24T05:33:52+00:00",
+    "status": "success",
+    "phase": "complete",
+    "fixtures_discovered_by_tour": {
+      "atp": 0,
+      "wta": 6
+    },
+    "eligible": 5,
+    "eligible_by_tour": {
+      "atp": 0,
+      "wta": 5
+    },
+    "post_identity_eligible_by_tour": {
+      "atp": 0,
+      "wta": 5
+    },
+    "event_identity": {
+      "fallback_attempt_cap_per_match": 6,
+      "by_tour": {
+        "wta": {
+          "matches": 5,
+          "verified": 5,
+          "unverified": 0,
+          "rejected": 0,
+          "lookup_attempts": 1,
+          "fallback_calls": 1,
+          "cache_hits": 2,
+          "cache_misses": 1,
+          "index_resolutions": 2,
+          "persistent_cache_hits": 2,
+          "in_run_cache_hits": 0,
+          "fallback_after_miss": 1,
+          "unavailable_by_reason": {},
+          "shared_index_calls": 1
+        }
+      },
+      "matches": [
+        {
+          "match_key": "805",
+          "tour": "wta",
+          "players": [
+            "Elise Mertens",
+            "Maja Chwalinska"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "verified_persistent",
+          "resolution_path": "persistent_cache",
+          "cache_status": "HIT",
+          "event_identity_validation_basis": "EXACT_NAMES"
+        },
+        {
+          "match_key": "806",
+          "tour": "wta",
+          "players": [
+            "Maria Sakkari",
+            "Nao Hibino"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "verified_persistent",
+          "resolution_path": "persistent_cache",
+          "cache_status": "HIT",
+          "event_identity_validation_basis": "EXACT_NAMES"
+        },
+        {
+          "match_key": "821",
+          "tour": "wta",
+          "players": [
+            "Xinyu Wang",
+            "Joanna Garland"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "831",
+          "tour": "wta",
+          "players": [
+            "Tatiana Prozorova",
+            "Alexandra Eala"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "837",
+          "tour": "wta",
+          "players": [
+            "Mirra Andreeva",
+            "Leylah Annie Fernandez"
+          ],
+          "lookup_attempts": 1,
+          "identity_api_calls": 1,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "VERIFIED",
+          "identity_source": "bounded_event_get:fixture_exact_direct",
+          "event_identity_validation_basis": "EXACT_NAMES",
+          "attempted_methods": [
+            "fixture_exact_direct"
+          ]
+        }
+      ],
+      "cache_hit_rate": 0.6667
+    },
+    "incremental_candidates": 5,
+    "incremental_process_targets": 5,
+    "incremental_skipped": 0,
+    "incremental_reasons": {
+      "full_pre_live_run": 5
+    },
+    "llm_mode": "disabled",
+    "unresolved_historical_players": 0,
+    "unresolved_historical_matches": 0,
+    "unresolved_historical_samples": [],
+    "processed": 5,
+    "analysis_failed": 0,
+    "processing_ratio": 1.0,
+    "analysis_error_counts": {},
+    "analysis_error_samples": [],
+    "market_coverage_by_tour": {
+      "atp": {
+        "available": 0,
+        "unavailable": 0,
+        "unavailable_by_reason": {}
+      },
+      "wta": {
+        "available": 5,
+        "unavailable": 0,
+        "unavailable_by_reason": {}
+      }
+    },
+    "report_data_status_by_tour": {
+      "atp": {
+        "complete": 0,
+        "degraded": 0
+      },
+      "wta": {
+        "complete": 5,
+        "degraded": 0
+      }
+    },
+    "rapidapi_calls_per_processed": 8.6,
+    "snapshot_reconciliation": {
+      "status": "HEALTHY",
+      "counts": {
+        "linked": 5,
+        "collisions": 0,
+        "unlinked": 0
+      },
+      "reason_codes": {
+        "CANONICAL_MATCH_INSTANCE_ID_MATCH": 5
+      },
+      "time_tolerance_hours": 48
+    },
+    "reports_ok": 5,
+    "reports_failed": 0,
+    "telegram_chunks": 1,
+    "rapidapi_calls": 43,
+    "rapidapi_calls_by_endpoint": {
+      "/tennis/v2/atp/fixtures/tournament/21348": 1,
+      "/tennis/v2/extend/api/event/get/Mirra%20Andreeva/Leylah%20Annie%20Fernandez/2026-09-25": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/4017212": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/4017213": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/4020573": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/4025407": 1,
+      "/tennis/v2/extend/api/event/recent-odds/get/4030937": 1,
+      "/tennis/v2/extend/api/events/upcoming/wta": 1,
+      "/tennis/v2/h2h/recent-stats/wta/49081": 1,
+      "/tennis/v2/ms-api/upcoming/matches/atp": 3,
+      "/tennis/v2/ms-api/upcoming/matches/wta": 2,
+      "/tennis/v2/wta/fixtures/tournament/16747": 1,
+      "/tennis/v2/wta/h2h/matches/13351/43323/": 1,
+      "/tennis/v2/wta/h2h/matches/13541/13937/": 1,
+      "/tennis/v2/wta/h2h/matches/47152/47998/": 1,
+      "/tennis/v2/wta/h2h/matches/72881/67792/": 1,
+      "/tennis/v2/wta/h2h/matches/77934/49081/": 1,
+      "/tennis/v2/wta/h2h/stats/13351/43323/": 1,
+      "/tennis/v2/wta/h2h/stats/13541/13937/": 1,
+      "/tennis/v2/wta/h2h/stats/47152/47998/": 1,
+      "/tennis/v2/wta/h2h/stats/72881/67792/": 1,
+      "/tennis/v2/wta/h2h/stats/77934/49081/": 1,
+      "/tennis/v2/wta/player/past-matches/13351": 1,
+      "/tennis/v2/wta/player/past-matches/13541": 1,
+      "/tennis/v2/wta/player/past-matches/13937": 1,
+      "/tennis/v2/wta/player/past-matches/43323": 1,
+      "/tennis/v2/wta/player/past-matches/47152": 1,
+      "/tennis/v2/wta/player/past-matches/47998": 1,
+      "/tennis/v2/wta/player/past-matches/49081": 1,
+      "/tennis/v2/wta/player/past-matches/67792": 1,
+      "/tennis/v2/wta/player/past-matches/72881": 1,
+      "/tennis/v2/wta/player/past-matches/77934": 1,
+      "/tennis/v2/wta/ranking/singles/": 1,
+      "/tennis/v2/wta/tournament/info/13017": 1,
+      "/tennis/v2/wta/tournament/info/14522": 1,
+      "/tennis/v2/wta/tournament/info/14864": 1,
+      "/tennis/v2/wta/tournament/info/15206": 1,
+      "/tennis/v2/wta/tournament/info/15463": 1,
+      "/tennis/v2/wta/tournament/info/16721": 1,
+      "/tennis/v2/wta/tournament/info/16725": 1
+    },
+    "rapidapi_calls_by_endpoint_family": {
+      "event_identity": 2,
+      "fixture_discovery": 7,
+      "market_odds": 5,
+      "statistical_enrichment": 22,
+      "tournament_metadata": 7
+    },
+    "llm_calls": 5,
+    "llm_external_requests": 0,
+    "llm_provider_invocations": 5,
+    "duration_seconds": 34.883,
+    "llm_estimated_cost_usd": 0.0
   }
 ]
