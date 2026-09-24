@@ -724,7 +724,7 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(actual[0]["tournament_name"], "Lisboa")
         self.assertEqual(actual[0]["surface"], "Clay")
 
-    def test_explicit_override_includes_only_the_forced_atp_250(self):
+    def test_atp_250_tiers_are_included_without_explicit_override(self):
         matches = [
             {"id": 1, "tournamentId": 21348, "_tour": "atp"},
             {"id": 2, "tournamentId": 99999, "_tour": "atp"},
@@ -733,12 +733,12 @@ class MatchInputTests(unittest.TestCase):
             21348: {"name": "Winston-Salem Open", "surface": "Hard", "tier": "ATP 250"},
             99999: {"name": "Outro ATP 250", "surface": "Hard", "tier": "ATP 250"},
         }
-        with patch.object(main, "FORCED_TOURNAMENT_IDS", {21348: "atp"}), \
+        with patch.object(main, "FORCED_TOURNAMENT_IDS", {}), \
              patch.object(main.fetch_data, "get_tournament_info",
                           side_effect=lambda tournament_id, _tour: responses[tournament_id]):
             actual = main._filter_and_enrich_with_tournament_info(matches)
 
-        self.assertEqual([match["id"] for match in actual], [1])
+        self.assertEqual([match["id"] for match in actual], [1, 2])
         self.assertEqual(actual[0]["tournament_name"], "Winston-Salem Open")
         self.assertEqual(actual[0]["tier"], "ATP 250")
 

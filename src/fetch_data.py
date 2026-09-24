@@ -6147,8 +6147,8 @@ def discover_tracked_tournaments() -> dict[int, str]:
         aceites.update(TRACKED_TOURNAMENT_IDS)
 
     # Overrides explícitos não dependem de aparecer no feed global nem do
-    # respetivo tier. É isto que permite Winston-Salem sem reativar todos os
-    # ATP 250. O filtro final em main.py aplica a mesma exceção defensiva.
+    # respetivo tier. O mecanismo fica disponível para exceções futuras; o
+    # filtro final em main.py aplica a mesma exceção defensiva.
     for tid, tour in FORCED_TOURNAMENT_IDS.items():
         if tid not in aceites:
             info = get_tournament_info(tid, tour) or {}

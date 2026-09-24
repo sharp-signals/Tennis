@@ -53,16 +53,16 @@ ALLOWED_TOURNAMENT_TIERS = {
     "Grand Slam",
     "ATP Masters 1000",
     "ATP 500",
+    "ATP 250",
     "WTA 1000",   # reativado 28/07/2026 (H2H rico via matchstat + Sackmann de volta)
     "WTA 500",    # valor exato confirmado via getTournamentInfo no id 16738
+    "WTA 250",
 }
-# Nível 250 (ATP/WTA) ficou de fora por decisão explícita: a Odds API não
-# tem cobertura fiável de mercado para este nível (confirmado na prática
-# com Umag, Gstaad, Bastad, Athens, Iasi — nenhum apareceu em 3 fornecedores
-# de odds diferentes testados). Como as odds de mercado são o propósito
-# central do bot, preferimos garantir odds em todos os jogos analisados a
-# cobrir mais torneios sem essa peça. Se no futuro aparecer uma fonte de
-# odds fiável para o nível 250, é só acrescentar "ATP 250"/"WTA 250" aqui.
+# CHANGE-2026-09-24-052: ATP/WTA 250 integram a cobertura main-tour normal.
+# A antiga exclusão por cobertura da The Odds API ficou SUPERSEDED pelo
+# contrato operacional RapidAPI recent-odds do CHANGE-050. A inclusão do
+# torneio não garante pricing/PAPER: esses caminhos mantêm todos os gates
+# fail-closed de identidade, proveniência e Market Quote Integrity.
 # Tiers conhecidos que ficam sempre de fora (ITF/Challenger — dados mais
 # esparsos, conforme decidido na fase de planeamento).
 EXCLUDED_TOURNAMENT_TIERS = {"Future", "Challenger"}
@@ -108,11 +108,9 @@ TRACKED_TOURNAMENT_IDS = {
 
 # Exceções deliberadas à política global de tiers. Estes IDs são sempre
 # combinados com a descoberta automática e podem ultrapassar o filtro de
-# ALLOWED_TOURNAMENT_TIERS. Manter esta lista curta: incluir aqui um ATP 250
-# não ativa os restantes torneios desse nível.
-FORCED_TOURNAMENT_IDS = {
-    21348: "atp",  # Winston-Salem Open (ATP 250), 2026
-}
+# ALLOWED_TOURNAMENT_TIERS. Manter esta lista curta e reservada a exceções
+# explícitas que não possam ser expressas pela política normal de tiers.
+FORCED_TOURNAMENT_IDS = {}
 
 # Quantos jogos pedir por página do getTournamentFixtures (o default da
 # API é 10; pedimos mais para reduzir o número de páginas/pedidos).
