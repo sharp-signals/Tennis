@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import market_ledger, market_memory_report
+from . import market_ledger, market_memory_report, tournament_policy
 
 CONTRACT = "PAIRED_PRICING_MARKET_V1"
 CHANGE_ID = "CHANGE-2026-09-08-030"
@@ -99,7 +99,9 @@ def paired_comparison(snapshots: Any, observations: Any) -> dict:
         capture = timestamp(prov.get("captured_at_utc"))
         oe, oc, source = mapping(obs.get("event")), mapping(obs.get("capture")), mapping(obs.get("source"))
         reason = None
-        if not isinstance(key, str) or not key or not isinstance(event, str):
+        if tournament_policy.is_experimental_snapshot(s):
+            reason = "EXPERIMENTAL_TIER_EXCLUDED"
+        elif not isinstance(key, str) or not key or not isinstance(event, str):
             reason = "IDENTITY_UNAVAILABLE"
         elif keys[key] != 1 or events[event] != 1:
             reason = "DUPLICATE_IDENTITY"

@@ -44,6 +44,51 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(r['delta']['brier_score'], -.09)
         self.assertEqual(r['mode'], 'RETROSPECTIVE_DESCRIPTIVE')
 
+    def test_experimental_snapshot_is_excluded_from_standard_paired_comparison(self):
+        standard, standard_observation = fixtures()
+        # Legacy-safe: tier isolado, sem tournament_coverage, mantém o contrato anterior.
+        standard['tier'] = 'Challenger 125'
+        standard['validation'] = {'cohorts': {'GREEN_STRONG_V1': {
+            'source': {'code_revision': 'standard-revision'},
+        }}}
+        baseline = audit.paired_comparison([standard], [standard_observation])
+        self.assertEqual(baseline['eligible_forecasts'], 1)
+        self.assertEqual(baseline['sample_size'], 1)
+
+        experimental = copy.deepcopy(standard)
+        experimental.update({
+            'key': 'atp:125',
+            'event_key': 'atp:125',
+            'entry_market_observation_id': 'quote-125',
+            'tournament_coverage': {'mode': 'EXPERIMENTAL_REPORT_ONLY'},
+        })
+        experimental['pricing'].update(
+            model_version='challenger-experimental',
+            configuration_fingerprint='challenger-config',
+        )
+        experimental['validation']['cohorts']['GREEN_STRONG_V1']['source'][
+            'code_revision'
+        ] = 'challenger-revision'
+        experimental_observation = copy.deepcopy(standard_observation)
+        experimental_observation['observation_id'] = 'quote-125'
+        experimental_observation['event']['event_key'] = 'atp:125'
+
+        combined = audit.paired_comparison(
+            [standard, experimental],
+            [standard_observation, experimental_observation],
+        )
+        self.assertEqual(combined['total_snapshots'], 2)
+        self.assertEqual(combined['eligible_forecasts'], 1)
+        self.assertEqual(combined['sample_size'], baseline['sample_size'])
+        self.assertEqual(combined['market'], baseline['market'])
+        self.assertEqual(combined['fenzobot'], baseline['fenzobot'])
+        self.assertEqual(combined['delta'], baseline['delta'])
+        self.assertEqual(combined['exclusions']['EXPERIMENTAL_TIER_EXCLUDED'], 1)
+        self.assertEqual(combined['by_pricing_version'], baseline['by_pricing_version'])
+        self.assertEqual(combined['by_code_revision'], baseline['by_code_revision'])
+        self.assertNotIn('challenger-experimental', json.dumps(combined['by_pricing_version']))
+        self.assertNotIn('challenger-revision', json.dumps(combined['by_code_revision']))
+
     def test_outcome_does_not_change_eligibility(self):
         s, o = fixtures()
         before = audit.paired_comparison([s], [o])
