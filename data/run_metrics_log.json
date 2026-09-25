@@ -28933,5 +28933,43 @@
     "llm_provider_invocations": 0,
     "duration_seconds": 3.017,
     "llm_estimated_cost_usd": 0.0
+  },
+  {
+    "timestamp": "2026-09-25T10:51:20+00:00",
+    "status": "no_eligible_matches",
+    "phase": "complete",
+    "fixtures_discovered_by_tour": {
+      "atp": 11,
+      "wta": 6
+    },
+    "eligible": 0,
+    "eligible_by_tour": {
+      "atp": 0,
+      "wta": 0
+    },
+    "rapidapi_calls": 8,
+    "rapidapi_calls_by_endpoint": {
+      "/tennis/v2/atp/fixtures/tournament/21351": 1,
+      "/tennis/v2/atp/fixtures/tournament/21352": 1,
+      "/tennis/v2/ms-api/upcoming/matches/atp": 2,
+      "/tennis/v2/ms-api/upcoming/matches/wta": 1,
+      "/tennis/v2/wta/fixtures/tournament/16747": 1,
+      "/tennis/v2/wta/fixtures/tournament/16748": 1,
+      "/tennis/v2/wta/tournament/info/17262": 1
+    },
+    "rapidapi_calls_by_endpoint_family": {
+      "fixture_discovery": 7,
+      "tournament_metadata": 1
+    },
+    "event_identity": {
+      "fallback_attempt_cap_per_match": 6,
+      "by_tour": {},
+      "matches": [],
+      "cache_hit_rate": null
+    },
+    "llm_external_requests": 0,
+    "llm_provider_invocations": 0,
+    "duration_seconds": 2.787,
+    "llm_estimated_cost_usd": 0.0
   }
 ]
