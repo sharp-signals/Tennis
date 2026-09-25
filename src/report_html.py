@@ -62,6 +62,10 @@ REPORT_IDENTITY_STATUS_META_NAME = "fenzobot-identity-status"
 REPORT_IDENTITY_REASON_META_NAME = "fenzobot-identity-reason-code"
 REPORT_DECISION_PRESENTATION = {
     "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
+    "EDGE_POSITIVE_EXPERIMENTAL_TIER": (
+        "EDGE POSITIVO — CHALLENGER 125 EXPERIMENTAL / SEM PAPER",
+        "zero", "🟡", "YELLOW",
+    ),
     "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": (
         "EDGE POSITIVO — COBERTURA INSUFICIENTE PARA PAPER", "zero", "🟡", "YELLOW",
     ),
@@ -2797,6 +2801,10 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .photo-credits {{ margin-top:18px; color:var(--dim); font-size:10px; line-height:1.6; }}
 .photo-credits summary {{ cursor:pointer; width:max-content; max-width:100%; }}
 .photo-credits a {{ color:var(--dim); text-decoration:underline; }}
+.experimental-tier-notice {{ margin:10px 0 16px;padding:10px 13px;border:1px solid
+  rgba(224,163,74,.45);border-radius:9px;background:rgba(224,163,74,.08);
+  color:var(--dim);font-size:11px;line-height:1.55; }}
+.experimental-tier-notice b {{ color:var(--amber);letter-spacing:.04em; }}
 @media(max-width:640px) {{
   .mh-player {{ gap:7px; align-items:flex-start; }}
   .mh-player-photo {{ width:52px; height:52px; flex-basis:52px; }}
@@ -2974,6 +2982,20 @@ def _mod_photo_credits(payload):
             f'<div>{"<br>".join(credits)}</div></details>')
 
 
+def _mod_experimental_tier_notice(payload):
+    """Badge factual discreto; EXPERIMENT não é erro nem degradação."""
+    policy = _d(payload.get("tournament_coverage"))
+    if policy.get("mode") != "EXPERIMENTAL_REPORT_ONLY":
+        return ""
+    return (
+        '<div class="experimental-tier-notice">'
+        f'<b>{_esc(policy.get("label") or "COBERTURA EXPERIMENTAL")}</b> · '
+        'Cobertura e pricing em avaliação. Este jogo não é promovido para '
+        'PAPER ou GREEN nesta fase, mesmo quando existe edge experimental.'
+        '</div>'
+    )
+
+
 def _mod_decision_box(payload):
     """Decisão operacional única, sem reinterpretar o motor no HTML."""
     decision = _d(payload.get("prelive_decision"))
@@ -2990,7 +3012,11 @@ def _mod_decision_box(payload):
     )
     if state == "EDGE_POSITIVE" and identity_blocks_paper:
         label = "EDGE POSITIVO — IDENTIDADE AINDA NÃO ELEGÍVEL PARA PAPER"
-    if state in {"EDGE_POSITIVE", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT"}:
+    if state in {
+        "EDGE_POSITIVE",
+        "EDGE_POSITIVE_COVERAGE_INSUFFICIENT",
+        "EDGE_POSITIVE_EXPERIMENTAL_TIER",
+    }:
         market = _d(decision.get("market"))
         edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
         body = (
@@ -5452,6 +5478,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
+    partes.append(_mod_experimental_tier_notice(payload))
     partes.append(_mod_handicap_reference_header(payload))
     partes.append(_mod_decision_box(payload))
     partes.append(_mod_green_strong_candidate(payload))

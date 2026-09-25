@@ -33,6 +33,15 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
         except (TypeError, ValueError):
             coverage_text = "N/D"
         return 2.5, "🟡", f"{a} vs {b} — edge positivo {edge_text}, mas cobertura {coverage_text} insuficiente para PAPER"
+    if state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":
+        reason = html.escape(str(
+            (decision.get("experimental_tier_gate") or {}).get("reason_code")
+            or "EXPERIMENTAL_TIER"
+        ))
+        return 2.5, "🟡", (
+            f"{a} vs {b} — edge positivo {edge_text} · Challenger 125 EXPERIMENTAL "
+            f"· sem PAPER ({reason})"
+        )
     if state == "EDGE_NEGATIVE":
         return 2, "🔴", f"{a} vs {b} — edge negativo {edge_text} em {player} · excluído"
     if state == "EDGE_ZERO":
@@ -48,5 +57,7 @@ def state_counts(payloads) -> dict[str, int]:
     counts = {"EDGE_POSITIVE": 0, "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "REPORT_NULL": 0}
     for payload in payloads:
         state = (payload.get("prelive_decision") or {}).get("state")
+        if state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":
+            state = "EDGE_POSITIVE_COVERAGE_INSUFFICIENT"
         counts[state if state in counts else "REPORT_NULL"] += 1
     return counts

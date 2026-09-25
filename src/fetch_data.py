@@ -41,6 +41,7 @@ import re
 import threading
 import time
 import unicodedata
+from contextlib import contextmanager
 from urllib.parse import quote, urlparse
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -131,6 +132,8 @@ _RAPIDAPI_HEADERS = {
 _RAPIDAPI_CALL_COUNT = {"n": 0}
 _RAPIDAPI_ENDPOINT_CALLS: dict[str, int] = {}
 _RAPIDAPI_PURPOSE_CALLS: dict[str, int] = {}
+_RAPIDAPI_CONTEXT_ENDPOINT_CALLS: dict[str, dict[str, int]] = {}
+_RAPIDAPI_CALL_CONTEXT = threading.local()
 _RAPIDAPI_IDENTITY_SHARED_CALLS: dict[str, int] = {}
 _RAPIDAPI_RECORDED_TODAY = {"n": 0}
 _RAPIDAPI_BUDGET_EXCEEDED = {"value": False}
@@ -261,6 +264,9 @@ def _rapidapi_get(url, *, rapidapi_purpose: str = "operational", **kwargs):
             _reserve_rapidapi_call(purpose=rapidapi_purpose)
             endpoint = urlparse(str(url)).path
             _RAPIDAPI_ENDPOINT_CALLS[endpoint] = _RAPIDAPI_ENDPOINT_CALLS.get(endpoint, 0) + 1
+            context = str(getattr(_RAPIDAPI_CALL_CONTEXT, "label", None) or "shared")
+            context_endpoints = _RAPIDAPI_CONTEXT_ENDPOINT_CALLS.setdefault(context, {})
+            context_endpoints[endpoint] = context_endpoints.get(endpoint, 0) + 1
             elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
             if elapsed < RAPIDAPI_MIN_INTERVAL:
                 time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
@@ -305,26 +311,67 @@ def get_rapidapi_endpoint_counts() -> dict[str, int]:
     return dict(sorted(_RAPIDAPI_ENDPOINT_CALLS.items()))
 
 
-def get_rapidapi_endpoint_family_counts() -> dict[str, int]:
+def _rapidapi_endpoint_family(endpoint: str) -> str:
+    if "/extend/api/event/get/" in endpoint or "/extend/api/events/upcoming/" in endpoint:
+        return "event_identity"
+    if "/extend/api/" in endpoint and "odds" in endpoint:
+        return "market_odds"
+    if "/ms-api/upcoming/matches/" in endpoint or "/fixtures/tournament/" in endpoint:
+        return "fixture_discovery"
+    if "/tournament/info/" in endpoint:
+        return "tournament_metadata"
+    if any(token in endpoint for token in (
+        "/h2h/", "/player/past-matches/", "/ranking/singles/",
+        "/player/perf-breakdown/", "/tournament/player/",
+    )):
+        return "statistical_enrichment"
+    return "other"
+
+
+def _endpoint_family_counts(endpoints: dict[str, int]) -> dict[str, int]:
     families: dict[str, int] = {}
-    for endpoint, calls in _RAPIDAPI_ENDPOINT_CALLS.items():
-        if "/extend/api/event/get/" in endpoint or "/extend/api/events/upcoming/" in endpoint:
-            family = "event_identity"
-        elif "/extend/api/" in endpoint and "odds" in endpoint:
-            family = "market_odds"
-        elif "/ms-api/upcoming/matches/" in endpoint or "/fixtures/tournament/" in endpoint:
-            family = "fixture_discovery"
-        elif "/tournament/info/" in endpoint:
-            family = "tournament_metadata"
-        elif any(token in endpoint for token in (
-            "/h2h/", "/player/past-matches/", "/ranking/singles/",
-            "/player/perf-breakdown/", "/tournament/player/",
-        )):
-            family = "statistical_enrichment"
-        else:
-            family = "other"
+    for endpoint, calls in endpoints.items():
+        family = _rapidapi_endpoint_family(endpoint)
         families[family] = families.get(family, 0) + int(calls)
     return dict(sorted(families.items()))
+
+
+def get_rapidapi_endpoint_family_counts() -> dict[str, int]:
+    return _endpoint_family_counts(_RAPIDAPI_ENDPOINT_CALLS)
+
+
+@contextmanager
+def rapidapi_call_context(label: object):
+    """Atribui chamadas feitas pela thread atual a um tier ou fase.
+
+    Discovery e índices partilhados permanecem no bucket ``shared``; não são
+    duplicados artificialmente por jogo. O contexto nunca altera orçamento ou
+    comportamento das chamadas.
+    """
+    previous = getattr(_RAPIDAPI_CALL_CONTEXT, "label", None)
+    _RAPIDAPI_CALL_CONTEXT.label = str(label or "shared")
+    try:
+        yield
+    finally:
+        if previous is None:
+            try:
+                del _RAPIDAPI_CALL_CONTEXT.label
+            except AttributeError:
+                pass
+        else:
+            _RAPIDAPI_CALL_CONTEXT.label = previous
+
+
+def get_rapidapi_call_context_metrics() -> dict[str, dict]:
+    """Resumo agregado para comparar custo Challenger e main-tour."""
+    result = {}
+    for label, endpoints in sorted(_RAPIDAPI_CONTEXT_ENDPOINT_CALLS.items()):
+        copied = dict(sorted(endpoints.items()))
+        result[label] = {
+            "calls": sum(copied.values()),
+            "by_endpoint_family": _endpoint_family_counts(copied),
+        }
+    return result
 
 
 def get_rapidapi_purpose_counts() -> dict[str, int]:
@@ -394,6 +441,7 @@ def reset_rapidapi_call_count() -> None:
     _RAPIDAPI_CALL_COUNT["n"] = 0
     _RAPIDAPI_ENDPOINT_CALLS.clear()
     _RAPIDAPI_PURPOSE_CALLS.clear()
+    _RAPIDAPI_CONTEXT_ENDPOINT_CALLS.clear()
     _RAPIDAPI_IDENTITY_SHARED_CALLS.clear()
     _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS.clear()
     _RAPIDAPI_RECORDED_TODAY["n"] = _load_recorded_today_calls()
