@@ -99,6 +99,9 @@ def classify_snapshot(
         reasons.append("DECISION_STATE_NOT_EDGE_POSITIVE")
     if decision.get("paper_eligible") is not True:
         reasons.append("PAPER_NOT_ELIGIBLE")
+    experimental_gate = _mapping(decision.get("experimental_tier_gate"))
+    if experimental_gate.get("reason_code"):
+        reasons.append(str(experimental_gate["reason_code"]))
     if divergence.get("tipo") != "direcao":
         reasons.append("DIVERGENCE_TYPE_NOT_DIRECTION")
     if _mapping(divergence.get("classificacao")).get("nivel") != 3:

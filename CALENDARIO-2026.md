@@ -32,6 +32,9 @@
 - ATP Finals - Turin (tier "Finals", não é Grand Slam/Masters/500 — fora
   de `ALLOWED_TOURNAMENT_TIERS`; podes acrescentar se quiseres alargar o
   âmbito no futuro)
+- Challenger 100, Challenger 75, Challenger 50, Futures, ITF, Juniors e
+  restantes níveis inferiores continuam fora. Challenger 125 é a única
+  exceção e está em regime experimental report-only, sem PAPER/GREEN.
 
 ### Contexto histórico SUPERSEDED
 
@@ -42,6 +45,15 @@ porque a antiga Odds API não oferecia cobertura fiável nesse nível.
 cobertura normal após adoção do contrato operacional RapidAPI recent-odds.
 Isto alarga a descoberta de torneios, mas não garante pricing nem PAPER: sem
 quote operacional válida, esses caminhos continuam bloqueados fail-closed.
+
+Todos os Challengers estiveram excluídos por cobertura operacional ainda não
+demonstrada. Esse racional permanece válido para Challenger 100/75/50 e
+restantes níveis.
+
+**Parcialmente SUPERSEDED por CHANGE-2026-09-25-053:** apenas Challenger 125
+entra como EXPERIMENT para discovery, análise factual, relatórios e pricing
+quando o CHANGE-050 for integralmente satisfeito. PAPER e GREEN permanecem
+bloqueados, sem backfill nem identificação do Porto Open por nome/ID antigo.
 
 ## Nota sobre precisão das datas
 

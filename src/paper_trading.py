@@ -12,7 +12,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_integrity, market_ledger, match_identity_v2, snapshot_identity
+from . import (
+    market_integrity,
+    market_ledger,
+    match_identity_v2,
+    snapshot_identity,
+    tournament_policy,
+)
 
 
 SCHEMA_VERSION = 1
@@ -97,6 +103,10 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Cria uma entrada por mercado elegivel, sem alterar o payload."""
+    # Defesa final independente do chamador: tiers report-only podem mostrar
+    # pricing experimental, mas nunca persistem PAPER durante o experimento.
+    if tournament_policy.paper_block_reason(payload):
+        return []
     if not market_integrity.is_operational_pricing_payload(
         payload,
         require_pricing_contract=True,

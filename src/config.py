@@ -57,15 +57,34 @@ ALLOWED_TOURNAMENT_TIERS = {
     "WTA 1000",   # reativado 28/07/2026 (H2H rico via matchstat + Sackmann de volta)
     "WTA 500",    # valor exato confirmado via getTournamentInfo no id 16738
     "WTA 250",
+    "Challenger 125",
 }
 # CHANGE-2026-09-24-052: ATP/WTA 250 integram a cobertura main-tour normal.
 # A antiga exclusão por cobertura da The Odds API ficou SUPERSEDED pelo
 # contrato operacional RapidAPI recent-odds do CHANGE-050. A inclusão do
 # torneio não garante pricing/PAPER: esses caminhos mantêm todos os gates
 # fail-closed de identidade, proveniência e Market Quote Integrity.
-# Tiers conhecidos que ficam sempre de fora (ITF/Challenger — dados mais
-# esparsos, conforme decidido na fase de planeamento).
-EXCLUDED_TOURNAMENT_TIERS = {"Future", "Challenger"}
+# CHANGE-2026-09-25-053: Challenger 125 entra apenas em modo EXPERIMENT.
+# Pode atravessar discovery, análise factual, relatório e pricing quando
+# cumprir integralmente o CHANGE-050, mas permanece fail-closed para PAPER
+# e GREEN até uma promoção futura com CHANGE-ID próprio. Esta lista pequena
+# é a fonte única dessa separação; não usar nomes ou IDs de torneios.
+EXPERIMENTAL_REPORT_ONLY_TIERS = frozenset({"Challenger 125"})
+EXPERIMENTAL_TIER_PAPER_REASON_CODE = "EXPERIMENTAL_TIER_CHALLENGER_125"
+
+# Tiers conhecidos que continuam fora. O racional histórico de excluir todos
+# os Challengers fica preservado no CHANGE-053, mas é agora parcialmente
+# SUPERSEDED apenas para Challenger 125; 100/75/50 e os restantes níveis não
+# foram promovidos para cobertura.
+EXCLUDED_TOURNAMENT_TIERS = {
+    "Challenger",
+    "Challenger 100",
+    "Challenger 75",
+    "Challenger 50",
+    "Future",
+    "ITF",
+    "Juniors",
+}
 
 # Quantos dias (incluindo hoje) pedir ao getDateFixtures. 2 = hoje + amanhã.
 FIXTURES_LOOKAHEAD_DAYS = 2

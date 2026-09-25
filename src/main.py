@@ -45,6 +45,8 @@ from .config import (
     MATCH_PROCESSING_WORKERS,
     PROCESSING_FAILURE_BELOW_RATIO,
     PROCESSING_SUCCESS_MIN_RATIO,
+    RAPIDAPI_MAX_CALLS_PER_DAY,
+    RAPIDAPI_MAX_CALLS_PER_RUN,
     RECENT_FORM_MATCHES,
     RECENT_FORM_WINDOW_DAYS,
     RECENT_QUALITY_WINDOW_DAYS,
@@ -62,6 +64,7 @@ from . import green_strong_validation
 from . import dashboard
 from . import player_images
 from . import paper_trading
+from . import tournament_policy
 from . import incremental_runs
 from .analyze import analyze_match
 from .pricing import estimate_market_residual_pricing
@@ -1060,6 +1063,143 @@ def _apply_identity_persistence_gate(payload: dict) -> None:
     }
 
 
+def _experimental_tier_metrics(
+    discovered: list[dict],
+    process_targets: list[dict],
+    analyses: list[tuple[dict, dict]],
+) -> dict:
+    """Telemetria agregada do EXPERIMENT sem publicar identidades individuais."""
+    tier = "Challenger 125"
+    candidates = [item for item in discovered if item.get("tier") == tier]
+    identity_eligible = [item for item in process_targets if item.get("tier") == tier]
+    payloads = [payload for payload, _ in analyses if payload.get("tier") == tier]
+
+    identity: dict[str, int] = {}
+    for item in candidates:
+        status = str((item.get("_rapidapi_event_integrity") or {}).get("status") or "unverified")
+        identity[status] = identity.get(status, 0) + 1
+
+    report_status = {"complete": 0, "degraded": 0}
+    factor_available_counts: list[int] = []
+    missing_reasons: dict[str, int] = {}
+    market = {
+        "recent_odds_available": 0,
+        "recent_odds_unavailable": 0,
+        "bookmakers_observed": {},
+        "market_quote_integrity": {},
+        "operational_pricing_eligible": 0,
+        "unavailable_by_reason": {},
+    }
+    pricing = {"available": 0, "unavailable": 0}
+    potential_paper = 0
+    paper_reason_codes: dict[str, int] = {}
+    for payload in payloads:
+        status = "complete" if payload.get("report_data_status") == "COMPLETE" else "degraded"
+        report_status[status] += 1
+        available = 0
+        for family in (payload.get("data_coverage") or {}).values():
+            rows = family.values() if isinstance(family, dict) and "status" not in family else [family]
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if row.get("status") == "AVAILABLE":
+                    available += 1
+                elif row.get("reason"):
+                    reason = str(row["reason"])
+                    missing_reasons[reason] = missing_reasons.get(reason, 0) + 1
+        factor_available_counts.append(available)
+
+        if payload.get("market_odds_decimal"):
+            market["recent_odds_available"] += 1
+        else:
+            market["recent_odds_unavailable"] += 1
+            reason = str(payload.get("odds_unavailable_reason") or "unknown")
+            unavailable = market["unavailable_by_reason"]
+            unavailable[reason] = unavailable.get(reason, 0) + 1
+        bookmaker = payload.get("odds_bookmaker")
+        if bookmaker:
+            observed = market["bookmakers_observed"]
+            observed[str(bookmaker)] = observed.get(str(bookmaker), 0) + 1
+        integrity_status = str(
+            (payload.get("odds_market_integrity") or {}).get("status") or "UNAVAILABLE"
+        )
+        integrity = market["market_quote_integrity"]
+        integrity[integrity_status] = integrity.get(integrity_status, 0) + 1
+        market["operational_pricing_eligible"] += int(
+            payload.get("odds_operational_pricing_eligible") is True
+        )
+        pricing_available = bool((payload.get("pricing") or {}).get("available"))
+        pricing["available" if pricing_available else "unavailable"] += 1
+        gate = (payload.get("prelive_decision") or {}).get("experimental_tier_gate") or {}
+        if gate.get("would_be_paper_candidate") is True:
+            potential_paper += 1
+        reason = gate.get("reason_code")
+        if reason:
+            paper_reason_codes[str(reason)] = paper_reason_codes.get(str(reason), 0) + 1
+
+    call_context = fetch_data.get_rapidapi_call_context_metrics()
+    challenger_cost = call_context.get(tier, {"calls": 0, "by_endpoint_family": {}})
+    main_tour_calls = sum(
+        int(row.get("calls") or 0)
+        for label, row in call_context.items()
+        if label not in {tier, "shared"}
+    )
+    total_calls = fetch_data.get_rapidapi_call_count()
+    recorded_before_run = fetch_data.get_rapidapi_recorded_today_calls()
+    return {
+        "mode": "EXPERIMENT",
+        "tier": tier,
+        "discovery": {
+            "candidates_found": len(candidates),
+            "tournaments_accepted": len({
+                item.get("tournamentId") for item in candidates
+                if item.get("tournamentId") is not None
+            }),
+            "fixtures_found": len(candidates),
+            "fixtures_in_window": len(candidates),
+            "fixtures_post_identity": len(identity_eligible),
+            "games_processed": len(payloads),
+        },
+        "data": {
+            "reports": report_status,
+            "available_factor_counts": {
+                "min": min(factor_available_counts) if factor_available_counts else None,
+                "max": max(factor_available_counts) if factor_available_counts else None,
+                "average": (
+                    round(sum(factor_available_counts) / len(factor_available_counts), 2)
+                    if factor_available_counts else None
+                ),
+            },
+            "missing_reasons": dict(sorted(missing_reasons.items())),
+            "identity": dict(sorted(identity.items())),
+        },
+        "market": market,
+        "pricing": pricing,
+        "paper": {
+            "would_be_candidates": potential_paper,
+            "persisted": 0,
+            "blocked_by_reason": dict(sorted(paper_reason_codes.items())),
+        },
+        "cost": {
+            "rapidapi_calls_total": total_calls,
+            "challenger_125_attributed_calls": challenger_cost.get("calls", 0),
+            "challenger_125_calls_by_endpoint_family": challenger_cost.get(
+                "by_endpoint_family", {}
+            ),
+            "challenger_125_calls_per_game": (
+                round(float(challenger_cost.get("calls", 0)) / len(payloads), 3)
+                if payloads else None
+            ),
+            "main_tour_attributed_calls": main_tour_calls,
+            "shared_calls": (call_context.get("shared") or {}).get("calls", 0),
+            "run_limit_pct": round(100 * total_calls / RAPIDAPI_MAX_CALLS_PER_RUN, 3),
+            "daily_limit_pct": round(
+                100 * (recorded_before_run + total_calls) / RAPIDAPI_MAX_CALLS_PER_DAY, 3
+            ),
+        },
+    }
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
@@ -1831,6 +1971,7 @@ def _build_match_payload(match: dict) -> dict:
         payload.get("pricing"),
         payload.get("report_assessment"),
     )
+    tournament_policy.apply_experimental_paper_gate(payload)
     _apply_identity_persistence_gate(payload)
     if payload["prelive_decision"].get("conflict") == "both_sides_positive_edge":
         print(
@@ -1871,6 +2012,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         )
         level, flag = {
             "EDGE_POSITIVE": (3, "🟢"), "EDGE_NEGATIVE": (2, "🔴"),
+            "EDGE_POSITIVE_EXPERIMENTAL_TIER": (2.5, "🟡"),
             "EDGE_ZERO": (1, "⚪"), "PRICING_UNAVAILABLE": (0, "🟡"),
             "REPORT_NULL": (0, "⚫"),
         }.get(state, (0, "⚫"))
@@ -1893,6 +2035,11 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
                     f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
                     f"PAPER {(decision.get('market') or {}).get('market') or 'Moneyline'}"
                 )
+        elif state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":
+            line = html.escape(
+                f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
+                "Challenger 125 EXPERIMENTAL · sem PAPER"
+            )
         elif state == "REPORT_NULL":
             line = html.escape(f"Relatório nulo · {decision.get('reason') or 'dados insuficientes'}")
         elif state == "PRICING_UNAVAILABLE":
@@ -1998,8 +2145,12 @@ def run() -> None:
     windowed = _filter_matches_in_window(raw_matches)
     windowed = _filter_prelive_matches(windowed)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
+    tournament_eligible = list(eligible)
     run_metrics.update_context(
         eligible=len(eligible), eligible_by_tour=_tour_counts(eligible), phase="filtering",
+        challenger_125_experiment=_experimental_tier_metrics(
+            tournament_eligible, [], [],
+        ),
     )
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
@@ -2031,13 +2182,14 @@ def run() -> None:
     # API não permite verificar, mantemos o jogo factual, mas sem pricing.
     verified_eligible = []
     for match in eligible:
-        integrity = fetch_data.rapidapi_event_integrity(match)
+        with fetch_data.rapidapi_call_context(match.get("tier")):
+            integrity = fetch_data.rapidapi_event_integrity(match)
+        match["_rapidapi_event_integrity"] = integrity
         if integrity.get("status") == "rejected":
             print("[prelive] PRELIVE_EXCLUDED_EVENT_INTEGRITY "
                   f"id={match.get('id')} reason={integrity.get('reason')} "
                   f"event_id={integrity.get('event_id')}")
             continue
-        match["_rapidapi_event_integrity"] = integrity
         verified_eligible.append(match)
     eligible = verified_eligible
     run_metrics.update_context(
@@ -2082,7 +2234,8 @@ def run() -> None:
     def _process_one(match):
         stage = "payload"
         try:
-            payload = _build_match_payload(match)
+            with fetch_data.rapidapi_call_context(match.get("tier")):
+                payload = _build_match_payload(match)
             # Saltar a análise do Claude para SUPERFAVORITOS (odd <= 1.09):
             # a esse preço não há valor de mercado a observar, por isso gastar
             # tokens do Claude não se justifica. O jogo continua a sair no
@@ -2197,6 +2350,9 @@ def run() -> None:
         rapidapi_calls_per_processed=(
             round(fetch_data.get_rapidapi_call_count() / len(analyses), 3)
             if analyses else None
+        ),
+        challenger_125_experiment=_experimental_tier_metrics(
+            tournament_eligible, process_targets, analyses,
         ),
     )
 
@@ -2426,7 +2582,7 @@ def run() -> None:
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
-        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
+        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade/experimento) · 🔴 {n_value} edge negativo · "
         f"⚪ {n_watch} edge zero · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
@@ -2512,6 +2668,11 @@ def run() -> None:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         today_calls = fetch_data.get_rapidapi_recorded_today_calls()
         print(f"[rapidapi_usage] Acumulado hoje ({today}): {today_calls} chamadas.")
+        run_metrics.update_context(
+            challenger_125_experiment=_experimental_tier_metrics(
+                tournament_eligible, process_targets, analyses,
+            )
+        )
     except Exception as exc:
         print(f"[aviso] falha ao registar uso da RapidAPI: {exc}")
 
