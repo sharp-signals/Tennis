@@ -51,6 +51,20 @@ def is_experimental_report_only(payload: Mapping[str, Any]) -> bool:
     return str(payload.get("tier") or "").strip() in EXPERIMENTAL_REPORT_ONLY_TIERS
 
 
+def is_experimental_snapshot(snapshot: Mapping[str, Any]) -> bool:
+    """Distingue snapshots explicitamente marcados sem reclassificar legacy.
+
+    Snapshots anteriores ao CHANGE-053 não possuem ``tournament_coverage`` e
+    mantêm, por isso, exatamente a semântica histórica. O tier isolado não é
+    suficiente para retirar uma observação legacy da calibração standard.
+    """
+    metadata = snapshot.get("tournament_coverage")
+    return (
+        isinstance(metadata, Mapping)
+        and metadata.get("mode") == "EXPERIMENTAL_REPORT_ONLY"
+    )
+
+
 def paper_block_reason(payload: Mapping[str, Any]) -> str | None:
     if not is_experimental_report_only(payload):
         return None

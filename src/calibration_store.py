@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_integrity, match_identity_v2, snapshot_identity
+from . import market_integrity, match_identity_v2, snapshot_identity, tournament_policy
 from .green_strong_validation import COHORT_NAME, classify_snapshot
 
 
@@ -407,6 +407,7 @@ def compute_system_accuracy(
     snaps = [
         s for s in document.get("snapshots", [])
         if s.get("outcome") and str(s.get("key") or "") not in excluded
+        and not tournament_policy.is_experimental_snapshot(s)
     ]
     if not snaps:
         return None
@@ -502,6 +503,8 @@ def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
     excluded = market_integrity.excluded_snapshot_keys(exclusions_path)
     for snapshot in _read(path)["snapshots"]:
         if str(snapshot.get("key") or "") in excluded:
+            continue
+        if tournament_policy.is_experimental_snapshot(snapshot):
             continue
         outcome = snapshot.get("outcome") or {}
         metrics = snapshot.get("metrics") or {}

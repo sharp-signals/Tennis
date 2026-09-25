@@ -7,6 +7,26 @@ from src import calibration_store
 
 
 class CalibrationStoreTests(unittest.TestCase):
+    @staticmethod
+    def _accuracy_snapshot(key, *, winner="a", tournament_coverage=None):
+        snapshot = {
+            "key": key,
+            "tier": "Challenger 125",
+            "metrics": {"divergencia": {
+                "indice_evidencia_a": 80,
+                "indice_evidencia_b": 20,
+                "classificacao": {"nivel": 3},
+                "mercado_favorece": "B",
+                "indice_favorece": "A",
+                "player_a": "A",
+                "player_b": "B",
+            }},
+            "outcome": {"winner_side": winner},
+        }
+        if tournament_coverage is not None:
+            snapshot["tournament_coverage"] = tournament_coverage
+        return snapshot
+
     def _payload(self):
         return {
             "match_id": "m1", "tour": "atp", "tournament_id": 8,
@@ -58,6 +78,27 @@ class CalibrationStoreTests(unittest.TestCase):
             self.assertEqual(saved["outcome"]["winner_side"], "b")
             self.assertEqual(saved["metrics"], snapshot["metrics"])
             self.assertEqual(calibration_store.settle_from_matches([match], path), 0)
+
+    def test_experimental_challenger_snapshot_is_persisted_and_settled(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            payload = self._payload()
+            payload.update({
+                "tier": "Challenger 125",
+                "tournament_coverage": {"mode": "EXPERIMENTAL_REPORT_ONLY"},
+            })
+            snapshot = calibration_store.build_snapshot(
+                payload, analyzed_at_utc="2026-08-16T08:00:00+00:00"
+            )
+            self.assertEqual(calibration_store.upsert_snapshots([snapshot], path), 1)
+            match = {
+                "id": "m1", "player1Id": 10, "player2Id": 20,
+                "match_winner": 20, "result_type": "completed", "result": "4-6 4-6",
+            }
+            self.assertEqual(calibration_store.settle_from_matches([match], path), 1)
+            saved = json.loads(path.read_text(encoding="utf-8"))["snapshots"][0]
+            self.assertEqual(saved["tournament_coverage"]["mode"], "EXPERIMENTAL_REPORT_ONLY")
+            self.assertEqual(saved["outcome"]["winner_side"], "b")
 
     def test_settlement_falls_back_to_players_and_date_when_api_ids_differ(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -138,6 +179,68 @@ class CalibrationStoreTests(unittest.TestCase):
             self.assertEqual(actual["sample_size"], 3)
             self.assertLess(actual["players"]["a"]["odds_low"], actual["players"]["a"]["odds_high"])
             self.assertGreater(actual["players"]["b"]["odds_low"], 1)
+
+    def test_standard_accuracy_excludes_explicit_experiment_but_keeps_legacy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            standard = [
+                self._accuracy_snapshot(f"atp:{index}")
+                for index in range(10)
+            ]
+            experimental = self._accuracy_snapshot(
+                "atp:experimental",
+                winner="b",
+                tournament_coverage={"mode": "EXPERIMENTAL_REPORT_ONLY"},
+            )
+            path.write_text(json.dumps({
+                "schema_version": 1,
+                "snapshots": standard + [experimental],
+            }), encoding="utf-8")
+            accuracy = calibration_store.compute_system_accuracy(path)
+            self.assertEqual(accuracy["divergencia"]["total"], 10)
+            self.assertEqual(accuracy["divergencia"]["acertos"], 10)
+
+            legacy = [
+                self._accuracy_snapshot(f"legacy:{index}")
+                for index in range(10)
+            ]
+            path.write_text(json.dumps({
+                "schema_version": 1,
+                "snapshots": legacy,
+            }), encoding="utf-8")
+            legacy_accuracy = calibration_store.compute_system_accuracy(path)
+            self.assertEqual(legacy_accuracy["divergencia"]["total"], 10)
+
+    def test_experimental_outcome_does_not_change_standard_indicative_odds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            standard = [
+                self._accuracy_snapshot("atp:1", winner="a"),
+                self._accuracy_snapshot("atp:2", winner="a"),
+                self._accuracy_snapshot("atp:3", winner="b"),
+            ]
+            path.write_text(json.dumps({
+                "schema_version": 1,
+                "snapshots": standard,
+            }), encoding="utf-8")
+            divergence = {"indice_evidencia_a": 82, "indice_evidencia_b": 18}
+            baseline = calibration_store.estimate_indicative_odds(
+                divergence, path, min_samples=3
+            )
+            standard.append(self._accuracy_snapshot(
+                "atp:experimental",
+                winner="b",
+                tournament_coverage={"mode": "EXPERIMENTAL_REPORT_ONLY"},
+            ))
+            path.write_text(json.dumps({
+                "schema_version": 1,
+                "snapshots": standard,
+            }), encoding="utf-8")
+            with_experiment = calibration_store.estimate_indicative_odds(
+                divergence, path, min_samples=3
+            )
+            self.assertEqual(with_experiment, baseline)
+            self.assertEqual(with_experiment["sample_size"], 3)
 
     def test_quarantined_snapshot_is_excluded_from_calibration_samples(self):
         with tempfile.TemporaryDirectory() as directory:

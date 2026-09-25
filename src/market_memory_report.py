@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import market_integrity, market_ledger
+from . import market_integrity, market_ledger, tournament_policy
 
 
 SCHEMA_VERSION = 1
@@ -190,6 +190,13 @@ def build_report(
             "pricing_model_version": (snapshot.get("pricing") or {}).get("model_version"),
             "pricing_configuration_fingerprint": (snapshot.get("pricing") or {}).get("configuration_fingerprint"),
             "outcome_side": outcome_side,
+            "tier": snapshot.get("tier"),
+            "tournament_coverage": snapshot.get("tournament_coverage"),
+            "evaluation_scope": (
+                "EXPERIMENTAL"
+                if tournament_policy.is_experimental_snapshot(snapshot)
+                else "STANDARD"
+            ),
             "paper": paper_links,
             "availability": {
                 "entry_market": "AVAILABLE" if entry_probabilities else "UNAVAILABLE",
@@ -227,6 +234,15 @@ def build_report(
             isinstance(row.get("data_quality"), Mapping)
             and row["data_quality"].get("excluded_from_validation")
         )
+        and row.get("evaluation_scope") == "STANDARD"
+    ]
+    experimental_rows = [
+        row for row in rows
+        if row.get("evaluation_scope") == "EXPERIMENTAL"
+        and not (
+            isinstance(row.get("data_quality"), Mapping)
+            and row["data_quality"].get("excluded_from_validation")
+        )
     ]
     grouped: dict[str, list[Mapping[str, Any]]] = {}
     for row in evaluation_rows:
@@ -246,6 +262,25 @@ def build_report(
         "evaluation": {
             "market_only": evaluate_probabilities(evaluation_rows, "entry_market_probabilities"),
             "market_plus_sharp": evaluate_probabilities(evaluation_rows, "market_plus_sharp_probabilities"),
+        },
+        "experimental_evaluation_by_tier": {
+            tier: {
+                "sample_size": len(subset),
+                "market_only": evaluate_probabilities(
+                    subset, "entry_market_probabilities"
+                ),
+                "market_plus_sharp": evaluate_probabilities(
+                    subset, "market_plus_sharp_probabilities"
+                ),
+            }
+            for tier in sorted({
+                str(row.get("tier") or "UNAVAILABLE")
+                for row in experimental_rows
+            })
+            for subset in [[
+                row for row in experimental_rows
+                if str(row.get("tier") or "UNAVAILABLE") == tier
+            ]]
         },
         "evaluation_by_pricing_version": {
             key: {

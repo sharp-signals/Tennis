@@ -86,6 +86,70 @@ class MarketMemoryReportTests(unittest.TestCase):
                 "market_plus_sharp": "UNAVAILABLE",
             })
 
+    def test_experimental_event_remains_auditable_but_not_in_standard_evaluation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "ledger"
+            match = {
+                "id": 125, "_tour": "atp", "date": "2026-09-25T15:00:00+00:00",
+                "player1Id": 1, "player2Id": 2,
+                "player1": {"name": "Alpha"}, "player2": {"name": "Beta"},
+            }
+            observation = market_ledger.build_observation(
+                match,
+                {"Alpha": 2.1, "Beta": 1.8},
+                {
+                    "source": "RapidAPI Tennis API / recent-odds",
+                    "endpoint": "https://provider.test/recent/125",
+                    "event_id": "e125",
+                    "captured_at_utc": "2026-09-25T10:00:00+00:00",
+                    "capture_kind": "observed",
+                    "bookmaker": "Book",
+                    "freshness_status": "FRESH",
+                    "identity_mapping_status": "VERIFIED",
+                    "operational_pricing_eligible": True,
+                    "raw_payload_sha256": market_ledger.payload_sha256({"event": 125}),
+                },
+                role="OPERATIONAL_PRICING",
+                pipeline="PRELIVE",
+            )
+            market_ledger.append_observation(observation, root=root)
+            snapshots = Path(tmp) / "snapshots.json"
+            snapshots.write_text(json.dumps({"snapshots": [{
+                "key": "atp:125",
+                "event_key": "atp:125",
+                "tier": "Challenger 125",
+                "tournament_coverage": {"mode": "EXPERIMENTAL_REPORT_ONLY"},
+                "commence_time_utc": "2026-09-25T15:00:00+00:00",
+                "entry_market_observation_id": observation["observation_id"],
+                "pricing": {
+                    "available": True,
+                    "model_version": "frozen-v1",
+                    "configuration_fingerprint": "cfg1",
+                    "players": {
+                        "a": {"sharp_estimate_pct": 55},
+                        "b": {"sharp_estimate_pct": 45},
+                    },
+                },
+                "outcome": {"winner_side": "a"},
+            }]}), encoding="utf-8")
+            report = market_memory_report.build_report(
+                ledger_root=root,
+                snapshots_path=snapshots,
+                paper_path=Path(tmp) / "missing-paper.json",
+            )
+
+        self.assertEqual(len(report["events"]), 1)
+        self.assertEqual(report["events"][0]["evaluation_scope"], "EXPERIMENTAL")
+        self.assertEqual(report["events"][0]["outcome_side"], "a")
+        self.assertEqual(report["evaluation"]["market_only"]["sample_size"], 0)
+        self.assertEqual(report["evaluation"]["market_plus_sharp"]["sample_size"], 0)
+        self.assertEqual(report["evaluation_by_pricing_version"], {})
+        self.assertEqual(report["evaluation_by_cohort"], {})
+        experimental = report["experimental_evaluation_by_tier"]["Challenger 125"]
+        self.assertEqual(experimental["sample_size"], 1)
+        self.assertEqual(experimental["market_only"]["sample_size"], 1)
+        self.assertEqual(experimental["market_plus_sharp"]["sample_size"], 1)
+
     def test_paper_settlement_continues_when_market_memory_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             paper_path = Path(tmp) / "paper.json"
