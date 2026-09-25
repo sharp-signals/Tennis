@@ -51727,7 +51727,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-25T20:30:04+00:00",
+  "generated_at_utc": "2026-09-25T23:53:51+00:00",
   "global": {
     "distinct_matchups": 1602,
     "green_strong_candidates": 0,
@@ -51772,7 +51772,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-09-25T20:30:04+00:00",
+    "generated_at_utc": "2026-09-25T23:53:51+00:00",
     "losses": 24,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -3.19,
@@ -52378,7 +52378,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "76670b460e846fd4e68a2a6827076998b30b84baaee94bcb35a44607764e808f",
+  "semantic_fingerprint": "8cee77e74ffd15e266333caf158112916ea596084588417578cf555d8532eb55",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 36,
@@ -52453,7 +52453,7 @@
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-25T17:33:25+00:00"
+      "updated_at_utc": "2026-09-25T23:53:51+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
@@ -52461,25 +52461,23 @@
     }
   },
   "system_health": {
-    "alerts": [],
+    "alerts": [
+      "execução falhou na fase filtering"
+    ],
     "latest": {
       "analysis_failed": null,
-      "duration_seconds": 2.048,
+      "duration_seconds": 2.714,
       "eligible": 0,
       "llm_calls": null,
       "llm_estimated_cost_usd": 0.0,
-      "phase": "complete",
+      "phase": "filtering",
       "processed": null,
-      "rapidapi_calls": 6,
+      "rapidapi_calls": 8,
       "reports_failed": null,
-      "status": "no_eligible_matches",
-      "timestamp": "2026-09-25T17:33:25+00:00"
+      "status": "failed",
+      "timestamp": "2026-09-25T23:53:51+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-17T05:36:07+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-17T17:33:55+00:00"
@@ -52555,8 +52553,12 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-25T17:33:25+00:00"
+      },
+      {
+        "status": "FAILED",
+        "timestamp": "2026-09-25T23:53:51+00:00"
       }
     ],
-    "status": "HEALTHY"
+    "status": "FAILED"
   }
 }

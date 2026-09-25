@@ -29007,5 +29007,97 @@
     "llm_provider_invocations": 0,
     "duration_seconds": 2.048,
     "llm_estimated_cost_usd": 0.0
+  },
+  {
+    "timestamp": "2026-09-25T23:53:51+00:00",
+    "status": "failed",
+    "phase": "filtering",
+    "fixtures_discovered_by_tour": {
+      "atp": 0,
+      "wta": 0
+    },
+    "eligible": 0,
+    "eligible_by_tour": {
+      "atp": 0,
+      "wta": 0
+    },
+    "challenger_125_experiment": {
+      "mode": "EXPERIMENT",
+      "tier": "Challenger 125",
+      "discovery": {
+        "candidates_found": 0,
+        "tournaments_accepted": 0,
+        "fixtures_found": 0,
+        "fixtures_in_window": 0,
+        "fixtures_post_identity": 0,
+        "games_processed": 0
+      },
+      "data": {
+        "reports": {
+          "complete": 0,
+          "degraded": 0
+        },
+        "available_factor_counts": {
+          "min": null,
+          "max": null,
+          "average": null
+        },
+        "missing_reasons": {},
+        "identity": {}
+      },
+      "market": {
+        "recent_odds_available": 0,
+        "recent_odds_unavailable": 0,
+        "bookmakers_observed": {},
+        "market_quote_integrity": {},
+        "operational_pricing_eligible": 0,
+        "unavailable_by_reason": {}
+      },
+      "pricing": {
+        "available": 0,
+        "unavailable": 0
+      },
+      "paper": {
+        "would_be_candidates": 0,
+        "persisted": 0,
+        "blocked_by_reason": {}
+      },
+      "cost": {
+        "rapidapi_calls_total": 8,
+        "challenger_125_attributed_calls": 0,
+        "challenger_125_calls_by_endpoint_family": {},
+        "challenger_125_calls_per_game": null,
+        "main_tour_attributed_calls": 0,
+        "shared_calls": 8,
+        "run_limit_pct": 0.356,
+        "daily_limit_pct": 3.267
+      }
+    },
+    "error_type": "RuntimeError",
+    "error_message": "DISCOVERY_UNAVAILABLE: todos os feeds RapidAPI de descoberta falharam; não é seguro concluir que não existem jogos elegíveis.",
+    "rapidapi_calls": 8,
+    "rapidapi_calls_by_endpoint": {
+      "/tennis/v2/atp/fixtures/tournament/21344": 1,
+      "/tennis/v2/atp/fixtures/tournament/21346": 1,
+      "/tennis/v2/extend/api/events/upcoming/all": 2,
+      "/tennis/v2/ms-api/upcoming/matches/atp": 1,
+      "/tennis/v2/ms-api/upcoming/matches/wta": 1,
+      "/tennis/v2/wta/fixtures/tournament/16738": 1,
+      "/tennis/v2/wta/fixtures/tournament/16739": 1
+    },
+    "rapidapi_calls_by_endpoint_family": {
+      "event_identity": 2,
+      "fixture_discovery": 6
+    },
+    "event_identity": {
+      "fallback_attempt_cap_per_match": 6,
+      "by_tour": {},
+      "matches": [],
+      "cache_hit_rate": null
+    },
+    "llm_external_requests": 0,
+    "llm_provider_invocations": 0,
+    "duration_seconds": 2.714,
+    "llm_estimated_cost_usd": 0.0
   }
 ]
