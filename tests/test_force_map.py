@@ -48,6 +48,28 @@ class ForceMapTests(unittest.TestCase):
         self.assertIn("66%", html)
         self.assertIn("69%", html)
 
+    def test_overview_is_rendered_before_existing_force_map_content(self) -> None:
+        html = _mod_fatores_detalhados(
+            {},
+            {
+                "fatores_status": {
+                    "servico_carreira": {
+                        "disponivel": True,
+                        "lider": "Jogador B",
+                        "valor_a": 66,
+                        "valor_b": 69,
+                        "amostra_a": 24,
+                        "amostra_b": 18,
+                    },
+                },
+            },
+            overview_html='<div class="force-map-overview">Resumo factual</div>',
+            extras_html='<div class="card">Detalhe existente</div>',
+        )
+
+        self.assertLess(html.index("Resumo factual"), html.index("Detalhe existente"))
+        self.assertLess(html.index("Detalhe existente"), html.index("Raio-X Anal&#237;tico"))
+
     def test_force_and_action_maps_share_collapsed_height(self) -> None:
         html = _pagina("A", "B", '<details class="more report-map mais-forcas"></details>')
         self.assertIn("details.report-map>summary", html)
