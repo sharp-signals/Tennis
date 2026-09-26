@@ -86,7 +86,8 @@ EXCLUDED_TOURNAMENT_TIERS = {
     "Juniors",
 }
 
-# Quantos dias (incluindo hoje) pedir ao getDateFixtures. 2 = hoje + amanhã.
+# Legacy: o fallback CHANGE-054 já não usa este valor; deriva as datas de
+# LOOKAHEAD_HOURS_MIN/MAX para cobrir integralmente a janela configurada.
 FIXTURES_LOOKAHEAD_DAYS = 2
 
 # Cache local de info de torneio (tier, piso, nome), para não gastar

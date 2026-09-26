@@ -2128,7 +2128,7 @@ def run() -> None:
     else:
         print("[info] contador RapidAPI local não disponível em fetch_data.py; a execução continua.")
     run_metrics.update_context(phase="fetching_fixtures")
-    raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
+    raw_matches = fetch_data.fetch_resilient_discovery_fixtures()
     def _tour_counts(items):
         counts = {"atp": 0, "wta": 0}
         for item in items:
@@ -2137,7 +2137,11 @@ def run() -> None:
                 counts[tour_name] += 1
         return counts
 
-    run_metrics.update_context(fixtures_discovered_by_tour=_tour_counts(raw_matches))
+    discovery_diagnostics = fetch_data.get_discovery_diagnostics()
+    run_metrics.update_context(
+        fixtures_discovered_by_tour=_tour_counts(raw_matches),
+        **discovery_diagnostics,
+    )
     print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
     raw_matches = _deduplicate_matches(raw_matches)
     print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
@@ -2158,9 +2162,9 @@ def run() -> None:
     # Uma API indisponível não é o mesmo que um calendário sem jogos. Falhar
     # torna o problema visível no Actions e ativa o alerta Telegram do
     # workflow, em vez de o mascarar como ``no_eligible_matches``.
-    if not raw_matches and fetch_data.upcoming_discovery_failed():
+    if not raw_matches and fetch_data.discovery_unavailable():
         raise RuntimeError(
-            "DISCOVERY_UNAVAILABLE: todos os feeds RapidAPI de descoberta "
+            "DISCOVERY_UNAVAILABLE: todas as fontes factuais RapidAPI de descoberta "
             "falharam; não é seguro concluir que não existem jogos elegíveis."
         )
 
