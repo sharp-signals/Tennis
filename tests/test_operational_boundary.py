@@ -75,6 +75,24 @@ class OperationalBoundaryTests(unittest.TestCase):
             ("no_eligible_matches", 1.0),
         )
 
+    def test_partial_discovery_promotes_success_to_degraded_only(self):
+        partial = {"discovery_partial": True}
+        complete = {"discovery_partial": False}
+
+        self.assertEqual(
+            main._apply_discovery_health_status("success", complete), "success"
+        )
+        self.assertEqual(
+            main._apply_discovery_health_status("success", partial), "degraded"
+        )
+        self.assertEqual(
+            main._apply_discovery_health_status("failed", partial), "failed"
+        )
+        self.assertEqual(
+            main._apply_discovery_health_status("no_eligible_matches", partial),
+            "no_eligible_matches",
+        )
+
     def test_failure_persists_api_usage_and_metrics_then_reraises(self):
         metric_entry = {"status": "failed", "phase": "analysis", "rapidapi_calls": 7}
         with patch.object(main, "run", side_effect=RuntimeError("boom")), \
@@ -97,17 +115,36 @@ class OperationalBoundaryTests(unittest.TestCase):
 
     def test_discovery_outage_is_not_reported_as_no_eligible_matches(self):
         with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
-             patch.object(main.fetch_data, "fetch_tracked_tournament_fixtures", return_value=[]), \
-             patch.object(main.fetch_data, "upcoming_discovery_failed", return_value=True), \
+             patch.object(main.fetch_data, "fetch_resilient_discovery_fixtures", return_value=[]), \
+             patch.object(main.fetch_data, "discovery_unavailable", return_value=True), \
              patch.object(main.fetch_data, "flush_tournament_cache"), \
              patch.object(main.fetch_data, "flush_fixtures_cache"):
             with self.assertRaisesRegex(RuntimeError, "DISCOVERY_UNAVAILABLE"):
                 main.run()
 
+    def test_valid_empty_core_calendar_finishes_as_no_eligible_matches(self):
+        diagnostics = {
+            "discovery_sources": {
+                "upcoming_discovery": {"status": "SOURCE_UNAVAILABLE", "matches": 0},
+                "core_date_fixtures": {"status": "SUCCESS_EMPTY", "matches": 0},
+            },
+            "discovery_selected_source": "core_date_fixtures",
+            "discovery_status": "SUCCESS_EMPTY",
+        }
+        with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
+             patch.object(main.fetch_data, "fetch_resilient_discovery_fixtures", return_value=[]), \
+             patch.object(main.fetch_data, "get_discovery_diagnostics", return_value=diagnostics), \
+             patch.object(main.fetch_data, "discovery_unavailable", return_value=False), \
+             patch.object(main.fetch_data, "flush_tournament_cache"), \
+             patch.object(main.fetch_data, "flush_fixtures_cache"), \
+             patch.object(main.fetch_data, "persist_rapidapi_usage") as persist:
+            main.run()
+        persist.assert_called_once_with(status="no_eligible_matches", matches=0)
+
     def test_below_minimum_coverage_does_not_publish_partial_reports(self):
         matches = self._matches(10, failures=3)
         with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
-             patch.object(main.fetch_data, "fetch_tracked_tournament_fixtures", return_value=matches), \
+             patch.object(main.fetch_data, "fetch_resilient_discovery_fixtures", return_value=matches), \
              patch.object(main, "_deduplicate_matches", side_effect=lambda value: value), \
              patch.object(main, "_filter_matches_in_window", side_effect=lambda value: value), \
              patch.object(main, "_filter_and_enrich_with_tournament_info", side_effect=lambda value: value), \
@@ -134,7 +171,7 @@ class OperationalBoundaryTests(unittest.TestCase):
                 stack.enter_context(patch.object(main, "SITE_OUTPUT_DIR", directory))
                 stack.enter_context(patch.object(main.fetch_data, "reset_rapidapi_call_count"))
                 stack.enter_context(patch.object(
-                    main.fetch_data, "fetch_tracked_tournament_fixtures", return_value=matches,
+                    main.fetch_data, "fetch_resilient_discovery_fixtures", return_value=matches,
                 ))
                 stack.enter_context(patch.object(
                     main, "_deduplicate_matches", side_effect=lambda value: value,

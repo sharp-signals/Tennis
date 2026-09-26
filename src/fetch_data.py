@@ -58,6 +58,8 @@ from .config import (
     FIXTURES_CACHE_PATH,
     FORCED_TOURNAMENT_IDS,
     HISTORY_YEARS_TO_LOAD,
+    LOOKAHEAD_HOURS_MAX,
+    LOOKAHEAD_HOURS_MIN,
     MAX_FIXTURE_PAGES,
     ODDS_API_TENNIS_SPORT_KEYS,
     THE_ODDS_API_ENABLED,
@@ -316,7 +318,11 @@ def _rapidapi_endpoint_family(endpoint: str) -> str:
         return "event_identity"
     if "/extend/api/" in endpoint and "odds" in endpoint:
         return "market_odds"
-    if "/ms-api/upcoming/matches/" in endpoint or "/fixtures/tournament/" in endpoint:
+    if (
+        "/ms-api/upcoming/matches/" in endpoint
+        or "/fixtures/tournament/" in endpoint
+        or re.search(r"/(?:atp|wta)/fixtures/\d{4}-\d{2}-\d{2}$", endpoint)
+    ):
         return "fixture_discovery"
     if "/tournament/info/" in endpoint:
         return "tournament_metadata"
@@ -438,6 +444,7 @@ def get_rapidapi_identity_metrics() -> dict:
 
 
 def reset_rapidapi_call_count() -> None:
+    global _ALL_UPCOMING_EVENTS_CACHE, _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES
     _RAPIDAPI_CALL_COUNT["n"] = 0
     _RAPIDAPI_ENDPOINT_CALLS.clear()
     _RAPIDAPI_PURPOSE_CALLS.clear()
@@ -447,6 +454,10 @@ def reset_rapidapi_call_count() -> None:
     _RAPIDAPI_RECORDED_TODAY["n"] = _load_recorded_today_calls()
     _RAPIDAPI_BUDGET_EXCEEDED["value"] = False
     _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = False
+    _ALL_UPCOMING_EVENTS_CACHE = None
+    _UPCOMING_DISCOVERY_FAILURES.clear()
+    _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
+    _reset_discovery_diagnostics()
     _write_rapidapi_checkpoint()
 
 
@@ -510,6 +521,14 @@ _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execuçã
 # legítima quando os feeds responderam com sucesso; não pode esconder 400/500.
 _UPCOMING_DISCOVERY_FAILURES: list[str] = []
 _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
+DISCOVERY_SUCCESS_WITH_MATCHES = "SUCCESS_WITH_MATCHES"
+DISCOVERY_SUCCESS_EMPTY = "SUCCESS_EMPTY"
+DISCOVERY_SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+_DISCOVERY_DIAGNOSTICS: dict = {
+    "discovery_sources": {},
+    "discovery_selected_source": None,
+    "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+}
 _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
 # A ponte fixture ID -> eventId é devolvida por ``event/get`` e é necessária
 # para interpretar od1/od2 do ``recent-odds``. Persistimos apenas uma ponte
@@ -769,9 +788,91 @@ def register_pending_market_check(match: dict, provenance: Optional[dict], *, av
         return
 
 
+def _reset_discovery_diagnostics() -> None:
+    _DISCOVERY_DIAGNOSTICS.clear()
+    _DISCOVERY_DIAGNOSTICS.update({
+        "discovery_sources": {},
+        "discovery_selected_source": None,
+        "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        "discovery_partial": False,
+    })
+
+
+def _record_discovery_source(
+    source: str,
+    status: str,
+    *,
+    matches: int = 0,
+    reason_code: Optional[str] = None,
+    http_status: Optional[int] = None,
+    **details,
+) -> None:
+    """Regista apenas telemetria estrutural; nunca inclui payloads ou secrets."""
+    record = {"status": status, "matches": max(0, int(matches or 0))}
+    if reason_code:
+        record["reason_code"] = str(reason_code)
+    if http_status is not None:
+        record["http_status"] = int(http_status)
+    record.update({key: value for key, value in details.items() if value is not None})
+    _DISCOVERY_DIAGNOSTICS["discovery_sources"][source] = record
+
+
+def get_discovery_diagnostics() -> dict:
+    """Cópia serializável do estado de descoberta da execução atual."""
+    return {
+        "discovery_sources": {
+            source: dict(record)
+            for source, record in _DISCOVERY_DIAGNOSTICS["discovery_sources"].items()
+        },
+        "discovery_selected_source": _DISCOVERY_DIAGNOSTICS.get(
+            "discovery_selected_source"
+        ),
+        "discovery_status": _DISCOVERY_DIAGNOSTICS.get(
+            "discovery_status", DISCOVERY_SOURCE_UNAVAILABLE
+        ),
+        "discovery_partial": bool(
+            _DISCOVERY_DIAGNOSTICS.get("discovery_partial", False)
+        ),
+    }
+
+
+def discovery_unavailable() -> bool:
+    """Verdadeiro só quando nenhuma fonte factual produziu calendário fiável."""
+    return (
+        _DISCOVERY_DIAGNOSTICS.get("discovery_status")
+        == DISCOVERY_SOURCE_UNAVAILABLE
+    )
+
+
 def upcoming_discovery_failed() -> bool:
-    """Indica se todos os feeds de descoberta falharam nesta execução."""
+    """Compatibilidade legacy: indica falha total dos feeds upcoming."""
     return bool(_UPCOMING_DISCOVERY_FAILURES) and _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES == 0
+
+
+def _discovery_error_details(exc: Exception) -> tuple[str, Optional[int]]:
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", None)
+    if isinstance(exc, requests.Timeout):
+        return "TIMEOUT", status
+    if status is not None:
+        return f"HTTP_{status}", int(status)
+    if isinstance(exc, (ValueError, TypeError)):
+        return "INVALID_RESPONSE", None
+    return "REQUEST_ERROR", None
+
+
+def _discovery_rows(payload: object, *keys: str) -> list:
+    if not isinstance(payload, dict):
+        raise ValueError("discovery payload must be an object")
+    present = [key for key in keys if key in payload]
+    if not present:
+        raise ValueError("discovery payload has no supported rows field")
+    rows = next((payload.get(key) for key in present if payload.get(key) is not None), [])
+    if not isinstance(rows, list):
+        raise ValueError("discovery rows must be a list")
+    if any(not isinstance(row, dict) for row in rows):
+        raise ValueError("discovery rows must contain objects")
+    return rows
 
 
 def _is_bad_request(exc: Exception) -> bool:
@@ -819,6 +920,12 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
         return _ALL_UPCOMING_EVENTS_CACHE
 
     if not RAPIDAPI_KEY:
+        for source in ("upcoming_atp", "upcoming_wta", "upcoming_legacy_all"):
+            _record_discovery_source(
+                source, DISCOVERY_SOURCE_UNAVAILABLE,
+                reason_code="MISSING_API_KEY",
+            )
+        _ALL_UPCOMING_EVENTS_CACHE = []
         return []
 
     _UPCOMING_DISCOVERY_FAILURES.clear()
@@ -837,6 +944,9 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     for t in ("atp", "wta"):
         page = 1
         tour_events: list[dict] = []
+        source_failed = False
+        failure_reason = None
+        failure_http_status = None
         while page <= _ALL_UPCOMING_MAX_PAGES:
             url = f"{RAPIDAPI_ALL_UPCOMING_URL}/{t}"
             try:
@@ -844,8 +954,8 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                     url, page=page, limit=LIMIT,
                 )
                 _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES += 1
-                payload = resp.json() or {}
-                page_results = payload.get("matches") or []
+                payload = resp.json()
+                page_results = _discovery_rows(payload, "matches")
                 captured_at_utc = _odds_capture_timestamp()
                 if page == 1:
                     _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
@@ -866,14 +976,34 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                 if not pagination_supported or len(page_results) < LIMIT or not novos:
                     break
                 page += 1
-            except requests.RequestException as exc:
+            except (requests.RequestException, ValueError, TypeError) as exc:
                 _UPCOMING_DISCOVERY_FAILURES.append(f"all-upcoming/{t}: {exc}")
+                failure_reason, failure_http_status = _discovery_error_details(exc)
+                source_failed = True
                 print(f"[aviso] falha a obter all-upcoming/{t} (pág {page}) para odds: {exc}")
                 break
         print(f"[diag] all-upcoming/{t}: {len(tour_events)} jogos carregados em {page} página(s).")
         events.extend(tour_events)
+        if source_failed:
+            _record_discovery_source(
+                f"upcoming_{t}", DISCOVERY_SOURCE_UNAVAILABLE,
+                matches=len(tour_events), reason_code=failure_reason,
+                http_status=failure_http_status, partial=bool(tour_events),
+            )
+        else:
+            _record_discovery_source(
+                f"upcoming_{t}",
+                DISCOVERY_SUCCESS_WITH_MATCHES if tour_events else DISCOVERY_SUCCESS_EMPTY,
+                matches=len(tour_events), pages=page,
+            )
 
-    if events:
+    primary_records = _DISCOVERY_DIAGNOSTICS["discovery_sources"]
+    primary_complete = all(
+        primary_records.get(f"upcoming_{t}", {}).get("status")
+        != DISCOVERY_SOURCE_UNAVAILABLE
+        for t in ("atp", "wta")
+    )
+    if primary_complete or events:
         _ALL_UPCOMING_EVENTS_CACHE = events
         return events
 
@@ -887,8 +1017,8 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                 url, page=page, limit=100,
             )
             _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES += 1
-            payload = resp.json() or {}
-            page_results = payload.get("matches") or payload.get("results") or []
+            payload = resp.json()
+            page_results = _discovery_rows(payload, "matches", "results", "events")
             captured_at_utc = _odds_capture_timestamp()
             if page == 1:
                 _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
@@ -908,10 +1038,23 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
             page += 1
             if page > MAX_FIXTURE_PAGES:
                 break
-        except requests.RequestException as exc:
+        except (requests.RequestException, ValueError, TypeError) as exc:
             _UPCOMING_DISCOVERY_FAILURES.append(f"upcoming/{tour}: {exc}")
+            reason, http_status = _discovery_error_details(exc)
+            _record_discovery_source(
+                "upcoming_legacy_all", DISCOVERY_SOURCE_UNAVAILABLE,
+                matches=len(events), reason_code=reason,
+                http_status=http_status, partial=bool(events),
+            )
             print(f"[aviso] falha a obter eventos upcoming {tour}: {exc}")
             break
+    if "upcoming_legacy_all" not in _DISCOVERY_DIAGNOSTICS["discovery_sources"]:
+        _record_discovery_source(
+            "upcoming_legacy_all",
+            DISCOVERY_SUCCESS_WITH_MATCHES if events else DISCOVERY_SUCCESS_EMPTY,
+            matches=len(events), pages=page,
+        )
+    _ALL_UPCOMING_EVENTS_CACHE = events
     return events
 
 
@@ -5966,21 +6109,18 @@ _fixtures_cache_dirty = False
 
 
 # --------------------------------------------------------------------- #
-# CÓDIGO NÃO USADO ATUALMENTE (28/07/2026): esta função e
-# fetch_all_upcoming_fixtures() eram a arquitetura antiga — feed global
-# "todos os jogos ATP do dia" via getDateFixtures. Substituída por
-# fetch_tournament_fixtures()/fetch_tracked_tournament_fixtures() (mais
-# abaixo), que pede diretamente por tournamentId e evita o ruído global.
-# Mantida por se um dia for útil como mecanismo de DESCOBERTA de novos
-# torneios (a nova arquitetura exige adicionar tournamentId manualmente
-# a TRACKED_TOURNAMENT_IDS — ver README). Não é chamada por main.py.
+# CHANGE-054: esta antiga fonte global por data é agora o fallback factual de
+# discovery quando upcoming não produz uma resposta utilizável. O caminho
+# normal continua a pedir diretamente por tournamentId para evitar ruído; o
+# fallback só percorre ATP/WTA e as datas tocadas pela janela operacional.
 # --------------------------------------------------------------------- #
-def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
+def fetch_date_fixtures(
+    date: "datetime", tour: str, *, return_status: bool = False,
+):
     """
     Devolve os jogos agendados para um dia específico, para um tour
-    ('atp' ou 'wta'). Lista vazia se a chave não estiver configurada ou
-    se o pedido falhar — nunca levanta exceção para não parar o resto do
-    pipeline por causa de um único dia sem dados.
+    ('atp' ou 'wta'). Por defeito preserva a API legacy (lista); com
+    ``return_status=True`` distingue vazio factual de fonte indisponível.
 
     Usa cache local (data/fixtures_cache.json) por até
     FIXTURES_CACHE_MAX_AGE_HOURS horas, para não repetir o mesmo pedido
@@ -6001,11 +6141,27 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
             age_hours = None
         if age_hours is not None and age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
             print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
-            return cached["data"]
+            data = cached.get("data")
+            if isinstance(data, list):
+                status = {
+                    "status": (
+                        DISCOVERY_SUCCESS_WITH_MATCHES
+                        if data else DISCOVERY_SUCCESS_EMPTY
+                    ),
+                    "matches": len(data),
+                    "cache": "persistent_hit",
+                }
+                return (data, status) if return_status else data
 
     if not RAPIDAPI_KEY:
         print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
-        return []
+        status = {
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "matches": 0,
+            "reason_code": "MISSING_API_KEY",
+            "cache": "miss",
+        }
+        return ([], status) if return_status else []
 
     url = f"{RAPIDAPI_BASE}/{tour}/fixtures/{date_str}"
     all_data: list[dict] = []
@@ -6018,7 +6174,7 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
             resp.raise_for_status()
             pages_fetched += 1
             payload = resp.json()
-            page_data = payload.get("data", [])
+            page_data = _discovery_rows(payload, "data")
             all_data.extend(page_data)
 
             if not payload.get("hasNextPage"):
@@ -6041,10 +6197,28 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
         _fixtures_cache_dirty = True
         if len(all_data) > 0:
             print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) em {pages_fetched} pedido(s).")
-        return all_data
-    except requests.RequestException as exc:
+        status = {
+            "status": (
+                DISCOVERY_SUCCESS_WITH_MATCHES
+                if all_data else DISCOVERY_SUCCESS_EMPTY
+            ),
+            "matches": len(all_data),
+            "pages": pages_fetched,
+            "cache": "miss",
+        }
+        return (all_data, status) if return_status else all_data
+    except (requests.RequestException, ValueError, TypeError) as exc:
         print(f"[aviso] falha a obter fixtures ({tour}, {date_str}): {exc}")
-        return []
+        reason, http_status = _discovery_error_details(exc)
+        status = {
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "matches": 0,
+            "reason_code": reason,
+            "cache": "miss",
+        }
+        if http_status is not None:
+            status["http_status"] = http_status
+        return ([], status) if return_status else []
 
 
 def flush_fixtures_cache() -> None:
@@ -6109,9 +6283,7 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
             # não fazem parte da análise (só singles) nem são "elegíveis"
             # sem data para verificar a janela de antecedência.
             for match in page_data:
-                p1_name = (match.get("player1") or {}).get("name", "")
-                p2_name = (match.get("player2") or {}).get("name", "")
-                if "/" in p1_name or "/" in p2_name:
+                if not _is_singles_fixture(match):
                     continue
                 if not match.get("date"):
                     continue
@@ -6135,6 +6307,53 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter fixtures do torneio {tournament_id}: {exc}")
         return []
+
+
+def _eligible_tournaments_from_events(
+    events: list[dict], *, return_unresolved: bool = False,
+):
+    """Resolve e filtra os torneios presentes numa coleção factual."""
+    candidatos: dict[int, str] = {}
+    for event in events:
+        tournament = event.get("tournament") or {}
+        tournament_id = event.get("tournamentId") or tournament.get("id")
+        tour = str(event.get("_tour") or event.get("type") or "").casefold()
+        if tournament_id is None or tour not in ("atp", "wta"):
+            continue
+        candidatos.setdefault(tournament_id, tour)
+
+    aceites: dict[int, str] = {}
+    rejeitados = []
+    unresolved = 0
+    for tournament_id, tour in candidatos.items():
+        info = get_tournament_info(tournament_id, tour)
+        forced = FORCED_TOURNAMENT_IDS.get(tournament_id) == tour
+        if forced or (info and info.get("tier") in ALLOWED_TOURNAMENT_TIERS):
+            aceites[tournament_id] = tour
+        else:
+            if info is None:
+                unresolved += 1
+            nome = (info or {}).get("name") or "torneio não identificado"
+            tier = (info or {}).get("tier") or "sem informação de tier"
+            rejeitados.append(f"{tournament_id} {nome} ({tier})")
+
+    if rejeitados:
+        limite = 10
+        detalhes = "; ".join(rejeitados[:limite])
+        restante = (
+            f"; +{len(rejeitados) - limite} outro(s)"
+            if len(rejeitados) > limite else ""
+        )
+        print(
+            f"[info] descoberta automática: {len(rejeitados)} torneio(s) "
+            f"rejeitado(s) por tier/metadata — {detalhes}{restante}"
+        )
+
+    for tournament_id, tour in FORCED_TOURNAMENT_IDS.items():
+        aceites[tournament_id] = tour
+    if return_unresolved:
+        return aceites, unresolved
+    return aceites
 
 
 def discover_tracked_tournaments() -> dict[int, str]:
@@ -6162,36 +6381,11 @@ def discover_tracked_tournaments() -> dict[int, str]:
               "a usar torneios manuais e forçados (config.py).")
         return fallback
 
-    candidatos: dict[int, str] = {}
-    for ev in events:
-        t = ev.get("tournament") or {}
-        tid = t.get("id")
-        tour = ev.get("type")
-        if tid is None or tour not in ("atp", "wta"):
-            continue
-        candidatos.setdefault(tid, tour)
-
-    aceites: dict[int, str] = {}
-    rejeitados = []
-    for tid, tour in candidatos.items():
-        info = get_tournament_info(tid, tour)
-        if info and info.get("tier") in ALLOWED_TOURNAMENT_TIERS:
-            aceites[tid] = tour
-        else:
-            nome = (info or {}).get("name") or "torneio não identificado"
-            tier = (info or {}).get("tier") or "sem informação de tier"
-            rejeitados.append(f"{tid} {nome} ({tier})")
-
-    if rejeitados:
-        limite = 10
-        detalhes = "; ".join(rejeitados[:limite])
-        restante = f"; +{len(rejeitados) - limite} outro(s)" if len(rejeitados) > limite else ""
-        print(f"[info] descoberta automática: {len(rejeitados)} torneio(s) rejeitado(s) "
-              f"por tier/metadata — {detalhes}{restante}")
+    aceites = _eligible_tournaments_from_events(events)
 
     if not aceites:
-        print(f"[aviso] descoberta automática: {len(candidatos)} torneio(s) candidato(s), "
-              "nenhum no tier permitido — a usar torneios manuais (config.py).")
+        print("[aviso] descoberta automática: nenhum torneio no tier permitido "
+              "— a usar torneios manuais (config.py).")
         aceites.update(TRACKED_TOURNAMENT_IDS)
 
     # Overrides explícitos não dependem de aparecer no feed global nem do
@@ -6208,6 +6402,218 @@ def discover_tracked_tournaments() -> dict[int, str]:
     resumo = ", ".join(f"{tid}:{tour}" for tid, tour in aceites.items())
     print(f"[info] descoberta automática: {len(aceites)} torneio(s) elegível(is) — {resumo}")
     return aceites
+
+
+def _upcoming_source_status(events: list[dict]) -> str:
+    sources = _DISCOVERY_DIAGNOSTICS["discovery_sources"]
+    legacy = sources.get("upcoming_legacy_all", {})
+    if legacy.get("status") in {
+        DISCOVERY_SUCCESS_WITH_MATCHES, DISCOVERY_SUCCESS_EMPTY,
+    }:
+        return legacy["status"]
+    primary = [sources.get(f"upcoming_{tour}", {}) for tour in ("atp", "wta")]
+    if primary and all(
+        item.get("status") in {
+            DISCOVERY_SUCCESS_WITH_MATCHES, DISCOVERY_SUCCESS_EMPTY,
+        }
+        for item in primary
+    ):
+        return DISCOVERY_SUCCESS_WITH_MATCHES if events else DISCOVERY_SUCCESS_EMPTY
+    # Compatibilidade para testes/callers que substituem o fetch por um mock.
+    if events and not any(primary):
+        return DISCOVERY_SUCCESS_WITH_MATCHES
+    return DISCOVERY_SOURCE_UNAVAILABLE
+
+
+def _window_dates(now: Optional[datetime] = None) -> list[datetime]:
+    reference = now or datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    start = reference + timedelta(hours=LOOKAHEAD_HOURS_MIN)
+    end = reference + timedelta(hours=LOOKAHEAD_HOURS_MAX)
+    result = []
+    day = start.date()
+    while day <= end.date():
+        result.append(datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc))
+        day += timedelta(days=1)
+    return result
+
+
+def _deduplicate_fixture_ids(matches: list[dict]) -> list[dict]:
+    seen = set()
+    result = []
+    for match in matches:
+        fixture_id = match.get("id")
+        if fixture_id not in (None, ""):
+            if fixture_id in seen:
+                continue
+            seen.add(fixture_id)
+        result.append(match)
+    return result
+
+
+def _is_singles_fixture(match: dict) -> bool:
+    """Replica a regra operacional legacy: nomes com ``/`` são pares."""
+    player1 = str((match.get("player1") or {}).get("name") or "")
+    player2 = str((match.get("player2") or {}).get("name") or "")
+    return "/" not in player1 and "/" not in player2
+
+
+def _fetch_core_date_fixture_window(
+    *, now: Optional[datetime] = None,
+) -> tuple[list[dict], dict]:
+    """Fallback factual ATP/WTA para todas as datas tocadas pela janela 72h."""
+    raw_matches: list[dict] = []
+    request_statuses = []
+    for day in _window_dates(now):
+        for tour in TOURS_TO_FOLLOW:
+            matches, status = fetch_date_fixtures(
+                day, tour, return_status=True,
+            )
+            raw_matches.extend(matches)
+            request_statuses.append({
+                "date": day.strftime("%Y-%m-%d"),
+                "tour": tour,
+                **status,
+            })
+
+    singles = [match for match in raw_matches if _is_singles_fixture(match)]
+    doubles_excluded = len(raw_matches) - len(singles)
+    raw_matches = _deduplicate_fixture_ids(singles)
+    failed = [
+        item for item in request_statuses
+        if item["status"] == DISCOVERY_SOURCE_UNAVAILABLE
+    ]
+    if raw_matches:
+        source_status = DISCOVERY_SUCCESS_WITH_MATCHES
+    elif failed:
+        source_status = DISCOVERY_SOURCE_UNAVAILABLE
+    else:
+        source_status = DISCOVERY_SUCCESS_EMPTY
+
+    details = {
+        "status": source_status,
+        "matches": len(raw_matches),
+        "requests": len(request_statuses),
+        "successful_requests": len(request_statuses) - len(failed),
+        "unavailable_requests": len(failed),
+        "partial": bool(failed),
+        "doubles_excluded": doubles_excluded,
+        "window_hours": [LOOKAHEAD_HOURS_MIN, LOOKAHEAD_HOURS_MAX],
+    }
+    if failed:
+        details["reason_codes"] = sorted({
+            str(item.get("reason_code") or "SOURCE_UNAVAILABLE")
+            for item in failed
+        })
+    return raw_matches, details
+
+
+def fetch_resilient_discovery_fixtures() -> list[dict]:
+    """Descobre fixtures sem tornar o feed upcoming um ponto único de falha.
+
+    Upcoming continua a ser a fonte normal e a observação reutilizada pela
+    identidade/mercado. O fallback core por data só é ativado se upcoming não
+    entregar uma resposta factual completa para ATP e WTA.
+    """
+    _reset_discovery_diagnostics()
+    events = _fetch_extend_upcoming_events("all")
+    upcoming_status = _upcoming_source_status(events)
+    _record_discovery_source(
+        "upcoming_discovery", upcoming_status, matches=len(events),
+    )
+
+    if upcoming_status != DISCOVERY_SOURCE_UNAVAILABLE:
+        if upcoming_status == DISCOVERY_SUCCESS_EMPTY:
+            _DISCOVERY_DIAGNOSTICS.update({
+                "discovery_selected_source": "upcoming_discovery",
+                "discovery_status": DISCOVERY_SUCCESS_EMPTY,
+            })
+            return []
+        tracked = _eligible_tournaments_from_events(events)
+        all_matches = []
+        for tournament_id, tour in tracked.items():
+            all_matches.extend(fetch_tournament_fixtures(tournament_id, tour))
+        all_matches = _deduplicate_fixture_ids(all_matches)
+        selected_status = (
+            DISCOVERY_SUCCESS_WITH_MATCHES
+            if all_matches else DISCOVERY_SUCCESS_EMPTY
+        )
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": "upcoming_discovery",
+            "discovery_status": selected_status,
+        })
+        _DISCOVERY_DIAGNOSTICS["discovery_sources"]["upcoming_discovery"].update({
+            "eligible_tournaments": len(tracked),
+            "fixtures": len(all_matches),
+        })
+        return all_matches
+
+    core_matches, core_status = _fetch_core_date_fixture_window()
+    _record_discovery_source(
+        "core_date_fixtures", core_status["status"],
+        matches=core_status["matches"],
+        **{
+            key: value for key, value in core_status.items()
+            if key not in {"status", "matches"}
+        },
+    )
+    if core_status["status"] == DISCOVERY_SOURCE_UNAVAILABLE:
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": None,
+            "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        })
+        return []
+
+    eligible_tournaments, unresolved = _eligible_tournaments_from_events(
+        core_matches, return_unresolved=True,
+    )
+    structurally_usable = [
+        match for match in core_matches
+        if match.get("tournamentId") not in (None, "")
+        and match.get("_tour") in {"atp", "wta"}
+    ]
+    if core_matches and not structurally_usable:
+        _DISCOVERY_DIAGNOSTICS["discovery_sources"]["core_date_fixtures"].update({
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "reason_code": "FIXTURE_TOURNAMENT_ID_UNAVAILABLE",
+        })
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": None,
+            "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        })
+        return []
+    selected = [
+        match for match in core_matches
+        if eligible_tournaments.get(match.get("tournamentId")) == match.get("_tour")
+    ]
+    selected = _deduplicate_fixture_ids(selected)
+    if core_matches and not selected and unresolved:
+        _DISCOVERY_DIAGNOSTICS["discovery_sources"]["core_date_fixtures"].update({
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "reason_code": "TOURNAMENT_METADATA_UNAVAILABLE",
+        })
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": None,
+            "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        })
+        return []
+
+    selected_status = (
+        DISCOVERY_SUCCESS_WITH_MATCHES if selected else DISCOVERY_SUCCESS_EMPTY
+    )
+    _DISCOVERY_DIAGNOSTICS.update({
+        "discovery_selected_source": "core_date_fixtures",
+        "discovery_status": selected_status,
+        "discovery_partial": bool(core_status.get("partial")),
+    })
+    _DISCOVERY_DIAGNOSTICS["discovery_sources"]["core_date_fixtures"].update({
+        "eligible_tournaments": len(eligible_tournaments),
+        "eligible_fixtures": len(selected),
+        "metadata_unresolved_tournaments": unresolved,
+        "structurally_unusable_fixtures": len(core_matches) - len(structurally_usable),
+    })
+    return selected
 
 
 def fetch_tracked_tournament_fixtures() -> list[dict]:

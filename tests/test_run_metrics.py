@@ -104,6 +104,24 @@ class RunMetricsTests(unittest.TestCase):
         self.assertTrue(any("cache LLM inválida: 2" in alert for alert in alerts))
         self.assertTrue(any("gravar cache LLM: 1" in alert for alert in alerts))
 
+    def test_partial_discovery_is_visible_in_health_alerts(self) -> None:
+        alerts = run_metrics.health_alerts({
+            "status": "degraded",
+            "discovery_partial": True,
+            "discovery_sources": {
+                "core_date_fixtures": {
+                    "requests": 8,
+                    "successful_requests": 7,
+                    "unavailable_requests": 1,
+                    "reason_codes": ["HTTP_500"],
+                }
+            },
+        })
+
+        self.assertIn(
+            "discovery parcial: 1/8 consultas indisponível", alerts
+        )
+
     def test_invalid_numeric_configuration_falls_back_safely(self) -> None:
         metrics = {"llm_input_tokens": 1_000_000, "llm_output_tokens": "invalid"}
         environment = {
