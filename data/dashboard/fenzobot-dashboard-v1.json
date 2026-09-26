@@ -51727,7 +51727,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-26T15:00:18+00:00",
+  "generated_at_utc": "2026-09-26T17:38:58+00:00",
   "global": {
     "distinct_matchups": 1602,
     "green_strong_candidates": 0,
@@ -51772,7 +51772,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-09-26T15:00:18+00:00",
+    "generated_at_utc": "2026-09-26T17:38:58+00:00",
     "losses": 24,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -3.19,
@@ -51815,7 +51815,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-26T15:00:18+00:00",
+    "generated_at_utc": "2026-09-26T17:38:58+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -52042,7 +52042,7 @@
     "distinct_events": 463,
     "events_with_comparable_closing": 8,
     "events_with_entry_market": 48,
-    "generated_at_utc": "2026-09-26T15:00:18+00:00",
+    "generated_at_utc": "2026-09-26T17:38:58+00:00",
     "market_only": {
       "accuracy_pct": 73.68,
       "brier_score": 0.20332,
@@ -52378,7 +52378,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "c899dafa30aa7459656f06a7c55042746baeedb284ffdf494c4e34d8e1038215",
+  "semantic_fingerprint": "4e2286897ef2071ff47df58140cb24cbd0e8ca55a1246740c2ee360c909a6fa0",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 36,
@@ -52424,7 +52424,7 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-26T15:00:18+00:00"
+      "updated_at_utc": "2026-09-26T17:38:58+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
@@ -52433,7 +52433,7 @@
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-26T15:00:18+00:00"
+      "updated_at_utc": "2026-09-26T17:38:58+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
@@ -52453,7 +52453,7 @@
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-25T23:53:51+00:00"
+      "updated_at_utc": "2026-09-26T17:33:18+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
@@ -52461,27 +52461,21 @@
     }
   },
   "system_health": {
-    "alerts": [
-      "execução falhou na fase filtering"
-    ],
+    "alerts": [],
     "latest": {
       "analysis_failed": null,
-      "duration_seconds": 2.714,
+      "duration_seconds": 3.591,
       "eligible": 0,
       "llm_calls": null,
       "llm_estimated_cost_usd": 0.0,
-      "phase": "filtering",
+      "phase": "complete",
       "processed": null,
-      "rapidapi_calls": 8,
+      "rapidapi_calls": 10,
       "reports_failed": null,
-      "status": "failed",
-      "timestamp": "2026-09-25T23:53:51+00:00"
+      "status": "no_eligible_matches",
+      "timestamp": "2026-09-26T17:33:18+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-17T17:33:55+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-18T05:35:35+00:00"
@@ -52557,8 +52551,12 @@
       {
         "status": "FAILED",
         "timestamp": "2026-09-25T23:53:51+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-26T17:33:18+00:00"
       }
     ],
-    "status": "FAILED"
+    "status": "HEALTHY"
   }
 }
