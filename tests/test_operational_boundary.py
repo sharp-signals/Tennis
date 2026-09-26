@@ -90,8 +90,25 @@ class OperationalBoundaryTests(unittest.TestCase):
         )
         self.assertEqual(
             main._apply_discovery_health_status("no_eligible_matches", partial),
-            "no_eligible_matches",
+            "degraded",
         )
+
+    def test_trigger_context_defaults_to_manual_and_accepts_explicit_slot(self):
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(main._trigger_context(), {
+                "trigger_slot": "manual", "trigger_source": "manual",
+            })
+        with patch.dict("os.environ", {
+            "FENZOBOT_TRIGGER_SLOT": "06:30",
+            "FENZOBOT_TRIGGER_SOURCE": "google_apps_script",
+            "GITHUB_RUN_ID": "123",
+            "GITHUB_REPOSITORY": "sharp-signals/Tennis",
+        }, clear=True):
+            context = main._trigger_context()
+        self.assertEqual(context["trigger_slot"], "06:30")
+        self.assertEqual(context["trigger_source"], "google_apps_script")
+        self.assertEqual(context["github_run_id"], "123")
+        self.assertTrue(context["github_actions_url"].endswith("/actions/runs/123"))
 
     def test_failure_persists_api_usage_and_metrics_then_reraises(self):
         metric_entry = {"status": "failed", "phase": "analysis", "rapidapi_calls": 7}
@@ -102,9 +119,22 @@ class OperationalBoundaryTests(unittest.TestCase):
              patch.object(main.fetch_data, "get_rapidapi_identity_metrics", return_value={}), \
              patch.object(main.fetch_data, "persist_rapidapi_usage") as persist_usage, \
              patch.object(main.run_metrics, "append_run", return_value=metric_entry) as append_run, \
-             patch.object(main.run_metrics, "health_alerts", return_value=["execução falhou"]):
+             patch.object(main.run_metrics, "health_alerts", return_value=["execução falhou"]), \
+             patch.object(
+                 main, "send_run_failed_heartbeat",
+                 return_value={"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"},
+             ) as failure_email:
             with self.assertRaisesRegex(RuntimeError, "boom"):
                 main.main()
+        failure_email.assert_called_once()
+        self.assertEqual(
+            main.run_metrics.context_snapshot()["email_delivery"],
+            {
+                "status": "FAILED",
+                "kind": "RUN_FAILED_HEARTBEAT",
+                "reason_code": "SMTP_SEND_FAILED",
+            },
+        )
         persist_usage.assert_called_once_with(status="failed", matches=0)
         append_run.assert_called_once_with(context={
             "rapidapi_calls": 7,
@@ -137,9 +167,100 @@ class OperationalBoundaryTests(unittest.TestCase):
              patch.object(main.fetch_data, "discovery_unavailable", return_value=False), \
              patch.object(main.fetch_data, "flush_tournament_cache"), \
              patch.object(main.fetch_data, "flush_fixtures_cache"), \
-             patch.object(main.fetch_data, "persist_rapidapi_usage") as persist:
+             patch.object(main.fetch_data, "persist_rapidapi_usage") as persist, \
+             patch.object(
+                 main, "send_no_eligible_heartbeat",
+                 return_value={"status": "SENT", "kind": "NO_ELIGIBLE_HEARTBEAT"},
+             ) as heartbeat:
             main.run()
         persist.assert_called_once_with(status="no_eligible_matches", matches=0)
+        heartbeat.assert_called_once()
+        self.assertEqual(
+            heartbeat.call_args.kwargs["reason"],
+            "nenhum jogo elegível nesta execução",
+        )
+
+    def test_partial_discovery_without_eligible_matches_is_degraded(self):
+        diagnostics = {
+            "discovery_sources": {
+                "core_date_fixtures": {
+                    "status": "SUCCESS_WITH_MATCHES",
+                    "requests": 8,
+                    "successful_requests": 7,
+                    "unavailable_requests": 1,
+                },
+            },
+            "discovery_selected_source": "core_date_fixtures",
+            "discovery_status": "SUCCESS_WITH_MATCHES",
+            "discovery_partial": True,
+        }
+        with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
+             patch.object(
+                 main.fetch_data, "fetch_resilient_discovery_fixtures",
+                 return_value=[],
+             ), \
+             patch.object(
+                 main.fetch_data, "get_discovery_diagnostics",
+                 return_value=diagnostics,
+             ), \
+             patch.object(main.fetch_data, "discovery_unavailable", return_value=False), \
+             patch.object(main.fetch_data, "flush_tournament_cache"), \
+             patch.object(main.fetch_data, "flush_fixtures_cache"), \
+             patch.object(main.fetch_data, "persist_rapidapi_usage") as persist, \
+             patch.object(
+                 main, "send_no_eligible_heartbeat",
+                 return_value={"status": "SENT", "kind": "NO_ELIGIBLE_HEARTBEAT"},
+             ) as heartbeat:
+            main.run()
+
+        persist.assert_called_once_with(status="degraded", matches=0)
+        self.assertTrue(heartbeat.call_args.args[1]["discovery_partial"])
+
+    def test_zero_after_identity_sends_distinct_heartbeat(self):
+        match = self._matches(1, failures=0)[0]
+        diagnostics = {
+            "discovery_sources": {},
+            "discovery_selected_source": "upcoming_discovery",
+            "discovery_status": "SUCCESS_WITH_MATCHES",
+            "discovery_partial": False,
+        }
+        with patch.object(main.fetch_data, "reset_rapidapi_call_count"), \
+             patch.object(
+                 main.fetch_data, "fetch_resilient_discovery_fixtures",
+                 return_value=[match],
+             ), \
+             patch.object(
+                 main.fetch_data, "get_discovery_diagnostics",
+                 return_value=diagnostics,
+             ), \
+             patch.object(main, "_deduplicate_matches", side_effect=lambda value: value), \
+             patch.object(main, "_filter_matches_in_window", side_effect=lambda value: value), \
+             patch.object(main, "_filter_prelive_matches", side_effect=lambda value: value), \
+             patch.object(
+                 main, "_filter_and_enrich_with_tournament_info",
+                 side_effect=lambda value: value,
+             ), \
+             patch.object(main.fetch_data, "flush_tournament_cache"), \
+             patch.object(main.fetch_data, "flush_fixtures_cache"), \
+             patch.object(main.fetch_data, "prepare_rapidapi_odds_index"), \
+             patch.object(
+                 main.fetch_data, "rapidapi_event_integrity",
+                 return_value={"status": "rejected", "reason": "MISMATCH"},
+             ), \
+             patch.object(main.fetch_data, "get_rapidapi_identity_metrics", return_value={}), \
+             patch.object(main.fetch_data, "persist_rapidapi_usage") as persist, \
+             patch.object(
+                 main, "send_no_eligible_heartbeat",
+                 return_value={"status": "SENT", "kind": "NO_ELIGIBLE_HEARTBEAT"},
+             ) as heartbeat:
+            main.run()
+
+        persist.assert_called_once_with(status="no_eligible_matches", matches=0)
+        heartbeat.assert_called_once()
+        self.assertEqual(
+            heartbeat.call_args.kwargs["reason"],
+            "nenhum jogo com identidade pré-live válida",
+        )
 
     def test_below_minimum_coverage_does_not_publish_partial_reports(self):
         matches = self._matches(10, failures=3)
@@ -202,6 +323,13 @@ class OperationalBoundaryTests(unittest.TestCase):
                 ))
                 stack.enter_context(patch.object(main, "_write_site_index"))
                 send = stack.enter_context(patch.object(main, "send_message"))
+                email = stack.enter_context(patch.object(
+                    main, "send_run_report_email",
+                    return_value={"status": "SENT", "kind": "REPORTS"},
+                ))
+                heartbeat = stack.enter_context(patch.object(
+                    main, "send_no_eligible_heartbeat",
+                ))
                 stack.enter_context(patch.object(
                     main.fetch_data, "get_rapidapi_call_count", return_value=5,
                 ))
@@ -220,6 +348,11 @@ class OperationalBoundaryTests(unittest.TestCase):
         self.assertEqual(entry["analysis_error_counts"], {"payload:ValueError": 1})
         self.assertEqual(build_report.call_count, 9)
         send.assert_called_once()
+        email.assert_called_once()
+        heartbeat.assert_not_called()
+        self.assertEqual(entry["email_delivery"], {
+            "status": "SENT", "kind": "REPORTS",
+        })
         persist_usage.assert_called_once_with(status="degraded", matches=9)
 
 
