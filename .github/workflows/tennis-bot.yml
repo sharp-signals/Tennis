@@ -7,7 +7,16 @@ on:
   # O cron nativo
   # do GitHub pode arrancar horas atrasado, portanto fica deliberadamente
   # desativado para não criar execuções inesperadas nem custo extra.
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      trigger_slot:
+        description: "Slot lógico do scheduler (ex.: 11:30)"
+        required: false
+        type: string
+      trigger_source:
+        description: "Origem do dispatch"
+        required: false
+        type: string
 
 concurrency:
   group: tennis-pre-live-production
@@ -39,6 +48,8 @@ jobs:
           LLM_MODE: disabled
           LLM_POLICY: never
           ALLOW_PAID_LLM: "0"
+          FENZOBOT_TRIGGER_SLOT: ${{ inputs.trigger_slot || 'manual' }}
+          FENZOBOT_TRIGGER_SOURCE: ${{ inputs.trigger_source || 'manual' }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           # CHANGE-2026-09-03-024: comparador pago opcional, OFF por defeito.
           THE_ODDS_API_ENABLED: "0"

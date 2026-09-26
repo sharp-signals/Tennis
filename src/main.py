@@ -71,7 +71,16 @@ from .pricing import estimate_market_residual_pricing
 from .prelive_decision import assess_report, build_decision
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
-from .email_reports import send_run_report_email
+from .email_reports import (
+    EMAIL_NO_ELIGIBLE,
+    EMAIL_DELIVERY_STATUSES,
+    EMAIL_REPORTS,
+    EMAIL_RUN_FAILED,
+    sanitize_error_message,
+    send_no_eligible_heartbeat,
+    send_run_failed_heartbeat,
+    send_run_report_email,
+)
 from .telegram_summary import decision_row as _decision_row, state_counts as telegram_state_counts
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
 
@@ -90,9 +99,54 @@ def _classify_processing_status(eligible: int, processed: int) -> tuple[str, flo
 
 def _apply_discovery_health_status(status: str, diagnostics: dict) -> str:
     """Uma descoberta core parcial nunca pode terminar operacionalmente verde."""
-    if status == "success" and diagnostics.get("discovery_partial") is True:
+    if status in {"success", "no_eligible_matches"} and (
+        diagnostics.get("discovery_partial") is True
+    ):
         return "degraded"
     return status
+
+
+def _trigger_context() -> dict:
+    slot = os.environ.get("FENZOBOT_TRIGGER_SLOT", "").strip() or "manual"
+    source = os.environ.get("FENZOBOT_TRIGGER_SOURCE", "").strip() or "manual"
+    run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
+    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+    result = {"trigger_slot": slot, "trigger_source": source}
+    if run_id:
+        result["github_run_id"] = run_id
+    if run_id and repository:
+        result["github_actions_url"] = (
+            f"{server}/{repository}/actions/runs/{run_id}"
+        )
+    return result
+
+
+def _record_email_delivery(result: dict, expected_kind: str) -> dict:
+    """Normaliza telemetria sem permitir que uma integração mude a run."""
+    status = str((result or {}).get("status") or "FAILED")
+    if status not in EMAIL_DELIVERY_STATUSES:
+        status = "FAILED"
+    delivery = {"status": status, "kind": expected_kind}
+    reason = (result or {}).get("reason_code")
+    if reason:
+        delivery["reason_code"] = str(reason)
+    run_metrics.update_context(email_delivery=delivery)
+    return delivery
+
+
+def _attempt_no_eligible_email(reason: str) -> dict:
+    details = run_metrics.context_snapshot()
+    try:
+        result = send_no_eligible_heartbeat(
+            datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            details,
+            reason=reason,
+        )
+    except Exception:
+        result = {"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"}
+        print("[email] heartbeat sem relatórios falhou; detalhes omitidos.")
+    return _record_email_delivery(result, EMAIL_NO_ELIGIBLE)
 
 
 def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dict]:
@@ -2127,7 +2181,12 @@ def _telegram_decision_row(payload: dict) -> tuple[int, str, str]:
 
 def run() -> None:
     run_metrics.reset()
-    run_metrics.update_context(status="running", phase="initializing")
+    run_metrics.update_context(
+        status="running",
+        phase="initializing",
+        email_delivery={"status": "NOT_ATTEMPTED"},
+        **_trigger_context(),
+    )
     # O contador RapidAPI é opcional; versões anteriores de fetch_data.py podem não expor estas funções.
     reset_calls = getattr(fetch_data, "reset_rapidapi_call_count", None)
     if callable(reset_calls):
@@ -2146,6 +2205,7 @@ def run() -> None:
 
     discovery_diagnostics = fetch_data.get_discovery_diagnostics()
     run_metrics.update_context(
+        fixtures_discovered=len(raw_matches),
         fixtures_discovered_by_tour=_tour_counts(raw_matches),
         **discovery_diagnostics,
     )
@@ -2154,11 +2214,15 @@ def run() -> None:
     print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
 
     windowed = _filter_matches_in_window(raw_matches)
+    run_metrics.update_context(fixtures_in_window=len(windowed))
     windowed = _filter_prelive_matches(windowed)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
     tournament_eligible = list(eligible)
     run_metrics.update_context(
-        eligible=len(eligible), eligible_by_tour=_tour_counts(eligible), phase="filtering",
+        eligible=len(eligible),
+        eligible_before_identity=len(eligible),
+        eligible_by_tour=_tour_counts(eligible),
+        phase="filtering",
         challenger_125_experiment=_experimental_tier_metrics(
             tournament_eligible, [], [],
         ),
@@ -2176,8 +2240,14 @@ def run() -> None:
         )
 
     if not eligible:
-        run_metrics.update_context(status="no_eligible_matches", phase="complete")
-        fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
+        final_status = _apply_discovery_health_status(
+            "no_eligible_matches", discovery_diagnostics,
+        )
+        run_metrics.update_context(
+            status=final_status, phase="complete", eligible_after_identity=0,
+        )
+        _attempt_no_eligible_email("nenhum jogo elegível nesta execução")
+        fetch_data.persist_rapidapi_usage(status=final_status, matches=0)
         print("[info] Sem jogos elegíveis nesta janela (fora do tier permitido ou fora de horas). Nada a enviar.")
         return
 
@@ -2205,13 +2275,18 @@ def run() -> None:
     eligible = verified_eligible
     run_metrics.update_context(
         eligible=len(eligible),
+        eligible_after_identity=len(eligible),
         post_identity_eligible_by_tour=_tour_counts(eligible),
         event_identity=fetch_data.get_rapidapi_identity_metrics(),
         phase="event_integrity",
     )
     if not eligible:
-        run_metrics.update_context(status="no_eligible_matches", phase="complete")
-        fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
+        final_status = _apply_discovery_health_status(
+            "no_eligible_matches", discovery_diagnostics,
+        )
+        run_metrics.update_context(status=final_status, phase="complete")
+        _attempt_no_eligible_email("nenhum jogo com identidade pré-live válida")
+        fetch_data.persist_rapidapi_usage(status=final_status, matches=0)
         print("[info] Sem jogos pré-live com identidade de evento válida. Nada a enviar.")
         return
 
@@ -2649,9 +2724,11 @@ def run() -> None:
     # falhar, os relatórios e o resumo Telegram já publicados não são
     # invalidados; o aviso fica explícito no log da run.
     try:
-        send_run_report_email(today_str, match_reports)
-    except RuntimeError as exc:
-        print(f"[aviso] {exc}")
+        email_result = send_run_report_email(today_str, match_reports)
+    except Exception:
+        email_result = {"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"}
+        print("[email] resumo de relatórios falhou; detalhes omitidos.")
+    _record_email_delivery(email_result, EMAIL_REPORTS)
     print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
 
     reports_ok = sum(1 for _, _, url in match_reports if url)
@@ -2699,8 +2776,18 @@ def main() -> None:
         failure = exc
         run_metrics.update_context(
             status="failed", error_type=type(exc).__name__,
-            error_message=str(exc)[:500],
+            error_message=sanitize_error_message(exc),
         )
+        try:
+            result = send_run_failed_heartbeat(
+                datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                run_metrics.context_snapshot(),
+                exc,
+            )
+        except Exception:
+            result = {"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"}
+            print("[email] heartbeat de falha indisponível; detalhes omitidos.")
+        _record_email_delivery(result, EMAIL_RUN_FAILED)
     finally:
         if failure is not None:
             try:

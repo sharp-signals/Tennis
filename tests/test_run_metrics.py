@@ -24,6 +24,12 @@ class RunMetricsTests(unittest.TestCase):
             {"llm_calls": 1, "llm_input_tokens": 120, "llm_provider_invocations": 0, "llm_external_requests": 0},
         )
 
+    def test_context_snapshot_is_a_copy(self) -> None:
+        run_metrics.update_context(trigger_slot="11:30")
+        snapshot = run_metrics.context_snapshot()
+        snapshot["trigger_slot"] = "changed"
+        self.assertEqual(run_metrics.context_snapshot()["trigger_slot"], "11:30")
+
     def test_append_is_atomic_and_retains_bounded_history(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "metrics.json"

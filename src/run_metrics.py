@@ -58,6 +58,12 @@ def update_context(**values) -> None:
         _CONTEXT.update({key: value for key, value in values.items() if value is not None})
 
 
+def context_snapshot() -> dict:
+    """Cópia do contexto operacional atual, sem expor estado mutável interno."""
+    with _LOCK:
+        return dict(_CONTEXT)
+
+
 def increment(name: str, amount: int = 1) -> None:
     if not name or amount < 0:
         raise ValueError("Métrica inválida.")
