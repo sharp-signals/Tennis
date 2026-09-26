@@ -3355,19 +3355,28 @@ def _fd_bar(chave, st):
             f'<span class="fd-bar-val b">{_esc(label_b)}</span></div>')
 
 
-def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
+def _mod_fatores_detalhados(
+    payload,
+    div,
+    overview_html="",
+    extras_html="",
+    tail_html="",
+):
     """Módulo: TODOS os fatores do motor (não só o top-3/4), com quem tem
     vantagem em cada um, OS NÚMEROS reais por trás, e uma barra proporcional
     — "sem dados"/"empate"/"abaixo do limiar" quando aplicável. 100% Python,
     a partir de `fatores_status` (ver _calcular_divergencia) — o Claude
     nunca vê nem decide isto.
 
+    overview_html: leitura editorial compacta injetada no início do Mapa de
+    Forças, antes dos módulos analíticos já existentes.
+
     extras_html: conteúdo adicional (Serviço/Resposta, Carga, H2H) injetado
     DENTRO do mesmo colapsável, ANTES das linhas por fator — feedback de
     teste (13/08/2026): "acho que esta info devia estar dentro do mapa de
     forças", em vez de cartões à parte antes dele."""
     status = (div or {}).get("fatores_status") or {}
-    if not status and not extras_html and not tail_html:
+    if not status and not overview_html and not extras_html and not tail_html:
         return ""
     max_impact = max(
         (float(st.get("peso_efetivo") or 0) for st in status.values()),
@@ -3438,7 +3447,7 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
             f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
             f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
             f'{bar_html}{impact_bar}</div>')
-    if not linhas and not extras_html and not tail_html:
+    if not linhas and not overview_html and not extras_html and not tail_html:
         return ""
     total_tag = f" ({len(linhas)})" if linhas else ""
     factor_bars = (
@@ -3452,7 +3461,7 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
     )
     return (f'<details class="more report-map mais-forcas"><summary>Mapa de Forças{total_tag}'
             f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
-            f'<div class="more-body">{extras_html}{factor_bars}{tail_html}</div></details>')
+            f'<div class="more-body">{overview_html}{extras_html}{factor_bars}{tail_html}</div></details>')
 
 
 def _mod_mercado_vs_sinal(payload, div):
@@ -5080,6 +5089,7 @@ def _css_editorial():
 .section-title{font-size:11px;color:var(--b);text-transform:uppercase;letter-spacing:1.5px;margin:22px 2px 9px}.match-intro{border-left:3px solid var(--b);padding:12px 15px;background:rgba(52,200,255,.06);border-radius:0 10px 10px 0;margin-bottom:14px;color:var(--text);font-size:15px}
 .glance{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}.glance-head,.glance-row{display:grid;grid-template-columns:1fr minmax(120px,.8fr) 1fr;gap:10px;align-items:center}.glance-head{padding-bottom:9px;color:var(--dim);font-size:11px}.glance-head span:last-child,.glance-b{text-align:right}.glance-row{padding:9px 0;border-top:1px solid var(--line)}.glance-label{text-align:center;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.glance-a,.glance-b{font-size:15px;font-weight:700}.glance-win{color:var(--mint)}
 .keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
+.force-map-overview{min-width:0}.force-map-overview>.market-section:first-child{margin-top:0;padding-top:0;border-top:0}.force-map-overview>.market-section:first-child>.section-title{margin-top:8px}.force-map-overview>.rh-box{margin-bottom:18px}
 .history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}.history-winner.a{color:var(--a)}.history-winner.b{color:var(--b)}
 .pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1fr);gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:nowrap;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}.pulse-seq::-webkit-scrollbar{display:none}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;flex:0 0 25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;flex-basis:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
 .pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
@@ -5490,9 +5500,11 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     pricing_html = "" if is_null_report else _mod_market_residual_pricing(payload)
     if not is_null_report:
         partes.append(pricing_html or _mod_market_verdict(payload, div))
+    market_reading_html = ""
     if chave not in ("sem_odds", "erro") and not is_null_report:
-        partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
-        partes.append(_mod_mercado_vs_sinal(payload, div))
+        market_reading_html = (
+            '<div class="market-section"><div class="section-title">Leitura do mercado</div>'
+            f'{_mod_mercado_vs_sinal(payload, div)}'
         # REMOVIDO (18/08/2026, a pedido): a "Faixa indicativa em
         # calibração" (_mod_indicative_odds) ficou redundante — a mesma
         # informação (probabilidade/odd justa em faixa, para os dois
@@ -5500,8 +5512,8 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         # do relatório. Duas secções a repetir os mesmos números só
         # confundia. A função continua definida (não usada), caso volte a
         # fazer sentido isolá-la no futuro.
-        partes.append(_mod_market_provenance(payload))
-        partes.append('</div>')
+            f'{_mod_market_provenance(payload)}</div>'
+        )
     # 2. Leitura do jogo (sempre — muda conforme estado)
     # REMOVIDO (23/08/2026, a pedido repetido): a caixa "match-intro"
     # (_mod_match_intro) repetia pontos factuais tipo "X superior no
@@ -5509,12 +5521,26 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # para tirar por completo. Toda essa informação já está no "jogo num
     # relance", no Mapa de Forças e no Mapa de Ações. A função continua
     # definida (não usada), caso volte a fazer sentido no futuro.
-    partes.append(_mod_at_glance_clean(payload))
-    partes.append(_mod_match_keys(payload, div))
+    overview_sections = (
+        market_reading_html,
+        _mod_at_glance_clean(payload),
+        _mod_match_keys(payload, div),
+        _mod_ranking_h2h_box(payload),
+    )
+    overview_content = "".join(section for section in overview_sections if section)
+    _force_map_overview = (
+        f'<div class="force-map-overview">{overview_content}</div>'
+        if overview_content else ""
+    )
     partes.append(_mod_data_quality_notice(payload))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":
+        partes.append(_mod_fatores_detalhados(
+            payload,
+            {},
+            overview_html=_force_map_overview,
+        ))
         partes.append(f"""
 <div class="parcial">
   <b>⚠️ Análise parcial</b> — odds indisponíveis e análise não gerada.
@@ -5548,11 +5574,12 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         f'{_mod_fadiga(payload)}{_mod_transparencia_pesos(payload, div)}'
         '</div></div>'
     )
-    # PROBLEMA 2 (22/08/2026, a pedido): caixa de ranking + confronto
-    # direto, entre as Chaves do Confronto e o Mapa de Forças.
-    partes.append(_mod_ranking_h2h_box(payload))
     partes.append(_mod_fatores_detalhados(
-        payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
+        payload,
+        div,
+        overview_html=_force_map_overview,
+        extras_html=_extras_mapa,
+        tail_html=_tail_mapa,
     ))
     # REVERTIDO (21/08/2026, a pedido do Hugo): Mapa de Ações volta para o
     # fim, depois de toda a análise detalhada — "Match-up -> Análise ->

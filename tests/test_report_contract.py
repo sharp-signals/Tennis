@@ -692,6 +692,55 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("1.8", hero)
         self.assertNotIn("Â", hero)
 
+    def test_editorial_sections_move_inside_force_map_in_requested_order(self):
+        payload = {
+            "player_a": "Alexandra Eala", "player_b": "Belinda Bencic",
+            "tour": "wta", "tournament": "Toronto", "tier": "WTA 1000",
+            "surface": "Hard", "commence_time_utc": "2026-08-17T20:30:00+00:00",
+            "ranking_a": {"rank": 20}, "ranking_b": {"rank": 14},
+            "recent_form_a": {"wins": 9, "losses": 1, "matches": 10},
+            "recent_form_b": {"wins": 8, "losses": 2, "matches": 10},
+            "recent_history_a": [{"won": True}, {"won": False}],
+            "recent_history_b": [{"won": False}, {"won": True}],
+            "surface_stats_a": {"Hard": {"wins": 20, "losses": 10, "matches": 30}},
+            "surface_stats_b": {"Hard": {"wins": 22, "losses": 8, "matches": 30}},
+            "market_odds_decimal": {"Alexandra Eala": 2.1, "Belinda Bencic": 1.8},
+            "h2h": {"overall": {"total_matches": 2, "a_wins": 1, "b_wins": 1}},
+            "features": {
+                "ranking": {"lider": "Belinda Bencic", "diff": 6},
+                "forma_recente": {"lider": "Alexandra Eala", "diff": 10},
+            },
+        }
+
+        html = report_html.build_report_html_v2(
+            payload, {}, report_html._calcular_divergencia,
+        )
+
+        force_map_start = html.index('<details class="more report-map mais-forcas"')
+        action_map_start = html.index('<section class="action-map-static"')
+        before_force_map = html[:force_map_start]
+        force_map_area = html[force_map_start:action_map_start]
+        labels = (
+            "Leitura do mercado",
+            "O jogo num relance",
+            "Chaves do confronto",
+            "Ranking e confronto direto",
+        )
+
+        for label in labels:
+            self.assertNotIn(label, before_force_map)
+            self.assertEqual(force_map_area.count(label), 1)
+        positions = [force_map_area.index(label) for label in labels]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn('class="force-map-overview"', force_map_area)
+        self.assertGreater(force_map_area.index("Raio-X Anal&#237;tico"), positions[-1])
+        self.assertIn("Forma Recente | &#218;ltimos 10", force_map_area)
+        self.assertGreater(action_map_start, force_map_start)
+        self.assertIn("Alexandra Eala", force_map_area)
+        self.assertIn("Belinda Bencic", force_map_area)
+        self.assertIn("46%", force_map_area)
+        self.assertIn("54%", force_map_area)
+
     def test_form_details_live_only_inside_force_map(self):
         payload = {
             "player_a": "A",
