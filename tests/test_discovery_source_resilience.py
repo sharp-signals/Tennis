@@ -241,6 +241,8 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
         self.assertEqual(matches, [])
         self.assertEqual(status["status"], fetch_data.DISCOVERY_SUCCESS_EMPTY)
         self.assertEqual(status["requests"], 8)
+        self.assertFalse(status["partial"])
+        self.assertEqual(status["doubles_excluded"], 0)
         self.assertEqual(
             seen,
             [
@@ -248,6 +250,104 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
                 for date in ("2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29")
                 for tour in ("atp", "wta")
             ],
+        )
+
+    def test_core_fallback_preserves_singles_and_excludes_doubles(self):
+        now = datetime(2026, 9, 26, 10, tzinfo=timezone.utc)
+        singles = self._fixture(1, 10)
+        doubles_p1 = self._fixture(2, 10)
+        doubles_p1["player1"]["name"] = "Alpha / Partner"
+        doubles_p2 = self._fixture(3, 10)
+        doubles_p2["player2"]["name"] = "Beta / Partner"
+        responses = [[singles, doubles_p1, doubles_p2]] + [[] for _ in range(7)]
+
+        def fetch(_day, _tour, *, return_status=False):
+            self.assertTrue(return_status)
+            matches = responses.pop(0)
+            return matches, {
+                "status": (
+                    fetch_data.DISCOVERY_SUCCESS_WITH_MATCHES
+                    if matches else fetch_data.DISCOVERY_SUCCESS_EMPTY
+                ),
+                "matches": len(matches),
+            }
+
+        with patch.object(fetch_data, "fetch_date_fixtures", side_effect=fetch):
+            matches, status = fetch_data._fetch_core_date_fixture_window(now=now)
+
+        self.assertEqual([item["id"] for item in matches], [1])
+        self.assertEqual(status["doubles_excluded"], 2)
+        self.assertEqual(status["matches"], 1)
+
+        with patch.object(
+            fetch_data, "_fetch_extend_upcoming_events",
+            side_effect=lambda _tour: self._mark_upcoming_failure(),
+        ), patch.object(
+            fetch_data, "_fetch_core_date_fixture_window",
+            return_value=(matches, status),
+        ), patch.object(
+            fetch_data, "get_tournament_info",
+            return_value={"tier": "ATP 250", "name": "Allowed"},
+        ):
+            eligible = fetch_data.fetch_resilient_discovery_fixtures()
+
+        self.assertEqual([item["id"] for item in eligible], [1])
+        diagnostics = fetch_data.get_discovery_diagnostics()
+        core = diagnostics["discovery_sources"]["core_date_fixtures"]
+        self.assertEqual(core["eligible_fixtures"], 1)
+        self.assertEqual(core["doubles_excluded"], 2)
+
+    def test_partial_core_recovery_keeps_matches_and_marks_discovery_partial(self):
+        fixture = self._fixture(1, 10)
+        calls = 0
+
+        def fetch(_day, _tour, *, return_status=False):
+            nonlocal calls
+            self.assertTrue(return_status)
+            calls += 1
+            if calls == 8:
+                return [], {
+                    "status": fetch_data.DISCOVERY_SOURCE_UNAVAILABLE,
+                    "matches": 0,
+                    "reason_code": "HTTP_500",
+                }
+            return ([fixture] if calls == 1 else []), {
+                "status": (
+                    fetch_data.DISCOVERY_SUCCESS_WITH_MATCHES
+                    if calls == 1 else fetch_data.DISCOVERY_SUCCESS_EMPTY
+                ),
+                "matches": int(calls == 1),
+            }
+
+        with patch.object(fetch_data, "fetch_date_fixtures", side_effect=fetch):
+            matches, status = fetch_data._fetch_core_date_fixture_window(
+                now=datetime(2026, 9, 26, 10, tzinfo=timezone.utc),
+            )
+
+        self.assertEqual(matches, [fixture])
+        self.assertEqual(status["successful_requests"], 7)
+        self.assertEqual(status["unavailable_requests"], 1)
+        self.assertEqual(status["reason_codes"], ["HTTP_500"])
+        self.assertTrue(status["partial"])
+
+        with patch.object(
+            fetch_data, "_fetch_extend_upcoming_events",
+            side_effect=lambda _tour: self._mark_upcoming_failure(),
+        ), patch.object(
+            fetch_data, "_fetch_core_date_fixture_window",
+            return_value=(matches, status),
+        ), patch.object(
+            fetch_data, "get_tournament_info",
+            return_value={"tier": "ATP 250", "name": "Allowed"},
+        ):
+            self.assertEqual(fetch_data.fetch_resilient_discovery_fixtures(), [fixture])
+
+        diagnostics = fetch_data.get_discovery_diagnostics()
+        self.assertTrue(diagnostics["discovery_partial"])
+        self.assertEqual(
+            diagnostics["discovery_sources"]["core_date_fixtures"]
+            ["successful_requests"],
+            7,
         )
 
     def test_core_discovers_250_and_challenger125_but_excludes_lower_tiers(self):

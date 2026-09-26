@@ -75,6 +75,24 @@ class OperationalBoundaryTests(unittest.TestCase):
             ("no_eligible_matches", 1.0),
         )
 
+    def test_partial_discovery_promotes_success_to_degraded_only(self):
+        partial = {"discovery_partial": True}
+        complete = {"discovery_partial": False}
+
+        self.assertEqual(
+            main._apply_discovery_health_status("success", complete), "success"
+        )
+        self.assertEqual(
+            main._apply_discovery_health_status("success", partial), "degraded"
+        )
+        self.assertEqual(
+            main._apply_discovery_health_status("failed", partial), "failed"
+        )
+        self.assertEqual(
+            main._apply_discovery_health_status("no_eligible_matches", partial),
+            "no_eligible_matches",
+        )
+
     def test_failure_persists_api_usage_and_metrics_then_reraises(self):
         metric_entry = {"status": "failed", "phase": "analysis", "rapidapi_calls": 7}
         with patch.object(main, "run", side_effect=RuntimeError("boom")), \

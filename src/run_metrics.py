@@ -96,6 +96,16 @@ def health_alerts(entry: dict) -> list[str]:
     fallbacks = _as_int(entry.get("llm_fallbacks"))
     if entry.get("status") == "failed":
         alerts.append(f"execução falhou na fase {entry.get('phase', 'desconhecida')}")
+    if entry.get("discovery_partial") is True:
+        core = (entry.get("discovery_sources") or {}).get(
+            "core_date_fixtures", {}
+        )
+        unavailable = _as_int(core.get("unavailable_requests"))
+        requests = _as_int(core.get("requests"))
+        alerts.append(
+            "discovery parcial: "
+            f"{unavailable}/{requests or '?'} consultas indisponível"
+        )
     if calls >= _env_number("ALERT_RAPIDAPI_CALLS", 600):
         alerts.append(f"consumo RapidAPI elevado: {calls} chamadas")
     if llm_calls and fallbacks / llm_calls >= _env_number("ALERT_LLM_FALLBACK_RATE", 0.2):

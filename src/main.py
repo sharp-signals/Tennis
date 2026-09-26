@@ -88,6 +88,13 @@ def _classify_processing_status(eligible: int, processed: int) -> tuple[str, flo
     return "success", ratio
 
 
+def _apply_discovery_health_status(status: str, diagnostics: dict) -> str:
+    """Uma descoberta core parcial nunca pode terminar operacionalmente verde."""
+    if status == "success" and diagnostics.get("discovery_partial") is True:
+        return "degraded"
+    return status
+
+
 def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dict]:
     """
     Para cada jogo, busca a info do torneio (cache-first) e só mantém os
@@ -2319,6 +2326,9 @@ def run() -> None:
         error_counts[category] = error_counts.get(category, 0) + 1
     processing_status, processing_ratio = _classify_processing_status(
         len(process_targets), len(analyses)
+    )
+    processing_status = _apply_discovery_health_status(
+        processing_status, discovery_diagnostics,
     )
     run_metrics.update_context(
         processed=len(analyses),

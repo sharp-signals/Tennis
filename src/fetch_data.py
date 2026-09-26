@@ -794,6 +794,7 @@ def _reset_discovery_diagnostics() -> None:
         "discovery_sources": {},
         "discovery_selected_source": None,
         "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        "discovery_partial": False,
     })
 
 
@@ -828,6 +829,9 @@ def get_discovery_diagnostics() -> dict:
         ),
         "discovery_status": _DISCOVERY_DIAGNOSTICS.get(
             "discovery_status", DISCOVERY_SOURCE_UNAVAILABLE
+        ),
+        "discovery_partial": bool(
+            _DISCOVERY_DIAGNOSTICS.get("discovery_partial", False)
         ),
     }
 
@@ -6279,9 +6283,7 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
             # não fazem parte da análise (só singles) nem são "elegíveis"
             # sem data para verificar a janela de antecedência.
             for match in page_data:
-                p1_name = (match.get("player1") or {}).get("name", "")
-                p2_name = (match.get("player2") or {}).get("name", "")
-                if "/" in p1_name or "/" in p2_name:
+                if not _is_singles_fixture(match):
                     continue
                 if not match.get("date"):
                     continue
@@ -6450,6 +6452,13 @@ def _deduplicate_fixture_ids(matches: list[dict]) -> list[dict]:
     return result
 
 
+def _is_singles_fixture(match: dict) -> bool:
+    """Replica a regra operacional legacy: nomes com ``/`` são pares."""
+    player1 = str((match.get("player1") or {}).get("name") or "")
+    player2 = str((match.get("player2") or {}).get("name") or "")
+    return "/" not in player1 and "/" not in player2
+
+
 def _fetch_core_date_fixture_window(
     *, now: Optional[datetime] = None,
 ) -> tuple[list[dict], dict]:
@@ -6468,7 +6477,9 @@ def _fetch_core_date_fixture_window(
                 **status,
             })
 
-    raw_matches = _deduplicate_fixture_ids(raw_matches)
+    singles = [match for match in raw_matches if _is_singles_fixture(match)]
+    doubles_excluded = len(raw_matches) - len(singles)
+    raw_matches = _deduplicate_fixture_ids(singles)
     failed = [
         item for item in request_statuses
         if item["status"] == DISCOVERY_SOURCE_UNAVAILABLE
@@ -6487,6 +6498,7 @@ def _fetch_core_date_fixture_window(
         "successful_requests": len(request_statuses) - len(failed),
         "unavailable_requests": len(failed),
         "partial": bool(failed),
+        "doubles_excluded": doubles_excluded,
         "window_hours": [LOOKAHEAD_HOURS_MIN, LOOKAHEAD_HOURS_MAX],
     }
     if failed:
@@ -6593,6 +6605,7 @@ def fetch_resilient_discovery_fixtures() -> list[dict]:
     _DISCOVERY_DIAGNOSTICS.update({
         "discovery_selected_source": "core_date_fixtures",
         "discovery_status": selected_status,
+        "discovery_partial": bool(core_status.get("partial")),
     })
     _DISCOVERY_DIAGNOSTICS["discovery_sources"]["core_date_fixtures"].update({
         "eligible_tournaments": len(eligible_tournaments),
