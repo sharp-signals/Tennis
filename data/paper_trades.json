@@ -8273,8 +8273,114 @@
         "tournament_id": 16748
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_249c2e830de34578a9facbb2adf26036:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-27T17:37:44+00:00",
+        "canonical_match_instance_id": "mi2_249c2e830de34578a9facbb2adf26036",
+        "commence_time_utc": "2026-09-28T09:30:00+00:00",
+        "coverage": {
+          "available_factors": 15,
+          "available_weight": 92.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 63.9,
+          "weighted_ratio": 0.638889
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "13426f27c4ba47ed0efd7c26d0122c090dd6f51c9b83246004ec52c34cd04f30",
+        "event_key": "mi2_249c2e830de34578a9facbb2adf26036",
+        "expected_edge_pct": 1.59,
+        "fair_odd": 1.312,
+        "fenzobot_index": 88,
+        "identity_reason_code": "MINTED_WITH_VALIDATED_EVENT_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "atp:1291",
+        "line": null,
+        "market": "Moneyline Andrey Rublev",
+        "market_memory_eligible": false,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Andrey Rublev": 1.333,
+          "Kyrian Jacquet": 3.4
+        },
+        "market_type": "Moneyline",
+        "match_id": 1291,
+        "odd": 1.333,
+        "odds_contract_activation": {
+          "activation_commit": "05074c6ab0bfed780f30b06d28e55eb3f6e600bd",
+          "activation_observed_at_utc": "2026-09-27T17:35:17+00:00",
+          "activation_run_id": "36337348467",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-09-21-050",
+          "contract_version": "rapidapi-recent-gated-v1"
+        },
+        "odds_provenance": {
+          "bookmaker": "Bet365",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-27T17:35:17+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/4050108",
+          "event_id": "4050108",
+          "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 0.257,
+            "median_devig_probability_a": 0.2803546597614965,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-09-27T15:40:24+00:00",
+          "provider_timestamp_status": "unreliable_for_freshness",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "single-factual-bookmaker-bilateral-v1",
+          "freshness_semantics": "observed-at-capture-unverified-age-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "rapidapi-recent-gated-v1",
+          "source_family": "rapidapi-recent-odds"
+        },
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "players": {
+          "a": {
+            "id": 65904,
+            "name": "Kyrian Jacquet"
+          },
+          "b": {
+            "id": 29372,
+            "name": "Andrey Rublev"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "fcbaa00cf18ea5376228",
+        "selected_player": "Andrey Rublev",
+        "selected_side": "b",
+        "sharp_estimate_pct": 76.21,
+        "snapshot_key": "mi2_249c2e830de34578a9facbb2adf26036",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "Hangzhou Open - Hangzhou",
+        "tournament_id": 21352
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-24T17:34:59+00:00"
+  "updated_at_utc": "2026-09-27T17:37:45+00:00"
 }
