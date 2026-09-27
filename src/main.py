@@ -313,7 +313,10 @@ def _prelive_start_evidence(match: dict) -> tuple[bool, dict]:
     if live not in (None, False, 0, "0", "false", "False", ""):
         evidence["live"] = live
         return True, evidence
-    for key in ("score", "result", "timeGame", "current_score"):
+    # ``timeGame`` é a hora programada pela API, não um resultado. Um jogo
+    # pode continuar scheduled depois dessa hora por chuva/atrasos, pelo que
+    # nunca pode, isoladamente, excluir uma fixture pré-live.
+    for key in ("score", "result", "current_score"):
         value = match.get(key)
         if value not in (None, "", [], {}):
             evidence[key] = value
