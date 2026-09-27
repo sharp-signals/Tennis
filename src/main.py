@@ -14,8 +14,8 @@ torneios menores como o Umag):
 4. Enriquecer com Moneyline atual da RapidAPI Extend, por eventId.
 5. Pedir ao Claude uma análise estruturada por jogo (JSON), só com dados reais.
 6. Montar o resumo curto (1 linha + emoji por jogo) e o relatório completo.
-7. Publicar o relatório completo no Telegra.ph.
-8. Enviar o resumo curto para o Telegram, com link no fim para o Telegra.ph.
+7. Gravar os relatórios HTML e preparar um manifesto efémero de notificação.
+8. O workflow publica, confirma o conteúdo no GitHub Pages e só então envia.
 
 Se não houver jogos elegíveis nesta janela, o script termina sem enviar
 nada — não faz sentido mandar uma mensagem vazia.
@@ -66,6 +66,7 @@ from . import player_images
 from . import paper_trading
 from . import tournament_policy
 from . import incremental_runs
+from . import report_notifications
 from .analyze import analyze_match
 from .pricing import estimate_market_residual_pricing
 from .prelive_decision import assess_report, build_decision
@@ -76,10 +77,10 @@ from .email_reports import (
     EMAIL_DELIVERY_STATUSES,
     EMAIL_REPORTS,
     EMAIL_RUN_FAILED,
+    prepare_run_report_email,
     sanitize_error_message,
     send_no_eligible_heartbeat,
     send_run_failed_heartbeat,
-    send_run_report_email,
 )
 from .telegram_summary import decision_row as _decision_row, state_counts as telegram_state_counts
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
@@ -2187,7 +2188,9 @@ def run() -> None:
     run_metrics.update_context(
         status="running",
         phase="initializing",
-        email_delivery={"status": "NOT_ATTEMPTED"},
+        email_delivery={"status": "NOT_ATTEMPTED", "kind": EMAIL_REPORTS},
+        report_publication={"status": "NOT_APPLICABLE", "expected": 0, "ready": 0},
+        report_notification_status="REPORTS_WITHHELD",
         **_trigger_context(),
     )
     # O contador RapidAPI é opcional; versões anteriores de fetch_data.py podem não expor estas funções.
@@ -2594,6 +2597,7 @@ def run() -> None:
 
     run_metrics.update_context(phase="report_generation")
     match_reports = []  # (payload, result, url_ou_None)
+    report_artifacts = []  # HTML local + URL; consumido apenas após publicação.
     generated_slugs = []
     # NOVO (22/08/2026, a pedido): histórico de acerto do próprio sistema,
     # calculado uma vez a partir dos snapshots já resolvidos e mostrado em
@@ -2632,6 +2636,7 @@ def run() -> None:
             except FileExistsError:
                 print(f"[relatorio] versão imutável já existe: {filename}")
             url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/{filename}"
+            report_artifacts.append({"url": url, "local_path": report_path})
             generated_slugs.append((payload, result, slug))
         except Exception as exc:
             print(f"[aviso] falha a gerar HTML para {payload['player_a']} vs {payload['player_b']}: {exc}")
@@ -2718,27 +2723,40 @@ def run() -> None:
     if current:
         chunks.append("\n".join(current))
 
-    run_metrics.update_context(phase="telegram")
+    notification_chunks = []
     for i, chunk in enumerate(chunks):
         prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
-        send_message(prefix + chunk)
+        notification_chunks.append(prefix + chunk)
 
-    # Entrega adicional, opcional e independente do Telegram. Se o SMTP
-    # falhar, os relatórios e o resumo Telegram já publicados não são
-    # invalidados; o aviso fica explícito no log da run.
-    try:
-        email_result = send_run_report_email(today_str, match_reports)
-    except Exception:
-        email_result = {"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"}
-        print("[email] resumo de relatórios falhou; detalhes omitidos.")
-    _record_email_delivery(email_result, EMAIL_REPORTS)
-    print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
+    # CHANGE-059: nenhuma notificação com links sai antes de o conteúdo
+    # público ser comprovadamente igual aos HTML desta run. O manifesto vive
+    # em RUNNER_TEMP e contém apenas a apresentação já calculada.
+    prepared_email = prepare_run_report_email(today_str, match_reports)
+    manifest = report_notifications.write_manifest(
+        run_date=today_str,
+        reports=report_artifacts,
+        telegram_chunks=notification_chunks,
+        email=prepared_email,
+        github_run_id=os.environ.get("GITHUB_RUN_ID"),
+    )
+    if manifest is not None:
+        run_metrics.update_context(
+            phase="notification_deferred",
+            report_publication={
+                "status": "PENDING",
+                "expected": len(report_artifacts),
+                "ready": 0,
+            },
+            report_notification_status="REPORTS_DEFERRED",
+        )
+        print(f"[notification] {len(report_artifacts)} relatório(s) diferido(s) até GitHub Pages READY.")
 
     reports_ok = sum(1 for _, _, url in match_reports if url)
     run_metrics.update_context(
         status=processing_status, phase="complete", processed=len(analyses),
         analysis_failed=len(process_targets) - len(analyses), reports_ok=reports_ok,
-        reports_failed=len(match_reports) - reports_ok, telegram_chunks=len(chunks),
+        reports_failed=len(match_reports) - reports_ok,
+        telegram_chunks=len(notification_chunks),
     )
     print(
         "[run_summary] "

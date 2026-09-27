@@ -189,3 +189,50 @@ def append_run(
                 except FileNotFoundError:
                     pass
     return entry
+
+
+def update_persisted_run(
+    github_run_id: str,
+    values: dict,
+    *,
+    path: str = "data/run_metrics_log.json",
+) -> bool:
+    """Atualiza telemetria pós-main da mesma run, de forma atómica e limitada."""
+    if not github_run_id or not isinstance(values, dict):
+        return False
+    target = Path(path)
+    with _FILE_LOCK:
+        try:
+            with target.open("r", encoding="utf-8") as handle:
+                history = json.load(handle)
+        except (OSError, UnicodeError, TypeError, json.JSONDecodeError):
+            return False
+        if not isinstance(history, list):
+            return False
+        matched = False
+        for entry in reversed(history):
+            if isinstance(entry, dict) and str(entry.get("github_run_id") or "") == str(github_run_id):
+                entry.update(values)
+                matched = True
+                break
+        if not matched:
+            return False
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=target.parent,
+                prefix=f".{target.name}.", suffix=".tmp", delete=False,
+            ) as handle:
+                temp_path = Path(handle.name)
+                json.dump(history[-MAX_HISTORY_ENTRIES:], handle, ensure_ascii=False, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp_path, target)
+        finally:
+            if temp_path is not None:
+                try:
+                    temp_path.unlink()
+                except FileNotFoundError:
+                    pass
+    return True

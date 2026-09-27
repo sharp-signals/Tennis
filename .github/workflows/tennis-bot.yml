@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write   # necessário para o commit automático da cache de torneios
+    env:
+      FENZOBOT_REPORT_NOTIFICATION_MANIFEST: ${{ runner.temp }}/fenzobot-report-notifications.json
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -41,6 +43,7 @@ jobs:
         run: pip install -r requirements.lock
 
       - name: Correr o bot
+        id: run_bot
         env:
           # CHANGE-2026-08-31-017: nesta fase o motor e os relatórios são
           # determinísticos; Claude não é necessário para decidir PAPER.
@@ -63,11 +66,12 @@ jobs:
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
         run: python -m src.main
 
-      # O bot envia o resumo logo após gerar os HTML. Publicamo-los antes de
-      # qualquer manutenção posterior para que os links deixem de ficar
-      # pendentes enquanto a calibração/dashboards são reconstruídos.
+      # CHANGE-058/PR #167: publicar antes de qualquer manutenção posterior.
+      # CHANGE-059: o bot já não envia links; readiness e envio vêm abaixo.
       - name: Publicar relatórios do site imediatamente
-        if: success()
+        id: publish_reports
+        if: steps.run_bot.outcome == 'success'
+        continue-on-error: true
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
@@ -79,8 +83,35 @@ jobs:
             echo "Sem relatórios novos para publicar."
           fi
 
+      - name: Confirmar publicação dos relatórios
+        id: report_readiness
+        if: steps.run_bot.outcome == 'success' && steps.publish_reports.outcome == 'success'
+        continue-on-error: true
+        env:
+          REPORT_PUBLICATION_TIMEOUT_SECONDS: "120"
+          REPORT_PUBLICATION_POLL_SECONDS: "4"
+        run: python -m src.report_notifications wait
+
+      - name: Enviar notificações dos relatórios
+        id: report_notifications
+        if: steps.run_bot.outcome == 'success' && steps.publish_reports.outcome == 'success' && steps.report_readiness.outcome == 'success'
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPORT_EMAIL_TO: fenzobot@gmail.com
+          REPORT_EMAIL_FROM: fenzobot@gmail.com
+          REPORT_EMAIL_APP_PASSWORD: ${{ secrets.REPORT_EMAIL_APP_PASSWORD }}
+        run: python -m src.report_notifications send
+
+      - name: Reter notificações se o push falhou
+        if: always() && steps.run_bot.outcome == 'success' && steps.publish_reports.outcome == 'failure'
+        env:
+          FENZOBOT_RUN_METRICS_PATH: data/run_metrics_log.json
+        run: python -m src.report_notifications withhold --reason REPORT_PUBLICATION_PUSH_FAILED
+
       - name: Atualizar resultados para calibracao
-        if: success()
+        if: steps.run_bot.outcome == 'success' && steps.publish_reports.outcome == 'success' && steps.report_readiness.outcome == 'success' && steps.report_notifications.outcome == 'success'
         run: |
           # É manutenção derivada, não pode reter a publicação nem a próxima
           # execução. O limite cobre uma eventual reconstrução anormalmente
@@ -92,7 +123,7 @@ jobs:
       # Corre mesmo quando o Python falha ou é interrompido. Publica apenas
       # telemetria e dashboard derivado; nunca inclui relatórios parciais.
       - name: Preservar telemetria se o bot falhar
-        if: failure()
+        if: steps.run_bot.outcome == 'failure'
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
@@ -108,6 +139,7 @@ jobs:
           fi
 
       - name: Gravar caches + relatórios do site, se mudaram
+        if: always() && steps.run_bot.outcome == 'success'
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
@@ -125,6 +157,14 @@ jobs:
           else
             echo "Sem alterações a gravar."
           fi
+
+      - name: Falhar após preservar dados se publicação ou notificação falhou
+        if: always() && steps.run_bot.outcome == 'success' && (steps.publish_reports.outcome == 'failure' || steps.report_readiness.outcome == 'failure' || steps.report_notifications.outcome == 'failure')
+        run: |
+          if [ "${{ steps.report_readiness.outcome }}" = "failure" ]; then
+            echo "REPORT_PUBLICATION_TIMEOUT"
+          fi
+          exit 1
 
       - name: Alertar no Telegram se alguma coisa falhou
         if: failure()
