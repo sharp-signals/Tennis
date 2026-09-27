@@ -63,9 +63,31 @@ jobs:
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
         run: python -m src.main
 
+      # O bot envia o resumo logo após gerar os HTML. Publicamo-los antes de
+      # qualquer manutenção posterior para que os links deixem de ficar
+      # pendentes enquanto a calibração/dashboards são reconstruídos.
+      - name: Publicar relatórios do site imediatamente
+        if: success()
+        run: |
+          git config user.name "tennis-bot"
+          git config user.email "actions@github.com"
+          git add docs/ 2>/dev/null || true
+          if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+            git commit -m "chore: publicar relatórios gerados"
+            bash scripts/publish-generated-changes.sh "chore: publicar relatórios gerados"
+          else
+            echo "Sem relatórios novos para publicar."
+          fi
+
       - name: Atualizar resultados para calibracao
         if: success()
-        run: python scripts/update_calibration_outcomes.py
+        run: |
+          # É manutenção derivada, não pode reter a publicação nem a próxima
+          # execução. O limite cobre uma eventual reconstrução anormalmente
+          # lenta do dashboard.
+          if ! timeout 180s python scripts/update_calibration_outcomes.py; then
+            echo "[aviso] calibração excedeu 180s ou falhou; relatórios já publicados."
+          fi
 
       # Corre mesmo quando o Python falha ou é interrompido. Publica apenas
       # telemetria e dashboard derivado; nunca inclui relatórios parciais.
