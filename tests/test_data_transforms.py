@@ -785,6 +785,14 @@ class MatchInputTests(unittest.TestCase):
         ]
         self.assertEqual([item["id"] for item in main._filter_prelive_matches(fixtures)], [1, 2])
 
+    def test_prelive_filter_keeps_scheduled_fixture_with_time_game(self):
+        """timeGame é a hora agendada do fornecedor, não evidência de início."""
+        fixtures = [
+            {"id": 1, "status": "scheduled", "timeGame": "2026-09-28T10:00:00Z"},
+            {"id": 2, "status": "scheduled", "timeGame": "2026-09-28T12:30:00Z"},
+        ]
+        self.assertEqual([item["id"] for item in main._filter_prelive_matches(fixtures)], [1, 2])
+
 
 class DeterministicStatisticTests(unittest.TestCase):
     def test_h2h_normalizes_surface_family(self):
