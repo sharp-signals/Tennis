@@ -135,8 +135,41 @@ def _persist_telemetry(manifest: Mapping[str, object]) -> None:
     }
     if manifest.get("email_delivery"):
         values["email_delivery"] = dict(manifest["email_delivery"])
+    durable_delivery = _durable_delivery(run_id)
+    if durable_delivery:
+        values["report_notification_delivery"] = durable_delivery
     metrics_path = os.environ.get("FENZOBOT_RUN_METRICS_PATH", "data/run_metrics_log.json")
     run_metrics.update_persisted_run(run_id, values, path=metrics_path)
+
+
+def _durable_delivery(run_id: str) -> dict:
+    metrics_path = os.environ.get(
+        "FENZOBOT_RUN_METRICS_PATH", "data/run_metrics_log.json",
+    )
+    return run_metrics.read_persisted_delivery(run_id, path=metrics_path) or {}
+
+
+def _persist_delivery(run_id: str, state: Mapping[str, object]) -> None:
+    """Checkpoint durável; falha fechada se a run ainda não foi persistida."""
+    email_delivery = state.get("email_delivery")
+    if not isinstance(email_delivery, Mapping):
+        email_delivery = {"status": "NOT_ATTEMPTED"}
+    delivery = {
+        "github_run_id": run_id,
+        "telegram_chunks_sent": max(
+            0, int(state.get("telegram_chunks_sent") or 0),
+        ),
+        "email_delivery": dict(email_delivery),
+    }
+    metrics_path = os.environ.get(
+        "FENZOBOT_RUN_METRICS_PATH", "data/run_metrics_log.json",
+    )
+    if not run_metrics.update_persisted_run(
+        run_id,
+        {"report_notification_delivery": delivery},
+        path=metrics_path,
+    ):
+        raise RuntimeError("REPORT_NOTIFICATION_CHECKPOINT_UNAVAILABLE")
 
 
 def _set_publication(
@@ -259,17 +292,34 @@ def send_ready_notifications(
     if state.get("github_run_id") != run_id:
         raise ValueError("Checkpoint de entrega pertence a outra run.")
 
+    durable = _durable_delivery(run_id)
+    state["telegram_chunks_sent"] = max(
+        int(state.get("telegram_chunks_sent") or 0),
+        int(durable.get("telegram_chunks_sent") or 0),
+    )
+    durable_email = durable.get("email_delivery")
+    local_email = state.get("email_delivery")
+    if isinstance(durable_email, dict) and durable_email.get("status") == "SENT":
+        state["email_delivery"] = dict(durable_email)
+    elif not isinstance(local_email, dict):
+        state["email_delivery"] = (
+            dict(durable_email) if isinstance(durable_email, dict)
+            else {"status": "NOT_ATTEMPTED"}
+        )
+
     chunks = [str(chunk) for chunk in manifest.get("telegram_chunks") or []]
     sent_count = min(int(state.get("telegram_chunks_sent") or 0), len(chunks))
     for index in range(sent_count, len(chunks)):
         telegram_sender(chunks[index])
         state["telegram_chunks_sent"] = index + 1
+        _persist_delivery(run_id, state)
         _write_json_atomic(state_path, state)
 
     email_delivery = state.get("email_delivery")
     if not isinstance(email_delivery, dict) or email_delivery.get("status") != "SENT":
         email_delivery = email_sender(manifest.get("email") or {})
         state["email_delivery"] = dict(email_delivery)
+        _persist_delivery(run_id, state)
         _write_json_atomic(state_path, state)
     manifest["email_delivery"] = dict(email_delivery)
     complete = (

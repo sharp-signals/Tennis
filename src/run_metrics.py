@@ -236,3 +236,34 @@ def update_persisted_run(
                 except FileNotFoundError:
                     pass
     return True
+
+
+def read_persisted_delivery(
+    github_run_id: str,
+    *,
+    path: str = "data/run_metrics_log.json",
+) -> dict | None:
+    """Recupera o último checkpoint de entrega entre attempts da mesma run."""
+    if not github_run_id:
+        return None
+    target = Path(path)
+    with _FILE_LOCK:
+        try:
+            with target.open("r", encoding="utf-8") as handle:
+                history = json.load(handle)
+        except (OSError, UnicodeError, TypeError, json.JSONDecodeError):
+            return None
+    if not isinstance(history, list):
+        return None
+    for entry in reversed(history):
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("github_run_id") or "") != str(github_run_id):
+            continue
+        delivery = entry.get("report_notification_delivery")
+        if (
+            isinstance(delivery, dict)
+            and str(delivery.get("github_run_id") or "") == str(github_run_id)
+        ):
+            return dict(delivery)
+    return None

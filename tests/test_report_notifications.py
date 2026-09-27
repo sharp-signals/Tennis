@@ -15,6 +15,29 @@ class Response:
 
 
 class ReportNotificationsTests(unittest.TestCase):
+    @staticmethod
+    def _seed_metrics(root: Path) -> Path:
+        metrics = root / "run_metrics.json"
+        metrics.write_text(
+            json.dumps([{
+                "github_run_id": "run-123",
+                "status": "success",
+                "email_delivery": {"status": "NOT_ATTEMPTED", "kind": "REPORTS"},
+            }]),
+            encoding="utf-8",
+        )
+        return metrics
+
+    @staticmethod
+    def _append_fresh_attempt(metrics: Path) -> None:
+        history = json.loads(metrics.read_text(encoding="utf-8"))
+        history.append({
+            "github_run_id": "run-123",
+            "status": "success",
+            "email_delivery": {"status": "NOT_ATTEMPTED", "kind": "REPORTS"},
+        })
+        metrics.write_text(json.dumps(history), encoding="utf-8")
+
     def _manifest(self, root: Path, count: int = 2) -> Path:
         reports = []
         for index in range(count):
@@ -133,18 +156,22 @@ class ReportNotificationsTests(unittest.TestCase):
         ):
             root = Path(directory)
             target = self._manifest(root, count=1)
+            metrics = self._seed_metrics(root)
             body = (root / "report-0.html").read_bytes()
             report_notifications.wait_for_publication(
                 path=target, get=lambda *_args, **_kwargs: Response(200, body),
             )
             telegram = MagicMock()
             email = MagicMock(return_value={"status": "SENT", "kind": "REPORTS"})
-            first = report_notifications.send_ready_notifications(
-                path=target, telegram_sender=telegram, email_sender=email,
-            )
-            second = report_notifications.send_ready_notifications(
-                path=target, telegram_sender=telegram, email_sender=email,
-            )
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                first = report_notifications.send_ready_notifications(
+                    path=target, telegram_sender=telegram, email_sender=email,
+                )
+                second = report_notifications.send_ready_notifications(
+                    path=target, telegram_sender=telegram, email_sender=email,
+                )
         self.assertEqual(first["status"], "REPORTS_SENT")
         self.assertEqual(second["status"], "REPORTS_SENT")
         self.assertEqual(telegram.call_args_list, [call("chunk 1"), call("chunk 2")])
@@ -180,29 +207,96 @@ class ReportNotificationsTests(unittest.TestCase):
         self.assertEqual(payload["report_notification_status"], "REPORTS_WITHHELD")
         self.assertEqual(payload["notification_reason_code"], "REPORT_PUBLICATION_PUSH_FAILED")
 
-    def test_retry_after_partial_telegram_failure_resumes_without_duplicates(self):
+    def test_two_independent_runners_resume_partial_delivery_from_durable_state(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(
             report_notifications, "_persist_telemetry",
         ):
             root = Path(directory)
             target = self._manifest(root, count=1)
+            metrics = self._seed_metrics(root)
             body = (root / "report-0.html").read_bytes()
             report_notifications.wait_for_publication(
                 path=target, get=lambda *_args, **_kwargs: Response(200, body),
             )
             first_sender = MagicMock(side_effect=[None, RuntimeError("network")])
-            with self.assertRaisesRegex(RuntimeError, "network"):
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ), self.assertRaisesRegex(RuntimeError, "network"):
                 report_notifications.send_ready_notifications(
                     path=target, telegram_sender=first_sender,
                     email_sender=MagicMock(),
                 )
+            durable = json.loads(metrics.read_text(encoding="utf-8"))[0]
+            self.assertEqual(
+                durable["report_notification_delivery"]["telegram_chunks_sent"],
+                1,
+            )
+
+            target.unlink()
+            report_notifications._delivery_state_path(target, "run-123").unlink()
+            self._append_fresh_attempt(metrics)
+            target = self._manifest(root, count=1)
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
             retry_sender = MagicMock()
             email = MagicMock(return_value={"status": "SENT", "kind": "REPORTS"})
-            report_notifications.send_ready_notifications(
-                path=target, telegram_sender=retry_sender, email_sender=email,
-            )
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                report_notifications.send_ready_notifications(
+                    path=target, telegram_sender=retry_sender, email_sender=email,
+                )
         retry_sender.assert_called_once_with("chunk 2")
         email.assert_called_once()
+
+    def test_completed_delivery_survives_loss_of_all_temporary_state(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            report_notifications, "_persist_telemetry",
+        ):
+            root = Path(directory)
+            target = self._manifest(root, count=1)
+            metrics = self._seed_metrics(root)
+            body = (root / "report-0.html").read_bytes()
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
+            first_telegram = MagicMock()
+            first_email = MagicMock(
+                return_value={"status": "SENT", "kind": "REPORTS"},
+            )
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                report_notifications.send_ready_notifications(
+                    path=target,
+                    telegram_sender=first_telegram,
+                    email_sender=first_email,
+                )
+
+            target.unlink()
+            report_notifications._delivery_state_path(target, "run-123").unlink()
+            self._append_fresh_attempt(metrics)
+            target = self._manifest(root, count=1)
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
+            rerun_telegram = MagicMock()
+            rerun_email = MagicMock()
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                result = report_notifications.send_ready_notifications(
+                    path=target,
+                    telegram_sender=rerun_telegram,
+                    email_sender=rerun_email,
+                )
+
+        self.assertEqual(first_telegram.call_count, 2)
+        first_email.assert_called_once()
+        self.assertEqual(result["status"], "REPORTS_SENT")
+        rerun_telegram.assert_not_called()
+        rerun_email.assert_not_called()
 
     def test_publication_telemetry_updates_same_github_run(self):
         with tempfile.TemporaryDirectory() as directory:

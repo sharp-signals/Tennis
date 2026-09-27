@@ -28,6 +28,13 @@ class ReportNotificationWorkflowTests(unittest.TestCase):
         self.assertIn("python -m src.report_notifications wait", self.workflow)
         self.assertIn("python -m src.report_notifications send", self.workflow)
 
+    def test_rerun_checks_out_current_main_for_durable_delivery_state(self):
+        checkout = self.workflow.index("uses: actions/checkout@")
+        setup = self.workflow.index("uses: actions/setup-python@", checkout)
+        checkout_step = self.workflow[checkout:setup]
+        self.assertIn("ref: main", checkout_step)
+        self.assertIn("fetch-depth: 0", checkout_step)
+
     def test_push_failure_prevents_readiness_and_notifications(self):
         self.assertIn("steps.publish_reports.outcome == 'success'", self.workflow)
         send_start = self.workflow.index("- name: Enviar notificações dos relatórios")
@@ -44,6 +51,7 @@ class ReportNotificationWorkflowTests(unittest.TestCase):
         self.assertLess(persist, fail)
         self.assertIn("REPORT_PUBLICATION_TIMEOUT", self.workflow[fail:])
         self.assertIn("if: always() && steps.run_bot.outcome == 'success'", self.workflow[persist:fail])
+        self.assertIn("data/run_metrics_log.json", self.workflow[persist:fail])
 
     def test_pr_167_immediate_publish_contract_is_preserved(self):
         bot = self.workflow.index("- name: Correr o bot")
