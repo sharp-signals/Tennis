@@ -107,7 +107,7 @@ jobs:
             echo "Sem telemetria nova para preservar."
           fi
 
-      - name: Gravar caches + calibração, se mudaram
+      - name: Gravar caches + relatórios do site, se mudaram
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
