@@ -20,11 +20,17 @@ class ReportNotificationWorkflowTests(unittest.TestCase):
         positions = [self.workflow.index(f"- name: {name}") for name in names]
         self.assertEqual(positions, sorted(positions))
 
-    def test_main_and_sender_share_ephemeral_manifest_path(self):
+    def test_runner_temp_manifest_is_configured_inside_a_step(self):
+        self.assertNotIn("${{ runner.temp }}", self.workflow)
+        configure = self.workflow.index("- name: Configurar manifesto temporário")
+        bot = self.workflow.index("- name: Correr o bot")
+        configure_step = self.workflow[configure:bot]
+        self.assertLess(configure, bot)
+        self.assertIn("$RUNNER_TEMP/fenzobot-report-notifications.json", configure_step)
         self.assertIn(
-            "FENZOBOT_REPORT_NOTIFICATION_MANIFEST: ${{ runner.temp }}/fenzobot-report-notifications.json",
-            self.workflow,
+            "FENZOBOT_REPORT_NOTIFICATION_MANIFEST=", configure_step,
         )
+        self.assertIn(">> \"$GITHUB_ENV\"", configure_step)
         self.assertIn("python -m src.report_notifications wait", self.workflow)
         self.assertIn("python -m src.report_notifications send", self.workflow)
 
