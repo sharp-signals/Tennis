@@ -111,6 +111,22 @@ class ReportNotificationsTests(unittest.TestCase):
                     get=lambda *_args, **_kwargs: Response(200, b"stale"),
                 )
 
+    def test_global_timeout_caps_each_remaining_http_request(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            report_notifications, "_persist_telemetry",
+        ):
+            target = self._manifest(Path(directory), count=2)
+            clock = iter((0.0, 0.0, 119.5, 120.0))
+            getter = MagicMock(return_value=Response(404))
+            with self.assertRaises(report_notifications.PublicationTimeoutError):
+                report_notifications.wait_for_publication(
+                    path=target, timeout_seconds=120, interval_seconds=0,
+                    get=getter, monotonic=lambda: next(clock),
+                    sleep=lambda _seconds: None,
+                )
+        self.assertEqual(getter.call_args_list[0].kwargs["timeout"], 5)
+        self.assertEqual(getter.call_args_list[1].kwargs["timeout"], 0.5)
+
     def test_ready_sends_telegram_and_email_once_across_retries(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(
             report_notifications, "_persist_telemetry",

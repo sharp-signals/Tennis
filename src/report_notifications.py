@@ -192,11 +192,16 @@ def wait_for_publication(
     while True:
         attempt += 1
         ready = 0
+        timed_out = False
         for report in reports:
+            remaining = max(0.0, timeout - (monotonic() - started))
+            if remaining <= 0:
+                timed_out = True
+                break
             try:
                 response = get(
                     _cache_busted_url(str(report["url"]), run_id, attempt),
-                    timeout=HTTP_TIMEOUT_SECONDS,
+                    timeout=min(HTTP_TIMEOUT_SECONDS, remaining),
                     headers={"Cache-Control": "no-cache"},
                 )
             except requests.RequestException:
@@ -206,7 +211,7 @@ def wait_for_publication(
         if ready == len(reports):
             _set_publication(manifest, target, "READY", ready)
             return dict(manifest["report_publication"])
-        if monotonic() - started >= max(0.0, timeout):
+        if timed_out or monotonic() - started >= max(0.0, timeout):
             _set_publication(
                 manifest, target, "TIMEOUT", ready,
                 reason_code=PUBLICATION_TIMEOUT,
