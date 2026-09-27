@@ -120,6 +120,7 @@ class OperationalBoundaryTests(unittest.TestCase):
              patch.object(main.fetch_data, "persist_rapidapi_usage") as persist_usage, \
              patch.object(main.run_metrics, "append_run", return_value=metric_entry) as append_run, \
              patch.object(main.run_metrics, "health_alerts", return_value=["execução falhou"]), \
+             patch.object(main.dashboard, "build_and_write_best_effort", return_value={"status": "UNAVAILABLE"}), \
              patch.object(
                  main, "send_run_failed_heartbeat",
                  return_value={"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"},
@@ -323,9 +324,12 @@ class OperationalBoundaryTests(unittest.TestCase):
                 ))
                 stack.enter_context(patch.object(main, "_write_site_index"))
                 send = stack.enter_context(patch.object(main, "send_message"))
-                email = stack.enter_context(patch.object(
-                    main, "send_run_report_email",
-                    return_value={"status": "SENT", "kind": "REPORTS"},
+                prepared_email = stack.enter_context(patch.object(
+                    main, "prepare_run_report_email", return_value={"today": "2026-09-27", "groups": []},
+                ))
+                manifest = stack.enter_context(patch.object(
+                    main.report_notifications, "write_manifest",
+                    return_value=Path(directory) / "manifest.json",
                 ))
                 heartbeat = stack.enter_context(patch.object(
                     main, "send_no_eligible_heartbeat",
@@ -347,12 +351,20 @@ class OperationalBoundaryTests(unittest.TestCase):
         self.assertEqual(entry["analysis_failed"], 1)
         self.assertEqual(entry["analysis_error_counts"], {"payload:ValueError": 1})
         self.assertEqual(build_report.call_count, 9)
-        send.assert_called_once()
-        email.assert_called_once()
+        send.assert_not_called()
+        prepared_email.assert_called_once()
+        manifest.assert_called_once()
+        artifacts = manifest.call_args.kwargs["reports"]
+        self.assertEqual(len(artifacts), 9)
+        for artifact in artifacts:
+            self.assertTrue(artifact["url"].startswith(f"{main.SITE_BASE_URL}/"))
+            self.assertTrue(artifact["local_path"].endswith(".html"))
         heartbeat.assert_not_called()
         self.assertEqual(entry["email_delivery"], {
-            "status": "SENT", "kind": "REPORTS",
+            "status": "NOT_ATTEMPTED", "kind": "REPORTS",
         })
+        self.assertEqual(entry["report_publication"]["status"], "PENDING")
+        self.assertEqual(entry["report_notification_status"], "REPORTS_DEFERRED")
         persist_usage.assert_called_once_with(status="degraded", matches=9)
 
 

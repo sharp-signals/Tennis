@@ -145,8 +145,48 @@ def send_run_report_email(
     today: str,
     match_reports: Iterable[tuple[dict, dict, str | None]],
 ) -> dict:
-    """Envia o único e-mail operacional principal de uma run com relatórios."""
+    """Compatibilidade: prepara e envia o e-mail principal de uma run."""
+    return send_prepared_run_report_email(
+        prepare_run_report_email(today, match_reports)
+    )
+
+
+def prepare_run_report_email(
+    today: str,
+    match_reports: Iterable[tuple[dict, dict, str | None]],
+) -> dict:
+    """Serializa apenas a apresentação mínima necessária ao envio posterior."""
     groups = _grouped_report_rows(match_reports)
+    return {
+        "today": str(today),
+        "groups": [
+            {
+                "name": group_name,
+                "reports": [
+                    {"title": title, "url": url}
+                    for title, url in rows
+                ],
+            }
+            for group_name, rows in groups
+        ],
+    }
+
+
+def send_prepared_run_report_email(prepared: Mapping[str, object]) -> dict:
+    """Envia a apresentação previamente preparada, sem recalcular decisões."""
+    today = str(prepared.get("today") or "")
+    groups = []
+    for raw_group in prepared.get("groups") or []:
+        if not isinstance(raw_group, Mapping):
+            continue
+        rows = []
+        for raw_report in raw_group.get("reports") or []:
+            if not isinstance(raw_report, Mapping):
+                continue
+            title = str(raw_report.get("title") or "Relatório")
+            raw_url = raw_report.get("url")
+            rows.append((title, str(raw_url) if raw_url else None))
+        groups.append((str(raw_group.get("name") or "RELATÓRIOS"), rows))
     report_count = sum(len(rows) for _group, rows in groups)
 
     plain_lines = [f"Relatórios pré-live Fenzobot — {today}", ""]
