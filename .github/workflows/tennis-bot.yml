@@ -28,8 +28,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write   # necessário para o commit automático da cache de torneios
-    env:
-      FENZOBOT_REPORT_NOTIFICATION_MANIFEST: ${{ runner.temp }}/fenzobot-report-notifications.json
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -42,6 +40,10 @@ jobs:
           python-version: "3.11"
           cache: "pip"
           cache-dependency-path: requirements.lock
+
+      - name: Configurar manifesto temporário
+        run: |
+          echo "FENZOBOT_REPORT_NOTIFICATION_MANIFEST=$RUNNER_TEMP/fenzobot-report-notifications.json" >> "$GITHUB_ENV"
 
       - name: Instalar dependências
         run: pip install -r requirements.lock
