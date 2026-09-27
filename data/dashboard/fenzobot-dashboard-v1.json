@@ -4,26 +4,27 @@
     "contract_version": "audit-observability-v1",
     "green_diagnostics": {
       "decision_positive": 11,
-      "direction_strong": 0,
+      "direction_strong": 1,
       "eligible": 0,
       "eligible_settled": 0,
       "exclusion_reason_counts": {
-        "DECISION_STATE_NOT_EDGE_POSITIVE": 62,
-        "DIVERGENCE_LEVEL_NOT_STRONG": 73,
+        "DECISION_STATE_NOT_EDGE_POSITIVE": 85,
+        "DIVERGENCE_LEVEL_NOT_STRONG": 95,
         "DIVERGENCE_SIDE_UNAVAILABLE": 1,
-        "DIVERGENCE_TYPE_NOT_DIRECTION": 67,
-        "INTEGRITY_CONFLICT": 8,
-        "PAPER_NOT_ELIGIBLE": 62,
-        "PRICING_UNAVAILABLE": 42,
-        "PROBABILITIES_UNAVAILABLE": 42,
-        "SELECTED_PLAYER_UNAVAILABLE": 43,
-        "SELECTED_SIDE_UNAVAILABLE": 43
+        "DIVERGENCE_TYPE_NOT_DIRECTION": 87,
+        "EXPERIMENTAL_TIER_CHALLENGER_125": 22,
+        "INTEGRITY_CONFLICT": 17,
+        "PAPER_NOT_ELIGIBLE": 85,
+        "PRICING_UNAVAILABLE": 51,
+        "PROBABILITIES_UNAVAILABLE": 51,
+        "SELECTED_PLAYER_UNAVAILABLE": 52,
+        "SELECTED_SIDE_UNAVAILABLE": 52
       },
       "legacy_or_not_prospective": 390,
       "note": "Independent stored gates, not an inferred sequential funnel; reasons may overlap.",
-      "prospectively_classified": 73,
+      "prospectively_classified": 96,
       "status": "AVAILABLE",
-      "total_snapshots": 463
+      "total_snapshots": 486
     },
     "last_refresh_attempt": {
       "attempted_at_utc": "2026-09-27T05:44:18+00:00",
@@ -33,8 +34,8 @@
     "ledger_status": "AVAILABLE",
     "llm": {
       "llm_external_requests": 0,
-      "llm_mode": null,
-      "llm_provider_invocations": 0
+      "llm_mode": "disabled",
+      "llm_provider_invocations": 22
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -166,7 +167,8 @@
       "eligible_forecasts": 18,
       "exclusions": {
         "ENTRY_LINK_UNAVAILABLE": 66,
-        "FROZEN_PROBABILITIES_UNAVAILABLE": 325,
+        "EXPERIMENTAL_TIER_EXCLUDED": 22,
+        "FROZEN_PROBABILITIES_UNAVAILABLE": 326,
         "TEMPORAL_PROVENANCE_INVALID": 54
       },
       "fenzobot": {
@@ -187,7 +189,7 @@
       "sample_size": 18,
       "scored_snapshot_keys_hash": "43814702b35118df620982cb91e772aad29b1b8b57bd3a625afb53ada45df5ba",
       "status": "AVAILABLE",
-      "total_snapshots": 463
+      "total_snapshots": 486
     },
     "source_quality": {
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
@@ -204,7 +206,7 @@
       "total_snapshots": "STORED_SNAPSHOTS"
     },
     "unknown_colors_by_linkage": {
-      "EXACT_REPORT_ID": 19,
+      "EXACT_REPORT_ID": 28,
       "HISTORICAL_DOM_CONTRACT": 116,
       "LEGACY_UNLINKED": 1046,
       "SELF_DESCRIBED_REPORT": 28,
@@ -214,6 +216,691 @@
   "change_id": "CHANGE-2026-09-23-051",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+      "counts": {
+        "GREEN": 0,
+        "GREEN_STRONG": 0,
+        "PAPER_TECHNICAL": 0,
+        "RED": 11,
+        "UNAVAILABLE": 9,
+        "YELLOW": 3,
+        "matchups": 23,
+        "reports": 23
+      },
+      "date": "2026-09-27",
+      "matchups": [
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:43fb87735cc62e949199",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T11:30:00+00:00",
+          "title": "Daniil Medvedev vs Chak Lam Coleman Wong",
+          "version_count": 1,
+          "version_indexes": [
+            0
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:7122f9ceb7a5a3e476b5",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T11:30:00+00:00",
+          "title": "Mario Gonzalez Fernandez vs Marko Topo",
+          "version_count": 1,
+          "version_indexes": [
+            1
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:d7761c309350178a1069",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T11:30:00+00:00",
+          "title": "Petr Nesterov vs Radu Albot",
+          "version_count": 1,
+          "version_indexes": [
+            2
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:35c5e3e26f8280a9dc85",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T12:00:00+00:00",
+          "title": "Georgii Kravchenko vs Goncalo Marques",
+          "version_count": 1,
+          "version_indexes": [
+            3
+          ]
+        },
+        {
+          "colors": {
+            "YELLOW": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:87a7453da7230055916e",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T12:30:00+00:00",
+          "title": "Titouan Droguet vs Harold Mayot",
+          "version_count": 1,
+          "version_indexes": [
+            4
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:44e33249d3300ce05e0d",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T13:00:00+00:00",
+          "title": "Christian Langmo vs Eliakim Coulibaly",
+          "version_count": 1,
+          "version_indexes": [
+            5
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:e3f4af50a4d615706a3d",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T13:00:00+00:00",
+          "title": "Guilherme Valdoleiros vs Robin Bertrand",
+          "version_count": 1,
+          "version_indexes": [
+            6
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:bc77baec7f2db9d8df5b",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T13:30:00+00:00",
+          "title": "Anton Matusevich vs Tiago Cacao",
+          "version_count": 1,
+          "version_indexes": [
+            7
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:a7f563f32580397a83c1",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T14:30:00+00:00",
+          "title": "Ivan Marrero Curbelo vs Luca Potenza",
+          "version_count": 1,
+          "version_indexes": [
+            8
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:adf2ff00940adc18d5c2",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T14:30:00+00:00",
+          "title": "Michael Geerts vs Vladyslav Orlov",
+          "version_count": 1,
+          "version_indexes": [
+            9
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:c97d5c7c65175a9def19",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T15:00:00+00:00",
+          "title": "Francisco Rocha vs Lui Maxted",
+          "version_count": 1,
+          "version_indexes": [
+            10
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:d2a9fc955b0e434b1051",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-27T16:30:00+00:00",
+          "title": "Joao Domingues vs Vadym Ursu",
+          "version_count": 1,
+          "version_indexes": [
+            11
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:5b7e1f4a50c9a775bee1",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Benjamin Bonzi vs August Holmgren",
+          "version_count": 1,
+          "version_indexes": [
+            12
+          ]
+        },
+        {
+          "colors": {
+            "YELLOW": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:2abbd173584f37f8af57",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Cezar Cretu vs Henrique Rocha",
+          "version_count": 1,
+          "version_indexes": [
+            13
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:80127177a6461d54ac19",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "David Jorda Sanchis vs Jesper De Jong",
+          "version_count": 1,
+          "version_indexes": [
+            14
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:fd7da5503e4e9980a67a",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Dino Prizmic vs Daniel Rincon",
+          "version_count": 1,
+          "version_indexes": [
+            15
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:62f5ba9e2c4040c72047",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Hugo Grenier vs Grigor Dimitrov",
+          "version_count": 1,
+          "version_indexes": [
+            16
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:c84e48fc29fe1a2ee223",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Jerome Kym vs Tiago Torres",
+          "version_count": 1,
+          "version_indexes": [
+            17
+          ]
+        },
+        {
+          "colors": {
+            "YELLOW": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:c7940d0b86735221fdac",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Max Basing vs Mili Poljicak",
+          "version_count": 1,
+          "version_indexes": [
+            18
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:e6aaac597e059648fed2",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Michael Mmoh vs Laslo Djere",
+          "version_count": 1,
+          "version_indexes": [
+            19
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:ffbaecb4f9ac144e12e9",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Moez Echargui vs Damir Dzumhur",
+          "version_count": 1,
+          "version_indexes": [
+            20
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:4d2030ab312b3573c7f3",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Otto Virtanen vs Tiago Pereira",
+          "version_count": 1,
+          "version_indexes": [
+            21
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-09-27",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:1dee7736a9a176344fbc",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Toby Samuel vs Mackenzie Mcdonald",
+          "version_count": 1,
+          "version_indexes": [
+            22
+          ]
+        }
+      ],
+      "reports": [
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "d00e736bd6b6ec73510e",
+          "scheduled_start_utc": "2026-09-27T11:30:00+00:00",
+          "title": "Daniil Medvedev vs Chak Lam Coleman Wong",
+          "url": "../relatorios/daniil-medvedev-vs-chak-lam-coleman-wong-2026-09-27-d00e736bd6b6ec73510e.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "d01f8a75cdac9b501d63",
+          "scheduled_start_utc": "2026-09-27T11:30:00+00:00",
+          "title": "Mario Gonzalez Fernandez vs Marko Topo",
+          "url": "../relatorios/mario-gonzalez-fernandez-vs-marko-topo-2026-09-27-d01f8a75cdac9b501d63.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "17b7648b65f6232da385",
+          "scheduled_start_utc": "2026-09-27T11:30:00+00:00",
+          "title": "Petr Nesterov vs Radu Albot",
+          "url": "../relatorios/petr-nesterov-vs-radu-albot-2026-09-27-17b7648b65f6232da385.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "6f9c6dc576f747261f3f",
+          "scheduled_start_utc": "2026-09-27T12:00:00+00:00",
+          "title": "Georgii Kravchenko vs Goncalo Marques",
+          "url": "../relatorios/georgii-kravchenko-vs-goncalo-marques-2026-09-27-6f9c6dc576f747261f3f.html"
+        },
+        {
+          "color": "YELLOW",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "f7207e0bf3115b667b8a",
+          "scheduled_start_utc": "2026-09-27T12:30:00+00:00",
+          "title": "Titouan Droguet vs Harold Mayot",
+          "url": "../relatorios/titouan-droguet-vs-harold-mayot-2026-09-27-f7207e0bf3115b667b8a.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "22f00155c21d44850615",
+          "scheduled_start_utc": "2026-09-27T13:00:00+00:00",
+          "title": "Christian Langmo vs Eliakim Coulibaly",
+          "url": "../relatorios/christian-langmo-vs-eliakim-coulibaly-2026-09-27-22f00155c21d44850615.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "c97d9dc353bf200a5fbb",
+          "scheduled_start_utc": "2026-09-27T13:00:00+00:00",
+          "title": "Guilherme Valdoleiros vs Robin Bertrand",
+          "url": "../relatorios/guilherme-valdoleiros-vs-robin-bertrand-2026-09-27-c97d9dc353bf200a5fbb.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "3a05fd051e49ae40c348",
+          "scheduled_start_utc": "2026-09-27T13:30:00+00:00",
+          "title": "Anton Matusevich vs Tiago Cacao",
+          "url": "../relatorios/anton-matusevich-vs-tiago-cacao-2026-09-27-3a05fd051e49ae40c348.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "35325e02030b784c2e93",
+          "scheduled_start_utc": "2026-09-27T14:30:00+00:00",
+          "title": "Ivan Marrero Curbelo vs Luca Potenza",
+          "url": "../relatorios/ivan-marrero-curbelo-vs-luca-potenza-2026-09-27-35325e02030b784c2e93.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "7fbbd766199ed54e4531",
+          "scheduled_start_utc": "2026-09-27T14:30:00+00:00",
+          "title": "Michael Geerts vs Vladyslav Orlov",
+          "url": "../relatorios/michael-geerts-vs-vladyslav-orlov-2026-09-27-7fbbd766199ed54e4531.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "ea1ec26a8b0def5f1efa",
+          "scheduled_start_utc": "2026-09-27T15:00:00+00:00",
+          "title": "Francisco Rocha vs Lui Maxted",
+          "url": "../relatorios/francisco-rocha-vs-lui-maxted-2026-09-27-ea1ec26a8b0def5f1efa.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "47fe544bae9e918533a8",
+          "scheduled_start_utc": "2026-09-27T16:30:00+00:00",
+          "title": "Joao Domingues vs Vadym Ursu",
+          "url": "../relatorios/joao-domingues-vs-vadym-ursu-2026-09-27-47fe544bae9e918533a8.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "2a7e17f7f3631e621c53",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Benjamin Bonzi vs August Holmgren",
+          "url": "../relatorios/benjamin-bonzi-vs-august-holmgren-2026-09-27-2a7e17f7f3631e621c53.html"
+        },
+        {
+          "color": "YELLOW",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "b0f5f344d7c4ef212f35",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Cezar Cretu vs Henrique Rocha",
+          "url": "../relatorios/cezar-cretu-vs-henrique-rocha-2026-09-27-b0f5f344d7c4ef212f35.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "441bd9865ad4f7e901be",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "David Jorda Sanchis vs Jesper De Jong",
+          "url": "../relatorios/david-jorda-sanchis-vs-jesper-de-jong-2026-09-27-441bd9865ad4f7e901be.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "fd6e7a5d080fac94d020",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Dino Prizmic vs Daniel Rincon",
+          "url": "../relatorios/dino-prizmic-vs-daniel-rincon-2026-09-27-fd6e7a5d080fac94d020.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "6207052c05429f3c630d",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Hugo Grenier vs Grigor Dimitrov",
+          "url": "../relatorios/hugo-grenier-vs-grigor-dimitrov-2026-09-27-6207052c05429f3c630d.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "a6a52c5da3fdf6841015",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Jerome Kym vs Tiago Torres",
+          "url": "../relatorios/jerome-kym-vs-tiago-torres-2026-09-27-a6a52c5da3fdf6841015.html"
+        },
+        {
+          "color": "YELLOW",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "5d6b3847f54a21ddd777",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Max Basing vs Mili Poljicak",
+          "url": "../relatorios/max-basing-vs-mili-poljicak-2026-09-27-5d6b3847f54a21ddd777.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "cc9891465ed3802d947a",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Michael Mmoh vs Laslo Djere",
+          "url": "../relatorios/michael-mmoh-vs-laslo-djere-2026-09-27-cc9891465ed3802d947a.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "ad47ecadfb0d957e39f5",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Moez Echargui vs Damir Dzumhur",
+          "url": "../relatorios/moez-echargui-vs-damir-dzumhur-2026-09-27-ad47ecadfb0d957e39f5.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "36071b70d1d9e13ba4ec",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Otto Virtanen vs Tiago Pereira",
+          "url": "../relatorios/otto-virtanen-vs-tiago-pereira-2026-09-27-36071b70d1d9e13ba4ec.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-09-27",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "404dc8344229976743db",
+          "scheduled_start_utc": "2026-09-28T10:00:00+00:00",
+          "title": "Toby Samuel vs Mackenzie Mcdonald",
+          "url": "../relatorios/toby-samuel-vs-mackenzie-mcdonald-2026-09-27-404dc8344229976743db.html"
+        }
+      ]
+    },
     {
       "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
       "counts": {
@@ -51727,22 +52414,22 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-09-27T05:44:32+00:00",
+  "generated_at_utc": "2026-09-27T10:35:24+00:00",
   "global": {
-    "distinct_matchups": 1602,
+    "distinct_matchups": 1625,
     "green_strong_candidates": 0,
-    "market_observations": 2404,
+    "market_observations": 2460,
     "paper_22bet_entries": 57,
     "paper_technical_entries": 98,
     "report_colors": {
       "GREEN": 191,
-      "RED": 601,
-      "UNAVAILABLE": 1212,
-      "YELLOW": 97
+      "RED": 612,
+      "UNAVAILABLE": 1221,
+      "YELLOW": 100
     },
-    "settled_snapshots": 396,
-    "total_reports": 2101,
-    "total_snapshots": 463
+    "settled_snapshots": 397,
+    "total_reports": 2124,
+    "total_snapshots": 486
   },
   "green_monetization_v1": {
     "by_market": {
@@ -51772,7 +52459,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-09-27T05:44:32+00:00",
+    "generated_at_utc": "2026-09-27T10:35:24+00:00",
     "losses": 24,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -3.19,
@@ -51815,7 +52502,7 @@
       "average_market_probability": null,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-09-27T05:44:32+00:00",
+    "generated_at_utc": "2026-09-27T10:35:24+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -52038,11 +52725,11 @@
   "market_memory": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
     "closing_coverage_denominator": "DISTINCT_EVENTS",
-    "closing_coverage_pct": 1.73,
-    "distinct_events": 463,
+    "closing_coverage_pct": 1.65,
+    "distinct_events": 486,
     "events_with_comparable_closing": 8,
-    "events_with_entry_market": 48,
-    "generated_at_utc": "2026-09-27T05:44:32+00:00",
+    "events_with_entry_market": 71,
+    "generated_at_utc": "2026-09-27T10:35:24+00:00",
     "market_only": {
       "accuracy_pct": 73.68,
       "brier_score": 0.20332,
@@ -52174,11 +52861,11 @@
       },
       {
         "date": "2026-09-27",
-        "observations": 0
+        "observations": 56
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 2404
+    "total_observations": 2460
   },
   "match_identity_v2": {
     "activation": {
@@ -52188,18 +52875,18 @@
       "runtime_sha": "76fdc295c9907d98efabad08529672d9ba8bc57c"
     },
     "aliases": {
-      "ACTIVE": 85,
+      "ACTIVE": 120,
       "CONFLICTED": 0,
       "RETIRED": 0
     },
-    "canonical_instances": 40,
+    "canonical_instances": 63,
     "canonical_paper_entries": 0,
     "canonical_snapshot_coverage_pct": 100.0,
-    "canonical_snapshots": 40,
+    "canonical_snapshots": 63,
     "change_id": "CHANGE-2026-09-21-049",
     "observations_by_state": {
       "CANONICAL_RESOLVED": 103,
-      "CANONICAL_STRONG": 84,
+      "CANONICAL_STRONG": 140,
       "IDENTITY_CONFLICT": 0,
       "IDENTITY_INSUFFICIENT": 0,
       "IDENTITY_PROVISIONAL": 0
@@ -52207,7 +52894,7 @@
     "privacy": "AGGREGATES_ONLY_CANONICAL_IDS_NOT_PUBLISHED",
     "schema_version": 2,
     "status": "AVAILABLE",
-    "v2_observations": 187
+    "v2_observations": 243
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -52356,11 +53043,11 @@
     "alignment": {
       "acertos": 200,
       "intervalo_pct": [
-        65.1,
-        75.7
+        64.9,
+        75.4
       ],
-      "taxa_pct": 70.7,
-      "total": 283
+      "taxa_pct": 70.4,
+      "total": 284
     },
     "divergence": {
       "acertos": 18,
@@ -52372,37 +53059,36 @@
       "total": 38
     },
     "snapshot_universe": {
-      "settled": 396,
-      "total": 463
+      "settled": 397,
+      "total": 486
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "3c89ca37e8eb6e6b1b6d6a9e5df8f9b177d82f67dfbd51b3ce2c11b59c420045",
+  "semantic_fingerprint": "fec24a2ddba4a56be3d91a5b2aef59ed8bf09c05543113c50165f4710ff1d151",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
-      "DUPLICATE_REPORT_VERSION": 36,
-      "PROVIDER_MATCH_ID_REUSED": 107,
-      "SNAPSHOT_IDENTITY_MATCH": 1,
-      "SNAPSHOT_KEY_NOT_PERSISTED": 1
+      "DUPLICATE_REPORT_VERSION": 27,
+      "PROVIDER_MATCH_ID_REUSED": 71,
+      "SNAPSHOT_KEY_NOT_PERSISTED": 22
     },
     "change_id": "CHANGE-2026-09-21-047",
     "conversion": {
       "created_to_settled_pct": 0.0,
-      "eligible_to_snapshot_pct": 0.92
+      "eligible_to_snapshot_pct": 0.0
     },
     "counts": {
       "collision_marked_report_versions": 8,
-      "duplicate_report_versions": 36,
-      "eligible_run_identities": 109,
-      "eligible_without_snapshot": 108,
-      "linked_exact_versions": 41,
-      "matchups_observed": 104,
-      "provider_match_id_collisions": 107,
-      "report_versions": 140,
-      "self_described_versions": 91,
-      "snapshot_identity_matches": 1,
-      "snapshots_created": 41,
+      "duplicate_report_versions": 27,
+      "eligible_run_identities": 93,
+      "eligible_without_snapshot": 93,
+      "linked_exact_versions": 63,
+      "matchups_observed": 87,
+      "provider_match_id_collisions": 71,
+      "report_versions": 114,
+      "self_described_versions": 43,
+      "snapshot_identity_matches": 0,
+      "snapshots_created": 63,
       "snapshots_settled": 0
     },
     "integrity": {
@@ -52417,27 +53103,27 @@
     "status": "DEGRADED",
     "window": {
       "days": 7,
-      "end_date": "2026-09-24",
-      "start_date": "2026-09-18"
+      "end_date": "2026-09-27",
+      "start_date": "2026-09-21"
     }
   },
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-27T05:44:32+00:00"
+      "updated_at_utc": "2026-09-27T10:35:24+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-26T01:41:33+00:00"
+      "updated_at_utc": "2026-09-27T10:13:14+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-27T05:44:32+00:00"
+      "updated_at_utc": "2026-09-27T10:35:24+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-24T17:34:46+00:00"
+      "updated_at_utc": "2026-09-27T10:13:14+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -52449,37 +53135,33 @@
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-24"
+      "updated_at_utc": "2026-09-27"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-27T05:33:28+00:00"
+      "updated_at_utc": "2026-09-27T10:14:04+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-09-24T17:34:59+00:00"
+      "updated_at_utc": "2026-09-27T10:31:04+00:00"
     }
   },
   "system_health": {
     "alerts": [],
     "latest": {
-      "analysis_failed": null,
-      "duration_seconds": 12.255,
-      "eligible": 0,
-      "llm_calls": null,
+      "analysis_failed": 0,
+      "duration_seconds": 185.692,
+      "eligible": 23,
+      "llm_calls": 22,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": null,
-      "rapidapi_calls": 30,
-      "reports_failed": null,
-      "status": "no_eligible_matches",
-      "timestamp": "2026-09-27T05:33:28+00:00"
+      "processed": 23,
+      "rapidapi_calls": 364,
+      "reports_failed": 0,
+      "status": "success",
+      "timestamp": "2026-09-27T10:14:04+00:00"
     },
     "recent_runs": [
-      {
-        "status": "HEALTHY",
-        "timestamp": "2026-09-18T17:35:10+00:00"
-      },
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-19T05:34:41+00:00"
@@ -52555,6 +53237,10 @@
       {
         "status": "HEALTHY",
         "timestamp": "2026-09-27T05:33:28+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-09-27T10:14:04+00:00"
       }
     ],
     "status": "HEALTHY"
