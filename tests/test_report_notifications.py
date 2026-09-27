@@ -38,7 +38,14 @@ class ReportNotificationsTests(unittest.TestCase):
         })
         metrics.write_text(json.dumps(history), encoding="utf-8")
 
-    def _manifest(self, root: Path, count: int = 2) -> Path:
+    def _manifest(
+        self,
+        root: Path,
+        count: int = 2,
+        *,
+        telegram_chunks: list[str] | None = None,
+        email: dict | None = None,
+    ) -> Path:
         reports = []
         for index in range(count):
             html_path = root / f"report-{index}.html"
@@ -51,8 +58,14 @@ class ReportNotificationsTests(unittest.TestCase):
         result = report_notifications.write_manifest(
             run_date="2026-09-27",
             reports=reports,
-            telegram_chunks=["chunk 1", "chunk 2"],
-            email={"today": "2026-09-27", "groups": []},
+            telegram_chunks=(
+                ["chunk 1", "chunk 2"]
+                if telegram_chunks is None else telegram_chunks
+            ),
+            email=(
+                {"today": "2026-09-27", "groups": []}
+                if email is None else email
+            ),
             github_run_id="run-123",
             path=target,
         )
@@ -71,10 +84,34 @@ class ReportNotificationsTests(unittest.TestCase):
         self.assertEqual(len(payload["reports"]), 2)
         self.assertEqual(len(payload["report_urls"]), 2)
         self.assertTrue(all(len(item["sha256"]) == 64 for item in payload["reports"]))
+        self.assertEqual(len(payload["notification_fingerprint"]), 64)
+        self.assertEqual(
+            payload["notification_fingerprint"],
+            report_notifications._manifest_fingerprint(payload),
+        )
         self.assertEqual(payload["report_publication"]["status"], "PENDING")
         self.assertEqual(payload["report_notification_status"], "REPORTS_DEFERRED")
         self.assertNotIn("provider-secret", raw)
         self.assertNotIn("mail-secret", raw)
+
+    def test_notification_fingerprint_uses_canonical_json_and_chunk_order(self):
+        reports_a = [{"url": "https://example.test/a", "sha256": "abc"}]
+        reports_b = [{"sha256": "abc", "url": "https://example.test/a"}]
+        fingerprint = report_notifications._notification_fingerprint(
+            reports_a, ["primeiro", "segundo"], {"b": 2, "a": 1},
+        )
+        self.assertEqual(
+            fingerprint,
+            report_notifications._notification_fingerprint(
+                reports_b, ["primeiro", "segundo"], {"a": 1, "b": 2},
+            ),
+        )
+        self.assertNotEqual(
+            fingerprint,
+            report_notifications._notification_fingerprint(
+                reports_b, ["segundo", "primeiro"], {"a": 1, "b": 2},
+            ),
+        )
 
     def test_no_reports_creates_no_manifest_and_readiness_is_not_applicable(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -231,6 +268,12 @@ class ReportNotificationsTests(unittest.TestCase):
                 durable["report_notification_delivery"]["telegram_chunks_sent"],
                 1,
             )
+            self.assertEqual(
+                durable["report_notification_delivery"]["notification_fingerprint"],
+                json.loads(target.read_text(encoding="utf-8"))[
+                    "notification_fingerprint"
+                ],
+            )
 
             target.unlink()
             report_notifications._delivery_state_path(target, "run-123").unlink()
@@ -249,6 +292,62 @@ class ReportNotificationsTests(unittest.TestCase):
                 )
         retry_sender.assert_called_once_with("chunk 2")
         email.assert_called_once()
+
+    def test_partial_delivery_with_changed_payload_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            report_notifications, "_persist_telemetry",
+        ):
+            root = Path(directory)
+            target = self._manifest(root, count=1)
+            metrics = self._seed_metrics(root)
+            body = (root / "report-0.html").read_bytes()
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ), self.assertRaisesRegex(RuntimeError, "network"):
+                report_notifications.send_ready_notifications(
+                    path=target,
+                    telegram_sender=MagicMock(
+                        side_effect=[None, RuntimeError("network")],
+                    ),
+                    email_sender=MagicMock(),
+                )
+
+            fingerprint_x = json.loads(metrics.read_text(encoding="utf-8"))[0][
+                "report_notification_delivery"
+            ]["notification_fingerprint"]
+            target.unlink()
+            report_notifications._delivery_state_path(target, "run-123").unlink()
+            self._append_fresh_attempt(metrics)
+            target = self._manifest(
+                root,
+                count=1,
+                telegram_chunks=["novo chunk 1", "novo chunk 2"],
+            )
+            rebuilt = json.loads(target.read_text(encoding="utf-8"))
+            self.assertNotEqual(fingerprint_x, rebuilt["notification_fingerprint"])
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
+            retry_telegram = MagicMock()
+            retry_email = MagicMock()
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                result = report_notifications.send_ready_notifications(
+                    path=target,
+                    telegram_sender=retry_telegram,
+                    email_sender=retry_email,
+                )
+
+        self.assertEqual(result, {
+            "status": "REPORTS_WITHHELD",
+            "reason_code": "REPORT_NOTIFICATION_PAYLOAD_MISMATCH",
+        })
+        retry_telegram.assert_not_called()
+        retry_email.assert_not_called()
 
     def test_completed_delivery_survives_loss_of_all_temporary_state(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(
@@ -297,6 +396,92 @@ class ReportNotificationsTests(unittest.TestCase):
         self.assertEqual(result["status"], "REPORTS_SENT")
         rerun_telegram.assert_not_called()
         rerun_email.assert_not_called()
+
+    def test_completed_delivery_with_changed_payload_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            report_notifications, "_persist_telemetry",
+        ):
+            root = Path(directory)
+            target = self._manifest(root, count=1)
+            metrics = self._seed_metrics(root)
+            body = (root / "report-0.html").read_bytes()
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                report_notifications.send_ready_notifications(
+                    path=target,
+                    telegram_sender=MagicMock(),
+                    email_sender=MagicMock(
+                        return_value={"status": "SENT", "kind": "REPORTS"},
+                    ),
+                )
+
+            target.unlink()
+            report_notifications._delivery_state_path(target, "run-123").unlink()
+            self._append_fresh_attempt(metrics)
+            target = self._manifest(
+                root,
+                count=1,
+                email={"today": "2026-09-27", "groups": [{"name": "novo"}]},
+            )
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
+            rerun_telegram = MagicMock()
+            rerun_email = MagicMock()
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                result = report_notifications.send_ready_notifications(
+                    path=target,
+                    telegram_sender=rerun_telegram,
+                    email_sender=rerun_email,
+                )
+
+        self.assertEqual(
+            result.get("reason_code"),
+            "REPORT_NOTIFICATION_PAYLOAD_MISMATCH",
+        )
+        rerun_telegram.assert_not_called()
+        rerun_email.assert_not_called()
+
+    def test_cli_fails_for_notification_payload_mismatch(self):
+        with patch(
+            "sys.argv", ["report_notifications", "send"],
+        ), patch.object(
+            report_notifications,
+            "send_ready_notifications",
+            return_value={
+                "status": "REPORTS_WITHHELD",
+                "reason_code": "REPORT_NOTIFICATION_PAYLOAD_MISMATCH",
+            },
+        ):
+            self.assertEqual(report_notifications._cli(), 1)
+
+    def test_payload_mismatch_reason_is_persisted_with_run_telemetry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            metrics = self._seed_metrics(root)
+            target = self._manifest(root, count=1)
+            manifest = json.loads(target.read_text(encoding="utf-8"))
+            with patch.dict(
+                os.environ, {"FENZOBOT_RUN_METRICS_PATH": str(metrics)},
+            ):
+                result = report_notifications._payload_mismatch(manifest, target)
+
+            persisted = json.loads(metrics.read_text(encoding="utf-8"))[0]
+
+        self.assertEqual(
+            result.get("reason_code"),
+            "REPORT_NOTIFICATION_PAYLOAD_MISMATCH",
+        )
+        self.assertEqual(
+            persisted.get("notification_reason_code"),
+            "REPORT_NOTIFICATION_PAYLOAD_MISMATCH",
+        )
 
     def test_publication_telemetry_updates_same_github_run(self):
         with tempfile.TemporaryDirectory() as directory:
