@@ -388,10 +388,14 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap para avaliar em PAPER (BO5)", html)
-        self.assertIn("Observar A -3.5", html)
+        self.assertIn("Observar A -3", html)
         self.assertIn('class="action-item action-item-handicap"', html)
         self.assertIn('class="handicap-visual"', html)
-        self.assertIn("LINHA MAIS PROTEGIDA", html)
+        self.assertIn("MARGEM EXTRA DE PROTEÇÃO", html)
+        self.assertIn("REFERÊNCIA AO PAR DA ZONA", html)
+        self.assertIn("A -3", html)
+        self.assertIn("A -3.5", html)
+        self.assertIn("A -4", html)
         self.assertIn("50.0% <span>cobre</span>", html)
         self.assertIn("Nas derrotas: cobre 1/2", html)
         self.assertIn("SEM VALIDAÇÃO POR PREÇO", html)
@@ -411,12 +415,28 @@ class ReportRenderingTests(unittest.TestCase):
         div = {"market": {"a": 65, "b": 35}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Handicap para avaliar em PAPER (BO3)", html)
-        self.assertIn("Observar A -1.5", html)
-        self.assertIn("A -1.5", html)
+        self.assertIn("Observar A -1", html)
+        self.assertIn("A -1", html)
         self.assertIn("40.0% <span>cobre</span>", html)
         self.assertIn("A -2", html)
         self.assertIn("20.0% <span>cobre</span>", html)
         self.assertIn("Nas derrotas: cobre 0/2", html)
+
+    def test_moneyline_comparable_win_rate_is_explicit_for_bo5(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.40, "B": 3.0},
+            "historical_moneyline_margins_a": {
+                "buckets": {"1.31-1.40": {
+                    "n": 9, "wins": 6,
+                    "by_format": {"bo5": {"n": 9, "wins": 6}},
+                }},
+            },
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Faixa de odd comparável 1.31-1.40 (BO5): vitórias 66.7% (6/9).", html)
+        self.assertNotIn("Faixa de odd comparável (BO5): sem amostra", html)
 
     def test_handicap_card_follows_selected_underdog_with_mirrored_zone(self):
         payload = {
@@ -447,7 +467,7 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("60.0% <span>cobre</span>", html)
         self.assertIn("SEM PROTEÇÃO REAL EM DERROTA", html)
         self.assertIn("Histórico como underdog (&gt;2.00, BO3): venceu 2/6 (33.3%).", html)
-        self.assertIn("Faixa comparável 2.10-2.30 (BO3): venceu 2/4 (50.0%).", html)
+        self.assertIn("Faixa de odd comparável 2.10-2.30 (BO3): vitórias 50.0% (2/4).", html)
         self.assertNotIn("Observar Leylah Annie Fernandez -4", html)
 
     def test_handicap_card_uses_matching_moneyline_band_with_actual_settlements(self):
@@ -471,10 +491,11 @@ class ReportRenderingTests(unittest.TestCase):
         }
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
-        self.assertIn("Faixa comparável 1.41-1.50 (BO3): venceu 2/3 (66.7%).", html)
+        self.assertIn("Faixa de odd comparável 1.41-1.50 (BO3): vitórias 66.7% (2/3).", html)
         self.assertIn("VALIDAÇÃO NA FAIXA DE ODD 1.41-1.50 · n=3", html)
-        self.assertIn("prioridade -3: 33.3% cobre (1/3)", html)
-        self.assertIn("alternativa -3.5: 33.3% cobre (1/3)", html)
+        self.assertIn("mais protegida -2.5: 66.7% cobre (2/3)", html)
+        self.assertIn("referência -3: 33.3% cobre (1/3)", html)
+        self.assertIn("mais exigente -3.5: 33.3% cobre (1/3)", html)
 
     def test_super_favourite_live_card_uses_first_set_recovery_without_inventing_break_rate(self):
         payload = {

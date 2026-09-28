@@ -2728,9 +2728,10 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .handicap-zone strong {{ color:var(--text); font-size:13px; }}
 .handicap-zone .hz-odd {{ color:#79b8ff; font-weight:800; }}
 .handicap-zone .hz-arrow {{ color:var(--mint); font-size:16px; font-weight:800; }}
-.handicap-choices {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
+.handicap-choices {{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }}
 .handicap-choice {{ border:1px solid var(--line); border-radius:9px; padding:12px; background:rgba(255,255,255,.025); }}
 .handicap-choice.protected {{ border-color:#4f8fcf; background:rgba(79,143,207,.10); }}
+.handicap-choice.reference {{ border-color:var(--mint); background:rgba(48,201,179,.09); }}
 .handicap-choice.alternative {{ border-color:var(--amber); background:rgba(225,170,72,.08); }}
 .handicap-choice-tag {{ color:var(--dim); font-size:9px; font-weight:800; letter-spacing:.65px; }}
 .handicap-choice.protected .handicap-choice-tag {{ color:#79b8ff; }}
@@ -4494,9 +4495,17 @@ def _mod_action_map(payload, div, result):
                 win_rate = round(100 * wins / n, 1)
             if n and isinstance(win_rate, (int, float)):
                 notes.append(
-                    f"Faixa comparável {context['band']} ({match_format.upper()}): "
-                    f"venceu {wins}/{n} ({float(win_rate):.1f}%)."
+                    f"Faixa de odd comparável {context['band']} ({match_format.upper()}): "
+                    f"vitórias {float(win_rate):.1f}% ({wins}/{n})."
                 )
+        elif current_odd:
+            # Não esconder esta informação nos relatórios ATP/BO5: a
+            # ausência de amostra de odds do formato certo é diferente de
+            # uma taxa de vitória de 0% e tem de ficar explícita.
+            notes.append(
+                f"Faixa de odd comparável ({match_format.upper()}): sem amostra histórica "
+                "de odds observadas nesta faixa."
+            )
         return ("\n" + " ".join(notes)) if notes else ""
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
@@ -4769,15 +4778,20 @@ def _mod_action_map(payload, div, result):
                         return str(value)
                     return f"{number:+g}"
 
-                # Para favoritos, a linha mais acessível e a meia-unidade
-                # seguinte são a zona prática a confirmar na casa (ex.:
-                # -2/-2.5). Para underdogs mantém-se a zona positiva de
-                # referência aprovada.
+                # Para favoritos, além das duas linhas de referência,
+                # mostramos sempre uma meia-unidade MAIS protegida. Ex.:
+                # zona -4/-4.5 -> -3.5, -4, -4.5. Assim, se a casa já
+                # pagar a odd mínima desejada em -3.5, há cobertura factual
+                # dessa alternativa sem fingir que ela é a linha ao par.
+                # Para underdogs mantém-se a zona positiva aprovada.
                 _candidate_lines = list(_reference_lines)
                 if _reference.get("tipo") == "favorito" and _reference_lines:
                     _first_number = _line_number(_reference_lines[0])
                     if _first_number is not None:
-                        _candidate_lines = [_line_label(_first_number), _line_label(_first_number - 0.5)]
+                        _candidate_lines = [
+                            _line_label(_first_number + 0.5),
+                            *[_line_label(line) for line in _reference_lines],
+                        ]
                 _candidate_lines = list(dict.fromkeys(_candidate_lines))
 
                 _all_margins = _wins_margins + _losses_margins
@@ -4835,14 +4849,16 @@ def _mod_action_map(payload, div, result):
 
                 _reference_type = _reference.get("tipo")
                 _protected_line = _candidate_lines[0] if _reference_type == "favorito" else _candidate_lines[-1]
+                _reference_line = _candidate_lines[1] if _reference_type == "favorito" and len(_candidate_lines) >= 3 else None
                 _other_line = _candidate_lines[-1] if _reference_type == "favorito" else _candidate_lines[0]
                 _outcome_by_line = {outcome["line"]: outcome for outcome in _overall_outcomes}
                 _protected_outcome = _outcome_by_line.get(_line_label(_protected_line))
+                _reference_outcome = _outcome_by_line.get(_line_label(_reference_line)) if _reference_line is not None else None
                 _other_outcome = _outcome_by_line.get(_line_label(_other_line))
                 _visual = {
                     "player": names[fav_side], "format": _fmt.upper(),
                     "odd": _current_odd, "zone": [_line_label(line) for line in _candidate_lines],
-                    "protected": _protected_outcome, "alternative": _other_outcome,
+                    "protected": _protected_outcome, "reference": _reference_outcome, "alternative": _other_outcome,
                     "validation": {"state": "missing", "title": "SEM VALIDAÇÃO POR PREÇO",
                                    "detail": f"Sem scores {_fmt.upper()} com odds históricas na faixa atual. Não concluir valor PAPER apenas pelo histórico geral."},
                 }
@@ -4863,21 +4879,32 @@ def _mod_action_map(payload, div, result):
                     _band_margins = list(_matching_stats.get("margins") or [])
                     _band_wins = list(_matching_stats.get("win_margins") or [])
                     _band_losses = list(_matching_stats.get("loss_margins") or [])
-                    _band_outcomes = [
-                        _line_outcome(_line, _band_margins, _band_wins, _band_losses)
-                        for _line in _candidate_lines
-                    ]
-                    _band_lookup = {outcome["line"]: outcome for outcome in _band_outcomes}
-                    _band_protected = _band_lookup.get(_line_label(_protected_line))
-                    _band_alternative = _band_lookup.get(_line_label(_other_line))
-                    _band_summary = []
-                    for label, outcome in (("prioridade", _band_protected), ("alternativa", _band_alternative)):
-                        if outcome:
-                            _band_summary.append(f"{label} {outcome['line']}: {outcome['cover_pct']} cobre ({outcome['cover']}/{outcome['total']})")
-                    _visual["validation"] = {
-                        "state": "ready", "title": f"VALIDAÇÃO NA FAIXA DE ODD {_matching_band} · n={len(_band_margins)}",
-                        "detail": " · ".join(_band_summary),
-                    }
+                    # Um agregado de vitórias/n sem as margens de games não
+                    # permite calcular cobertura de handicap. Mantém a
+                    # validação fechada em vez de publicar 0/0 como dado.
+                    if not _band_margins:
+                        _matching_stats = None
+                    else:
+                        _band_outcomes = [
+                            _line_outcome(_line, _band_margins, _band_wins, _band_losses)
+                            for _line in _candidate_lines
+                        ]
+                        _band_lookup = {outcome["line"]: outcome for outcome in _band_outcomes}
+                        _band_protected = _band_lookup.get(_line_label(_protected_line))
+                        _band_reference = _band_lookup.get(_line_label(_reference_line)) if _reference_line is not None else None
+                        _band_alternative = _band_lookup.get(_line_label(_other_line))
+                        _band_summary = []
+                        _band_labels = [("mais protegida", _band_protected)]
+                        if _band_reference:
+                            _band_labels.append(("referência", _band_reference))
+                        _band_labels.append(("mais exigente" if _reference_type == "favorito" else "alternativa", _band_alternative))
+                        for label, outcome in _band_labels:
+                            if outcome:
+                                _band_summary.append(f"{label} {outcome['line']}: {outcome['cover_pct']} cobre ({outcome['cover']}/{outcome['total']})")
+                        _visual["validation"] = {
+                            "state": "ready", "title": f"VALIDAÇÃO NA FAIXA DE ODD {_matching_band} · n={len(_band_margins)}",
+                            "detail": " · ".join(_band_summary),
+                        }
                 else:
                     pass
                 _headline = (
@@ -4983,7 +5010,8 @@ def _mod_action_map(payload, div, result):
             f'<div class="handicap-zone"><span class="hz-odd">{_esc(odd_text)}</span><span class="hz-arrow">→</span>'
             f'<strong>Zona { _esc(zone) }</strong><span>({ _esc(visual.get("format", "")) })</span></div>'
             '<div class="handicap-choices">'
-            + _choice(visual.get("protected"), "protected", "LINHA MAIS PROTEGIDA DA ZONA")
+            + _choice(visual.get("protected"), "protected", "MARGEM EXTRA DE PROTEÇÃO · OBSERVAR SE A ODD JÁ COMPENSAR")
+            + _choice(visual.get("reference"), "reference", "REFERÊNCIA AO PAR DA ZONA")
             + _choice(visual.get("alternative"), "alternative", "ALTERNATIVA MAIS EXIGENTE · SÓ COM ODD MELHOR")
             + '</div>'
             f'<div class="handicap-validation {validation_class}">'
