@@ -1268,6 +1268,9 @@ def _experimental_tier_metrics(
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
+    # Fonte separada, apenas para a comparação descritiva por faixa de odds.
+    # No ATP, o histórico principal TennisMyLife não contém odds históricas.
+    historical_odds_history = fetch_data.get_historical_odds_history(tour)
 
     player_a = (match.get("player1") or {}).get("name", "?")
     player_b = (match.get("player2") or {}).get("name", "?")
@@ -1637,8 +1640,12 @@ def _build_match_payload(match: dict) -> dict:
     game_margin_b = fetch_data.compute_game_margin_stats(history, player_b)
     game_differential_a = fetch_data.compute_game_differential_profile(history, player_a)
     game_differential_b = fetch_data.compute_game_differential_profile(history, player_b)
-    historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(history, player_a)
-    historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(history, player_b)
+    historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(
+        historical_odds_history, player_a
+    )
+    historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(
+        historical_odds_history, player_b
+    )
     # NOVO (22/08/2026, a pedido): efeito de mudança de piso — jogador que
     # vem de outra superfície e entra fresco no piso de hoje.
     surface_transition_a = fetch_data.compute_surface_transition(history, player_a, surface)

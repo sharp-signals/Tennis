@@ -2159,7 +2159,10 @@ _HANDICAP_REF_BO5_FAVORITO = [
     (1.00, 1.30, ("-5", "-6")),
     (1.30, 1.40, ("-4", "-4.5")),
     (1.40, 1.51, ("-3.5", "-4")),
-    (1.51, 1.75, ("-2.5", "-3.5")),
+    (1.51, 1.61, ("-2.5", "-3.5")),
+    # Favorito equilibrado: a zona curta evita sugerir uma margem pesada
+    # quando a Moneyline já se aproxima do par.
+    (1.61, 1.75, ("-1", "-1.5")),
 ]
 # Tabela BO3 fornecida pelo BRAIN em 29/08/2026. Os limites são explícitos
 # para impedir que 1.40 caia simultaneamente em duas bandas: 1.40 pertence à
@@ -2170,6 +2173,7 @@ _HANDICAP_REF_BO3_FAVORITO = [
     (1.30, 1.40, ("-4", "-4.5")),
     (1.40, 1.51, ("-3", "-3.5")),
     (1.51, 1.61, ("-1.5", "-2.5")),
+    (1.61, 1.75, ("-1", "-1.5")),
 ]
 # underdog: (limiar_min_odd, handicap). A odd tem de ser >= limiar para o
 # handicap se aplicar. Ordenada do mais positivo para o menos, para

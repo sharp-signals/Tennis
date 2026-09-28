@@ -2319,6 +2319,11 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
 # 2. Histórico / H2H / forma / piso (TennisMyLife, com fallback Sackmann)
 # --------------------------------------------------------------------- #
 _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
+# O histórico principal ATP privilegia TennisMyLife porque traz mais contexto
+# desportivo. Essa fonte não inclui, porém, as odds históricas necessárias à
+# comparação por faixa de Moneyline. Mantemos uma cache independente para essa
+# única leitura, em vez de trocar ou misturar o histórico usado pelo motor.
+_HISTORICAL_ODDS_HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 
 
 def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
@@ -2577,6 +2582,33 @@ def get_history(tour: str) -> pd.DataFrame:
     if not df.empty:
         print(f"[info] colunas disponíveis: {list(df.columns)}")
     _HISTORY_CACHE[tour] = df
+    return df
+
+
+def get_historical_odds_history(tour: str) -> pd.DataFrame:
+    """Devolve o histórico com odds observadas para a leitura por faixa.
+
+    O TennisMyLife é a melhor fonte operacional para o histórico ATP, mas
+    não publica colunas de odds. O tennis-data.co.uk contém essas colunas para
+    ATP e WTA (B365/Avg/PS), incluindo os scores por set usados para calcular
+    a margem de games. Esta função é deliberadamente separada de
+    :func:`get_history`: as odds históricas enriquecem apenas o bloco
+    descritivo do relatório e nunca substituem os dados factuais do motor.
+    """
+    normalized_tour = str(tour or "").strip().lower()
+    if normalized_tour not in {"atp", "wta"}:
+        return pd.DataFrame()
+    if normalized_tour in _HISTORICAL_ODDS_HISTORY_CACHE:
+        return _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour]
+
+    df = _load_tennisdata_couk_multi_year(normalized_tour, HISTORY_YEARS_TO_LOAD)
+    if df is None:
+        df = pd.DataFrame()
+    print(
+        f"[info] histórico de odds {normalized_tour} carregado de: "
+        f"tennis-data.co.uk ({len(df)} linhas)"
+    )
+    _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour] = df
     return df
 
 

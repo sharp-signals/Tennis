@@ -8,6 +8,19 @@ from src import fetch_data, main, match_identity_v2
 
 
 class MatchInputTests(unittest.TestCase):
+    def test_historical_odds_history_uses_tennis_data_without_replacing_primary_history(self):
+        odds_frame = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "B365W": 1.70, "B365L": 2.20}
+        ])
+        with patch.dict(fetch_data._HISTORICAL_ODDS_HISTORY_CACHE, {}, clear=True), \
+             patch.object(fetch_data, "_load_tennisdata_couk_multi_year", return_value=odds_frame) as loader:
+            result = fetch_data.get_historical_odds_history("atp")
+            cached = fetch_data.get_historical_odds_history("atp")
+
+        self.assertIs(result, odds_frame)
+        self.assertIs(cached, odds_frame)
+        loader.assert_called_once_with("atp", fetch_data.HISTORY_YEARS_TO_LOAD)
+
     def test_embedded_odds_keep_original_capture_provenance(self):
         match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "wta"}
         key = fetch_data._odds_names_key("Alice Player", "Bea Player")
