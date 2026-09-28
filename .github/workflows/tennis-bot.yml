@@ -126,6 +126,13 @@ jobs:
             echo "[aviso] calibração excedeu 180s ou falhou; relatórios já publicados."
           fi
 
+      # CHANGE-2026-09-28-061: reconstrói um livro Excel e o JSON que lhe dá
+      # origem a partir de snapshots imutáveis. Não faz requests externas e
+      # exclui versões repetidas de HTML das métricas analíticas.
+      - name: Atualizar histórico canónico e Excel
+        if: steps.run_bot.outcome == 'success'
+        run: python scripts/build_system_history_workbook.py
+
       # Corre mesmo quando o Python falha ou é interrompido. Publica apenas
       # telemetria e dashboard derivado; nunca inclui relatórios parciais.
       - name: Preservar telemetria se o bot falhar
