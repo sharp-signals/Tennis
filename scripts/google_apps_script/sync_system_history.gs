@@ -142,7 +142,9 @@ function writeRankingsSheet_(spreadsheet, rankings) {
   const sheet = spreadsheet.getSheetByName('Rankings') || spreadsheet.insertSheet('Rankings');
   const existingFilter = sheet.getFilter();
   if (existingFilter) existingFilter.remove();
-  sheet.getDataRange().breakApart();
+  // Uma união antiga pode estender-se além de getDataRange(). Se a limparmos
+  // apenas parcialmente, clear() falha no Apps Script. Abrangemos a folha toda.
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear({ contentsOnly: false });
   sheet.clearConditionalFormatRules();
   sheet.getCharts().forEach(chart => sheet.removeChart(chart));
@@ -217,7 +219,7 @@ function upsertSystemSheet_(spreadsheet, name, values, options) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
   const existingFilter = sheet.getFilter();
   if (existingFilter) existingFilter.remove();
-  sheet.getDataRange().breakApart();
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear({ contentsOnly: false });
   sheet.clearConditionalFormatRules();
   if (!options.preserveCharts) sheet.getCharts().forEach(chart => sheet.removeChart(chart));
