@@ -187,7 +187,7 @@ function writeFenzobotChart_(spreadsheet, rows) {
   const eligible = rows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number');
   const existingFilter = data.getFilter();
   if (existingFilter) existingFilter.remove();
-  data.getDataRange().breakApart();
+  data.getRange(1, 1, data.getMaxRows(), data.getMaxColumns()).breakApart();
   data.clear({ contentsOnly: false });
   data.getRange(1, 1, Math.max(eligible.length + 1, 1), 3).setValues([
     ['Faixa de odd', 'Acerto Fenzobot', 'Decisões liquidadas'],
