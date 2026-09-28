@@ -93,6 +93,45 @@ def _percent_columns(ws, row_start: int, row_end: int, columns: Iterable[int]) -
                 ws.cell(row, column).number_format = "0.0%"
 
 
+def _write_rankings(ws, rankings: Mapping[str, Mapping[str, Any]]) -> None:
+    """Compact Top/Bottom 10 blocks; the sample threshold lives in the JSON."""
+    _title(ws, "Rankings de aprendizagem", "Top 10 e Bottom 10 por métrica. Só entram linhas com a amostra mínima indicada; são leituras factuais, não sinais.")
+    row = 5
+    for category, blocks in rankings.items():
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
+        cell = ws.cell(row, 1, f"{category} · amostra mínima {blocks.get('minimum_sample', '—')}")
+        cell.fill = PatternFill("solid", fgColor=TEAL)
+        cell.font = Font(name="Arial", bold=True, color="FFFFFF")
+        row += 1
+        _header(ws, row, ["Top 10", "Amostra", "Métrica", "", "Bottom 10", "Amostra", "Métrica", ""])
+        strongest = blocks.get("strongest", [])
+        weakest = blocks.get("weakest", [])
+        length = max(len(strongest), len(weakest), 1)
+        for offset in range(length):
+            current = row + 1 + offset
+            if offset < len(strongest):
+                item = strongest[offset]
+                ws.cell(current, 1, item["label"])
+                ws.cell(current, 2, item["sample"])
+                ws.cell(current, 3, item["metric_pct"] / 100)
+            elif offset == 0:
+                ws.cell(current, 1, "Sem amostras suficientes")
+            if offset < len(weakest):
+                item = weakest[offset]
+                ws.cell(current, 5, item["label"])
+                ws.cell(current, 6, item["sample"])
+                ws.cell(current, 7, item["metric_pct"] / 100)
+            elif offset == 0:
+                ws.cell(current, 5, "Sem amostras suficientes")
+            for column in (3, 7):
+                ws.cell(current, column).number_format = "0.0%"
+            ws.cell(current, 1).fill = PatternFill("solid", fgColor=PALE_GREEN)
+            ws.cell(current, 5).fill = PatternFill("solid", fgColor=PALE_RED)
+        row += length + 3
+    ws.freeze_panes = "A6"
+    _widths(ws, [40, 12, 14, 4, 40, 12, 14, 4])
+
+
 def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> Workbook:
     wb = Workbook()
     ws = wb.active
@@ -146,6 +185,9 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         _percent_columns(sheet, 2, last, pct_indices)
         _widths(sheet, widths)
 
+    rankings = wb.create_sheet("Rankings")
+    _write_rankings(rankings, payload["rankings"])
+
     raw = wb.create_sheet("WTA histórico bruto")
     raw_rows = []
     for item in raw_wta:
@@ -177,21 +219,25 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         methodology.row_dimensions[index].height = 42
     _widths(methodology, [28, 110])
 
-    # A compact chart on the overview, based on the settled operational picks.
+    # One row per odds band makes the overview readable; the previous chart
+    # repeated the same band for every player and was therefore misleading.
     chart_data = wb.create_sheet("Dados gráficos")
     chart_data.sheet_state = "hidden"
-    _header(chart_data, 1, ["Faixa", "Acerto Fenzobot"])
-    for index, row in enumerate(payload["operational"]["fenzobot_odds"], 2):
+    _header(chart_data, 1, ["Faixa", "Acerto Fenzobot", "Decisões liquidadas"])
+    chart_rows = [row for row in payload["operational"]["fenzobot_band_summary"] if row["matches"] >= 5]
+    for index, row in enumerate(chart_rows, 2):
         chart_data.cell(index, 1, row["odds_band"])
         chart_data.cell(index, 2, (row["win_pct"] or 0) / 100)
-    if len(payload["operational"]["fenzobot_odds"]) > 0:
+        chart_data.cell(index, 3, row["matches"])
+    if chart_rows:
         chart = BarChart()
-        chart.title = "Acerto Fenzobot por faixa de odd"
+        chart.type = "col"
+        chart.title = "Acerto Fenzobot por faixa de odd (n ≥ 5)"
         chart.y_axis.title = "% acerto"
         chart.height = 8
-        chart.width = 16
-        chart.add_data(Reference(chart_data, min_col=2, min_row=1, max_row=len(payload["operational"]["fenzobot_odds"]) + 1), titles_from_data=True)
-        chart.set_categories(Reference(chart_data, min_col=1, min_row=2, max_row=len(payload["operational"]["fenzobot_odds"]) + 1))
+        chart.width = 13
+        chart.add_data(Reference(chart_data, min_col=2, min_row=1, max_row=len(chart_rows) + 1), titles_from_data=True)
+        chart.set_categories(Reference(chart_data, min_col=1, min_row=2, max_row=len(chart_rows) + 1))
         ws.add_chart(chart, "D5")
     return wb
 

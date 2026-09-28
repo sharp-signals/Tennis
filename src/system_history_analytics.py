@@ -23,7 +23,19 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+
+# Rankings only surface sufficiently sized samples.  They are descriptive
+# study aids, not betting recommendations or a substitute for the report's
+# match-specific validation.
+RANKING_MIN_SAMPLES = {
+    "operational_fenzobot": 10,
+    "wta_moneyline": 20,
+    "wta_handicap": 20,
+    "wta_recovery": 10,
+    "wta_deciding_set": 10,
+    "wta_tiebreak": 10,
+}
 ODDS_BANDS = (
     (1.01, 1.20, "1.01–1.20"),
     (1.21, 1.30, "1.21–1.30"),
@@ -153,6 +165,84 @@ def _aggregate_player_rows(rows: Iterable[tuple[str, str, str, bool]]) -> list[d
     ]
 
 
+def _aggregate_band_rows(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse per-player rows into one transparent row per odds band."""
+    grouped: dict[str, dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
+    for row in rows:
+        band = _text(row.get("odds_band"))
+        matches, wins = _int(row.get("matches")), _int(row.get("wins"))
+        if not band or matches is None or wins is None:
+            continue
+        grouped[band]["matches"] += matches
+        grouped[band]["wins"] += wins
+    return [
+        {"odds_band": band, "matches": values["matches"], "wins": values["wins"], "win_pct": _pct(values["wins"], values["matches"])}
+        for band, values in sorted(grouped.items(), key=lambda item: _odds_band_order(item[0]))
+    ]
+
+
+def _odds_band_order(band: str) -> tuple[float, str]:
+    match = re.match(r"(\d+(?:\.\d+)?)", band or "")
+    return (float(match.group(1)) if match else float("inf"), band)
+
+
+def _ranking_rows(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    category: str,
+    metric: str,
+    sample: str,
+    minimum: int,
+    label_fields: tuple[str, ...] = ("player",),
+) -> dict[str, Any]:
+    """Return the strongest and weakest observations with enough evidence."""
+    eligible = []
+    for row in rows:
+        count, value = _int(row.get(sample)), _float(row.get(metric))
+        if count is None or count < minimum or value is None:
+            continue
+        labels = [str(row.get(field, "")).strip() for field in label_fields]
+        eligible.append({
+            "category": category,
+            "label": " · ".join(label for label in labels if label),
+            "sample": count,
+            "metric_pct": value,
+        })
+    strongest = sorted(eligible, key=lambda row: (-row["metric_pct"], -row["sample"], row["label"]))[:10]
+    weakest = sorted(eligible, key=lambda row: (row["metric_pct"], -row["sample"], row["label"]))[:10]
+    return {"minimum_sample": minimum, "strongest": strongest, "weakest": weakest}
+
+
+def build_rankings(operational: Mapping[str, Any], historical_wta: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Stable shortlists for exploration, kept separate from predictive logic."""
+    return {
+        "Fenzobot · acerto operacional": _ranking_rows(
+            operational.get("fenzobot_odds", []), category="Fenzobot · acerto operacional", metric="win_pct", sample="matches",
+            minimum=RANKING_MIN_SAMPLES["operational_fenzobot"], label_fields=("player", "odds_band", "role"),
+        ),
+        "WTA · vitória Moneyline": _ranking_rows(
+            historical_wta.get("player_odds", []), category="WTA · vitória Moneyline", metric="win_pct", sample="matches",
+            minimum=RANKING_MIN_SAMPLES["wta_moneyline"], label_fields=("player", "odds_band", "role"),
+        ),
+        "WTA · cobertura handicap interno": _ranking_rows(
+            historical_wta.get("handicap_reference", []), category="WTA · cobertura handicap interno", metric="cover_pct", sample="matches",
+            minimum=RANKING_MIN_SAMPLES["wta_handicap"], label_fields=("player", "role", "reference_line"),
+        ),
+        "WTA · recuperação após 1.º set": _ranking_rows(
+            historical_wta.get("set1_recovery", []), category="WTA · recuperação após 1.º set", metric="recovery_pct", sample="lost_first",
+            minimum=RANKING_MIN_SAMPLES["wta_recovery"], label_fields=("player",),
+        ),
+        "WTA · set decisivo": _ranking_rows(
+            historical_wta.get("deciding_set", []), category="WTA · set decisivo", metric="win_pct", sample="matches",
+            minimum=RANKING_MIN_SAMPLES["wta_deciding_set"], label_fields=("player",),
+        ),
+        "WTA · tiebreak": _ranking_rows(
+            historical_wta.get("tiebreak", []), category="WTA · tiebreak", metric="win_pct", sample="matches",
+            minimum=RANKING_MIN_SAMPLES["wta_tiebreak"], label_fields=("player",),
+        ),
+    }
+
+
 def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Outcome metrics from canonical Fenzobot observations only."""
     player_rows: list[tuple[str, str, str, bool]] = []
@@ -185,7 +275,13 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
             "winner_side": winner or None, "result": outcome.get("result"),
             "fenzobot_side": model_side or None,
         })
-    return {"event_rows": event_rows, "player_odds": _aggregate_player_rows(player_rows), "fenzobot_odds": _aggregate_player_rows(model_rows)}
+    fenzobot_odds = _aggregate_player_rows(model_rows)
+    return {
+        "event_rows": event_rows,
+        "player_odds": _aggregate_player_rows(player_rows),
+        "fenzobot_odds": fenzobot_odds,
+        "fenzobot_band_summary": _aggregate_band_rows(fenzobot_odds),
+    }
 
 
 def _int(value: Any) -> int | None:
@@ -283,6 +379,7 @@ def build_system_history(
     canonical, removed = canonical_snapshots(raw)
     operational = snapshot_performance(canonical)
     history = historical_wta_analytics(local_wta_matches)
+    rankings = build_rankings(operational, history)
     payload = {
         "schema_version": SCHEMA_VERSION,
         "methodology": {
@@ -299,6 +396,7 @@ def build_system_history(
         },
         "operational": operational,
         "historical_wta": history,
+        "rankings": rankings,
         "report_registry": report_registry,
     }
     canonical_text = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

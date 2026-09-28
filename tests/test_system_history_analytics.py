@@ -1,6 +1,7 @@
 import unittest
 
 from src.system_history_analytics import (
+    build_rankings,
     build_system_history,
     canonical_snapshots,
     historical_wta_analytics,
@@ -73,3 +74,20 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["raw_snapshots"], 2)
         self.assertEqual(payload["summary"]["canonical_snapshots"], 1)
         self.assertEqual(payload["summary"]["duplicate_snapshots_excluded"], 1)
+
+    def test_fenzobot_chart_source_is_aggregated_by_band(self):
+        first = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:1", odd_a=1.45)
+        second = _snapshot(analyzed_at="2026-09-28T06:31:00+00:00", key="atp:2", odd_a=1.45)
+        second["match_id"] = 11
+        second["commence_time_utc"] = "2026-09-30T12:00:00+00:00"
+        payload = build_system_history({"snapshots": [first, second]}, [])
+        self.assertEqual(payload["operational"]["fenzobot_band_summary"], [
+            {"odds_band": "1.41–1.50", "matches": 2, "wins": 2, "win_pct": 100.0},
+        ])
+
+    def test_rankings_exclude_rows_below_the_evidence_threshold(self):
+        rankings = build_rankings(
+            {"fenzobot_odds": [{"player": "A", "odds_band": "1.76–2.00", "role": "favorito", "matches": 9, "win_pct": 100.0}]},
+            {"player_odds": [], "handicap_reference": [], "set1_recovery": [], "deciding_set": [], "tiebreak": []},
+        )
+        self.assertEqual(rankings["Fenzobot · acerto operacional"]["strongest"], [])

@@ -93,7 +93,7 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Jogos WTA históricos locais', summary.historical_wta_matches || 0],
     ['', ''],
     ['Regra', 'Cada partida conta uma vez: primeiro snapshot pré-jogo válido. PAPER/REAL não são misturados neste painel.'],
-  ], { titleRows: 2, headerRow: 4, widths: [40, 85] });
+  ], { titleRows: 2, headerRow: 4, widths: [40, 85], preserveCharts: true });
 
   const operational = payload.operational || {};
   upsertSystemSheet_(spreadsheet, 'Partidas canónicas', rowsWithHeaders_(
@@ -134,6 +134,7 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Jogadora', 'Tiebreaks', 'Venceu', '% vitória'], wta.tiebreak || [],
     ['player', 'matches', 'wins', 'win_pct'],
   ), { headerRow: 1, widths: [28, 16, 14, 16], percentageColumn: 4 });
+  writeRankingsSheet_(spreadsheet, payload.rankings || {});
   upsertSystemSheet_(spreadsheet, 'Metodologia e limites', [
     ['Tema', 'Regra'],
     ['Deduplicação', 'Uma partida entra uma vez: primeiro snapshot pré-jogo válido. HTMLs repetidos não são observações analíticas.'],
@@ -143,6 +144,78 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Recuperação', 'Vitórias após perder o 1.º set; ainda não existe estatística ponto-a-ponto de breaks.'],
     ['PAPER / REAL', 'Permanecem separados e devem ser avaliados nos respetivos registos financeiros.'],
   ], { headerRow: 1, widths: [28, 110] });
+  writeFenzobotChart_(spreadsheet, operational.fenzobot_band_summary || []);
+}
+
+function writeRankingsSheet_(spreadsheet, rankings) {
+  const sheet = spreadsheet.getSheetByName('Rankings') || spreadsheet.insertSheet('Rankings');
+  const existingFilter = sheet.getFilter();
+  if (existingFilter) existingFilter.remove();
+  sheet.getDataRange().breakApart();
+  sheet.clear({ contentsOnly: false });
+  sheet.clearConditionalFormatRules();
+  sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  sheet.getRange(1, 1).setValue('Rankings de aprendizagem').setFontSize(16).setFontWeight('bold').setFontColor('#17365D');
+  sheet.getRange(2, 1).setValue('Top 10 e Bottom 10 por métrica. Só entram linhas com a amostra mínima indicada; são leituras factuais, não sinais.').setFontSize(10).setFontStyle('italic').setFontColor('#5B6573');
+  let row = 5;
+  Object.keys(rankings).forEach(category => {
+    const group = rankings[category] || {};
+    sheet.getRange(row, 1, 1, 7).merge().setValue(category + ' · amostra mínima ' + (group.minimum_sample || '—')).setBackground('#0F766E').setFontColor('#FFFFFF').setFontWeight('bold');
+    row += 1;
+    sheet.getRange(row, 1, 1, 7).setValues([['Top 10', 'Amostra', 'Métrica', '', 'Bottom 10', 'Amostra', 'Métrica']]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center');
+    const strongest = Array.isArray(group.strongest) ? group.strongest : [];
+    const weakest = Array.isArray(group.weakest) ? group.weakest : [];
+    const count = Math.max(strongest.length, weakest.length, 1);
+    const rows = [];
+    for (let index = 0; index < count; index += 1) {
+      const top = strongest[index] || {};
+      const bottom = weakest[index] || {};
+      rows.push([
+        top.label || (index === 0 ? 'Sem amostras suficientes' : ''), top.sample || '', typeof top.metric_pct === 'number' ? top.metric_pct / 100 : '', '',
+        bottom.label || (index === 0 ? 'Sem amostras suficientes' : ''), bottom.sample || '', typeof bottom.metric_pct === 'number' ? bottom.metric_pct / 100 : '',
+      ]);
+    }
+    sheet.getRange(row + 1, 1, count, 7).setValues(rows);
+    sheet.getRange(row + 1, 3, count, 1).setNumberFormat('0.0%');
+    sheet.getRange(row + 1, 7, count, 1).setNumberFormat('0.0%');
+    sheet.getRange(row + 1, 1, count, 1).setBackground('#E8F5E9');
+    sheet.getRange(row + 1, 5, count, 1).setBackground('#FDECEC');
+    row += count + 3;
+  });
+  [40, 12, 14, 4, 40, 12, 14].forEach((width, index) => sheet.setColumnWidth(index + 1, width * 7));
+  sheet.setFrozenRows(5);
+  sheet.setHiddenGridlines(true);
+  sheet.getRange(1, 1, Math.max(row - 1, 5), 7).setVerticalAlignment('top').setWrap(true);
+}
+
+function writeFenzobotChart_(spreadsheet, rows) {
+  const summary = spreadsheet.getSheetByName('Resumo');
+  const data = spreadsheet.getSheetByName('Dados gráficos') || spreadsheet.insertSheet('Dados gráficos');
+  const eligible = rows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number');
+  const existingFilter = data.getFilter();
+  if (existingFilter) existingFilter.remove();
+  data.getDataRange().breakApart();
+  data.clear({ contentsOnly: false });
+  data.getRange(1, 1, Math.max(eligible.length + 1, 1), 3).setValues([
+    ['Faixa de odd', 'Acerto Fenzobot', 'Decisões liquidadas'],
+  ].concat(eligible.map(row => [row.odds_band, row.win_pct / 100, row.matches])));
+  data.getRange(2, 2, Math.max(eligible.length, 1), 1).setNumberFormat('0.0%');
+  data.hideSheet();
+  summary.getCharts().forEach(chart => summary.removeChart(chart));
+  if (!eligible.length) {
+    summary.getRange('D5').setValue('Gráfico pendente: ainda não há pelo menos 5 decisões liquidadas na mesma faixa de odd.').setFontStyle('italic').setFontColor('#5B6573');
+    return;
+  }
+  const chart = summary.newChart()
+    .asColumnChart()
+    .addRange(data.getRange(1, 1, eligible.length + 1, 2))
+    .setNumHeaders(1)
+    .setPosition(4, 4, 0, 0)
+    .setOption('title', 'Acerto Fenzobot por faixa de odd (n ≥ 5)')
+    .setOption('legend', { position: 'none' })
+    .setOption('vAxis', { format: 'percent', viewWindow: { min: 0, max: 1 } })
+    .build();
+  summary.insertChart(chart);
 }
 
 function rowsWithHeaders_(headers, objects, fields) {
@@ -156,7 +229,7 @@ function upsertSystemSheet_(spreadsheet, name, values, options) {
   sheet.getDataRange().breakApart();
   sheet.clear({ contentsOnly: false });
   sheet.clearConditionalFormatRules();
-  sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  if (!options.preserveCharts) sheet.getCharts().forEach(chart => sheet.removeChart(chart));
   if (!values.length || !values[0].length) return;
   sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
   sheet.setFrozenRows(options.headerRow || 1);
