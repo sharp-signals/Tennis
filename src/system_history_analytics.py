@@ -18,12 +18,13 @@ import json
 import math
 import re
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+WORKBOOK_LAYOUT_VERSION = 2
 
 # Rankings only surface sufficiently sized samples.  They are descriptive
 # study aids, not betting recommendations or a substitute for the report's
@@ -147,6 +148,85 @@ def _pct(numerator: int, denominator: int) -> float | None:
     return round(numerator * 100 / denominator, 1) if denominator else None
 
 
+def sample_quality(sample: Any) -> str:
+    """Readable evidence label; it does not imply predictive confidence."""
+    count = _int(sample) or 0
+    if count < 10:
+        return "exploratória"
+    if count < 25:
+        return "limitada"
+    if count < 50:
+        return "moderada"
+    return "robusta"
+
+
+def _with_quality(rows: Iterable[Mapping[str, Any]], sample_key: str = "matches") -> list[dict[str, Any]]:
+    return [{**row, "qualidade_amostra": sample_quality(row.get(sample_key))} for row in rows]
+
+
+def _pricing_calibration(observations: Iterable[tuple[float | None, bool]]) -> list[dict[str, Any]]:
+    """Observed result versus the probability implied by the captured odds."""
+    grouped: dict[str, dict[str, float]] = defaultdict(lambda: {"matches": 0, "wins": 0, "implied_sum": 0.0})
+    for odd, won in observations:
+        band = odds_band(odd)
+        if band is None or odd is None:
+            continue
+        bucket = grouped[band]
+        bucket["matches"] += 1
+        bucket["wins"] += int(won)
+        bucket["implied_sum"] += 100 / odd
+    rows = []
+    for band, value in sorted(grouped.items(), key=lambda item: _odds_band_order(item[0])):
+        matches = int(value["matches"])
+        actual = _pct(int(value["wins"]), matches)
+        implied = round(value["implied_sum"] / matches, 1) if matches else None
+        rows.append({
+            "odds_band": band,
+            "matches": matches,
+            "wins": int(value["wins"]),
+            "actual_win_pct": actual,
+            "implied_win_pct": implied,
+            "delta_pp": round(actual - implied, 1) if actual is not None and implied is not None else None,
+        })
+    return _with_quality(rows)
+
+
+def _parse_utc(value: Any) -> datetime | None:
+    text = _text(value)
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=parsed.tzinfo or timezone.utc).astimezone(timezone.utc)
+
+
+def _recent_trend(observations: Iterable[tuple[datetime | None, float | None, bool]]) -> list[dict[str, Any]]:
+    usable = [(when, odd, won) for when, odd, won in observations if when is not None and odd is not None]
+    if not usable:
+        return []
+    latest = max(item[0] for item in usable)
+    recent_cutoff = latest - timedelta(days=90)
+    windows = (("Histórico canónico total", usable), ("Últimos 90 dias", [item for item in usable if item[0] >= recent_cutoff]))
+    rows = []
+    for label, window in windows:
+        matches = len(window)
+        wins = sum(int(item[2]) for item in window)
+        actual = _pct(wins, matches)
+        implied = round(sum(100 / item[1] for item in window) / matches, 1) if matches else None
+        rows.append({
+            "período": label,
+            "referência_utc": latest.isoformat(),
+            "matches": matches,
+            "wins": wins,
+            "actual_win_pct": actual,
+            "implied_win_pct": implied,
+            "delta_pp": round(actual - implied, 1) if actual is not None and implied is not None else None,
+        })
+    return _with_quality(rows)
+
+
 def _aggregate_player_rows(rows: Iterable[tuple[str, str, str, bool]]) -> list[dict[str, Any]]:
     grouped: dict[tuple[str, str, str], dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
     for player, band, role, won in rows:
@@ -155,14 +235,14 @@ def _aggregate_player_rows(rows: Iterable[tuple[str, str, str, bool]]) -> list[d
         bucket = grouped[(player, band, role)]
         bucket["matches"] += 1
         bucket["wins"] += int(won)
-    return [
+    return _with_quality([
         {
             "player": player, "odds_band": band, "role": role,
             "matches": value["matches"], "wins": value["wins"],
             "losses": value["matches"] - value["wins"], "win_pct": _pct(value["wins"], value["matches"]),
         }
         for (player, band, role), value in sorted(grouped.items(), key=lambda item: (-item[1]["matches"], item[0]))
-    ]
+    ])
 
 
 def _aggregate_band_rows(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -175,10 +255,10 @@ def _aggregate_band_rows(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, An
             continue
         grouped[band]["matches"] += matches
         grouped[band]["wins"] += wins
-    return [
+    return _with_quality([
         {"odds_band": band, "matches": values["matches"], "wins": values["wins"], "win_pct": _pct(values["wins"], values["matches"])}
         for band, values in sorted(grouped.items(), key=lambda item: _odds_band_order(item[0]))
-    ]
+    ])
 
 
 def _aggregate_player_overall(rows: Iterable[tuple[str, str, str, bool]]) -> list[dict[str, Any]]:
@@ -189,10 +269,10 @@ def _aggregate_player_overall(rows: Iterable[tuple[str, str, str, bool]]) -> lis
             continue
         grouped[(player, role)]["matches"] += 1
         grouped[(player, role)]["wins"] += int(won)
-    return [
+    return _with_quality([
         {"player": player, "role": role, "matches": value["matches"], "wins": value["wins"], "losses": value["matches"] - value["wins"], "win_pct": _pct(value["wins"], value["matches"])}
         for (player, role), value in sorted(grouped.items(), key=lambda item: (-item[1]["matches"], item[0]))
-    ]
+    ])
 
 
 def _odds_band_order(band: str) -> tuple[float, str]:
@@ -261,6 +341,8 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
     """Outcome metrics from canonical Fenzobot observations only."""
     player_rows: list[tuple[str, str, str, bool]] = []
     model_rows: list[tuple[str, str, str, bool]] = []
+    model_pricing_observations: list[tuple[float | None, bool]] = []
+    model_trend_observations: list[tuple[datetime | None, float | None, bool]] = []
     event_rows: list[dict[str, Any]] = []
     for snapshot in snapshots:
         a = snapshot.get("player_a") if isinstance(snapshot.get("player_a"), Mapping) else {}
@@ -280,7 +362,10 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
         if settled and model_side in {name_a, name_b}:
             own = odd_a if model_side == name_a else odd_b
             other = odd_b if model_side == name_a else odd_a
-            model_rows.append((model_side, odds_band(own) or "sem faixa", _role(own, other), winner == ("a" if model_side == name_a else "b")))
+            won = winner == ("a" if model_side == name_a else "b")
+            model_rows.append((model_side, odds_band(own) or "sem faixa", _role(own, other), won))
+            model_pricing_observations.append((own, won))
+            model_trend_observations.append((_parse_utc(snapshot.get("analyzed_at_utc")), own, won))
         event_rows.append({
             "event_id": snapshot_event_id(snapshot), "snapshot_key": snapshot.get("key"),
             "analyzed_at_utc": snapshot.get("analyzed_at_utc"), "commence_time_utc": snapshot.get("commence_time_utc"),
@@ -296,6 +381,8 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
         "fenzobot_odds": fenzobot_odds,
         "fenzobot_player_summary": _aggregate_player_overall(model_rows),
         "fenzobot_band_summary": _aggregate_band_rows(fenzobot_odds),
+        "fenzobot_pricing_calibration": _pricing_calibration(model_pricing_observations),
+        "fenzobot_recent_trend": _recent_trend(model_trend_observations),
     }
 
 
@@ -335,6 +422,7 @@ def load_local_wta_history(cache_dir: Path) -> list[dict[str, Any]]:
 
 def historical_wta_analytics(matches: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     player_rows: list[tuple[str, str, str, bool]] = []
+    pricing_observations: list[tuple[float | None, bool]] = []
     handicap: dict[tuple[str, str, float], dict[str, int]] = defaultdict(lambda: {"matches": 0, "covers": 0, "pushes": 0, "fails": 0})
     recovery: dict[str, dict[str, int]] = defaultdict(lambda: {"lost_first": 0, "recovered": 0})
     deciding: dict[str, dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
@@ -344,6 +432,7 @@ def historical_wta_analytics(matches: Iterable[Mapping[str, Any]]) -> dict[str, 
         odd_w, odd_l = _float(match.get("winner_odd")), _float(match.get("loser_odd"))
         if odd_w and odd_l:
             player_rows.extend(((winner, odds_band(odd_w) or "sem faixa", _role(odd_w, odd_l), True), (loser, odds_band(odd_l) or "sem faixa", _role(odd_l, odd_w), False)))
+            pricing_observations.extend(((odd_w, True), (odd_l, False)))
             favourite, favourite_odd = (winner, odd_w) if odd_w < odd_l else (loser, odd_l)
             fav_diff = (int(match["winner_games"]) - int(match["loser_games"])) * (1 if favourite == winner else -1)
             for line in _reference_lines_bo3(favourite_odd):
@@ -377,7 +466,14 @@ def historical_wta_analytics(matches: Iterable[Mapping[str, Any]]) -> dict[str, 
     recovery_rows = [{"player": player, **value, "recovery_pct": _pct(value["recovered"], value["lost_first"])} for player, value in sorted(recovery.items(), key=lambda item: (-item[1]["lost_first"], item[0]))]
     deciding_rows = [{"player": player, **value, "win_pct": _pct(value["wins"], value["matches"])} for player, value in sorted(deciding.items(), key=lambda item: (-item[1]["matches"], item[0]))]
     tiebreak_rows = [{"player": player, **value, "win_pct": _pct(value["wins"], value["matches"])} for player, value in sorted(tiebreak.items(), key=lambda item: (-item[1]["matches"], item[0]))]
-    return {"player_odds": _aggregate_player_rows(player_rows), "handicap_reference": handicap_rows, "set1_recovery": recovery_rows, "deciding_set": deciding_rows, "tiebreak": tiebreak_rows}
+    return {
+        "player_odds": _aggregate_player_rows(player_rows),
+        "pricing_calibration": _pricing_calibration(pricing_observations),
+        "handicap_reference": _with_quality(handicap_rows),
+        "set1_recovery": _with_quality(recovery_rows, "lost_first"),
+        "deciding_set": _with_quality(deciding_rows),
+        "tiebreak": _with_quality(tiebreak_rows),
+    }
 
 
 def build_system_history(
@@ -397,6 +493,7 @@ def build_system_history(
     rankings = build_rankings(operational, history)
     payload = {
         "schema_version": SCHEMA_VERSION,
+        "workbook_layout_version": WORKBOOK_LAYOUT_VERSION,
         "methodology": {
             "canonical_snapshot_rule": "first_valid_pre_match_snapshot_per_event",
             "raw_report_html_excluded_from_metrics": True,

@@ -185,6 +185,36 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         _percent_columns(sheet, 2, last, pct_indices)
         _widths(sheet, widths)
 
+    pricing = wb.create_sheet("Qualidade e pricing")
+    _title(pricing, "Qualidade da amostra e pricing", "Compara a taxa observada com a probabilidade implícita da odd capturada. Δ positivo significa acerto histórico acima do implícito, não garantia futura.")
+    pricing_row = _write_rows(
+        pricing, 5,
+        ["Universo", "Faixa de odd", "Decisões", "Vitórias", "% observado", "% implícito", "Δ pontos percentuais", "Qualidade"],
+        [{"universe": "Fenzobot canónico", **row} for row in payload["operational"]["fenzobot_pricing_calibration"]],
+        ["universe", "odds_band", "matches", "wins", "actual_win_pct", "implied_win_pct", "delta_pp", "qualidade_amostra"],
+    )
+    _percent_columns(pricing, 6, pricing_row, [5, 6])
+    _widths(pricing, [24, 16, 14, 12, 16, 16, 22, 16])
+    pricing.cell(pricing_row + 3, 1, "Histórico WTA local").font = Font(name="Arial", size=12, bold=True, color=NAVY)
+    wta_pricing_last = _write_rows(
+        pricing, pricing_row + 4,
+        ["Faixa de odd", "Decisões", "Vitórias", "% observado", "% implícito", "Δ pontos percentuais", "Qualidade"],
+        payload["historical_wta"]["pricing_calibration"],
+        ["odds_band", "matches", "wins", "actual_win_pct", "implied_win_pct", "delta_pp", "qualidade_amostra"],
+    )
+    _percent_columns(pricing, pricing_row + 5, wta_pricing_last, [4, 5])
+
+    trend = wb.create_sheet("Tendência Fenzobot")
+    _title(trend, "Tendência Fenzobot", "Os últimos 90 dias são calculados em relação ao snapshot canónico mais recente guardado. Não confundir resultado observado com previsão.")
+    trend_last = _write_rows(
+        trend, 5,
+        ["Período", "Referência UTC", "Decisões", "Vitórias", "% observado", "% implícito", "Δ pontos percentuais", "Qualidade"],
+        payload["operational"]["fenzobot_recent_trend"],
+        ["período", "referência_utc", "matches", "wins", "actual_win_pct", "implied_win_pct", "delta_pp", "qualidade_amostra"],
+    )
+    _percent_columns(trend, 6, trend_last, [5, 6])
+    _widths(trend, [26, 28, 14, 12, 16, 16, 22, 16])
+
     rankings = wb.create_sheet("Rankings")
     _write_rankings(rankings, payload["rankings"])
 
@@ -208,6 +238,9 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         ("Operacional", "Métricas de Fenzobot por odd usam apenas snapshots canónicos já liquidados. São observacionais, não backtest."),
         ("Histórico WTA", "Resultados e odds vêm apenas das cópias tennis-data.co.uk existentes localmente. Não houve descarga nova nesta construção."),
         ("Handicaps", "Cobertura é calculada contra uma linha interna de referência BO3, inferida pela faixa da Moneyline. Não é uma odd/linha efetivamente oferecida por bookmaker."),
+        ("Qualidade da amostra", "Exploratória: menos de 10 decisões; limitada: 10–24; moderada: 25–49; robusta: 50 ou mais. É dimensão da amostra, não previsão."),
+        ("Pricing", "% implícito é a média de 1/odd nas odds capturadas. Δ compara esse valor com a taxa observada; não prova edge futuro."),
+        ("Tendência", "Compara o histórico canónico total com os últimos 90 dias, usando como referência o snapshot canónico mais recente guardado."),
         ("Recuperação", "Conta vitórias após perder o 1.º set no histórico WTA. Não há estatística ponto-a-ponto de breaks."),
         ("Set decisivo e tiebreak", "Calculados com scores completos WTA. Não são disponíveis como universo ATP bruto completo neste checkout."),
         ("PAPER / REAL", "Não são misturados com estes agregados. Usar a carteira PAPER e a folha 22Bet para resultados financeiros."),

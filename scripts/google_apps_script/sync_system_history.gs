@@ -134,6 +134,17 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Jogadora', 'Tiebreaks', 'Venceu', '% vitória'], wta.tiebreak || [],
     ['player', 'matches', 'wins', 'win_pct'],
   ), { headerRow: 1, widths: [28, 16, 14, 16], percentageColumn: 4 });
+  const pricingRows = []
+    .concat((operational.fenzobot_pricing_calibration || []).map(row => ({ universe: 'Fenzobot canónico', ...row })))
+    .concat((wta.pricing_calibration || []).map(row => ({ universe: 'Histórico WTA local', ...row })));
+  upsertSystemSheet_(spreadsheet, 'Qualidade e pricing', rowsWithHeaders_(
+    ['Universo', 'Faixa de odd', 'Decisões', 'Vitórias', '% observado', '% implícito', 'Δ pontos percentuais', 'Qualidade'], pricingRows,
+    ['universe', 'odds_band', 'matches', 'wins', 'actual_win_pct', 'implied_win_pct', 'delta_pp', 'qualidade_amostra'],
+  ), { headerRow: 1, widths: [24, 16, 14, 12, 16, 16, 22, 16], percentageColumns: [5, 6] });
+  upsertSystemSheet_(spreadsheet, 'Tendência Fenzobot', rowsWithHeaders_(
+    ['Período', 'Referência UTC', 'Decisões', 'Vitórias', '% observado', '% implícito', 'Δ pontos percentuais', 'Qualidade'], operational.fenzobot_recent_trend || [],
+    ['período', 'referência_utc', 'matches', 'wins', 'actual_win_pct', 'implied_win_pct', 'delta_pp', 'qualidade_amostra'],
+  ), { headerRow: 1, widths: [26, 28, 14, 12, 16, 16, 22, 16], percentageColumns: [5, 6] });
   writeRankingsSheet_(spreadsheet, payload.rankings || {});
   upsertSystemSheet_(spreadsheet, 'Metodologia e limites', [
     ['Tema', 'Regra'],
@@ -141,6 +152,9 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Operacional', 'Snapshots canónicos já liquidados; não é backtest nem carteira PAPER.'],
     ['Histórico WTA', 'Resultados e odds da cache local tennis-data.co.uk. Não se afirma cobertura ATP onde não existe base bruta local.'],
     ['Handicaps', 'Cobertura contra linha interna BO3 de referência, inferida da faixa de Moneyline; não é linha real de bookmaker.'],
+    ['Qualidade da amostra', 'Exploratória: menos de 10 decisões; limitada: 10–24; moderada: 25–49; robusta: 50 ou mais. É dimensão da amostra, não previsão.'],
+    ['Pricing', '% implícito é a média de 1/odd nas odds capturadas. Δ compara esse valor com a taxa observada; não prova edge futuro.'],
+    ['Tendência', 'Compara o histórico canónico total com os últimos 90 dias, usando como referência o snapshot canónico mais recente guardado.'],
     ['Recuperação', 'Vitórias após perder o 1.º set; ainda não existe estatística ponto-a-ponto de breaks.'],
     ['PAPER / REAL', 'Permanecem separados e devem ser avaliados nos respetivos registos financeiros.'],
   ], { headerRow: 1, widths: [28, 110] });
@@ -246,10 +260,12 @@ function upsertSystemSheet_(spreadsheet, name, values, options) {
   if (values.length > headerRow) {
     sheet.getRange(headerRow + 1, 1, values.length - headerRow, values[0].length).setVerticalAlignment('top').setWrap(true);
   }
-  if (options.percentageColumn && values.length > headerRow) {
-    const range = sheet.getRange(headerRow + 1, options.percentageColumn, values.length - headerRow, 1);
+  const percentageColumns = options.percentageColumns || (options.percentageColumn ? [options.percentageColumn] : []);
+  percentageColumns.forEach(column => {
+    if (values.length <= headerRow) return;
+    const range = sheet.getRange(headerRow + 1, column, values.length - headerRow, 1);
     const raw = range.getValues();
     range.setValues(raw.map(row => [typeof row[0] === 'number' ? row[0] / 100 : row[0]])).setNumberFormat('0.0%');
-  }
+  });
   sheet.getRange(headerRow, 1, values.length - headerRow + 1, values[0].length).createFilter();
 }

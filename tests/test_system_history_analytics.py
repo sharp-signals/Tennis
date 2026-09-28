@@ -6,6 +6,7 @@ from src.system_history_analytics import (
     canonical_snapshots,
     historical_wta_analytics,
     odds_band,
+    sample_quality,
 )
 
 
@@ -59,7 +60,9 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         underdog_line = next(row for row in analytics["handicap_reference"] if row["player"] == "B" and row["reference_line"] == 4.5)
         self.assertEqual(favourite_line["covers"], 1)
         self.assertEqual(underdog_line["fails"], 1)
-        self.assertEqual(analytics["set1_recovery"], [{"player": "A", "lost_first": 1, "recovered": 1, "recovery_pct": 100.0}])
+        self.assertEqual(analytics["set1_recovery"][0]["player"], "A")
+        self.assertEqual(analytics["set1_recovery"][0]["recovery_pct"], 100.0)
+        self.assertEqual(analytics["set1_recovery"][0]["qualidade_amostra"], "exploratória")
 
     def test_set_one_recovery_denominator_includes_failed_comebacks(self):
         analytics = historical_wta_analytics([{
@@ -67,7 +70,8 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
             "winner_games": 12, "loser_games": 7, "winner_lost_first": False,
             "deciding_set": False, "winner_tiebreak": False,
         }])
-        self.assertEqual(analytics["set1_recovery"], [{"player": "B", "lost_first": 1, "recovered": 0, "recovery_pct": 0.0}])
+        self.assertEqual(analytics["set1_recovery"][0]["player"], "B")
+        self.assertEqual(analytics["set1_recovery"][0]["recovery_pct"], 0.0)
 
     def test_output_separates_raw_and_canonical_counts(self):
         payload = build_system_history({"snapshots": [_snapshot(analyzed_at="2026-09-28T06:30:00+00:00"), _snapshot(analyzed_at="2026-09-28T18:30:00+00:00")]}, [])
@@ -81,9 +85,9 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         second["match_id"] = 11
         second["commence_time_utc"] = "2026-09-30T12:00:00+00:00"
         payload = build_system_history({"snapshots": [first, second]}, [])
-        self.assertEqual(payload["operational"]["fenzobot_band_summary"], [
-            {"odds_band": "1.41–1.50", "matches": 2, "wins": 2, "win_pct": 100.0},
-        ])
+        self.assertEqual(payload["operational"]["fenzobot_band_summary"][0]["odds_band"], "1.41–1.50")
+        self.assertEqual(payload["operational"]["fenzobot_band_summary"][0]["matches"], 2)
+        self.assertEqual(payload["operational"]["fenzobot_band_summary"][0]["win_pct"], 100.0)
 
     def test_rankings_exclude_rows_below_the_evidence_threshold(self):
         rankings = build_rankings(
@@ -91,3 +95,17 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
             {"player_odds": [], "handicap_reference": [], "set1_recovery": [], "deciding_set": [], "tiebreak": []},
         )
         self.assertEqual(rankings["Fenzobot · acerto operacional"]["strongest"], [])
+
+    def test_pricing_and_recent_trend_show_observed_vs_implied_without_predictions(self):
+        first = _snapshot(analyzed_at="2026-01-01T06:30:00+00:00", key="atp:1", odd_a=2.0)
+        second = _snapshot(analyzed_at="2026-05-01T06:30:00+00:00", key="atp:2", odd_a=2.0)
+        second["match_id"] = 11
+        second["commence_time_utc"] = "2026-05-02T12:00:00+00:00"
+        payload = build_system_history({"snapshots": [first, second]}, [])
+        pricing = payload["operational"]["fenzobot_pricing_calibration"]
+        self.assertEqual(pricing[0]["actual_win_pct"], 100.0)
+        self.assertEqual(pricing[0]["implied_win_pct"], 50.0)
+        self.assertEqual(pricing[0]["delta_pp"], 50.0)
+        self.assertEqual(payload["operational"]["fenzobot_recent_trend"][1]["matches"], 1)
+        self.assertEqual(sample_quality(9), "exploratória")
+        self.assertEqual(sample_quality(50), "robusta")
