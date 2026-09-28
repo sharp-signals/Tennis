@@ -190,9 +190,10 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
 
 def _int(value: Any) -> int | None:
     try:
-        return int(str(value).strip())
+        parsed = float(str(value).strip())
     except (TypeError, ValueError):
         return None
+    return int(parsed) if math.isfinite(parsed) and parsed.is_integer() else None
 
 
 def load_local_wta_history(cache_dir: Path) -> list[dict[str, Any]]:
