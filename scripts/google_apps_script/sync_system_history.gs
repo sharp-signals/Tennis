@@ -9,8 +9,7 @@
  * - Se o fingerprint não mudou, não reescreve células nem cria versões.
  * - Não usa Claude, RapidAPI nem qualquer API de odds.
  *
- * Propriedades de script necessárias (as mesmas do sync PAPER):
- * - GITHUB_TOKEN          Contents: Read no repositório Tennis
+ * Propriedades de script opcionais:
  * - GITHUB_REPOSITORY     sharp-signals/Tennis (opcional)
  * - GITHUB_BRANCH         main (opcional)
  * - SYSTEM_HISTORY_SHEET_ID (opcional; já tem uma predefinição)
@@ -27,13 +26,10 @@ const SYSTEM_HISTORY_SYNC = {
 
 function syncSystemHistoryToSheet() {
   const properties = PropertiesService.getScriptProperties();
-  const token = properties.getProperty('GITHUB_TOKEN');
-  if (!token) throw new Error('Falta GITHUB_TOKEN nas Propriedades do script.');
-
   const repository = properties.getProperty('GITHUB_REPOSITORY') || SYSTEM_HISTORY_SYNC.defaultRepository;
   const branch = properties.getProperty('GITHUB_BRANCH') || SYSTEM_HISTORY_SYNC.defaultBranch;
   const spreadsheetId = properties.getProperty('SYSTEM_HISTORY_SHEET_ID') || SYSTEM_HISTORY_SYNC.defaultSpreadsheetId;
-  const payload = fetchSystemHistoryPayload_(token, repository, branch);
+  const payload = fetchSystemHistoryPayload_(repository, branch);
   const fingerprint = String(payload.input_fingerprint_sha256 || '');
   if (!fingerprint) throw new Error('O JSON canónico não tem input_fingerprint_sha256.');
   if (properties.getProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty) === fingerprint) {
@@ -57,23 +53,18 @@ function installSystemHistorySync() {
   return 'Atualização horária instalada. Só escreve quando o histórico mudar.';
 }
 
-function fetchSystemHistoryPayload_(token, repository, branch) {
-  const url = 'https://api.github.com/repos/' + repository + '/contents/' + SYSTEM_HISTORY_SYNC.sourcePath + '?ref=' + encodeURIComponent(branch);
+function fetchSystemHistoryPayload_(repository, branch) {
+  // O repositório e o ficheiro de histórico são públicos. Usar o URL RAW
+  // remove a necessidade de guardar um token pessoal no Apps Script.
+  const url = 'https://raw.githubusercontent.com/' + repository + '/' + encodeURIComponent(branch) + '/' + SYSTEM_HISTORY_SYNC.sourcePath;
   const response = UrlFetchApp.fetch(url, {
     method: 'get',
-    headers: {
-      Authorization: 'Bearer ' + token,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
     muteHttpExceptions: true,
   });
   if (response.getResponseCode() !== 200) {
     throw new Error('Não foi possível obter o histórico canónico: HTTP ' + response.getResponseCode() + ': ' + response.getContentText());
   }
-  const document = JSON.parse(response.getContentText());
-  const text = Utilities.newBlob(Utilities.base64Decode(String(document.content || '').replace(/\s/g, ''))).getDataAsString();
-  const payload = JSON.parse(text);
+  const payload = JSON.parse(response.getContentText());
   if (!payload || typeof payload !== 'object') throw new Error('Payload histórico inválido.');
   return payload;
 }
