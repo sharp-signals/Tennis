@@ -142,7 +142,9 @@ function writeRankingsSheet_(spreadsheet, rankings) {
   const sheet = spreadsheet.getSheetByName('Rankings') || spreadsheet.insertSheet('Rankings');
   const existingFilter = sheet.getFilter();
   if (existingFilter) existingFilter.remove();
-  sheet.getDataRange().breakApart();
+  // Uma união antiga pode estender-se além de getDataRange(). Se a limparmos
+  // apenas parcialmente, clear() falha no Apps Script. Abrangemos a folha toda.
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear({ contentsOnly: false });
   sheet.clearConditionalFormatRules();
   sheet.getCharts().forEach(chart => sheet.removeChart(chart));
@@ -185,7 +187,7 @@ function writeFenzobotChart_(spreadsheet, rows) {
   const eligible = rows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number');
   const existingFilter = data.getFilter();
   if (existingFilter) existingFilter.remove();
-  data.getDataRange().breakApart();
+  data.getRange(1, 1, data.getMaxRows(), data.getMaxColumns()).breakApart();
   data.clear({ contentsOnly: false });
   data.getRange(1, 1, Math.max(eligible.length + 1, 1), 3).setValues([
     ['Faixa de odd', 'Acerto Fenzobot', 'Decisões liquidadas'],
@@ -217,7 +219,7 @@ function upsertSystemSheet_(spreadsheet, name, values, options) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
   const existingFilter = sheet.getFilter();
   if (existingFilter) existingFilter.remove();
-  sheet.getDataRange().breakApart();
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear({ contentsOnly: false });
   sheet.clearConditionalFormatRules();
   if (!options.preserveCharts) sheet.getCharts().forEach(chart => sheet.removeChart(chart));
