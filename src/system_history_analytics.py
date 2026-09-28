@@ -181,6 +181,20 @@ def _aggregate_band_rows(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, An
     ]
 
 
+def _aggregate_player_overall(rows: Iterable[tuple[str, str, str, bool]]) -> list[dict[str, Any]]:
+    """One observational row per player/role, used only for the shortlist."""
+    grouped: dict[tuple[str, str], dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
+    for player, _band, role, won in rows:
+        if not player:
+            continue
+        grouped[(player, role)]["matches"] += 1
+        grouped[(player, role)]["wins"] += int(won)
+    return [
+        {"player": player, "role": role, "matches": value["matches"], "wins": value["wins"], "losses": value["matches"] - value["wins"], "win_pct": _pct(value["wins"], value["matches"])}
+        for (player, role), value in sorted(grouped.items(), key=lambda item: (-item[1]["matches"], item[0]))
+    ]
+
+
 def _odds_band_order(band: str) -> tuple[float, str]:
     match = re.match(r"(\d+(?:\.\d+)?)", band or "")
     return (float(match.group(1)) if match else float("inf"), band)
@@ -217,8 +231,8 @@ def build_rankings(operational: Mapping[str, Any], historical_wta: Mapping[str, 
     """Stable shortlists for exploration, kept separate from predictive logic."""
     return {
         "Fenzobot · acerto operacional": _ranking_rows(
-            operational.get("fenzobot_odds", []), category="Fenzobot · acerto operacional", metric="win_pct", sample="matches",
-            minimum=RANKING_MIN_SAMPLES["operational_fenzobot"], label_fields=("player", "odds_band", "role"),
+            operational.get("fenzobot_player_summary", []), category="Fenzobot · acerto operacional", metric="win_pct", sample="matches",
+            minimum=RANKING_MIN_SAMPLES["operational_fenzobot"], label_fields=("player", "role"),
         ),
         "WTA · vitória Moneyline": _ranking_rows(
             historical_wta.get("player_odds", []), category="WTA · vitória Moneyline", metric="win_pct", sample="matches",
@@ -280,6 +294,7 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
         "event_rows": event_rows,
         "player_odds": _aggregate_player_rows(player_rows),
         "fenzobot_odds": fenzobot_odds,
+        "fenzobot_player_summary": _aggregate_player_overall(model_rows),
         "fenzobot_band_summary": _aggregate_band_rows(fenzobot_odds),
     }
 
