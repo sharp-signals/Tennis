@@ -52,6 +52,8 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
     if state == "EDGE_NEGATIVE":
         return 2, "🔴", f"{a} vs {b} — edge negativo {edge_text} em {player} · excluído"
     if state == "EDGE_ZERO":
+        if not player:
+            return 1, "⚪", f"{a} vs {b} — índice Fenzobot equilibrado · sem edge/PAPER"
         return 1, "⚪", f"{a} vs {b} — edge exatamente 0,0% em {player} · excluído"
     if state == "PRICING_UNAVAILABLE":
         reason = html.escape(str(decision.get("reason") or "preço de mercado indisponível"))

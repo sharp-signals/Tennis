@@ -239,6 +239,25 @@ def build_decision(
         reason = pricing.get("reason") or "edge não calculável para o lado Fenzobot"
         return {**base, "state": PRICING_UNAVAILABLE, "reason": reason}
     if side not in {"a", "b"}:
+        # Um empate real 50--50 é uma conclusão válida do modelo, não uma
+        # falha de dados. Só índices ausentes, não numéricos ou não finitos
+        # permanecem relatório nulo.
+        div = _mapping(divergence)
+        try:
+            index_a = float(div.get("indice_evidencia_a"))
+            index_b = float(div.get("indice_evidencia_b"))
+        except (TypeError, ValueError):
+            index_a = index_b = float("nan")
+        if math.isfinite(index_a) and math.isfinite(index_b) and index_a == index_b:
+            return {
+                **base,
+                "state": EDGE_ZERO,
+                "reason": "índice Fenzobot equilibrado entre os dois jogadores; sem lado preferido",
+                "fenzobot_index": index_a,
+                "expected_edge_pct": 0.0,
+                "side": None,
+                "player": None,
+            }
         return {**base, "state": REPORT_NULL, "reason": "lado Fenzobot não calculável"}
 
     players = _mapping(pricing.get("players"))

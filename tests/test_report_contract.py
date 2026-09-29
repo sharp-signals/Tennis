@@ -400,7 +400,9 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("A -3", html)
         self.assertIn("A -3.5", html)
         self.assertIn("A -4", html)
-        self.assertIn("50.0% <span>cobre</span>", html)
+        self.assertIn("50.0% <span>cobre quando vence</span>", html)
+        self.assertIn("1/2 vitórias", html)
+        self.assertIn("Total: 50.0% cobre", html)
         self.assertIn("Nas derrotas: cobre 1/2", html)
         self.assertIn("SEM VALIDAÇÃO POR PREÇO", html)
         self.assertIn("entrada PAPER automática de handicap", html)
@@ -421,9 +423,9 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Handicap para avaliar em PAPER (BO3)", html)
         self.assertIn("Observar A -1", html)
         self.assertIn("A -1", html)
-        self.assertIn("40.0% <span>cobre</span>", html)
+        self.assertIn("66.7% <span>cobre quando vence</span>", html)
         self.assertIn("A -2", html)
-        self.assertIn("20.0% <span>cobre</span>", html)
+        self.assertIn("33.3% <span>cobre quando vence</span>", html)
         self.assertIn("Nas derrotas: cobre 0/2", html)
 
     def test_moneyline_comparable_win_rate_is_explicit_for_bo5(self):
@@ -441,6 +443,23 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Faixa de odd comparável 1.31-1.40 (BO5): vitórias 66.7% (6/9).", html)
         self.assertNotIn("Faixa de odd comparável (BO5): sem amostra", html)
+
+    def test_moneyline_history_explains_missing_exact_band_without_hiding_history(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.22, "B": 4.0},
+            "historical_moneyline_margins_a": {
+                "buckets": {
+                    "1.26-1.30": {"n": 5, "wins": 4, "by_format": {"bo3": {"n": 5, "wins": 4}}},
+                    "1.41-1.50": {"n": 4, "wins": 2, "by_format": {"bo3": {"n": 4, "wins": 2}}},
+                },
+            },
+        }
+        div = {"market": {"a": 80, "b": 20}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Faixa exata 1.20-1.25 (BO3): sem casos com odds e score completos.", html)
+        self.assertIn("Histórico geral com odds (BO3): vitórias 66.7% (6/9).", html)
+        self.assertIn("Faixa próxima 1.26-1.30 (BO3): vitórias 80.0% (4/5)", html)
 
     def test_handicap_card_follows_selected_underdog_with_mirrored_zone(self):
         payload = {
@@ -468,7 +487,7 @@ class ReportRenderingTests(unittest.TestCase):
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
         self.assertIn("Observar Mananchaya Sawangkaew +4.5", html)
         self.assertIn("Mananchaya Sawangkaew +4.5", html)
-        self.assertIn("60.0% <span>cobre</span>", html)
+        self.assertIn("60.0% <span>cobre no total</span>", html)
         self.assertIn("SEM PROTEÇÃO REAL EM DERROTA", html)
         self.assertIn("Histórico como underdog (&gt;2.00, BO3): venceu 2/6 (33.3%).", html)
         self.assertIn("Faixa de odd comparável 2.10-2.30 (BO3): vitórias 50.0% (2/4).", html)

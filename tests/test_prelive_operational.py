@@ -103,6 +103,17 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(decision["state"], EDGE_ZERO)
         self.assertFalse(decision["paper_eligible"])
 
+    def test_equal_fenzobot_index_is_neutral_not_a_null_report(self):
+        divergence = self.divergence()
+        divergence.update({"indice_evidencia_a": 50, "indice_evidencia_b": 50})
+        decision = build_decision(
+            self.payload(), divergence, self.pricing(2.0), self.assessment()
+        )
+        self.assertEqual(decision["state"], EDGE_ZERO)
+        self.assertIsNone(decision["side"])
+        self.assertIn("equilibrado", decision["reason"])
+        self.assertFalse(decision["paper_eligible"])
+
     def test_edge_minus_point_one_is_excluded(self):
         decision = self.decision(-0.1)
         self.assertEqual(decision["state"], EDGE_NEGATIVE)

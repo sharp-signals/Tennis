@@ -74,6 +74,9 @@ REPORT_DECISION_PRESENTATION = {
     "EXPERIMENTAL_FACTUAL_PARTIAL": (
         "CHALLENGER 125 — COBERTURA PARCIAL / SEM PAPER", "zero", "🟡", "YELLOW",
     ),
+    "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": (
+        "CHALLENGER 125 — EDGE ABAIXO DO LIMIAR EXPERIMENTAL", "zero", "🟣", "YELLOW",
+    ),
     "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
     "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
 }
@@ -2746,6 +2749,7 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .handicap-choice-line {{ color:var(--text); font-size:18px; font-weight:850; margin:4px 0; }}
 .handicap-choice-rate {{ color:var(--mint); font-size:20px; font-weight:850; line-height:1.1; }}
 .handicap-choice-rate span {{ color:var(--text); font-size:11px; font-weight:600; }}
+.handicap-choice-primary-count {{ color:var(--dim); font-size:10px; font-weight:700; margin-top:3px; }}
 .handicap-choice-detail {{ color:var(--dim); font-size:11px; line-height:1.5; margin-top:5px; }}
 .handicap-protection-alert {{ margin-top:8px; padding:7px 8px; border-radius:6px; background:rgba(224,108,91,.13); color:#ffb4a8; font-size:10px; line-height:1.45; }}
 .handicap-protection-alert strong {{ display:block; color:var(--error); font-size:9px; letter-spacing:.45px; margin-bottom:2px; }}
@@ -3046,6 +3050,13 @@ def _mod_decision_box(payload):
                 f'<div class="decision-note">Não entra em PAPER: {_esc(decision.get("reason"))}. Consultar o relatório integral antes de qualquer utilização.</div>'
             )
         )
+    elif state == "EDGE_ZERO" and decision.get("side") is None:
+        body = (
+            '<div class="decision-primary">Índice Fenzobot equilibrado · sem lado preferido</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            '<div class="decision-note">Não entra em PAPER: os indicadores disponíveis ficaram equilibrados. '
+            'Não é uma falha de dados nem uma recomendação contra qualquer jogador.</div>'
+        )
     elif state in {"EDGE_NEGATIVE", "EDGE_ZERO"}:
         edge = decision.get("expected_edge_pct")
         edge_text = f"{float(edge):+.1f}%" if edge is not None else "N/D"
@@ -3060,6 +3071,12 @@ def _mod_decision_box(payload):
             f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
             f'<div class="decision-note">Sem edge, PAPER ou GREEN: {_esc(decision.get("reason") or "dados bilaterais incompletos")}. '
             'Os dados disponíveis permanecem visíveis para observação e aprendizagem.</div>'
+        )
+    elif state == "EXPERIMENTAL_EDGE_BELOW_THRESHOLD":
+        body = (
+            '<div class="decision-primary">Challenger 125 · edge abaixo do limiar experimental</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            f'<div class="decision-note">Sem PAPER ou GREEN: {_esc(decision.get("reason") or "evidência experimental insuficiente")}.</div>'
         )
     elif state == "PRICING_UNAVAILABLE":
         reason = str(decision.get("reason") or "")
@@ -4475,6 +4492,61 @@ def _mod_action_map(payload, div, result):
                 return {"band": band, "stats": format_stats, "current_odd": current_odd}
         return None
 
+    def _odds_band_for(value):
+        """Etiqueta da banda exata, mesmo quando ainda não tem observações."""
+        bands = (
+            (1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50),
+            (1.51, 1.60), (1.61, 1.80), (1.81, 2.00), (2.01, 2.09),
+            (2.10, 2.30), (2.31, 2.60), (2.61, 3.00), (3.01, 3.50),
+            (3.51, 4.50), (4.51, 6.00), (6.01, 10.00),
+        )
+        for low, high in bands:
+            if low <= value <= high:
+                return f"{low:.2f}-{high:.2f}"
+        return None
+
+    def _format_stats(raw):
+        """Lê o recorte BO3/BO5, mantendo compatibilidade com payloads antigos."""
+        raw = _d(raw)
+        format_stats = _d(_d(raw.get("by_format")).get(match_format))
+        return format_stats if raw.get("by_format") else raw
+
+    def _historical_odds_overview(side, current_odd):
+        """Contexto honesto quando a banda exata não tem amostra.
+
+        Não junta bandas para fabricar uma estatística comparável. Mostra o
+        histórico geral do mesmo formato e, separadamente, a banda vizinha
+        mais próxima que tenha observações reais.
+        """
+        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        buckets = _d(history.get("buckets"))
+        total_n = total_wins = 0
+        nearest = None
+        for band, raw in buckets.items():
+            stats = _format_stats(raw)
+            n = int(stats.get("n") or 0)
+            if not n:
+                continue
+            wins = int(stats.get("wins") or 0)
+            total_n += n
+            total_wins += wins
+            try:
+                low, high = (float(value) for value in band.split("-", 1))
+            except (TypeError, ValueError):
+                continue
+            distance = 0.0 if low <= current_odd <= high else min(
+                abs(current_odd - low), abs(current_odd - high)
+            )
+            candidate = (distance, low, band, stats)
+            if nearest is None or candidate[:2] < nearest[:2]:
+                nearest = candidate
+        return {
+            "exact_band": _odds_band_for(current_odd),
+            "general_n": total_n,
+            "general_wins": total_wins,
+            "nearest": nearest,
+        }
+
     def moneyline_history_note(side):
         context = comparable_moneyline_history(side)
         notes = []
@@ -4513,13 +4585,32 @@ def _mod_action_map(payload, div, result):
                     f"vitórias {float(win_rate):.1f}% ({wins}/{n})."
                 )
         elif current_odd:
-            # Não esconder esta informação nos relatórios ATP/BO5: a
-            # ausência de amostra de odds do formato certo é diferente de
-            # uma taxa de vitória de 0% e tem de ficar explícita.
+            # A ausência da banda exata não significa ausência de historial
+            # do jogador. Mostramos ambas as coisas sem tratar uma banda
+            # adjacente como se fosse a faixa atual.
+            overview = _historical_odds_overview(side, current_odd)
+            band = overview.get("exact_band") or "atual"
             notes.append(
-                f"Faixa de odd comparável ({match_format.upper()}): sem amostra histórica "
-                "de odds observadas nesta faixa."
+                f"Faixa exata {band} ({match_format.upper()}): sem casos com odds e score completos."
             )
+            general_n = int(overview.get("general_n") or 0)
+            general_wins = int(overview.get("general_wins") or 0)
+            if general_n:
+                notes.append(
+                    f"Histórico geral com odds ({match_format.upper()}): vitórias "
+                    f"{100 * general_wins / general_n:.1f}% ({general_wins}/{general_n})."
+                )
+            nearest = overview.get("nearest")
+            if nearest:
+                _, _, nearest_band, nearest_stats = nearest
+                nearest_n = int(nearest_stats.get("n") or 0)
+                nearest_wins = int(nearest_stats.get("wins") or 0)
+                if nearest_n:
+                    notes.append(
+                        f"Faixa próxima {nearest_band} ({match_format.upper()}): vitórias "
+                        f"{100 * nearest_wins / nearest_n:.1f}% ({nearest_wins}/{nearest_n}); "
+                        "é contexto, não a faixa exata."
+                    )
         return ("\n" + " ".join(notes)) if notes else ""
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
@@ -4873,6 +4964,10 @@ def _mod_action_map(payload, div, result):
                     "player": names[fav_side], "format": _fmt.upper(),
                     "odd": _current_odd, "zone": [_line_label(line) for line in _candidate_lines],
                     "protected": _protected_outcome, "reference": _reference_outcome, "alternative": _other_outcome,
+                    # Para favoritos/linhas negativas, a pergunta decisiva é
+                    # quantas vitórias cobrem. Para underdogs/linhas positivas,
+                    # o valor da proteção é a cobertura no total dos jogos.
+                    "emphasis": "win_cover" if _reference_type == "favorito" else "total_cover",
                     "validation": {"state": "missing", "title": "SEM VALIDAÇÃO POR PREÇO",
                                    "detail": f"Sem scores {_fmt.upper()} com odds históricas na faixa atual. Não concluir valor PAPER apenas pelo histórico geral."},
                 }
@@ -4999,6 +5094,17 @@ def _mod_action_map(payload, div, result):
                 f"Nas derrotas: cobre {outcome['loss_cover']}/{outcome['loss_total']}"
                 if outcome.get("loss_total") else "Nas derrotas: N/D"
             )
+            highlight_wins = visual.get("emphasis") == "win_cover"
+            if highlight_wins:
+                primary_rate = outcome["win_cover_pct"]
+                primary_label = "cobre quando vence"
+                primary_count = f"{outcome['win_cover']}/{outcome['win_total']} vitórias"
+                secondary = f"Total: {outcome['cover_pct']} cobre ({settlement})"
+            else:
+                primary_rate = outcome["cover_pct"]
+                primary_label = "cobre no total"
+                primary_count = settlement
+                secondary = when_wins
             alert = ""
             if css_class == "protected" and visual.get("protection_alert"):
                 alert = (
@@ -5009,8 +5115,9 @@ def _mod_action_map(payload, div, result):
                 f'<div class="handicap-choice {css_class}">'
                 f'<div class="handicap-choice-tag">{_esc(tag)}</div>'
                 f'<div class="handicap-choice-line">{_esc(visual.get("player"))} {_esc(outcome["line"])}</div>'
-                f'<div class="handicap-choice-rate">{_esc(outcome["cover_pct"])} <span>cobre</span></div>'
-                f'<div class="handicap-choice-detail">{_esc(settlement)}<br>{_esc(when_wins)}<br>{_esc(when_loses)}</div>'
+                f'<div class="handicap-choice-rate">{_esc(primary_rate)} <span>{_esc(primary_label)}</span></div>'
+                f'<div class="handicap-choice-primary-count">{_esc(primary_count)}</div>'
+                f'<div class="handicap-choice-detail">{_esc(secondary)}<br>{_esc(when_loses)}</div>'
                 f'{alert}</div>'
             )
 
