@@ -74,6 +74,9 @@ REPORT_DECISION_PRESENTATION = {
     "EXPERIMENTAL_FACTUAL_PARTIAL": (
         "CHALLENGER 125 — COBERTURA PARCIAL / SEM PAPER", "zero", "🟡", "YELLOW",
     ),
+    "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": (
+        "CHALLENGER 125 — EDGE ABAIXO DO LIMIAR EXPERIMENTAL", "zero", "🟣", "YELLOW",
+    ),
     "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
     "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
 }
@@ -3046,6 +3049,13 @@ def _mod_decision_box(payload):
                 f'<div class="decision-note">Não entra em PAPER: {_esc(decision.get("reason"))}. Consultar o relatório integral antes de qualquer utilização.</div>'
             )
         )
+    elif state == "EDGE_ZERO" and decision.get("side") is None:
+        body = (
+            '<div class="decision-primary">Índice Fenzobot equilibrado · sem lado preferido</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            '<div class="decision-note">Não entra em PAPER: os indicadores disponíveis ficaram equilibrados. '
+            'Não é uma falha de dados nem uma recomendação contra qualquer jogador.</div>'
+        )
     elif state in {"EDGE_NEGATIVE", "EDGE_ZERO"}:
         edge = decision.get("expected_edge_pct")
         edge_text = f"{float(edge):+.1f}%" if edge is not None else "N/D"
@@ -3060,6 +3070,12 @@ def _mod_decision_box(payload):
             f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
             f'<div class="decision-note">Sem edge, PAPER ou GREEN: {_esc(decision.get("reason") or "dados bilaterais incompletos")}. '
             'Os dados disponíveis permanecem visíveis para observação e aprendizagem.</div>'
+        )
+    elif state == "EXPERIMENTAL_EDGE_BELOW_THRESHOLD":
+        body = (
+            '<div class="decision-primary">Challenger 125 · edge abaixo do limiar experimental</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            f'<div class="decision-note">Sem PAPER ou GREEN: {_esc(decision.get("reason") or "evidência experimental insuficiente")}.</div>'
         )
     elif state == "PRICING_UNAVAILABLE":
         reason = str(decision.get("reason") or "")
