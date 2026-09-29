@@ -71,6 +71,9 @@ REPORT_DECISION_PRESENTATION = {
     ),
     "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴", "RED"),
     "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪", "UNAVAILABLE"),
+    "EXPERIMENTAL_FACTUAL_PARTIAL": (
+        "CHALLENGER 125 — COBERTURA PARCIAL / SEM PAPER", "zero", "🟡", "YELLOW",
+    ),
     "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
     "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
 }
@@ -3050,6 +3053,13 @@ def _mod_decision_box(payload):
             f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
             f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
             f'<div class="decision-note">Não entra em PAPER. Cobertura {_esc(coverage_text)}.</div>'
+        )
+    elif state == "EXPERIMENTAL_FACTUAL_PARTIAL":
+        body = (
+            '<div class="decision-primary">Relatório factual Challenger 125 · cobertura parcial</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            f'<div class="decision-note">Sem edge, PAPER ou GREEN: {_esc(decision.get("reason") or "dados bilaterais incompletos")}. '
+            'Os dados disponíveis permanecem visíveis para observação e aprendizagem.</div>'
         )
     elif state == "PRICING_UNAVAILABLE":
         reason = str(decision.get("reason") or "")

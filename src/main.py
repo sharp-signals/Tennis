@@ -2086,6 +2086,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             "EDGE_POSITIVE": (3, "🟢"), "EDGE_NEGATIVE": (2, "🔴"),
             "EDGE_POSITIVE_EXPERIMENTAL_TIER": (2.5, "🟡"),
             "EDGE_ZERO": (1, "⚪"), "PRICING_UNAVAILABLE": (0, "🟡"),
+            "EXPERIMENTAL_FACTUAL_PARTIAL": (0.5, "🟡"),
             "REPORT_NULL": (0, "⚫"),
         }.get(state, (0, "⚫"))
         if not decision:
@@ -2114,6 +2115,10 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             )
         elif state == "REPORT_NULL":
             line = html.escape(f"Relatório nulo · {decision.get('reason') or 'dados insuficientes'}")
+        elif state == "EXPERIMENTAL_FACTUAL_PARTIAL":
+            line = html.escape(
+                "Challenger 125 · cobertura parcial · sem edge/PAPER"
+            )
         elif state == "PRICING_UNAVAILABLE":
             line = html.escape("Análise factual disponível · preço de mercado indisponível · sem PAPER")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)

@@ -11,9 +11,13 @@ import math
 from typing import Any, Mapping
 
 try:
-    from .config import PAPER_MIN_WEIGHTED_COVERAGE, PRICING_MIN_QUALITY
+    from .config import (
+        EXPERIMENTAL_REPORT_ONLY_TIERS,
+        PAPER_MIN_WEIGHTED_COVERAGE,
+        PRICING_MIN_QUALITY,
+    )
 except ImportError:  # pragma: no cover
-    from config import PAPER_MIN_WEIGHTED_COVERAGE, PRICING_MIN_QUALITY
+    from config import EXPERIMENTAL_REPORT_ONLY_TIERS, PAPER_MIN_WEIGHTED_COVERAGE, PRICING_MIN_QUALITY
 
 
 EDGE_POSITIVE = "EDGE_POSITIVE"
@@ -22,6 +26,7 @@ EDGE_NEGATIVE = "EDGE_NEGATIVE"
 EDGE_ZERO = "EDGE_ZERO"
 REPORT_NULL = "REPORT_NULL"
 PRICING_UNAVAILABLE = "PRICING_UNAVAILABLE"
+EXPERIMENTAL_FACTUAL_PARTIAL = "EXPERIMENTAL_FACTUAL_PARTIAL"
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -39,6 +44,15 @@ def _positive_number(value: Any) -> bool:
 def _valid_rank(payload: Mapping[str, Any], side: str) -> bool:
     rank = _mapping(payload.get(f"ranking_{side}")).get("rank")
     return _positive_number(rank)
+
+
+def _is_experimental_tier(payload: Mapping[str, Any]) -> bool:
+    """Challenger 125 tem relatório exploratório, não uma decisão relaxada."""
+    coverage = _mapping(payload.get("tournament_coverage"))
+    return (
+        coverage.get("mode") == "EXPERIMENTAL_REPORT_ONLY"
+        or str(payload.get("tier") or "").strip() in EXPERIMENTAL_REPORT_ONLY_TIERS
+    )
 
 
 def _service_block_available(payload: Mapping[str, Any]) -> bool:
@@ -128,6 +142,7 @@ def weighted_coverage(divergence: Mapping[str, Any] | None) -> dict[str, Any]:
 def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | None) -> dict[str, Any]:
     coverage = weighted_coverage(divergence)
     reasons: list[str] = []
+    experimental = _is_experimental_tier(payload)
     essential = {
         "ranking_bilateral": _valid_rank(payload, "a") and _valid_rank(payload, "b"),
         "service_return_bilateral": _service_block_available(payload),
@@ -154,10 +169,14 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
         reasons.append(
             f"cobertura ponderada inferior ao mínimo existente de {PRICING_MIN_QUALITY:.0%}"
         )
-    report_null = bool(reasons)
-    coverage_status = "insuficiente" if report_null else (
+    # No Challenger 125, estes motivos tornam a cobertura parcial — nunca
+    # justificam inventar ranking/edge, mas também não apagam o relatório
+    # factual se a identidade e os dados recebidos forem válidos.
+    report_null = serious_quality_failure or (bool(reasons) and not experimental)
+    partial = experimental and bool(reasons)
+    coverage_status = "experimental_parcial" if partial else ("insuficiente" if report_null else (
         "suficiente" if coverage["weighted_ratio"] >= 0.999 else "reduzida"
-    )
+    ))
     return {
         "report_null": report_null,
         "status": "REPORT_NULL" if report_null else "VALID",
@@ -165,8 +184,10 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
         "primary_reason": reasons[0] if reasons else None,
         "coverage": {**coverage, "status": coverage_status},
         "essential_blocks": essential,
+        "experimental_partial": partial,
+        "partial_reasons": reasons if partial else [],
         "minimum_weighted_coverage": PRICING_MIN_QUALITY,
-        "criteria_version": "prelive-validity-v1",
+        "criteria_version": "prelive-validity-v2",
     }
 
 
@@ -198,6 +219,13 @@ def build_decision(
     }
     if assessment.get("report_null"):
         return {**base, "state": REPORT_NULL, "reason": assessment.get("primary_reason")}
+    if assessment.get("experimental_partial"):
+        return {
+            **base,
+            "state": EXPERIMENTAL_FACTUAL_PARTIAL,
+            "reason": "; ".join(assessment.get("partial_reasons") or ["cobertura parcial"]),
+            "experimental_mode": "CHALLENGER_125_FACTUAL_ONLY",
+        }
 
     pricing = _mapping(pricing)
     side = fenzobot_side(payload, divergence)
