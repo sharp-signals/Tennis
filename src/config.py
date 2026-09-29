@@ -72,6 +72,16 @@ ALLOWED_TOURNAMENT_TIERS = {
 EXPERIMENTAL_REPORT_ONLY_TIERS = frozenset({"Challenger 125"})
 EXPERIMENTAL_TIER_PAPER_REASON_CODE = "EXPERIMENTAL_TIER_CHALLENGER_125"
 
+# Challenger 125 é um universo experimental próprio. Estes limiares medem a
+# completude dos factores do relatório (não a percentagem de cobertura de um
+# handicap). Nunca tornam o tier elegível para PAPER: apenas decidem se um
+# edge é suficientemente robusto para ser assinalado como observação.
+CHALLENGER_EXPERIMENTAL_MIN_DATA_COVERAGE = 0.50
+CHALLENGER_EXPERIMENTAL_HIGH_CONFIDENCE_COVERAGE = 0.65
+CHALLENGER_EXPERIMENTAL_STRONG_EVIDENCE_COVERAGE = 0.75
+CHALLENGER_EXPERIMENTAL_MIN_EDGE_PARTIAL_PCT = 5.0
+CHALLENGER_EXPERIMENTAL_MIN_EDGE_HIGH_CONFIDENCE_PCT = 4.0
+
 # Tiers conhecidos que continuam fora. O racional histórico de excluir todos
 # os Challengers fica preservado no CHANGE-053, mas é agora parcialmente
 # SUPERSEDED apenas para Challenger 125; 100/75/50 e os restantes níveis não

@@ -1583,18 +1583,24 @@ def _build_match_payload(match: dict) -> dict:
     # desatualizado para quem não joga há semanas.
     official = fetch_data.fetch_official_ranking(tour)
 
-    def _resolve_ranking(player_name: str):
-        if official:
-            key = fetch_data._normalize_name(player_name)
-            if key in official:
-                r = official[key]
-                return ({"rank": r["rank"], "points": r["points"], "as_of": "oficial (ao vivo)"},
-                        "rapidapi_official_ranking")
+    def _resolve_ranking(player_name: str, player_id: object = None):
+        official_entry, official_source = fetch_data.resolve_official_ranking(
+            official, player_name, player_id
+        )
+        if official_entry:
+            return (
+                {
+                    "rank": official_entry["rank"],
+                    "points": official_entry["points"],
+                    "as_of": "oficial (ao vivo)",
+                },
+                official_source,
+            )
         historical = fetch_data.get_player_ranking(history, player_name)
         return historical, "local_history" if historical is not None else None
 
-    rank_a, _rank_source_a = _resolve_ranking(player_a)
-    rank_b, _rank_source_b = _resolve_ranking(player_b)
+    rank_a, _rank_source_a = _resolve_ranking(player_a, _pid_a)
+    rank_b, _rank_source_b = _resolve_ranking(player_b, _pid_b)
     # DIAGNÓSTICO (15/08/2026, a pedido — "ranking: sem dados" em jogos WTA
     # onde as jogadoras são claramente top-100, o que não devia acontecer).
     # Diz-nos se o problema é o ranking oficial não ter a jogadora, ou a
@@ -1605,6 +1611,8 @@ def _build_match_payload(match: dict) -> dict:
               f"({len(official) if official else 0} jogadores) | "
               f"A resolvido: {'sim' if rank_a else 'NÃO'} | "
               f"B resolvido: {'sim' if rank_b else 'NÃO'} | "
+              f"fonte A: {_rank_source_a or 'desconhecida'} | "
+              f"fonte B: {_rank_source_b or 'desconhecida'} | "
               f"chave normalizada A: {fetch_data._normalize_name(player_a)!r} | "
               f"chave normalizada B: {fetch_data._normalize_name(player_b)!r}")
     # NOVO (14/08/2026, a pedido): evolução de ranking (pontos, 6m/12m)
@@ -2670,10 +2678,16 @@ def run() -> None:
 
     # Construir e ordenar: fortes primeiro, sem odds no fim.
     linhas_dados = []
+    linhas_challenger = []
     for payload, result, url in match_reports:
         nivel, bola, txt = _linha_telegram(payload, result)
-        linhas_dados.append((nivel, bola, txt, url))
+        line = (nivel, bola, txt, url)
+        if str(payload.get("tier") or "").strip() == "Challenger 125":
+            linhas_challenger.append(line)
+        else:
+            linhas_dados.append(line)
     linhas_dados.sort(key=lambda x: x[0], reverse=True)
+    linhas_challenger.sort(key=lambda x: x[0], reverse=True)
 
     n_high = sum(1 for n, _, _, _ in linhas_dados if n == 3)
     n_low_coverage = sum(1 for n, _, _, _ in linhas_dados if n == 2.5)
@@ -2686,14 +2700,14 @@ def run() -> None:
     # cor diferentes. Agora tem a sua própria contagem, separada do "sem
     # edge" a sério (sem sinal nenhum).
     n_alinhamento_forte = 0
-    n_challenger_partial = sum(1 for n, _, _, _ in linhas_dados if n == 0.75)
+    n_challenger = len(linhas_challenger)
     n_pending_market = sum(1 for n, _, _, _ in linhas_dados if n == 0.5)
     n_none = sum(1 for n, _, _, _ in linhas_dados if n == 0)
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
         f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade/experimento) · 🔴 {n_value} edge negativo · "
-        f"⚪ {n_watch} edge zero · 🟡 {n_challenger_partial} Challenger parcial · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
+        f"⚪ {n_watch} edge zero · 🟣 {n_challenger} Challenger 125 experimental · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
     summary_lines = [cabecalho]
@@ -2702,7 +2716,7 @@ def run() -> None:
     previous_group = None
     group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / SEM PAPER",
                    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
-                    1: "⚪ EDGE ZERO / EXCLUÍDO", 0.75: "🟡 CHALLENGER 125 · COBERTURA PARCIAL",
+                    1: "⚪ EDGE ZERO / EXCLUÍDO",
                     0.5: "🟡 MERCADO PENDENTE / RECONSULTA AUTOMÁTICA",
                    0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
     for nivel, bola, txt, url in linhas_dados:
@@ -2718,6 +2732,20 @@ def run() -> None:
             summary_lines.append(f'<a href="{safe_url}">📄 ABRIR RELATÓRIO</a>')
         else:
             summary_lines.append("⚠️ Relatório indisponível.")
+
+    # Challenger 125 nunca fica misturado com os sinais main-tour. Mesmo os
+    # casos com edge elevado continuam observações experimentais sem PAPER.
+    if linhas_challenger:
+        if summary_lines:
+            summary_lines.append("")
+        summary_lines.append("<b>🟣 CHALLENGER 125 · ESTRATÉGIA EXPERIMENTAL / SEM PAPER</b>")
+        for _, bola, txt, url in linhas_challenger:
+            summary_lines.append(f"{bola} {txt}")
+            if url:
+                safe_url = html.escape(url, quote=True)
+                summary_lines.append(f'<a href="{safe_url}">📄 ABRIR RELATÓRIO</a>')
+            else:
+                summary_lines.append("⚠️ Relatório indisponível.")
 
     # B3 da auditoria (28/07/2026): o Telegram limita mensagens a 4096
     # caracteres — com um torneio inteiro (20+ jogos com links), uma

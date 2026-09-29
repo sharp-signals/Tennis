@@ -5387,6 +5387,32 @@ def fetch_official_ranking(tour: str) -> Optional[dict]:
         return None
 
 
+def resolve_official_ranking(
+    ranking: Optional[dict], player_name: str, player_id: object = None,
+) -> tuple[Optional[dict], Optional[str]]:
+    """Resolve ranking por ID antes de aceitar um cruzamento de nomes.
+
+    As fixtures e a lista oficial nem sempre usam exactamente a mesma grafia.
+    Um ID coincidente é prova canónica; só sem ID disponível/na lista usamos o
+    nome normalizado (ou a ponte de abreviação já auditada). Ausência nunca é
+    transformada numa classificação baixa inventada.
+    """
+    if not ranking:
+        return None, None
+    if player_id is not None:
+        wanted = str(player_id)
+        for entry in ranking.values():
+            if str((entry or {}).get("player_id")) == wanted:
+                return entry, "rapidapi_official_ranking_id"
+    normalized = _normalize_name(player_name)
+    if normalized in ranking:
+        return ranking[normalized], "rapidapi_official_ranking_name"
+    matched = _match_abbreviated_name_to_ranking(player_name, ranking)
+    if matched is not None:
+        return matched, "rapidapi_official_ranking_name"
+    return None, None
+
+
 _CAREER_STATS_CACHE: dict = {}
 CAREER_STATS_CACHE_MAX_AGE_HOURS = 24 * 7  # 7 dias — stats de carreira mudam devagar
 

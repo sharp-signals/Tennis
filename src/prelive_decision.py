@@ -13,11 +13,14 @@ from typing import Any, Mapping
 try:
     from .config import (
         EXPERIMENTAL_REPORT_ONLY_TIERS,
+        CHALLENGER_EXPERIMENTAL_MIN_DATA_COVERAGE,
         PAPER_MIN_WEIGHTED_COVERAGE,
         PRICING_MIN_QUALITY,
     )
 except ImportError:  # pragma: no cover
-    from config import EXPERIMENTAL_REPORT_ONLY_TIERS, PAPER_MIN_WEIGHTED_COVERAGE, PRICING_MIN_QUALITY
+    from config import (CHALLENGER_EXPERIMENTAL_MIN_DATA_COVERAGE,
+                        EXPERIMENTAL_REPORT_ONLY_TIERS, PAPER_MIN_WEIGHTED_COVERAGE,
+                        PRICING_MIN_QUALITY)
 
 
 EDGE_POSITIVE = "EDGE_POSITIVE"
@@ -165,9 +168,12 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
             break
     if serious_quality_failure:
         reasons.append("falha crítica de qualidade dos dados")
-    if coverage["weighted_ratio"] < PRICING_MIN_QUALITY:
+    minimum_coverage = (
+        CHALLENGER_EXPERIMENTAL_MIN_DATA_COVERAGE if experimental else PRICING_MIN_QUALITY
+    )
+    if coverage["weighted_ratio"] < minimum_coverage:
         reasons.append(
-            f"cobertura ponderada inferior ao mínimo existente de {PRICING_MIN_QUALITY:.0%}"
+            f"cobertura ponderada inferior ao mínimo de {minimum_coverage:.0%}"
         )
     # No Challenger 125, estes motivos tornam a cobertura parcial — nunca
     # justificam inventar ranking/edge, mas também não apagam o relatório
@@ -186,8 +192,8 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
         "essential_blocks": essential,
         "experimental_partial": partial,
         "partial_reasons": reasons if partial else [],
-        "minimum_weighted_coverage": PRICING_MIN_QUALITY,
-        "criteria_version": "prelive-validity-v2",
+        "minimum_weighted_coverage": minimum_coverage,
+        "criteria_version": "prelive-validity-v3",
     }
 
 
