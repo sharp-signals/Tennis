@@ -310,7 +310,9 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(telegram_state_counts(payloads), {
             EDGE_POSITIVE: 1, EDGE_POSITIVE_COVERAGE_INSUFFICIENT: 0,
             EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1,
-            EXPERIMENTAL_FACTUAL_PARTIAL: 0, REPORT_NULL: 1,
+            EXPERIMENTAL_FACTUAL_PARTIAL: 0,
+            "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0,
+            REPORT_NULL: 1,
         })
 
 
