@@ -10393,8 +10393,114 @@
         "tournament_id": 16749
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_81f6ae93edd2420891bf6c1d566d4044:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-29T05:37:16+00:00",
+        "canonical_match_instance_id": "mi2_81f6ae93edd2420891bf6c1d566d4044",
+        "commence_time_utc": "2026-09-29T11:30:00+00:00",
+        "coverage": {
+          "available_factors": 18,
+          "available_weight": 117.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 81.2,
+          "weighted_ratio": 0.8125
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "5c1addf881fe064efe15c79718d2f1d7b9930d42553962f8e7609345694e280c",
+        "event_key": "mi2_81f6ae93edd2420891bf6c1d566d4044",
+        "expected_edge_pct": 4.82,
+        "fair_odd": 1.431,
+        "fenzobot_index": 97,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "atp:1265",
+        "line": null,
+        "market": "Moneyline Daniil Medvedev",
+        "market_memory_eligible": false,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Andrey Rublev": 2.625,
+          "Daniil Medvedev": 1.5
+        },
+        "market_type": "Moneyline",
+        "match_id": 1265,
+        "odd": 1.5,
+        "odds_contract_activation": {
+          "activation_commit": "55a378deeea9d7b80366ba38dafaf4c4f8f60947",
+          "activation_observed_at_utc": "2026-09-29T05:34:21+00:00",
+          "activation_run_id": "36526679435",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-09-21-050",
+          "contract_version": "rapidapi-recent-gated-v1"
+        },
+        "odds_provenance": {
+          "bookmaker": "Bet365",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-29T05:34:21+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/4057995",
+          "event_id": "4057995",
+          "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 1.1962,
+            "median_devig_probability_a": 0.6423444976076556,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-09-28T15:38:58+00:00",
+          "provider_timestamp_status": "unreliable_for_freshness",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "single-factual-bookmaker-bilateral-v1",
+          "freshness_semantics": "observed-at-capture-unverified-age-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "rapidapi-recent-gated-v1",
+          "source_family": "rapidapi-recent-odds"
+        },
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "players": {
+          "a": {
+            "id": 22807,
+            "name": "Daniil Medvedev"
+          },
+          "b": {
+            "id": 29372,
+            "name": "Andrey Rublev"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "eb6f6512ca0cd5ed40cd",
+        "selected_player": "Daniil Medvedev",
+        "selected_side": "a",
+        "sharp_estimate_pct": 69.88,
+        "snapshot_key": "mi2_81f6ae93edd2420891bf6c1d566d4044",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "Hangzhou Open - Hangzhou",
+        "tournament_id": 21352
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-28T17:38:11+00:00"
+  "updated_at_utc": "2026-09-29T05:37:17+00:00"
 }
