@@ -8,6 +8,24 @@ from src import fetch_data, main, match_identity_v2
 
 
 class MatchInputTests(unittest.TestCase):
+    def test_official_ranking_prefers_fixture_player_id_and_never_invents_low_rank(self):
+        ranking = {
+            "different spelling": {
+                "name": "Different Spelling", "rank": 87, "points": 700, "player_id": 44,
+            },
+        }
+        resolved, source = fetch_data.resolve_official_ranking(
+            ranking, "Name That Does Not Match", 44
+        )
+        self.assertEqual(resolved["rank"], 87)
+        self.assertEqual(source, "rapidapi_official_ranking_id")
+
+        unresolved, no_source = fetch_data.resolve_official_ranking(
+            ranking, "Unknown Player", 999
+        )
+        self.assertIsNone(unresolved)
+        self.assertIsNone(no_source)
+
     def test_historical_odds_history_uses_tennis_data_without_replacing_primary_history(self):
         odds_frame = pd.DataFrame([
             {"winner_name": "A", "loser_name": "B", "B365W": 1.70, "B365L": 2.20}

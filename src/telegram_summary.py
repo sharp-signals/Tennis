@@ -42,6 +42,13 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
             f"{a} vs {b} — edge positivo {edge_text} · Challenger 125 EXPERIMENTAL "
             f"· sem PAPER ({reason})"
         )
+    if state == "EXPERIMENTAL_EDGE_BELOW_THRESHOLD":
+        gate = decision.get("experimental_tier_gate") or {}
+        threshold = gate.get("minimum_experimental_edge_pct", "N/D")
+        return 0.8, "🟣", (
+            f"{a} vs {b} — <b>CHALLENGER 125 · EDGE NÃO QUALIFICADO</b> "
+            f"{edge_text} &lt; mínimo {html.escape(str(threshold))}% · sem PAPER"
+        )
     if state == "EDGE_NEGATIVE":
         return 2, "🔴", f"{a} vs {b} — edge negativo {edge_text} em {player} · excluído"
     if state == "EDGE_ZERO":
@@ -49,12 +56,18 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
     if state == "PRICING_UNAVAILABLE":
         reason = html.escape(str(decision.get("reason") or "preço de mercado indisponível"))
         return 0.5, "🟡", f"{a} vs {b} — <b>MERCADO PENDENTE</b> · análise factual disponível · reconsulta automática · {reason}"
+    if state == "EXPERIMENTAL_FACTUAL_PARTIAL":
+        reason = html.escape(str(decision.get("reason") or "cobertura bilateral parcial"))
+        return 0.75, "🟡", (
+            f"{a} vs {b} — <b>CHALLENGER 125 · COBERTURA PARCIAL</b> · "
+            f"sem edge/PAPER · {reason}"
+        )
     reason = html.escape(str(decision.get("reason") or "dados insuficientes"))
     return 0, "⚫", f"{a} vs {b} — <b>RELATÓRIO NULO</b> · {reason}"
 
 
 def state_counts(payloads) -> dict[str, int]:
-    counts = {"EDGE_POSITIVE": 0, "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "REPORT_NULL": 0}
+    counts = {"EDGE_POSITIVE": 0, "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "EXPERIMENTAL_FACTUAL_PARTIAL": 0, "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0, "REPORT_NULL": 0}
     for payload in payloads:
         state = (payload.get("prelive_decision") or {}).get("state")
         if state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":

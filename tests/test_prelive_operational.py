@@ -11,6 +11,7 @@ from src.prelive_decision import (
     EDGE_POSITIVE,
     EDGE_POSITIVE_COVERAGE_INSUFFICIENT,
     EDGE_ZERO,
+    EXPERIMENTAL_FACTUAL_PARTIAL,
     REPORT_NULL,
     PRICING_UNAVAILABLE,
     _action_block_available,
@@ -123,6 +124,17 @@ class PreliveOperationalContractTests(unittest.TestCase):
         assessment = assess_report(payload, self.divergence())
         self.assertTrue(assessment["report_null"])
         self.assertIn("ranking", assessment["primary_reason"])
+
+    def test_challenger_partial_data_is_factual_but_never_an_edge(self):
+        payload = self.payload()
+        payload.update({"tier": "Challenger 125", "ranking_b": None})
+        assessment = assess_report(payload, self.divergence())
+        self.assertFalse(assessment["report_null"])
+        self.assertTrue(assessment["experimental_partial"])
+        decision = build_decision(payload, self.divergence(), self.pricing(8.0), assessment)
+        self.assertEqual(decision["state"], EXPERIMENTAL_FACTUAL_PARTIAL)
+        self.assertFalse(decision["paper_eligible"])
+        self.assertIn("ranking", decision["reason"])
 
     def test_service_zero_with_zero_sample_is_missing(self):
         payload = self.payload()
@@ -297,7 +309,10 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual([_telegram_decision_row(item)[1] for item in payloads], ["🟢", "🔴", "⚪", "⚫", "🟡"])
         self.assertEqual(telegram_state_counts(payloads), {
             EDGE_POSITIVE: 1, EDGE_POSITIVE_COVERAGE_INSUFFICIENT: 0,
-            EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1, REPORT_NULL: 1,
+            EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1,
+            EXPERIMENTAL_FACTUAL_PARTIAL: 0,
+            "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0,
+            REPORT_NULL: 1,
         })
 
 

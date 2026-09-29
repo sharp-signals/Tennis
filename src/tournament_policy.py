@@ -10,12 +10,35 @@ from __future__ import annotations
 from typing import Any, Mapping, MutableMapping
 
 from .config import (
+    CHALLENGER_EXPERIMENTAL_HIGH_CONFIDENCE_COVERAGE,
+    CHALLENGER_EXPERIMENTAL_MIN_EDGE_HIGH_CONFIDENCE_PCT,
+    CHALLENGER_EXPERIMENTAL_MIN_EDGE_PARTIAL_PCT,
+    CHALLENGER_EXPERIMENTAL_STRONG_EVIDENCE_COVERAGE,
     EXPERIMENTAL_REPORT_ONLY_TIERS,
     EXPERIMENTAL_TIER_PAPER_REASON_CODE,
 )
 
 
 EXPERIMENTAL_EDGE_STATE = "EDGE_POSITIVE_EXPERIMENTAL_TIER"
+EXPERIMENTAL_EDGE_BELOW_THRESHOLD_STATE = "EXPERIMENTAL_EDGE_BELOW_THRESHOLD"
+
+
+def _coverage_ratio(decision: Mapping[str, Any]) -> float:
+    try:
+        return float((decision.get("coverage") or {}).get("weighted_ratio") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _challenger_edge_rule(coverage: float) -> tuple[float, str]:
+    """Limiar de edge para um alerta Challenger, não para PAPER."""
+    if coverage >= CHALLENGER_EXPERIMENTAL_HIGH_CONFIDENCE_COVERAGE:
+        evidence = (
+            "evidência forte" if coverage >= CHALLENGER_EXPERIMENTAL_STRONG_EVIDENCE_COVERAGE
+            else "evidência suficiente"
+        )
+        return CHALLENGER_EXPERIMENTAL_MIN_EDGE_HIGH_CONFIDENCE_PCT, evidence
+    return CHALLENGER_EXPERIMENTAL_MIN_EDGE_PARTIAL_PCT, "evidência limitada"
 
 
 def coverage_policy(tier: object) -> dict[str, Any]:
@@ -88,7 +111,18 @@ def apply_experimental_paper_gate(payload: MutableMapping[str, Any]) -> bool:
     decision = payload.get("prelive_decision")
     if not isinstance(decision, MutableMapping):
         return False
-    would_be_candidate = decision.get("paper_eligible") is True
+    # Para Challenger, um edge positivo com 50--59,9% de dados ainda pode ser
+    # observado, embora a política PAPER standard o excluísse. É por isso que
+    # olhamos para o estado/edge, nunca para uma inferência de ranking.
+    edge = decision.get("expected_edge_pct")
+    try:
+        edge_pct = float(edge)
+    except (TypeError, ValueError):
+        edge_pct = None
+    coverage = _coverage_ratio(decision)
+    threshold, evidence_band = _challenger_edge_rule(coverage)
+    positive_edge = edge_pct is not None and edge_pct > 0
+    would_be_candidate = positive_edge and coverage >= 0.50
     original_markets = decision.get("paper_markets") or []
     decision["experimental_tier_gate"] = {
         "status": "BLOCKED",
@@ -98,14 +132,24 @@ def apply_experimental_paper_gate(payload: MutableMapping[str, Any]) -> bool:
         "green_eligible": False,
         "would_be_paper_candidate": would_be_candidate,
         "would_be_paper_market_count": len(original_markets),
+        "data_coverage_pct": round(coverage * 100, 1),
+        "minimum_experimental_edge_pct": threshold,
+        "evidence_band": evidence_band,
     }
     if would_be_candidate:
         decision["state_before_experimental_gate"] = decision.get("state")
-        decision["state"] = EXPERIMENTAL_EDGE_STATE
-        decision["reason"] = (
-            "edge positivo observado, mas o tier Challenger 125 permanece "
-            "experimental e não é elegível para PAPER"
-        )
+        if edge_pct >= threshold:
+            decision["state"] = EXPERIMENTAL_EDGE_STATE
+            decision["reason"] = (
+                f"edge positivo Challenger de {edge_pct:+.1f}% com {coverage:.0%} de dados "
+                f"({evidence_band}); experimental e não elegível para PAPER"
+            )
+        else:
+            decision["state"] = EXPERIMENTAL_EDGE_BELOW_THRESHOLD_STATE
+            decision["reason"] = (
+                f"edge Challenger de {edge_pct:+.1f}% abaixo do mínimo experimental de "
+                f"{threshold:.1f}% para {coverage:.0%} de dados; análise factual apenas"
+            )
     decision["paper_eligible"] = False
     decision["paper_markets"] = []
     return would_be_candidate
