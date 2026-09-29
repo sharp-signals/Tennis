@@ -2706,7 +2706,7 @@ def run() -> None:
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
-        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade/experimento) · 🔴 {n_value} edge negativo · "
+        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
         f"⚪ {n_watch} edge zero · 🟣 {n_challenger} Challenger 125 experimental · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
