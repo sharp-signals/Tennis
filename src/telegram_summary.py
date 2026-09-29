@@ -51,7 +51,7 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
         return 0.5, "🟡", f"{a} vs {b} — <b>MERCADO PENDENTE</b> · análise factual disponível · reconsulta automática · {reason}"
     if state == "EXPERIMENTAL_FACTUAL_PARTIAL":
         reason = html.escape(str(decision.get("reason") or "cobertura bilateral parcial"))
-        return 0.5, "🟡", (
+        return 0.75, "🟡", (
             f"{a} vs {b} — <b>CHALLENGER 125 · COBERTURA PARCIAL</b> · "
             f"sem edge/PAPER · {reason}"
         )

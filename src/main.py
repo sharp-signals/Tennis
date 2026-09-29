@@ -2686,13 +2686,14 @@ def run() -> None:
     # cor diferentes. Agora tem a sua própria contagem, separada do "sem
     # edge" a sério (sem sinal nenhum).
     n_alinhamento_forte = 0
+    n_challenger_partial = sum(1 for n, _, _, _ in linhas_dados if n == 0.75)
     n_pending_market = sum(1 for n, _, _, _ in linhas_dados if n == 0.5)
     n_none = sum(1 for n, _, _, _ in linhas_dados if n == 0)
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
         f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade/experimento) · 🔴 {n_value} edge negativo · "
-        f"⚪ {n_watch} edge zero · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
+        f"⚪ {n_watch} edge zero · 🟡 {n_challenger_partial} Challenger parcial · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
     summary_lines = [cabecalho]
@@ -2701,7 +2702,8 @@ def run() -> None:
     previous_group = None
     group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / SEM PAPER",
                    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
-                   1: "⚪ EDGE ZERO / EXCLUÍDO", 0.5: "🟡 MERCADO PENDENTE / RECONSULTA AUTOMÁTICA",
+                    1: "⚪ EDGE ZERO / EXCLUÍDO", 0.75: "🟡 CHALLENGER 125 · COBERTURA PARCIAL",
+                    0.5: "🟡 MERCADO PENDENTE / RECONSULTA AUTOMÁTICA",
                    0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
     for nivel, bola, txt, url in linhas_dados:
         group = nivel if nivel in group_names else 0

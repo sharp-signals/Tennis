@@ -309,7 +309,8 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual([_telegram_decision_row(item)[1] for item in payloads], ["🟢", "🔴", "⚪", "⚫", "🟡"])
         self.assertEqual(telegram_state_counts(payloads), {
             EDGE_POSITIVE: 1, EDGE_POSITIVE_COVERAGE_INSUFFICIENT: 0,
-            EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1, REPORT_NULL: 1,
+            EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1,
+            EXPERIMENTAL_FACTUAL_PARTIAL: 0, REPORT_NULL: 1,
         })
 
 
