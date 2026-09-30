@@ -110,10 +110,18 @@ def _apply_discovery_health_status(status: str, diagnostics: dict) -> str:
 def _trigger_context() -> dict:
     slot = os.environ.get("FENZOBOT_TRIGGER_SLOT", "").strip() or "manual"
     source = os.environ.get("FENZOBOT_TRIGGER_SOURCE", "").strip() or "manual"
+    local_date = os.environ.get("FENZOBOT_TRIGGER_LOCAL_DATE", "").strip() or "manual"
+    attempt_id = os.environ.get("FENZOBOT_DISPATCH_ATTEMPT_ID", "").strip()
     run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
     repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
-    result = {"trigger_slot": slot, "trigger_source": source}
+    result = {
+        "trigger_slot": slot,
+        "trigger_source": source,
+        "trigger_local_date": local_date,
+    }
+    if attempt_id:
+        result["dispatch_attempt_id"] = attempt_id
     if run_id:
         result["github_run_id"] = run_id
     if run_id and repository:

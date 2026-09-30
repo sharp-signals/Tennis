@@ -47,11 +47,19 @@ function dispatchPreLiveBotForSlot(slot) {
   const token = properties.getProperty('GITHUB_TOKEN');
   if (!token) throw new Error('Falta GITHUB_TOKEN nas Propriedades do script.');
   const url = `https://api.github.com/repos/${PRELIVE_OWNER}/${PRELIVE_REPO}/actions/workflows/${PRELIVE_WORKFLOW}/dispatches`;
+  const dispatchedAt = new Date();
+  const localDate = Utilities.formatDate(dispatchedAt, PRELIVE_TIMEZONE, 'yyyy-MM-dd');
+  const logicalSlot = slot || 'manual';
+  // Stable for retries of the same Lisbon logical slot. GitHub's run_id still
+  // distinguishes physical runs; this ID correlates dispatch, run and publish.
+  const attemptId = `${localDate}:${logicalSlot}:google_apps_script`;
   const payload = {
     ref: PRELIVE_REF,
     inputs: {
-      trigger_slot: slot || 'manual',
+      trigger_slot: logicalSlot,
       trigger_source: 'google_apps_script',
+      trigger_local_date: localDate,
+      dispatch_attempt_id: attemptId,
     },
   };
   const response = UrlFetchApp.fetch(url, {
@@ -70,10 +78,13 @@ function dispatchPreLiveBotForSlot(slot) {
   }
   const run = PRELIVE_RUNS.find(item => item.slot === slot);
   if (run) {
-    properties.setProperty(
-      `PRELIVE_LAST_DISPATCH_${slot.replace(':', '')}`,
-      new Date().toISOString(),
-    );
+    properties.setProperty(`PRELIVE_LAST_DISPATCH_${slot.replace(':', '')}`, JSON.stringify({
+      logical_slot: slot,
+      local_date: localDate,
+      dispatch_attempt_id: attemptId,
+      accepted_at_utc: dispatchedAt.toISOString(),
+      http_status: 204,
+    }));
   }
   try {
     const health = ensurePreLiveSchedule();
@@ -81,7 +92,40 @@ function dispatchPreLiveBotForSlot(slot) {
   } catch (error) {
     console.warn(`Dispatch ${slot} concluído; self-healing indisponível.`);
   }
-  return {status: 'SUCCESS', slot: slot || 'manual'};
+  return {
+    status: 'DISPATCH_ACCEPTED',
+    slot: logicalSlot,
+    local_date: localDate,
+    dispatch_attempt_id: attemptId,
+  };
+}
+
+function verifyPreLiveDailyCoverage(now) {
+  const instant = now || new Date();
+  const properties = PropertiesService.getScriptProperties();
+  const localDate = Utilities.formatDate(instant, PRELIVE_TIMEZONE, 'yyyy-MM-dd');
+  const localTime = Utilities.formatDate(instant, PRELIVE_TIMEZONE, 'HH:mm');
+  const parts = localTime.split(':').map(Number);
+  const localMinutes = parts[0] * 60 + parts[1];
+  const missing = [];
+  const slots = {};
+  PRELIVE_RUNS.forEach(run => {
+    const raw = properties.getProperty(`PRELIVE_LAST_DISPATCH_${run.slot.replace(':', '')}`);
+    let state = null;
+    try { state = raw ? JSON.parse(raw) : null; } catch (_error) { state = null; }
+    const acceptedToday = state && state.local_date === localDate && state.http_status === 204;
+    slots[run.slot] = acceptedToday ? state : null;
+    const endOfWindow = run.hour * 60 + run.minute + 15;
+    if (!acceptedToday && localMinutes > endOfWindow) missing.push(run.slot);
+  });
+  return {
+    status: missing.length ? 'DEGRADED' : 'HEALTHY',
+    local_date: localDate,
+    timezone: PRELIVE_TIMEZONE,
+    execution_window_minutes: 15,
+    slots,
+    missing_past_slots: missing,
+  };
 }
 
 function installPreLiveSchedule() {
@@ -120,7 +164,7 @@ function verifyPreLiveSchedule() {
       unexpectedLegacyTriggers += 1;
     }
   });
-  const healthy = PRELIVE_RUNS.every(run => installed[run.handler] === 1)
+  const triggerHealthy = PRELIVE_RUNS.every(run => installed[run.handler] === 1)
     && unexpectedLegacyTriggers === 0;
   const properties = PropertiesService.getScriptProperties();
   const lastDispatch = {};
@@ -129,14 +173,17 @@ function verifyPreLiveSchedule() {
       `PRELIVE_LAST_DISPATCH_${run.slot.replace(':', '')}`,
     ) || null;
   });
+  const dailyCoverage = verifyPreLiveDailyCoverage();
   const result = {
-    status: healthy ? 'HEALTHY' : 'DEGRADED',
+    status: triggerHealthy && dailyCoverage.status === 'HEALTHY' ? 'HEALTHY' : 'DEGRADED',
+    trigger_status: triggerHealthy ? 'HEALTHY' : 'DEGRADED',
     timezone: PRELIVE_TIMEZONE,
     expected_handlers: PRELIVE_RUNS.map(run => run.handler),
     installed,
     trigger_ids: triggerIds,
     unexpected_legacy_triggers: unexpectedLegacyTriggers,
     last_dispatch: lastDispatch,
+    daily_coverage: dailyCoverage,
   };
   console.log(JSON.stringify(result));
   return result;
@@ -144,7 +191,7 @@ function verifyPreLiveSchedule() {
 
 function ensurePreLiveSchedule() {
   const before = verifyPreLiveSchedule();
-  if (before.status === 'HEALTHY') return before;
+  if (before.trigger_status === 'HEALTHY') return before;
   installPreLiveSchedule();
   return verifyPreLiveSchedule();
 }

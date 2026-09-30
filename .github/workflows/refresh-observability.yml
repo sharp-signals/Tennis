@@ -8,8 +8,8 @@ on:
     branches: [main]
   workflow_dispatch: {}
 concurrency:
-  group: tennis-pre-live-production
-  cancel-in-progress: false
+  group: tennis-data-writers
+  queue: max
 permissions:
   contents: write
 jobs:
@@ -55,3 +55,11 @@ jobs:
             git commit -m 'chore: refresh derived observation views [skip ci]'
             bash scripts/publish-generated-changes.sh 'chore: refresh derived observation views'
           fi
+      - name: Preserve publication recovery
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: observability-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/fenzobot-data-recovery/
+          if-no-files-found: ignore
+          retention-days: 30

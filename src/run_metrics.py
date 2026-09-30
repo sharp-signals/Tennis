@@ -130,6 +130,11 @@ def health_alerts(entry: dict) -> list[str]:
         alerts.append(f"cache LLM inválida: {entry['llm_cache_invalid']} entrada(s)")
     if _as_int(entry.get("llm_cache_write_failures")):
         alerts.append(f"falhas ao gravar cache LLM: {entry['llm_cache_write_failures']}")
+    maintenance = entry.get("settlement_maintenance")
+    if isinstance(maintenance, dict) and maintenance.get("status") in {
+        "PARTIAL", "TIMED_OUT", "FAILED",
+    }:
+        alerts.append(f"manutenção de resultados: {maintenance.get('status')}")
     estimated_cost = _as_float(entry.get("llm_estimated_cost_usd"))
     if estimated_cost >= _env_number("ALERT_LLM_COST_USD", 1.0):
         alerts.append(f"custo LLM estimado elevado: ${estimated_cost:.4f}")

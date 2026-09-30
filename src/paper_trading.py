@@ -16,6 +16,7 @@ from . import (
     market_integrity,
     market_ledger,
     match_identity_v2,
+    forward_only,
     snapshot_identity,
     tournament_policy,
 )
@@ -204,15 +205,25 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     return entries
 
 
-def append_entries(entries: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:
+def append_entries(
+    entries: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH, *,
+    protection_manifest_path: Path | None = None,
+    diagnostics: dict[str, Any] | None = None,
+) -> int:
     """Acrescenta entradas novas; duplicados nunca reescrevem o pre-jogo."""
     with _LOCK:
         document = _read(path)
         existing = {item.get("key") for item in document["entries"] if item.get("key")}
         added = 0
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
+        blocked: dict[str, int] = {}
         for entry in entries:
             key = entry.get("key")
             if key and key not in existing:
+                allowed, reason = boundary.new_record_eligibility("paper", entry)
+                if not allowed:
+                    blocked[reason] = blocked.get(reason, 0) + 1
+                    continue
                 document["entries"].append(copy.deepcopy(dict(entry)))
                 existing.add(key)
                 added += 1
@@ -220,6 +231,12 @@ def append_entries(entries: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PA
             document["entries"].sort(key=lambda item: (item.get("pregame") or {}).get("analyzed_at_utc") or "")
             document["updated_at_utc"] = _utc_now()
             _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "added": added,
+                "blocked": blocked,
+            })
         return added
 
 
@@ -255,6 +272,10 @@ def settle_from_matches(
     *,
     ledger_root: Path = market_ledger.DEFAULT_ROOT,
     identity_registry_path: Path = match_identity_v2.DEFAULT_REGISTRY_PATH,
+    protection_manifest_path: Path | None = None,
+    max_settlements: int | None = None,
+    candidate_keys: set[str] | None = None,
+    diagnostics: dict[str, Any] | None = None,
 ) -> int:
     completed = []
     for match in matches:
@@ -310,13 +331,27 @@ def settle_from_matches(
 
     with _LOCK:
         document = _read(path)
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
         settled = 0
+        eligible_candidates = 0
+        blocked: dict[str, int] = {}
         excluded = excluded_keys()
         for entry in document["entries"]:
+            if candidate_keys is not None and str(entry.get("key") or "") not in candidate_keys:
+                continue
             if str(entry.get("key")) in excluded:
                 continue
             if entry.get("settlement") is not None:
                 continue
+            allowed, reason = forward_only.settlement_eligibility(
+                "paper", entry, boundary=boundary,
+            )
+            if not allowed:
+                blocked[reason] = blocked.get(reason, 0) + 1
+                continue
+            eligible_candidates += 1
+            if max_settlements is not None and settled >= max_settlements:
+                break
             pregame = entry.get("pregame") or {}
             match = find(pregame)
             if not match:
@@ -377,6 +412,13 @@ def settle_from_matches(
         if settled:
             document["updated_at_utc"] = _utc_now()
             _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "eligible_candidates": eligible_candidates,
+                "settled": settled,
+                "blocked": blocked,
+            })
         return settled
 
 
