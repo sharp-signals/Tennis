@@ -461,6 +461,21 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("Histórico geral com odds (BO3): vitórias 66.7% (6/9).", html)
         self.assertIn("Faixa próxima 1.26-1.30 (BO3): vitórias 80.0% (4/5)", html)
 
+    def test_moneyline_history_includes_the_canonical_history_behind_the_excel(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.55, "B": 2.50},
+            "canonical_odds_context_a": {
+                "source": "Fenzobot · histórico canónico",
+                "exact_band": "1.51-1.60",
+                "exact": {"n": 4, "wins": 3, "losses": 1, "win_rate_pct": 75.0},
+                "general": {"n": 7, "wins": 5, "losses": 2, "win_rate_pct": 71.4},
+            },
+        }
+        div = {"market": {"a": 65, "b": 35}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Fenzobot · histórico canónico — faixa 1.51-1.60: vitórias 75.0% (3/4).", html)
+
     def test_handicap_card_follows_selected_underdog_with_mirrored_zone(self):
         payload = {
             "player_a": "Leylah Annie Fernandez", "player_b": "Mananchaya Sawangkaew",

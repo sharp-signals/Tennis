@@ -1654,6 +1654,16 @@ def _build_match_payload(match: dict) -> dict:
     historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(
         historical_odds_history, player_b
     )
+    # O Excel ``Fenzobot_Historico_do_Sistema`` é uma vista do arquivo
+    # canónico de snapshots. Esta leitura usa exatamente esse arquivo local
+    # para dar contexto de vitória por faixa de odd quando existe, sem
+    # confundir estes resultados com linhas de handicap ou odds 22Bet.
+    canonical_odds_context_a = fetch_data.compute_canonical_snapshot_odds_context(
+        tour, player_a, odds.get(player_a) if odds else None, match.get("date")
+    )
+    canonical_odds_context_b = fetch_data.compute_canonical_snapshot_odds_context(
+        tour, player_b, odds.get(player_b) if odds else None, match.get("date")
+    )
     # NOVO (22/08/2026, a pedido): efeito de mudança de piso — jogador que
     # vem de outra superfície e entra fresco no piso de hoje.
     surface_transition_a = fetch_data.compute_surface_transition(history, player_a, surface)
@@ -1980,6 +1990,8 @@ def _build_match_payload(match: dict) -> dict:
         "game_differential_b": game_differential_b,
         "historical_moneyline_margins_a": historical_moneyline_margins_a,
         "historical_moneyline_margins_b": historical_moneyline_margins_b,
+        "canonical_odds_context_a": canonical_odds_context_a,
+        "canonical_odds_context_b": canonical_odds_context_b,
         "surface_transition_a": surface_transition_a,  # NOVO: efeito mudança de piso
         "surface_transition_b": surface_transition_b,
         "tournament_record_a": tournament_record_a,  # NOVO: histórico neste torneio
