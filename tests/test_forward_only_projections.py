@@ -45,6 +45,7 @@ globalThis.document = {
 renderSidebar();
 process.stdout.write(JSON.stringify({
   historicGlobal:HISTORIC_DATA.global,
+  prospectiveGlobal:CONTINUITY?.prospective?.global,
   effectiveGlobal:DATA.global,
   health:DATA.system_health,
   freshness:DATA.source_freshness,
@@ -212,6 +213,98 @@ class ForwardOnlyProjectionTests(unittest.TestCase):
             self.assertEqual(
                 baseline["global"], {"total_reports": 456, "distinct_matchups": 400},
             )
+
+    def test_dashboard_additive_composition_preserves_unavailable_counts(self):
+        baseline = {
+            "generated_at_utc": "2026-09-30T09:00:00+00:00",
+            "days": [],
+            "global": {
+                "total_reports": None,
+                "total_snapshots": 0,
+                "settled_snapshots": 12,
+                "green_strong_candidates": 3,
+                "paper_technical_entries": 4,
+                "market_observations": 8,
+                "report_colors": {
+                    "GREEN": None,
+                    "YELLOW": 0,
+                    "RED": 7,
+                },
+            },
+            "system_health": {"status": "HEALTHY", "alerts": []},
+            "source_freshness": {"baseline": {"status": "AVAILABLE"}},
+            "forward_only_continuity": {
+                "effective_from_utc": "2026-09-30T10:00:00+00:00",
+                "prospective": {
+                    "generated_at_utc": "2026-10-01T12:00:00+00:00",
+                    "days": [],
+                    "global": {
+                        "total_reports": 5,
+                        "distinct_matchups": 0,
+                        "total_snapshots": 5,
+                        "paper_technical_entries": None,
+                        "market_observations": 2,
+                        "report_colors": {
+                            "GREEN": 5,
+                            "YELLOW": 5,
+                            "RED": None,
+                            "UNAVAILABLE": 0,
+                        },
+                    },
+                    "projection_views": {
+                        "green_strong_v1": {"sample": {"candidates": 2}},
+                    },
+                },
+                "operational_current": {
+                    "system_health": {
+                        "status": "FAILED", "alerts": ["current failure"],
+                    },
+                    "source_freshness": {"current": {"status": "DEGRADED"}},
+                },
+            },
+        }
+        runtime = execute_dashboard_javascript(dashboard.render_dashboard_html(baseline))
+
+        self.assertIsNone(runtime["effectiveGlobal"]["total_reports"])
+        self.assertIsNone(runtime["effectiveGlobal"]["distinct_matchups"])
+        self.assertEqual(runtime["effectiveGlobal"]["total_snapshots"], 5)
+        self.assertIsNone(runtime["effectiveGlobal"]["settled_snapshots"])
+        self.assertEqual(runtime["effectiveGlobal"]["green_strong_candidates"], 5)
+        self.assertIsNone(runtime["effectiveGlobal"]["paper_technical_entries"])
+        self.assertEqual(runtime["effectiveGlobal"]["market_observations"], 10)
+        self.assertEqual(runtime["effectiveGlobal"]["report_colors"], {
+            "GREEN": None,
+            "YELLOW": 5,
+            "RED": None,
+            "UNAVAILABLE": None,
+        })
+        self.assertEqual(runtime["prospectiveGlobal"]["total_reports"], 5)
+        self.assertIn("Versões pós-T0", runtime["continuityHtml"])
+        self.assertIn(">5<", runtime["continuityHtml"])
+        self.assertEqual(runtime["health"]["status"], "FAILED")
+        self.assertEqual(runtime["freshness"]["current"]["status"], "DEGRADED")
+        self.assertIn("Atenção · falha registada na execução", runtime["simpleHealthHtml"])
+
+        unavailable_baseline = json.loads(json.dumps(baseline))
+        unavailable_baseline["forward_only_continuity"]["prospective"]["global"]["total_reports"] = 0
+        unavailable_runtime = execute_dashboard_javascript(
+            dashboard.render_dashboard_html(unavailable_baseline),
+        )
+        self.assertIsNone(unavailable_runtime["effectiveGlobal"]["total_reports"])
+
+        known_baseline = json.loads(json.dumps(baseline))
+        known_baseline["global"]["total_reports"] = 456
+        known_baseline["forward_only_continuity"]["prospective"]["global"]["total_reports"] = 0
+        zero_runtime = execute_dashboard_javascript(
+            dashboard.render_dashboard_html(known_baseline),
+        )
+        self.assertEqual(zero_runtime["effectiveGlobal"]["total_reports"], 456)
+
+        known_baseline["forward_only_continuity"]["prospective"]["global"]["total_reports"] = 1
+        one_runtime = execute_dashboard_javascript(
+            dashboard.render_dashboard_html(known_baseline),
+        )
+        self.assertEqual(one_runtime["effectiveGlobal"]["total_reports"], 457)
 
     def test_imprecise_json_and_xlsx_baseline_stay_exact_with_future_component(self):
         with tempfile.TemporaryDirectory() as tmp:

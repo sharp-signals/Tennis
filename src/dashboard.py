@@ -1285,19 +1285,23 @@ function effectiveDashboardData(historic,continuity){{
   const historicGlobal=historic.global||{{}},prospectiveGlobal=prospective.global||{{}};
   const historicColors=historicGlobal.report_colors||{{}};
   const prospectiveColors=prospectiveGlobal.report_colors||{{}};
+  const addKnown=(historicValue,prospectiveValue)=>
+    typeof historicValue==='number'&&Number.isFinite(historicValue)&&
+    typeof prospectiveValue==='number'&&Number.isFinite(prospectiveValue)
+      ?historicValue+prospectiveValue:null;
   const colors={{GREEN:0,YELLOW:0,RED:0,UNAVAILABLE:0}};
-  for(const name of Object.keys(colors))colors[name]=Number(historicColors[name]||0)+Number(prospectiveColors[name]||0);
+  for(const name of Object.keys(colors))colors[name]=addKnown(historicColors[name],prospectiveColors[name]);
   return {{...historic,
     generated_at_utc:prospective.generated_at_utc||historic.generated_at_utc,
     days,
     global:{{...historicGlobal,
-      total_reports:Number(historicGlobal.total_reports||0)+Number(prospectiveGlobal.total_reports||0),
-      distinct_matchups:Number(historicGlobal.distinct_matchups||0)+Number(prospectiveGlobal.distinct_matchups||0),
-      total_snapshots:Number(historicGlobal.total_snapshots||0)+Number(prospectiveGlobal.total_snapshots||0),
-      settled_snapshots:Number(historicGlobal.settled_snapshots||0)+Number(prospectiveGlobal.settled_snapshots||0),
-      green_strong_candidates:Number(historicGlobal.green_strong_candidates||0)+Number(prospective.projection_views?.green_strong_v1?.sample?.candidates||0),
-      paper_technical_entries:Number(historicGlobal.paper_technical_entries||0)+Number(prospectiveGlobal.paper_technical_entries||0),
-      market_observations:Number(historicGlobal.market_observations||0)+Number(prospectiveGlobal.market_observations||0),
+      total_reports:addKnown(historicGlobal.total_reports,prospectiveGlobal.total_reports),
+      distinct_matchups:addKnown(historicGlobal.distinct_matchups,prospectiveGlobal.distinct_matchups),
+      total_snapshots:addKnown(historicGlobal.total_snapshots,prospectiveGlobal.total_snapshots),
+      settled_snapshots:addKnown(historicGlobal.settled_snapshots,prospectiveGlobal.settled_snapshots),
+      green_strong_candidates:addKnown(historicGlobal.green_strong_candidates,prospective.projection_views?.green_strong_v1?.sample?.candidates),
+      paper_technical_entries:addKnown(historicGlobal.paper_technical_entries,prospectiveGlobal.paper_technical_entries),
+      market_observations:addKnown(historicGlobal.market_observations,prospectiveGlobal.market_observations),
       report_colors:colors}},
     system_health:operational.system_health||historic.system_health,
     source_freshness:operational.source_freshness||historic.source_freshness}};
