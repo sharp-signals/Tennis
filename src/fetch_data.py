@@ -41,23 +41,31 @@ import re
 import threading
 import time
 import unicodedata
+from contextlib import contextmanager
 from urllib.parse import quote, urlparse
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 import requests
 
 from .cache_store import JsonCacheStore
+from . import market_integrity
+from .market_ledger import payload_sha256
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
     FIXTURES_CACHE_MAX_AGE_HOURS,
     FIXTURES_CACHE_PATH,
     FORCED_TOURNAMENT_IDS,
     HISTORY_YEARS_TO_LOAD,
+    LOOKAHEAD_HOURS_MAX,
+    LOOKAHEAD_HOURS_MIN,
     MAX_FIXTURE_PAGES,
     ODDS_API_TENNIS_SPORT_KEYS,
+    THE_ODDS_API_ENABLED,
     RAPIDAPI_BASE,
+    RAPIDAPI_BACKFILL_GLOBAL_CEILING,
     RAPIDAPI_HOST,
     RAPIDAPI_MAX_CALLS_PER_DAY,
     RAPIDAPI_MAX_CALLS_PER_RUN,
@@ -69,6 +77,10 @@ from .config import (
 )
 
 _PLAYER_CACHE_STORE = JsonCacheStore("data/cache")
+_SYSTEM_HISTORY_SNAPSHOTS_PATH = (
+    Path(__file__).resolve().parents[1] / "data" / "calibration_snapshots.json"
+)
+_CANONICAL_SNAPSHOT_ODDS_CACHE: dict[str, list[dict]] = {}
 
 
 def _player_cache_path(tour: str, player_id: int):
@@ -126,8 +138,13 @@ _RAPIDAPI_HEADERS = {
 # Contador de chamadas à RapidAPI por execução.
 _RAPIDAPI_CALL_COUNT = {"n": 0}
 _RAPIDAPI_ENDPOINT_CALLS: dict[str, int] = {}
+_RAPIDAPI_PURPOSE_CALLS: dict[str, int] = {}
+_RAPIDAPI_CONTEXT_ENDPOINT_CALLS: dict[str, dict[str, int]] = {}
+_RAPIDAPI_CALL_CONTEXT = threading.local()
+_RAPIDAPI_IDENTITY_SHARED_CALLS: dict[str, int] = {}
 _RAPIDAPI_RECORDED_TODAY = {"n": 0}
 _RAPIDAPI_BUDGET_EXCEEDED = {"value": False}
+_RAPIDAPI_BACKFILL_BUDGET_EXCEEDED = {"value": False}
 RAPIDAPI_MIN_INTERVAL = 0.35
 _RAPIDAPI_LAST_CALL = {"t": 0.0}
 _RAPIDAPI_LOCK = threading.Lock()
@@ -138,6 +155,10 @@ RAPIDAPI_CHECKPOINT_EVERY = 10
 
 class RapidAPIBudgetExceeded(RuntimeError):
     """A execução atingiu o orçamento configurado antes do pedido seguinte."""
+
+
+class RapidAPIBackfillBudgetExceeded(RapidAPIBudgetExceeded):
+    """O backfill atingiu o teto subordinado, preservando a reserva operacional."""
 
 
 def _load_recorded_today_calls() -> int:
@@ -177,7 +198,8 @@ def _write_rapidapi_checkpoint() -> None:
 def persist_rapidapi_usage(*, status: str, matches: int = 0) -> dict:
     """Fecha o checkpoint numa entrada histórica, incluindo runs falhadas."""
     entry = {"timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-             "calls": get_rapidapi_call_count(), "matches": int(matches), "status": status}
+             "calls": get_rapidapi_call_count(), "matches": int(matches), "status": status,
+             "purpose_calls": get_rapidapi_purpose_counts()}
     try:
         with open(RAPIDAPI_USAGE_PATH, "r", encoding="utf-8") as handle:
             history = json.load(handle)
@@ -206,10 +228,18 @@ def clear_rapidapi_checkpoint() -> None:
         pass
 
 
-def _reserve_rapidapi_call() -> None:
+def _reserve_rapidapi_call(*, purpose: str = "operational") -> None:
     """Reserva atomicamente uma chamada real, incluindo tentativas após 429."""
+    if purpose not in {"operational", "backfill"}:
+        raise ValueError(f"Propósito RapidAPI inválido: {purpose!r}")
     projected_run = _RAPIDAPI_CALL_COUNT["n"] + 1
     projected_day = _RAPIDAPI_RECORDED_TODAY["n"] + projected_run
+    if purpose == "backfill" and projected_day > RAPIDAPI_BACKFILL_GLOBAL_CEILING:
+        _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = True
+        raise RapidAPIBackfillBudgetExceeded(
+            "Ceiling histórico RapidAPI atingido; reserva operacional preservada "
+            f"(dia={projected_day - 1}/{RAPIDAPI_BACKFILL_GLOBAL_CEILING})."
+        )
     if (
         projected_run > RAPIDAPI_MAX_CALLS_PER_RUN
         or projected_day > RAPIDAPI_MAX_CALLS_PER_DAY
@@ -221,11 +251,12 @@ def _reserve_rapidapi_call() -> None:
             f"dia={projected_day - 1}/{RAPIDAPI_MAX_CALLS_PER_DAY})."
         )
     _RAPIDAPI_CALL_COUNT["n"] = projected_run
+    _RAPIDAPI_PURPOSE_CALLS[purpose] = _RAPIDAPI_PURPOSE_CALLS.get(purpose, 0) + 1
     if projected_run == 1 or projected_run % RAPIDAPI_CHECKPOINT_EVERY == 0:
         _write_rapidapi_checkpoint()
 
 
-def _rapidapi_get(url, **kwargs):
+def _rapidapi_get(url, *, rapidapi_purpose: str = "operational", **kwargs):
     """Wrapper único com orçamento, contador real, anti-429 e retry.
 
     CORREÇÃO (16/08/2026): reconstruído a partir dos testes do Hugo depois
@@ -237,9 +268,12 @@ def _rapidapi_get(url, **kwargs):
     resp = None
     for tentativa in range(3):
         with _RAPIDAPI_LOCK:
-            _reserve_rapidapi_call()
+            _reserve_rapidapi_call(purpose=rapidapi_purpose)
             endpoint = urlparse(str(url)).path
             _RAPIDAPI_ENDPOINT_CALLS[endpoint] = _RAPIDAPI_ENDPOINT_CALLS.get(endpoint, 0) + 1
+            context = str(getattr(_RAPIDAPI_CALL_CONTEXT, "label", None) or "shared")
+            context_endpoints = _RAPIDAPI_CONTEXT_ENDPOINT_CALLS.setdefault(context, {})
+            context_endpoints[endpoint] = context_endpoints.get(endpoint, 0) + 1
             elapsed = time.monotonic() - _RAPIDAPI_LAST_CALL["t"]
             if elapsed < RAPIDAPI_MIN_INTERVAL:
                 time.sleep(RAPIDAPI_MIN_INTERVAL - elapsed)
@@ -284,16 +318,160 @@ def get_rapidapi_endpoint_counts() -> dict[str, int]:
     return dict(sorted(_RAPIDAPI_ENDPOINT_CALLS.items()))
 
 
+def _rapidapi_endpoint_family(endpoint: str) -> str:
+    if "/extend/api/event/get/" in endpoint or "/extend/api/events/upcoming/" in endpoint:
+        return "event_identity"
+    if "/extend/api/" in endpoint and "odds" in endpoint:
+        return "market_odds"
+    if (
+        "/ms-api/upcoming/matches/" in endpoint
+        or "/fixtures/tournament/" in endpoint
+        or re.search(r"/(?:atp|wta)/fixtures/\d{4}-\d{2}-\d{2}$", endpoint)
+    ):
+        return "fixture_discovery"
+    if "/tournament/info/" in endpoint:
+        return "tournament_metadata"
+    if any(token in endpoint for token in (
+        "/h2h/", "/player/past-matches/", "/ranking/singles/",
+        "/player/perf-breakdown/", "/tournament/player/",
+    )):
+        return "statistical_enrichment"
+    return "other"
+
+
+def _endpoint_family_counts(endpoints: dict[str, int]) -> dict[str, int]:
+    families: dict[str, int] = {}
+    for endpoint, calls in endpoints.items():
+        family = _rapidapi_endpoint_family(endpoint)
+        families[family] = families.get(family, 0) + int(calls)
+    return dict(sorted(families.items()))
+
+
+def get_rapidapi_endpoint_family_counts() -> dict[str, int]:
+    return _endpoint_family_counts(_RAPIDAPI_ENDPOINT_CALLS)
+
+
+@contextmanager
+def rapidapi_call_context(label: object):
+    """Atribui chamadas feitas pela thread atual a um tier ou fase.
+
+    Discovery e índices partilhados permanecem no bucket ``shared``; não são
+    duplicados artificialmente por jogo. O contexto nunca altera orçamento ou
+    comportamento das chamadas.
+    """
+    previous = getattr(_RAPIDAPI_CALL_CONTEXT, "label", None)
+    _RAPIDAPI_CALL_CONTEXT.label = str(label or "shared")
+    try:
+        yield
+    finally:
+        if previous is None:
+            try:
+                del _RAPIDAPI_CALL_CONTEXT.label
+            except AttributeError:
+                pass
+        else:
+            _RAPIDAPI_CALL_CONTEXT.label = previous
+
+
+def get_rapidapi_call_context_metrics() -> dict[str, dict]:
+    """Resumo agregado para comparar custo Challenger e main-tour."""
+    result = {}
+    for label, endpoints in sorted(_RAPIDAPI_CONTEXT_ENDPOINT_CALLS.items()):
+        copied = dict(sorted(endpoints.items()))
+        result[label] = {
+            "calls": sum(copied.values()),
+            "by_endpoint_family": _endpoint_family_counts(copied),
+        }
+    return result
+
+
+def get_rapidapi_purpose_counts() -> dict[str, int]:
+    return dict(sorted(_RAPIDAPI_PURPOSE_CALLS.items()))
+
+
+def get_rapidapi_identity_metrics() -> dict:
+    """Resumo auditavel da ponte fixture -> eventId, sem expor odds.
+
+    As chamadas aos feeds partilhados sao contabilizadas por tour; as chamadas
+    ``event/get`` pertencem ao jogo que as originou. Assim evitamos atribuir a
+    cada jogo o custo inteiro de um indice carregado uma unica vez.
+    """
+    matches = [dict(item) for item in _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS.values()]
+    by_tour: dict[str, dict] = {}
+    for item in matches:
+        tour = str(item.get("tour") or "unknown").casefold()
+        row = by_tour.setdefault(tour, {
+            "matches": 0, "verified": 0, "unverified": 0,
+            "rejected": 0, "lookup_attempts": 0, "fallback_calls": 0,
+            "cache_hits": 0, "cache_misses": 0,
+            "index_resolutions": 0, "persistent_cache_hits": 0,
+            "in_run_cache_hits": 0, "fallback_after_miss": 0,
+            "unavailable_by_reason": {},
+        })
+        row["matches"] += 1
+        status = str(item.get("availability_status") or "UNAVAILABLE").upper()
+        if status == "VERIFIED":
+            row["verified"] += 1
+        elif status == "REJECTED":
+            row["rejected"] += 1
+        else:
+            row["unverified"] += 1
+        row["lookup_attempts"] += int(item.get("lookup_attempts") or 0)
+        row["fallback_calls"] += int(item.get("identity_api_calls") or 0)
+        resolution_path = item.get("resolution_path")
+        row["index_resolutions"] += int(resolution_path == "index")
+        row["persistent_cache_hits"] += int(resolution_path == "persistent_cache")
+        row["in_run_cache_hits"] += int(resolution_path == "in_run_cache")
+        row["fallback_after_miss"] += int(resolution_path == "fallback_after_miss")
+        row["cache_hits"] += int(resolution_path in {"persistent_cache", "in_run_cache"})
+        row["cache_misses"] += int(item.get("cache_status") == "MISS")
+        reason = item.get("unavailable_reason")
+        if reason:
+            reasons = row["unavailable_by_reason"]
+            reasons[str(reason)] = reasons.get(str(reason), 0) + 1
+    for tour, calls in _RAPIDAPI_IDENTITY_SHARED_CALLS.items():
+        by_tour.setdefault(tour, {
+            "matches": 0, "verified": 0, "unverified": 0, "rejected": 0,
+            "lookup_attempts": 0, "fallback_calls": 0, "cache_hits": 0,
+            "cache_misses": 0, "index_resolutions": 0,
+            "persistent_cache_hits": 0, "in_run_cache_hits": 0,
+            "fallback_after_miss": 0, "unavailable_by_reason": {},
+        })["shared_index_calls"] = calls
+    total_hits = sum(item["cache_hits"] for item in by_tour.values())
+    total_misses = sum(item["cache_misses"] for item in by_tour.values())
+    return {
+        "fallback_attempt_cap_per_match": RAPIDAPI_EVENT_FALLBACK_MAX_ATTEMPTS,
+        "by_tour": dict(sorted(by_tour.items())),
+        "matches": sorted(matches, key=lambda item: str(item.get("match_key") or "")),
+        "cache_hit_rate": round(total_hits / (total_hits + total_misses), 4)
+        if total_hits + total_misses else None,
+    }
+
+
 def reset_rapidapi_call_count() -> None:
+    global _ALL_UPCOMING_EVENTS_CACHE, _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES
     _RAPIDAPI_CALL_COUNT["n"] = 0
     _RAPIDAPI_ENDPOINT_CALLS.clear()
+    _RAPIDAPI_PURPOSE_CALLS.clear()
+    _RAPIDAPI_CONTEXT_ENDPOINT_CALLS.clear()
+    _RAPIDAPI_IDENTITY_SHARED_CALLS.clear()
+    _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS.clear()
     _RAPIDAPI_RECORDED_TODAY["n"] = _load_recorded_today_calls()
     _RAPIDAPI_BUDGET_EXCEEDED["value"] = False
+    _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = False
+    _ALL_UPCOMING_EVENTS_CACHE = None
+    _UPCOMING_DISCOVERY_FAILURES.clear()
+    _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
+    _reset_discovery_diagnostics()
     _write_rapidapi_checkpoint()
 
 
 def rapidapi_budget_exceeded() -> bool:
     return _RAPIDAPI_BUDGET_EXCEEDED["value"]
+
+
+def rapidapi_backfill_budget_exceeded() -> bool:
+    return _RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"]
 
 
 _BROWSER_HEADERS = {
@@ -327,6 +505,10 @@ RAPIDAPI_ALL_UPCOMING_URL = f"{RAPIDAPI_BASE}/ms-api/upcoming/matches"
 # jogos, cobre qualquer dia com folga. Evita loop infinito se a API não
 # sinalizar bem a última página.
 _ALL_UPCOMING_MAX_PAGES = 20
+# O fallback individual existe apenas para cobrir lacunas pontuais dos dois
+# indices upcoming. Nunca volta a fazer o produto cartesiano nomes x ordem x
+# datas que consumiu 126 chamadas para dois jogos WTA na run 34508878112.
+RAPIDAPI_EVENT_FALLBACK_MAX_ATTEMPTS = 6
 
 # Índice de eventos da camada Extend da RapidAPI.
 # As fixtures normais usam o ID principal do jogo (match ID), enquanto os
@@ -337,9 +519,34 @@ _RAPIDAPI_EVENT_INDEX_READY: set[str] = set()
 _RAPIDAPI_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_FRESH_ODDS_CACHE: dict[str, Optional[dict]] = {}
 _RAPIDAPI_EVENT_LOOKUP_CACHE: dict[str, Optional[dict]] = {}
+_RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS: dict[str, dict] = {}
 _RAPIDAPI_EMBEDDED_ODDS: dict[str, dict] = {}  # odds vindas da lista upcoming
 _ALL_UPCOMING_EVENTS_CACHE: Optional[list[dict]] = None  # cache desta execução
+# Mantém a causa de uma descoberta impossibilitada. Uma lista vazia só é
+# legítima quando os feeds responderam com sucesso; não pode esconder 400/500.
+_UPCOMING_DISCOVERY_FAILURES: list[str] = []
+_UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
+DISCOVERY_SUCCESS_WITH_MATCHES = "SUCCESS_WITH_MATCHES"
+DISCOVERY_SUCCESS_EMPTY = "SUCCESS_EMPTY"
+DISCOVERY_SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+_DISCOVERY_DIAGNOSTICS: dict = {
+    "discovery_sources": {},
+    "discovery_selected_source": None,
+    "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+}
 _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
+# A ponte fixture ID -> eventId é devolvida por ``event/get`` e é necessária
+# para interpretar od1/od2 do ``recent-odds``. Persistimos apenas uma ponte
+# cuja identidade foi verificada (os dois jogadores e a hora); nunca odds.
+# Isto evita que uma falha transitória do endpoint de pesquisa por nomes faça
+# desaparecer um preço operacional que o bot já tinha associado corretamente.
+_EVENT_IDENTITY_STORE = JsonCacheStore("data/cache")
+_EVENT_IDENTITY_PATH = _EVENT_IDENTITY_STORE.entity_path("rapidapi_event_identity.json")
+# Fila mínima e persistente para mercados que a própria RapidAPI ainda não
+# publicou. Não guarda odds nem faz inferências: conserva apenas a fixture
+# necessária para uma reconsulta leve posterior.
+_PENDING_MARKET_STORE = JsonCacheStore("data/cache")
+_PENDING_MARKET_PATH = _PENDING_MARKET_STORE.entity_path("pending_market_checks.json")
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
 ODDS_API_BASE = "https://api.the-odds-api.com/v4"
@@ -377,8 +584,326 @@ def _event_match_key(player1_id, player2_id, tournament_id, round_id=None):
     return "-".join(parts)
 
 
+def _event_match_id_orientation(node: dict, match: dict) -> Optional[str]:
+    """Confirma a fixture pelo ``matchId`` estrutural do fornecedor.
+
+    O endpoint Extend pode abreviar os nomes apresentados. Nessa situação,
+    nomes textuais não são uma base segura para ligar odds. O ``matchId`` é a
+    chave estrutural ``player1-player2-tournament-round`` da própria API; só
+    aceitamos uma igualdade exata (incluindo a orientação dos jogadores),
+    nunca uma aproximação por nomes.
+    """
+    candidate_key = str(node.get("matchId") or node.get("match_id") or "").strip()
+    if not candidate_key:
+        return None
+    p1 = match.get("player1") or {}
+    p2 = match.get("player2") or {}
+    pid1 = match.get("player1Id", p1.get("id"))
+    pid2 = match.get("player2Id", p2.get("id"))
+    tournament_id = match.get("tournamentId") or match.get("tournament_id")
+    round_id = match.get("roundId") or match.get("round_id")
+    direct = {
+        _event_match_key(pid1, pid2, tournament_id, round_id),
+        _event_match_key(pid1, pid2, tournament_id),
+    }
+    reverse = {
+        _event_match_key(pid2, pid1, tournament_id, round_id),
+        _event_match_key(pid2, pid1, tournament_id),
+    }
+    if candidate_key in direct:
+        return "direct"
+    if candidate_key in reverse:
+        return "reverse"
+    return None
+
+
+def _event_person_id(value: object) -> Optional[str]:
+    if not isinstance(value, dict):
+        return None
+    for key in ("id", "playerId", "player_id", "participantId", "participant_id"):
+        candidate = value.get(key)
+        if candidate not in (None, ""):
+            return str(candidate)
+    return None
+
+
+def _event_player_id_orientation(node: dict, match: dict) -> Optional[str]:
+    """Compara os dois IDs estaveis quando ambos os feeds os fornecem."""
+    left = node.get("participant1") or node.get("player1") or node.get("home")
+    right = node.get("participant2") or node.get("player2") or node.get("away")
+    candidate_a = _event_person_id(left) or next((
+        str(node[key]) for key in ("participant1Id", "participant1_id", "player1Id", "player1_id", "homeId")
+        if node.get(key) not in (None, "")
+    ), None)
+    candidate_b = _event_person_id(right) or next((
+        str(node[key]) for key in ("participant2Id", "participant2_id", "player2Id", "player2_id", "awayId")
+        if node.get(key) not in (None, "")
+    ), None)
+    p1, p2 = match.get("player1") or {}, match.get("player2") or {}
+    expected_a = match.get("player1Id", p1.get("id"))
+    expected_b = match.get("player2Id", p2.get("id"))
+    if expected_a in (None, "") or expected_b in (None, ""):
+        return None
+    expected_ids = {str(expected_a), str(expected_b)}
+    candidate_ids = {value for value in (candidate_a, candidate_b) if value is not None}
+    # Mesmo um ID parcial contraditório é evidência suficiente para rejeitar
+    # o node. Nunca deixamos os nomes sobrepor um conflito factual de ID.
+    if candidate_ids and not candidate_ids.issubset(expected_ids):
+        return "mismatch"
+    if None in (candidate_a, candidate_b):
+        return None
+    if (candidate_a, candidate_b) == (str(expected_a), str(expected_b)):
+        return "direct"
+    if (candidate_a, candidate_b) == (str(expected_b), str(expected_a)):
+        return "reverse"
+    return "mismatch"
+
+
 def _event_names_key(player1: str, player2: str) -> tuple[str, str]:
-    return tuple(sorted((_normalize_name(player1), _normalize_name(player2))))
+    """Chave bilateral para uma identidade de evento, com aliases auditados.
+
+    Isto não é fuzzy matching: só nomes explicitamente revistos são
+    canónicos aqui. Mantemos a dupla de participantes, a data e o estado
+    pré-live como condições obrigatórias antes de aceitar qualquer odd.
+    """
+    return tuple(sorted((_rapidapi_event_identity_name(player1), _rapidapi_event_identity_name(player2))))
+
+
+def _rapidapi_event_cache_key(match: dict) -> str:
+    """Chave persistente de uma fixture, sem usar nomes aproximados."""
+    fixture_id = match.get("id")
+    if fixture_id not in (None, ""):
+        return f"fixture:{fixture_id}"
+    p1 = str((match.get("player1") or {}).get("name") or "").strip()
+    p2 = str((match.get("player2") or {}).get("name") or "").strip()
+    return f"pair:{'|'.join(_event_names_key(p1, p2))}:{str(match.get('date') or '')[:10]}"
+
+
+def _fixture_start_utc(match: dict) -> Optional[datetime]:
+    return _event_start(match.get("date"))
+
+
+def _cached_event_record_for_match(match: dict) -> Optional[dict]:
+    """Lê uma associação anterior, apenas se ainda provar a mesma fixture."""
+    try:
+        saved = _EVENT_IDENTITY_STORE.get_entry(
+            _EVENT_IDENTITY_PATH,
+            _rapidapi_event_cache_key(match),
+            max_age_hours=168,
+        )
+    except (OSError, ValueError):
+        return None
+    if not isinstance(saved, dict) or not saved.get("event_id"):
+        return None
+    p1 = str((match.get("player1") or {}).get("name") or "").strip()
+    p2 = str((match.get("player2") or {}).get("name") or "").strip()
+    if _event_names_key(saved.get("participant1", ""), saved.get("participant2", "")) != _event_names_key(p1, p2):
+        return None
+    fixture_start = _fixture_start_utc(match)
+    saved_start = _event_start(saved.get("event_start"))
+    if fixture_start and saved_start and abs((fixture_start - saved_start).total_seconds()) > 36 * 3600:
+        return None
+    return {
+        "valid": True,
+        "event_id": str(saved["event_id"]),
+        "participant1": str(saved["participant1"]),
+        "participant2": str(saved["participant2"]),
+        "event_status": "scheduled",
+        "event_start": saved_start.isoformat() if saved_start else None,
+        "identity_cache": "verified_persistent",
+        "identity_source": "verified_persistent",
+        # Legacy cache rows intentionally remain usable for pricing but have
+        # no strong identity basis. Identity v2 fails closed until a newly
+        # validated record supplies this field.
+        "event_identity_validation_basis": saved.get(
+            "event_identity_validation_basis"
+        ),
+    }
+
+
+def _persist_event_record(match: dict, record: dict) -> None:
+    """Guarda apenas uma associação já validada por ``event/get``."""
+    if not record.get("valid") or not record.get("event_id"):
+        return
+    try:
+        _EVENT_IDENTITY_STORE.set_entry(
+            _EVENT_IDENTITY_PATH,
+            _rapidapi_event_cache_key(match),
+            {
+                "event_id": str(record["event_id"]),
+                "participant1": str(record["participant1"]),
+                "participant2": str(record["participant2"]),
+                "event_start": record.get("event_start"),
+                "event_identity_validation_basis": record.get(
+                    "event_identity_validation_basis"
+                ),
+            },
+            metadata={"purpose": "verified RapidAPI event identity; no odds"},
+        )
+    except (OSError, ValueError):
+        # Cache é uma otimização. Uma falha de escrita não pode bloquear odds.
+        return
+
+
+def _pending_market_match(match: dict) -> dict:
+    """Serializa só os campos necessários para voltar a consultar um mercado."""
+    fields = ("id", "_tour", "date", "player1Id", "player2Id", "tournamentId", "roundId")
+    saved = {field: match.get(field) for field in fields if match.get(field) not in (None, "")}
+    for side in ("player1", "player2"):
+        player = match.get(side) or {}
+        saved[side] = {
+            key: player.get(key) for key in ("id", "name") if player.get(key) not in (None, "")
+        }
+    return saved
+
+
+def register_pending_market_check(match: dict, provenance: Optional[dict], *, available: bool) -> None:
+    """Regista o estado de uma consulta de mercado para retry sem reanálise.
+
+    A fila é deliberadamente *fail-open*: se a cache não puder ser escrita, a
+    execução principal continua. Eventos rejeitados por já estarem live nunca
+    entram na fila, porque uma nova consulta não pode torná-los pré-live.
+    """
+    if not isinstance(provenance, dict):
+        return
+    reason = str(provenance.get("unavailable_reason") or "")
+    if reason in {"event_not_prelive", "event_time_mismatch"}:
+        return
+    key = _rapidapi_event_cache_key(match)
+    try:
+        previous = _PENDING_MARKET_STORE.get_entry(
+            _PENDING_MARKET_PATH, key, max_age_hours=168,
+        ) or {}
+        now = _odds_capture_timestamp()
+        data = {
+            "match": _pending_market_match(match),
+            "status": "RESOLVED" if available else "PENDING",
+            "reason": None if available else (reason or "market_unavailable"),
+            "first_seen_at_utc": previous.get("first_seen_at_utc") or now,
+            "last_checked_at_utc": now,
+            "attempts": int(previous.get("attempts") or 0) + (0 if available else 1),
+        }
+        if available:
+            data["resolved_at_utc"] = now
+        _PENDING_MARKET_STORE.set_entry(
+            _PENDING_MARKET_PATH, key, data,
+            metadata={"purpose": "lightweight pre-live market retry; no odds stored"},
+        )
+    except (OSError, ValueError, TypeError):
+        return
+
+
+def _reset_discovery_diagnostics() -> None:
+    _DISCOVERY_DIAGNOSTICS.clear()
+    _DISCOVERY_DIAGNOSTICS.update({
+        "discovery_sources": {},
+        "discovery_selected_source": None,
+        "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        "discovery_partial": False,
+    })
+
+
+def _record_discovery_source(
+    source: str,
+    status: str,
+    *,
+    matches: int = 0,
+    reason_code: Optional[str] = None,
+    http_status: Optional[int] = None,
+    **details,
+) -> None:
+    """Regista apenas telemetria estrutural; nunca inclui payloads ou secrets."""
+    record = {"status": status, "matches": max(0, int(matches or 0))}
+    if reason_code:
+        record["reason_code"] = str(reason_code)
+    if http_status is not None:
+        record["http_status"] = int(http_status)
+    record.update({key: value for key, value in details.items() if value is not None})
+    _DISCOVERY_DIAGNOSTICS["discovery_sources"][source] = record
+
+
+def get_discovery_diagnostics() -> dict:
+    """Cópia serializável do estado de descoberta da execução atual."""
+    return {
+        "discovery_sources": {
+            source: dict(record)
+            for source, record in _DISCOVERY_DIAGNOSTICS["discovery_sources"].items()
+        },
+        "discovery_selected_source": _DISCOVERY_DIAGNOSTICS.get(
+            "discovery_selected_source"
+        ),
+        "discovery_status": _DISCOVERY_DIAGNOSTICS.get(
+            "discovery_status", DISCOVERY_SOURCE_UNAVAILABLE
+        ),
+        "discovery_partial": bool(
+            _DISCOVERY_DIAGNOSTICS.get("discovery_partial", False)
+        ),
+    }
+
+
+def discovery_unavailable() -> bool:
+    """Verdadeiro só quando nenhuma fonte factual produziu calendário fiável."""
+    return (
+        _DISCOVERY_DIAGNOSTICS.get("discovery_status")
+        == DISCOVERY_SOURCE_UNAVAILABLE
+    )
+
+
+def upcoming_discovery_failed() -> bool:
+    """Compatibilidade legacy: indica falha total dos feeds upcoming."""
+    return bool(_UPCOMING_DISCOVERY_FAILURES) and _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES == 0
+
+
+def _discovery_error_details(exc: Exception) -> tuple[str, Optional[int]]:
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", None)
+    if isinstance(exc, requests.Timeout):
+        return "TIMEOUT", status
+    if status is not None:
+        return f"HTTP_{status}", int(status)
+    if isinstance(exc, (ValueError, TypeError)):
+        return "INVALID_RESPONSE", None
+    return "REQUEST_ERROR", None
+
+
+def _discovery_rows(payload: object, *keys: str) -> list:
+    if not isinstance(payload, dict):
+        raise ValueError("discovery payload must be an object")
+    present = [key for key in keys if key in payload]
+    if not present:
+        raise ValueError("discovery payload has no supported rows field")
+    rows = next((payload.get(key) for key in present if payload.get(key) is not None), [])
+    if not isinstance(rows, list):
+        raise ValueError("discovery rows must be a list")
+    if any(not isinstance(row, dict) for row in rows):
+        raise ValueError("discovery rows must contain objects")
+    return rows
+
+
+def _is_bad_request(exc: Exception) -> bool:
+    """Reconhece o HTTP 400 sem depender do formato do cliente Requests."""
+    response = getattr(exc, "response", None)
+    return getattr(response, "status_code", None) == 400 or "400" in str(exc)
+
+
+def _get_upcoming_page(url: str, *, page: int, limit: int):
+    """Pede uma página e degrada para o endpoint sem paginação se necessário.
+
+    A RapidAPI já aceitou ``page``/``limit`` nestes paths, mas em 01-09-2026
+    passou a devolver 400. A resposta sem query continua válida e contém a
+    primeira página; é preferível a concluir incorretamente que não há jogos.
+    """
+    try:
+        response = _rapidapi_get(url, params={"page": page, "limit": limit})
+        response.raise_for_status()
+        return response, True
+    except requests.RequestException as exc:
+        if page != 1 or not _is_bad_request(exc):
+            raise
+        print(f"[aviso] {url} rejeitou page/limit (HTTP 400); a repetir sem paginação.")
+        response = _rapidapi_get(url)
+        response.raise_for_status()
+        return response, False
 
 
 def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
@@ -395,13 +920,21 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     de torneios como a indexação de odds precisam deste mesmo feed — sem
     cache, duplicaria ~6 pedidos paginados por execução.
     """
-    global _ALL_UPCOMING_EVENTS_CACHE
+    global _ALL_UPCOMING_EVENTS_CACHE, _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES
     if _ALL_UPCOMING_EVENTS_CACHE is not None:
         return _ALL_UPCOMING_EVENTS_CACHE
 
     if not RAPIDAPI_KEY:
+        for source in ("upcoming_atp", "upcoming_wta", "upcoming_legacy_all"):
+            _record_discovery_source(
+                source, DISCOVERY_SOURCE_UNAVAILABLE,
+                reason_code="MISSING_API_KEY",
+            )
+        _ALL_UPCOMING_EVENTS_CACHE = []
         return []
 
+    _UPCOMING_DISCOVERY_FAILURES.clear()
+    _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES = 0
     events: list[dict] = []
 
     # --- FONTE PRINCIPAL: Upcoming Matches por tour (tem matches + odds embutidas) ---
@@ -416,13 +949,18 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     for t in ("atp", "wta"):
         page = 1
         tour_events: list[dict] = []
+        source_failed = False
+        failure_reason = None
+        failure_http_status = None
         while page <= _ALL_UPCOMING_MAX_PAGES:
             url = f"{RAPIDAPI_ALL_UPCOMING_URL}/{t}"
             try:
-                resp = _rapidapi_get(url, params={"page": page, "limit": LIMIT})
-                resp.raise_for_status()
-                payload = resp.json() or {}
-                page_results = payload.get("matches") or []
+                resp, pagination_supported = _get_upcoming_page(
+                    url, page=page, limit=LIMIT,
+                )
+                _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES += 1
+                payload = resp.json()
+                page_results = _discovery_rows(payload, "matches")
                 captured_at_utc = _odds_capture_timestamp()
                 if page == 1:
                     _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
@@ -433,21 +971,44 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
                 for event in page_results:
                     if isinstance(event, dict):
                         event = dict(event)
+                        event["_tour"] = t
+                        event["_raw_payload_sha256"] = payload_sha256(event)
                         event["_odds_captured_at_utc"] = captured_at_utc
                         event["_odds_endpoint"] = url
                         novos.append(event)
                 tour_events.extend(novos)
                 # parar quando a página vier vazia ou incompleta (última página)
-                if len(page_results) < LIMIT or not novos:
+                if not pagination_supported or len(page_results) < LIMIT or not novos:
                     break
                 page += 1
-            except requests.RequestException as exc:
+            except (requests.RequestException, ValueError, TypeError) as exc:
+                _UPCOMING_DISCOVERY_FAILURES.append(f"all-upcoming/{t}: {exc}")
+                failure_reason, failure_http_status = _discovery_error_details(exc)
+                source_failed = True
                 print(f"[aviso] falha a obter all-upcoming/{t} (pág {page}) para odds: {exc}")
                 break
         print(f"[diag] all-upcoming/{t}: {len(tour_events)} jogos carregados em {page} página(s).")
         events.extend(tour_events)
+        if source_failed:
+            _record_discovery_source(
+                f"upcoming_{t}", DISCOVERY_SOURCE_UNAVAILABLE,
+                matches=len(tour_events), reason_code=failure_reason,
+                http_status=failure_http_status, partial=bool(tour_events),
+            )
+        else:
+            _record_discovery_source(
+                f"upcoming_{t}",
+                DISCOVERY_SUCCESS_WITH_MATCHES if tour_events else DISCOVERY_SUCCESS_EMPTY,
+                matches=len(tour_events), pages=page,
+            )
 
-    if events:
+    primary_records = _DISCOVERY_DIAGNOSTICS["discovery_sources"]
+    primary_complete = all(
+        primary_records.get(f"upcoming_{t}", {}).get("status")
+        != DISCOVERY_SOURCE_UNAVAILABLE
+        for t in ("atp", "wta")
+    )
+    if primary_complete or events:
         _ALL_UPCOMING_EVENTS_CACHE = events
         return events
 
@@ -457,10 +1018,12 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
     while True:
         url = f"{RAPIDAPI_EXTEND_BASE}/events/upcoming/{tour}"
         try:
-            resp = _rapidapi_get(url, params={"page": page, "limit": 100})
-            resp.raise_for_status()
-            payload = resp.json() or {}
-            page_results = payload.get("matches") or payload.get("results") or []
+            resp, pagination_supported = _get_upcoming_page(
+                url, page=page, limit=100,
+            )
+            _UPCOMING_DISCOVERY_SUCCESSFUL_RESPONSES += 1
+            payload = resp.json()
+            page_results = _discovery_rows(payload, "matches", "results", "events")
             captured_at_utc = _odds_capture_timestamp()
             if page == 1:
                 _chaves = list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__
@@ -469,19 +1032,152 @@ def _fetch_extend_upcoming_events(tour: str) -> list[dict]:
             for event in page_results:
                 if isinstance(event, dict):
                     event = dict(event)
+                    event["_raw_payload_sha256"] = payload_sha256(event)
                     event["_odds_captured_at_utc"] = captured_at_utc
                     event["_odds_endpoint"] = url
                     events.append(event)
             total = payload.get("total")
-            if not page_results or (isinstance(total, int) and len(events) >= total):
+            if (not pagination_supported or not page_results
+                    or (isinstance(total, int) and len(events) >= total)):
                 break
             page += 1
             if page > MAX_FIXTURE_PAGES:
                 break
-        except requests.RequestException as exc:
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            _UPCOMING_DISCOVERY_FAILURES.append(f"upcoming/{tour}: {exc}")
+            reason, http_status = _discovery_error_details(exc)
+            _record_discovery_source(
+                "upcoming_legacy_all", DISCOVERY_SOURCE_UNAVAILABLE,
+                matches=len(events), reason_code=reason,
+                http_status=http_status, partial=bool(events),
+            )
             print(f"[aviso] falha a obter eventos upcoming {tour}: {exc}")
             break
+    if "upcoming_legacy_all" not in _DISCOVERY_DIAGNOSTICS["discovery_sources"]:
+        _record_discovery_source(
+            "upcoming_legacy_all",
+            DISCOVERY_SUCCESS_WITH_MATCHES if events else DISCOVERY_SUCCESS_EMPTY,
+            matches=len(events), pages=page,
+        )
+    _ALL_UPCOMING_EVENTS_CACHE = events
     return events
+
+
+def _fetch_extend_event_bridge_records(tour: str) -> list[dict]:
+    """Obtém a lista Extend pré-live, usada apenas como ponte de identidade.
+
+    Ao contrário do feed ``ms-api/upcoming`` (que é útil para observação mas
+    não autoriza pricing), este endpoint expõe ``eventId``/participantes da
+    camada que serve ``recent-odds``. Não lemos odds daqui: usamos unicamente
+    a associação verificável entre a fixture e o evento.
+    """
+    if not RAPIDAPI_KEY or tour not in {"atp", "wta"}:
+        return []
+    events: list[dict] = []
+    calls_before = get_rapidapi_call_count()
+    page = 1
+    while page <= _ALL_UPCOMING_MAX_PAGES:
+        url = f"{RAPIDAPI_EXTEND_BASE}/events/upcoming/{tour}"
+        try:
+            response, pagination_supported = _get_upcoming_page(url, page=page, limit=100)
+            payload = response.json() or {}
+            rows = payload.get("matches") or payload.get("results") or payload.get("events") or []
+            if page == 1:
+                print(f"[diag] extend-events/{tour}: HTTP {response.status_code}, "
+                      f"events_pag1={len(rows) if isinstance(rows, list) else 0}, url={url}")
+            if not isinstance(rows, list):
+                break
+            events.extend(row for row in rows if isinstance(row, dict))
+            if not pagination_supported or len(rows) < 100 or not rows:
+                break
+            page += 1
+        except requests.RequestException as exc:
+            print(f"[aviso] falha a obter extend-events/{tour} para identidade de odds: {exc}")
+            break
+    _RAPIDAPI_IDENTITY_SHARED_CALLS[tour] = (
+        _RAPIDAPI_IDENTITY_SHARED_CALLS.get(tour, 0)
+        + get_rapidapi_call_count() - calls_before
+    )
+    return events
+
+
+def _prepare_rapidapi_event_bridge(matches: list[dict]) -> None:
+    """Indexa eventIds atuais só após validar IDs/jogadores, hora e estado.
+
+    A ordem e deliberada: reutiliza primeiro o feed ``ms-api/upcoming`` ja
+    carregado pela descoberta; so depois consulta o indice Extend por tour.
+    """
+    bridge_marker = "__EVENT_BRIDGE__"
+    if bridge_marker in _RAPIDAPI_EVENT_INDEX_READY:
+        return
+
+    def _index_match(match: dict, candidates: list[dict], source: str, *, require_explicit_event_id: bool) -> bool:
+        for candidate in candidates:
+            # Quando o feed inclui ``matchId`` verificável, essa é a
+            # identidade mais forte e pode prevalecer sobre texto abreviado.
+            record = (_validated_event_record_by_match_id(
+                          candidate, match,
+                          require_explicit_event_id=require_explicit_event_id,
+                      )
+                      or _validated_event_record(
+                          candidate, match,
+                          require_explicit_event_id=require_explicit_event_id,
+                      ))
+            if not record or not record.get("valid"):
+                continue
+            record = dict(record)
+            record["identity_index_source"] = source
+            fixture_id = match.get("id")
+            if fixture_id not in (None, ""):
+                _RAPIDAPI_EVENT_INDEX[f"{match.get('_tour')}:fixture:{fixture_id}"] = record
+            p1 = match.get("player1") or {}
+            p2 = match.get("player2") or {}
+            pid1 = match.get("player1Id", p1.get("id"))
+            pid2 = match.get("player2Id", p2.get("id"))
+            tid = match.get("tournamentId") or match.get("tournament_id")
+            rid = match.get("roundId") or match.get("round_id")
+            tour = str(match.get("_tour") or "").casefold()
+            for key in (_event_match_key(pid1, pid2, tid, rid), _event_match_key(pid2, pid1, tid, rid)):
+                if key:
+                    _RAPIDAPI_EVENT_INDEX[f"{tour}:{key}"] = record
+            # O vínculo foi validado com o mesmo contrato usado pelo pricing.
+            # Guardá-lo permite que reruns futuros evitem nova procura.
+            _persist_event_record(match, record)
+            return True
+        return False
+
+    indexed = 0
+    for tour in sorted({str(item.get("_tour") or "").casefold() for item in matches} & {"atp", "wta"}):
+        upcoming_candidates = [
+            item for item in (_ALL_UPCOMING_EVENTS_CACHE or [])
+            # O feed consolidado é pedido como ``all`` e, em algumas
+            # respostas, não identifica o circuito em cada row. A validação
+            # bilateral abaixo continua a impedir cruzamentos ATP/WTA.
+            if str(item.get("_tour") or "all").casefold() in {tour, "all"}
+        ]
+        tour_matches = [item for item in matches if str(item.get("_tour") or "").casefold() == tour]
+        unresolved = []
+        for match in tour_matches:
+            if _index_match(
+                match, upcoming_candidates, "embedded_upcoming",
+                require_explicit_event_id=True,
+            ):
+                indexed += 1
+            else:
+                unresolved.append(match)
+
+        # Só existe custo adicional de índice Extend quando o feed já pago da
+        # descoberta não contém uma ponte eventId verificável.
+        if unresolved:
+            extend_candidates = _fetch_extend_event_bridge_records(tour)
+            for match in unresolved:
+                if _index_match(
+                    match, extend_candidates, "extend_upcoming",
+                    require_explicit_event_id=False,
+                ):
+                    indexed += 1
+    _RAPIDAPI_EVENT_INDEX_READY.add(bridge_marker)
+    print(f"[info] RapidAPI event bridge: {indexed}/{len(matches)} fixture(s) com eventId verificado.")
 
 
 def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
@@ -523,8 +1219,19 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
             if key:
                 registo = {
                     "n1": n1, "n2": n2, "o1": oa, "o2": ob,
+                    # Os IDs deste mesmo feed são uma prova de identidade
+                    # mais forte do que a grafia exibida do nome. Guardamo-los
+                    # para não perder uma quote válida só porque o fornecedor
+                    # encurtou, inverteu ou transliterou um nome.
+                    "p1_id": p1.get("id") or p1.get("playerId"),
+                    "p2_id": p2.get("id") or p2.get("playerId"),
+                    # Este ID é do mesmo registo que contém os dois jogadores
+                    # e as duas odds. É necessário para um fallback operacional
+                    # auditável quando recent-odds fica indisponível.
+                    "event_id": event.get("eventId") or event.get("event_id") or event.get("id"),
                     "captured_at_utc": event.get("_odds_captured_at_utc"),
                     "endpoint": event.get("_odds_endpoint"),
+                    "raw_payload_sha256": event.get("_raw_payload_sha256"),
                 }
                 _RAPIDAPI_EMBEDDED_ODDS[f"*:{key}"] = registo
                 n_indexados += 1
@@ -546,6 +1253,7 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
             k = _odds_names_key(pa, pb)
             if k and f"*:{k}" not in _RAPIDAPI_EMBEDDED_ODDS:
                 print(f"[diag] sem odds: {pa} vs {pb} (chave {k})")
+        _prepare_rapidapi_event_bridge(matches)
     return
 
     # (código antigo por tour — já não usado, mantido comentado abaixo)
@@ -631,6 +1339,9 @@ def _the_odds_sport_keys_for_match(match: dict) -> list[str]:
 
 def prepare_the_odds_market_index(matches: list[dict]) -> None:
     """Carrega uma vez por execução as Moneylines atuais da The Odds API."""
+    if not THE_ODDS_API_ENABLED:
+        print("[odds] The Odds API desativada por defeito (THE_ODDS_API_ENABLED=0).")
+        return
     if not ODDS_API_KEY:
         print("[odds] The Odds API indisponível: ODDS_API_KEY ausente.")
         return
@@ -684,6 +1395,8 @@ def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
     A idade é avaliada no mercado quando disponível (schema atual da API) e
     no bookmaker apenas para compatibilidade com respostas mais antigas.
     """
+    if not THE_ODDS_API_ENABLED:
+        return None, None
     event = _the_odds_event_for_match(match)
     if not event:
         return None, None
@@ -712,30 +1425,50 @@ def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
         if set(outcome_map) != {player_a, player_b}:
             continue
         overround = (1 / outcome_map[player_a]) + (1 / outcome_map[player_b]) - 1
-        candidates.append((age, overround, str(bookmaker.get("title") or bookmaker.get("key") or "N/D"), outcome_map, captured))
+        candidates.append((
+            age, overround,
+            str(bookmaker.get("title") or bookmaker.get("key") or "N/D"),
+            outcome_map, captured,
+        ))
     if not candidates:
         return None, None
     age, _overround, bookmaker, odds, captured = min(candidates, key=lambda item: (item[0], item[1], item[2]))
+    captured_at_utc = _odds_capture_timestamp()
+    raw_hash = payload_sha256(event)
     return odds, {
         "source": "The Odds API / bookmaker market",
         "endpoint": f"{ODDS_API_BASE}/sports/.../odds",
         "event_id": event.get("id"),
-        "captured_at_utc": _odds_capture_timestamp(),
+        "captured_at_utc": captured_at_utc,
         "capture_kind": "provider_last_update_verified",
         "provider_timestamp": captured,
         "bookmaker": bookmaker,
         "from_cache": False,
         "cache_age_seconds": age,
+        "freshness_status": "FRESH",
+        "identity_mapping_status": "VERIFIED",
+        "raw_payload_sha256": raw_hash,
+        "market_quotes": [
+            {
+                "bookmaker": item_bookmaker,
+                "odds": dict(item_odds),
+                "provider_timestamp": item_captured,
+                "provider_timestamp_status": "AVAILABLE",
+                "freshness_status": "FRESH",
+                "identity_mapping_status": "VERIFIED",
+                "raw_payload_sha256": raw_hash,
+            }
+            for item_age, _item_overround, item_bookmaker, item_odds, item_captured in candidates
+        ],
     }
 
 
 def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
-    """Obtém o par do feed ``upcoming`` observado nesta execução.
+    """Obtém o par observation-only do feed ``upcoming`` nesta execução.
 
     A indexação do feed usa apelidos para tolerar a variação de formatos das
-    fontes. Antes de devolver uma cotação para pricing, porém, a identidade é
-    novamente confirmada pelos dois nomes completos normalizados. Isto impede
-    que dois jogadores com o mesmo apelido partilhem acidentalmente uma odd.
+    fontes. A identidade continua a ser confirmada para observabilidade, mas
+    esta fonte não tem bookmaker nem quote timestamp e nunca é operacional.
     """
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
@@ -748,12 +1481,36 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     if not isinstance(embedded, dict):
         return None, None
 
-    source_names = {
-        _normalize_name(embedded.get("n1")),
-        _normalize_name(embedded.get("n2")),
-    }
-    expected_names = {_normalize_name(player_a), _normalize_name(player_b)}
-    if "" in source_names or source_names != expected_names:
+    # A chave por apelido apenas encontra uma candidata. A autorização para
+    # usar a quote requer ambos os jogadores e a sua orientação verificados.
+    # IDs do próprio feed, quando existem, prevalecem sobre a grafia: são
+    # imunes a abreviações/transliterações e continuam a rejeitar homónimos.
+    fixture_a_id = (match.get("player1Id")
+                    or (match.get("player1") or {}).get("id"))
+    fixture_b_id = (match.get("player2Id")
+                    or (match.get("player2") or {}).get("id"))
+    provider_a_id = embedded.get("p1_id")
+    provider_b_id = embedded.get("p2_id")
+    id_orientation = _rapidapi_pair_orientation_by_ids(
+        fixture_a_id, fixture_b_id, provider_a_id, provider_b_id,
+    )
+    ids_are_complete = all(value not in (None, "") for value in (
+        fixture_a_id, fixture_b_id, provider_a_id, provider_b_id,
+    ))
+    name_orientation = _rapidapi_pair_orientation(
+        player_a, player_b, embedded.get("n1"), embedded.get("n2"),
+    )
+    if id_orientation:
+        orientation = id_orientation
+        identity_mapping_status = "VERIFIED_PROVIDER_PLAYER_IDS"
+    elif ids_are_complete:
+        # Ambos os lados declararam IDs mas não correspondem: não deixar que
+        # um apelido igual converta uma quote de outro encontro em pricing.
+        return None, None
+    else:
+        orientation = name_orientation
+        identity_mapping_status = "VERIFIED_PROVIDER_NAMES"
+    if not orientation:
         return None, None
     try:
         odd_1 = float(embedded.get("o1"))
@@ -763,23 +1520,124 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     if odd_1 <= 1 or odd_2 <= 1:
         return None, None
 
-    if _normalize_name(player_a) == _normalize_name(embedded["n1"]):
+    if orientation == "direct":
         odds = {player_a: odd_1, player_b: odd_2}
     else:
         odds = {player_a: odd_2, player_b: odd_1}
     provenance = {
         "source": "RapidAPI Tennis API / embedded upcoming feed",
         "endpoint": embedded.get("endpoint") or "N/D",
-        "event_id": None,
+        "event_id": embedded.get("event_id"),
         "captured_at_utc": embedded.get("captured_at_utc"),
         "capture_kind": "feed_observed_at_capture",
         "provider_timestamp": None,
         "bookmaker": None,
         "from_cache": True,
         "cache_age_seconds": _odds_cache_age_seconds(embedded.get("captured_at_utc")),
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME",
+        "identity_mapping_status": identity_mapping_status,
+        "raw_payload_sha256": embedded.get("raw_payload_sha256"),
+        "provider_side_a": "player1" if orientation == "direct" else "player2",
+        "provider_side_b": "player2" if orientation == "direct" else "player1",
+        "market_integrity_status": "OBSERVATION_ONLY",
+        "market_integrity_reason_codes": ["EMBEDDED_OBSERVATION_ONLY"],
+        "operational_pricing_eligible": False,
     }
     print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
     return odds, provenance
+
+
+def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
+    match: dict,
+) -> tuple[Optional[dict], Optional[dict]]:
+    """Obtém a Moneyline pré-live incluída no feed regular RapidAPI.
+
+    O plano PRO expõe a Moneyline pré-jogo no feed ``upcoming``. Esta função
+    só a torna operacional quando o próprio registo do feed contém os dois
+    jogadores, a orientação validada e um ``eventId``. Não atribui bookmaker
+    nem a apresenta como comparação de casas.
+    """
+    odds, source = fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    source = source or {}
+    if not odds or not source.get("event_id"):
+        return None, None
+    identity_status = str(source.get("identity_mapping_status") or "").upper()
+    if identity_status not in {"VERIFIED_PROVIDER_PLAYER_IDS", "VERIFIED_PROVIDER_NAMES"}:
+        return None, None
+
+    player_a = str((match.get("player1") or {}).get("name") or "").strip()
+    player_b = str((match.get("player2") or {}).get("name") or "").strip()
+    if not player_a or not player_b or set(odds) != {player_a, player_b}:
+        return None, None
+
+    # O feed não atribui bookmaker. A etiqueta identifica a origem sem fingir
+    # que é uma casa específica; o relatório mantém essa limitação explícita.
+    feed_label = "N/D — RapidAPI pre-match feed"
+    gate = market_integrity.evaluate_moneyline_market([{
+        # A gate exige uma etiqueta para validar estruturalmente uma quote.
+        # Esta nunca é exposta como bookmaker: a provenance abaixo guarda-o
+        # como ausente e assinala explicitamente a limitação do fornecedor.
+        "bookmaker": feed_label,
+        "odd_a": odds.get(player_a),
+        "odd_b": odds.get(player_b),
+        "provider_timestamp": None,
+    }])
+    selected = gate.get("selected")
+    if not isinstance(selected, dict):
+        return None, None
+
+    captured_at_utc = source.get("captured_at_utc") or _odds_capture_timestamp()
+    integrity = {
+        key: gate.get(key)
+        for key in (
+            "policy_version", "status", "reason_code", "candidate_count",
+            "valid_candidate_count", "coherent_bookmaker_count",
+            "minimum_operational_bookmakers", "median_devig_probability_a",
+            "dispersion_pp", "pricing_basis",
+        )
+    }
+    integrity["pricing_basis"] = "verified_provider_pre_match_feed"
+    promoted = dict(source)
+    promoted.update({
+        "source": "RapidAPI Tennis API / pre-match match-winner feed",
+        "capture_kind": "feed_observed_at_capture",
+        "provider_timestamp": None,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "bookmaker": None,
+        "from_cache": False,
+        "cache_age_seconds": 0,
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        "identity_mapping_status": identity_status,
+        "availability_status": "AVAILABLE",
+        "unavailable_reason": None,
+        "bookmaker_attribution": "NOT_EXPOSED_BY_PROVIDER_FEED",
+        "market_integrity": integrity,
+        "market_quotes": [{
+            "bookmaker": feed_label,
+            "odds": {player_a: float(selected["odd_a"]), player_b: float(selected["odd_b"])},
+            "provider_timestamp": None,
+            "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "identity_mapping_status": identity_status,
+            "raw_payload_sha256": source.get("raw_payload_sha256"),
+            "market_integrity_status": selected.get("integrity_status"),
+            "market_integrity_reason_codes": [],
+            "operational_pricing_eligible": True,
+        }],
+        "operational_pricing_eligible": True,
+    })
+    promoted.update(market_integrity.operational_contract_metadata(captured_at_utc))
+    promoted["operational_pricing_eligible"] = (
+        market_integrity.is_operational_pricing_provenance(promoted)
+    )
+    if not promoted["operational_pricing_eligible"]:
+        return None, None
+    register_pending_market_check(match, promoted, available=True)
+    print(
+        f"[odds] {player_a} vs {player_b} | RapidAPI pre-match match-winner "
+        f"observado | {odds}"
+    )
+    return dict(odds), promoted
 
 
 def record_market_odds_observation(match: dict, odds: Optional[dict], provenance: Optional[dict]) -> Optional[dict]:
@@ -861,7 +1719,12 @@ def _event_start(value: object) -> Optional[datetime]:
         return None
 
 
-def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
+def _validated_event_record(
+    payload: object,
+    match: dict,
+    *,
+    require_explicit_event_id: bool = False,
+) -> Optional[dict]:
     """Extrai só um evento cuja identidade e estado possam ser comprovados.
 
     ``recent-odds`` não traz participantes. Portanto nunca podemos usar as
@@ -870,7 +1733,6 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
     """
     expected_a = str((match.get("player1") or {}).get("name") or "").strip()
     expected_b = str((match.get("player2") or {}).get("name") or "").strip()
-    expected_names = _event_names_key(expected_a, expected_b)
     try:
         fixture_start = datetime.fromisoformat(str(match.get("date") or "").replace("Z", "+00:00"))
         fixture_start = fixture_start.replace(tzinfo=timezone.utc) if fixture_start.tzinfo is None else fixture_start.astimezone(timezone.utc)
@@ -879,12 +1741,26 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
 
     rejected = None
     for node in _iter_event_dicts(payload):
-        event_id = node.get("eventId") or node.get("event_id") or node.get("id")
-        first = _event_person_name(node.get("participant1") or node.get("player1") or node.get("home"))
-        second = _event_person_name(node.get("participant2") or node.get("player2") or node.get("away"))
-        if event_id in (None, "") or not first or not second:
+        event_id = node.get("eventId") or node.get("event_id")
+        if event_id in (None, "") and not require_explicit_event_id:
+            event_id = node.get("id")
+        left = node.get("participant1") or node.get("player1") or node.get("home")
+        right = node.get("participant2") or node.get("player2") or node.get("away")
+        first = _event_person_name(left)
+        second = _event_person_name(right)
+        if event_id in (None, ""):
             continue
-        if _event_names_key(first, second) != expected_names:
+        id_orientation = _event_player_id_orientation(node, match)
+        # IDs completos conhecidos têm prioridade absoluta: um conflito de ID
+        # não pode ser "corrigido" pela semelhança dos nomes apresentados.
+        if id_orientation == "mismatch":
+            continue
+        orientation = id_orientation
+        if not orientation and first and second:
+            orientation = _rapidapi_pair_orientation(
+                expected_a, expected_b, first, second,
+            )
+        if not orientation:
             continue
         status = next((node.get(key) for key in ("status", "state", "matchStatus", "match_status") if node.get(key) is not None), None)
         if status is not None and str(status).strip().casefold() in _EVENT_NON_PRELIVE_STATUSES:
@@ -894,16 +1770,75 @@ def _validated_event_record(payload: object, match: dict) -> Optional[dict]:
             rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": "live"}
             continue
         event_start = _event_start(next((node.get(key) for key in ("startTimestamp", "start_time", "startTime", "date", "commence_time") if node.get(key) is not None), None))
-        if event_start and event_start <= datetime.now(timezone.utc):
-            rejected = {"valid": False, "reason": "event_start_in_past", "event_id": str(event_id), "event_start": event_start.isoformat()}
-            continue
+        # Uma hora agendada já ultrapassada não é prova de início: o jogo
+        # pode estar atrasado. Só estado/live/score autoriza exclusão.
         if fixture_start and event_start and abs((event_start - fixture_start).total_seconds()) > 36 * 3600:
             rejected = {"valid": False, "reason": "event_time_mismatch", "event_id": str(event_id), "event_start": event_start.isoformat()}
             continue
         return {
-            "valid": True, "event_id": str(event_id), "participant1": first,
-            "participant2": second, "event_status": str(status or "scheduled"),
+            "valid": True, "event_id": str(event_id),
+            "participant1": expected_a if orientation == "direct" else expected_b,
+            "participant2": expected_b if orientation == "direct" else expected_a,
+            "event_status": str(status or "scheduled"),
             "event_start": event_start.isoformat() if event_start else None,
+            "identity_source": (
+                "verified_player_ids" if id_orientation else "verified_exact_names"
+            ),
+            "event_identity_validation_basis": (
+                "PLAYER_IDS" if id_orientation else "EXACT_NAMES"
+            ),
+        }
+    return rejected
+
+
+def _validated_event_record_by_match_id(
+    payload: object,
+    match: dict,
+    *,
+    require_explicit_event_id: bool = False,
+) -> Optional[dict]:
+    """Valida um evento pré-live pelo matchId, mantendo a ordem das odds.
+
+    É um fallback estrito para o feed Extend: útil apenas quando os nomes
+    exibidos pelo fornecedor são abreviados. A igualdade do matchId inclui os
+    IDs dos dois jogadores, torneio e (quando fornecido) ronda.
+    """
+    expected_a = str((match.get("player1") or {}).get("name") or "").strip()
+    expected_b = str((match.get("player2") or {}).get("name") or "").strip()
+    fixture_start = _fixture_start_utc(match)
+    rejected = None
+    for node in _iter_event_dicts(payload):
+        orientation = _event_match_id_orientation(node, match)
+        if not orientation:
+            continue
+        event_id = node.get("eventId") or node.get("event_id")
+        if event_id in (None, "") and not require_explicit_event_id:
+            event_id = node.get("id")
+        if event_id in (None, ""):
+            continue
+        status = next((node.get(key) for key in ("status", "state", "matchStatus", "match_status") if node.get(key) is not None), None)
+        if status is not None and str(status).strip().casefold() in _EVENT_NON_PRELIVE_STATUSES:
+            rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": str(status)}
+            continue
+        if node.get("live") not in (None, False, 0, "0", "false", "False", ""):
+            rejected = {"valid": False, "reason": "event_not_prelive", "event_id": str(event_id), "event_status": "live"}
+            continue
+        event_start = _event_start(next((node.get(key) for key in ("startTimestamp", "start_time", "startTime", "date", "commence_time") if node.get(key) is not None), None))
+        if fixture_start and event_start and abs((event_start - fixture_start).total_seconds()) > 36 * 3600:
+            rejected = {"valid": False, "reason": "event_time_mismatch", "event_id": str(event_id), "event_start": event_start.isoformat()}
+            continue
+        first, second = (expected_a, expected_b) if orientation == "direct" else (expected_b, expected_a)
+        return {
+            "valid": True, "event_id": str(event_id),
+            "participant1": expected_a if orientation == "direct" else expected_b,
+            "participant2": expected_b if orientation == "direct" else expected_a,
+            "event_status": str(status or "scheduled"),
+            "event_start": event_start.isoformat() if event_start else None,
+            "identity_source": "verified_match_id",
+            # `_event_match_id_orientation` accepts only the deterministic
+            # provider matchId composed from both player IDs, tournament and,
+            # when present, round. This is structural, not textual, evidence.
+            "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
         }
     return rejected
 
@@ -923,6 +1858,71 @@ def rapidapi_event_integrity(match: dict) -> dict:
     return {"status": "unknown", "reason": "event_identity_unavailable"}
 
 
+def _event_diagnostic_key(match: dict) -> str:
+    player_a = str((match.get("player1") or {}).get("name") or "").strip()
+    player_b = str((match.get("player2") or {}).get("name") or "").strip()
+    return str(match.get("id") or f"{player_a}|{player_b}|{str(match.get('date') or '')[:10]}")
+
+
+def _record_event_identity_diagnostic(match: dict, **values) -> None:
+    key = _event_diagnostic_key(match)
+    player_a = str((match.get("player1") or {}).get("name") or "").strip()
+    player_b = str((match.get("player2") or {}).get("name") or "").strip()
+    current = _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS.setdefault(key, {
+        "match_key": key,
+        "tour": str(match.get("_tour") or "unknown").casefold(),
+        "players": [player_a, player_b],
+        "lookup_attempts": 0,
+        "identity_api_calls": 0,
+    })
+    current.update({name: value for name, value in values.items() if value is not None})
+
+
+def _rapidapi_fallback_name_variants(name: object) -> list[tuple[str, str]]:
+    """Variantes completas auditadas; nunca iniciais geradas combinatoriamente."""
+    value = str(name or "").strip()
+    if not value:
+        return []
+    normalized = _normalize_name(value)
+    aliases = {
+        "cori gauff": "Coco Gauff",
+        "coco gauff": "Cori Gauff",
+    }
+    result = [(value, "fixture_exact")]
+    if normalized in aliases:
+        result.append((aliases[normalized], "audited_alias"))
+    return result
+
+
+def _rapidapi_event_fallback_attempts(
+    player_a: str, player_b: str, start: datetime,
+) -> list[tuple[str, str, str, str]]:
+    """Plano pequeno, ordenado e determinístico para ``event/get``."""
+    a_variants = _rapidapi_fallback_name_variants(player_a)
+    b_variants = _rapidapi_fallback_name_variants(player_b)
+    if not a_variants or not b_variants:
+        return []
+    base_date = start.date().isoformat()
+    candidates: list[tuple[str, str, str, str]] = [
+        (a_variants[0][0], b_variants[0][0], base_date, "fixture_exact_direct"),
+        (b_variants[0][0], a_variants[0][0], base_date, "fixture_exact_reverse"),
+    ]
+    alias_a = a_variants[-1][0]
+    alias_b = b_variants[-1][0]
+    if (alias_a, alias_b) != (a_variants[0][0], b_variants[0][0]):
+        candidates.extend((
+            (alias_a, alias_b, base_date, "audited_alias_direct"),
+            (alias_b, alias_a, base_date, "audited_alias_reverse"),
+        ))
+    for offset in (-1, 1):
+        date_only = (start + timedelta(days=offset)).date().isoformat()
+        candidates.extend((
+            (a_variants[0][0], b_variants[0][0], date_only, f"fixture_date_{offset:+d}_direct"),
+            (b_variants[0][0], a_variants[0][0], date_only, f"fixture_date_{offset:+d}_reverse"),
+        ))
+    return list(dict.fromkeys(candidates))[:RAPIDAPI_EVENT_FALLBACK_MAX_ATTEMPTS]
+
+
 def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
     """Resolve o identificador Extend usado pelos endpoints de odds.
 
@@ -939,6 +1939,9 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
     tid = match.get("tournamentId") or match.get("tournament_id")
     rid = match.get("roundId") or match.get("round_id")
 
+    index_keys = []
+    if match.get("id") not in (None, ""):
+        index_keys.append(f"{tour}:fixture:{match['id']}")
     for key in (
         _event_match_key(pid1, pid2, tid, rid),
         _event_match_key(pid2, pid1, tid, rid),
@@ -946,11 +1949,29 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
         _event_match_key(pid2, pid1, tid),
     ):
         if key:
-            event_id = _RAPIDAPI_EVENT_INDEX.get(f"{tour}:{key}")
-            if event_id:
-                # Índices legados não guardam participantes/estado; não podem
-                # autorizar pricing sem a verificação do endpoint event/get.
-                break
+            index_keys.append(f"{tour}:{key}")
+    for index_key in index_keys:
+        indexed = _RAPIDAPI_EVENT_INDEX.get(index_key)
+        if isinstance(indexed, dict) and indexed.get("valid"):
+            # O registo foi validado contra esta fixture no mesmo run; a
+            # ordem dos participantes permite mapear od1/od2 sem inferência.
+            _record_event_identity_diagnostic(
+                match,
+                availability_status="VERIFIED",
+                identity_source=(
+                    f"{indexed.get('identity_index_source')}:{indexed.get('identity_source')}"
+                    if indexed.get("identity_index_source") else
+                    indexed.get("identity_source") or "verified_run_index"
+                ),
+                resolution_path="index",
+                index_source=indexed.get("identity_index_source") or "verified_run_index",
+                event_identity_validation_basis=indexed.get(
+                    "event_identity_validation_basis"
+                ),
+                cache_status="NOT_APPLICABLE",
+                unavailable_reason=None,
+            )
+            return dict(indexed)
 
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
@@ -963,26 +1984,94 @@ def _rapidapi_event_record_for_match(match: dict) -> Optional[dict]:
     if not player_a or not player_b:
         return None
 
-    cache_key = str(match.get("id") or f"{player_a}|{player_b}|{start.date().isoformat()}")
+    cache_key = _event_diagnostic_key(match)
     if cache_key in _RAPIDAPI_EVENT_LOOKUP_CACHE:
-        return _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key]
+        cached = _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key]
+        if cache_key not in _RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS:
+            _record_event_identity_diagnostic(
+                match,
+                availability_status="VERIFIED" if cached and cached.get("valid") else "UNAVAILABLE",
+                identity_source="in_run_cache",
+                resolution_path="in_run_cache",
+                cache_status="HIT",
+                event_identity_validation_basis=(cached or {}).get(
+                    "event_identity_validation_basis"
+                ),
+                unavailable_reason=(cached or {}).get("reason") if cached else "event_identity_unavailable",
+            )
+        return cached
 
-    for offset in (0, -1, 1):
-        date_only = (start + timedelta(days=offset)).date().isoformat()
-        for left, right in ((player_a, player_b), (player_b, player_a)):
-            url = f"{RAPIDAPI_EXTEND_BASE}/event/get/{quote(left, safe='')}/{quote(right, safe='')}/{date_only}"
-            try:
-                response = _rapidapi_get(url)
-                if response.status_code != 200:
-                    continue
-                record = _validated_event_record(response.json() or {}, match)
-                if record:
-                    _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = record
-                    return record
-            except (requests.RequestException, ValueError, RapidAPIBudgetExceeded):
+    persisted = _cached_event_record_for_match(match)
+    if persisted:
+        _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = persisted
+        _record_event_identity_diagnostic(
+            match,
+            availability_status="VERIFIED" if persisted.get("valid") else "REJECTED",
+            unavailable_reason=persisted.get("reason"),
+            identity_source=persisted.get("identity_cache"),
+            resolution_path="persistent_cache",
+            cache_status="HIT",
+            event_identity_validation_basis=persisted.get(
+                "event_identity_validation_basis"
+            ),
+        )
+        return persisted
+
+    attempts = _rapidapi_event_fallback_attempts(player_a, player_b, start)
+    _record_event_identity_diagnostic(
+        match, cache_status="MISS", resolution_path="fallback_after_miss",
+    )
+    last_failure = "event_identity_unavailable"
+    rejected_record: Optional[dict] = None
+    attempted_methods: list[str] = []
+    calls_before = get_rapidapi_call_count()
+    for left, right, date_only, method in attempts:
+        attempted_methods.append(method)
+        url = f"{RAPIDAPI_EXTEND_BASE}/event/get/{quote(left, safe='')}/{quote(right, safe='')}/{date_only}"
+        try:
+            response = _rapidapi_get(url)
+            if response.status_code != 200:
+                last_failure = f"event_lookup_http_{response.status_code}"
                 continue
-    _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = None
-    return None
+            record = _validated_event_record(response.json() or {}, match)
+            if record:
+                if not record.get("valid"):
+                    rejected_record = record
+                    last_failure = str(record.get("reason") or "event_not_prelive")
+                    continue
+                record = dict(record)
+                record["identity_source"] = f"bounded_event_get:{method}"
+                _record_event_identity_diagnostic(
+                    match,
+                    availability_status="VERIFIED",
+                    identity_source=record["identity_source"],
+                    event_identity_validation_basis=record.get(
+                        "event_identity_validation_basis"
+                    ),
+                    lookup_attempts=len(attempted_methods),
+                    identity_api_calls=get_rapidapi_call_count() - calls_before,
+                    attempted_methods=list(attempted_methods),
+                )
+                _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = record
+                _persist_event_record(match, record)
+                return record
+            last_failure = "event_identity_not_in_response"
+        except RapidAPIBudgetExceeded:
+            last_failure = "event_lookup_budget_exceeded"
+            break
+        except (requests.RequestException, ValueError):
+            last_failure = "event_lookup_request_failed"
+    _RAPIDAPI_EVENT_LOOKUP_CACHE[cache_key] = rejected_record
+    _record_event_identity_diagnostic(
+        match,
+        availability_status="REJECTED" if rejected_record else "UNAVAILABLE",
+        unavailable_reason=last_failure,
+        identity_source="bounded_event_get",
+        lookup_attempts=len(attempted_methods),
+        identity_api_calls=get_rapidapi_call_count() - calls_before,
+        attempted_methods=list(attempted_methods),
+    )
+    return rejected_record
 
 
 def _rapidapi_event_id_for_match(match: dict) -> Optional[str]:
@@ -1005,7 +2094,28 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     event = _rapidapi_event_record_for_match(match)
     event_id = str(event.get("event_id")) if event and event.get("valid") and event.get("event_id") else None
     if not event_id or not player_a or not player_b:
-        return None, None
+        cache_key = _event_diagnostic_key(match)
+        diagnostic = dict(_RAPIDAPI_EVENT_LOOKUP_DIAGNOSTICS.get(cache_key) or {})
+        diagnostic.setdefault("availability_status", "UNAVAILABLE")
+        diagnostic.setdefault(
+            "unavailable_reason",
+            str((event or {}).get("reason") or "event_identity_unavailable"),
+        )
+        diagnostic.update({
+            "source": "RapidAPI Tennis API / event lookup",
+            "endpoint": "event/get/{participant1}/{participant2}/{date}",
+            "event_id": None,
+            "bookmaker": None,
+            "from_cache": diagnostic.get("cache_status") == "HIT",
+            "operational_pricing_eligible": False,
+        })
+        diagnostic.update(market_integrity.operational_contract_metadata())
+        print(
+            f"[aviso] odds operacionais indisponíveis para {player_a} vs {player_b}: "
+            f"{diagnostic['unavailable_reason']}."
+        )
+        register_pending_market_check(match, diagnostic, available=False)
+        return None, diagnostic
     if event_id in _RAPIDAPI_FRESH_ODDS_CACHE:
         cached = _RAPIDAPI_FRESH_ODDS_CACHE[event_id]
         if not cached:
@@ -1013,70 +2123,200 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         provenance = dict(cached["provenance"])
         provenance["from_cache"] = True
         provenance["cache_age_seconds"] = _odds_cache_age_seconds(provenance.get("captured_at_utc"))
-        return dict(cached["odds"]), provenance
+        cached_odds = cached.get("odds")
+        return dict(cached_odds) if isinstance(cached_odds, dict) else None, provenance
 
     url = f"{RAPIDAPI_EXTEND_BASE}/event/recent-odds/get/{event_id}"
     try:
         response = _rapidapi_get(url)
         response.raise_for_status()
-        market = ((response.json() or {}).get("result") or {}).get("Full Time Result") or {}
+        response_payload = response.json() or {}
+        market = (response_payload.get("result") or {}).get("Full Time Result") or {}
     except (requests.RequestException, ValueError, RapidAPIBudgetExceeded) as exc:
         print(f"[aviso] odds frescas RapidAPI indisponíveis para {player_a} vs {player_b}: {exc}")
         _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, None
+        provenance = {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "event_identity_source": event.get("identity_source"),
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
+            "bookmaker": None,
+            "from_cache": False,
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": "recent_odds_request_failed",
+            "operational_pricing_eligible": False,
+        }
+        provenance.update(market_integrity.operational_contract_metadata())
+        register_pending_market_check(match, provenance, available=False)
+        return None, provenance
+
+    # Normaliza todos os candidatos para a ordem local A/B antes do gate.
+    # Assim, a mediana e as probabilidades de-vig auditadas referem-se sempre
+    # ao ``player_a`` do snapshot, mesmo quando o provider lista esse jogador
+    # como participant2.
+    if _normalize_name(event.get("participant1")) == _normalize_name(player_a):
+        participant1_is_a = True
+    elif _normalize_name(event.get("participant1")) == _normalize_name(player_b):
+        participant1_is_a = False
+    else:  # defesa adicional: não há mapeamento seguro, logo não há pricing
+        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
+        provenance = {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "event_identity_source": event.get("identity_source"),
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
+            "bookmaker": None,
+            "from_cache": False,
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": "event_participant_mapping_unavailable",
+            "operational_pricing_eligible": False,
+        }
+        provenance.update(market_integrity.operational_contract_metadata())
+        register_pending_market_check(match, provenance, available=False)
+        return None, provenance
 
     candidates = []
     for bookmaker, quote_data in market.items():
         if not isinstance(quote_data, dict):
             continue
         try:
-            odd_a, odd_b = float(quote_data.get("od1")), float(quote_data.get("od2"))
-        except (TypeError, ValueError):
-            continue
-        if odd_a <= 1 or odd_b <= 1:
-            continue
-        try:
             provider_at = datetime.fromtimestamp(float(quote_data.get("addTime")), tz=timezone.utc)
         except (TypeError, ValueError, OverflowError, OSError):
             provider_at = None
-        overround = (1 / odd_a) + (1 / odd_b) - 1
-        candidates.append((overround, str(bookmaker), odd_a, odd_b, provider_at))
+        candidates.append({
+            "bookmaker": str(bookmaker),
+            "odd_a": quote_data.get("od1") if participant1_is_a else quote_data.get("od2"),
+            "odd_b": quote_data.get("od2") if participant1_is_a else quote_data.get("od1"),
+            "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
+        })
 
-    if not candidates:
-        print(f"[aviso] sem par Moneyline recente e identificável para {player_a} vs {player_b}.")
-        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, None
+    gate = market_integrity.evaluate_moneyline_market(candidates)
+    selected = gate.get("selected")
+    captured_at_utc = _odds_capture_timestamp()
+    raw_hash = payload_sha256(response_payload)
 
-    _overround, bookmaker, odd_a, odd_b, provider_at = min(candidates, key=lambda item: (item[0], item[1]))
-    # ``od1``/``od2`` pertencem explicitamente à ordem confirmada pelo
-    # event/get; nunca à ordem arbitrária do fixture do nosso pipeline.
-    if _normalize_name(event.get("participant1")) == _normalize_name(player_a):
-        odds = {player_a: odd_a, player_b: odd_b}
-    elif _normalize_name(event.get("participant1")) == _normalize_name(player_b):
-        odds = {player_a: odd_b, player_b: odd_a}
-    else:  # defesa adicional: não há mapeamento seguro, logo não há pricing
-        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = None
-        return None, None
+    def _mapped_quote(item):
+        quote_odds = {player_a: item["odd_a"], player_b: item["odd_b"]}
+        return {
+            "bookmaker": item.get("bookmaker"),
+            "odds": quote_odds,
+            "provider_timestamp": item.get("provider_timestamp"),
+            "provider_timestamp_status": "unreliable_for_freshness",
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "identity_mapping_status": "VERIFIED",
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
+            "provider_side_a": "od1" if participant1_is_a else "od2",
+            "provider_side_b": "od2" if participant1_is_a else "od1",
+            "raw_payload_sha256": raw_hash,
+            "market_integrity_status": item.get("integrity_status"),
+            "market_integrity_reason_codes": [item["reason_code"]] if item.get("reason_code") else [],
+            "operational_pricing_eligible": bool(item.get("operational_pricing_eligible")),
+        }
+
+    market_quotes = [_mapped_quote(item) for item in gate.get("valid_candidates") or []]
+    integrity_summary = {
+        key: gate.get(key)
+        for key in (
+            "policy_version", "status", "reason_code", "candidate_count",
+            "valid_candidate_count", "coherent_bookmaker_count",
+            "minimum_operational_bookmakers", "median_devig_probability_a", "dispersion_pp",
+            "pricing_basis",
+        )
+    }
+    integrity_summary["rejected_candidates"] = [
+        {key: item.get(key) for key in ("bookmaker", "odd_a", "odd_b", "reason_code")}
+        for item in gate.get("rejected_candidates") or []
+    ]
+
+    if not isinstance(selected, dict):
+        reason = str(gate.get("reason_code") or market_integrity.NO_VALID_MONEYLINE_CANDIDATE)
+        print(
+            f"[aviso] Moneyline operacional indisponível para {player_a} vs {player_b}: "
+            f"{reason}."
+        )
+        provenance = {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "endpoint": url,
+            "event_id": event_id,
+            "event_identity_source": event.get("identity_source"),
+            "event_identity_validation_basis": event.get(
+                "event_identity_validation_basis"
+            ),
+            "captured_at_utc": captured_at_utc,
+            "capture_kind": "rapidapi_response_observed_at_capture",
+            "provider_timestamp": None,
+            "provider_timestamp_status": "unreliable_for_freshness",
+            "bookmaker": None,
+            "from_cache": False,
+            "cache_age_seconds": 0,
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "identity_mapping_status": "VERIFIED",
+            "raw_payload_sha256": raw_hash,
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": reason,
+            "market_integrity": integrity_summary,
+            "market_quotes": market_quotes,
+            "operational_pricing_eligible": False,
+        }
+        provenance.update(market_integrity.operational_contract_metadata(captured_at_utc))
+        _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": None, "provenance": provenance}
+        register_pending_market_check(match, provenance, available=False)
+        return None, provenance
+
+    bookmaker = str(selected["bookmaker"])
+    odd_a, odd_b = float(selected["odd_a"]), float(selected["odd_b"])
+    provider_at = selected.get("provider_timestamp")
+    odds = {player_a: odd_a, player_b: odd_b}
+
     provenance = {
         "source": "RapidAPI Tennis API / recent-odds",
         "endpoint": url,
         "event_id": event_id,
-        "captured_at_utc": _odds_capture_timestamp(),
+        "event_identity_source": event.get("identity_source"),
+        "event_identity_validation_basis": event.get(
+            "event_identity_validation_basis"
+        ),
+        "captured_at_utc": captured_at_utc,
         "capture_kind": "rapidapi_response_observed_at_capture",
-        "provider_timestamp": provider_at.isoformat(timespec="seconds") if provider_at else None,
+        "provider_timestamp": provider_at,
         "provider_timestamp_status": "unreliable_for_freshness",
         "bookmaker": bookmaker,
         "from_cache": False,
         "cache_age_seconds": 0,
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        "identity_mapping_status": "VERIFIED",
+        "provider_side_a": "od1" if participant1_is_a else "od2",
+        "provider_side_b": "od2" if participant1_is_a else "od1",
+        "raw_payload_sha256": raw_hash,
+        "availability_status": "AVAILABLE",
+        "unavailable_reason": None,
+        "market_integrity": integrity_summary,
+        "market_quotes": market_quotes,
+        "operational_pricing_eligible": selected.get("operational_pricing_eligible") is True,
     }
+    provenance.update(market_integrity.operational_contract_metadata(captured_at_utc))
+    provenance["operational_pricing_eligible"] = (
+        market_integrity.is_operational_pricing_provenance(provenance)
+    )
     _RAPIDAPI_FRESH_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance}
+    register_pending_market_check(match, provenance, available=True)
     print(f"[odds] {player_a} vs {player_b} | RapidAPI recent-odds observado · {bookmaker} | {odds}")
     return odds, provenance
 
 
 def fetch_rapidapi_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
-    """
-    Obtém a Moneyline de um jogo pela RapidAPI. Estratégia robusta:
+    """Path legado non-operational preservado apenas para compatibilidade.
+
+    NÃO usar para pricing/PAPER. Este wrapper pode escolher lados de casas
+    diferentes e existe apenas para audit trail de consumidores antigos:
     1) ODDS EMBUTIDAS na lista upcoming (player.odd) — indexadas por apelidos.
        É a fonte principal: não depende de cruzar eventId (que falhava para
        alguns jogos) nem de uma segunda chamada.
@@ -1154,6 +2394,10 @@ def fetch_rapidapi_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
             "bookmaker": ({player_a: best_a_bookmaker, player_b: best_b_bookmaker} if odds else None),
             "from_cache": False,
             "cache_age_seconds": 0,
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "market_integrity_status": "NOT_EVALUATED_LEGACY",
+            "market_integrity_reason_codes": ["LEGACY_COMPOSITE_NON_OPERATIONAL"],
+            "operational_pricing_eligible": False,
         }
         _RAPIDAPI_ODDS_CACHE[event_id] = {"odds": odds, "provenance": provenance} if odds else None
         if odds:
@@ -1177,6 +2421,11 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
 # 2. Histórico / H2H / forma / piso (TennisMyLife, com fallback Sackmann)
 # --------------------------------------------------------------------- #
 _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
+# O histórico principal ATP privilegia TennisMyLife porque traz mais contexto
+# desportivo. Essa fonte não inclui, porém, as odds históricas necessárias à
+# comparação por faixa de Moneyline. Mantemos uma cache independente para essa
+# única leitura, em vez de trocar ou misturar o histórico usado pelo motor.
+_HISTORICAL_ODDS_HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 
 
 def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
@@ -1438,6 +2687,176 @@ def get_history(tour: str) -> pd.DataFrame:
     return df
 
 
+def get_historical_odds_history(tour: str) -> pd.DataFrame:
+    """Devolve o histórico com odds observadas para a leitura por faixa.
+
+    O TennisMyLife é a melhor fonte operacional para o histórico ATP, mas
+    não publica colunas de odds. O tennis-data.co.uk contém essas colunas para
+    ATP e WTA (B365/Avg/PS), incluindo os scores por set usados para calcular
+    a margem de games. Esta função é deliberadamente separada de
+    :func:`get_history`: as odds históricas enriquecem apenas o bloco
+    descritivo do relatório e nunca substituem os dados factuais do motor.
+    """
+    normalized_tour = str(tour or "").strip().lower()
+    if normalized_tour not in {"atp", "wta"}:
+        return pd.DataFrame()
+    if normalized_tour in _HISTORICAL_ODDS_HISTORY_CACHE:
+        return _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour]
+
+    df = _load_tennisdata_couk_multi_year(normalized_tour, HISTORY_YEARS_TO_LOAD)
+    if df is None:
+        df = pd.DataFrame()
+    print(
+        f"[info] histórico de odds {normalized_tour} carregado de: "
+        f"tennis-data.co.uk ({len(df)} linhas)"
+    )
+    _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour] = df
+    return df
+
+
+def _canonical_snapshot_key(snapshot: dict) -> str:
+    """Chave estável para não contar a mesma partida mais do que uma vez.
+
+    É o mesmo princípio usado pelo Excel ``Fenzobot_Historico_do_Sistema``:
+    uma partida é representada pelo primeiro snapshot pré-jogo, nunca pelas
+    várias versões do respetivo HTML.
+    """
+    canonical = str(snapshot.get("canonical_match_instance_id") or "").strip()
+    if canonical:
+        return canonical
+    players = []
+    for side in ("player_a", "player_b"):
+        person = snapshot.get(side) or {}
+        if isinstance(person, dict):
+            players.append(
+                _normalize_name(str(person.get("id") or person.get("name") or ""))
+            )
+    return "|".join((
+        str(snapshot.get("tour") or "").strip().casefold(),
+        str(snapshot.get("match_id") or snapshot.get("key") or "").strip(),
+        str(snapshot.get("commence_time_utc") or "")[:10],
+        ";".join(sorted(item for item in players if item)),
+    ))
+
+
+def _load_canonical_snapshot_odds(tour: str) -> list[dict]:
+    """Lê o mesmo arquivo local que alimenta o Excel histórico.
+
+    Não chama o Drive, não cria custo e não usa relatórios HTML. Os snapshots
+    já são artefactos persistidos do próprio Fenzobot; selecionamos a primeira
+    observação por partida de forma defensiva também aqui.
+    """
+    normalized = str(tour or "").strip().casefold()
+    if normalized in _CANONICAL_SNAPSHOT_ODDS_CACHE:
+        return _CANONICAL_SNAPSHOT_ODDS_CACHE[normalized]
+    try:
+        document = json.loads(_SYSTEM_HISTORY_SNAPSHOTS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        _CANONICAL_SNAPSHOT_ODDS_CACHE[normalized] = []
+        return []
+    raw = document.get("snapshots") if isinstance(document, dict) else []
+    selected: dict[str, dict] = {}
+    for candidate in raw if isinstance(raw, list) else []:
+        if not isinstance(candidate, dict):
+            continue
+        if str(candidate.get("tour") or "").strip().casefold() != normalized:
+            continue
+        outcome = candidate.get("outcome") or {}
+        odds = candidate.get("market_odds_decimal") or {}
+        if not isinstance(outcome, dict) or outcome.get("winner_side") not in {"a", "b"}:
+            continue
+        if not isinstance(odds, dict) or len(odds) < 2:
+            continue
+        key = _canonical_snapshot_key(candidate)
+        previous = selected.get(key)
+        if previous is None or str(candidate.get("analyzed_at_utc") or "9999") < str(previous.get("analyzed_at_utc") or "9999"):
+            selected[key] = candidate
+    result = list(selected.values())
+    _CANONICAL_SNAPSHOT_ODDS_CACHE[normalized] = result
+    return result
+
+
+def compute_canonical_snapshot_odds_context(
+    tour: str,
+    player: str,
+    current_odd: object,
+    current_start_utc: object,
+) -> Optional[dict]:
+    """Contexto de Moneyline do arquivo canónico que gera o Excel histórico.
+
+    É deliberadamente separado do histórico externo com scores completos:
+    responde apenas à pergunta factual de vitória por faixa de odd. O corte
+    temporal impede que uma partida posterior ao jogo em análise entre no
+    relatório; resultados/linhas de handicap não são inventados a partir dele.
+    """
+    try:
+        target_odd = float(current_odd)
+    except (TypeError, ValueError):
+        return None
+    if target_odd <= 1:
+        return None
+    try:
+        cutoff = pd.Timestamp(current_start_utc, tz="UTC")
+    except (TypeError, ValueError):
+        return None
+
+    bands = (
+        (1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50),
+        (1.51, 1.60), (1.61, 1.80), (1.81, 2.00), (2.01, 2.09),
+        (2.10, 2.30), (2.31, 2.60), (2.61, 3.00), (3.01, 3.50),
+        (3.51, 4.50), (4.51, 6.00), (6.01, 10.00),
+    )
+    exact_label = next(
+        (f"{low:.2f}-{high:.2f}" for low, high in bands if low <= target_odd <= high),
+        None,
+    )
+    target_name = _normalize_name(player)
+    rows: list[tuple[float, bool]] = []
+    for snapshot in _load_canonical_snapshot_odds(tour):
+        try:
+            start = pd.Timestamp(snapshot.get("commence_time_utc"), tz="UTC")
+        except (TypeError, ValueError):
+            continue
+        if start >= cutoff:
+            continue
+        players = (snapshot.get("player_a") or {}, snapshot.get("player_b") or {})
+        odds = snapshot.get("market_odds_decimal") or {}
+        winner_side = (snapshot.get("outcome") or {}).get("winner_side")
+        for index, person in enumerate(players):
+            if not isinstance(person, dict) or _normalize_name(person.get("name")) != target_name:
+                continue
+            name = person.get("name")
+            try:
+                observed_odd = float(odds.get(name))
+            except (TypeError, ValueError):
+                continue
+            if observed_odd <= 1:
+                continue
+            rows.append((observed_odd, winner_side == ("a" if index == 0 else "b")))
+
+    if not rows:
+        return None
+
+    def describe(values: list[tuple[float, bool]]) -> dict:
+        wins = sum(int(won) for _, won in values)
+        return {
+            "n": len(values), "wins": wins, "losses": len(values) - wins,
+            "win_rate_pct": round(100 * wins / len(values), 1) if values else None,
+        }
+
+    exact = []
+    if exact_label:
+        low, high = next((lo, hi) for lo, hi in bands if f"{lo:.2f}-{hi:.2f}" == exact_label)
+        exact = [(odd, won) for odd, won in rows if low <= odd <= high]
+    return {
+        "source": "Fenzobot · histórico canónico",
+        "rule": "primeiro snapshot pré-jogo por partida; apenas resultados anteriores ao jogo atual",
+        "exact_band": exact_label,
+        "exact": describe(exact) if exact else None,
+        "general": describe(rows),
+    }
+
+
 # --------------------------------------------------------------------- #
 # 2b. Correspondência de nomes com tolerância (acentos, maiúsculas, e
 #     pequenas variações de grafia entre o matchstat e o histórico)
@@ -1455,6 +2874,113 @@ def _normalize_name(name: str) -> str:
     # mais permissivo.
     clean = "".join(c if c.isalnum() else " " for c in ascii_name)
     return " ".join(clean.lower().split())
+
+
+def _rapidapi_event_identity_name(name: object) -> str:
+    """Chave determinística para formatos completo/inicial da RapidAPI.
+
+    A API alterna entre ``Nome Apelido``, ``N. Apelido`` e ``Apelido N.``.
+    Reduzimos todos para ``inicial:apelido-final``. Isto não é fuzzy matching:
+    ambos os jogadores do encontro têm de coincidir exatamente nesta chave,
+    além dos restantes controlos de identidade, tempo e estado.
+    """
+    normalized = _normalize_name(str(name or ""))
+    tokens = normalized.split()
+    if len(tokens) < 2:
+        return normalized
+    if len(tokens[-1]) == 1:
+        initial, surname = tokens[-1], tokens[-2]
+    else:
+        initial, surname = tokens[0][0], tokens[-1]
+    return f"{initial}:{surname}"
+
+
+_RAPIDAPI_EXACT_NAME_ALIASES = {
+    "cori gauff": "coco gauff",
+    "coco gauff": "coco gauff",
+}
+
+
+def _rapidapi_exact_name_key(name: object) -> str:
+    """Nome completo normalizado, com apenas aliases públicos auditados."""
+    normalized = _normalize_name(str(name or ""))
+    return _RAPIDAPI_EXACT_NAME_ALIASES.get(normalized, normalized)
+
+
+def _rapidapi_is_initial_name_form(name: object) -> bool:
+    tokens = _normalize_name(str(name or "")).split()
+    return len(tokens) >= 2 and (len(tokens[0]) == 1 or len(tokens[-1]) == 1)
+
+
+def _rapidapi_provider_name_matches(expected: object, provider: object) -> bool:
+    """Aceita abreviação só quando o fornecedor a apresentou explicitamente."""
+    if _rapidapi_exact_name_key(expected) == _rapidapi_exact_name_key(provider):
+        return bool(_rapidapi_exact_name_key(expected))
+    return (_rapidapi_is_initial_name_form(provider)
+            and _rapidapi_event_identity_name(expected) == _rapidapi_event_identity_name(provider))
+
+
+def _rapidapi_pair_orientation(expected_a: object, expected_b: object,
+                                provider_a: object, provider_b: object) -> Optional[str]:
+    if (_rapidapi_provider_name_matches(expected_a, provider_a)
+            and _rapidapi_provider_name_matches(expected_b, provider_b)):
+        return "direct"
+    if (_rapidapi_provider_name_matches(expected_a, provider_b)
+            and _rapidapi_provider_name_matches(expected_b, provider_a)):
+        return "reverse"
+    return None
+
+
+def _rapidapi_pair_orientation_by_ids(expected_a: object, expected_b: object,
+                                      provider_a: object, provider_b: object) -> Optional[str]:
+    """Confirma a ordem do par por IDs, sem inferir quando falta um deles."""
+    values = (expected_a, expected_b, provider_a, provider_b)
+    if any(value in (None, "") for value in values):
+        return None
+    ea, eb, pa, pb = (str(value).strip() for value in values)
+    if not all((ea, eb, pa, pb)) or ea == eb or pa == pb:
+        return None
+    if ea == pa and eb == pb:
+        return "direct"
+    if ea == pb and eb == pa:
+        return "reverse"
+    return None
+
+
+def _rapidapi_event_name_variants(name: object) -> list[str]:
+    """Devolve grafias estruturais completas e por inicial para qualquer nome."""
+    value = str(name or "").strip()
+    if not value:
+        return []
+    tokens = _normalize_name(value).split()
+    aliases = {
+        "cori gauff": ("Coco Gauff",),
+        "coco gauff": ("Cori Gauff",),
+    }
+    variants = [value, *aliases.get(_normalize_name(value), ())]
+    if len(tokens) >= 2:
+        if len(tokens[-1]) == 1:
+            initial = tokens[-1].upper()
+            surname_tokens = tokens[:-1]
+        else:
+            initial = tokens[0][0].upper()
+            surname_tokens = tokens[1:]
+        surname = " ".join(part.capitalize() for part in surname_tokens)
+        if surname:
+            variants.extend((f"{initial}. {surname}", f"{surname} {initial}."))
+            # Alguns feeds omitem nomes intermédios; a identidade continua a
+            # exigir a mesma inicial e o mesmo apelido final nos dois lados.
+            final_surname = surname_tokens[-1].capitalize()
+            variants.extend((f"{initial}. {final_surname}", f"{final_surname} {initial}."))
+    # Desduplica pela forma normalizada, sem alterar a grafia enviada à API.
+    seen: set[str] = set()
+    result = []
+    for item in variants:
+        normalized = _normalize_name(item)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(item)
+    return result
 
 
 def _normalize_surface_family(surface: object) -> Optional[str]:
@@ -2369,8 +3895,44 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
     cols = next((pair for pair in pairs if set(pair).issubset(history.columns)), None)
     if not cols:
         return None
-    buckets = ((1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50), (1.51, 1.60))
-    output = {f"{lo:.2f}-{hi:.2f}": {"n": 0, "wins": 0, "margins": []} for lo, hi in buckets}
+    # Bandas curtas em torno das odds mais usuais. As bandas de underdog
+    # permitem comparar, por exemplo, uma odd 2.20 com 2.10-2.30, em vez
+    # de misturar todos os underdogs numa só percentagem.
+    buckets = (
+        (1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50), (1.51, 1.60),
+        (1.61, 1.80), (1.81, 2.00), (2.01, 2.09), (2.10, 2.30),
+        (2.31, 2.60), (2.61, 3.00), (3.01, 3.50), (3.51, 4.50),
+        (4.51, 6.00), (6.01, 10.00),
+    )
+    output = {
+        f"{lo:.2f}-{hi:.2f}": {
+            "n": 0, "wins": 0, "margins": [], "win_margins": [],
+            "loss_margins": [], "by_format": {},
+        }
+        for lo, hi in buckets
+    }
+    underdog = {"n": 0, "wins": 0, "margins": [], "win_margins": [],
+                "loss_margins": [], "by_format": {}}
+
+    def append_observation(cell, won, margin, row):
+        cell["n"] += 1; cell["wins"] += int(won); cell["margins"].append(margin)
+        cell["win_margins" if won else "loss_margins"].append(margin)
+        try:
+            best_of = int(float(row.get("best_of")))
+        except (TypeError, ValueError):
+            best_of = None
+        if best_of in (3, 5):
+            format_cell = cell["by_format"].setdefault(
+                f"bo{best_of}", {
+                    "n": 0, "wins": 0, "margins": [], "win_margins": [],
+                    "loss_margins": [],
+                },
+            )
+            format_cell["n"] += 1
+            format_cell["wins"] += int(won)
+            format_cell["margins"].append(margin)
+            format_cell["win_margins" if won else "loss_margins"].append(margin)
+
     for _, row in history.iterrows():
         won = row.get("winner_name") == resolved
         lost = row.get("loser_name") == resolved
@@ -2383,21 +3945,48 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
         margin = _game_differential_from_row(row, won)
         if margin is None:
             continue
+        if odd > 2.0:
+            append_observation(underdog, won, margin, row)
         for lo, hi in buckets:
             if lo <= odd <= hi:
                 cell = output[f"{lo:.2f}-{hi:.2f}"]
-                cell["n"] += 1; cell["wins"] += int(won); cell["margins"].append(margin)
+                append_observation(cell, won, margin, row)
                 break
+
+    def describe(cell):
+        values = list(cell.get("margins") or [])
+        n = int(cell.get("n") or 0)
+        wins = int(cell.get("wins") or 0)
+        return {
+            "n": n,
+            "wins": wins,
+            "margins": values,
+            "win_margins": list(cell.get("win_margins") or []),
+            "loss_margins": list(cell.get("loss_margins") or []),
+            "win_rate_pct": round(100 * wins / n, 1) if n else 0.0,
+            "mean_game_diff": round(sum(values) / len(values), 2) if values else 0.0,
+            "cover_ge": {str(threshold): sum(v >= threshold for v in values) for threshold in range(3, 8)},
+        }
+
     result = {}
     for label, cell in output.items():
         if not cell["n"]:
             continue
-        values = cell.pop("margins")
-        cell["win_rate_pct"] = round(100 * cell["wins"] / cell["n"], 1)
-        cell["mean_game_diff"] = round(sum(values) / len(values), 2)
-        cell["cover_ge"] = {str(n): sum(v >= n for v in values) for n in range(3, 8)}
-        result[label] = cell
-    return {"odds_columns": cols, "buckets": result} if result else None
+        described = describe(cell)
+        described["by_format"] = {
+            fmt: describe(format_cell)
+            for fmt, format_cell in cell.get("by_format", {}).items()
+            if format_cell.get("n")
+        }
+        result[label] = described
+    underdog_result = describe(underdog) if underdog["n"] else None
+    if underdog_result:
+        underdog_result["by_format"] = {
+            fmt: describe(format_cell)
+            for fmt, format_cell in underdog.get("by_format", {}).items()
+            if format_cell.get("n")
+        }
+    return {"odds_columns": cols, "buckets": result, "underdog": underdog_result} if result or underdog_result else None
 
 
 def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
@@ -3123,13 +4712,14 @@ def compute_deciding_set_stats(history: pd.DataFrame, player: str) -> Optional[d
         return None
     player = resolved
 
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
     if played.empty:
         return None
+    played["_best_of_normalized"] = pd.to_numeric(played["best_of"], errors="coerce")
 
     result: dict = {}
     for best_of, label in ((3, "bo3"), (5, "bo5")):
-        subset = played[played["best_of"] == best_of]
+        subset = played[played["_best_of_normalized"] == best_of]
         deciding_matches = 0
         deciding_wins = 0
         for _, row in subset.iterrows():
@@ -3722,14 +5312,29 @@ def resolve_handedness_matchup(handedness_stats: Optional[dict], opponent_hand: 
     }
 
 
-def compute_scenarios_from_past_matches(past_matches: list, player_id: int) -> Optional[dict]:
-    """Recuperação de 1º set a partir do score set-a-set ('result')."""
+def compute_scenarios_from_past_matches(
+    past_matches: list, player_id: int, expected_best_of: Optional[int] = None,
+) -> Optional[dict]:
+    """Recuperação de 1º set a partir do score set-a-set ('result').
+
+    Quando ``expected_best_of`` é indicado, só usa partidas cujo formato vem
+    explicitamente identificado pela fonte. Isto impede que um cenário BO5
+    use recuperação genérica/BO3 por falta de metadados suficientes.
+    """
     if not past_matches:
         return None
     fsl_win = fsl_tot = fsw_win = fsw_tot = 0
     for m in past_matches:
         if not isinstance(m, dict):
             continue
+        if expected_best_of is not None:
+            raw_best_of = m.get("bestOf") or m.get("best_of") or m.get("bestOfSets")
+            try:
+                best_of = int(float(raw_best_of))
+            except (TypeError, ValueError):
+                continue
+            if best_of != expected_best_of:
+                continue
         result = m.get("result")
         winner = m.get("match_winner")
         p1, p2 = m.get("player1Id"), m.get("player2Id")
@@ -3905,31 +5510,74 @@ def fetch_h2h_matches(tour: str, player1_id: int, player2_id: int) -> Optional[l
 
 
 def fetch_h2h_stats(tour: str, player1_id: int, player2_id: int) -> Optional[dict]:
+    data, _coverage = fetch_h2h_stats_with_coverage(tour, player1_id, player2_id)
+    return data
+
+
+def fetch_h2h_stats_with_coverage(
+    tour: str, player1_id: int, player2_id: int,
+) -> tuple[Optional[dict], dict]:
     """
     Stats agregadas do confronto direto (serviço, resposta, break points,
     sets decisivos, tiebreaks, por piso/tier) — específicas a este par de
-    jogadores, via matchstat. Independente do Sackmann.
+    jogadores, via matchstat. Devolve também proveniência explícita para que
+    uma falha desta família não seja confundida com perda do H2H factual.
     """
+    endpoint_family = f"{tour}/h2h/stats"
+    source = f"rapidapi_{tour}_h2h_stats"
+
+    def _coverage(
+        status: str,
+        *,
+        reason: Optional[str] = None,
+        http_status: Optional[int] = None,
+        cache_status: str = "MISS",
+    ) -> dict:
+        result = {
+            "status": status,
+            "source": source,
+            "endpoint_family": endpoint_family,
+            "reason": reason,
+            "cache_status": cache_status,
+        }
+        if http_status is not None:
+            result["http_status"] = int(http_status)
+        return result
+
     cache_key = f"stats:{_h2h_cache_key(tour, player1_id, player2_id)}"
     cached = _H2H_CACHE.get(cache_key)
     if cached is not None:
         age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
         if age_hours < H2H_CACHE_MAX_AGE_HOURS:
-            return cached["data"]
+            data = cached["data"]
+            return data, _coverage(
+                "AVAILABLE" if data else "UNAVAILABLE",
+                reason=None if data else "provider_data_unavailable",
+                cache_status="HIT",
+            )
 
     if not RAPIDAPI_KEY:
-        return None
+        return None, _coverage("UNAVAILABLE", reason="rapidapi_key_unavailable")
 
     url = f"{RAPIDAPI_BASE}/{tour}/h2h/stats/{player1_id}/{player2_id}/"
+    resp = None
     try:
         resp = _rapidapi_get(url)
         resp.raise_for_status()
         data = resp.json().get("data")
         _H2H_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
-        return data
+        return data, _coverage(
+            "AVAILABLE" if data else "UNAVAILABLE",
+            reason=None if data else "provider_data_unavailable",
+        )
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter h2h/stats ({tour}, {player1_id} vs {player2_id}): {exc}")
-        return None
+        response = getattr(exc, "response", None) or resp
+        http_status = getattr(response, "status_code", None)
+        reason = f"http_{http_status}" if http_status is not None else "request_error"
+        return None, _coverage(
+            "UNAVAILABLE", reason=reason, http_status=http_status,
+        )
 
 
 # --------------------------------------------------------------------- #
@@ -3982,6 +5630,32 @@ def fetch_official_ranking(tour: str) -> Optional[dict]:
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter ranking oficial {tour}: {exc}")
         return None
+
+
+def resolve_official_ranking(
+    ranking: Optional[dict], player_name: str, player_id: object = None,
+) -> tuple[Optional[dict], Optional[str]]:
+    """Resolve ranking por ID antes de aceitar um cruzamento de nomes.
+
+    As fixtures e a lista oficial nem sempre usam exactamente a mesma grafia.
+    Um ID coincidente é prova canónica; só sem ID disponível/na lista usamos o
+    nome normalizado (ou a ponte de abreviação já auditada). Ausência nunca é
+    transformada numa classificação baixa inventada.
+    """
+    if not ranking:
+        return None, None
+    if player_id is not None:
+        wanted = str(player_id)
+        for entry in ranking.values():
+            if str((entry or {}).get("player_id")) == wanted:
+                return entry, "rapidapi_official_ranking_id"
+    normalized = _normalize_name(player_name)
+    if normalized in ranking:
+        return ranking[normalized], "rapidapi_official_ranking_name"
+    matched = _match_abbreviated_name_to_ranking(player_name, ranking)
+    if matched is not None:
+        return matched, "rapidapi_official_ranking_name"
+    return None, None
 
 
 _CAREER_STATS_CACHE: dict = {}
@@ -4738,21 +6412,18 @@ _fixtures_cache_dirty = False
 
 
 # --------------------------------------------------------------------- #
-# CÓDIGO NÃO USADO ATUALMENTE (28/07/2026): esta função e
-# fetch_all_upcoming_fixtures() eram a arquitetura antiga — feed global
-# "todos os jogos ATP do dia" via getDateFixtures. Substituída por
-# fetch_tournament_fixtures()/fetch_tracked_tournament_fixtures() (mais
-# abaixo), que pede diretamente por tournamentId e evita o ruído global.
-# Mantida por se um dia for útil como mecanismo de DESCOBERTA de novos
-# torneios (a nova arquitetura exige adicionar tournamentId manualmente
-# a TRACKED_TOURNAMENT_IDS — ver README). Não é chamada por main.py.
+# CHANGE-054: esta antiga fonte global por data é agora o fallback factual de
+# discovery quando upcoming não produz uma resposta utilizável. O caminho
+# normal continua a pedir diretamente por tournamentId para evitar ruído; o
+# fallback só percorre ATP/WTA e as datas tocadas pela janela operacional.
 # --------------------------------------------------------------------- #
-def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
+def fetch_date_fixtures(
+    date: "datetime", tour: str, *, return_status: bool = False,
+):
     """
     Devolve os jogos agendados para um dia específico, para um tour
-    ('atp' ou 'wta'). Lista vazia se a chave não estiver configurada ou
-    se o pedido falhar — nunca levanta exceção para não parar o resto do
-    pipeline por causa de um único dia sem dados.
+    ('atp' ou 'wta'). Por defeito preserva a API legacy (lista); com
+    ``return_status=True`` distingue vazio factual de fonte indisponível.
 
     Usa cache local (data/fixtures_cache.json) por até
     FIXTURES_CACHE_MAX_AGE_HOURS horas, para não repetir o mesmo pedido
@@ -4773,11 +6444,27 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
             age_hours = None
         if age_hours is not None and age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
             print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
-            return cached["data"]
+            data = cached.get("data")
+            if isinstance(data, list):
+                status = {
+                    "status": (
+                        DISCOVERY_SUCCESS_WITH_MATCHES
+                        if data else DISCOVERY_SUCCESS_EMPTY
+                    ),
+                    "matches": len(data),
+                    "cache": "persistent_hit",
+                }
+                return (data, status) if return_status else data
 
     if not RAPIDAPI_KEY:
         print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
-        return []
+        status = {
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "matches": 0,
+            "reason_code": "MISSING_API_KEY",
+            "cache": "miss",
+        }
+        return ([], status) if return_status else []
 
     url = f"{RAPIDAPI_BASE}/{tour}/fixtures/{date_str}"
     all_data: list[dict] = []
@@ -4790,7 +6477,7 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
             resp.raise_for_status()
             pages_fetched += 1
             payload = resp.json()
-            page_data = payload.get("data", [])
+            page_data = _discovery_rows(payload, "data")
             all_data.extend(page_data)
 
             if not payload.get("hasNextPage"):
@@ -4813,10 +6500,28 @@ def fetch_date_fixtures(date: "datetime", tour: str) -> list[dict]:
         _fixtures_cache_dirty = True
         if len(all_data) > 0:
             print(f"[info] fixtures {cache_key}: {len(all_data)} jogo(s) em {pages_fetched} pedido(s).")
-        return all_data
-    except requests.RequestException as exc:
+        status = {
+            "status": (
+                DISCOVERY_SUCCESS_WITH_MATCHES
+                if all_data else DISCOVERY_SUCCESS_EMPTY
+            ),
+            "matches": len(all_data),
+            "pages": pages_fetched,
+            "cache": "miss",
+        }
+        return (all_data, status) if return_status else all_data
+    except (requests.RequestException, ValueError, TypeError) as exc:
         print(f"[aviso] falha a obter fixtures ({tour}, {date_str}): {exc}")
-        return []
+        reason, http_status = _discovery_error_details(exc)
+        status = {
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "matches": 0,
+            "reason_code": reason,
+            "cache": "miss",
+        }
+        if http_status is not None:
+            status["http_status"] = http_status
+        return ([], status) if return_status else []
 
 
 def flush_fixtures_cache() -> None:
@@ -4881,9 +6586,7 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
             # não fazem parte da análise (só singles) nem são "elegíveis"
             # sem data para verificar a janela de antecedência.
             for match in page_data:
-                p1_name = (match.get("player1") or {}).get("name", "")
-                p2_name = (match.get("player2") or {}).get("name", "")
-                if "/" in p1_name or "/" in p2_name:
+                if not _is_singles_fixture(match):
                     continue
                 if not match.get("date"):
                     continue
@@ -4907,6 +6610,53 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter fixtures do torneio {tournament_id}: {exc}")
         return []
+
+
+def _eligible_tournaments_from_events(
+    events: list[dict], *, return_unresolved: bool = False,
+):
+    """Resolve e filtra os torneios presentes numa coleção factual."""
+    candidatos: dict[int, str] = {}
+    for event in events:
+        tournament = event.get("tournament") or {}
+        tournament_id = event.get("tournamentId") or tournament.get("id")
+        tour = str(event.get("_tour") or event.get("type") or "").casefold()
+        if tournament_id is None or tour not in ("atp", "wta"):
+            continue
+        candidatos.setdefault(tournament_id, tour)
+
+    aceites: dict[int, str] = {}
+    rejeitados = []
+    unresolved = 0
+    for tournament_id, tour in candidatos.items():
+        info = get_tournament_info(tournament_id, tour)
+        forced = FORCED_TOURNAMENT_IDS.get(tournament_id) == tour
+        if forced or (info and info.get("tier") in ALLOWED_TOURNAMENT_TIERS):
+            aceites[tournament_id] = tour
+        else:
+            if info is None:
+                unresolved += 1
+            nome = (info or {}).get("name") or "torneio não identificado"
+            tier = (info or {}).get("tier") or "sem informação de tier"
+            rejeitados.append(f"{tournament_id} {nome} ({tier})")
+
+    if rejeitados:
+        limite = 10
+        detalhes = "; ".join(rejeitados[:limite])
+        restante = (
+            f"; +{len(rejeitados) - limite} outro(s)"
+            if len(rejeitados) > limite else ""
+        )
+        print(
+            f"[info] descoberta automática: {len(rejeitados)} torneio(s) "
+            f"rejeitado(s) por tier/metadata — {detalhes}{restante}"
+        )
+
+    for tournament_id, tour in FORCED_TOURNAMENT_IDS.items():
+        aceites[tournament_id] = tour
+    if return_unresolved:
+        return aceites, unresolved
+    return aceites
 
 
 def discover_tracked_tournaments() -> dict[int, str]:
@@ -4934,41 +6684,16 @@ def discover_tracked_tournaments() -> dict[int, str]:
               "a usar torneios manuais e forçados (config.py).")
         return fallback
 
-    candidatos: dict[int, str] = {}
-    for ev in events:
-        t = ev.get("tournament") or {}
-        tid = t.get("id")
-        tour = ev.get("type")
-        if tid is None or tour not in ("atp", "wta"):
-            continue
-        candidatos.setdefault(tid, tour)
-
-    aceites: dict[int, str] = {}
-    rejeitados = []
-    for tid, tour in candidatos.items():
-        info = get_tournament_info(tid, tour)
-        if info and info.get("tier") in ALLOWED_TOURNAMENT_TIERS:
-            aceites[tid] = tour
-        else:
-            nome = (info or {}).get("name") or "torneio não identificado"
-            tier = (info or {}).get("tier") or "sem informação de tier"
-            rejeitados.append(f"{tid} {nome} ({tier})")
-
-    if rejeitados:
-        limite = 10
-        detalhes = "; ".join(rejeitados[:limite])
-        restante = f"; +{len(rejeitados) - limite} outro(s)" if len(rejeitados) > limite else ""
-        print(f"[info] descoberta automática: {len(rejeitados)} torneio(s) rejeitado(s) "
-              f"por tier/metadata — {detalhes}{restante}")
+    aceites = _eligible_tournaments_from_events(events)
 
     if not aceites:
-        print(f"[aviso] descoberta automática: {len(candidatos)} torneio(s) candidato(s), "
-              "nenhum no tier permitido — a usar torneios manuais (config.py).")
+        print("[aviso] descoberta automática: nenhum torneio no tier permitido "
+              "— a usar torneios manuais (config.py).")
         aceites.update(TRACKED_TOURNAMENT_IDS)
 
     # Overrides explícitos não dependem de aparecer no feed global nem do
-    # respetivo tier. É isto que permite Winston-Salem sem reativar todos os
-    # ATP 250. O filtro final em main.py aplica a mesma exceção defensiva.
+    # respetivo tier. O mecanismo fica disponível para exceções futuras; o
+    # filtro final em main.py aplica a mesma exceção defensiva.
     for tid, tour in FORCED_TOURNAMENT_IDS.items():
         if tid not in aceites:
             info = get_tournament_info(tid, tour) or {}
@@ -4980,6 +6705,218 @@ def discover_tracked_tournaments() -> dict[int, str]:
     resumo = ", ".join(f"{tid}:{tour}" for tid, tour in aceites.items())
     print(f"[info] descoberta automática: {len(aceites)} torneio(s) elegível(is) — {resumo}")
     return aceites
+
+
+def _upcoming_source_status(events: list[dict]) -> str:
+    sources = _DISCOVERY_DIAGNOSTICS["discovery_sources"]
+    legacy = sources.get("upcoming_legacy_all", {})
+    if legacy.get("status") in {
+        DISCOVERY_SUCCESS_WITH_MATCHES, DISCOVERY_SUCCESS_EMPTY,
+    }:
+        return legacy["status"]
+    primary = [sources.get(f"upcoming_{tour}", {}) for tour in ("atp", "wta")]
+    if primary and all(
+        item.get("status") in {
+            DISCOVERY_SUCCESS_WITH_MATCHES, DISCOVERY_SUCCESS_EMPTY,
+        }
+        for item in primary
+    ):
+        return DISCOVERY_SUCCESS_WITH_MATCHES if events else DISCOVERY_SUCCESS_EMPTY
+    # Compatibilidade para testes/callers que substituem o fetch por um mock.
+    if events and not any(primary):
+        return DISCOVERY_SUCCESS_WITH_MATCHES
+    return DISCOVERY_SOURCE_UNAVAILABLE
+
+
+def _window_dates(now: Optional[datetime] = None) -> list[datetime]:
+    reference = now or datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    start = reference + timedelta(hours=LOOKAHEAD_HOURS_MIN)
+    end = reference + timedelta(hours=LOOKAHEAD_HOURS_MAX)
+    result = []
+    day = start.date()
+    while day <= end.date():
+        result.append(datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc))
+        day += timedelta(days=1)
+    return result
+
+
+def _deduplicate_fixture_ids(matches: list[dict]) -> list[dict]:
+    seen = set()
+    result = []
+    for match in matches:
+        fixture_id = match.get("id")
+        if fixture_id not in (None, ""):
+            if fixture_id in seen:
+                continue
+            seen.add(fixture_id)
+        result.append(match)
+    return result
+
+
+def _is_singles_fixture(match: dict) -> bool:
+    """Replica a regra operacional legacy: nomes com ``/`` são pares."""
+    player1 = str((match.get("player1") or {}).get("name") or "")
+    player2 = str((match.get("player2") or {}).get("name") or "")
+    return "/" not in player1 and "/" not in player2
+
+
+def _fetch_core_date_fixture_window(
+    *, now: Optional[datetime] = None,
+) -> tuple[list[dict], dict]:
+    """Fallback factual ATP/WTA para todas as datas tocadas pela janela 72h."""
+    raw_matches: list[dict] = []
+    request_statuses = []
+    for day in _window_dates(now):
+        for tour in TOURS_TO_FOLLOW:
+            matches, status = fetch_date_fixtures(
+                day, tour, return_status=True,
+            )
+            raw_matches.extend(matches)
+            request_statuses.append({
+                "date": day.strftime("%Y-%m-%d"),
+                "tour": tour,
+                **status,
+            })
+
+    singles = [match for match in raw_matches if _is_singles_fixture(match)]
+    doubles_excluded = len(raw_matches) - len(singles)
+    raw_matches = _deduplicate_fixture_ids(singles)
+    failed = [
+        item for item in request_statuses
+        if item["status"] == DISCOVERY_SOURCE_UNAVAILABLE
+    ]
+    if raw_matches:
+        source_status = DISCOVERY_SUCCESS_WITH_MATCHES
+    elif failed:
+        source_status = DISCOVERY_SOURCE_UNAVAILABLE
+    else:
+        source_status = DISCOVERY_SUCCESS_EMPTY
+
+    details = {
+        "status": source_status,
+        "matches": len(raw_matches),
+        "requests": len(request_statuses),
+        "successful_requests": len(request_statuses) - len(failed),
+        "unavailable_requests": len(failed),
+        "partial": bool(failed),
+        "doubles_excluded": doubles_excluded,
+        "window_hours": [LOOKAHEAD_HOURS_MIN, LOOKAHEAD_HOURS_MAX],
+    }
+    if failed:
+        details["reason_codes"] = sorted({
+            str(item.get("reason_code") or "SOURCE_UNAVAILABLE")
+            for item in failed
+        })
+    return raw_matches, details
+
+
+def fetch_resilient_discovery_fixtures() -> list[dict]:
+    """Descobre fixtures sem tornar o feed upcoming um ponto único de falha.
+
+    Upcoming continua a ser a fonte normal e a observação reutilizada pela
+    identidade/mercado. O fallback core por data só é ativado se upcoming não
+    entregar uma resposta factual completa para ATP e WTA.
+    """
+    _reset_discovery_diagnostics()
+    events = _fetch_extend_upcoming_events("all")
+    upcoming_status = _upcoming_source_status(events)
+    _record_discovery_source(
+        "upcoming_discovery", upcoming_status, matches=len(events),
+    )
+
+    if upcoming_status != DISCOVERY_SOURCE_UNAVAILABLE:
+        if upcoming_status == DISCOVERY_SUCCESS_EMPTY:
+            _DISCOVERY_DIAGNOSTICS.update({
+                "discovery_selected_source": "upcoming_discovery",
+                "discovery_status": DISCOVERY_SUCCESS_EMPTY,
+            })
+            return []
+        tracked = _eligible_tournaments_from_events(events)
+        all_matches = []
+        for tournament_id, tour in tracked.items():
+            all_matches.extend(fetch_tournament_fixtures(tournament_id, tour))
+        all_matches = _deduplicate_fixture_ids(all_matches)
+        selected_status = (
+            DISCOVERY_SUCCESS_WITH_MATCHES
+            if all_matches else DISCOVERY_SUCCESS_EMPTY
+        )
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": "upcoming_discovery",
+            "discovery_status": selected_status,
+        })
+        _DISCOVERY_DIAGNOSTICS["discovery_sources"]["upcoming_discovery"].update({
+            "eligible_tournaments": len(tracked),
+            "fixtures": len(all_matches),
+        })
+        return all_matches
+
+    core_matches, core_status = _fetch_core_date_fixture_window()
+    _record_discovery_source(
+        "core_date_fixtures", core_status["status"],
+        matches=core_status["matches"],
+        **{
+            key: value for key, value in core_status.items()
+            if key not in {"status", "matches"}
+        },
+    )
+    if core_status["status"] == DISCOVERY_SOURCE_UNAVAILABLE:
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": None,
+            "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        })
+        return []
+
+    eligible_tournaments, unresolved = _eligible_tournaments_from_events(
+        core_matches, return_unresolved=True,
+    )
+    structurally_usable = [
+        match for match in core_matches
+        if match.get("tournamentId") not in (None, "")
+        and match.get("_tour") in {"atp", "wta"}
+    ]
+    if core_matches and not structurally_usable:
+        _DISCOVERY_DIAGNOSTICS["discovery_sources"]["core_date_fixtures"].update({
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "reason_code": "FIXTURE_TOURNAMENT_ID_UNAVAILABLE",
+        })
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": None,
+            "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        })
+        return []
+    selected = [
+        match for match in core_matches
+        if eligible_tournaments.get(match.get("tournamentId")) == match.get("_tour")
+    ]
+    selected = _deduplicate_fixture_ids(selected)
+    if core_matches and not selected and unresolved:
+        _DISCOVERY_DIAGNOSTICS["discovery_sources"]["core_date_fixtures"].update({
+            "status": DISCOVERY_SOURCE_UNAVAILABLE,
+            "reason_code": "TOURNAMENT_METADATA_UNAVAILABLE",
+        })
+        _DISCOVERY_DIAGNOSTICS.update({
+            "discovery_selected_source": None,
+            "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+        })
+        return []
+
+    selected_status = (
+        DISCOVERY_SUCCESS_WITH_MATCHES if selected else DISCOVERY_SUCCESS_EMPTY
+    )
+    _DISCOVERY_DIAGNOSTICS.update({
+        "discovery_selected_source": "core_date_fixtures",
+        "discovery_status": selected_status,
+        "discovery_partial": bool(core_status.get("partial")),
+    })
+    _DISCOVERY_DIAGNOSTICS["discovery_sources"]["core_date_fixtures"].update({
+        "eligible_tournaments": len(eligible_tournaments),
+        "eligible_fixtures": len(selected),
+        "metadata_unresolved_tournaments": unresolved,
+        "structurally_unusable_fixtures": len(core_matches) - len(structurally_usable),
+    })
+    return selected
 
 
 def fetch_tracked_tournament_fixtures() -> list[dict]:

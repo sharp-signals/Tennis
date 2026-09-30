@@ -59,6 +59,25 @@ class DeterministicFeatureTests(unittest.TestCase):
     def test_feature_computation_with_no_comparable_data_returns_none(self):
         self.assertIsNone(main._compute_features({"player_a": "A", "player_b": "B"}))
 
+    def test_bo5_comeback_feature_rejects_generic_rich_scenarios(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "tour": "atp", "tier": "Grand Slam",
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 28, "first_set_lose_count": 271,
+            }},
+            "rich_stats_b": {"scenarios": {
+                "first_set_lose_then_win_pct": 55, "first_set_lose_count": 300,
+            }},
+            "set1_comeback_stats_a": {"bo5": {"comeback_rate_pct": 40, "matches_lost_set1": 10}},
+            "set1_comeback_stats_b": {"bo5": {"comeback_rate_pct": 30, "matches_lost_set1": 10}},
+        }
+
+        features = main._compute_features(payload)
+
+        self.assertEqual(features["comeback_set1"]["valor_a"], 40)
+        self.assertEqual(features["comeback_set1"]["valor_b"], 30)
+        self.assertEqual(features["comeback_set1"]["amostra_a"], 10)
+
     def test_zero_sample_service_is_not_compared_with_real_data(self):
         features = main._compute_features({
             "player_a": "A", "player_b": "B",

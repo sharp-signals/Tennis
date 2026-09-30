@@ -47,6 +47,7 @@ def reset() -> None:
     global _STARTED_AT
     with _LOCK:
         _COUNTERS.clear()
+        _COUNTERS.update(llm_provider_invocations=0, llm_external_requests=0)
         _CONTEXT.clear()
         _STARTED_AT = time.monotonic()
 
@@ -55,6 +56,12 @@ def update_context(**values) -> None:
     """Atualiza o estado que será persistido mesmo se a execução falhar."""
     with _LOCK:
         _CONTEXT.update({key: value for key, value in values.items() if value is not None})
+
+
+def context_snapshot() -> dict:
+    """Cópia do contexto operacional atual, sem expor estado mutável interno."""
+    with _LOCK:
+        return dict(_CONTEXT)
 
 
 def increment(name: str, amount: int = 1) -> None:
@@ -95,6 +102,16 @@ def health_alerts(entry: dict) -> list[str]:
     fallbacks = _as_int(entry.get("llm_fallbacks"))
     if entry.get("status") == "failed":
         alerts.append(f"execução falhou na fase {entry.get('phase', 'desconhecida')}")
+    if entry.get("discovery_partial") is True:
+        core = (entry.get("discovery_sources") or {}).get(
+            "core_date_fixtures", {}
+        )
+        unavailable = _as_int(core.get("unavailable_requests"))
+        requests = _as_int(core.get("requests"))
+        alerts.append(
+            "discovery parcial: "
+            f"{unavailable}/{requests or '?'} consultas indisponível"
+        )
     if calls >= _env_number("ALERT_RAPIDAPI_CALLS", 600):
         alerts.append(f"consumo RapidAPI elevado: {calls} chamadas")
     if llm_calls and fallbacks / llm_calls >= _env_number("ALERT_LLM_FALLBACK_RATE", 0.2):
@@ -113,6 +130,11 @@ def health_alerts(entry: dict) -> list[str]:
         alerts.append(f"cache LLM inválida: {entry['llm_cache_invalid']} entrada(s)")
     if _as_int(entry.get("llm_cache_write_failures")):
         alerts.append(f"falhas ao gravar cache LLM: {entry['llm_cache_write_failures']}")
+    maintenance = entry.get("settlement_maintenance")
+    if isinstance(maintenance, dict) and maintenance.get("status") in {
+        "PARTIAL", "TIMED_OUT", "FAILED",
+    }:
+        alerts.append(f"manutenção de resultados: {maintenance.get('status')}")
     estimated_cost = _as_float(entry.get("llm_estimated_cost_usd"))
     if estimated_cost >= _env_number("ALERT_LLM_COST_USD", 1.0):
         alerts.append(f"custo LLM estimado elevado: ${estimated_cost:.4f}")
@@ -172,3 +194,81 @@ def append_run(
                 except FileNotFoundError:
                     pass
     return entry
+
+
+def update_persisted_run(
+    github_run_id: str,
+    values: dict,
+    *,
+    path: str = "data/run_metrics_log.json",
+) -> bool:
+    """Atualiza telemetria pós-main da mesma run, de forma atómica e limitada."""
+    if not github_run_id or not isinstance(values, dict):
+        return False
+    target = Path(path)
+    with _FILE_LOCK:
+        try:
+            with target.open("r", encoding="utf-8") as handle:
+                history = json.load(handle)
+        except (OSError, UnicodeError, TypeError, json.JSONDecodeError):
+            return False
+        if not isinstance(history, list):
+            return False
+        matched = False
+        for entry in reversed(history):
+            if isinstance(entry, dict) and str(entry.get("github_run_id") or "") == str(github_run_id):
+                entry.update(values)
+                matched = True
+                break
+        if not matched:
+            return False
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=target.parent,
+                prefix=f".{target.name}.", suffix=".tmp", delete=False,
+            ) as handle:
+                temp_path = Path(handle.name)
+                json.dump(history[-MAX_HISTORY_ENTRIES:], handle, ensure_ascii=False, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp_path, target)
+        finally:
+            if temp_path is not None:
+                try:
+                    temp_path.unlink()
+                except FileNotFoundError:
+                    pass
+    return True
+
+
+def read_persisted_delivery(
+    github_run_id: str,
+    *,
+    path: str = "data/run_metrics_log.json",
+) -> dict | None:
+    """Recupera o último checkpoint de entrega entre attempts da mesma run."""
+    if not github_run_id:
+        return None
+    target = Path(path)
+    with _FILE_LOCK:
+        try:
+            with target.open("r", encoding="utf-8") as handle:
+                history = json.load(handle)
+        except (OSError, UnicodeError, TypeError, json.JSONDecodeError):
+            return None
+    if not isinstance(history, list):
+        return None
+    for entry in reversed(history):
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("github_run_id") or "") != str(github_run_id):
+            continue
+        delivery = entry.get("report_notification_delivery")
+        if (
+            isinstance(delivery, dict)
+            and str(delivery.get("github_run_id") or "") == str(github_run_id)
+        ):
+            return dict(delivery)
+    return None

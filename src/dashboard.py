@@ -1,0 +1,1548 @@
+"""Dashboard estatico e derivado para observacao do Fenzobot.
+
+O modulo le apenas artefactos locais, nunca chama APIs/LLM e nunca altera as
+fontes. Ausencia ou corrupcao degrada somente o painel correspondente.
+"""
+
+from __future__ import annotations
+
+import gzip
+import hashlib
+import html
+import json
+import math
+import os
+import re
+import tempfile
+import unicodedata
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from html.parser import HTMLParser
+from pathlib import Path
+from typing import Any, Iterable, Mapping
+from urllib.parse import quote
+
+from . import (
+    audit_observability,
+    calibration_store,
+    dashboard_ui,
+    forward_only,
+    forward_only_projections,
+    green_monetization,
+    match_identity_v2,
+    paper_trading,
+    report_html,
+    run_metrics,
+    snapshot_reconciliation,
+)
+
+
+CHANGE_ID = "CHANGE-2026-09-23-051"
+REPORT_GROUPING_CHANGE_ID = "CHANGE-2026-09-10-037"
+SCHEMA_VERSION = 1
+MODE = "READ_ONLY_DERIVED_DASHBOARD"
+CLAIMS = "OBSERVATIONAL_ONLY"
+DEFAULT_OUTPUT_PATH = Path("data/dashboard/fenzobot-dashboard-v1.json")
+DEFAULT_HTML_PATH = Path("docs/dashboard/index.html")
+REPORT_DATE_RE = re.compile(r"(?P<date>\d{4}-\d{2}-\d{2})(?:-[0-9a-f]{8,64})?$")
+SUMMARY_FIELDS = (
+    "total_entries",
+    "settled",
+    "pending",
+    "wins",
+    "losses",
+    "pushes",
+    "win_rate_pct",
+    "units",
+    "roi_pct",
+    "yield_pct",
+    "average_odd",
+)
+
+
+class _TitleParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._inside = False
+        self.parts: list[str] = []
+        self.report_color: str | None = None
+        self.snapshot_linkage: str | None = None
+        self.snapshot_linkage_reason: str | None = None
+        self.historical_color: str | None = None
+        self._decision_depth = 0
+        self._decision_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.casefold() == "title":
+            self._inside = True
+        attributes = {str(name).casefold(): value for name, value in attrs}
+        if tag.casefold() == "meta" and attributes.get("name") == report_html.REPORT_COLOR_META_NAME:
+            color = str(attributes.get("content") or "").upper()
+            if color in {"GREEN", "YELLOW", "RED", "UNAVAILABLE"}:
+                self.report_color = color
+        if tag.casefold() == "meta" and attributes.get("name") == report_html.REPORT_SNAPSHOT_LINKAGE_META_NAME:
+            status = str(attributes.get("content") or "").upper()
+            if status in {"LINKED", "COLLISION", "UNLINKED"}:
+                self.snapshot_linkage = status
+        if tag.casefold() == "meta" and attributes.get("name") == report_html.REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME:
+            reason = str(attributes.get("content") or "").upper()
+            if reason in {
+                "SNAPSHOT_IDENTITY_MATCH", "PROVIDER_MATCH_ID_REUSED",
+                "SNAPSHOT_IDENTITY_INSUFFICIENT", "SNAPSHOT_NOT_PERSISTED",
+            }:
+                self.snapshot_linkage_reason = reason
+        classes = str(attributes.get("class") or "").split()
+        if tag.casefold() == "div" and "decision-head" in classes and not self._decision_depth:
+            self._decision_depth = 1
+            self._decision_parts = []
+        elif self._decision_depth:
+            self._decision_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.casefold() == "title":
+            self._inside = False
+        if self._decision_depth:
+            self._decision_depth -= 1
+            if not self._decision_depth and self.historical_color is None:
+                self.historical_color = report_html.historical_report_color_from_decision_head(
+                    " ".join(self._decision_parts)
+                )
+
+    def handle_data(self, data: str) -> None:
+        if self._inside:
+            self.parts.append(data)
+        if self._decision_depth:
+            self._decision_parts.append(data)
+
+    @property
+    def title(self) -> str | None:
+        value = " ".join("".join(self.parts).split())
+        return value or None
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _finite_number(value: Any) -> int | float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return int(number) if number.is_integer() else number
+
+
+def _read_json(path: Path) -> tuple[Any | None, dict[str, Any]]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None, {"status": "MISSING", "updated_at_utc": None}
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return None, {
+            "status": "INVALID",
+            "updated_at_utc": None,
+            "error": type(exc).__name__,
+        }
+    return value, {"status": "AVAILABLE", "updated_at_utc": None}
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _latest_timestamp(values: Iterable[Any]) -> str | None:
+    valid = [parsed for parsed in (_parse_datetime(value) for value in values) if parsed]
+    return max(valid).isoformat(timespec="seconds") if valid else None
+
+
+def _safe_report_metadata(
+    path: Path,
+) -> tuple[str, str | None, str | None, str | None, str | None]:
+    parser: _TitleParser | None = None
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as handle:
+            content = handle.read(65536)
+        parser = _TitleParser()
+        parser.feed(content)
+    except (OSError, UnicodeError):
+        pass
+    fallback = path.stem.replace("-vs-", " vs ").replace("-", " ").strip() or "Relatório"
+    if parser is None:
+        return fallback, None, None, None, None
+    return (
+        parser.title or fallback,
+        parser.report_color,
+        parser.historical_color,
+        parser.snapshot_linkage,
+        parser.snapshot_linkage_reason,
+    )
+
+
+def _report_date(path: Path) -> str | None:
+    match = REPORT_DATE_RE.search(path.stem)
+    if not match:
+        return None
+    value = match.group("date")
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return value
+
+
+def _report_color(
+    snapshot: Mapping[str, Any] | None,
+    self_described_color: str | None,
+    historical_color: str | None,
+) -> str:
+    """Resolve uma única cor canónica; ``analysis.flag`` não participa."""
+    decision = _mapping(_mapping(_mapping(snapshot).get("metrics")).get("prelive_decision"))
+    if "state" in decision:
+        return report_html.canonical_report_color_from_state(decision.get("state"))
+    return self_described_color or historical_color or "UNAVAILABLE"
+
+
+def _green_snapshot_keys(green: Mapping[str, Any]) -> set[str]:
+    result = set()
+    for row in _list(green.get("eligible_observations")):
+        if isinstance(row, Mapping) and row.get("snapshot_key"):
+            result.add(str(row["snapshot_key"]))
+    return result
+
+
+def _linked_snapshot(path: Path, snapshots_by_report: Mapping[str, Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    stem = path.stem
+    candidates = [
+        snapshot
+        for report_id, snapshot in snapshots_by_report.items()
+        if report_id and stem.endswith(f"-{report_id}")
+    ]
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def _normalized_match_title(value: Any) -> str:
+    """Normaliza apenas a identidade de fallback; nunca faz fuzzy matching."""
+    decomposed = unicodedata.normalize("NFKD", str(value or ""))
+    ascii_value = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_value.casefold()).split())
+
+
+def _public_match_key(kind: str, value: str) -> str:
+    """Expõe uma chave estável sem publicar snapshot/event keys internos."""
+    digest = hashlib.sha256(f"{kind}:{value}".encode("utf-8")).hexdigest()[:20]
+    return f"{kind.lower()}:{digest}"
+
+
+def _canonical_match_identity(snapshot: Mapping[str, Any] | None) -> tuple[str | None, str | None]:
+    if not snapshot:
+        return None, None
+    for field, source in (("key", "SNAPSHOT_KEY"), ("event_key", "EVENT_KEY")):
+        value = snapshot.get(field)
+        if value not in (None, ""):
+            return f"{field}:{value}", source
+    match_id = snapshot.get("match_id")
+    if match_id not in (None, ""):
+        tour = str(snapshot.get("tour") or "unknown").casefold()
+        return f"match_id:{tour}:{match_id}", "MATCH_ID"
+    return None, None
+
+
+def _resolve_match_keys(reports: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+    """Resolve agrupamento determinístico e remove identidades privadas transitórias.
+
+    Um rerun sem ligação canónica pode juntar-se a uma identidade canónica apenas
+    quando date+title aponta inequivocamente para uma única chave canónica. Se
+    existirem duas identidades canónicas para o mesmo título/dia, o fallback fica
+    separado em vez de inventar uma correspondência.
+    """
+    if reports is None:
+        return None
+    canonical_by_fallback: dict[str, set[str]] = {}
+    for report in reports:
+        canonical = report.get("_canonical_identity")
+        fallback = str(report.get("_fallback_signature") or "")
+        if canonical and fallback:
+            canonical_by_fallback.setdefault(fallback, set()).add(str(canonical))
+
+    resolved: list[dict[str, Any]] = []
+    for original in reports:
+        report = dict(original)
+        canonical = report.pop("_canonical_identity", None)
+        fallback = str(report.pop("_fallback_signature", ""))
+        canonical_candidates = canonical_by_fallback.get(fallback, set())
+        if canonical:
+            match_key = _public_match_key("CANONICAL", str(canonical))
+            source = str(report.pop("_canonical_source", "CANONICAL_ID"))
+            fallback_used = False
+        elif len(canonical_candidates) == 1:
+            match_key = _public_match_key("CANONICAL", next(iter(canonical_candidates)))
+            source = "DATE_NORMALIZED_TITLE_TO_CANONICAL"
+            fallback_used = True
+        else:
+            match_key = _public_match_key("FALLBACK", fallback)
+            source = "DATE_NORMALIZED_TITLE"
+            fallback_used = True
+        report.pop("_canonical_source", None)
+        report["match_key"] = match_key
+        report["match_key_source"] = source
+        report["match_key_fallback"] = fallback_used
+        if not canonical and len(canonical_candidates) > 1:
+            report["match_key_ambiguity"] = "MULTIPLE_CANONICAL_IDENTITIES"
+        resolved.append(report)
+    return resolved
+
+
+def _build_reports(
+    reports_dir: Path,
+    snapshots: list[Mapping[str, Any]],
+    paper_entries: list[Mapping[str, Any]],
+    green: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]] | None, dict[str, Any]]:
+    if not reports_dir.exists() or not reports_dir.is_dir():
+        return None, {"status": "MISSING", "updated_at_utc": None}
+    try:
+        files = sorted(path for path in reports_dir.glob("*.html") if not path.name.startswith("index-"))
+    except OSError as exc:
+        return None, {"status": "INVALID", "updated_at_utc": None, "error": type(exc).__name__}
+
+    snapshots_by_report = {
+        str(snapshot.get("report_id")): snapshot
+        for snapshot in snapshots
+        if snapshot.get("report_id")
+    }
+    paper_report_ids = {
+        str(_mapping(entry.get("pregame")).get("report_id"))
+        for entry in paper_entries
+        if _mapping(entry.get("pregame")).get("report_id")
+    }
+    paper_snapshot_keys = {
+        str(_mapping(entry.get("pregame")).get("snapshot_key"))
+        for entry in paper_entries
+        if _mapping(entry.get("pregame")).get("snapshot_key")
+    }
+    green_keys = _green_snapshot_keys(green)
+    reports = []
+    for path in files:
+        snapshot = _linked_snapshot(path, snapshots_by_report)
+        report_id = str(snapshot.get("report_id")) if snapshot else None
+        snapshot_key = str(snapshot.get("key")) if snapshot and snapshot.get("key") else None
+        report_day = _report_date(path)
+        (
+            title,
+            self_described_color,
+            historical_color,
+            self_described_linkage,
+            self_described_linkage_reason,
+        ) = _safe_report_metadata(path)
+        if snapshot:
+            player_a = _mapping(snapshot.get("player_a")).get("name") or snapshot.get("player_a")
+            player_b = _mapping(snapshot.get("player_b")).get("name") or snapshot.get("player_b")
+            if player_a and player_b:
+                title = f"{player_a} vs {player_b}"
+        is_green = False
+        if snapshot:
+            membership = _mapping(
+                _mapping(_mapping(snapshot.get("validation")).get("cohorts")).get("GREEN_STRONG_V1")
+            )
+            is_green = membership.get("eligible") is True or bool(snapshot_key and snapshot_key in green_keys)
+        color = _report_color(snapshot, self_described_color, historical_color)
+        if snapshot:
+            linkage = "EXACT_REPORT_ID"
+        elif self_described_linkage == "COLLISION":
+            linkage = "SNAPSHOT_IDENTITY_COLLISION"
+        elif self_described_linkage == "UNLINKED":
+            linkage = "SNAPSHOT_IDENTITY_UNLINKED"
+        elif self_described_color is not None:
+            linkage = "SELF_DESCRIBED_REPORT"
+        elif historical_color is not None:
+            linkage = "HISTORICAL_DOM_CONTRACT"
+        else:
+            linkage = "LEGACY_UNLINKED"
+        canonical_identity, canonical_source = _canonical_match_identity(snapshot)
+        fallback_signature = f"{report_day or 'UNAVAILABLE'}:{_normalized_match_title(title)}"
+        report = {
+            "title": title,
+            "date": report_day,
+            "scheduled_start_utc": snapshot.get("commence_time_utc") if snapshot else None,
+            "color": color,
+            "green_strong": is_green,
+            "paper_technical": bool(
+                snapshot and (report_id in paper_report_ids or snapshot_key in paper_snapshot_keys)
+            ),
+            "linkage": linkage,
+            "url": f"../relatorios/{quote(path.name)}",
+            "_canonical_identity": canonical_identity,
+            "_canonical_source": canonical_source,
+            "_fallback_signature": fallback_signature,
+        }
+        if self_described_linkage_reason is not None:
+            report["snapshot_linkage_reason"] = self_described_linkage_reason
+        if report_id:
+            report["report_id"] = report_id
+        reports.append(report)
+    return _resolve_match_keys(reports), {
+        "status": "AVAILABLE",
+        "updated_at_utc": max((item["date"] for item in reports if item["date"]), default=None),
+    }
+
+
+def _group_days(reports: list[Mapping[str, Any]] | None) -> list[dict[str, Any]]:
+    if reports is None:
+        return []
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for report in reports:
+        day = str(report.get("date") or "UNAVAILABLE")
+        grouped.setdefault(day, []).append(dict(report))
+    result = []
+    for day, items in sorted(grouped.items(), reverse=True):
+        colors = Counter(str(item.get("color") or "UNAVAILABLE") for item in items)
+        ordered_items = sorted(items, key=lambda item: (item.get("scheduled_start_utc") or "", item["title"], item["url"]))
+        matchup_groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+        for index, item in enumerate(ordered_items):
+            matchup_groups.setdefault(str(item["match_key"]), []).append((index, item))
+        matchups = []
+        for match_key, indexed_versions in matchup_groups.items():
+            version_indexes = [index for index, _item in indexed_versions]
+            ordered_versions = [item for _index, item in indexed_versions]
+            exact = next((item for item in ordered_versions if item.get("linkage") == "EXACT_REPORT_ID"), None)
+            representative = exact or ordered_versions[0]
+            matchup = {
+                "match_key": match_key,
+                "match_key_source": (
+                    representative.get("match_key_source")
+                    if exact
+                    else (
+                        "DATE_NORMALIZED_TITLE"
+                        if all(item.get("match_key_fallback") for item in ordered_versions)
+                        else representative.get("match_key_source")
+                    )
+                ),
+                "match_key_fallback": all(item.get("match_key_fallback") for item in ordered_versions),
+                "fallback_version_count": sum(
+                    item.get("match_key_fallback") is True for item in ordered_versions
+                ),
+                "title": representative.get("title"),
+                "date": day,
+                "scheduled_start_utc": representative.get("scheduled_start_utc"),
+                "version_count": len(ordered_versions),
+                "colors": dict(Counter(str(item.get("color") or "UNAVAILABLE") for item in ordered_versions)),
+                "green_strong": any(item.get("green_strong") is True for item in ordered_versions),
+                "paper_technical": any(item.get("paper_technical") is True for item in ordered_versions),
+                "version_indexes": version_indexes,
+            }
+            ambiguity = next(
+                (item.get("match_key_ambiguity") for item in ordered_versions if item.get("match_key_ambiguity")),
+                None,
+            )
+            if ambiguity:
+                matchup["match_key_ambiguity"] = ambiguity
+            matchups.append(matchup)
+        matchups.sort(key=lambda item: (item.get("scheduled_start_utc") or "", item.get("title") or ""))
+        public_items = []
+        for item in ordered_items:
+            public_item = dict(item)
+            for internal_field in (
+                "match_key", "match_key_source", "match_key_fallback", "match_key_ambiguity",
+            ):
+                public_item.pop(internal_field, None)
+            public_items.append(public_item)
+        result.append({
+            "date": day,
+            "counts": {
+                "reports": len(items),
+                "matchups": len(matchups),
+                "GREEN": colors["GREEN"],
+                "YELLOW": colors["YELLOW"],
+                "RED": colors["RED"],
+                "UNAVAILABLE": colors["UNAVAILABLE"],
+                "GREEN_STRONG": sum(item.get("green_strong") is True for item in items),
+                "PAPER_TECHNICAL": sum(item.get("paper_technical") is True for item in items),
+            },
+            "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+            "reports": public_items,
+            "matchups": matchups,
+        })
+    return result
+
+
+def _copy_evaluation(value: Any) -> dict[str, Any]:
+    source = _mapping(value)
+    return {
+        "sample_size": _finite_number(source.get("sample_size")),
+        "accuracy_pct": _finite_number(source.get("accuracy_pct")),
+        "brier_score": _finite_number(source.get("brier_score")),
+        "log_loss": _finite_number(source.get("log_loss")),
+    }
+
+
+def _copy_summary(value: Any) -> dict[str, Any]:
+    source = _mapping(value)
+    return {field: _finite_number(source.get(field)) for field in SUMMARY_FIELDS}
+
+
+def _copy_summary_collection(value: Any) -> dict[str, dict[str, Any]]:
+    return {
+        str(name): _copy_summary(summary)
+        for name, summary in _mapping(value).items()
+        if isinstance(summary, Mapping)
+    }
+
+
+def _paper_technical(
+    paper_status: Mapping[str, Any],
+    paper_path: Path,
+    manual_path: Path,
+    exclusions_path: Path,
+) -> dict[str, Any]:
+    if paper_status.get("status") != "AVAILABLE":
+        return {
+            "status": "UNAVAILABLE", **_copy_summary({}), "by_market": {},
+            "excluded_integrity_entries": None, "excluded_data_quality_entries": None,
+            "data_quality_exclusions_by_reason": {},
+        }
+    try:
+        history = paper_trading.compute_history(paper_path, manual_path, exclusions_path)
+    except Exception as exc:
+        return {
+            "status": "UNAVAILABLE", "error": type(exc).__name__, **_copy_summary({}), "by_market": {},
+            "excluded_integrity_entries": None, "excluded_data_quality_entries": None,
+            "data_quality_exclusions_by_reason": {},
+        }
+    paper = _mapping(history.get("PAPER"))
+    return {
+        "status": "AVAILABLE",
+        **_copy_summary(paper),
+        "by_market": {
+            str(name): (_copy_summary(value) if isinstance(value, Mapping) else None)
+            for name, value in _mapping(paper.get("by_market")).items()
+        },
+        "excluded_integrity_entries": _finite_number(history.get("excluded_integrity_entries")),
+        "excluded_data_quality_entries": _finite_number(history.get("excluded_data_quality_entries")),
+        "data_quality_exclusions_by_reason": {
+            str(reason): _finite_number(count)
+            for reason, count in _mapping(history.get("data_quality_exclusions_by_reason")).items()
+        },
+    }
+
+
+def _paper_22bet(document: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not document:
+        return {
+            "status": "UNAVAILABLE",
+            **_copy_summary({}),
+            "by_market": {},
+            "by_side": {},
+            "synced_at_utc": None,
+            "flat_stake_projection": _manual_flat_stake_projection({}),
+        }
+    source = _mapping(document.get("source"))
+    summary = _copy_summary(document.get("summary"))
+    return {
+        "status": "AVAILABLE",
+        **summary,
+        "by_market": _copy_summary_collection(document.get("by_market")),
+        "by_side": _copy_summary_collection(document.get("by_side")),
+        "synced_at_utc": source.get("synced_at_utc"),
+        "reference_bookmaker": source.get("reference_bookmaker") or "22Bet",
+        "flat_stake_projection": _manual_flat_stake_projection(summary),
+    }
+
+
+def _manual_flat_stake_projection(
+    summary: Mapping[str, Any], *, stake_per_entry_eur: float = 10.0
+) -> dict[str, Any]:
+    """Deriva euros apenas dos agregados públicos do PAPER manual."""
+    settled = _finite_number(summary.get("settled"))
+    pending = _finite_number(summary.get("pending"))
+    units = _finite_number(summary.get("units"))
+    source_roi = _finite_number(summary.get("roi_pct"))
+    available = settled is not None and units is not None
+    resolved_stake = settled * stake_per_entry_eur if settled is not None else None
+    net_profit = units * stake_per_entry_eur if units is not None else None
+    roi = (
+        round(100 * net_profit / resolved_stake, 3)
+        if available and resolved_stake and net_profit is not None
+        else source_roi
+    )
+    return {
+        "status": "AVAILABLE" if available and settled > 0 else "UNAVAILABLE",
+        "basis": "paper_22bet.summary",
+        "label": "Simulação €10 por aposta a partir das unidades do PAPER manual",
+        "stake_per_entry_eur": stake_per_entry_eur,
+        "settled_entries": settled,
+        "pending_entries": pending,
+        "resolved_stake_eur": resolved_stake,
+        "pending_exposure_eur": (
+            pending * stake_per_entry_eur if pending is not None else None
+        ),
+        "net_profit_eur": net_profit,
+        "roi_pct": roi,
+    }
+
+
+def _paper_results_comparison(
+    green: Mapping[str, Any], manual: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Compara descritivamente dois universos sem os agregar ou classificar."""
+    projection = _mapping(manual.get("flat_stake_projection"))
+    green_wins = _finite_number(green.get("wins"))
+    green_losses = _finite_number(green.get("losses"))
+    manual_wins = _finite_number(manual.get("wins"))
+    manual_losses = _finite_number(manual.get("losses"))
+    green_resolved = _finite_number(green.get("resolved_entries"))
+    manual_resolved = _finite_number(manual.get("settled"))
+    green_roi = _finite_number(green.get("roi_pct"))
+    manual_roi = _finite_number(projection.get("roi_pct"))
+    green_profit = _finite_number(green.get("net_profit_eur"))
+    manual_profit = _finite_number(projection.get("net_profit_eur"))
+    green_denominator = (
+        green_wins + green_losses
+        if green_wins is not None and green_losses is not None
+        else None
+    )
+    manual_denominator = (
+        manual_wins + manual_losses
+        if manual_wins is not None and manual_losses is not None
+        else None
+    )
+    green_win_rate = (
+        round(100 * green_wins / green_denominator, 3)
+        if green_denominator
+        else None
+    )
+    manual_win_rate = (
+        round(100 * manual_wins / manual_denominator, 3)
+        if manual_denominator
+        else None
+    )
+    required = (
+        green_win_rate,
+        manual_win_rate,
+        green_roi,
+        manual_roi,
+        green_profit,
+        manual_profit,
+        green_resolved,
+        manual_resolved,
+    )
+    if any(value is None for value in required):
+        statement = None
+        status = "UNAVAILABLE"
+    elif (
+        green_win_rate > manual_win_rate
+        and manual_roi > green_roi
+        and manual_profit > green_profit
+        and manual_resolved < green_resolved
+    ):
+        statement = (
+            "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do "
+            "Guerra apresenta maior ROI e resultado acumulado, com menos apostas."
+        )
+        status = "AVAILABLE"
+    else:
+        def metric_clause(green_value: float, manual_value: float, label: str) -> str:
+            if green_value > manual_value:
+                return f"os GREEN apresentam maior {label}"
+            if manual_value > green_value:
+                return f"o PAPER manual do Guerra apresenta maior {label}"
+            return f"os dois universos apresentam o mesmo {label}"
+
+        if green_resolved < manual_resolved:
+            sample_clause = "Os GREEN têm menos apostas resolvidas."
+        elif manual_resolved < green_resolved:
+            sample_clause = "O PAPER manual do Guerra tem menos apostas resolvidas."
+        else:
+            sample_clause = "Ambos têm o mesmo número de apostas resolvidas."
+        statement = (
+            f"Nesta amostra, {metric_clause(green_win_rate, manual_win_rate, 'win rate')}; "
+            f"{metric_clause(green_roi, manual_roi, 'ROI')}; "
+            f"{metric_clause(green_profit, manual_profit, 'resultado acumulado')}. "
+            f"{sample_clause}"
+        )
+        status = "AVAILABLE"
+    return {
+        "change_id": "CHANGE-2026-09-23-051",
+        "status": status,
+        "statement": statement,
+        "disclaimer": (
+            "Amostras diferentes; comparação descritiva, não prova de desempenho futuro."
+        ),
+        "green_win_rate_pct": green_win_rate,
+        "guerra_win_rate_pct": manual_win_rate,
+        "profit_is_never_aggregated": True,
+    }
+
+
+def _guerra_selection(green: Mapping[str, Any] | None) -> dict[str, Any]:
+    source = _mapping(_mapping(green).get("guerra_selection_v1"))
+    flat_source = _mapping(source.get("flat_stake_simulation"))
+    flat_status = str(flat_source.get("status") or "UNAVAILABLE").upper()
+    if flat_status not in {"AVAILABLE", "DEGRADED", "UNAVAILABLE"}:
+        flat_status = "UNAVAILABLE"
+    flat_simulation = {
+        "status": flat_status,
+        "stake_per_entry_eur": _finite_number(flat_source.get("stake_per_entry_eur")) or 10.0,
+        "included_resolved_entries": _finite_number(flat_source.get("included_resolved_entries")),
+        "pending_entries": _finite_number(flat_source.get("pending_entries")),
+        "void_entries": _finite_number(flat_source.get("void_entries")),
+        "excluded_entries": _finite_number(flat_source.get("excluded_entries")),
+        "resolved_stake_eur": _finite_number(flat_source.get("resolved_stake_eur")),
+        "pending_exposure_eur": _finite_number(flat_source.get("pending_exposure_eur")),
+        "net_profit_eur": _finite_number(flat_source.get("net_profit_eur")),
+        "roi_pct": _finite_number(flat_source.get("roi_pct")),
+        "exclusion_reasons": {
+            str(reason): _finite_number(count)
+            for reason, count in _mapping(flat_source.get("exclusion_reasons")).items()
+        },
+    }
+    if source.get("status") != "AVAILABLE":
+        return {
+            "status": "UNAVAILABLE",
+            "eligible_green_strong": _finite_number(source.get("eligible_green_strong")),
+            "selected_candidates": None,
+            "selection_rate_pct": None,
+            "paper_entries": None,
+            "summary": _copy_summary({}),
+            "by_market": {},
+            "underdog_pair_completeness": {},
+            "flat_stake_simulation": flat_simulation,
+        }
+    pair = _mapping(source.get("underdog_pair_completeness"))
+    pair_fields = (
+        "underdog_selected_candidates",
+        "complete_moneyline_positive_handicap_pairs",
+        "moneyline_only",
+        "positive_handicap_only",
+        "incomplete_or_unrecognized",
+    )
+    return {
+        "status": "AVAILABLE",
+        "eligible_green_strong": _finite_number(source.get("eligible_green_strong")),
+        "selected_candidates": _finite_number(source.get("selected_candidates")),
+        "selection_rate_pct": _finite_number(source.get("selection_rate_pct")),
+        "paper_entries": _finite_number(source.get("paper_entries")),
+        "summary": _copy_summary(source.get("summary")),
+        "by_market": _copy_summary_collection(source.get("by_market")),
+        "by_side": _copy_summary_collection(source.get("by_side")),
+        "underdog_pair_completeness": {field: _finite_number(pair.get(field)) for field in pair_fields},
+        "flat_stake_simulation": flat_simulation,
+    }
+
+
+def _green_strong(document: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not document:
+        return {
+            "status": "UNAVAILABLE",
+            "sample": {"candidates": None, "settled": None, "pending": None},
+            "forecast": {},
+            "proper_scoring": {},
+            "market_movement": {},
+        }
+    metrics = _mapping(document.get("metrics"))
+    candidates = _finite_number(metrics.get("sample_size"))
+    settled = _finite_number(metrics.get("settled_sample_size"))
+    pending = candidates - settled if isinstance(candidates, int) and isinstance(settled, int) else None
+    market = _copy_evaluation(metrics.get("market"))
+    fenzobot = _copy_evaluation(metrics.get("fenzobot"))
+    paired = _mapping(metrics.get("paired_delta"))
+    movement = _mapping(metrics.get("closing_movement"))
+    return {
+        "status": "AVAILABLE",
+        "claims": document.get("claims") or "EXPERIMENTAL_NOT_VALIDATED",
+        "generated_at_utc": document.get("generated_at_utc"),
+        "sample": {"candidates": candidates, "settled": settled, "pending": pending},
+        "forecast": {
+            "average_market_probability": _finite_number(metrics.get("average_selected_market_probability")),
+            "average_fenzobot_probability": _finite_number(metrics.get("average_selected_fenzobot_probability")),
+            "observed_win_rate_pct": _finite_number(metrics.get("win_rate_pct")),
+        },
+        "proper_scoring": {
+            "market_brier": market["brier_score"],
+            "fenzobot_brier": fenzobot["brier_score"],
+            "delta_brier": _finite_number(paired.get("brier")),
+            "market_log_loss": market["log_loss"],
+            "fenzobot_log_loss": fenzobot["log_loss"],
+            "delta_log_loss": _finite_number(paired.get("log_loss")),
+            "market_n": market["sample_size"],
+            "fenzobot_n": fenzobot["sample_size"],
+        },
+        "market_movement": {
+            "comparable_closing_n": _finite_number(metrics.get("closing_market_comparable")),
+            "average_probability_pp": _finite_number(movement.get("average_probability_pp")),
+            "median_probability_pp": _finite_number(movement.get("median_probability_pp")),
+            "positive_direction_pct": _finite_number(movement.get("positive_direction_pct")),
+        },
+        "data_quality_exclusions": {
+            "count": _finite_number(_mapping(document.get("data_quality_exclusions")).get("count")),
+            "by_reason": {
+                str(reason): _finite_number(count)
+                for reason, count in _mapping(
+                    _mapping(document.get("data_quality_exclusions")).get("by_reason")
+                ).items()
+            },
+        },
+    }
+
+
+def _read_ledger_observations(root: Path) -> tuple[list[dict[str, Any]] | None, dict[str, Any]]:
+    observations_dir = root / "observations"
+    archive_dir = root / "archive"
+    files = []
+    if observations_dir.is_dir():
+        files.extend(sorted(observations_dir.glob("*.jsonl")))
+    if archive_dir.is_dir():
+        files.extend(sorted(archive_dir.glob("*.jsonl.gz")))
+    if not root.exists():
+        return None, {"status": "MISSING", "updated_at_utc": None}
+    rows: list[dict[str, Any]] = []
+    invalid = 0
+    for path in files:
+        opener = gzip.open if path.suffix == ".gz" else open
+        try:
+            with opener(path, "rt", encoding="utf-8") as handle:
+                for line in handle:
+                    if not line.strip():
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        invalid += 1
+                        continue
+                    if isinstance(row, dict) and row.get("record_type") == "MARKET_OBSERVATION":
+                        rows.append(row)
+                    else:
+                        invalid += 1
+        except (OSError, UnicodeError):
+            invalid += 1
+    timestamps = [_mapping(row.get("capture")).get("captured_at_utc") for row in rows]
+    return rows, {
+        "status": "DEGRADED" if invalid else "AVAILABLE",
+        "updated_at_utc": _latest_timestamp(timestamps),
+        "invalid_records": invalid,
+    }
+
+
+def _observations_by_day(observations: list[Mapping[str, Any]] | None, generated_at_utc: str) -> list[dict[str, Any]]:
+    if observations is None:
+        return []
+    counts: Counter[str] = Counter()
+    for row in observations:
+        captured = _mapping(row.get("capture")).get("captured_at_utc")
+        parsed = _parse_datetime(captured)
+        if parsed:
+            counts[parsed.date().isoformat()] += 1
+    now = _parse_datetime(generated_at_utc) or datetime.now(timezone.utc)
+    return [
+        {"date": (now.date() - timedelta(days=offset)).isoformat(), "observations": counts[(now.date() - timedelta(days=offset)).isoformat()]}
+        for offset in reversed(range(30))
+    ]
+
+
+def _market_memory(
+    document: Mapping[str, Any] | None,
+    observations: list[Mapping[str, Any]] | None,
+    generated_at_utc: str,
+) -> dict[str, Any]:
+    if not document and observations is None:
+        return {
+            "status": "UNAVAILABLE",
+            "total_observations": None,
+            "distinct_events": None,
+            "events_with_entry_market": None,
+            "events_with_comparable_closing": None,
+            "closing_coverage_pct": None,
+            "market_only": _copy_evaluation({}),
+            "market_plus_fenzobot": _copy_evaluation({}),
+            "observations_by_day": [],
+        }
+    events = [row for row in _list(_mapping(document).get("events")) if isinstance(row, Mapping)]
+    event_keys = {str(row.get("event_key")) for row in events if row.get("event_key")}
+    with_entry = sum(isinstance(row.get("entry_market_probabilities"), Mapping) for row in events)
+    with_closing = sum(isinstance(row.get("last_valid_prestart_market_probabilities"), Mapping) for row in events)
+    total = _finite_number(_mapping(document).get("observation_count"))
+    if total is None and observations is not None:
+        total = len(observations)
+    event_count = len(event_keys) if document else len({
+        str(_mapping(row.get("event")).get("event_key"))
+        for row in observations or []
+        if _mapping(row.get("event")).get("event_key")
+    })
+    evaluation = _mapping(_mapping(document).get("evaluation"))
+    return {
+        "status": "AVAILABLE",
+        "claims": _mapping(document).get("claims") or "EXPERIMENTAL_NOT_VALIDATED",
+        "generated_at_utc": _mapping(document).get("generated_at_utc"),
+        "total_observations": total,
+        "distinct_events": event_count,
+        "events_with_entry_market": with_entry if document else None,
+        "events_with_comparable_closing": with_closing if document else None,
+        "closing_coverage_pct": round(100 * with_closing / event_count, 2) if document and event_count else None,
+        "closing_coverage_denominator": "DISTINCT_EVENTS",
+        "market_only": _copy_evaluation(evaluation.get("market_only")),
+        "market_plus_fenzobot": _copy_evaluation(evaluation.get("market_plus_sharp")),
+        "observations_by_day": _observations_by_day(observations, generated_at_utc),
+    }
+
+
+def _system_health(history: list[Any] | None) -> dict[str, Any]:
+    def classify(entry: Mapping[str, Any], alerts: list[str]) -> str:
+        raw_status = str(entry.get("status") or "").casefold()
+        if raw_status == "failed":
+            return "FAILED"
+        if raw_status == "degraded" or alerts:
+            return "DEGRADED"
+        if raw_status in {"success", "no_eligible_matches"}:
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    entries = [dict(row) for row in history or [] if isinstance(row, Mapping)]
+    if not entries:
+        return {"status": "UNKNOWN", "latest": None, "alerts": [], "recent_runs": []}
+    latest = entries[-1]
+    alerts = run_metrics.health_alerts(latest)
+    status = classify(latest, alerts)
+    allowed = (
+        "timestamp", "status", "phase", "eligible", "processed", "analysis_failed",
+        "reports_failed", "rapidapi_calls", "llm_calls", "llm_estimated_cost_usd", "duration_seconds",
+    )
+    recent = []
+    for entry in entries[-20:]:
+        entry_alerts = run_metrics.health_alerts(entry)
+        recent.append({"timestamp": entry.get("timestamp"), "status": classify(entry, entry_alerts)})
+    return {
+        "status": status,
+        "latest": {field: latest.get(field) for field in allowed},
+        "alerts": alerts,
+        "recent_runs": recent,
+    }
+
+
+def _source_timestamp(document: Mapping[str, Any] | None, *keys: str) -> str | None:
+    for key in keys:
+        value = _mapping(document).get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = None) -> dict[str, Any]:
+    """Constroi a vista apenas a partir de ficheiros locais e campos allowlisted."""
+    root = Path(root)
+    generated_at = generated_at_utc or _utc_now()
+    snapshots_doc, snapshots_status = _read_json(root / "data/calibration_snapshots.json")
+    paper_doc, paper_status = _read_json(root / "data/paper_trades.json")
+    manual_doc, manual_status = _read_json(root / "data/manual_paper_22bet.json")
+    memory_doc, memory_status = _read_json(root / "data/market_ledger/derived/market-memory-v1.json")
+    green_doc, green_status = _read_json(root / "data/validation/green-strong-v1.json")
+    runs_doc, runs_status = _read_json(root / "data/run_metrics_log.json")
+    identity_doc, identity_status = _read_json(root / match_identity_v2.DEFAULT_REGISTRY_PATH)
+
+    snapshots = [row for row in _list(_mapping(snapshots_doc).get("snapshots")) if isinstance(row, Mapping)]
+    paper_entries = [row for row in _list(_mapping(paper_doc).get("entries")) if isinstance(row, Mapping)]
+    green_mapping = _mapping(green_doc)
+    reports, reports_status = _build_reports(root / "docs/relatorios", snapshots, paper_entries, green_mapping)
+    days = _group_days(reports)
+    ledger_rows, ledger_status = _read_ledger_observations(root / "data/market_ledger")
+    identity_instances = [
+        row
+        for row in _list(_mapping(identity_doc).get("instances"))
+        if isinstance(row, Mapping)
+    ]
+    identity_aliases = [
+        row
+        for row in _list(_mapping(identity_doc).get("aliases"))
+        if isinstance(row, Mapping)
+    ]
+    identity_observation_states = Counter(
+        str(_mapping(row.get("identity")).get("status") or "LEGACY_OR_UNAVAILABLE")
+        for row in ledger_rows or []
+    )
+    canonical_snapshot_count = sum(
+        str(row.get("identity_schema_version") or "") == str(match_identity_v2.SCHEMA_VERSION)
+        and str(row.get("identity_status") or "")
+        in {match_identity_v2.CANONICAL_STRONG, match_identity_v2.CANONICAL_RESOLVED}
+        for row in snapshots
+    )
+    canonical_paper_count = sum(
+        str(row.get("identity_schema_version") or "") == str(match_identity_v2.SCHEMA_VERSION)
+        and str(row.get("identity_status") or "")
+        in {match_identity_v2.CANONICAL_STRONG, match_identity_v2.CANONICAL_RESOLVED}
+        for row in paper_entries
+    )
+    canonical_instance_count = (
+        len(identity_instances) if identity_status["status"] == "AVAILABLE" else None
+    )
+    identity_v2 = {
+        "schema_version": match_identity_v2.SCHEMA_VERSION,
+        "change_id": match_identity_v2.CHANGE_ID,
+        "status": identity_status["status"],
+        "activation": dict(_mapping(_mapping(identity_doc).get("activation"))),
+        "canonical_instances": canonical_instance_count,
+        "aliases": {
+            state: (
+                sum(str(row.get("status")) == state for row in identity_aliases)
+                if identity_status["status"] == "AVAILABLE"
+                else None
+            )
+            for state in ("ACTIVE", "CONFLICTED", "RETIRED")
+        },
+        "v2_observations": sum(
+            identity_observation_states[state]
+            for state in (
+                match_identity_v2.CANONICAL_STRONG,
+                match_identity_v2.CANONICAL_RESOLVED,
+                match_identity_v2.IDENTITY_PROVISIONAL,
+                match_identity_v2.IDENTITY_INSUFFICIENT,
+                match_identity_v2.IDENTITY_CONFLICT,
+            )
+        ),
+        "observations_by_state": {
+            state: identity_observation_states[state]
+            for state in (
+                match_identity_v2.CANONICAL_STRONG,
+                match_identity_v2.CANONICAL_RESOLVED,
+                match_identity_v2.IDENTITY_PROVISIONAL,
+                match_identity_v2.IDENTITY_INSUFFICIENT,
+                match_identity_v2.IDENTITY_CONFLICT,
+            )
+        },
+        "canonical_snapshots": canonical_snapshot_count,
+        "canonical_snapshot_coverage_pct": (
+            round(100 * canonical_snapshot_count / canonical_instance_count, 2)
+            if canonical_instance_count
+            else None
+        ),
+        "canonical_paper_entries": canonical_paper_count,
+        "privacy": "AGGREGATES_ONLY_CANONICAL_IDS_NOT_PUBLISHED",
+    }
+
+    settled_snapshots = sum(
+        _mapping(snapshot.get("outcome")).get("winner_side") in {"a", "b"}
+        for snapshot in snapshots
+    ) if snapshots_status["status"] == "AVAILABLE" else None
+    colors = Counter(str(report.get("color")) for report in reports or [])
+    green_panel = _green_strong(green_mapping if green_status["status"] == "AVAILABLE" else None)
+    technical = _paper_technical(
+        paper_status,
+        root / "data/paper_trades.json",
+        root / "data/manual_paper_22bet.json",
+        root / "data/validation/market-integrity-exclusions-v1.json",
+    )
+    manual = _paper_22bet(_mapping(manual_doc) if manual_status["status"] == "AVAILABLE" else None)
+    market = _market_memory(
+        _mapping(memory_doc) if memory_status["status"] == "AVAILABLE" else None,
+        ledger_rows,
+        generated_at,
+    )
+    try:
+        accuracy = calibration_store.compute_system_accuracy(
+            root / "data/calibration_snapshots.json",
+            root / "data/validation/market-integrity-exclusions-v1.json",
+        )
+    except Exception:
+        accuracy = None
+    report_history = {
+        "status": "AVAILABLE" if snapshots_status["status"] == "AVAILABLE" else "UNAVAILABLE",
+        "snapshot_universe": {
+            "total": len(snapshots) if snapshots_status["status"] == "AVAILABLE" else None,
+            "settled": settled_snapshots,
+        },
+        "divergence": dict(_mapping(accuracy).get("divergencia")) if _mapping(accuracy).get("divergencia") else None,
+        "alignment": dict(_mapping(accuracy).get("alinhamento_forte")) if _mapping(accuracy).get("alinhamento_forte") else None,
+    }
+    run_history = runs_doc if isinstance(runs_doc, list) and runs_status["status"] == "AVAILABLE" else None
+    health = _system_health(run_history)
+    reconciliation = snapshot_reconciliation.build(
+        reports=reports,
+        days=days,
+        snapshots=snapshots,
+        runs=run_history,
+        generated_at_utc=generated_at,
+    )
+    try:
+        green_money = green_monetization.build_report(
+            paper_path=root / "data/paper_trades.json",
+            legacy_exclusions_path=root / "data/paper_integrity_exclusions.json",
+            market_exclusions_path=root / "data/validation/market-integrity-exclusions-v1.json",
+            generated_at_utc=generated_at,
+        )
+    except Exception as exc:
+        green_money = {
+            "schema_version": green_monetization.SCHEMA_VERSION,
+            "change_id": green_monetization.CHANGE_ID,
+            "metric_id": green_monetization.METRIC_ID,
+            "status": "UNAVAILABLE",
+            "generated_at_utc": generated_at,
+            "claims": "HISTORICAL_EXPERIMENTAL_SIMULATION_NOT_REAL_NOT_PROOF_OF_FUTURE_EDGE",
+            "error": type(exc).__name__,
+        }
+    paper_comparison = _paper_results_comparison(green_money, manual)
+
+    snapshots_status["updated_at_utc"] = _source_timestamp(_mapping(snapshots_doc), "updated_at_utc")
+    paper_status["updated_at_utc"] = _source_timestamp(_mapping(paper_doc), "updated_at_utc")
+    manual_status["updated_at_utc"] = _mapping(_mapping(manual_doc).get("source")).get("synced_at_utc")
+    memory_status["updated_at_utc"] = _source_timestamp(_mapping(memory_doc), "generated_at_utc")
+    green_status["updated_at_utc"] = _source_timestamp(_mapping(green_doc), "generated_at_utc")
+    runs_status["updated_at_utc"] = _latest_timestamp(
+        row.get("timestamp") for row in run_history or [] if isinstance(row, Mapping)
+    )
+    identity_status["updated_at_utc"] = _source_timestamp(
+        _mapping(identity_doc), "updated_at_utc", "created_at_utc"
+    )
+
+    dashboard = {
+        "schema_version": SCHEMA_VERSION,
+        "change_id": CHANGE_ID,
+        "mode": MODE,
+        "generated_at_utc": generated_at,
+        "claims": CLAIMS,
+        "source_freshness": {
+            "reports": reports_status,
+            "snapshots": snapshots_status,
+            "paper_technical": paper_status,
+            "paper_22bet": manual_status,
+            "market_memory": memory_status,
+            "market_ledger": ledger_status,
+            "green_strong_v1": green_status,
+            "run_metrics": runs_status,
+            "match_identity_v2": identity_status,
+        },
+        "guidance_v1": dashboard_ui.guidance_payload(),
+        "global": {
+            "total_reports": len(reports) if reports is not None else None,
+            "distinct_matchups": (
+                len({str(report.get("match_key")) for report in reports})
+                if reports is not None else None
+            ),
+            "total_snapshots": len(snapshots) if snapshots_status["status"] == "AVAILABLE" else None,
+            "settled_snapshots": settled_snapshots,
+            "report_colors": {
+                "GREEN": colors["GREEN"] if reports is not None else None,
+                "YELLOW": colors["YELLOW"] if reports is not None else None,
+                "RED": colors["RED"] if reports is not None else None,
+                "UNAVAILABLE": colors["UNAVAILABLE"] if reports is not None else None,
+            },
+            "green_strong_candidates": green_panel["sample"]["candidates"],
+            "paper_technical_entries": technical.get("total_entries"),
+            "paper_22bet_entries": manual.get("total_entries"),
+            "market_observations": market.get("total_observations"),
+        },
+        "report_history": report_history,
+        "market_memory": market,
+        "green_strong_v1": green_panel,
+        "green_monetization_v1": green_money,
+        "paper_results_comparison_v1": paper_comparison,
+        "snapshot_reconciliation_v1": reconciliation,
+        "guerra_selection_v1": _guerra_selection(green_mapping if green_status["status"] == "AVAILABLE" else None),
+        "paper_technical": technical,
+        "paper_22bet": manual,
+        "system_health": health,
+        "match_identity_v2": identity_v2,
+        "report_grouping": {
+            "contract_version": "MATCH_VERSION_GROUPING_V1",
+            "change_id": REPORT_GROUPING_CHANGE_ID,
+            "version_count_field": "global.total_reports",
+            "matchup_count_field": "global.distinct_matchups",
+            "canonical_precedence": ["SNAPSHOT_KEY", "EVENT_KEY", "MATCH_ID"],
+            "fallback": "date + normalized title (exact normalization; no fuzzy matching)",
+            "fallback_is_explicit": True,
+            "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+        },
+        "days": days,
+    }
+    try:
+        dashboard["audit_v1"] = audit_observability.build(root, snapshots_doc, dashboard)
+    except Exception as exc:
+        # Additive diagnostics must not block the legacy dashboard.
+        dashboard["audit_v1"] = {"status": "UNAVAILABLE", "error": type(exc).__name__}
+    fingerprint_payload = dict(dashboard)
+    fingerprint_payload.pop("generated_at_utc", None)
+    green_fingerprint_payload = dict(_mapping(fingerprint_payload.get("green_monetization_v1")))
+    green_fingerprint_payload.pop("generated_at_utc", None)
+    fingerprint_payload["green_monetization_v1"] = green_fingerprint_payload
+    dashboard["semantic_fingerprint"] = hashlib.sha256(
+        json.dumps(fingerprint_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return dashboard
+
+
+def _script_json(value: Mapping[str, Any]) -> str:
+    return (
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+
+
+def render_dashboard_html(data: Mapping[str, Any]) -> str:
+    """Renderiza um unico documento sem CDN, backend ou dependencias externas."""
+    embedded = _script_json(data)
+    return f"""<!doctype html>
+<html lang="pt"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Fenzobot Control</title>
+<style>
+:root{{--bg:#080d13;--panel:#111923;--panel2:#162231;--line:#26384b;--text:#edf4fb;--dim:#8fa5bc;--steel:#58a6d8;--green:#35d49a;--yellow:#efbd4e;--red:#f06b6b;--amber:#e6a93d}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,"Segoe UI",system-ui,sans-serif;font-variant-numeric:tabular-nums}}
+button,a{{font:inherit}}button{{color:inherit}}.shell{{min-height:100vh;display:grid;grid-template-columns:minmax(280px,25vw) 1fr}}
+.sidebar{{height:100vh;position:sticky;top:0;overflow:auto;border-right:1px solid var(--line);background:#0c131c;padding:24px 18px}}
+.brand{{letter-spacing:.15em;font-size:11px;color:var(--steel);text-transform:uppercase}}.sidebar h2{{font-size:16px;margin:8px 0 18px}}
+.day{{border:1px solid var(--line);border-radius:12px;margin:0 0 10px;background:var(--panel);overflow:hidden}}.day[open]{{border-color:#365573}}
+.day summary{{cursor:pointer;padding:12px 13px;list-style:none}}.day summary::-webkit-details-marker{{display:none}}.day-head{{display:flex;justify-content:space-between;gap:10px;font-weight:700}}
+.day-meta{{color:var(--dim);font-size:12px;margin-top:4px}}.reports{{border-top:1px solid var(--line);padding:7px}}
+.report{{display:block;color:var(--text);text-decoration:none;border-radius:8px;padding:9px 8px;margin:2px 0;min-width:0}}.report:hover,.report:focus{{background:#1a2939;outline:none}}
+.report-top{{display:flex;gap:7px;align-items:center;min-width:0}}.report-title{{font-size:13px;font-weight:650;min-width:0;overflow-wrap:anywhere}}.report-meta{{font-size:11px;color:var(--dim);margin:3px 0 0 20px;overflow-wrap:anywhere}}
+.matchup{{display:block;border-radius:9px;margin:2px 0;min-width:0;overflow:hidden}}.matchup>summary{{list-style:none;cursor:pointer;padding:9px 8px}}.matchup>summary::-webkit-details-marker{{display:none}}.matchup[open]{{background:#121f2d}}.matchup[open]>summary{{border-bottom:1px solid var(--line)}}
+.matchup.single>.report{{margin:0}}.matchup-count{{margin-left:auto;color:var(--dim);font-size:10px;white-space:nowrap}}.versions{{padding:4px 7px 7px 18px;min-width:0}}.version{{border-left:2px solid #2c465e;padding-left:10px}}.matchup-dots{{display:inline-flex;gap:3px;flex:0 0 auto}}.matchup-source{{font-size:10px;color:var(--dim)}}
+.dot{{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#647386}}.dot.GREEN{{background:var(--green)}}.dot.YELLOW{{background:var(--yellow)}}.dot.RED{{background:var(--red)}}
+.badge{{display:inline-flex;border:1px solid #3a526b;border-radius:999px;padding:1px 6px;font-size:9px;letter-spacing:.04em;margin-left:4px;color:#bdd3e7}}.badge.gs{{border-color:#278b70;color:var(--green)}}
+.main{{min-width:0;padding:28px clamp(20px,3vw,48px) 60px}}.top{{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}}
+h1{{font-size:clamp(24px,3vw,36px);letter-spacing:.08em;margin:0}}.subtitle{{color:var(--dim);margin-top:6px}}.updated{{color:var(--dim);font-size:12px;text-align:right}}
+.toggle{{display:inline-flex;background:var(--panel);border:1px solid var(--line);padding:4px;border-radius:10px;margin-top:12px}}.toggle button{{border:0;background:transparent;padding:8px 13px;border-radius:7px;cursor:pointer;color:var(--dim)}}.toggle button.active{{background:#24415b;color:#fff}}
+.cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:0 0 18px}}.card{{border:1px solid var(--line);border-radius:13px;background:var(--panel);padding:15px;text-align:left}}
+button.card{{cursor:pointer}}button.card:hover{{border-color:var(--steel)}}.card .label{{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em}}.card .value{{font-size:27px;font-weight:750;margin-top:4px}}.card.GREEN .value{{color:var(--green)}}.card.YELLOW .value{{color:var(--yellow)}}.card.RED .value{{color:var(--red)}}
+.grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}}.panel{{border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:18px;min-width:0}}.panel.wide{{grid-column:1/-1}}.panel.feature{{border-color:#2b806c;background:linear-gradient(145deg,#11241f,var(--panel) 58%)}}
+.panel h2{{font-size:15px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 3px}}.eyebrow{{color:var(--dim);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:15px}}.metrics{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}}
+.metric{{background:var(--panel2);border:1px solid #223950;border-radius:10px;padding:11px}}.metric span{{display:block;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.05em}}.metric strong{{display:block;font-size:18px;margin-top:4px;overflow-wrap:anywhere}}.metric small{{display:block;color:var(--dim);font-size:10px;margin-top:2px}}
+.note{{border-left:3px solid var(--steel);padding:10px 12px;background:#132131;color:#b9cbe0;border-radius:0 8px 8px 0;margin:12px 0}}.note.warning{{border-color:var(--yellow)}}
+.split{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.rows{{margin-top:12px}}.row{{display:flex;justify-content:space-between;gap:20px;padding:8px 0;border-bottom:1px solid #213142}}.row:last-child{{border-bottom:0}}.row span{{color:var(--dim)}}
+.chart{{height:155px;display:flex;align-items:end;gap:3px;padding:12px 2px 22px;margin-top:8px;border-bottom:1px solid var(--line)}}.bar{{flex:1;min-width:2px;background:linear-gradient(#64b6e8,#2e658b);border-radius:3px 3px 0 0;position:relative}}.bar:hover{{background:var(--green)}}
+.health{{display:inline-flex;padding:5px 9px;border-radius:999px;border:1px solid var(--line);font-weight:750}}.health.HEALTHY{{color:var(--green);border-color:#27785f}}.health.DEGRADED{{color:var(--yellow);border-color:#806822}}.health.FAILED{{color:var(--red);border-color:#884343}}
+.spark{{width:100%;height:55px;margin-top:12px}}.fresh{{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}}.fresh div{{background:var(--panel2);padding:9px;border-radius:8px}}.fresh small{{display:block;color:var(--dim)}}
+.empty{{color:var(--dim);padding:22px 0}}.filter-note{{color:var(--dim);font-size:12px;margin:-8px 0 16px}}.filter-clear{{background:transparent;border:0;color:var(--steel);cursor:pointer;text-decoration:underline}}
+.top a,.panel a{{color:var(--steel)}}[hidden]{{display:none!important}}
+@media(max-width:900px){{.shell{{grid-template-columns:1fr}}.sidebar{{position:relative;height:auto;max-height:48vh;border-right:0;border-bottom:1px solid var(--line)}}.grid{{grid-template-columns:1fr}}.panel.wide{{grid-column:auto}}.top{{flex-direction:column}}.updated{{text-align:left}}}}
+@media(max-width:560px){{.main{{padding:20px 14px 40px}}.metrics{{grid-template-columns:repeat(2,minmax(0,1fr))}}.split{{grid-template-columns:1fr}}}}
+{dashboard_ui.CSS}
+</style></head><body>
+<div class="shell"><aside class="sidebar"><div class="brand">Fenzo Intelligence</div><h2>Histórico de relatórios</h2><div id="days"></div></aside>
+<main class="main"><header class="top"><div><h1>FENZOBOT CONTROL</h1><div class="subtitle">Superfície read-only · dados derivados · sem execução</div><div class="toggle" role="group" aria-label="Âmbito"><button id="day-toggle">DIA SELECIONADO</button><button id="global-toggle">GLOBAL</button></div></div><div class="updated"><a href="../">Todos os relatórios</a><br><span id="generated"></span></div></header><section id="content"></section></main></div>
+<script>
+const HISTORIC_DATA={embedded};
+const CONTINUITY=HISTORIC_DATA.forward_only_continuity||null;
+function mergeDashboardDays(historicDays,prospectiveDays){{
+  const merged=new Map();
+  for(const source of [historicDays||[],prospectiveDays||[]]){{
+    for(const day of source){{
+      if(!merged.has(day.date))merged.set(day.date,{{date:day.date,reports:[],matchups:[]}});
+      const target=merged.get(day.date),offset=target.reports.length;
+      target.reports.push(...(day.reports||[]).map(report=>({{...report}})));
+      for(const matchup of day.matchups||[]){{
+        const indexes=(matchup.version_indexes||[]).map(index=>Number(index)+offset);
+        const current=target.matchups.find(item=>item.match_key===matchup.match_key);
+        if(current){{
+          current.version_indexes.push(...indexes);
+          current.version_count=current.version_indexes.length;
+          const matchupColors=matchup.colors||{{}};
+          current.colors={{...(current.colors||{{}})}};
+          for(const [name,count] of Object.entries(matchupColors))current.colors[name]=Number(current.colors[name]||0)+Number(count||0);
+          current.green_strong=Boolean(current.green_strong||matchup.green_strong);
+          current.paper_technical=Boolean(current.paper_technical||matchup.paper_technical);
+          current.fallback_version_count=Number(current.fallback_version_count||0)+Number(matchup.fallback_version_count||0);
+        }}else{{
+          target.matchups.push({{...matchup,version_indexes:indexes,version_count:indexes.length}});
+        }}
+      }}
+    }}
+  }}
+  return [...merged.values()].map(day=>{{
+    const colors={{GREEN:0,YELLOW:0,RED:0,UNAVAILABLE:0}};
+    for(const report of day.reports)colors[report.color in colors?report.color:'UNAVAILABLE']+=1;
+    day.counts={{reports:day.reports.length,matchups:day.matchups.length,...colors,
+      GREEN_STRONG:day.reports.filter(report=>report.green_strong).length,
+      PAPER_TECHNICAL:day.reports.filter(report=>report.paper_technical).length}};
+    return day;
+  }}).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+}}
+function effectiveDashboardData(historic,continuity){{
+  if(!continuity)return historic;
+  const prospective=continuity.prospective||{{}},operational=continuity.operational_current||{{}};
+  const days=mergeDashboardDays(historic.days,prospective.days);
+  const historicGlobal=historic.global||{{}},prospectiveGlobal=prospective.global||{{}};
+  const historicColors=historicGlobal.report_colors||{{}};
+  const prospectiveColors=prospectiveGlobal.report_colors||{{}};
+  const addKnown=(historicValue,prospectiveValue)=>
+    typeof historicValue==='number'&&Number.isFinite(historicValue)&&
+    typeof prospectiveValue==='number'&&Number.isFinite(prospectiveValue)
+      ?historicValue+prospectiveValue:null;
+  const colors={{GREEN:0,YELLOW:0,RED:0,UNAVAILABLE:0}};
+  for(const name of Object.keys(colors))colors[name]=addKnown(historicColors[name],prospectiveColors[name]);
+  return {{...historic,
+    generated_at_utc:prospective.generated_at_utc||historic.generated_at_utc,
+    days,
+    global:{{...historicGlobal,
+      total_reports:addKnown(historicGlobal.total_reports,prospectiveGlobal.total_reports),
+      distinct_matchups:addKnown(historicGlobal.distinct_matchups,prospectiveGlobal.distinct_matchups),
+      total_snapshots:addKnown(historicGlobal.total_snapshots,prospectiveGlobal.total_snapshots),
+      settled_snapshots:addKnown(historicGlobal.settled_snapshots,prospectiveGlobal.settled_snapshots),
+      green_strong_candidates:addKnown(historicGlobal.green_strong_candidates,prospective.projection_views?.green_strong_v1?.sample?.candidates),
+      paper_technical_entries:addKnown(historicGlobal.paper_technical_entries,prospectiveGlobal.paper_technical_entries),
+      market_observations:addKnown(historicGlobal.market_observations,prospectiveGlobal.market_observations),
+      report_colors:colors}},
+    system_health:operational.system_health||historic.system_health,
+    source_freshness:operational.source_freshness||historic.source_freshness}};
+}}
+const DATA=effectiveDashboardData(HISTORIC_DATA,CONTINUITY);
+const nf=new Intl.NumberFormat('pt-PT',{{maximumFractionDigits:2}});
+const state={{scope:DATA.days.length?'DAY':'GLOBAL',day:DATA.days[0]?.date||null,filter:'ALL'}};
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]));
+const val=(v,s='')=>v===null||v===undefined?'N/D':`${{typeof v==='number'?nf.format(v):esc(v)}}${{s}}`;
+const euroFormat=new Intl.NumberFormat('pt-PT',{{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}});
+const eur=(v,signed=false)=>v===null||v===undefined?'N/D':`${{signed&&v>0?'+':''}}${{euroFormat.format(v)}}`;
+const pct=v=>val(v,'%'); const prob=v=>v===null||v===undefined?'N/D':pct(100*v);
+const fmtTime=v=>{{if(!v)return'N/D';const d=new Date(v);return Number.isNaN(d.valueOf())?'N/D':d.toLocaleString('pt-PT',{{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Lisbon'}})+' Lisboa'}};
+const dayLabel=v=>v==='UNAVAILABLE'?'DATA N/D':new Date(v+'T12:00:00Z').toLocaleDateString('pt-PT',{{day:'2-digit',month:'short',year:'numeric'}}).toUpperCase();
+const linkageLabel=v=>({{EXACT_REPORT_ID:'ligação exata',SELF_DESCRIBED_REPORT:'metadata canónica do relatório',HISTORICAL_DOM_CONTRACT:'contrato HTML histórico',LEGACY_UNLINKED:'legacy · metadata N/D'}}[v]||'metadata N/D');
+const metric=(label,value,suffix='',detail='')=>`<div class="metric"><span>${{esc(label)}}</span><strong>${{/Brier|Loss/i.test(label)&&typeof value==='number'?(value>0&&label.startsWith('Δ')?'+':'')+value.toLocaleString('pt-PT',{{minimumFractionDigits:6,maximumFractionDigits:6}}):val(value,suffix)}}</strong>${{detail?`<small>${{esc(detail)}}</small>`:''}}${{helpUI(label)}}</div>`;
+const cards=items=>`<div class="cards">${{items.map(x=>`<div class="card ${{x.cls||''}}">${{x.filter?`<button type="button" class="card-filter" data-filter="${{x.filter}}" title="Filtrar relatórios deste dia">`:''}}<div class="label">${{esc(x.label)}}</div><div class="value">${{val(x.value)}}</div>${{x.filter?'</button>':''}}${{helpUI(x.label)}}</div>`).join('')}}</div>`;
+function versionMeta(v,index){{const parts=[`Relatório ${{index+1}}`,v.color,linkageLabel(v.linkage)];if(v.report_id)parts.push(`ID ${{v.report_id}}`);if(v.scheduled_start_utc)parts.push(`Jogo ${{fmtTime(v.scheduled_start_utc)}}`);return parts.join(' · ')}}
+function renderMatchup(day,matchup,filterActive){{const allVersions=matchup.version_indexes.map(index=>day.reports[index]);const versions=allVersions.filter(v=>filterActive==='ALL'||v.color===filterActive);if(!versions.length)return'';const colors=[...new Set(versions.map(v=>v.color))];const dots=`<span class="matchup-dots">${{colors.map(color=>`<i class="dot ${{color}}"></i>`).join('')}}</span>`;const badges=`${{matchup.green_strong?'<b class="badge gs">GS</b>':''}}${{matchup.paper_technical?'<b class="badge">PAPER</b>':''}}`;const source=matchup.match_key_fallback?'agrupamento por data + título normalizado':matchup.fallback_version_count?`identificador canónico · ${{matchup.fallback_version_count}} versão(ões) associada(s) por data + título`:'identificador canónico';if(matchup.version_count===1){{const v=versions[0];return `<div class="matchup single"><a class="report" href="${{esc(v.url)}}"><div class="report-top">${{dots}}<span class="report-title">${{esc(matchup.title)}}</span>${{badges}}</div><div class="report-meta">${{versionMeta(v,0)}} · ${{source}}</div></a></div>`}}return `<details class="matchup"><summary><div class="report-top">${{dots}}<span class="report-title">${{esc(matchup.title)}}</span>${{badges}}<span class="matchup-count">${{versions.length===matchup.version_count?matchup.version_count:`${{versions.length}}/${{matchup.version_count}}`}} versões</span></div><div class="report-meta">${{source}}</div></summary><div class="versions">${{versions.map((v,index)=>`<a class="report version" href="${{esc(v.url)}}"><div class="report-top"><i class="dot ${{v.color}}"></i><span class="report-title">Abrir relatório</span></div><div class="report-meta">${{versionMeta(v,index)}}</div></a>`).join('')}}</div></details>`}}
+function renderSidebar(){{const host=document.getElementById('days');if(!DATA.days.length){{host.innerHTML='<div class="empty">Sem relatórios disponíveis.</div>';return}}host.innerHTML=DATA.days.map((day,i)=>{{const c=day.counts;const filterActive=day.date===state.day?state.filter:'ALL';const matchups=day.matchups.map(m=>renderMatchup(day,m,filterActive)).filter(Boolean);return `<details class="day" ${{day.date===state.day||(!state.day&&i===0)?'open':''}} data-day="${{esc(day.date)}}"><summary><div class="day-head"><span>▾ ${{dayLabel(day.date)}}</span><span>${{c.matchups}} jogos</span></div><div class="day-meta">${{c.matchups}} jogos · ${{c.reports}} versões · 🟢${{c.GREEN}} · 🟡${{c.YELLOW}} · 🔴${{c.RED}} · GS ${{c.GREEN_STRONG}}</div></summary><div class="reports">${{matchups.length?matchups.join(''):'<div class="empty">Sem versões neste filtro.</div>'}}</div></details>`}}).join('');host.querySelectorAll('.day').forEach(el=>el.addEventListener('toggle',()=>{{if(el.open&&el.dataset.day!==state.day){{state.day=el.dataset.day;state.scope='DAY';state.filter='ALL';render()}}}}))}}
+function panel(title,eyebrow,body,cls='',guideKey=''){{return `<article class="panel ${{cls}}"><h2>${{esc(title)}}</h2><div class="eyebrow">${{esc(eyebrow)}}</div>${{panelGuide(guideKey)}}${{body}}</article>`}}
+function summaryRows(obj){{return `<div class="rows">${{[['Entradas',obj.total_entries],['Liquidadas',obj.settled],['Pendentes',obj.pending],['W–L',obj.wins==null||obj.losses==null?null:`${{obj.wins}}–${{obj.losses}}`],['Win rate',obj.win_rate_pct==null?null:pct(obj.win_rate_pct)],['Unidades',obj.units],['ROI',obj.roi_pct==null?null:pct(obj.roi_pct)],['Odd média',obj.average_odd]].map(([k,v])=>`<div class="row"><span>${{esc(k)}}</span><b>${{v==null?'N/D':v}}</b>${{helpUI(k)}}</div>`).join('')}}</div>`}}
+function continuityPanel(){{if(!CONTINUITY)return'';const p=CONTINUITY.prospective||{{}},g=p.global||{{}},days=p.days||[],views=p.projection_views||{{}},mm=views.market_memory||{{}},gs=views.green_strong_v1||{{}},money=views.green_monetization_v1||{{}};const links=days.flatMap(day=>(day.reports||[]).map(report=>`<a href="${{esc(report.url)}}">${{esc(report.title)}}</a>`)).join(' · ');const moneyAvailable=typeof money.net_profit_eur==='number';return `<article class="panel wide feature" style="margin-bottom:15px"><h2>Continuidade forward-only</h2><div class="eyebrow">Baseline T0 preservada · contribuições pós-T0 separadas</div><h3>Pós-T0 elegível</h3><div class="metrics">${{metric('Versões pós-T0',g.total_reports)}}${{metric('Jogos pós-T0',g.distinct_matchups)}}${{metric('Observações de mercado pós-T0',mm.total_observations)}}${{metric('GREEN candidatos pós-T0',gs.sample?.candidates)}}${{metric('GREEN liquidados pós-T0',gs.sample?.settled)}}${{metric('Resultado GREEN pós-T0',moneyAvailable?eur(money.net_profit_eur,true):null)}}${{metric('ROI GREEN pós-T0',money.roi_pct,'%')}}${{metric('T0',CONTINUITY.effective_from_utc)}}</div><p class="audit-caption">A baseline T0 permanece byte-a-byte preservada. Contagens compatíveis da navegação incluem baseline + eventos elegíveis pós-T0; taxas, ROI e resultados desta área descrevem apenas a coorte pós-T0 e nunca são somados às percentagens históricas.</p>${{links?`<p class="audit-caption"><b>Relatórios pós-T0:</b> ${{links}}</p>`:''}}</article>`}}
+function legacyGlobalView(){{const g=DATA.global,h=DATA.report_history,gs=DATA.green_strong_v1,gu=DATA.guerra_selection_v1,mm=DATA.market_memory,pt=DATA.paper_technical,p22=DATA.paper_22bet,sh=DATA.system_health,iv=DATA.match_identity_v2;let out=cards([{{label:'Jogos distintos',value:g.distinct_matchups}},{{label:'Versões de relatório',value:g.total_reports}},{{label:'Snapshots',value:g.total_snapshots}},{{label:'Liquidados',value:g.settled_snapshots}},{{label:'Versões verdes',value:g.report_colors.GREEN,cls:'GREEN'}},{{label:'Versões amarelas',value:g.report_colors.YELLOW,cls:'YELLOW'}},{{label:'Versões vermelhas',value:g.report_colors.RED,cls:'RED'}},{{label:'GREEN_STRONG',value:g.green_strong_candidates}},{{label:'PAPER técnico',value:g.paper_technical_entries}},{{label:'PAPER 22Bet',value:g.paper_22bet_entries}},{{label:'Market obs.',value:g.market_observations}}]);out+='<div class="grid">';
+out+=panel('Histórico dos relatórios','REPORT_HISTORY · universo de snapshots',`<div class="metrics">${{metric('Snapshots',h.snapshot_universe.total)}}${{metric('Liquidados',h.snapshot_universe.settled)}}</div><div class="split"><div><h3>Divergência</h3>${{h.divergence?`${{metric('Acertos',h.divergence.acertos)}}${{metric('N',h.divergence.total)}}${{metric('Taxa',h.divergence.taxa_pct,'%')}}${{metric('Intervalo',h.divergence.intervalo_pct?.join('–')||null,'%')}}`:'<div class="empty">N/D — amostra mínima não atingida ou fonte indisponível.</div>'}}</div><div><h3>Alinhamento</h3>${{h.alignment?`${{metric('Acertos',h.alignment.acertos)}}${{metric('N',h.alignment.total)}}${{metric('Taxa',h.alignment.taxa_pct,'%')}}${{metric('Intervalo',h.alignment.intervalo_pct?.join('–')||null,'%')}}`:'<div class="empty">N/D — amostra mínima não atingida ou fonte indisponível.</div>'}}</div></div>`,'','REPORT_HISTORY');
+const zero=gs.sample.candidates===0;out+=panel('Validação prospetiva','GREEN_STRONG_V1 · coorte SHADOW',`${{zero?'<div class="note warning">N=0 — acumulação prospetiva iniciada. Sem conclusão possível.</div>':''}}<div class="metrics">${{metric('Candidatos',gs.sample.candidates)}}${{metric('Liquidados',gs.sample.settled)}}${{metric('Pendentes',gs.sample.pending)}}${{metric('Mercado médio',gs.forecast.average_market_probability==null?null:100*gs.forecast.average_market_probability,'%')}}${{metric('Fenzobot médio',gs.forecast.average_fenzobot_probability==null?null:100*gs.forecast.average_fenzobot_probability,'%')}}${{metric('Win rate observado',gs.forecast.observed_win_rate_pct,'%')}}</div><h3>Proper scoring</h3><div class="metrics">${{metric('Market Brier',gs.proper_scoring.market_brier,'',`N=${{val(gs.proper_scoring.market_n)}}`)}}${{metric('Fenzobot Brier',gs.proper_scoring.fenzobot_brier,'',`N=${{val(gs.proper_scoring.fenzobot_n)}}`)}}${{metric('Δ Brier',gs.proper_scoring.delta_brier)}}${{metric('Market Log Loss',gs.proper_scoring.market_log_loss)}}${{metric('Fenzobot Log Loss',gs.proper_scoring.fenzobot_log_loss)}}${{metric('Δ Log Loss',gs.proper_scoring.delta_log_loss)}}</div><h3>Movimento do mercado</h3><div class="metrics">${{metric('Closing comparável N',gs.market_movement.comparable_closing_n)}}${{metric('Movimento médio',gs.market_movement.average_probability_pp,' p.p.')}}${{metric('Mediana',gs.market_movement.median_probability_pp,' p.p.')}}${{metric('Na direção Fenzobot',gs.market_movement.positive_direction_pct,'%')}}</div>`, 'wide feature','GREEN_STRONG_V1');
+out+=panel('Seleção manual Guerra','GUERRA_SELECTION_V1 · PAPER manual',`${{gu.status!=='AVAILABLE'?'<div class="note">N/D — agregado público ainda indisponível.</div>':''}}<div class="metrics">${{metric('GS elegíveis',gu.eligible_green_strong)}}${{metric('Candidatos selecionados',gu.selected_candidates)}}${{metric('Taxa de seleção',gu.selection_rate_pct,'%')}}${{metric('Entradas / legs',gu.paper_entries)}}</div>${{summaryRows(gu.summary)}}<h3>Completude underdog</h3><div class="metrics">${{metric('Underdogs selecionados',gu.underdog_pair_completeness.underdog_selected_candidates)}}${{metric('Pares completos',gu.underdog_pair_completeness.complete_moneyline_positive_handicap_pairs)}}${{metric('Só Moneyline',gu.underdog_pair_completeness.moneyline_only)}}${{metric('Só handicap +',gu.underdog_pair_completeness.positive_handicap_only)}}${{metric('Incompleto / N/D',gu.underdog_pair_completeness.incomplete_or_unrecognized)}}</div>`,'','GUERRA_SELECTION_V1');
+const bars=mm.observations_by_day||[];const max=Math.max(1,...bars.map(x=>x.observations));out+=panel('Histórico do mercado','MARKET_MEMORY · experimental · não validado',`<div class="metrics">${{metric('Observações',mm.total_observations)}}${{metric('Eventos distintos',mm.distinct_events)}}${{metric('Com entry market',mm.events_with_entry_market)}}${{metric('Closing comparável',mm.events_with_comparable_closing)}}${{metric('Cobertura closing',mm.closing_coverage_pct,'%')}}${{metric('Market-only N',mm.market_only.sample_size)}}${{metric('Market + Fenzobot N',mm.market_plus_fenzobot.sample_size)}}</div><div class="split"><div><h3>Só mercado</h3>${{metric('Brier',mm.market_only.brier_score)}}${{metric('Log Loss',mm.market_only.log_loss)}}</div><div><h3>Mercado + Fenzobot</h3>${{metric('Brier',mm.market_plus_fenzobot.brier_score)}}${{metric('Log Loss',mm.market_plus_fenzobot.log_loss)}}</div></div><h3>Observações por dia · últimos 30 dias</h3><div class="chart" aria-label="Observações de mercado por dia">${{bars.map(x=>`<i class="bar" style="height:${{Math.max(2,100*x.observations/max)}}%" title="${{esc(x.date)}}: ${{x.observations}}"></i>`).join('')}}</div>`,'wide','MARKET_MEMORY');
+out+=panel('PAPER técnico','Universo PAPER automático',summaryRows(pt),'','PAPER_TECHNICAL');out+=panel('PAPER manual 22Bet','Agregados públicos apenas',`${{summaryRows(p22)}}<div class="note">Fonte 22Bet sincronizada em: ${{fmtTime(p22.synced_at_utc)}}</div><h3>Mercados</h3><div class="rows">${{Object.entries(p22.by_market||{{}}).map(([k,v])=>`<div class="row"><span>${{esc(k)}}</span><b>${{val(v.total_entries)}} entradas</b></div>`).join('')||'<div class="empty">N/D</div>'}}</div>`,'','PAPER_22BET');
+out+=panel('Identidade canónica','MATCH_INSTANCE_ID_V2 · prospetivo · agregado público',`<div class="metrics">${{metric('Observações v2',iv.v2_observations)}}${{metric('Instâncias canónicas',iv.canonical_instances)}}${{metric('Aliases ativos',iv.aliases.ACTIVE)}}${{metric('Aliases em conflito',iv.aliases.CONFLICTED)}}${{metric('Snapshots canónicos',iv.canonical_snapshots)}}${{metric('Cobertura snapshot',iv.canonical_snapshot_coverage_pct,'%')}}${{metric('PAPER canónico',iv.canonical_paper_entries)}}</div><div class="note">IDs canónicos são internos e nunca são publicados nesta vista. Estados observados: ${{esc(Object.entries(iv.observations_by_state||{{}}).map(([k,v])=>`${{k}}=${{v}}`).join(' · ')||'N/D')}}.</div>`,'wide','MATCH_IDENTITY_V2');
+const latest=sh.latest||{{}};const pts=(sh.recent_runs||[]).map((x,i,a)=>`${{a.length<2?0:100*i/(a.length-1)}},${{x.status==='HEALTHY'?8:x.status==='DEGRADED'?28:48}}`).join(' ');out+=panel('Saúde da execução','SYSTEM_HEALTH · alertas existentes',`<span class="health ${{sh.status}}">${{sh.status}}</span><div class="metrics" style="margin-top:12px">${{metric('Timestamp',latest.timestamp?fmtTime(latest.timestamp):null)}}${{metric('Fase',latest.phase)}}${{metric('Elegíveis',latest.eligible)}}${{metric('Processados',latest.processed)}}${{metric('Análises falhadas',latest.analysis_failed)}}${{metric('Relatórios falhados',latest.reports_failed)}}${{metric('RapidAPI calls',latest.rapidapi_calls)}}${{metric('LLM calls',latest.llm_calls)}}${{metric('Custo LLM USD',latest.llm_estimated_cost_usd)}}${{metric('Duração',latest.duration_seconds,' s')}}</div>${{sh.alerts.length?`<div class="note warning">${{sh.alerts.map(esc).join('<br>')}}</div>`:''}}<svg class="spark" viewBox="0 0 100 55" preserveAspectRatio="none" aria-label="Saúde das últimas runs"><polyline fill="none" stroke="#58a6d8" stroke-width="2" points="${{pts}}"/></svg>`,'wide','SYSTEM_HEALTH');
+out+=panel('Frescura das fontes','Momento conhecido de cada artefacto',`<div class="fresh">${{Object.entries(DATA.source_freshness).map(([name,src])=>`<div><b>${{esc(name)}}</b><small>${{esc(src.status)}} · ${{src.updated_at_utc?fmtTime(src.updated_at_utc):'N/D'}}</small>${{src.error?`<small>Motivo: ${{esc(src.error)}}</small>`:''}}${{helpUI('Frescura da fonte')}}</div>`).join('')}}</div>`,'wide','SOURCE_FRESHNESS');return out+'</div>'}}
+function legacyDayView(){{const day=DATA.days.find(x=>x.date===state.day);if(!day)return'<div class="empty">Dia não disponível.</div>';const c=day.counts;return `<h2>${{dayLabel(day.date)}}</h2>${{cards([{{label:'Jogos distintos',value:c.matchups}},{{label:'Versões de relatório',value:c.reports}},{{label:'Versões verdes',value:c.GREEN,cls:'GREEN',filter:'GREEN'}},{{label:'Versões amarelas',value:c.YELLOW,cls:'YELLOW',filter:'YELLOW'}},{{label:'Versões vermelhas',value:c.RED,cls:'RED',filter:'RED'}},{{label:'Versões N/D',value:c.UNAVAILABLE,filter:'UNAVAILABLE'}},{{label:'GREEN_STRONG',value:c.GREEN_STRONG}},{{label:'PAPER técnico',value:c.PAPER_TECHNICAL}}])}}<div class="filter-note">${{state.filter==='ALL'?'Os filtros de cor contam e mostram versões dentro de cada jogo agrupado.':`Filtro de versões ativo: ${{esc(state.filter)}} · `+'<button class="filter-clear">limpar</button>'}}</div>${{panel('Leitura do dia','Estado visual não é validação','<p>As cores são classificações de versões de relatório; não representam jogos adicionais. GREEN_STRONG, PAPER técnico e a monetização GREEN são universos observacionais separados da cor operacional. GUERRA_SELECTION_V1 permanece apenas como histórico SUPERSEDED.</p>','','DAY_READING')}}`}}
+function render(){{document.getElementById('generated').textContent='Gerado em '+fmtTime(DATA.generated_at_utc);document.getElementById('day-toggle').classList.toggle('active',state.scope==='DAY');document.getElementById('global-toggle').classList.toggle('active',state.scope==='GLOBAL');document.getElementById('content').innerHTML=continuityPanel()+(state.scope==='GLOBAL'?globalView():dayView());document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{{state.filter=b.dataset.filter;render()}}));document.querySelector('.filter-clear')?.addEventListener('click',()=>{{state.filter='ALL';render()}});wireHelp();renderSidebar()}}
+{dashboard_ui.JS}
+document.getElementById('day-toggle').addEventListener('click',()=>{{state.scope='DAY';render()}});document.getElementById('global-toggle').addEventListener('click',()=>{{state.scope='GLOBAL';state.filter='ALL';render()}});render();
+</script></body></html>"""
+
+
+def _atomic_write_text(path: Path, content: str) -> bool:
+    try:
+        if path.read_text(encoding="utf-8") == content:
+            return False
+    except (FileNotFoundError, OSError, UnicodeError):
+        pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+            temp_path = Path(handle.name)
+        os.replace(temp_path, path)
+        temp_path = None
+        return True
+    finally:
+        if temp_path:
+            temp_path.unlink(missing_ok=True)
+
+
+def _prospective_dashboard_payload(
+    dashboard: Mapping[str, Any], boundary: forward_only.Boundary, root: Path,
+) -> dict[str, Any]:
+    snapshots_doc, _ = _read_json(root / "data/calibration_snapshots.json")
+    snapshots = [
+        item for item in _list(_mapping(snapshots_doc).get("snapshots"))
+        if isinstance(item, Mapping)
+    ]
+    snapshots_by_report = {
+        str(item.get("report_id")): item
+        for item in snapshots if item.get("report_id")
+    }
+    prospective_snapshots = [
+        item for item in snapshots
+        if boundary.new_record_eligibility("snapshots", item)[0]
+    ]
+    paper_doc, _ = _read_json(root / "data/paper_trades.json")
+    prospective_paper = [
+        item for item in _list(_mapping(paper_doc).get("entries"))
+        if isinstance(item, Mapping)
+        and boundary.new_record_eligibility("paper", item)[0]
+    ]
+    reports = []
+    for day in dashboard.get("days") or []:
+        if not isinstance(day, Mapping):
+            continue
+        day_reports = day.get("reports") or []
+        for matchup in day.get("matchups") or []:
+            if not isinstance(matchup, Mapping):
+                continue
+            for index in matchup.get("version_indexes") or []:
+                try:
+                    report = day_reports[int(index)]
+                except (IndexError, TypeError, ValueError):
+                    continue
+                if not isinstance(report, Mapping):
+                    continue
+                snapshot = snapshots_by_report.get(str(report.get("report_id") or ""))
+                if not isinstance(snapshot, Mapping):
+                    # A new filename or self-described rerun is not proof of a
+                    # new post-T0 event.  Only the existing ex-ante boundary
+                    # may admit it into the prospective cohort.
+                    continue
+                eligible, _reason = boundary.new_record_eligibility("snapshots", snapshot)
+                if not eligible:
+                    continue
+                item = dict(report)
+                item.update({
+                    "match_key": matchup.get("match_key"),
+                    "match_key_source": matchup.get("match_key_source"),
+                    "match_key_fallback": matchup.get("match_key_fallback") is True,
+                    "date": day.get("date"),
+                })
+                reports.append(item)
+    days = _group_days(reports)
+    colors = Counter(str(report.get("color") or "UNAVAILABLE") for report in reports)
+    deltas: dict[str, Any] = {}
+    for name, relative in (
+        ("market_memory", "data/market_ledger/derived/market-memory-v1.json"),
+        ("green_strong_v1", "data/validation/green-strong-v1.json"),
+        ("green_monetization_v1", "data/validation/green-monetization-v1.json"),
+    ):
+        document, status = _read_json(root / relative)
+        deltas[name] = (
+            forward_only_projections.prospective_document(document)
+            if status.get("status") == "AVAILABLE" and isinstance(document, Mapping)
+            else {}
+        )
+    ledger_rows, _ledger_status = _read_ledger_observations(root / "data/market_ledger")
+    prospective_ledger = [
+        row for row in ledger_rows or []
+        if boundary.new_record_eligibility("market_ledger", row)[0]
+    ]
+    generated_at = str(dashboard.get("generated_at_utc") or _utc_now())
+    return {
+        "generated_at_utc": generated_at,
+        "global": {
+            "total_reports": len(reports),
+            "distinct_matchups": sum(int(day["counts"]["matchups"]) for day in days),
+            "total_snapshots": len(prospective_snapshots),
+            "settled_snapshots": sum(
+                isinstance(item.get("outcome"), Mapping)
+                for item in prospective_snapshots
+            ),
+            "paper_technical_entries": len(prospective_paper),
+            "market_observations": len(prospective_ledger),
+            "report_colors": {name: colors[name] for name in ("GREEN", "YELLOW", "RED", "UNAVAILABLE")},
+        },
+        "days": days,
+        "projection_deltas": deltas,
+        "projection_views": {
+            "market_memory": _market_memory(
+                deltas.get("market_memory"), prospective_ledger, generated_at,
+            ),
+            "green_strong_v1": _green_strong(deltas.get("green_strong_v1")),
+            "green_monetization_v1": dict(_mapping(deltas.get("green_monetization_v1"))),
+        },
+        "semantics": "POST_T0_ONLY_NEVER_ADDED_TO_NON_ADDITIVE_HISTORICAL_RATES",
+    }
+
+
+def build_and_write(
+    *,
+    root: Path = Path("."),
+    output_path: Path | None = None,
+    html_path: Path | None = None,
+    generated_at_utc: str | None = None,
+    protection_manifest_path: Path | None = None,
+) -> dict[str, Any]:
+    root = Path(root)
+    output = output_path or root / DEFAULT_OUTPUT_PATH
+    page = html_path or root / DEFAULT_HTML_PATH
+    dashboard = build_dashboard(root=root, generated_at_utc=generated_at_utc)
+    boundary = forward_only.load_boundary_for_store(output, protection_manifest_path)
+    if boundary.fail_closed:
+        raise RuntimeError(boundary.reason_code)
+    if boundary.active:
+        green = green_monetization.build_and_write(
+            paper_path=root / "data/paper_trades.json",
+            output_path=root / green_monetization.DEFAULT_OUTPUT_PATH,
+            legacy_exclusions_path=root / "data/paper_integrity_exclusions.json",
+            market_exclusions_path=(
+                root / "data/validation/market-integrity-exclusions-v1.json"
+            ),
+            protection_manifest_path=protection_manifest_path,
+            continuity_root=root,
+            generated_at_utc=generated_at_utc,
+        )
+        dashboard["green_monetization_v1"] = green
+        dashboard["paper_results_comparison_v1"] = _paper_results_comparison(
+            green, _mapping(dashboard.get("paper_22bet")),
+        )
+        dashboard = forward_only_projections.compose_json(
+            boundary=boundary,
+            relative_path=DEFAULT_OUTPUT_PATH.as_posix(),
+            prospective=_prospective_dashboard_payload(dashboard, boundary, root),
+            operational_current={
+                "system_health": dashboard.get("system_health"),
+                "source_freshness": dashboard.get("source_freshness"),
+            },
+            root=root,
+        )
+    previous, _ = _read_json(output)
+    if (
+        isinstance(previous, Mapping)
+        and previous.get("semantic_fingerprint") == dashboard.get("semantic_fingerprint")
+        and previous.get("generated_at_utc")
+    ):
+        dashboard["generated_at_utc"] = previous["generated_at_utc"]
+        previous_green = _mapping(previous.get("green_monetization_v1"))
+        if previous_green.get("generated_at_utc"):
+            dashboard["green_monetization_v1"]["generated_at_utc"] = previous_green[
+                "generated_at_utc"
+            ]
+    if not boundary.active:
+        green_monetization.write_report(
+            _mapping(dashboard.get("green_monetization_v1")),
+            root / green_monetization.DEFAULT_OUTPUT_PATH,
+        )
+    json_content = json.dumps(dashboard, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    _atomic_write_text(output, json_content)
+    _atomic_write_text(page, render_dashboard_html(dashboard))
+    return dashboard
+
+
+def build_and_write_best_effort(**kwargs: Any) -> dict[str, Any]:
+    """Fronteira nao bloqueante para pipeline, settlement e rebuild manual."""
+    try:
+        dashboard = build_and_write(**kwargs)
+    except Exception as exc:
+        return {"status": "UNAVAILABLE", "error": f"{type(exc).__name__}: {exc}"}
+    return {
+        "status": "AVAILABLE",
+        "generated_at_utc": dashboard.get("generated_at_utc"),
+        "semantic_fingerprint": dashboard.get("semantic_fingerprint"),
+    }

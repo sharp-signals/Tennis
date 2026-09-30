@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
 import os
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+
+from . import forward_only, market_integrity, match_identity_v2, snapshot_identity, tournament_policy
+from .green_strong_validation import COHORT_NAME, classify_snapshot
 
 
 SCHEMA_VERSION = 1
@@ -35,7 +40,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def _snapshot_key(payload: Mapping[str, Any]) -> str:
+def _legacy_snapshot_key(payload: Mapping[str, Any]) -> str:
     match_id = payload.get("match_id")
     if match_id is not None:
         return f"{str(payload.get('tour') or '').lower()}:{match_id}"
@@ -43,6 +48,40 @@ def _snapshot_key(payload: Mapping[str, Any]) -> str:
         "tour", "player_a_id", "player_b_id", "commence_time_utc",
     ))
     return "fallback:" + hashlib.sha256(material.encode("utf-8")).hexdigest()[:24]
+
+
+def _snapshot_key(payload: Mapping[str, Any]) -> str:
+    if payload.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION:
+        if not match_identity_v2.is_canonical(payload):
+            raise ValueError("identity_v2_not_canonical_for_snapshot")
+        return str(payload["canonical_match_instance_id"])
+    return _legacy_snapshot_key(payload)
+
+
+def report_identity(
+    payload: Mapping[str, Any], analyzed_at_utc: str | None = None,
+) -> dict[str, str]:
+    """Create report-only metadata without persisting a canonical snapshot."""
+    analyzed_at = analyzed_at_utc or _utc_now()
+    material = (
+        payload.get("canonical_match_instance_id")
+        or payload.get("legacy_key")
+        or _legacy_snapshot_key(payload)
+    )
+    return {
+        "report_id": hashlib.sha256(f"{material}|{analyzed_at}".encode("utf-8")).hexdigest()[:20],
+        "analyzed_at_utc": analyzed_at,
+    }
+
+
+def _match_format(payload: Mapping[str, Any]) -> str | None:
+    raw = payload.get("match_format") or payload.get("best_of")
+    normalized = str(raw or "").upper().replace("BEST_OF_", "BO").replace("BEST OF ", "BO")
+    if normalized in {"3", "BO3"}:
+        return "BO3"
+    if normalized in {"5", "BO5"}:
+        return "BO5"
+    return None
 
 
 def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None = None,
@@ -53,17 +92,34 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
     report_id = hashlib.sha256(f"{key}|{analyzed_at}".encode("utf-8")).hexdigest()[:20]
     snapshot = {
         "key": key,
+        "event_key": (
+            key if payload.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION
+            else payload.get("event_key") or key
+        ),
+        "identity_schema_version": payload.get("identity_schema_version"),
+        "canonical_match_instance_id": payload.get("canonical_match_instance_id"),
+        "identity_status": payload.get("identity_status"),
+        "identity_reason_code": payload.get("identity_reason_code"),
+        "legacy_key": payload.get("legacy_key"),
+        "identity_evidence": copy.deepcopy(payload.get("identity_evidence")),
         "report_id": report_id,
         "match_id": payload.get("match_id"),
         "tour": payload.get("tour"),
         "tournament_id": payload.get("tournament_id"),
         "tournament": payload.get("tournament"),
+        "tier": payload.get("tier"),
+        "tournament_coverage": copy.deepcopy(payload.get("tournament_coverage")),
         "surface": payload.get("surface"),
+        "match_format": _match_format(payload),
         "commence_time_utc": payload.get("commence_time_utc"),
         "analyzed_at_utc": analyzed_at,
         "player_a": {"id": payload.get("player_a_id"), "name": payload.get("player_a")},
         "player_b": {"id": payload.get("player_b_id"), "name": payload.get("player_b")},
         "market_odds_decimal": payload.get("market_odds_decimal"),
+        "entry_market_observation_id": payload.get("entry_market_observation_id"),
+        "reference_market_observation_ids": payload.get("reference_market_observation_ids") or [],
+        "market_memory_status": payload.get("market_memory_status") or "UNAVAILABLE",
+        "market_memory_eligible": bool(payload.get("market_memory_eligible")),
         "odds_provenance": {
             "source": payload.get("odds_source"),
             "endpoint": payload.get("odds_endpoint"),
@@ -71,9 +127,18 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
             "captured_at_utc": payload.get("odds_captured_at_utc"),
             "capture_kind": payload.get("odds_capture_kind"),
             "provider_timestamp": payload.get("odds_provider_timestamp"),
+            "provider_timestamp_status": payload.get("odds_provider_timestamp_status"),
+            "freshness_status": payload.get("odds_freshness_status"),
             "bookmaker": payload.get("odds_bookmaker"),
             "from_cache": payload.get("odds_from_cache"),
             "cache_age_seconds": payload.get("odds_cache_age_seconds"),
+            "raw_payload_sha256": payload.get("odds_raw_payload_sha256"),
+            "market_integrity": copy.deepcopy(payload.get("odds_market_integrity")),
+            "operational_pricing_eligible": payload.get("odds_operational_pricing_eligible") is True,
+            "odds_source_contract_version": payload.get("odds_source_contract_version"),
+            "odds_source_contract_fingerprint": payload.get("odds_source_contract_fingerprint"),
+            "odds_source_contract": copy.deepcopy(payload.get("odds_source_contract")),
+            "odds_contract_activation": copy.deepcopy(payload.get("odds_contract_activation")),
         },
         # Congelado antes do encontro, juntamente com a configuracao/hash que
         # o produziu. Uma repeticao nunca substitui esta primeira estimativa.
@@ -83,6 +148,16 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
             key: result.get(key) for key in ("flag", "signal_strength") if result and result.get(key) is not None
         },
         "outcome": None,
+    }
+    snapshot["validation"] = {
+        "cohorts": {
+            COHORT_NAME: classify_snapshot(
+                payload,
+                snapshot_key=key,
+                classified_at_utc=analyzed_at,
+                prospective=True,
+            )
+        }
     }
     return snapshot
 
@@ -114,27 +189,111 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 
 def upsert_snapshots(snapshots: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH,
-                     max_entries: int | None = MAX_ENTRIES) -> int:
+                     max_entries: int | None = MAX_ENTRIES, *,
+                     protection_manifest_path: Path | None = None,
+                     diagnostics: dict[str, Any] | None = None) -> int:
     """Insere snapshots; uma repeticao nunca reescreve a fotografia original."""
     with _LOCK:
         document = _read(path)
         existing = {item.get("key"): item for item in document["snapshots"] if item.get("key")}
         added = 0
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
+        blocked: dict[str, int] = {}
         for snapshot in snapshots:
             key = snapshot.get("key")
             if key and key not in existing:
+                allowed, reason = boundary.new_record_eligibility("snapshots", snapshot)
+                if not allowed:
+                    blocked[reason] = blocked.get(reason, 0) + 1
+                    continue
                 existing[key] = dict(snapshot)
                 added += 1
         ordered = sorted(existing.values(), key=lambda item: item.get("analyzed_at_utc") or "")
         document["snapshots"] = ordered[-max_entries:] if max_entries else ordered
         document["updated_at_utc"] = _utc_now()
         _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "added": added,
+                "blocked": blocked,
+            })
         return added
 
 
-def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:
+def read_snapshots_by_key(
+    keys: Iterable[str], path: Path = DEFAULT_PATH,
+) -> dict[str, dict[str, Any]]:
+    """Devolve a primeira fotografia persistida para cada key pedida."""
+    wanted = {str(key) for key in keys if key}
+    with _LOCK:
+        document = _read(path)
+        return {
+            str(item["key"]): copy.deepcopy(dict(item))
+            for item in document["snapshots"]
+            if item.get("key") is not None and str(item["key"]) in wanted
+        }
+
+
+def apply_persisted_validation(
+    payload: dict[str, Any], persisted_snapshot: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Reuse validation only after bilateral event identity is proved."""
+    payload.pop("validation", None)
+    if not isinstance(persisted_snapshot, Mapping):
+        linkage = {"status": "UNLINKED", "reason_code": "SNAPSHOT_NOT_PERSISTED"}
+    elif payload.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION:
+        expected = str(payload.get("canonical_match_instance_id") or "")
+        persisted = str(persisted_snapshot.get("canonical_match_instance_id") or persisted_snapshot.get("key") or "")
+        current_players = frozenset(str(payload.get(key)) for key in ("player_a_id", "player_b_id"))
+        persisted_players = frozenset(
+            str((persisted_snapshot.get(key) or {}).get("id"))
+            for key in ("player_a", "player_b")
+        )
+        contexts_match = (
+            expected
+            and expected == persisted
+            and current_players == persisted_players
+            and str(payload.get("tour") or "").casefold()
+            == str(persisted_snapshot.get("tour") or "").casefold()
+            and str(payload.get("tournament_id")) == str(persisted_snapshot.get("tournament_id"))
+        )
+        if contexts_match:
+            linkage = {
+                "status": "LINKED",
+                "reason_code": "CANONICAL_MATCH_INSTANCE_ID_MATCH",
+            }
+            validation = persisted_snapshot.get("validation")
+            if isinstance(validation, Mapping):
+                payload["validation"] = copy.deepcopy(dict(validation))
+        else:
+            linkage = {
+                "status": "COLLISION",
+                "reason_code": "CANONICAL_MATCH_INSTANCE_CONTEXT_CONFLICT",
+            }
+    else:
+        comparison = snapshot_identity.compare(payload, persisted_snapshot)
+        linkage = snapshot_identity.public_linkage(comparison)
+        if linkage["status"] == "LINKED":
+            validation = persisted_snapshot.get("validation")
+            if isinstance(validation, Mapping):
+                payload["validation"] = copy.deepcopy(dict(validation))
+    payload["snapshot_linkage"] = linkage
+    return linkage
+
+
+def settle_from_matches(
+    matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH, *,
+    identity_registry_path: Path = match_identity_v2.DEFAULT_REGISTRY_PATH,
+    protection_manifest_path: Path | None = None,
+    max_settlements: int | None = None,
+    candidate_keys: set[str] | None = None,
+    diagnostics: dict[str, Any] | None = None,
+    deadline_monotonic: float | None = None,
+) -> int:
     """Preenche resultados usando jogos terminados; nao altera dados pre-match."""
-    completed = {}
+    completed: dict[str, list[Mapping[str, Any]]] = {}
+    completed_matches: list[Mapping[str, Any]] = []
     completed_by_players: dict[frozenset[str], list[Mapping[str, Any]]] = {}
     for match in matches:
         match_id = match.get("id")
@@ -143,8 +302,9 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
             continue
         if str(match.get("result_type") or "").lower() not in {"completed", "finished"}:
             continue
+        completed_matches.append(match)
         if match_id is not None:
-            completed[str(match_id)] = match
+            completed.setdefault(str(match_id), []).append(match)
         p1 = match.get("player1Id") or (match.get("player1") or {}).get("id")
         p2 = match.get("player2Id") or (match.get("player2") or {}).get("id")
         if p1 is not None and p2 is not None:
@@ -174,14 +334,79 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
                     dated.append((delta, candidate))
         return min(dated, key=lambda item: item[0])[1] if dated else None
 
+    def direct_match(snapshot):
+        candidates = completed.get(str(snapshot.get("match_id")), [])
+        verified = [
+            match for match in candidates
+            if snapshot_identity.compare(match, snapshot)["status"] == snapshot_identity.MATCH
+        ]
+        if not verified:
+            return None
+        scheduled = parse_time(snapshot.get("commence_time_utc"))
+        ranked = []
+        for match in verified:
+            played = parse_time(match.get("date"))
+            delta = abs((played - scheduled).total_seconds()) if played and scheduled else 0
+            ranked.append((delta, match))
+        return min(ranked, key=lambda item: item[0])[1]
+
+    def canonical_match(snapshot):
+        if snapshot.get("identity_schema_version") != match_identity_v2.SCHEMA_VERSION:
+            return None
+        canonical_id = snapshot.get("canonical_match_instance_id") or snapshot.get("key")
+        resolved = []
+        for match in completed_matches:
+            event_id = match.get("event_id", match.get("eventId"))
+            result = match_identity_v2.resolve_existing(
+                match,
+                str(canonical_id or ""),
+                event_id=event_id,
+                event_id_validated=event_id not in (None, ""),
+                registry_path=identity_registry_path,
+            )
+            if result.get("canonical_match_instance_id") == canonical_id:
+                resolved.append(match)
+        return resolved[0] if len(resolved) == 1 else None
+
     with _LOCK:
         document = _read(path)
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
         settled = 0
+        eligible_candidates = 0
+        examined = 0
+        pending_no_result = 0
+        last_examined_key = None
+        deadline_reached = False
+        blocked: dict[str, int] = {}
         for snapshot in document["snapshots"]:
+            if candidate_keys is not None and str(snapshot.get("key") or "") not in candidate_keys:
+                continue
             if snapshot.get("outcome") is not None:
                 continue
-            match = completed.get(str(snapshot.get("match_id"))) or fallback_match(snapshot)
+            allowed, reason = forward_only.settlement_eligibility(
+                "snapshots", snapshot, boundary=boundary,
+            )
+            if not allowed:
+                blocked[reason] = blocked.get(reason, 0) + 1
+                continue
+            eligible_candidates += 1
+            if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+                deadline_reached = True
+                break
+            examined += 1
+            last_examined_key = str(snapshot.get("key") or "")
+            if max_settlements is not None and settled >= max_settlements:
+                break
+            # Provider IDs are reusable. A direct hit is only evidence after
+            # the player pair/context also match; otherwise use the existing
+            # safe pair+time fallback.
+            match = (
+                canonical_match(snapshot)
+                if snapshot.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION
+                else direct_match(snapshot) or fallback_match(snapshot)
+            )
             if not match:
+                pending_no_result += 1
                 continue
             winner_id = match.get("match_winner")
             a_id = (snapshot.get("player_a") or {}).get("id")
@@ -202,10 +427,24 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
         if settled:
             document["updated_at_utc"] = _utc_now()
             _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "eligible_candidates": eligible_candidates,
+                "settled": settled,
+                "blocked": blocked,
+                "examined": examined,
+                "pending_no_result": pending_no_result,
+                "last_examined_key": last_examined_key,
+                "deadline_reached": deadline_reached,
+            })
         return settled
 
 
-def compute_system_accuracy(path: Path = DEFAULT_PATH) -> dict[str, Any] | None:
+def compute_system_accuracy(
+    path: Path = DEFAULT_PATH,
+    exclusions_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
+) -> dict[str, Any] | None:
     """
     NOVO (22/08/2026, a pedido): histórico de acerto do PRÓPRIO sistema, a
     partir dos snapshots já resolvidos. Não é opinião — é o registo real do
@@ -219,7 +458,12 @@ def compute_system_accuracy(path: Path = DEFAULT_PATH) -> dict[str, Any] | None:
     disso a taxa é ruído). None se não houver dados de todo.
     """
     document = _read(path)
-    snaps = [s for s in document.get("snapshots", []) if s.get("outcome")]
+    excluded = market_integrity.excluded_snapshot_keys(exclusions_path)
+    snaps = [
+        s for s in document.get("snapshots", [])
+        if s.get("outcome") and str(s.get("key") or "") not in excluded
+        and not tournament_policy.is_experimental_snapshot(s)
+    ]
     if not snaps:
         return None
 
@@ -284,7 +528,8 @@ def _wilson_interval(wins: int, total: int, z: float = 1.96) -> tuple[float, flo
 
 def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
                              path: Path = DEFAULT_PATH, min_samples: int = 30,
-                             bucket_width: int = 10) -> dict[str, Any] | None:
+                             bucket_width: int = 10, *,
+                             exclusions_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH) -> dict[str, Any] | None:
     """Estima uma faixa de odds, preferindo resultados já liquidados.
 
     A calibração usa o lado com maior índice em cada encontro, uma observação
@@ -310,7 +555,12 @@ def estimate_indicative_odds(divergence: Mapping[str, Any] | None,
         bucket_low, bucket_high = 90, 100
 
     observations: list[bool] = []
+    excluded = market_integrity.excluded_snapshot_keys(exclusions_path)
     for snapshot in _read(path)["snapshots"]:
+        if str(snapshot.get("key") or "") in excluded:
+            continue
+        if tournament_policy.is_experimental_snapshot(snapshot):
+            continue
         outcome = snapshot.get("outcome") or {}
         metrics = snapshot.get("metrics") or {}
         historical = metrics.get("divergencia") or {}

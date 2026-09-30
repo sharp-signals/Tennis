@@ -1,15 +1,17 @@
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from src import calibration_store, paper_trading
+from src import calibration_store, market_integrity, paper_trading
 from src.telegram_summary import decision_row as _telegram_decision_row, state_counts as telegram_state_counts
 from src.prelive_decision import (
     EDGE_NEGATIVE,
     EDGE_POSITIVE,
     EDGE_POSITIVE_COVERAGE_INSUFFICIENT,
     EDGE_ZERO,
+    EXPERIMENTAL_FACTUAL_PARTIAL,
     REPORT_NULL,
     PRICING_UNAVAILABLE,
     _action_block_available,
@@ -36,6 +38,17 @@ class PreliveOperationalContractTests(unittest.TestCase):
             "fatigue_signal_a": {"matches_last_7d": 1},
             "fatigue_signal_b": {"matches_last_7d": 1},
             "market_odds_decimal": {"player_a": 2.0, "player_b": 1.9},
+            "odds_operational_pricing_eligible": True,
+            "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+            "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+            "odds_source_contract": market_integrity.operational_contract_metadata()[
+                "odds_source_contract"
+            ],
+            "pricing": {
+                "available": True,
+                "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+                "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+            },
             "snapshot_key": "atp:77",
             "report_id": "report-77",
             "analyzed_at_utc": "2026-08-28T10:00:00+00:00",
@@ -90,6 +103,17 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(decision["state"], EDGE_ZERO)
         self.assertFalse(decision["paper_eligible"])
 
+    def test_equal_fenzobot_index_is_neutral_not_a_null_report(self):
+        divergence = self.divergence()
+        divergence.update({"indice_evidencia_a": 50, "indice_evidencia_b": 50})
+        decision = build_decision(
+            self.payload(), divergence, self.pricing(2.0), self.assessment()
+        )
+        self.assertEqual(decision["state"], EDGE_ZERO)
+        self.assertIsNone(decision["side"])
+        self.assertIn("equilibrado", decision["reason"])
+        self.assertFalse(decision["paper_eligible"])
+
     def test_edge_minus_point_one_is_excluded(self):
         decision = self.decision(-0.1)
         self.assertEqual(decision["state"], EDGE_NEGATIVE)
@@ -111,6 +135,17 @@ class PreliveOperationalContractTests(unittest.TestCase):
         assessment = assess_report(payload, self.divergence())
         self.assertTrue(assessment["report_null"])
         self.assertIn("ranking", assessment["primary_reason"])
+
+    def test_challenger_partial_data_is_factual_but_never_an_edge(self):
+        payload = self.payload()
+        payload.update({"tier": "Challenger 125", "ranking_b": None})
+        assessment = assess_report(payload, self.divergence())
+        self.assertFalse(assessment["report_null"])
+        self.assertTrue(assessment["experimental_partial"])
+        decision = build_decision(payload, self.divergence(), self.pricing(8.0), assessment)
+        self.assertEqual(decision["state"], EXPERIMENTAL_FACTUAL_PARTIAL)
+        self.assertFalse(decision["paper_eligible"])
+        self.assertIn("ranking", decision["reason"])
 
     def test_service_zero_with_zero_sample_is_missing(self):
         payload = self.payload()
@@ -167,7 +202,8 @@ class PreliveOperationalContractTests(unittest.TestCase):
             calibration_store.upsert_snapshots([snapshot], path)
             before = copy.deepcopy(calibration_store._read(path)["snapshots"][0])
             calibration_store.settle_from_matches([{
-                "id": 77, "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
+                "id": 77, "player1Id": 1, "player2Id": 2,
+                "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
             }], path)
             after = calibration_store._read(path)["snapshots"][0]
             self.assertEqual(before["metrics"], after["metrics"])
@@ -182,6 +218,10 @@ class PreliveOperationalContractTests(unittest.TestCase):
             "odds_captured_at_utc": "2026-08-28T09:59:00+00:00",
             "odds_capture_kind": "current_at_capture",
             "odds_bookmaker": "Book A",
+            "event_key": "atp:77",
+            "entry_market_observation_id": "observation-77",
+            "market_memory_status": "RECORDED",
+            "market_memory_eligible": True,
         })
         snapshot = calibration_store.build_snapshot(payload, {})
         self.assertEqual(snapshot["odds_provenance"]["captured_at_utc"], payload["odds_captured_at_utc"])
@@ -190,6 +230,9 @@ class PreliveOperationalContractTests(unittest.TestCase):
         entry = paper_trading.build_entries(payload)[0]
         self.assertEqual(entry["pregame"]["odds_provenance"]["capture_kind"], "current_at_capture")
         self.assertEqual(entry["pregame"]["odds_provenance"]["bookmaker"], "Book A")
+        self.assertEqual(entry["pregame"]["event_key"], "atp:77")
+        self.assertEqual(entry["pregame"]["entry_market_observation_id"], "observation-77")
+        self.assertTrue(entry["pregame"]["market_memory_eligible"])
 
     def test_later_data_does_not_mutate_original_paper_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -211,7 +254,8 @@ class PreliveOperationalContractTests(unittest.TestCase):
             original_pregame = copy.deepcopy(entry["pregame"])
             paper_trading.append_entries([entry], path)
             settled = paper_trading.settle_from_matches([{
-                "id": 77, "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
+                "id": 77, "player1Id": 1, "player2Id": 2,
+                "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
             }], path)
             saved = paper_trading.read_entries(path)[0]
             self.assertEqual(settled, 1)
@@ -229,6 +273,26 @@ class PreliveOperationalContractTests(unittest.TestCase):
             second["pregame"]["match_id"] = 88
             paper_trading.append_entries([second], path)
             self.assertEqual(len(paper_trading.read_entries(path)), 2)
+
+    def test_manual_22bet_history_is_loaded_separately_from_system_paper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manual_path = Path(tmp) / "manual_22bet.json"
+            manual_path.write_text(json.dumps({
+                "schema_version": 1,
+                "source": {"url": "https://docs.google.com/spreadsheets/d/example"},
+                "summary": {"total_entries": 3, "settled": 2, "wins": 2, "losses": 0},
+                "by_market": {"Moneyline": {"total_entries": 3}},
+            }), encoding="utf-8")
+            history = paper_trading.compute_history(Path(tmp) / "system.json", manual_path)
+            self.assertEqual(history["PAPER"]["total_entries"], 0)
+            self.assertEqual(history["MANUAL_22BET"]["summary"]["total_entries"], 3)
+
+    def test_invalid_manual_22bet_history_is_not_treated_as_system_paper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manual_path = Path(tmp) / "manual_22bet.json"
+            manual_path.write_text('{"schema_version": 9}', encoding="utf-8")
+            history = paper_trading.compute_history(Path(tmp) / "system.json", manual_path)
+            self.assertIsNone(history["MANUAL_22BET"])
 
     def test_moneyline_and_handicap_are_separate_entries(self):
         payload = self.payload()
@@ -256,7 +320,10 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual([_telegram_decision_row(item)[1] for item in payloads], ["🟢", "🔴", "⚪", "⚫", "🟡"])
         self.assertEqual(telegram_state_counts(payloads), {
             EDGE_POSITIVE: 1, EDGE_POSITIVE_COVERAGE_INSUFFICIENT: 0,
-            EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1, REPORT_NULL: 1,
+            EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1,
+            EXPERIMENTAL_FACTUAL_PARTIAL: 0,
+            "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0,
+            REPORT_NULL: 1,
         })
 
 

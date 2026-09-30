@@ -107,6 +107,30 @@ class OddsMonitorTests(unittest.TestCase):
         self.assertEqual(quote["quote_age_seconds"], 300)
         self.assertEqual(annotated["quote_quality"]["fresh_count"], 1)
 
+    def test_recent_odds_exposes_boundary_sentinel_reason(self):
+        captured = datetime(2026, 9, 10, 0, 5, tzinfo=timezone.utc)
+        result = {"payload": {"result": {"Full Time Result": {
+            "Bet365": {"addTime": None, "od1": "1.001", "od2": "101"},
+        }}}}
+        annotated = odds_monitor._annotate_recent_odds(result, captured_at=captured)
+        quote = annotated["quote_quality"]["quotes"][0]
+        self.assertEqual(quote["market_integrity_reason_codes"], ["MARKET_BOUNDARY_SENTINEL"])
+        self.assertFalse(quote["operational_pricing_eligible"])
+        self.assertEqual(
+            annotated["quote_quality"]["market_integrity"]["reason_code"],
+            "MARKET_BOUNDARY_SENTINEL",
+        )
+
+    def test_provider_mapping_rejects_boundary_sentinel(self):
+        match = {"player1": {"name": "Alpha"}, "player2": {"name": "Beta"}}
+        odds, status = odds_monitor._mapped_provider_odds(
+            match,
+            {"participant1": "Alpha", "participant2": "Beta"},
+            {"bookmaker": "Bet365", "od1": "1.001", "od2": "101"},
+        )
+        self.assertIsNone(odds)
+        self.assertEqual(status, "VERIFIED")
+
     def test_arbitrage_with_stale_best_odds_is_not_current_eligible(self):
         compare = {
             "quote_quality": {
@@ -153,6 +177,19 @@ class OddsMonitorTests(unittest.TestCase):
         self.assertEqual(observation["freshness"], "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME")
         self.assertIsNone(observation["quote_age_seconds"])
 
+    def test_pro_plan_monitor_skips_ultra_endpoint_calls(self):
+        entry = {"key": "atp:1:moneyline:a:na", "pregame": {
+            "match_id": 1, "snapshot_key": "atp:1", "tour": "atp",
+            "commence_time_utc": "2026-10-01T15:00:00+00:00",
+            "players": {"a": {"id": 1, "name": "Alpha"}, "b": {"id": 2, "name": "Beta"}},
+        }}
+        with patch.object(odds_monitor, "PREMIUM_ENDPOINTS_ENABLED", False), \
+                patch.object(odds_monitor, "_resolve_event", return_value=("event-1", {})), \
+                patch.object(odds_monitor, "_primary_market_observation", return_value={"available": True}), \
+                patch.object(odds_monitor, "_request", side_effect=AssertionError("premium request not allowed")):
+            snapshot = odds_monitor.monitor_entry(entry, {"events": {}})
+        self.assertEqual(snapshot["endpoints"]["recent_odds"]["access"], "not_in_plan")
+
     def test_append_snapshot_skips_identical_consecutive_payload(self):
         snapshot = {
             "captured_at_utc": "2026-08-29T12:00:00+00:00",
@@ -169,6 +206,73 @@ class OddsMonitorTests(unittest.TestCase):
         self.assertTrue(first)
         self.assertFalse(second)
         self.assertEqual(len(lines), 1)
+
+    def test_event_resolution_preserves_verified_provider_order(self):
+        start = datetime.now(timezone.utc) + timedelta(hours=12)
+        entry = {
+            "key": "atp:1:moneyline:a:na",
+            "pregame": {
+                "match_id": 1, "tour": "atp", "commence_time_utc": start.isoformat(),
+                "players": {
+                    "a": {"id": 10, "name": "Alpha One"},
+                    "b": {"id": 20, "name": "Beta Two"},
+                },
+            },
+        }
+        event_map = {"events": {}}
+        response = {
+            "ok": True, "http_status": 200, "access": "allowed", "error": None,
+            "payload": {"event": {
+                "eventId": "event-1", "participant1": "Beta Two", "participant2": "Alpha One",
+                "status": "scheduled", "startTime": start.isoformat(),
+            }},
+        }
+        with patch.object(odds_monitor, "_request", return_value=response):
+            event_id, resolution = odds_monitor._resolve_event(entry, event_map)
+        self.assertEqual(event_id, "event-1")
+        self.assertEqual(resolution["participant1"], "Beta Two")
+        self.assertEqual(event_map["events"][entry["key"]]["identity_mapping_status"], "VERIFIED")
+
+    def test_ledger_normalization_reuses_monitor_payload_without_network_calls(self):
+        entry = {
+            "key": "atp:1:moneyline:a:na",
+            "pregame": {
+                "snapshot_key": "atp:1", "match_id": 1, "tour": "atp",
+                "commence_time_utc": "2026-09-04T15:00:00+00:00",
+                "players": {
+                    "a": {"id": 10, "name": "Alpha One"},
+                    "b": {"id": 20, "name": "Beta Two"},
+                },
+            },
+        }
+        match = odds_monitor._entry_to_match(entry)
+        payload = {"result": {"Full Time Result": {
+            "Book A": {"od1": "1.70", "od2": "2.20", "addTime": None},
+        }}}
+        snapshot = {
+            "captured_at_utc": "2026-09-04T12:00:00+00:00",
+            "event_id": "event-1",
+            "event_resolution": {
+                "participant1": "Beta Two", "participant2": "Alpha One",
+                "identity_mapping_status": "VERIFIED",
+            },
+            "market_observation": {"available": False},
+            "endpoints": {
+                "recent_odds": odds_monitor._annotate_recent_odds(
+                    {"payload": payload},
+                    captured_at=datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc),
+                ),
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(odds_monitor, "_request", side_effect=AssertionError("network not allowed")):
+            result = odds_monitor._persist_market_ledger_best_effort(
+                entry, match, snapshot, ledger_root=Path(tmp),
+            )
+            observations = odds_monitor.market_ledger.read_observations(root=Path(tmp))
+        self.assertEqual(result["recorded"], 1)
+        self.assertEqual(observations[0]["selections"][0]["raw_decimal_odd"], 2.2)
+        self.assertEqual(observations[0]["selections"][1]["raw_decimal_odd"], 1.7)
 
 
 if __name__ == "__main__":

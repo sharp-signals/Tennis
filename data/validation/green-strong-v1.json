@@ -1,0 +1,4875 @@
+{
+  "change_id": "CHANGE-2026-09-06-026",
+  "claims": "EXPERIMENTAL_NOT_VALIDATED",
+  "cohort": "GREEN_STRONG_V1",
+  "contract_version": "green-strong-v1",
+  "data_quality_exclusions": {
+    "by_reason": {
+      "MARKET_BOUNDARY_SENTINEL": 1
+    },
+    "count": 1
+  },
+  "eligible_observations": [
+    {
+      "closing_movement_probability_pp": null,
+      "code_revision": "10ea2964f6de6dc6a0d41dfb11dbca71c1ad69c7",
+      "entry_market_probability": 0.4205,
+      "fenzobot_probability": 0.4724,
+      "last_valid_prestart_market_probability": null,
+      "match_format": "BO3",
+      "outcome_side": "UNAVAILABLE",
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_model_version": "market-residual-v0.3",
+      "scheduled_start_utc": "2026-09-30T01:00:00+00:00",
+      "selected_side": "b",
+      "selected_side_market_position": "UNDERDOG",
+      "selected_side_won": null,
+      "snapshot_key": "mi2_51f256e3bf7e43a9868af49b27b9fd17",
+      "surface": "Hard",
+      "tour": "atp",
+      "validation_id": "c5057aa6c3809f17c46715b9"
+    },
+    {
+      "closing_movement_probability_pp": null,
+      "code_revision": "10ea2964f6de6dc6a0d41dfb11dbca71c1ad69c7",
+      "entry_market_probability": 0.4005,
+      "fenzobot_probability": 0.4503,
+      "last_valid_prestart_market_probability": null,
+      "match_format": "BO3",
+      "outcome_side": "UNAVAILABLE",
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_model_version": "market-residual-v0.3",
+      "scheduled_start_utc": "2026-09-30T02:00:00+00:00",
+      "selected_side": "a",
+      "selected_side_market_position": "UNDERDOG",
+      "selected_side_won": null,
+      "snapshot_key": "mi2_b6d968de61aa4a96bd5a3b499d90eb07",
+      "surface": "Hard",
+      "tour": "atp",
+      "validation_id": "7d45b0f7846c91895e05233d"
+    }
+  ],
+  "generated_at_utc": "2026-09-30T21:26:47+00:00",
+  "guerra_selection_v1": {
+    "by_market": {},
+    "by_side": {},
+    "eligible_green_strong": null,
+    "flat_stake_simulation": {
+      "excluded_entries": 0,
+      "exclusion_reasons": {},
+      "included_resolved_entries": 0,
+      "net_profit_eur": null,
+      "pending_entries": 0,
+      "pending_exposure_eur": 0,
+      "resolved_stake_eur": 0,
+      "roi_pct": null,
+      "stake_per_entry_eur": 10,
+      "status": "UNAVAILABLE",
+      "void_entries": 0
+    },
+    "linkage": {
+      "LINKED_EX_ANTE": 0,
+      "MISSING_SELECTION_TIMESTAMP": 0,
+      "NOT_GREEN_STRONG": 0,
+      "SELECTION_AFTER_START": 0,
+      "SNAPSHOT_NOT_FOUND": 0,
+      "UNAVAILABLE": 0
+    },
+    "moneyline_review_routes": {},
+    "paper_entries": 0,
+    "selected_candidates": 0,
+    "selection_rate_pct": null,
+    "status": "UNAVAILABLE",
+    "summary": {
+      "average_odd": null,
+      "losses": 0,
+      "pending": 0,
+      "pushes": 0,
+      "roi_pct": null,
+      "settled": 0,
+      "total_entries": 0,
+      "units": 0,
+      "win_rate_pct": null,
+      "wins": 0
+    },
+    "underdog_pair_completeness": {
+      "complete_moneyline_positive_handicap_pairs": 0,
+      "incomplete_or_unrecognized": 0,
+      "moneyline_only": 0,
+      "positive_handicap_only": 0,
+      "underdog_selected_candidates": 0
+    }
+  },
+  "metrics": {
+    "average_selected_fenzobot_probability": 0.46135,
+    "average_selected_market_probability": 0.4105,
+    "closing_market_comparable": 0,
+    "closing_movement": {
+      "average_probability_pp": null,
+      "median_probability_pp": null,
+      "positive_direction_pct": null,
+      "sample_size": 0
+    },
+    "entry_market_usable": 2,
+    "fenzobot": {
+      "accuracy_pct": null,
+      "brier_score": null,
+      "log_loss": null,
+      "sample_size": 0
+    },
+    "market": {
+      "accuracy_pct": null,
+      "brier_score": null,
+      "log_loss": null,
+      "sample_size": 0
+    },
+    "paired_delta": {
+      "brier": null,
+      "log_loss": null
+    },
+    "sample_size": 2,
+    "settled_sample_size": 0,
+    "win_rate_pct": null,
+    "wins": 0
+  },
+  "mode": "PROSPECTIVE_SHADOW_VALIDATION",
+  "prospective_classifications": [
+    {
+      "commence_time_utc": "2026-09-08T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1037",
+      "status": "INELIGIBLE",
+      "validation_id": "2f83ffc63608c8841700bcb6"
+    },
+    {
+      "commence_time_utc": "2026-09-08T18:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "atp:1426",
+      "status": "INELIGIBLE",
+      "validation_id": "5095741b109577c54610ba00"
+    },
+    {
+      "commence_time_utc": "2026-09-09T03:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "atp:1425",
+      "status": "INELIGIBLE",
+      "validation_id": "7bdb61cc7f13573e5eeb640a"
+    },
+    {
+      "commence_time_utc": "2026-09-08T20:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "atp:1264",
+      "status": "INELIGIBLE",
+      "validation_id": "811568369508bd367304ed1b"
+    },
+    {
+      "commence_time_utc": "2026-09-09T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "atp:1429",
+      "status": "INELIGIBLE",
+      "validation_id": "cabc248b5196b3b1ac9acfdf"
+    },
+    {
+      "commence_time_utc": "2026-09-11T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:959",
+      "status": "INELIGIBLE",
+      "validation_id": "be1756e509ce617508cafa65"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1170",
+      "status": "INELIGIBLE",
+      "validation_id": "d63bb2f14eefa1ddcab7d2a8"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1177",
+      "status": "INELIGIBLE",
+      "validation_id": "184955bf880660731ea23205"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1178",
+      "status": "INELIGIBLE",
+      "validation_id": "f0014ac7a6402aac36d861cc"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1180",
+      "status": "INELIGIBLE",
+      "validation_id": "a34f51724704dc5bd145eee5"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1186",
+      "status": "INELIGIBLE",
+      "validation_id": "c8ccb986942e2b94a5669117"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1187",
+      "status": "INELIGIBLE",
+      "validation_id": "5f4abaa95228a31962de7cae"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1188",
+      "status": "INELIGIBLE",
+      "validation_id": "997b5fcd1c9e065380f0a15b"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1190",
+      "status": "INELIGIBLE",
+      "validation_id": "7c77f6fcddc3addc1f55234b"
+    },
+    {
+      "commence_time_utc": "2026-09-12T19:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1176",
+      "status": "INELIGIBLE",
+      "validation_id": "739797efc33a903191c0728c"
+    },
+    {
+      "commence_time_utc": "2026-09-12T19:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1189",
+      "status": "INELIGIBLE",
+      "validation_id": "454ae6f1f19f6a6c4e4350f2"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1107",
+      "status": "INELIGIBLE",
+      "validation_id": "fc16f1e0a663a8162abe8bd4"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1109",
+      "status": "INELIGIBLE",
+      "validation_id": "24eda22d1699e031e467bf0f"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1110",
+      "status": "INELIGIBLE",
+      "validation_id": "e53a350efbcb38a7e8f5a035"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1116",
+      "status": "INELIGIBLE",
+      "validation_id": "7b91f7c648c89f2c866c0cc1"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1118",
+      "status": "INELIGIBLE",
+      "validation_id": "4e4a966fb8044de6a5860a2d"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1121",
+      "status": "INELIGIBLE",
+      "validation_id": "69d6045d34c8949a6536f32c"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1127",
+      "status": "INELIGIBLE",
+      "validation_id": "3805d320c88c65bc6e30f5e3"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1128",
+      "status": "INELIGIBLE",
+      "validation_id": "43a198bb1ff11e6e9e8b4a1b"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1129",
+      "status": "INELIGIBLE",
+      "validation_id": "76b3b8c80a952bc73e557a81"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1131",
+      "status": "INELIGIBLE",
+      "validation_id": "d036935958c2a693ed3e606e"
+    },
+    {
+      "commence_time_utc": "2026-09-14T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1106",
+      "status": "INELIGIBLE",
+      "validation_id": "8dda92706eb5ded1d05efa1e"
+    },
+    {
+      "commence_time_utc": "2026-09-13T17:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1115",
+      "status": "INELIGIBLE",
+      "validation_id": "c8e0cc23ba0b5d587d8c5e68"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1108",
+      "status": "INELIGIBLE",
+      "validation_id": "38a293ca3603d9e520848f10"
+    },
+    {
+      "commence_time_utc": "2026-09-13T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:1119",
+      "status": "INELIGIBLE",
+      "validation_id": "d52ff12ff468d56e3d61e2c6"
+    },
+    {
+      "commence_time_utc": "2026-09-13T19:35:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:829",
+      "status": "INELIGIBLE",
+      "validation_id": "758c2137ca62070c0a52c496"
+    },
+    {
+      "commence_time_utc": "2026-09-17T16:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:806",
+      "status": "INELIGIBLE",
+      "validation_id": "c99840a2fa9de04b0cbe8e54"
+    },
+    {
+      "commence_time_utc": "2026-09-21T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "wta:939",
+      "status": "INELIGIBLE",
+      "validation_id": "d4ebea1c5564261eb75bf665"
+    },
+    {
+      "commence_time_utc": "2026-09-23T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_7af5da36a88844898fe326866a1592ac",
+      "status": "INELIGIBLE",
+      "validation_id": "dae93da87a4ce0a2b7925117"
+    },
+    {
+      "commence_time_utc": "2026-09-23T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_1546c24e4e204760b005b726ef8b6e68",
+      "status": "INELIGIBLE",
+      "validation_id": "db7e7a8b701e79162d7fd856"
+    },
+    {
+      "commence_time_utc": "2026-09-22T12:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ff76c4702e8649f19e9cd325847cf702",
+      "status": "INELIGIBLE",
+      "validation_id": "c54d7becc51a0bab53c90a36"
+    },
+    {
+      "commence_time_utc": "2026-09-22T10:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_81ba8f962a84428098b9a72b9f8d7aa4",
+      "status": "INELIGIBLE",
+      "validation_id": "19383cae3f4018be955d7e8f"
+    },
+    {
+      "commence_time_utc": "2026-09-22T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5ad47c35514f4b67a96531c35b15227b",
+      "status": "INELIGIBLE",
+      "validation_id": "e33af9bc7e2372ebe470b823"
+    },
+    {
+      "commence_time_utc": "2026-09-24T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_f6865f10db924c3db2ae8f457c22fb00",
+      "status": "INELIGIBLE",
+      "validation_id": "c02a50c0642d928ad6a9dbd1"
+    },
+    {
+      "commence_time_utc": "2026-09-24T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_9e87a9dfafc147b48418e99623415985",
+      "status": "INELIGIBLE",
+      "validation_id": "15014154b52ec01ae182c69e"
+    },
+    {
+      "commence_time_utc": "2026-09-24T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_7e5202b119ee4641b3f31035b0f5097f",
+      "status": "INELIGIBLE",
+      "validation_id": "51db2acb2c3844fa3321e4eb"
+    },
+    {
+      "commence_time_utc": "2026-09-24T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_22aff2427a2343239d00da1e73bd42df",
+      "status": "INELIGIBLE",
+      "validation_id": "1a36ab2dae2fa3226f74d0f7"
+    },
+    {
+      "commence_time_utc": "2026-09-23T12:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ebe1a09c25df49339884b0c2d7b914d3",
+      "status": "INELIGIBLE",
+      "validation_id": "5aa7151bbe5285736dd44fec"
+    },
+    {
+      "commence_time_utc": "2026-09-23T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c5e8b70fce9e446dbb8477e8cb2f52ef",
+      "status": "INELIGIBLE",
+      "validation_id": "9feb0e7ef8149bd8e8c3af22"
+    },
+    {
+      "commence_time_utc": "2026-09-23T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_171ecea3730046e090dfd53e4d14f259",
+      "status": "INELIGIBLE",
+      "validation_id": "8d502b2b04b068ec86da8be1"
+    },
+    {
+      "commence_time_utc": "2026-09-25T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_adde211195204e50bf9cd8f92db0f504",
+      "status": "INELIGIBLE",
+      "validation_id": "f630cbbac62c7d0dabbbedb9"
+    },
+    {
+      "commence_time_utc": "2026-09-25T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3eb86b6561b44900aac86d77639b0b73",
+      "status": "INELIGIBLE",
+      "validation_id": "a5df54afeb27b4f68702456b"
+    },
+    {
+      "commence_time_utc": "2026-09-25T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_94fecd4dab1d4d71a096ed488835ad47",
+      "status": "INELIGIBLE",
+      "validation_id": "6ba877800d6e97b3eaac7fd4"
+    },
+    {
+      "commence_time_utc": "2026-09-25T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_76433e0dd06f4d3ebf89960d7e89cbc8",
+      "status": "INELIGIBLE",
+      "validation_id": "b412fa135b8eb990aa308380"
+    },
+    {
+      "commence_time_utc": "2026-09-24T12:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8ef7101d9a5b4b85b0681f2522693955",
+      "status": "INELIGIBLE",
+      "validation_id": "b98996ede165e57e7154c113"
+    },
+    {
+      "commence_time_utc": "2026-09-24T11:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3bb910a6e163463d933f9c3b420f5022",
+      "status": "INELIGIBLE",
+      "validation_id": "39c4af2b3408b69067acdc9e"
+    },
+    {
+      "commence_time_utc": "2026-09-24T10:50:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_63ea3d54ac954c7a84738b23a021288f",
+      "status": "INELIGIBLE",
+      "validation_id": "86b273005fb8e1f2fa9d5ec5"
+    },
+    {
+      "commence_time_utc": "2026-09-26T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_06f248df6a854a8fbcc3da1283e812cb",
+      "status": "INELIGIBLE",
+      "validation_id": "701326512b79cc66f584e90c"
+    },
+    {
+      "commence_time_utc": "2026-09-26T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ee95b758634f489c886df8c87f60a7ea",
+      "status": "INELIGIBLE",
+      "validation_id": "4db57a6835bc171832349cf5"
+    },
+    {
+      "commence_time_utc": "2026-09-25T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e5f88bd65e3342fdac91e154669b0a1b",
+      "status": "INELIGIBLE",
+      "validation_id": "b07d00d02e86c14cc92d741e"
+    },
+    {
+      "commence_time_utc": "2026-09-25T08:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_28a1c1ba71964dde8a633878679cc139",
+      "status": "INELIGIBLE",
+      "validation_id": "07c909a8e8808cbc392f137b"
+    },
+    {
+      "commence_time_utc": "2026-09-25T07:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3c3ade9bc01041faac272f1645cdcf92",
+      "status": "INELIGIBLE",
+      "validation_id": "b1e42ff3017c608643d87a6c"
+    },
+    {
+      "commence_time_utc": "2026-09-24T12:15:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5e4722e6c0c14faeb52370d2b3966a63",
+      "status": "INELIGIBLE",
+      "validation_id": "7a1e971c9fe4e074ae64f6d1"
+    },
+    {
+      "commence_time_utc": "2026-09-25T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_06c07d579e614aeb8407db519b704281",
+      "status": "INELIGIBLE",
+      "validation_id": "4cbe8bc337f81cba55f5b46a"
+    },
+    {
+      "commence_time_utc": "2026-09-25T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0b1d539b8627452096cf5dbb95b7059f",
+      "status": "INELIGIBLE",
+      "validation_id": "e53f2f52e4b0b5a71d57d3d4"
+    },
+    {
+      "commence_time_utc": "2026-09-25T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_39066fc9d6d6467fb9e5916365c4442e",
+      "status": "INELIGIBLE",
+      "validation_id": "db0491be9f4c935f256ebbeb"
+    },
+    {
+      "commence_time_utc": "2026-09-25T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5feb97a3705e49a881491cf47021550c",
+      "status": "INELIGIBLE",
+      "validation_id": "8ce40b732804300b0e6eced2"
+    },
+    {
+      "commence_time_utc": "2026-09-26T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8f5692b1f78f4c2684c2ac083516ec16",
+      "status": "INELIGIBLE",
+      "validation_id": "059eb07366562817cc89726b"
+    },
+    {
+      "commence_time_utc": "2026-09-26T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_1542cb7b511b4da380a422b4a677a81f",
+      "status": "INELIGIBLE",
+      "validation_id": "12ae62abdb310e52b390d8ec"
+    },
+    {
+      "commence_time_utc": "2026-09-26T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d17c3bfc23354ce68a338ef1ad30f3da",
+      "status": "INELIGIBLE",
+      "validation_id": "bd5e4332801df5ac333f5ae3"
+    },
+    {
+      "commence_time_utc": "2026-09-26T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d2c8f0e203e3403baa8be8735a7ab15e",
+      "status": "INELIGIBLE",
+      "validation_id": "9dcba7226442de64940a43c9"
+    },
+    {
+      "commence_time_utc": "2026-09-25T08:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c43826a00a3c4891a5b5267178cbd7cf",
+      "status": "INELIGIBLE",
+      "validation_id": "018cb2823ae44165fb593e45"
+    },
+    {
+      "commence_time_utc": "2026-09-25T06:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_9f69739aade64afc947d334bb3a91bb8",
+      "status": "INELIGIBLE",
+      "validation_id": "3542d815d0496a68b5975d9a"
+    },
+    {
+      "commence_time_utc": "2026-09-26T05:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "DIVERGENCE_SIDE_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_58cf67024e084694aa14e49c5d1357cd",
+      "status": "INELIGIBLE",
+      "validation_id": "21362001cbeabd2fdbeff552"
+    },
+    {
+      "commence_time_utc": "2026-09-26T05:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_77481bb1ed5e4e018f2c4d508fb85f1e",
+      "status": "INELIGIBLE",
+      "validation_id": "bae836f9bd3196b09112d8bc"
+    },
+    {
+      "commence_time_utc": "2026-09-26T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_2544fa08d8194f53ac47d457a3387d18",
+      "status": "INELIGIBLE",
+      "validation_id": "4af2fd3000f4abe10a60a0e3"
+    },
+    {
+      "commence_time_utc": "2026-09-25T12:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_a8e7a66b35b24f65ad9bea030b3348ea",
+      "status": "INELIGIBLE",
+      "validation_id": "f8a7eb097a98bda015762d15"
+    },
+    {
+      "commence_time_utc": "2026-09-25T06:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6fc78f7796014ff09dee906532486208",
+      "status": "INELIGIBLE",
+      "validation_id": "46237e8c567ea767df64b7d0"
+    },
+    {
+      "commence_time_utc": "2026-09-27T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8115d8a6069c4863888a5897f6cd598c",
+      "status": "INELIGIBLE",
+      "validation_id": "0e84e63f6c0f9c03912d69fe"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_02d1880bb4f541dc9a77f79739de9c0a",
+      "status": "INELIGIBLE",
+      "validation_id": "ef5d193a7a838c88f845619c"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3f73157258b44547b946c0786a973596",
+      "status": "INELIGIBLE",
+      "validation_id": "32b4f334bb9a2a7bf0f392cb"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_2e58d85615f947f5b82c7f2ab5cfcc76",
+      "status": "INELIGIBLE",
+      "validation_id": "420dbbaed276432de79c9a22"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0ff6127d7d8a4db3a62919bb53bbb647",
+      "status": "INELIGIBLE",
+      "validation_id": "a8acddf86b5cdb3e2a185c1c"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ad4815cb636643f0b8a1765de5ce9219",
+      "status": "INELIGIBLE",
+      "validation_id": "00832474350f815e80b06578"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e5bf3e4594b0415da050141101098185",
+      "status": "INELIGIBLE",
+      "validation_id": "31c68f5259ce71139d500592"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0c0be3cbd8304fe3adf040a0c3d90a67",
+      "status": "INELIGIBLE",
+      "validation_id": "efb726aa6a7b3b41a9e0a276"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_f7986e1646e446f2b7fa4de769133fbe",
+      "status": "INELIGIBLE",
+      "validation_id": "1d208278dbef30d23c1f2507"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6c381e32aab54af68e25cd3a2f787f92",
+      "status": "INELIGIBLE",
+      "validation_id": "4113d188a42ef6b6c46b1676"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_84b76792ffc44b7b8b9f992fcd4da695",
+      "status": "INELIGIBLE",
+      "validation_id": "b3d982a256fe23b90c17ff7d"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ab7b17d9ed914b5cb29ad5719eed6fcb",
+      "status": "INELIGIBLE",
+      "validation_id": "4b4d795dcf2fecdda874fc04"
+    },
+    {
+      "commence_time_utc": "2026-09-27T16:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3b4dadb0e0bf48e2aaf78cc1505ce5bb",
+      "status": "INELIGIBLE",
+      "validation_id": "8b613ece34d80dbe0c56e331"
+    },
+    {
+      "commence_time_utc": "2026-09-27T15:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_528585c7459a439c94034e75d084cdef",
+      "status": "INELIGIBLE",
+      "validation_id": "fad5823128e39cd7907be517"
+    },
+    {
+      "commence_time_utc": "2026-09-27T14:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_7e1b023ed7194a5d92e9cd05117b36dd",
+      "status": "INELIGIBLE",
+      "validation_id": "6433a998e76978eeb5f03ff7"
+    },
+    {
+      "commence_time_utc": "2026-09-27T14:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6a1375c6d00241dc85c377174b2e062e",
+      "status": "INELIGIBLE",
+      "validation_id": "02f947d4f829a99c55159ef5"
+    },
+    {
+      "commence_time_utc": "2026-09-27T13:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_f22de9220d014173843f1a2c87fdb7d9",
+      "status": "INELIGIBLE",
+      "validation_id": "1315ab7c749cd18cce40b2b4"
+    },
+    {
+      "commence_time_utc": "2026-09-27T13:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d2a04a88623a4a82aa80d82d5d168cce",
+      "status": "INELIGIBLE",
+      "validation_id": "7e6ad9ddaa7b1baf5a04ae06"
+    },
+    {
+      "commence_time_utc": "2026-09-27T13:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5bde00568567487386171216580c037c",
+      "status": "INELIGIBLE",
+      "validation_id": "e589cd61d711a1e8c30a7dea"
+    },
+    {
+      "commence_time_utc": "2026-09-27T12:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6d670efe80cb4975928a729fcab6b3f9",
+      "status": "INELIGIBLE",
+      "validation_id": "e04ac1a1f9cce47e4600bda7"
+    },
+    {
+      "commence_time_utc": "2026-09-27T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5e4d711477e4409b80328b3a3e1b7249",
+      "status": "INELIGIBLE",
+      "validation_id": "2c217224e4a81d3216ebcd59"
+    },
+    {
+      "commence_time_utc": "2026-09-27T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5d321ee30bff4863b90148edcf754884",
+      "status": "INELIGIBLE",
+      "validation_id": "7762bc8a9c996be289c88f70"
+    },
+    {
+      "commence_time_utc": "2026-09-27T12:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_435f53efe89d49e9919ceb0003795b24",
+      "status": "INELIGIBLE",
+      "validation_id": "852a9102f4071c9d6ebc2247"
+    },
+    {
+      "commence_time_utc": "2026-09-28T06:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b49863109e56421ca10e2ab9a3de9a66",
+      "status": "INELIGIBLE",
+      "validation_id": "7f66bce6e398234f8c367c90"
+    },
+    {
+      "commence_time_utc": "2026-09-28T05:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b0185a644c43449ebed4a22619502f91",
+      "status": "INELIGIBLE",
+      "validation_id": "2fa6e36c2529273b69bebcdc"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8a053db81f6d4513a910e64155906e16",
+      "status": "INELIGIBLE",
+      "validation_id": "b54e0aaca29da903098ade0b"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d6a435794c74401a9721486c88e4ab91",
+      "status": "INELIGIBLE",
+      "validation_id": "d3f923f08b0e5eda2a841ba6"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c4d68c97d9ab459fb08c91bfd953e097",
+      "status": "INELIGIBLE",
+      "validation_id": "05745eae3b02c49f23a0c136"
+    },
+    {
+      "commence_time_utc": "2026-09-28T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d1ad2cd711ff46f2a780ff1c245c9307",
+      "status": "INELIGIBLE",
+      "validation_id": "f8b421e1c5959e5b71164c22"
+    },
+    {
+      "commence_time_utc": "2026-09-28T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_2b7eaaaf3b93465ab450c754ac1d4f4c",
+      "status": "INELIGIBLE",
+      "validation_id": "335e9576aedf408797fba6cf"
+    },
+    {
+      "commence_time_utc": "2026-09-28T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_eb7ce90222404bdfbc19c3f0873cd346",
+      "status": "INELIGIBLE",
+      "validation_id": "fd0f534ac432376247db5c97"
+    },
+    {
+      "commence_time_utc": "2026-09-28T08:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_02901f3d77f549549e070a228b13f785",
+      "status": "INELIGIBLE",
+      "validation_id": "cd606dafcdd1a9399b354ac6"
+    },
+    {
+      "commence_time_utc": "2026-09-28T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_f7b354af5bdd474e9b5b0d205c0016fa",
+      "status": "INELIGIBLE",
+      "validation_id": "2cecb778dc169f286687be8d"
+    },
+    {
+      "commence_time_utc": "2026-09-28T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_05704d68eb484d70a78f793223fe9705",
+      "status": "INELIGIBLE",
+      "validation_id": "31e24ebcb32db7ae50dd3c53"
+    },
+    {
+      "commence_time_utc": "2026-09-28T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6e11646fb0284c0b8ad632053bb26ca6",
+      "status": "INELIGIBLE",
+      "validation_id": "ec2d992d9f7ee0bc46c1e8a1"
+    },
+    {
+      "commence_time_utc": "2026-09-28T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_21187de97b3e4d26b2fda5c66d950a26",
+      "status": "INELIGIBLE",
+      "validation_id": "601acc4ed8d533ff85bc2c32"
+    },
+    {
+      "commence_time_utc": "2026-09-28T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_80e179d5702f4c96ae3a9fd31ecf3dfb",
+      "status": "INELIGIBLE",
+      "validation_id": "509cc0336e1648aa277e7169"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_08643d668c3a4b8f93a4ec10e21151c9",
+      "status": "INELIGIBLE",
+      "validation_id": "cb685df0a572bb19cc0d0c5b"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0b8196bf68b741bfb1167bdae49cb415",
+      "status": "INELIGIBLE",
+      "validation_id": "4511a1ca84d3a5d150cfae0b"
+    },
+    {
+      "commence_time_utc": "2026-09-28T11:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_240e17574a5a4001a7e5b5f1f9fd9dd5",
+      "status": "INELIGIBLE",
+      "validation_id": "6e2f6461e3f2b3e4cb91a4d3"
+    },
+    {
+      "commence_time_utc": "2026-09-28T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_63b69a5e2ca547c1b8b53857be43397f",
+      "status": "INELIGIBLE",
+      "validation_id": "4eb64231587acf566aae844e"
+    },
+    {
+      "commence_time_utc": "2026-09-28T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_71a7d49c43ba4a86a25b9eb673af132e",
+      "status": "INELIGIBLE",
+      "validation_id": "045a9169bd9405450498ffe1"
+    },
+    {
+      "commence_time_utc": "2026-09-28T09:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_249c2e830de34578a9facbb2adf26036",
+      "status": "INELIGIBLE",
+      "validation_id": "ffb493be2f8a6e6d4600ce51"
+    },
+    {
+      "commence_time_utc": "2026-09-28T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_7d097e6e88dd4230a384443337f6378d",
+      "status": "INELIGIBLE",
+      "validation_id": "eebf6362015ba6d0d8607635"
+    },
+    {
+      "commence_time_utc": "2026-09-28T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b0d385e3dcb8484ea3f3bf447c8d7e79",
+      "status": "INELIGIBLE",
+      "validation_id": "1983a8c6f0af2a4b4c8a56c7"
+    },
+    {
+      "commence_time_utc": "2026-09-28T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_bd74c58ed43847e7add71853b87cdfea",
+      "status": "INELIGIBLE",
+      "validation_id": "cc098af6c9bfbc9dfcf70a61"
+    },
+    {
+      "commence_time_utc": "2026-09-28T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_33cbdf047c2c498c802881c5ffee9db6",
+      "status": "INELIGIBLE",
+      "validation_id": "8449d13e1a349b3045661ebf"
+    },
+    {
+      "commence_time_utc": "2026-09-28T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d19e72fb390a42f49614b6a83588cacb",
+      "status": "INELIGIBLE",
+      "validation_id": "dc0c3d6755a2df75a53bbe1e"
+    },
+    {
+      "commence_time_utc": "2026-09-28T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e5fa47aa4b364359b4de2b88f9d31461",
+      "status": "INELIGIBLE",
+      "validation_id": "f9a80926477172333b3e1917"
+    },
+    {
+      "commence_time_utc": "2026-09-28T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_eb6c52c03ebb487fa5e3de9229b64d0d",
+      "status": "INELIGIBLE",
+      "validation_id": "2e2b6770e443dac8f9339795"
+    },
+    {
+      "commence_time_utc": "2026-09-28T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_aa1bd7f4351d44dcbf062ef45d5f9e30",
+      "status": "INELIGIBLE",
+      "validation_id": "ed7ef38c96f65b3756a21646"
+    },
+    {
+      "commence_time_utc": "2026-09-28T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_7ff046af39c6407dacf8763f5992d599",
+      "status": "INELIGIBLE",
+      "validation_id": "b9f8962b3378f64f1c7e9866"
+    },
+    {
+      "commence_time_utc": "2026-09-28T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_45ec318b7d84448bb656bcd811c6ce9a",
+      "status": "INELIGIBLE",
+      "validation_id": "2be5a4b48f2334ff1c5f1dab"
+    },
+    {
+      "commence_time_utc": "2026-09-28T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e42c9cd7960346b3ac4b628fda493201",
+      "status": "INELIGIBLE",
+      "validation_id": "51b7df0afd16cdec6325a9bc"
+    },
+    {
+      "commence_time_utc": "2026-09-28T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e72a07a94b774e44a9e700d01b4adf54",
+      "status": "INELIGIBLE",
+      "validation_id": "0ce95c3fcfbf4f37c7c4fbb2"
+    },
+    {
+      "commence_time_utc": "2026-09-28T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_a36f5402263f41b5a21ce741e5e6c032",
+      "status": "INELIGIBLE",
+      "validation_id": "38176f5738af02d93203923a"
+    },
+    {
+      "commence_time_utc": "2026-09-28T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8694f0cccc6346cbb288f5425ff60171",
+      "status": "INELIGIBLE",
+      "validation_id": "279c5afdbd04c195b5f53e91"
+    },
+    {
+      "commence_time_utc": "2026-09-28T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_05ad56c579204c2fb0169214463fb565",
+      "status": "INELIGIBLE",
+      "validation_id": "e59c186e43e29537e61faed0"
+    },
+    {
+      "commence_time_utc": "2026-09-28T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5f453782bd5c4023a02c021f2469b7b0",
+      "status": "INELIGIBLE",
+      "validation_id": "7efb22867ba2bfde074a1411"
+    },
+    {
+      "commence_time_utc": "2026-09-28T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_758be5da4c6840e198efd5128a9044ae",
+      "status": "INELIGIBLE",
+      "validation_id": "12e09d5b199221fba21669a9"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_64c0dd88b3e14ca0a92bc1604c2e0a09",
+      "status": "INELIGIBLE",
+      "validation_id": "5da25db80e41d01a7f0f4d52"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d7249d2fd0714cc4b9ec5557bd5069fc",
+      "status": "INELIGIBLE",
+      "validation_id": "a07be1241fa96241b8f8f934"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8e42a78bf0cc487384f824676cf1b564",
+      "status": "INELIGIBLE",
+      "validation_id": "63b1ad992cf57976d76fa4a2"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ca100b57ab8049658525cd29d4a9dd1f",
+      "status": "INELIGIBLE",
+      "validation_id": "9b8183fdfd39d87267f8192c"
+    },
+    {
+      "commence_time_utc": "2026-09-28T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_967e3c3bbe0c4b1482a432a0a4e23e3c",
+      "status": "INELIGIBLE",
+      "validation_id": "8c61f55079fa3be3bf07bee2"
+    },
+    {
+      "commence_time_utc": "2026-09-28T13:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b89e7be655f9477d8fd1fa711388b337",
+      "status": "INELIGIBLE",
+      "validation_id": "629c3b51abcb1d5db63c1b06"
+    },
+    {
+      "commence_time_utc": "2026-09-28T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_77f28ffbace046acb2f7c6a593cb72f6",
+      "status": "INELIGIBLE",
+      "validation_id": "67d3dba451c1f184ce0f9165"
+    },
+    {
+      "commence_time_utc": "2026-09-28T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c6ba2dd4f3294c288c0f4aad818bdbe3",
+      "status": "INELIGIBLE",
+      "validation_id": "ed71242474d0a5df960e7fa1"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "DIVERGENCE_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_cb3ed2eba73a40a1a2e624ed73f03dc1",
+      "status": "INELIGIBLE",
+      "validation_id": "08b9a3477e92fdcd3f3f02fd"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_78d624a145a640138429c1acf9db8305",
+      "status": "INELIGIBLE",
+      "validation_id": "603584815bb9ede8eed929b2"
+    },
+    {
+      "commence_time_utc": "2026-09-28T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_28fceac18ba84d61b4e021a7618d720e",
+      "status": "INELIGIBLE",
+      "validation_id": "3cec63265ab1a2cf28e7d933"
+    },
+    {
+      "commence_time_utc": "2026-09-28T09:25:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_1ca30b66a4e0445bb893889dfed589ad",
+      "status": "INELIGIBLE",
+      "validation_id": "f8a00b28bf9bcf34a126cf20"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_466d4fcfb3c64197b109305a52293149",
+      "status": "INELIGIBLE",
+      "validation_id": "9de6b7f56170ddb6fe61c07f"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8bb05552cd6f4e48b738bc0d3889461d",
+      "status": "INELIGIBLE",
+      "validation_id": "5152d957daa287046238350a"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_7dc45b3cea3a4440883e8dbd8a013295",
+      "status": "INELIGIBLE",
+      "validation_id": "8a7e6ec1d01785f3d06adc33"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": true,
+      "reason_codes": [],
+      "selected_side": "b",
+      "selected_side_market_position": "UNDERDOG",
+      "snapshot_key": "mi2_51f256e3bf7e43a9868af49b27b9fd17",
+      "status": "ELIGIBLE",
+      "validation_id": "c5057aa6c3809f17c46715b9"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_37e586c5899d44c0b4e95a349ee354ab",
+      "status": "INELIGIBLE",
+      "validation_id": "daf9f9931c68168c41a2670a"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_a86d1323b8404889b7c667c971fad8d6",
+      "status": "INELIGIBLE",
+      "validation_id": "df6c27c16823eda2efc61e83"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c6e9d70041f241368efc8c5e3f8ac359",
+      "status": "INELIGIBLE",
+      "validation_id": "a7f8b0657d7393a0e66ac84f"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "DIVERGENCE_SIDE_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3277023125df416598d90ac6028feffd",
+      "status": "INELIGIBLE",
+      "validation_id": "1faf953a7e0b1a00cf1ce0a6"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_78af8b9a64a54fccadf93455f07ea037",
+      "status": "INELIGIBLE",
+      "validation_id": "cef40fb541efc0591365d744"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6709f0b086f94a96b8ca63f263373826",
+      "status": "INELIGIBLE",
+      "validation_id": "4c7048bd8b730c8d469dfb72"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4a9058f59dde4d7caea0a63ed3733310",
+      "status": "INELIGIBLE",
+      "validation_id": "908d563a30268c3d980bbe10"
+    },
+    {
+      "commence_time_utc": "2026-09-30T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c97910e8bba84058a07e668f60f1e76e",
+      "status": "INELIGIBLE",
+      "validation_id": "fbb0b63255c3b3ee077ff5ba"
+    },
+    {
+      "commence_time_utc": "2026-09-29T05:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4d20278f792342418dab57d2004bf407",
+      "status": "INELIGIBLE",
+      "validation_id": "861d68d0864b3921321faade"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e9fd8d49455843eb99b05a743332f13d",
+      "status": "INELIGIBLE",
+      "validation_id": "b2b95b86c479c75a4750456a"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_05d5b89ed3c1411db429fd2c6136a46e",
+      "status": "INELIGIBLE",
+      "validation_id": "4b924835b1f0e5f95993d179"
+    },
+    {
+      "commence_time_utc": "2026-09-29T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_32e230ae55be4f089d29f15519e18d57",
+      "status": "INELIGIBLE",
+      "validation_id": "b5c027adf82718c94ebc41ef"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4637c814fe70469b8cc611fdf16fa61a",
+      "status": "INELIGIBLE",
+      "validation_id": "8c93c8045305c5cc58c4da9d"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3c0885420cc14b6dacae4751ada98037",
+      "status": "INELIGIBLE",
+      "validation_id": "df9ce0a6d078396262f13def"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6eff26995df04795ad81dd61666241ff",
+      "status": "INELIGIBLE",
+      "validation_id": "2dc1fe29a2e451aa989e8131"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_81cd9b3868bd470a8c4af8e39e91d4b4",
+      "status": "INELIGIBLE",
+      "validation_id": "09bcb27ca26162be92291fe3"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_2f548d74fddc4cf3baa619bc1615691a",
+      "status": "INELIGIBLE",
+      "validation_id": "f6c5629e715981e97b94ef05"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_389b665eb46a4827b970b7ec7414a489",
+      "status": "INELIGIBLE",
+      "validation_id": "60c2ec4e3e06fbed7085cab4"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d781d07c0af7434c9ba24df2408a3021",
+      "status": "INELIGIBLE",
+      "validation_id": "4b110b634266eb1c0126bb45"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ad5a76967af5488facf2ad13483b7a78",
+      "status": "INELIGIBLE",
+      "validation_id": "af5f19b9b13635be39720964"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e7033615a8134ef9a924365297fc49a2",
+      "status": "INELIGIBLE",
+      "validation_id": "104259e4060dc053f573c3c6"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": true,
+      "reason_codes": [],
+      "selected_side": "a",
+      "selected_side_market_position": "UNDERDOG",
+      "snapshot_key": "mi2_b6d968de61aa4a96bd5a3b499d90eb07",
+      "status": "ELIGIBLE",
+      "validation_id": "7d45b0f7846c91895e05233d"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ce73fbb7f1c34686bb437e01020388ac",
+      "status": "INELIGIBLE",
+      "validation_id": "f74bede255799c576e3871d2"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6d86d7d0439249a69ea35bf164881ea4",
+      "status": "INELIGIBLE",
+      "validation_id": "f3001603d1f5f700a58c38eb"
+    },
+    {
+      "commence_time_utc": "2026-09-29T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_7171c3cfaf164c5f9572b145bf84cc95",
+      "status": "INELIGIBLE",
+      "validation_id": "b4cb958e2c01f7e0cb37a759"
+    },
+    {
+      "commence_time_utc": "2026-09-29T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8613e8a5d3f34e4385e3d8d930f79b0c",
+      "status": "INELIGIBLE",
+      "validation_id": "531e202a41d691f4c595e7d8"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_618acb0521874616b70e674664d330e6",
+      "status": "INELIGIBLE",
+      "validation_id": "4268f3ad9c05a68736cbf526"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_cd8b0cb59048438d9f8c9d1c4a2cdff2",
+      "status": "INELIGIBLE",
+      "validation_id": "3069395c185b96e642d9be0b"
+    },
+    {
+      "commence_time_utc": "2026-09-29T11:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_352c0b06ee344dd99ed7455984dcf5bb",
+      "status": "INELIGIBLE",
+      "validation_id": "23b2d6153d6e10a423dd2c07"
+    },
+    {
+      "commence_time_utc": "2026-09-29T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_81f6ae93edd2420891bf6c1d566d4044",
+      "status": "INELIGIBLE",
+      "validation_id": "ef5446d82f63768c7b25615e"
+    },
+    {
+      "commence_time_utc": "2026-09-29T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c8d5c9c22d804ad2beb47978a0cdaf95",
+      "status": "INELIGIBLE",
+      "validation_id": "3d724195063545c7fdb7a092"
+    },
+    {
+      "commence_time_utc": "2026-10-01T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d96926d964d74f1c9d2effe6151f628d",
+      "status": "INELIGIBLE",
+      "validation_id": "0a693abe5e85acf1ab7b904f"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b273127585864c2fbe48d1d1006a5a36",
+      "status": "INELIGIBLE",
+      "validation_id": "7cc712eb6670be31a6cd5bfb"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_75133bb6f76b43e58cdc9c7deccfac54",
+      "status": "INELIGIBLE",
+      "validation_id": "349ddd499b26a7b62561f9c1"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_f7e169440b8e4a9f9f0a395353f0b57f",
+      "status": "INELIGIBLE",
+      "validation_id": "e45c8b3676649b5dd186561b"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_c066f2a3a3184cec9a37328ab83106c7",
+      "status": "INELIGIBLE",
+      "validation_id": "5395b6da8f61ee04caaa6492"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_82f351d919014c49ba6bad343588bdb1",
+      "status": "INELIGIBLE",
+      "validation_id": "5456786a173fb6e70c2d2b6d"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_578286ab671147a982a235715fe1d93c",
+      "status": "INELIGIBLE",
+      "validation_id": "d51d31e54ccb473dda878f0c"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8d22696c1ec14d4783eef5e07694459c",
+      "status": "INELIGIBLE",
+      "validation_id": "57b498b6ee18be963ee06672"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_9c574e16eb574596ad8d5640407cbac3",
+      "status": "INELIGIBLE",
+      "validation_id": "8da12e7f3f26d30140dab617"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b86a4e3752484b2d886928f9e7aa070b",
+      "status": "INELIGIBLE",
+      "validation_id": "779d13aabdbf2fd875f23b9a"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_1726b21f3ccf4488a9bce222b9a916bf",
+      "status": "INELIGIBLE",
+      "validation_id": "aac99db8cce7b4807fa9666f"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4315d51c394944c5b1322596811cae7f",
+      "status": "INELIGIBLE",
+      "validation_id": "0afbfd7cdc7dbea7d0d8802d"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_eaaf4009348041f28dcc9e14cf2f6e0c",
+      "status": "INELIGIBLE",
+      "validation_id": "09c9d5e7da01314dbfabbff7"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_edbda68153a3454bb8ed4860a8c13270",
+      "status": "INELIGIBLE",
+      "validation_id": "75c10e0d3d6798bc5dd33783"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_26bbde4f10214b3eb3e7e8f8240da74a",
+      "status": "INELIGIBLE",
+      "validation_id": "c5641d9fc5b1f5e5a457811b"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_fa2ed5b41fe043eca47f6d82e9537f55",
+      "status": "INELIGIBLE",
+      "validation_id": "5806ede9450213e754ef2f26"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e381ea8d50644de8b6ffdb12716fb693",
+      "status": "INELIGIBLE",
+      "validation_id": "5dc183cb9a4795d7c177de3a"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8346afbb369c450695ea7a5ddcdc8781",
+      "status": "INELIGIBLE",
+      "validation_id": "a1eaa0fc7171815246dbcd3b"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5ae3ef4da40f4150b71c7dd4c5228b49",
+      "status": "INELIGIBLE",
+      "validation_id": "cf6bf677e80e1d1ce94310d8"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b4a8a7189af14dd98f7dd2dedd7f60f0",
+      "status": "INELIGIBLE",
+      "validation_id": "1a9356edbfd4ceeb5fdb9b14"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_24e182c89b404ead8a232dcbcaee8c07",
+      "status": "INELIGIBLE",
+      "validation_id": "cef41450d90cc94327287970"
+    },
+    {
+      "commence_time_utc": "2026-09-29T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_cafa55c5ee6049038631cd82deb38dec",
+      "status": "INELIGIBLE",
+      "validation_id": "549d9bf5a05520443be6a104"
+    },
+    {
+      "commence_time_utc": "2026-09-29T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_1ce60eff51bd4e2da53916f75f9cac43",
+      "status": "INELIGIBLE",
+      "validation_id": "819ed229fa22d9fb09560335"
+    },
+    {
+      "commence_time_utc": "2026-09-29T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4522d8c14f82445981c4410a735b7eb9",
+      "status": "INELIGIBLE",
+      "validation_id": "d612b20cfa4eac68ec5cd3c2"
+    },
+    {
+      "commence_time_utc": "2026-09-29T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_2f957c1febe7478dae7349010cfb368b",
+      "status": "INELIGIBLE",
+      "validation_id": "8b9133c2ef6733bcad5487c6"
+    },
+    {
+      "commence_time_utc": "2026-09-29T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_5be25f0c4003470692a415bd205e61ff",
+      "status": "INELIGIBLE",
+      "validation_id": "1aee8d913deb66c49d878b4f"
+    },
+    {
+      "commence_time_utc": "2026-09-29T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_bce38a82e1f940d5928d5204874f9e08",
+      "status": "INELIGIBLE",
+      "validation_id": "982113ebbec616d34220ab19"
+    },
+    {
+      "commence_time_utc": "2026-09-29T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e3b4fcbc04a64b85b67786b7c994ee31",
+      "status": "INELIGIBLE",
+      "validation_id": "e3c193184409fb68444f168c"
+    },
+    {
+      "commence_time_utc": "2026-09-29T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_099e9ec3481440cbbd68020c26e48f6a",
+      "status": "INELIGIBLE",
+      "validation_id": "103b947533c6c170ffb4027c"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_2a4bd102023a4c3490d7257557abe8b5",
+      "status": "INELIGIBLE",
+      "validation_id": "e24da0975f2552c4b41fb823"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4340ccea157241148d0e24d3c14ed5a4",
+      "status": "INELIGIBLE",
+      "validation_id": "8c7f71285aa75a9f573d77ed"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_240fd649704e435494a3c404eb533773",
+      "status": "INELIGIBLE",
+      "validation_id": "e8a50b3f25b3569ae097541c"
+    },
+    {
+      "commence_time_utc": "2026-09-29T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0f7e21a3951f4f92ba353ff41289bf6b",
+      "status": "INELIGIBLE",
+      "validation_id": "61f9f446a297cca525adcfd3"
+    },
+    {
+      "commence_time_utc": "2026-09-29T14:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b9d77d44959440deb7702ec9d671a066",
+      "status": "INELIGIBLE",
+      "validation_id": "ad99daa7390d95720cc2f11c"
+    },
+    {
+      "commence_time_utc": "2026-09-29T14:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_ef4db6f7af31414cb39a7d151782f8ae",
+      "status": "INELIGIBLE",
+      "validation_id": "142d4b84659ffa1ee8d4ec7d"
+    },
+    {
+      "commence_time_utc": "2026-09-29T13:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_804a9f46ad5a4618a7a1c1ea2df70136",
+      "status": "INELIGIBLE",
+      "validation_id": "9e11f453fb3faa210059a738"
+    },
+    {
+      "commence_time_utc": "2026-09-29T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d6624061edcb4bc08195bfea9eb40f20",
+      "status": "INELIGIBLE",
+      "validation_id": "6169832ae4a148d33eb2c86f"
+    },
+    {
+      "commence_time_utc": "2026-09-29T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6fa3cb8852a747319e9cf93c7346050b",
+      "status": "INELIGIBLE",
+      "validation_id": "32869ab01beb19550d9aebf2"
+    },
+    {
+      "commence_time_utc": "2026-09-29T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_cd245d3bdee24edfbec154b4e2753253",
+      "status": "INELIGIBLE",
+      "validation_id": "618d26ff8ef800edccf5a474"
+    },
+    {
+      "commence_time_utc": "2026-10-01T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_38345a5a79bf4dd1ace5d11da07384b6",
+      "status": "INELIGIBLE",
+      "validation_id": "f9d7a66c46683bfc10610b03"
+    },
+    {
+      "commence_time_utc": "2026-10-01T01:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_fd7f8fceda4548128dc18f0492afbdb7",
+      "status": "INELIGIBLE",
+      "validation_id": "c0b76a66a588510d8e135ff0"
+    },
+    {
+      "commence_time_utc": "2026-09-30T07:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_af73da5e0c4f48cca23276fa9a0dce54",
+      "status": "INELIGIBLE",
+      "validation_id": "5a1357b1a30b0d96697e8e97"
+    },
+    {
+      "commence_time_utc": "2026-09-30T03:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_27bb832ce19745509bdd4fdc062d5292",
+      "status": "INELIGIBLE",
+      "validation_id": "e60339c2db3a035990145132"
+    },
+    {
+      "commence_time_utc": "2026-10-01T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_434eff4e93c54eabaa08af9af77a0dd7",
+      "status": "INELIGIBLE",
+      "validation_id": "a6448b7afe53565ecf948ebd"
+    },
+    {
+      "commence_time_utc": "2026-10-01T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0e4b6cfc16384f92b882f6b80d5a20ee",
+      "status": "INELIGIBLE",
+      "validation_id": "9107dadfb00195be93c83d79"
+    },
+    {
+      "commence_time_utc": "2026-09-30T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_77df7039f5c64e5f8f4aac6066e7e900",
+      "status": "INELIGIBLE",
+      "validation_id": "de2aa4596339b80ee57f1102"
+    },
+    {
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6b2de95ce8ea4dd2bba90cfa88eca438",
+      "status": "INELIGIBLE",
+      "validation_id": "26ceb567ffce83c45f54556e"
+    },
+    {
+      "commence_time_utc": "2026-09-30T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_77d1c0e7796a4b17b8591a0134a8c8ad",
+      "status": "INELIGIBLE",
+      "validation_id": "5086389f6a7c45e7f871d8b2"
+    },
+    {
+      "commence_time_utc": "2026-09-30T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e299c02b5e5249f7886e65875fac8d5c",
+      "status": "INELIGIBLE",
+      "validation_id": "b520b884431025ced46fa096"
+    },
+    {
+      "commence_time_utc": "2026-09-30T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4ee800c7f4d44bcbad8c5c33c86c6388",
+      "status": "INELIGIBLE",
+      "validation_id": "ef1dcab57ce72ca15640534a"
+    },
+    {
+      "commence_time_utc": "2026-09-30T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_1ba9825343414243970d560ea6ac5bc5",
+      "status": "INELIGIBLE",
+      "validation_id": "0aef4bf15b18eadc916a2f6e"
+    },
+    {
+      "commence_time_utc": "2026-09-30T09:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0f690a43ec4a453088bf82a2726e4a28",
+      "status": "INELIGIBLE",
+      "validation_id": "c376fe517276bbd4542b5792"
+    },
+    {
+      "commence_time_utc": "2026-10-01T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6c9e49ef16984586b64823791d2f5a71",
+      "status": "INELIGIBLE",
+      "validation_id": "d1f23e7f55d0599d9b0a59cb"
+    },
+    {
+      "commence_time_utc": "2026-10-01T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0a3e0466b7104f7cba550d431d0ec755",
+      "status": "INELIGIBLE",
+      "validation_id": "00488844abcf5315ddd65453"
+    },
+    {
+      "commence_time_utc": "2026-10-01T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_a3de76b6af9b4b6387c43bdab725f76d",
+      "status": "INELIGIBLE",
+      "validation_id": "145d07f61565a5111be87fda"
+    },
+    {
+      "commence_time_utc": "2026-10-01T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6ba7096ca66f44b2b7f2350a6b62f102",
+      "status": "INELIGIBLE",
+      "validation_id": "f864e2e2914747c6592e3b22"
+    },
+    {
+      "commence_time_utc": "2026-10-01T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_6efe94a6c1b3480daaad75e8cd3596ef",
+      "status": "INELIGIBLE",
+      "validation_id": "0ab82efaf8faa11d9b57da96"
+    },
+    {
+      "commence_time_utc": "2026-09-30T11:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_32e3aa9e55f34b94893a155c4d7f373c",
+      "status": "INELIGIBLE",
+      "validation_id": "1c8395117ce6acd283067021"
+    },
+    {
+      "commence_time_utc": "2026-09-30T07:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_4531f1f7fcc14465b67d62c27024c9be",
+      "status": "INELIGIBLE",
+      "validation_id": "3e2ab8b710af6360a0a42d90"
+    },
+    {
+      "commence_time_utc": "2026-09-30T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_75efbe3a531a40b795bac3cbfc388712",
+      "status": "INELIGIBLE",
+      "validation_id": "7f6c9c8249a2b8c37c704bc3"
+    },
+    {
+      "commence_time_utc": "2026-09-30T06:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE",
+        "INTEGRITY_CONFLICT"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_de61a90e4d39460683decbf9061c9c25",
+      "status": "INELIGIBLE",
+      "validation_id": "28f59688f2695ee25a8c43ef"
+    },
+    {
+      "commence_time_utc": "2026-09-30T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_b350232644e741dd9164ed2d65788464",
+      "status": "INELIGIBLE",
+      "validation_id": "af50c55f0c1cbc6f4f0d166f"
+    },
+    {
+      "commence_time_utc": "2026-09-30T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "b",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_53a66ea4881b4faeb1962b32e2788d24",
+      "status": "INELIGIBLE",
+      "validation_id": "dc0c5132503e67a1776feaa8"
+    },
+    {
+      "commence_time_utc": "2026-09-30T04:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_906b6fac77984d1ab04b6854c1eca575",
+      "status": "INELIGIBLE",
+      "validation_id": "91a888faf794a6243d353bb6"
+    },
+    {
+      "commence_time_utc": "2026-10-01T10:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_9cd65b794a4d4dd0970cf41755ff84ea",
+      "status": "INELIGIBLE",
+      "validation_id": "03ed98293854442f7980a095"
+    },
+    {
+      "commence_time_utc": "2026-10-01T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_a4d5a26304df414d96bbdd63f7c95179",
+      "status": "INELIGIBLE",
+      "validation_id": "b9f9cf50e99cc113c1373cab"
+    },
+    {
+      "commence_time_utc": "2026-10-02T02:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_8cf1e600ff564ab8804adc9b169804b2",
+      "status": "INELIGIBLE",
+      "validation_id": "0b7f4ea9fed8fe2b48c3eb6c"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3d14afcd456f493e832c2a51c26f7993",
+      "status": "INELIGIBLE",
+      "validation_id": "16761aaa649b2d360f4e06fe"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_095835da333a44a99a1be3c05022cd47",
+      "status": "INELIGIBLE",
+      "validation_id": "51ad88047d756478d71eb8e7"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_a4f7d55b65ed4e40be41d02316a9cd21",
+      "status": "INELIGIBLE",
+      "validation_id": "10a1a479a5211ce10bc21f3a"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d39ebe4bbb8d4853b0ce64e9198472f7",
+      "status": "INELIGIBLE",
+      "validation_id": "aa471f0939bfe7b19be13271"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_a946c2bab0a94f58af2dd08a9a6ffd12",
+      "status": "INELIGIBLE",
+      "validation_id": "0bdf5ece5058b3e3c793a142"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_28df8f986f1a43d0b67c87240cb2911c",
+      "status": "INELIGIBLE",
+      "validation_id": "04087318df599e996da1b292"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_75e7a13a5c624b1c90b07a6e9c4a12b6",
+      "status": "INELIGIBLE",
+      "validation_id": "53e29355a12baec0ff2da787"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_d41e5f40201b4c358c079887828442eb",
+      "status": "INELIGIBLE",
+      "validation_id": "29062a5f5567ac55d5aee8b5"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "DIVERGENCE_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_2b88a781f81441e2ad866bce119f8af6",
+      "status": "INELIGIBLE",
+      "validation_id": "45b0a5cf6f5e3f998e6dc4e3"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_0bf74daf2efa49a4b7d31e3324f1bd77",
+      "status": "INELIGIBLE",
+      "validation_id": "c4dc734eeb1614a1affcf394"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_823e6ea4c2b14a86b43c9b7b711acc8a",
+      "status": "INELIGIBLE",
+      "validation_id": "1b563fc5be2d2a7ab030be61"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_3aaebd0fba8745fda624300c07835c0d",
+      "status": "INELIGIBLE",
+      "validation_id": "eb5603641eeaf35284a5c871"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_e6559884cf014129bbc7333fc94baacb",
+      "status": "INELIGIBLE",
+      "validation_id": "292db2874d4e499a9f61549c"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_afd74e5d4ff940859872df991532b66c",
+      "status": "INELIGIBLE",
+      "validation_id": "d895f335781eff1dd19811e9"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_faf68c56a2ba4a5c9c3d0e92dbb7a676",
+      "status": "INELIGIBLE",
+      "validation_id": "e15b9a4640172c9aa6e7efe4"
+    },
+    {
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "PRICING_UNAVAILABLE",
+        "PROBABILITIES_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_942bf06d48ad412a8cacc2763b86818d",
+      "status": "INELIGIBLE",
+      "validation_id": "289a7b389880fa97188910b5"
+    },
+    {
+      "commence_time_utc": "2026-10-01T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG",
+        "SELECTED_SIDE_UNAVAILABLE",
+        "SELECTED_PLAYER_UNAVAILABLE"
+      ],
+      "selected_side": null,
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_9eb016ebcda24b8abde6ac1d9179af6d",
+      "status": "INELIGIBLE",
+      "validation_id": "6f335de64ad5d309605a0c6a"
+    },
+    {
+      "commence_time_utc": "2026-10-01T11:30:00+00:00",
+      "eligible": false,
+      "reason_codes": [
+        "DECISION_STATE_NOT_EDGE_POSITIVE",
+        "PAPER_NOT_ELIGIBLE",
+        "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "DIVERGENCE_TYPE_NOT_DIRECTION",
+        "DIVERGENCE_LEVEL_NOT_STRONG"
+      ],
+      "selected_side": "a",
+      "selected_side_market_position": "UNAVAILABLE",
+      "snapshot_key": "mi2_344856a06b3341a78fb4fa07f89a667d",
+      "status": "INELIGIBLE",
+      "validation_id": "468cef8fef256048614edd1e"
+    }
+  ],
+  "schema_version": 1,
+  "segments": {
+    "code_revision": {
+      "10ea2964f6de6dc6a0d41dfb11dbca71c1ad69c7": {
+        "average_selected_fenzobot_probability": 0.46135,
+        "average_selected_market_probability": 0.4105,
+        "closing_market_comparable": 0,
+        "closing_movement": {
+          "average_probability_pp": null,
+          "median_probability_pp": null,
+          "positive_direction_pct": null,
+          "sample_size": 0
+        },
+        "entry_market_usable": 2,
+        "fenzobot": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "market": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "paired_delta": {
+          "brier": null,
+          "log_loss": null
+        },
+        "sample_size": 2,
+        "settled_sample_size": 0,
+        "win_rate_pct": null,
+        "wins": 0
+      }
+    },
+    "match_format": {
+      "BO3": {
+        "average_selected_fenzobot_probability": 0.46135,
+        "average_selected_market_probability": 0.4105,
+        "closing_market_comparable": 0,
+        "closing_movement": {
+          "average_probability_pp": null,
+          "median_probability_pp": null,
+          "positive_direction_pct": null,
+          "sample_size": 0
+        },
+        "entry_market_usable": 2,
+        "fenzobot": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "market": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "paired_delta": {
+          "brier": null,
+          "log_loss": null
+        },
+        "sample_size": 2,
+        "settled_sample_size": 0,
+        "win_rate_pct": null,
+        "wins": 0
+      }
+    },
+    "pricing_model": {
+      "market-residual-v0.3:f46ec3e2aa6f92a9": {
+        "average_selected_fenzobot_probability": 0.46135,
+        "average_selected_market_probability": 0.4105,
+        "closing_market_comparable": 0,
+        "closing_movement": {
+          "average_probability_pp": null,
+          "median_probability_pp": null,
+          "positive_direction_pct": null,
+          "sample_size": 0
+        },
+        "entry_market_usable": 2,
+        "fenzobot": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "market": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "paired_delta": {
+          "brier": null,
+          "log_loss": null
+        },
+        "sample_size": 2,
+        "settled_sample_size": 0,
+        "win_rate_pct": null,
+        "wins": 0
+      }
+    },
+    "selected_side_market_position": {
+      "UNDERDOG": {
+        "average_selected_fenzobot_probability": 0.46135,
+        "average_selected_market_probability": 0.4105,
+        "closing_market_comparable": 0,
+        "closing_movement": {
+          "average_probability_pp": null,
+          "median_probability_pp": null,
+          "positive_direction_pct": null,
+          "sample_size": 0
+        },
+        "entry_market_usable": 2,
+        "fenzobot": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "market": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "paired_delta": {
+          "brier": null,
+          "log_loss": null
+        },
+        "sample_size": 2,
+        "settled_sample_size": 0,
+        "win_rate_pct": null,
+        "wins": 0
+      }
+    },
+    "tour": {
+      "atp": {
+        "average_selected_fenzobot_probability": 0.46135,
+        "average_selected_market_probability": 0.4105,
+        "closing_market_comparable": 0,
+        "closing_movement": {
+          "average_probability_pp": null,
+          "median_probability_pp": null,
+          "positive_direction_pct": null,
+          "sample_size": 0
+        },
+        "entry_market_usable": 2,
+        "fenzobot": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "market": {
+          "accuracy_pct": null,
+          "brier_score": null,
+          "log_loss": null,
+          "sample_size": 0
+        },
+        "paired_delta": {
+          "brier": null,
+          "log_loss": null
+        },
+        "sample_size": 2,
+        "settled_sample_size": 0,
+        "win_rate_pct": null,
+        "wins": 0
+      }
+    }
+  },
+  "source_of_truth": [
+    "calibration_snapshots",
+    "market_time_ledger",
+    "settled_outcomes"
+  ],
+  "unavailable_semantics": "Missing or contradictory evidence remains UNAVAILABLE and is never inferred."
+}
