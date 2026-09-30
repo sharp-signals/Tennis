@@ -2,7 +2,7 @@
 
 Versão de decisão: `fenzobot-prelive-v1` (30 de agosto de 2026;
 CHANGE-2026-08-30-011). Contrato de source de odds operacional:
-`rapidapi-recent-gated-v1` (CHANGE-2026-09-21-050).
+`rapidapi-bilateral-prelive-v2` (CHANGE-2026-09-30-068).
 
 ## Fonte de decisão
 
@@ -70,33 +70,30 @@ Handicap separadamente. No pipeline atual só Moneyline possui odds e pricing
 próprios. Handicap não entra automaticamente até existir uma fonte real de
 odd/linha e uma regra de edge já aprovada; não foi inventada uma regra.
 
-A única fonte RapidAPI operacional para pricing, edge e PAPER é um par Moneyline
-`recent-odds` da RapidAPI, com os dois lados na mesma casa, bookmaker
-identificável, evento/jogadores/ordem confirmados pelo `event/get` e estado
-pré-live válido. `captured_at_utc` indica apenas quando a resposta foi recebida
-pelo bot; não prova quando a quote foi formada ou atualizada. O campo
-`addTime` é preservado como metadado, mas está marcado como não fiável para
-freshness e não bloqueia a cotação: a
-auditoria `CHANGE-2026-08-30-010` provou que pode permanecer antigo enquanto
-`od1`/`od2` continuam a acompanhar o mercado. RapidAPI `upcoming` nunca pode
-preencher pricing, edge ou PAPER; permanece `OBSERVATION_ONLY / SHADOW`.
+A fonte RapidAPI operacional para pricing, edge e PAPER é a Moneyline bilateral
+pré-live do feed regular `upcoming`, quando o mesmo registo do fornecedor prova
+os dois jogadores, a orientação e o `eventId`. O plano regular expõe esta
+Moneyline, mas não a casa nem timestamp de formação: o relatório preserva
+`bookmaker = N/D` e `OBSERVED_AT_CAPTURE_UNVERIFIED_AGE`; não a chama consenso,
+melhor odd, 22Bet ou closing/CLV comparável.
 
-Uma quote RapidAPI recent elegível recebe
-`OBSERVED_AT_CAPTURE_UNVERIFIED_AGE`: pode ser estruturalmente operacional sem
-ser chamada `FRESH`. Apenas semântica temporal suficiente e explicitamente
-comparável permite closing/CLV; `captured_at_utc` isolado nunca chega.
+`recent-odds`, movimentos, arbitragem e comparação de bookmakers pertencem a
+endpoints premium. Podem complementar observação SHADOW quando habilitados,
+mas uma recusa de acesso nunca bloqueia o relatório, pricing, edge ou PAPER
+baseado no par bilateral regular validado.
 
 Desde `CHANGE-2026-09-10-036`, cada candidato passa também pelo Market Quote
 Integrity Gate. Pares incompletos, não finitos, iguais/inferiores a 1.0 e o
 padrão-limite `min <= 1.01` com `max >= 10.0` são rejeitados. O preço
-operacional exige pelo menos um bookmaker factual com os dois lados. Esta é a
-única parte do CHANGE-036 superseded pelo CHANGE-040. Com três ou mais,
+operacional exige um par bilateral verificável: pode ser um bookmaker factual
+com os dois lados, ou o feed pré-jogo normal do fornecedor quando este não
+expõe bookmaker. Esta última hipótese fica sempre marcada como `casa não
+indicada`, nunca como consenso. Com três ou mais candidatos factuais,
 candidatos a mais de 15 p.p. da mediana de-vig são rejeitados; dispersão final
 superior a 15 p.p. bloqueia o mercado. A seleção usa proximidade à mediana,
 depois overround e nome. Um único bookmaker válido fica identificado como
-`SINGLE_BOOKMAKER_OPERATIONAL`; nunca é descrito como consenso. Identidade,
-mesma casa, integridade estrutural e eligibility fail-closed continuam
-obrigatórias.
+`SINGLE_BOOKMAKER_OPERATIONAL`; nunca é descrito como consenso. Identidade e
+integridade estrutural continuam obrigatórias e falham fechadas.
 
 Só `operational_pricing_eligible is True` autoriza um papel operacional. A
 ausência da flag equivale a rejeição. Pricing, snapshot, PAPER e Market-Time

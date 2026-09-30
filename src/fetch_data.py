@@ -1220,6 +1220,10 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
                     # encurtou, inverteu ou transliterou um nome.
                     "p1_id": p1.get("id") or p1.get("playerId"),
                     "p2_id": p2.get("id") or p2.get("playerId"),
+                    # Este ID é do mesmo registo que contém os dois jogadores
+                    # e as duas odds. É necessário para um fallback operacional
+                    # auditável quando recent-odds fica indisponível.
+                    "event_id": event.get("eventId") or event.get("event_id") or event.get("id"),
                     "captured_at_utc": event.get("_odds_captured_at_utc"),
                     "endpoint": event.get("_odds_endpoint"),
                     "raw_payload_sha256": event.get("_raw_payload_sha256"),
@@ -1518,7 +1522,7 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     provenance = {
         "source": "RapidAPI Tennis API / embedded upcoming feed",
         "endpoint": embedded.get("endpoint") or "N/D",
-        "event_id": None,
+        "event_id": embedded.get("event_id"),
         "captured_at_utc": embedded.get("captured_at_utc"),
         "capture_kind": "feed_observed_at_capture",
         "provider_timestamp": None,
@@ -1536,6 +1540,99 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     }
     print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
     return odds, provenance
+
+
+def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
+    match: dict,
+) -> tuple[Optional[dict], Optional[dict]]:
+    """Obtém a Moneyline pré-live incluída no feed regular RapidAPI.
+
+    O plano PRO expõe a Moneyline pré-jogo no feed ``upcoming``. Esta função
+    só a torna operacional quando o próprio registo do feed contém os dois
+    jogadores, a orientação validada e um ``eventId``. Não atribui bookmaker
+    nem a apresenta como comparação de casas.
+    """
+    odds, source = fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    source = source or {}
+    if not odds or not source.get("event_id"):
+        return None, None
+    identity_status = str(source.get("identity_mapping_status") or "").upper()
+    if identity_status not in {"VERIFIED_PROVIDER_PLAYER_IDS", "VERIFIED_PROVIDER_NAMES"}:
+        return None, None
+
+    player_a = str((match.get("player1") or {}).get("name") or "").strip()
+    player_b = str((match.get("player2") or {}).get("name") or "").strip()
+    if not player_a or not player_b or set(odds) != {player_a, player_b}:
+        return None, None
+
+    # O feed não atribui bookmaker. A etiqueta identifica a origem sem fingir
+    # que é uma casa específica; o relatório mantém essa limitação explícita.
+    feed_label = "N/D — RapidAPI pre-match feed"
+    gate = market_integrity.evaluate_moneyline_market([{
+        # A gate exige uma etiqueta para validar estruturalmente uma quote.
+        # Esta nunca é exposta como bookmaker: a provenance abaixo guarda-o
+        # como ausente e assinala explicitamente a limitação do fornecedor.
+        "bookmaker": feed_label,
+        "odd_a": odds.get(player_a),
+        "odd_b": odds.get(player_b),
+        "provider_timestamp": None,
+    }])
+    selected = gate.get("selected")
+    if not isinstance(selected, dict):
+        return None, None
+
+    captured_at_utc = source.get("captured_at_utc") or _odds_capture_timestamp()
+    integrity = {
+        key: gate.get(key)
+        for key in (
+            "policy_version", "status", "reason_code", "candidate_count",
+            "valid_candidate_count", "coherent_bookmaker_count",
+            "minimum_operational_bookmakers", "median_devig_probability_a",
+            "dispersion_pp", "pricing_basis",
+        )
+    }
+    integrity["pricing_basis"] = "verified_provider_pre_match_feed"
+    promoted = dict(source)
+    promoted.update({
+        "source": "RapidAPI Tennis API / pre-match match-winner feed",
+        "capture_kind": "feed_observed_at_capture",
+        "provider_timestamp": None,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "bookmaker": None,
+        "from_cache": False,
+        "cache_age_seconds": 0,
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        "identity_mapping_status": identity_status,
+        "availability_status": "AVAILABLE",
+        "unavailable_reason": None,
+        "bookmaker_attribution": "NOT_EXPOSED_BY_PROVIDER_FEED",
+        "market_integrity": integrity,
+        "market_quotes": [{
+            "bookmaker": feed_label,
+            "odds": {player_a: float(selected["odd_a"]), player_b: float(selected["odd_b"])},
+            "provider_timestamp": None,
+            "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "identity_mapping_status": identity_status,
+            "raw_payload_sha256": source.get("raw_payload_sha256"),
+            "market_integrity_status": selected.get("integrity_status"),
+            "market_integrity_reason_codes": [],
+            "operational_pricing_eligible": True,
+        }],
+        "operational_pricing_eligible": True,
+    })
+    promoted.update(market_integrity.operational_contract_metadata(captured_at_utc))
+    promoted["operational_pricing_eligible"] = (
+        market_integrity.is_operational_pricing_provenance(promoted)
+    )
+    if not promoted["operational_pricing_eligible"]:
+        return None, None
+    register_pending_market_check(match, promoted, available=True)
+    print(
+        f"[odds] {player_a} vs {player_b} | RapidAPI pre-match match-winner "
+        f"observado | {odds}"
+    )
+    return dict(odds), promoted
 
 
 def record_market_odds_observation(match: dict, odds: Optional[dict], provenance: Optional[dict]) -> Optional[dict]:

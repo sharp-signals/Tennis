@@ -39,6 +39,10 @@ FRESH_MAX_AGE_SECONDS = int(
     )
 )
 SCHEMA_VERSION = 2
+# ``recent-odds``, comparação, movimentos e arbitragem são add-ons ULTRA.
+# O monitor continua a recolher a série base do feed regular sem lhes fazer
+# pedidos que o plano PRO não pode satisfazer.
+PREMIUM_ENDPOINTS_ENABLED = os.environ.get("ODDS_MONITOR_PREMIUM_ENDPOINTS_ENABLED", "0") == "1"
 
 
 def _utc_now() -> datetime:
@@ -607,6 +611,19 @@ def monitor_entry(
         "endpoints": {},
     }
     if not event_id:
+        return snapshot
+
+    if not PREMIUM_ENDPOINTS_ENABLED:
+        snapshot["endpoints"] = {
+            key: {
+                "ok": False,
+                "http_status": None,
+                "access": "not_in_plan",
+                "error": "premium_endpoint_disabled_for_plan",
+                "payload": None,
+            }
+            for key in ("recent_odds", "compare", "biggest_movements", "arbitrage")
+        }
         return snapshot
 
     base = fetch_data.RAPIDAPI_EXTEND_BASE

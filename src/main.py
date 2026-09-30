@@ -1309,12 +1309,14 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # CHANGE-050: apenas recent-odds com identidade bilateral, bookmaker
-    # único factual e Market Quote Integrity aprovado pode alimentar pricing.
-    # ``observed_at`` prova a captura, não a idade real da quote. Embedded
-    # continua recolhido abaixo, mas apenas como observação SHADOW.
-    odds, odds_provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+    # A Moneyline pré-live bilateral do feed regular está incluída no plano
+    # operacional. Endpoints premium de odds são auxiliares e nunca bloqueiam
+    # pricing, edge ou PAPER.
+    odds, odds_provenance = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
     reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+    embedded_odds, embedded_provenance = (
+        fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    )
     odds_provenance = odds_provenance or {}
     operational_pricing_eligible = market_integrity.is_operational_pricing_provenance(
         odds_provenance
@@ -1328,9 +1330,6 @@ def _build_match_payload(match: dict) -> dict:
         odds_provenance["availability_status"] = "UNAVAILABLE"
         odds_provenance["unavailable_reason"] = "operational_odds_contract_rejected"
 
-    embedded_odds, embedded_provenance = (
-        fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
-    )
     embedded_provenance = embedded_provenance or {}
 
     # CHANGE-049: identidade prospetiva mint-once. A resolução reutiliza apenas

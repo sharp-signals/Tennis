@@ -2891,7 +2891,12 @@ def _mod_header(payload, div, estado):
     if payload.get("odds_capture_kind") == "feed_observed_at_capture":
         odds_meta_parts.append("Observação do feed nesta execução; hora do bookmaker N/D")
     odds_meta_parts.append(f"Provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
-    odds_meta_parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_bookmaker"):
+        odds_meta_parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
+    elif payload.get("odds_bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED":
+        odds_meta_parts.append("Casa: não indicada pelo feed RapidAPI")
+    else:
+        odds_meta_parts.append("Bookmaker: N/D")
     if payload.get("odds_source_contract_version"):
         odds_meta_parts.append(
             f"Contrato: {_esc(payload['odds_source_contract_version'])}"
@@ -5356,7 +5361,12 @@ def _mod_market_provenance(payload):
     if payload.get("odds_freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE":
         parts.append("Freshness: observada agora; idade real da quote não verificada")
     parts.append(f"Timestamp do provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
-    parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_bookmaker"):
+        parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
+    elif payload.get("odds_bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED":
+        parts.append("Casa: não indicada pelo feed RapidAPI")
+    else:
+        parts.append("Bookmaker: N/D")
     if payload.get("odds_source_contract_version"):
         parts.append(f"Contrato: {_esc(payload['odds_source_contract_version'])}")
     if payload.get("odds_from_cache") is not None:

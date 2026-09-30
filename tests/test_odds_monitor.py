@@ -177,6 +177,19 @@ class OddsMonitorTests(unittest.TestCase):
         self.assertEqual(observation["freshness"], "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME")
         self.assertIsNone(observation["quote_age_seconds"])
 
+    def test_pro_plan_monitor_skips_ultra_endpoint_calls(self):
+        entry = {"key": "atp:1:moneyline:a:na", "pregame": {
+            "match_id": 1, "snapshot_key": "atp:1", "tour": "atp",
+            "commence_time_utc": "2026-10-01T15:00:00+00:00",
+            "players": {"a": {"id": 1, "name": "Alpha"}, "b": {"id": 2, "name": "Beta"}},
+        }}
+        with patch.object(odds_monitor, "PREMIUM_ENDPOINTS_ENABLED", False), \
+                patch.object(odds_monitor, "_resolve_event", return_value=("event-1", {})), \
+                patch.object(odds_monitor, "_primary_market_observation", return_value={"available": True}), \
+                patch.object(odds_monitor, "_request", side_effect=AssertionError("premium request not allowed")):
+            snapshot = odds_monitor.monitor_entry(entry, {"events": {}})
+        self.assertEqual(snapshot["endpoints"]["recent_odds"]["access"], "not_in_plan")
+
     def test_append_snapshot_skips_identical_consecutive_payload(self):
         snapshot = {
             "captured_at_utc": "2026-08-29T12:00:00+00:00",
