@@ -38,12 +38,16 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/backtest_results/
+          python scripts/stage_generated_outputs.py --profile backtest
           if ! git diff --cached --quiet; then
             git commit -m "chore: resultado do backtest [skip ci]"
-            bash scripts/publish-generated-changes.sh "chore: resultado do backtest"
+            FENZOBOT_WRITER_PROFILE=backtest bash scripts/publish-generated-changes.sh "chore: resultado do backtest"
           fi
       - name: Preservar recuperação de publicação
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile backtest --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason BACKTEST_WORKFLOW_FAILED
+      - name: Carregar recuperação de publicação
         if: failure()
         uses: actions/upload-artifact@v7
         with:

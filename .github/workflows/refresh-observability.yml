@@ -50,12 +50,16 @@ jobs:
         run: |
           git config user.name 'tennis-bot'
           git config user.email 'actions@github.com'
-          git add data/dashboard/ docs/dashboard/ data/validation/ data/market_ledger/derived/
+          python scripts/stage_generated_outputs.py --profile observability
           if ! git diff --cached --quiet; then
             git commit -m 'chore: refresh derived observation views [skip ci]'
-            bash scripts/publish-generated-changes.sh 'chore: refresh derived observation views'
+            FENZOBOT_WRITER_PROFILE=observability bash scripts/publish-generated-changes.sh 'chore: refresh derived observation views'
           fi
       - name: Preserve publication recovery
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile observability --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason OBSERVABILITY_WORKFLOW_FAILED
+      - name: Upload publication recovery
         if: failure()
         uses: actions/upload-artifact@v7
         with:

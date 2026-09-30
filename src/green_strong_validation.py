@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_memory_report
+from . import forward_only, forward_only_projections, market_memory_report
 
 
 CHANGE_ID = "CHANGE-2026-09-06-026"
@@ -354,6 +354,29 @@ def write_report(report: Mapping[str, Any], *, path: Path = DEFAULT_OUTPUT_PATH)
 
 def build_and_write(**kwargs: Any) -> dict[str, Any]:
     output_path = kwargs.pop("output_path", DEFAULT_OUTPUT_PATH)
+    protection_manifest_path = kwargs.pop("protection_manifest_path", None)
+    continuity_root = kwargs.pop("continuity_root", None)
+    projection_relative_path = kwargs.pop(
+        "projection_relative_path", DEFAULT_OUTPUT_PATH.as_posix(),
+    )
     report = build_report(**kwargs)
+    boundary = forward_only.load_boundary_for_store(output_path, protection_manifest_path)
+    if boundary.fail_closed:
+        raise forward_only_projections.ProjectionContinuityError(boundary.reason_code)
+    if boundary.active:
+        memory = kwargs.get("memory_report")
+        prospective_memory = (
+            forward_only_projections.prospective_document(memory)
+            if isinstance(memory, Mapping) else {}
+        )
+        prospective_kwargs = dict(kwargs)
+        prospective_kwargs["memory_report"] = prospective_memory
+        prospective = build_report(**prospective_kwargs)
+        report = forward_only_projections.compose_json(
+            boundary=boundary,
+            relative_path=projection_relative_path,
+            prospective=prospective,
+            root=continuity_root,
+        )
     write_report(report, path=output_path)
     return report

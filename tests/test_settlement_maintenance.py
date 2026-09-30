@@ -1,11 +1,34 @@
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts import run_settlement_maintenance as supervisor
 from scripts import update_calibration_outcomes as maintenance
 from src import forward_only
+
+
+def _write_active_manifest(path: Path) -> None:
+    section = {"count": 0, "identity_tokens": [], "records": [], "weak_alias_contexts": {}}
+    document = {
+        "schema_version": 1, "change_id": forward_only.CHANGE_ID,
+        "status": "ACTIVE", "effective_from_utc": "2026-09-30T10:00:00+00:00",
+        "code_commit": "code", "data_base_commit": "data",
+        "protected": {
+            "snapshots": dict(section), "paper": dict(section), "market_ledger": dict(section),
+            "published_reports": {"count": 0, "files": []},
+            "exclusions": [], "historic_aggregate_references": [],
+        },
+    }
+    path.write_text(json.dumps(document), encoding="utf-8")
+    forward_only.activation_lock_path(path).write_text(json.dumps({
+        "schema_version": 1, "change_id": forward_only.CHANGE_ID,
+        "effective_from_utc": document["effective_from_utc"],
+        "manifest_sha256": forward_only.canonical_sha256(document),
+        "code_commit": "code", "data_base_commit": "data",
+    }), encoding="utf-8")
 
 
 class SettlementMaintenanceTests(unittest.TestCase):
@@ -39,15 +62,7 @@ class SettlementMaintenanceTests(unittest.TestCase):
                 "result_type": "completed", "result": "6-4 6-4",
                 "date": "2026-10-02T10:00:00+00:00",
             }]}}}), encoding="utf-8")
-            manifest.write_text(json.dumps({
-                "schema_version": 1, "change_id": forward_only.CHANGE_ID,
-                "status": "ACTIVE", "effective_from_utc": "2026-09-30T10:00:00+00:00",
-                "protected": {
-                    "snapshots": {"identity_tokens": [], "records": []},
-                    "paper": {"identity_tokens": [], "records": []},
-                    "market_ledger": {"identity_tokens": [], "records": []},
-                },
-            }), encoding="utf-8")
+            _write_active_manifest(manifest)
             patches = (
                 patch.object(maintenance, "ROOT", root),
                 patch.object(maintenance, "SNAPSHOTS_PATH", snapshots),
@@ -125,17 +140,7 @@ class SettlementMaintenanceTests(unittest.TestCase):
             paper.write_text(
                 json.dumps({"schema_version": 1, "entries": []}), encoding="utf-8",
             )
-            manifest.write_text(json.dumps({
-                "schema_version": 1,
-                "change_id": forward_only.CHANGE_ID,
-                "status": "ACTIVE",
-                "effective_from_utc": "2026-09-30T10:00:00+00:00",
-                "protected": {
-                    "snapshots": {"identity_tokens": [], "records": []},
-                    "paper": {"identity_tokens": [], "records": []},
-                    "market_ledger": {"identity_tokens": [], "records": []},
-                },
-            }), encoding="utf-8")
+            _write_active_manifest(manifest)
 
             calls = 0
 
@@ -164,6 +169,73 @@ class SettlementMaintenanceTests(unittest.TestCase):
             self.assertIsNone(
                 json.loads(snapshots.read_text(encoding="utf-8"))["snapshots"][0]["outcome"],
             )
+
+    def test_external_supervisor_persists_real_subprocess_timeout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoint = Path(tmp) / "settlement.json"
+            code = (
+                "import json,pathlib,time;"
+                f"p=pathlib.Path({str(checkpoint)!r});"
+                "p.write_text(json.dumps({'schema_version':1,'cursors':{},'last_run':"
+                "{'status':'IN_PROGRESS','phases':{'dashboard':{'status':'IN_PROGRESS'}}}}));"
+                "time.sleep(10)"
+            )
+            report = supervisor.supervise(
+                command=[sys.executable, "-c", code],
+                checkpoint_path=checkpoint,
+                timeout_seconds=0.1,
+            )
+            self.assertEqual(report["status"], "TIMED_OUT")
+            self.assertEqual(
+                json.loads(checkpoint.read_text(encoding="utf-8"))["last_run"]["status"],
+                "TIMED_OUT",
+            )
+            # A fresh process/workspace reader sees the durable terminal state.
+            self.assertEqual(
+                maintenance._read_checkpoint(checkpoint)["last_run"]["reason_code"],
+                "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT",
+            )
+            self.assertEqual(report["phases"]["dashboard"]["status"], "IN_PROGRESS")
+
+    def test_more_candidates_than_batch_is_partial_and_cursor_is_confirmed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshots = root / "data/calibration_snapshots.json"
+            paper = root / "data/paper_trades.json"
+            checkpoint = root / "data/maintenance/settlement-v1.json"
+            snapshots.parent.mkdir(parents=True)
+            snapshots.write_text('{"snapshots":[]}\n', encoding="utf-8")
+            paper.write_text('{"entries":[]}\n', encoding="utf-8")
+
+            def settle_snapshots(*_args, diagnostics, **_kwargs):
+                diagnostics.update({
+                    "examined": 1, "last_examined_key": "a", "pending_no_result": 1,
+                    "deadline_reached": False, "blocked": {},
+                })
+                return 0
+
+            def settle_paper(*_args, diagnostics, **_kwargs):
+                diagnostics.update({
+                    "examined": 0, "last_examined_key": None, "pending_no_result": 0,
+                    "deadline_reached": False, "blocked": {},
+                })
+                return 0
+
+            with (
+                patch.object(maintenance, "ROOT", root),
+                patch.object(maintenance, "SNAPSHOTS_PATH", snapshots),
+                patch.object(maintenance, "PAPER_PATH", paper),
+                patch.object(maintenance, "_pending_keys", side_effect=lambda name, *_: ["a", "b"] if name == "snapshots" else []),
+                patch.object(maintenance.calibration_store, "settle_from_matches", side_effect=settle_snapshots),
+                patch.object(maintenance.paper_trading, "settle_from_matches", side_effect=settle_paper),
+            ):
+                report = maintenance.run(checkpoint_path=checkpoint, batch_size=1)
+            self.assertEqual(report["status"], "PARTIAL")
+            self.assertEqual(report["candidates"]["snapshots"], {
+                "eligible_pending": 2, "batch_size": 1,
+            })
+            self.assertEqual(maintenance._read_checkpoint(checkpoint)["cursors"]["snapshots"], "a")
+            self.assertEqual(maintenance._batch(["a", "b"], "a", 1), ["b"])
 
 
 if __name__ == "__main__":

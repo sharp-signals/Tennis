@@ -116,8 +116,15 @@ def _batch(keys: list[str], cursor: str | None, limit: int) -> list[str]:
     return ordered[: min(limit, len(ordered))]
 
 
-def _phase(report: dict[str, Any], name: str, operation):
+def _phase(
+    report: dict[str, Any], name: str, operation, *,
+    checkpoint: dict[str, Any] | None = None, checkpoint_path: Path | None = None,
+):
     started = time.monotonic()
+    report["phases"][name] = {"status": "IN_PROGRESS", "started_at_utc": _utc_now()}
+    if checkpoint is not None and checkpoint_path is not None:
+        checkpoint.update({"last_run": report, "updated_at_utc": _utc_now()})
+        _atomic_write(checkpoint_path, checkpoint)
     result = operation()
     report["phases"][name] = {
         "duration_seconds": round(time.monotonic() - started, 4),
@@ -147,11 +154,14 @@ def run(
     boundary = forward_only.load_boundary(manifest_path)
     report["activation_status"] = boundary.reason_code
     settled_total = 0
+    checkpoint.update({"last_run": report, "updated_at_utc": _utc_now(), "cursors": cursors})
+    _atomic_write(checkpoint_path, checkpoint)
 
     try:
         matches = _phase(
             report, "read_local_cache",
             lambda: list(cached_matches(ROOT / "data/cache/players")),
+            checkpoint=checkpoint, checkpoint_path=checkpoint_path,
         )
         report["cached_matches"] = len(matches)
         batches: dict[str, list[str]] = {}
@@ -174,16 +184,18 @@ def run(
                     candidate_keys=set(batches["snapshots"]),
                     max_settlements=batch_size,
                     diagnostics=snapshot_details,
+                    deadline_monotonic=deadline,
                 ),
+                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
             )
             report["phases"]["snapshot_settlement"].update(snapshot_details)
             report["phases"]["snapshot_settlement"]["settled"] = snapshot_count
             settled_total += snapshot_count
-            if batches["snapshots"]:
-                cursors["snapshots"] = batches["snapshots"][-1]
+            if snapshot_details.get("last_examined_key"):
+                cursors["snapshots"] = snapshot_details["last_examined_key"]
                 checkpoint.update({"cursors": cursors, "updated_at_utc": _utc_now()})
                 _atomic_write(checkpoint_path, checkpoint)
-            if time.monotonic() >= deadline:
+            if snapshot_details.get("deadline_reached") or time.monotonic() >= deadline:
                 report["status"] = "TIMED_OUT"
             else:
                 paper_details: dict[str, Any] = {}
@@ -195,16 +207,23 @@ def run(
                         candidate_keys=set(batches["paper"]),
                         max_settlements=batch_size,
                         diagnostics=paper_details,
+                        deadline_monotonic=deadline,
                     ),
+                    checkpoint=checkpoint, checkpoint_path=checkpoint_path,
                 )
                 report["phases"]["paper_settlement"].update(paper_details)
                 report["phases"]["paper_settlement"]["settled"] = paper_count
                 settled_total += paper_count
-                if batches["paper"]:
-                    cursors["paper"] = batches["paper"][-1]
+                if paper_details.get("last_examined_key"):
+                    cursors["paper"] = paper_details["last_examined_key"]
                     checkpoint.update({"cursors": cursors, "updated_at_utc": _utc_now()})
                     _atomic_write(checkpoint_path, checkpoint)
-                report["status"] = "COMPLETED"
+                more_work = any(
+                    report["candidates"][name]["eligible_pending"]
+                    > report["candidates"][name]["batch_size"]
+                    for name in ("snapshots", "paper")
+                )
+                report["status"] = "PARTIAL" if more_work else "COMPLETED"
 
         if (
             settled_total
@@ -221,7 +240,10 @@ def run(
                 market_ledger.rotate_archives(root=LEDGER_ROOT)
                 return memory
 
-            memory = _phase(report, "market_memory", rebuild_memory)
+            memory = _phase(
+                report, "market_memory", rebuild_memory,
+                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
+            )
             report["phases"]["market_memory"]["observations"] = memory["observation_count"]
             _phase(
                 report, "green_projection",
@@ -230,9 +252,11 @@ def run(
                     manual_path=ROOT / "data/manual_paper_22bet.json",
                     output_path=ROOT / "data/validation/green-strong-v1.json",
                 ),
+                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
             )
             dashboard_status = _phase(
                 report, "dashboard", lambda: dashboard.build_and_write_best_effort(root=ROOT),
+                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
             )
             if dashboard_status["status"] != "AVAILABLE":
                 report["phases"]["dashboard"].update({

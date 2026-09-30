@@ -13,7 +13,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import market_integrity, market_ledger, tournament_policy
+from . import (
+    forward_only,
+    forward_only_projections,
+    market_integrity,
+    market_ledger,
+    tournament_policy,
+)
 
 
 SCHEMA_VERSION = 1
@@ -111,12 +117,35 @@ def build_report(
     snapshots_path: Path = DEFAULT_SNAPSHOTS_PATH,
     paper_path: Path = DEFAULT_PAPER_PATH,
     exclusions_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
+    boundary: forward_only.Boundary | None = None,
+    prospective_only: bool = False,
 ) -> dict[str, Any]:
     observations = market_ledger.read_observations(root=ledger_root)
-    by_id = {item["observation_id"]: item for item in observations}
     snapshots = _read_list(snapshots_path, "snapshots")
     paper_entries = _read_list(paper_path, "entries")
+    if prospective_only:
+        if boundary is None or not boundary.active:
+            raise ValueError("prospective_only_requires_active_forward_only_boundary")
+        observations = [
+            row for row in observations
+            if boundary.new_record_eligibility("market_ledger", row)[0]
+        ]
+        snapshots = [
+            row for row in snapshots
+            if boundary.new_record_eligibility("snapshots", row)[0]
+        ]
+        paper_entries = [
+            row for row in paper_entries
+            if boundary.new_record_eligibility("paper", row)[0]
+        ]
+    by_id = {item["observation_id"]: item for item in observations}
     exclusion_records = market_integrity.read_exclusions(exclusions_path)
+    if prospective_only:
+        prospective_keys = {str(row.get("key") or "") for row in snapshots}
+        exclusion_records = [
+            row for row in exclusion_records
+            if str(row.get("snapshot_key") or "") in prospective_keys
+        ]
     exclusions_by_snapshot = {
         str(item["snapshot_key"]): item
         for item in exclusion_records
@@ -358,6 +387,24 @@ def write_report(report: Mapping[str, Any], *, path: Path = DEFAULT_OUTPUT_PATH)
 
 def build_and_write(**kwargs: Any) -> dict[str, Any]:
     output_path = kwargs.pop("output_path", DEFAULT_OUTPUT_PATH)
+    protection_manifest_path = kwargs.pop("protection_manifest_path", None)
+    continuity_root = kwargs.pop("continuity_root", None)
+    projection_relative_path = kwargs.pop(
+        "projection_relative_path", DEFAULT_OUTPUT_PATH.as_posix(),
+    )
     report = build_report(**kwargs)
+    boundary = forward_only.load_boundary_for_store(output_path, protection_manifest_path)
+    if boundary.fail_closed:
+        raise forward_only_projections.ProjectionContinuityError(boundary.reason_code)
+    if boundary.active:
+        prospective = build_report(
+            **kwargs, boundary=boundary, prospective_only=True,
+        )
+        report = forward_only_projections.compose_json(
+            boundary=boundary,
+            relative_path=projection_relative_path,
+            prospective=prospective,
+            root=continuity_root,
+        )
     write_report(report, path=output_path)
     return report

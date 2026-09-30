@@ -46,14 +46,17 @@ jobs:
           # sucesso. Nessa saída, persist_rapidapi_usage() já removeu o
           # checkpoint transitório data/rapidapi_usage_inflight.json; por isso
           # publicamos apenas os artefactos persistentes da execução.
-          git add data/player_images.json data/player_images_review.json \
-            data/rapidapi_usage_log.json docs/assets/players/
+          python scripts/stage_generated_outputs.py --profile images
           # Só tentar commit quando há alterações efetivamente staged.
           if ! git diff --cached --quiet; then
             git commit -m "chore: sincronizar fotografias top 200 ATP/WTA [skip ci]"
-            bash scripts/publish-generated-changes.sh "chore: sincronizar fotografias top 200 ATP/WTA"
+            FENZOBOT_WRITER_PROFILE=images bash scripts/publish-generated-changes.sh "chore: sincronizar fotografias top 200 ATP/WTA"
           fi
       - name: Preservar recuperação de publicação
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile images --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason IMAGE_WORKFLOW_FAILED
+      - name: Carregar recuperação de publicação
         if: failure()
         uses: actions/upload-artifact@v7
         with:

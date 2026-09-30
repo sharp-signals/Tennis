@@ -8,6 +8,7 @@ import math
 import os
 import re
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -276,6 +277,7 @@ def settle_from_matches(
     max_settlements: int | None = None,
     candidate_keys: set[str] | None = None,
     diagnostics: dict[str, Any] | None = None,
+    deadline_monotonic: float | None = None,
 ) -> int:
     completed = []
     for match in matches:
@@ -334,6 +336,10 @@ def settle_from_matches(
         boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
         settled = 0
         eligible_candidates = 0
+        examined = 0
+        pending_no_result = 0
+        last_examined_key = None
+        deadline_reached = False
         blocked: dict[str, int] = {}
         excluded = excluded_keys()
         for entry in document["entries"]:
@@ -350,11 +356,17 @@ def settle_from_matches(
                 blocked[reason] = blocked.get(reason, 0) + 1
                 continue
             eligible_candidates += 1
+            if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+                deadline_reached = True
+                break
+            examined += 1
+            last_examined_key = str(entry.get("key") or "")
             if max_settlements is not None and settled >= max_settlements:
                 break
             pregame = entry.get("pregame") or {}
             match = find(pregame)
             if not match:
+                pending_no_result += 1
                 continue
             selected_side = pregame.get("selected_side")
             selected_id = (pregame.get("players") or {}).get(selected_side, {}).get("id")
@@ -418,6 +430,10 @@ def settle_from_matches(
                 "eligible_candidates": eligible_candidates,
                 "settled": settled,
                 "blocked": blocked,
+                "examined": examined,
+                "pending_no_result": pending_no_result,
+                "last_examined_key": last_examined_key,
+                "deadline_reached": deadline_reached,
             })
         return settled
 

@@ -53,16 +53,19 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/cache/pending_market_checks.json data/cache/rapidapi_event_identity.json \
-            data/rapidapi_usage_log.json data/rapidapi_usage_inflight.json 2>/dev/null || true
+          python scripts/stage_generated_outputs.py --profile retry
           if ! git diff --cached --quiet; then
             git commit -m "chore: reconsultar mercados pré-live pendentes [skip ci]"
-            bash scripts/publish-generated-changes.sh "chore: reconsultar mercados pré-live pendentes"
+            FENZOBOT_WRITER_PROFILE=retry bash scripts/publish-generated-changes.sh "chore: reconsultar mercados pré-live pendentes"
           else
             echo "Sem reconsultas novas a gravar."
           fi
 
       - name: Preservar recuperação de publicação
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile retry --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason RETRY_WORKFLOW_FAILED
+      - name: Carregar recuperação de publicação
         if: failure()
         uses: actions/upload-artifact@v7
         with:

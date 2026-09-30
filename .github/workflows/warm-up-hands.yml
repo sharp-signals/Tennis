@@ -66,20 +66,23 @@ jobs:
           # adicionado; git status via-o e entrava no "if", mas como nada
           # tinha sido preparado (git add) para commit, o "git commit" falhava
           # com "nothing added to commit but untracked files present".
-          git add data/cache/ data/rapidapi_usage_log.json \
-            data/rapidapi_usage_inflight.json data/run_metrics_log.json 2>/dev/null || true
+          python scripts/stage_generated_outputs.py --profile warmup
           # Verifica especificamente se há algo PREPARADO (staged) para
           # commit — mais robusto que "git status --porcelain" (que também
           # apanha ficheiros não-preparados/não relacionados e podia voltar
           # a cair no mesmo erro se aparecer outro ficheiro novo no futuro).
           if ! git diff --cached --quiet; then
             git commit -m "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"
-            bash scripts/publish-generated-changes.sh "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"
+            FENZOBOT_WRITER_PROFILE=warmup bash scripts/publish-generated-changes.sh "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"
           else
             echo "Sem alterações a gravar (provavelmente já tudo em cache)."
           fi
 
       - name: Preservar recuperação de publicação
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile warmup --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason WARMUP_WORKFLOW_FAILED
+      - name: Carregar recuperação de publicação
         if: failure()
         uses: actions/upload-artifact@v7
         with:

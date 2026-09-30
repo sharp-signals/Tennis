@@ -91,17 +91,11 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          # Publica também a evidência fonte antes da manutenção derivada.
-          git add docs/ data/analysis_cache/ data/cache/ data/fixtures_cache.json \
-            data/tournament_cache.json data/rapidapi_usage_log.json \
-            data/rapidapi_usage_inflight.json data/run_metrics_log.json \
-            data/calibration_snapshots.json data/paper_trades.json \
-            data/market_ledger/ data/match_identity/ data/validation/ \
-            data/dashboard/ data/player_images.json data/player_images_review.json \
-            knowledge/players/ 2>/dev/null || true
+          # O perfil bot inclui explicitamente data/run_metrics_log.json.
+          python scripts/stage_generated_outputs.py --profile bot
           if ! git diff --cached --quiet; then
             git commit -m "chore: publicar relatórios gerados"
-            bash scripts/publish-generated-changes.sh "chore: publicar relatórios gerados"
+            FENZOBOT_WRITER_PROFILE=bot bash scripts/publish-generated-changes.sh "chore: publicar relatórios gerados"
           else
             echo "Sem relatórios novos para publicar."
           fi
@@ -141,7 +135,15 @@ jobs:
           SETTLEMENT_BATCH_SIZE: "50"
           SETTLEMENT_DEADLINE_SECONDS: "150"
           FENZOBOT_RUN_METRICS_PATH: data/run_metrics_log.json
-        run: timeout 180s python scripts/update_calibration_outcomes.py
+        run: python scripts/run_settlement_maintenance.py
+
+      - name: Resumir manutenção persistida
+        if: always() && steps.settlement_maintenance.outcome != 'skipped'
+        run: |
+          python -c "import json,pathlib; p=pathlib.Path('data/maintenance/settlement-v1.json'); d=json.loads(p.read_text()) if p.exists() else {}; r=d.get('last_run',{}); print('### Settlement maintenance\n\nStatus: **'+str(r.get('status','UNAVAILABLE'))+'**\n\nReason: '+str(r.get('reason_code','—')))" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.settlement_maintenance.outcome }}" = "failure" ]; then
+            echo "::warning::Settlement maintenance terminou com alerta; o checkpoint foi persistido."
+          fi
 
       # CHANGE-2026-09-28-061: reconstrói um livro Excel e o JSON que lhe dá
       # origem a partir de snapshots imutáveis. Não faz requests externas e
@@ -157,12 +159,11 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/rapidapi_usage_log.json data/rapidapi_usage_inflight.json \
-            data/run_metrics_log.json data/market_ledger/ data/dashboard/ \
-            data/match_identity/ docs/dashboard/ 2>/dev/null || true
+          # O perfil bot inclui data/match_identity/ no estado recuperável.
+          python scripts/stage_generated_outputs.py --profile bot
           if ! git diff --cached --quiet; then
             git commit -m "chore: preservar telemetria de execução falhada [skip ci]"
-            bash scripts/publish-generated-changes.sh "chore: preservar telemetria de execução falhada"
+            FENZOBOT_WRITER_PROFILE=bot bash scripts/publish-generated-changes.sh "chore: preservar telemetria de execução falhada"
           else
             echo "Sem telemetria nova para preservar."
           fi
@@ -172,18 +173,12 @@ jobs:
         run: |
           git config user.name "tennis-bot"
           git config user.email "actions@github.com"
-          git add data/analysis_cache/ data/cache/ data/fixtures_cache.json \
-            data/tournament_cache.json data/rapidapi_usage_log.json \
-            data/run_metrics_log.json data/calibration_snapshots.json \
-            data/paper_trades.json data/market_ledger/ \
-            data/maintenance/ data/governance/ \
-            data/match_identity/ \
-            data/validation/ data/dashboard/ docs/dashboard/ \
-            data/player_images.json data/player_images_review.json \
-            knowledge/players/ docs/ 2>/dev/null || true
+          # O perfil bot inclui explicitamente data/run_metrics_log.json.
+          # Inclui também data/match_identity/ sem staging implícito.
+          python scripts/stage_generated_outputs.py --profile bot
           if ! git diff --cached --quiet; then
             git commit -m "chore: atualizar caches e relatórios"
-            bash scripts/publish-generated-changes.sh "chore: atualizar caches e relatórios"
+            FENZOBOT_WRITER_PROFILE=bot bash scripts/publish-generated-changes.sh "chore: atualizar caches e relatórios"
           else
             echo "Sem alterações a gravar."
           fi
@@ -197,6 +192,11 @@ jobs:
           exit 1
 
       - name: Preservar recuperação de publicação
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile bot --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason WORKFLOW_FAILED_BEFORE_OR_DURING_PUBLICATION
+
+      - name: Carregar recuperação de publicação
         if: failure()
         uses: actions/upload-artifact@v7
         with:
