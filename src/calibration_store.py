@@ -8,11 +8,12 @@ import json
 import math
 import os
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import market_integrity, match_identity_v2, snapshot_identity, tournament_policy
+from . import forward_only, market_integrity, match_identity_v2, snapshot_identity, tournament_policy
 from .green_strong_validation import COHORT_NAME, classify_snapshot
 
 
@@ -188,21 +189,35 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 
 def upsert_snapshots(snapshots: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH,
-                     max_entries: int | None = MAX_ENTRIES) -> int:
+                     max_entries: int | None = MAX_ENTRIES, *,
+                     protection_manifest_path: Path | None = None,
+                     diagnostics: dict[str, Any] | None = None) -> int:
     """Insere snapshots; uma repeticao nunca reescreve a fotografia original."""
     with _LOCK:
         document = _read(path)
         existing = {item.get("key"): item for item in document["snapshots"] if item.get("key")}
         added = 0
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
+        blocked: dict[str, int] = {}
         for snapshot in snapshots:
             key = snapshot.get("key")
             if key and key not in existing:
+                allowed, reason = boundary.new_record_eligibility("snapshots", snapshot)
+                if not allowed:
+                    blocked[reason] = blocked.get(reason, 0) + 1
+                    continue
                 existing[key] = dict(snapshot)
                 added += 1
         ordered = sorted(existing.values(), key=lambda item: item.get("analyzed_at_utc") or "")
         document["snapshots"] = ordered[-max_entries:] if max_entries else ordered
         document["updated_at_utc"] = _utc_now()
         _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "added": added,
+                "blocked": blocked,
+            })
         return added
 
 
@@ -270,6 +285,11 @@ def apply_persisted_validation(
 def settle_from_matches(
     matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH, *,
     identity_registry_path: Path = match_identity_v2.DEFAULT_REGISTRY_PATH,
+    protection_manifest_path: Path | None = None,
+    max_settlements: int | None = None,
+    candidate_keys: set[str] | None = None,
+    diagnostics: dict[str, Any] | None = None,
+    deadline_monotonic: float | None = None,
 ) -> int:
     """Preenche resultados usando jogos terminados; nao altera dados pre-match."""
     completed: dict[str, list[Mapping[str, Any]]] = {}
@@ -350,10 +370,33 @@ def settle_from_matches(
 
     with _LOCK:
         document = _read(path)
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
         settled = 0
+        eligible_candidates = 0
+        examined = 0
+        pending_no_result = 0
+        last_examined_key = None
+        deadline_reached = False
+        blocked: dict[str, int] = {}
         for snapshot in document["snapshots"]:
+            if candidate_keys is not None and str(snapshot.get("key") or "") not in candidate_keys:
+                continue
             if snapshot.get("outcome") is not None:
                 continue
+            allowed, reason = forward_only.settlement_eligibility(
+                "snapshots", snapshot, boundary=boundary,
+            )
+            if not allowed:
+                blocked[reason] = blocked.get(reason, 0) + 1
+                continue
+            eligible_candidates += 1
+            if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+                deadline_reached = True
+                break
+            examined += 1
+            last_examined_key = str(snapshot.get("key") or "")
+            if max_settlements is not None and settled >= max_settlements:
+                break
             # Provider IDs are reusable. A direct hit is only evidence after
             # the player pair/context also match; otherwise use the existing
             # safe pair+time fallback.
@@ -363,6 +406,7 @@ def settle_from_matches(
                 else direct_match(snapshot) or fallback_match(snapshot)
             )
             if not match:
+                pending_no_result += 1
                 continue
             winner_id = match.get("match_winner")
             a_id = (snapshot.get("player_a") or {}).get("id")
@@ -383,6 +427,17 @@ def settle_from_matches(
         if settled:
             document["updated_at_utc"] = _utc_now()
             _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "eligible_candidates": eligible_candidates,
+                "settled": settled,
+                "blocked": blocked,
+                "examined": examined,
+                "pending_no_result": pending_no_result,
+                "last_examined_key": last_examined_key,
+                "deadline_reached": deadline_reached,
+            })
         return settled
 
 

@@ -29,7 +29,8 @@ import os
 import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from pathlib import Path
+from typing import Mapping, Optional
 
 from dateutil import parser as date_parser
 
@@ -54,6 +55,7 @@ from .config import (
     SKIP_ANALYSIS_ODDS_THRESHOLD,
 )
 from . import fetch_data
+from . import forward_only
 from . import run_metrics
 from . import calibration_store
 from . import market_ledger
@@ -110,10 +112,18 @@ def _apply_discovery_health_status(status: str, diagnostics: dict) -> str:
 def _trigger_context() -> dict:
     slot = os.environ.get("FENZOBOT_TRIGGER_SLOT", "").strip() or "manual"
     source = os.environ.get("FENZOBOT_TRIGGER_SOURCE", "").strip() or "manual"
+    local_date = os.environ.get("FENZOBOT_TRIGGER_LOCAL_DATE", "").strip() or "manual"
+    attempt_id = os.environ.get("FENZOBOT_DISPATCH_ATTEMPT_ID", "").strip()
     run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
     repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
-    result = {"trigger_slot": slot, "trigger_source": source}
+    result = {
+        "trigger_slot": slot,
+        "trigger_source": source,
+        "trigger_local_date": local_date,
+    }
+    if attempt_id:
+        result["dispatch_attempt_id"] = attempt_id
     if run_id:
         result["github_run_id"] = run_id
     if run_id and repository:
@@ -2086,6 +2096,28 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
     from .report_html import COLORS
 
     cards = []
+    frozen_link = ""
+    boundary = forward_only.load_boundary_for_store(Path(reports_dir))
+    if boundary.fail_closed:
+        raise RuntimeError(boundary.reason_code)
+    if boundary.active:
+        versions = (((boundary.manifest or {}).get("protected") or {}).get(
+            "mutable_index_versions"
+        ) or [])
+        source = f"docs/relatorios/index-{today_str}.html"
+        for version in versions:
+            if isinstance(version, Mapping) and version.get("source_path") == source:
+                target = Path(str(version.get("path") or ""))
+                frozen_link = (
+                    '<a class="dash-link" href="'
+                    + html.escape(
+                        f"frozen-indexes/{target.name}"
+                        if target.parent.name == "frozen-indexes"
+                        else target.as_posix()
+                    )
+                    + '">Versão histórica congelada em T0 →</a>'
+                )
+                break
     for payload, result, url in match_reports:
         if not url:
             continue
@@ -2173,7 +2205,7 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
 @media(max-width:600px){{.filters{{grid-template-columns:1fr;}}.idx-card{{align-items:flex-start;}}}}
 </style></head>
 <body>
-<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p><a class="dash-link" href="{html.escape(f'{SITE_BASE_URL}/dashboard/')}">Fenzobot Control Dashboard →</a></div>
+<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p><a class="dash-link" href="{html.escape(f'{SITE_BASE_URL}/dashboard/')}">Fenzobot Control Dashboard →</a>{frozen_link}</div>
 <div class="filters">
   <input id="search" type="search" placeholder="Pesquisar jogador ou torneio" aria-label="Pesquisar relatórios"/>
   <select id="priority" aria-label="Filtrar por prioridade">

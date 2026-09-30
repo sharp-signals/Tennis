@@ -21,7 +21,8 @@ class ReportNotificationWorkflowTests(unittest.TestCase):
         self.assertEqual(positions, sorted(positions))
 
     def test_runner_temp_manifest_is_configured_inside_a_step(self):
-        self.assertNotIn("${{ runner.temp }}", self.workflow)
+        job_header = self.workflow[:self.workflow.index("    steps:")]
+        self.assertNotIn("${{ runner.temp }}", job_header)
         configure = self.workflow.index("- name: Configurar manifesto temporário")
         bot = self.workflow.index("- name: Correr o bot")
         configure_step = self.workflow[configure:bot]

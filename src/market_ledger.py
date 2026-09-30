@@ -19,7 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import match_identity_v2
+from . import forward_only, match_identity_v2
 from .pricing import de_vig_market_probabilities
 
 
@@ -362,12 +362,19 @@ def _ids_in_file(path: Path, *, compressed: bool = False) -> set[str]:
         raise MarketLedgerError(f"unreadable_ledger:{path}") from exc
 
 
-def append_observation(observation: Mapping[str, Any], *, root: Path = DEFAULT_ROOT) -> bool:
+def append_observation(
+    observation: Mapping[str, Any], *, root: Path = DEFAULT_ROOT,
+    protection_manifest_path: Path | None = None,
+) -> bool:
     """Acrescenta uma linha; ``False`` significa retry/duplicado idempotente."""
     observation_id = str(observation.get("observation_id") or "")
     captured = str((observation.get("capture") or {}).get("captured_at_utc") or "")
     if not observation_id or not captured:
         raise MarketLedgerError("invalid_observation_envelope")
+    boundary = forward_only.load_boundary_for_store(root, protection_manifest_path)
+    allowed, reason = boundary.new_record_eligibility("market_ledger", observation)
+    if not allowed:
+        raise MarketLedgerError(f"forward_only_blocked:{reason}")
     path = _active_path(root, captured)
     archive = _archive_path(root, captured[:10])
     with _LOCK:
