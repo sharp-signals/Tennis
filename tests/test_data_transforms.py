@@ -39,6 +39,29 @@ class MatchInputTests(unittest.TestCase):
         self.assertIs(cached, odds_frame)
         loader.assert_called_once_with("atp", fetch_data.HISTORY_YEARS_TO_LOAD)
 
+    def test_canonical_history_context_uses_first_pre_match_snapshot_and_no_future_result(self):
+        earlier = {
+            "tour": "atp", "key": "atp:1", "match_id": 1,
+            "commence_time_utc": "2026-09-01T12:00:00+00:00",
+            "analyzed_at_utc": "2026-09-01T06:30:00+00:00",
+            "player_a": {"id": 10, "name": "Player A"}, "player_b": {"id": 11, "name": "Player B"},
+            "market_odds_decimal": {"Player A": 1.55, "Player B": 2.50},
+            "outcome": {"winner_side": "a"},
+        }
+        future = {
+            **earlier, "key": "atp:2", "match_id": 2,
+            "commence_time_utc": "2026-10-01T12:00:00+00:00",
+            "market_odds_decimal": {"Player A": 1.55, "Player B": 2.50},
+            "outcome": {"winner_side": "b"},
+        }
+        with patch.object(fetch_data, "_load_canonical_snapshot_odds", return_value=[earlier, future]):
+            result = fetch_data.compute_canonical_snapshot_odds_context(
+                "atp", "Player A", 1.55, "2026-09-30T12:00:00+00:00",
+            )
+        self.assertEqual(result["exact_band"], "1.51-1.60")
+        self.assertEqual(result["exact"], {"n": 1, "wins": 1, "losses": 0, "win_rate_pct": 100.0})
+        self.assertEqual(result["general"]["n"], 1)
+
     def test_embedded_odds_keep_original_capture_provenance(self):
         match = {"player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"}, "_tour": "wta"}
         key = fetch_data._odds_names_key("Alice Player", "Bea Player")

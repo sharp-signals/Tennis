@@ -452,11 +452,11 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
         )
         self.assertEqual(
             market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
-            "rapidapi-recent-gated-v1",
+            "rapidapi-bilateral-prelive-v2",
         )
         self.assertEqual(
             market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
-            "d8679462537d9f461ca7",
+            market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
         )
 
     def test_discovery_change_preserves_operational_quotas_and_experiment_gate(self):

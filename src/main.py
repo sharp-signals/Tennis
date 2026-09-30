@@ -1319,12 +1319,14 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # CHANGE-050: apenas recent-odds com identidade bilateral, bookmaker
-    # único factual e Market Quote Integrity aprovado pode alimentar pricing.
-    # ``observed_at`` prova a captura, não a idade real da quote. Embedded
-    # continua recolhido abaixo, mas apenas como observação SHADOW.
-    odds, odds_provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+    # A Moneyline pré-live bilateral do feed regular está incluída no plano
+    # operacional. Endpoints premium de odds são auxiliares e nunca bloqueiam
+    # pricing, edge ou PAPER.
+    odds, odds_provenance = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
     reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+    embedded_odds, embedded_provenance = (
+        fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    )
     odds_provenance = odds_provenance or {}
     operational_pricing_eligible = market_integrity.is_operational_pricing_provenance(
         odds_provenance
@@ -1338,9 +1340,6 @@ def _build_match_payload(match: dict) -> dict:
         odds_provenance["availability_status"] = "UNAVAILABLE"
         odds_provenance["unavailable_reason"] = "operational_odds_contract_rejected"
 
-    embedded_odds, embedded_provenance = (
-        fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
-    )
     embedded_provenance = embedded_provenance or {}
 
     # CHANGE-049: identidade prospetiva mint-once. A resolução reutiliza apenas
@@ -1663,6 +1662,16 @@ def _build_match_payload(match: dict) -> dict:
     )
     historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(
         historical_odds_history, player_b
+    )
+    # O Excel ``Fenzobot_Historico_do_Sistema`` é uma vista do arquivo
+    # canónico de snapshots. Esta leitura usa exatamente esse arquivo local
+    # para dar contexto de vitória por faixa de odd quando existe, sem
+    # confundir estes resultados com linhas de handicap ou odds 22Bet.
+    canonical_odds_context_a = fetch_data.compute_canonical_snapshot_odds_context(
+        tour, player_a, odds.get(player_a) if odds else None, match.get("date")
+    )
+    canonical_odds_context_b = fetch_data.compute_canonical_snapshot_odds_context(
+        tour, player_b, odds.get(player_b) if odds else None, match.get("date")
     )
     # NOVO (22/08/2026, a pedido): efeito de mudança de piso — jogador que
     # vem de outra superfície e entra fresco no piso de hoje.
@@ -1990,6 +1999,8 @@ def _build_match_payload(match: dict) -> dict:
         "game_differential_b": game_differential_b,
         "historical_moneyline_margins_a": historical_moneyline_margins_a,
         "historical_moneyline_margins_b": historical_moneyline_margins_b,
+        "canonical_odds_context_a": canonical_odds_context_a,
+        "canonical_odds_context_b": canonical_odds_context_b,
         "surface_transition_a": surface_transition_a,  # NOVO: efeito mudança de piso
         "surface_transition_b": surface_transition_b,
         "tournament_record_a": tournament_record_a,  # NOVO: histórico neste torneio

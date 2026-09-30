@@ -2891,7 +2891,12 @@ def _mod_header(payload, div, estado):
     if payload.get("odds_capture_kind") == "feed_observed_at_capture":
         odds_meta_parts.append("Observação do feed nesta execução; hora do bookmaker N/D")
     odds_meta_parts.append(f"Provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
-    odds_meta_parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_bookmaker"):
+        odds_meta_parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
+    elif payload.get("odds_bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED":
+        odds_meta_parts.append("Casa: não indicada pelo feed RapidAPI")
+    else:
+        odds_meta_parts.append("Bookmaker: N/D")
     if payload.get("odds_source_contract_version"):
         odds_meta_parts.append(
             f"Contrato: {_esc(payload['odds_source_contract_version'])}"
@@ -4611,6 +4616,32 @@ def _mod_action_map(payload, div, result):
                         f"{100 * nearest_wins / nearest_n:.1f}% ({nearest_wins}/{nearest_n}); "
                         "é contexto, não a faixa exata."
                     )
+
+        # O Excel Histórico é construído a partir deste arquivo canónico de
+        # snapshots. Não o misturamos com a fonte externa de scores completos:
+        # este bloco comunica só vitórias por faixa de odd, com regra temporal
+        # explícita, e é especialmente útil para ATP onde ainda não existe a
+        # mesma cobertura histórica de odds da WTA.
+        canonical = _d(payload.get(f"canonical_odds_context_{side}"))
+        exact = _d(canonical.get("exact"))
+        general = _d(canonical.get("general"))
+        source = canonical.get("source") or "Fenzobot · histórico canónico"
+        exact_n = int(exact.get("n") or 0)
+        exact_wins = int(exact.get("wins") or 0)
+        if exact_n:
+            notes.append(
+                f"{source} — faixa {canonical.get('exact_band')}: vitórias "
+                f"{float(exact.get('win_rate_pct') or 0):.1f}% ({exact_wins}/{exact_n})."
+            )
+        else:
+            general_n = int(general.get("n") or 0)
+            general_wins = int(general.get("wins") or 0)
+            if general_n:
+                notes.append(
+                    f"{source} — faixa {canonical.get('exact_band') or 'atual'} ainda sem "
+                    f"amostra; geral: vitórias {100 * general_wins / general_n:.1f}% "
+                    f"({general_wins}/{general_n})."
+                )
         return ("\n" + " ".join(notes)) if notes else ""
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
@@ -5356,7 +5387,12 @@ def _mod_market_provenance(payload):
     if payload.get("odds_freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE":
         parts.append("Freshness: observada agora; idade real da quote não verificada")
     parts.append(f"Timestamp do provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
-    parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_bookmaker"):
+        parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
+    elif payload.get("odds_bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED":
+        parts.append("Casa: não indicada pelo feed RapidAPI")
+    else:
+        parts.append("Bookmaker: N/D")
     if payload.get("odds_source_contract_version"):
         parts.append(f"Contrato: {_esc(payload['odds_source_contract_version'])}")
     if payload.get("odds_from_cache") is not None:

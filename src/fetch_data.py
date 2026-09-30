@@ -44,6 +44,7 @@ import unicodedata
 from contextlib import contextmanager
 from urllib.parse import quote, urlparse
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -76,6 +77,10 @@ from .config import (
 )
 
 _PLAYER_CACHE_STORE = JsonCacheStore("data/cache")
+_SYSTEM_HISTORY_SNAPSHOTS_PATH = (
+    Path(__file__).resolve().parents[1] / "data" / "calibration_snapshots.json"
+)
+_CANONICAL_SNAPSHOT_ODDS_CACHE: dict[str, list[dict]] = {}
 
 
 def _player_cache_path(tour: str, player_id: int):
@@ -1220,6 +1225,10 @@ def prepare_rapidapi_odds_index(matches: list[dict]) -> None:
                     # encurtou, inverteu ou transliterou um nome.
                     "p1_id": p1.get("id") or p1.get("playerId"),
                     "p2_id": p2.get("id") or p2.get("playerId"),
+                    # Este ID é do mesmo registo que contém os dois jogadores
+                    # e as duas odds. É necessário para um fallback operacional
+                    # auditável quando recent-odds fica indisponível.
+                    "event_id": event.get("eventId") or event.get("event_id") or event.get("id"),
                     "captured_at_utc": event.get("_odds_captured_at_utc"),
                     "endpoint": event.get("_odds_endpoint"),
                     "raw_payload_sha256": event.get("_raw_payload_sha256"),
@@ -1518,7 +1527,7 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     provenance = {
         "source": "RapidAPI Tennis API / embedded upcoming feed",
         "endpoint": embedded.get("endpoint") or "N/D",
-        "event_id": None,
+        "event_id": embedded.get("event_id"),
         "captured_at_utc": embedded.get("captured_at_utc"),
         "capture_kind": "feed_observed_at_capture",
         "provider_timestamp": None,
@@ -1536,6 +1545,99 @@ def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Opti
     }
     print(f"[odds] {player_a} vs {player_b} | RapidAPI upcoming observado | {odds}")
     return odds, provenance
+
+
+def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
+    match: dict,
+) -> tuple[Optional[dict], Optional[dict]]:
+    """Obtém a Moneyline pré-live incluída no feed regular RapidAPI.
+
+    O plano PRO expõe a Moneyline pré-jogo no feed ``upcoming``. Esta função
+    só a torna operacional quando o próprio registo do feed contém os dois
+    jogadores, a orientação validada e um ``eventId``. Não atribui bookmaker
+    nem a apresenta como comparação de casas.
+    """
+    odds, source = fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    source = source or {}
+    if not odds or not source.get("event_id"):
+        return None, None
+    identity_status = str(source.get("identity_mapping_status") or "").upper()
+    if identity_status not in {"VERIFIED_PROVIDER_PLAYER_IDS", "VERIFIED_PROVIDER_NAMES"}:
+        return None, None
+
+    player_a = str((match.get("player1") or {}).get("name") or "").strip()
+    player_b = str((match.get("player2") or {}).get("name") or "").strip()
+    if not player_a or not player_b or set(odds) != {player_a, player_b}:
+        return None, None
+
+    # O feed não atribui bookmaker. A etiqueta identifica a origem sem fingir
+    # que é uma casa específica; o relatório mantém essa limitação explícita.
+    feed_label = "N/D — RapidAPI pre-match feed"
+    gate = market_integrity.evaluate_moneyline_market([{
+        # A gate exige uma etiqueta para validar estruturalmente uma quote.
+        # Esta nunca é exposta como bookmaker: a provenance abaixo guarda-o
+        # como ausente e assinala explicitamente a limitação do fornecedor.
+        "bookmaker": feed_label,
+        "odd_a": odds.get(player_a),
+        "odd_b": odds.get(player_b),
+        "provider_timestamp": None,
+    }])
+    selected = gate.get("selected")
+    if not isinstance(selected, dict):
+        return None, None
+
+    captured_at_utc = source.get("captured_at_utc") or _odds_capture_timestamp()
+    integrity = {
+        key: gate.get(key)
+        for key in (
+            "policy_version", "status", "reason_code", "candidate_count",
+            "valid_candidate_count", "coherent_bookmaker_count",
+            "minimum_operational_bookmakers", "median_devig_probability_a",
+            "dispersion_pp", "pricing_basis",
+        )
+    }
+    integrity["pricing_basis"] = "verified_provider_pre_match_feed"
+    promoted = dict(source)
+    promoted.update({
+        "source": "RapidAPI Tennis API / pre-match match-winner feed",
+        "capture_kind": "feed_observed_at_capture",
+        "provider_timestamp": None,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "bookmaker": None,
+        "from_cache": False,
+        "cache_age_seconds": 0,
+        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        "identity_mapping_status": identity_status,
+        "availability_status": "AVAILABLE",
+        "unavailable_reason": None,
+        "bookmaker_attribution": "NOT_EXPOSED_BY_PROVIDER_FEED",
+        "market_integrity": integrity,
+        "market_quotes": [{
+            "bookmaker": feed_label,
+            "odds": {player_a: float(selected["odd_a"]), player_b: float(selected["odd_b"])},
+            "provider_timestamp": None,
+            "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "identity_mapping_status": identity_status,
+            "raw_payload_sha256": source.get("raw_payload_sha256"),
+            "market_integrity_status": selected.get("integrity_status"),
+            "market_integrity_reason_codes": [],
+            "operational_pricing_eligible": True,
+        }],
+        "operational_pricing_eligible": True,
+    })
+    promoted.update(market_integrity.operational_contract_metadata(captured_at_utc))
+    promoted["operational_pricing_eligible"] = (
+        market_integrity.is_operational_pricing_provenance(promoted)
+    )
+    if not promoted["operational_pricing_eligible"]:
+        return None, None
+    register_pending_market_check(match, promoted, available=True)
+    print(
+        f"[odds] {player_a} vs {player_b} | RapidAPI pre-match match-winner "
+        f"observado | {odds}"
+    )
+    return dict(odds), promoted
 
 
 def record_market_odds_observation(match: dict, odds: Optional[dict], provenance: Optional[dict]) -> Optional[dict]:
@@ -2610,6 +2712,149 @@ def get_historical_odds_history(tour: str) -> pd.DataFrame:
     )
     _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour] = df
     return df
+
+
+def _canonical_snapshot_key(snapshot: dict) -> str:
+    """Chave estável para não contar a mesma partida mais do que uma vez.
+
+    É o mesmo princípio usado pelo Excel ``Fenzobot_Historico_do_Sistema``:
+    uma partida é representada pelo primeiro snapshot pré-jogo, nunca pelas
+    várias versões do respetivo HTML.
+    """
+    canonical = str(snapshot.get("canonical_match_instance_id") or "").strip()
+    if canonical:
+        return canonical
+    players = []
+    for side in ("player_a", "player_b"):
+        person = snapshot.get(side) or {}
+        if isinstance(person, dict):
+            players.append(
+                _normalize_name(str(person.get("id") or person.get("name") or ""))
+            )
+    return "|".join((
+        str(snapshot.get("tour") or "").strip().casefold(),
+        str(snapshot.get("match_id") or snapshot.get("key") or "").strip(),
+        str(snapshot.get("commence_time_utc") or "")[:10],
+        ";".join(sorted(item for item in players if item)),
+    ))
+
+
+def _load_canonical_snapshot_odds(tour: str) -> list[dict]:
+    """Lê o mesmo arquivo local que alimenta o Excel histórico.
+
+    Não chama o Drive, não cria custo e não usa relatórios HTML. Os snapshots
+    já são artefactos persistidos do próprio Fenzobot; selecionamos a primeira
+    observação por partida de forma defensiva também aqui.
+    """
+    normalized = str(tour or "").strip().casefold()
+    if normalized in _CANONICAL_SNAPSHOT_ODDS_CACHE:
+        return _CANONICAL_SNAPSHOT_ODDS_CACHE[normalized]
+    try:
+        document = json.loads(_SYSTEM_HISTORY_SNAPSHOTS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        _CANONICAL_SNAPSHOT_ODDS_CACHE[normalized] = []
+        return []
+    raw = document.get("snapshots") if isinstance(document, dict) else []
+    selected: dict[str, dict] = {}
+    for candidate in raw if isinstance(raw, list) else []:
+        if not isinstance(candidate, dict):
+            continue
+        if str(candidate.get("tour") or "").strip().casefold() != normalized:
+            continue
+        outcome = candidate.get("outcome") or {}
+        odds = candidate.get("market_odds_decimal") or {}
+        if not isinstance(outcome, dict) or outcome.get("winner_side") not in {"a", "b"}:
+            continue
+        if not isinstance(odds, dict) or len(odds) < 2:
+            continue
+        key = _canonical_snapshot_key(candidate)
+        previous = selected.get(key)
+        if previous is None or str(candidate.get("analyzed_at_utc") or "9999") < str(previous.get("analyzed_at_utc") or "9999"):
+            selected[key] = candidate
+    result = list(selected.values())
+    _CANONICAL_SNAPSHOT_ODDS_CACHE[normalized] = result
+    return result
+
+
+def compute_canonical_snapshot_odds_context(
+    tour: str,
+    player: str,
+    current_odd: object,
+    current_start_utc: object,
+) -> Optional[dict]:
+    """Contexto de Moneyline do arquivo canónico que gera o Excel histórico.
+
+    É deliberadamente separado do histórico externo com scores completos:
+    responde apenas à pergunta factual de vitória por faixa de odd. O corte
+    temporal impede que uma partida posterior ao jogo em análise entre no
+    relatório; resultados/linhas de handicap não são inventados a partir dele.
+    """
+    try:
+        target_odd = float(current_odd)
+    except (TypeError, ValueError):
+        return None
+    if target_odd <= 1:
+        return None
+    try:
+        cutoff = pd.Timestamp(current_start_utc, tz="UTC")
+    except (TypeError, ValueError):
+        return None
+
+    bands = (
+        (1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50),
+        (1.51, 1.60), (1.61, 1.80), (1.81, 2.00), (2.01, 2.09),
+        (2.10, 2.30), (2.31, 2.60), (2.61, 3.00), (3.01, 3.50),
+        (3.51, 4.50), (4.51, 6.00), (6.01, 10.00),
+    )
+    exact_label = next(
+        (f"{low:.2f}-{high:.2f}" for low, high in bands if low <= target_odd <= high),
+        None,
+    )
+    target_name = _normalize_name(player)
+    rows: list[tuple[float, bool]] = []
+    for snapshot in _load_canonical_snapshot_odds(tour):
+        try:
+            start = pd.Timestamp(snapshot.get("commence_time_utc"), tz="UTC")
+        except (TypeError, ValueError):
+            continue
+        if start >= cutoff:
+            continue
+        players = (snapshot.get("player_a") or {}, snapshot.get("player_b") or {})
+        odds = snapshot.get("market_odds_decimal") or {}
+        winner_side = (snapshot.get("outcome") or {}).get("winner_side")
+        for index, person in enumerate(players):
+            if not isinstance(person, dict) or _normalize_name(person.get("name")) != target_name:
+                continue
+            name = person.get("name")
+            try:
+                observed_odd = float(odds.get(name))
+            except (TypeError, ValueError):
+                continue
+            if observed_odd <= 1:
+                continue
+            rows.append((observed_odd, winner_side == ("a" if index == 0 else "b")))
+
+    if not rows:
+        return None
+
+    def describe(values: list[tuple[float, bool]]) -> dict:
+        wins = sum(int(won) for _, won in values)
+        return {
+            "n": len(values), "wins": wins, "losses": len(values) - wins,
+            "win_rate_pct": round(100 * wins / len(values), 1) if values else None,
+        }
+
+    exact = []
+    if exact_label:
+        low, high = next((lo, hi) for lo, hi in bands if f"{lo:.2f}-{hi:.2f}" == exact_label)
+        exact = [(odd, won) for odd, won in rows if low <= odd <= high]
+    return {
+        "source": "Fenzobot · histórico canónico",
+        "rule": "primeiro snapshot pré-jogo por partida; apenas resultados anteriores ao jogo atual",
+        "exact_band": exact_label,
+        "exact": describe(exact) if exact else None,
+        "general": describe(rows),
+    }
 
 
 # --------------------------------------------------------------------- #

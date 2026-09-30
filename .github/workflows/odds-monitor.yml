@@ -48,6 +48,9 @@ jobs:
           ODDS_MONITOR_MARKET_ID: "1"
           ODDS_MONITOR_HORIZON_HOURS: "48"
           ODDS_MONITOR_FRESH_MAX_AGE_SECONDS: "900"
+          # O plano PRO inclui o feed pré-jogo normal, mas não os endpoints
+          # ULTRA de movimentos, comparação e arbitragem.
+          ODDS_MONITOR_PREMIUM_ENDPOINTS_ENABLED: "0"
           ODDS_MONITOR_TRIGGER: ${{ github.event_name }}
           ODDS_MONITOR_GITHUB_RUN_ID: ${{ github.run_id }}
           LLM_MODE: disabled
