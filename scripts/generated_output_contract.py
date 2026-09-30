@@ -22,14 +22,16 @@ PROFILES: dict[str, tuple[str, ...]] = {
         "data/validation/", "data/dashboard/", "data/player_images.json",
         "data/player_images_review.json", "data/governance/", "knowledge/players/",
     ),
-    "odds-source": COMMON + ("data/odds_monitor/", "data/market_ledger/"),
+    "odds-source": COMMON + (
+        "data/odds_monitor/", "data/market_ledger/", "data/cache/",
+    ),
     "odds-derived": COMMON + (
         "data/dashboard/", "docs/dashboard/", "data/validation/",
         "data/market_ledger/derived/",
     ),
     "odds": COMMON + (
         "data/odds_monitor/", "data/market_ledger/", "data/dashboard/",
-        "docs/dashboard/", "data/validation/",
+        "docs/dashboard/", "data/validation/", "data/cache/",
     ),
     "observability": COMMON + (
         "data/dashboard/", "docs/dashboard/", "data/validation/",

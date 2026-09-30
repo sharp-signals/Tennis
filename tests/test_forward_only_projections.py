@@ -29,6 +29,40 @@ def git(root: Path, *args: str) -> str:
     return subprocess.check_output(["git", *args], cwd=root, text=True).strip()
 
 
+def execute_dashboard_javascript(html: str) -> dict:
+    """Executa o JavaScript emitido até ao render real dos painéis sob teste."""
+    script = html.rsplit("<script>", 1)[1].split("</script>", 1)[0]
+    final_wiring = "document.getElementById('day-toggle').addEventListener"
+    if final_wiring not in script:
+        raise AssertionError("dashboard final wiring marker not found")
+    script = script.rsplit(final_wiring, 1)[0]
+    script += r"""
+const __days = {innerHTML:'',querySelectorAll:()=>[]};
+globalThis.document = {
+  getElementById: id => id === 'days' ? __days : null,
+  querySelectorAll: () => [],
+};
+renderSidebar();
+process.stdout.write(JSON.stringify({
+  historicGlobal:HISTORIC_DATA.global,
+  effectiveGlobal:DATA.global,
+  health:DATA.system_health,
+  freshness:DATA.source_freshness,
+  sidebarHtml:__days.innerHTML,
+  continuityHtml:continuityPanel(),
+  simpleHealthHtml:simpleSystemStatus(),
+}));
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "dashboard-runtime-test.js"
+        path.write_text(script, encoding="utf-8")
+        completed = subprocess.run(
+            ["node", str(path)], check=True, capture_output=True, text=True,
+            encoding="utf-8",
+        )
+    return json.loads(completed.stdout)
+
+
 def active_manifest(
     path: Path, *, commit: str, references: list[dict], mutable_indexes: list[dict] | None = None,
 ) -> None:
@@ -144,14 +178,37 @@ class ForwardOnlyProjectionTests(unittest.TestCase):
                 },
             }
             html = dashboard.render_dashboard_html(baseline)
-            self.assertIn("const HISTORIC_DATA=", html)
-            self.assertIn("const DATA=effectiveDashboardData(HISTORIC_DATA,CONTINUITY)", html)
-            self.assertIn("system_health:operational.system_health||historic.system_health", html)
-            self.assertIn("mergeDashboardDays(historic.days,prospective.days)", html)
-            self.assertIn("New Event", html)
-            self.assertIn("current failure", html)
-            self.assertIn("Resultado GREEN pós-T0", html)
-            self.assertIn("taxas, ROI e resultados desta área", html)
+            runtime = execute_dashboard_javascript(html)
+            self.assertEqual(runtime["historicGlobal"], {
+                "total_reports": 456, "distinct_matchups": 400,
+            })
+            self.assertEqual(runtime["effectiveGlobal"]["total_reports"], 457)
+            self.assertEqual(runtime["effectiveGlobal"]["distinct_matchups"], 401)
+            self.assertEqual(runtime["health"]["status"], "FAILED")
+            self.assertEqual(runtime["freshness"]["current"]["status"], "DEGRADED")
+            self.assertIn("New Event", runtime["sidebarHtml"])
+            self.assertNotIn("Protected Event rerun", runtime["sidebarHtml"])
+            self.assertNotIn("Filename Only", runtime["sidebarHtml"])
+            self.assertIn("Resultado GREEN pós-T0", runtime["continuityHtml"])
+            self.assertIn("taxas, ROI e resultados desta área", runtime["continuityHtml"])
+            self.assertIn("Atenção · falha registada na execução", runtime["simpleHealthHtml"])
+            self.assertIn("current failure", runtime["simpleHealthHtml"])
+
+            zero_delta = json.loads(json.dumps(baseline))
+            zero_delta["forward_only_continuity"]["prospective"].update({
+                "days": [],
+                "global": {
+                    "total_reports": 0, "distinct_matchups": 0,
+                    "total_snapshots": 0, "settled_snapshots": 0,
+                    "paper_technical_entries": 0, "market_observations": 0,
+                    "report_colors": {},
+                },
+            })
+            zero_runtime = execute_dashboard_javascript(
+                dashboard.render_dashboard_html(zero_delta),
+            )
+            self.assertEqual(zero_runtime["effectiveGlobal"]["total_reports"], 456)
+            self.assertEqual(zero_runtime["effectiveGlobal"]["distinct_matchups"], 400)
             self.assertEqual(
                 baseline["global"], {"total_reports": 456, "distinct_matchups": 400},
             )
