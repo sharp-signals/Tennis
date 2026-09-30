@@ -11029,8 +11029,114 @@
         "tournament_id": 16749
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_6eff26995df04795ad81dd61666241ff:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-09-30T05:36:14+00:00",
+        "canonical_match_instance_id": "mi2_6eff26995df04795ad81dd61666241ff",
+        "commence_time_utc": "2026-10-01T03:00:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "761804d73ad4c620b2200a49654f7bb2f258f12207dd77860edc74238737d6c0",
+        "event_key": "mi2_6eff26995df04795ad81dd61666241ff",
+        "expected_edge_pct": 1.84,
+        "fair_odd": 1.571,
+        "fenzobot_index": 80,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "atp:1256",
+        "line": null,
+        "market": "Moneyline Jakub Mensik",
+        "market_memory_eligible": false,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Alexander Bublik": 2.34,
+          "Jakub Mensik": 1.6
+        },
+        "market_type": "Moneyline",
+        "match_id": 1256,
+        "odd": 1.6,
+        "odds_contract_activation": {
+          "activation_commit": "740fa87473e7249f5bc27dea02cf33be50eac34a",
+          "activation_observed_at_utc": "2026-09-30T05:34:19+00:00",
+          "activation_run_id": "36673910293",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-09-21-050",
+          "contract_version": "rapidapi-recent-gated-v1"
+        },
+        "odds_provenance": {
+          "bookmaker": "DraftKings",
+          "cache_age_seconds": 0,
+          "capture_kind": "rapidapi_response_observed_at_capture",
+          "captured_at_utc": "2026-09-30T05:34:19+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/extend/api/event/recent-odds/get/4053917",
+          "event_id": "4053917",
+          "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 2,
+            "coherent_bookmaker_count": 2,
+            "dispersion_pp": 0.7967,
+            "median_devig_probability_a": 0.40210802689094655,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "rejected_candidates": [],
+            "status": "AVAILABLE",
+            "valid_candidate_count": 2
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-09-29T06:24:37+00:00",
+          "provider_timestamp_status": "unreliable_for_freshness",
+          "source": "RapidAPI Tennis API / recent-odds"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "single-factual-bookmaker-bilateral-v1",
+          "freshness_semantics": "observed-at-capture-unverified-age-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "rapidapi-recent-gated-v1",
+          "source_family": "rapidapi-recent-odds"
+        },
+        "odds_source_contract_fingerprint": "d8679462537d9f461ca7",
+        "odds_source_contract_version": "rapidapi-recent-gated-v1",
+        "players": {
+          "a": {
+            "id": 24245,
+            "name": "Alexander Bublik"
+          },
+          "b": {
+            "id": 86691,
+            "name": "Jakub Mensik"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "a1fa050ad0ff8776e452",
+        "selected_player": "Jakub Mensik",
+        "selected_side": "b",
+        "sharp_estimate_pct": 63.65,
+        "snapshot_key": "mi2_6eff26995df04795ad81dd61666241ff",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "China Open - Beijing",
+        "tournament_id": 21355
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-09-29T17:37:41+00:00"
+  "updated_at_utc": "2026-09-30T05:36:15+00:00"
 }
