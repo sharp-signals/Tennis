@@ -14,6 +14,11 @@ from dataclasses import asdict, dataclass
 from typing import Any, Mapping
 
 try:
+    from . import market_integrity
+except ImportError:  # pragma: no cover - compatibilidade com imports diretos
+    import market_integrity
+
+try:
     from .config import (
         PRICING_FULL_QUALITY_FACTORS,
         PRICING_FULL_QUALITY_MASS,
@@ -256,6 +261,8 @@ def estimate_market_residual_pricing(
     assessment = payload.get("report_assessment")
     if isinstance(assessment, Mapping) and assessment.get("report_null"):
         return _unavailable(parameters, "report_null_insufficient_data")
+    if not market_integrity.is_operational_pricing_payload(payload):
+        return _unavailable(parameters, "operational_market_quote_ineligible")
     observed = _extract_two_way_odds(payload)
     if observed is None:
         return _unavailable(parameters, "missing_or_invalid_two_way_moneyline")
@@ -340,6 +347,8 @@ def estimate_market_residual_pricing(
         "available": True,
         "model_version": MODEL_VERSION,
         "configuration_fingerprint": _configuration_fingerprint(parameters),
+        "odds_source_contract_version": payload.get("odds_source_contract_version"),
+        "odds_source_contract_fingerprint": payload.get("odds_source_contract_fingerprint"),
         "parameters": asdict(parameters),
         "status": "experimental",
         "validation_status": VALIDATION_LABEL,

@@ -1,8 +1,17 @@
-# 🎾 Sharp Signals — Tennis Pre-Live Bot
+# 🎾 Fenzobot — Tennis Pre-Live Bot
+
+> A validação prospetiva `GREEN_STRONG_V1` está em [docs/GREEN_STRONG_VALIDATION.md](docs/GREEN_STRONG_VALIDATION.md). A seleção `GUERRA_SELECTION_V1` permanece preservada como histórico **SUPERSEDED**; a nova projeção económica é `GREEN_MONETIZATION_V1`. Nenhuma destas vistas altera PAPER/SHADOW/REAL, pricing ou chamadas externas.
 
 Sistema pré-live para jogos ATP/WTA. Recolhe dados factuais, calcula um índice
 determinístico de evidência, confronta-o com o mercado e produz relatórios HTML
 e um resumo Telegram.
+
+> **Identidade canónica:** Fenzobot é um projeto/produto da **Fenzo Intelligence**,
+> constituída por Hugo e Guerra. `Sharp Signals` e `Project Roland` são designações
+> históricas **SUPERSEDED** como nomes ativos desde `CHANGE-2026-09-04-025`.
+> Identificadores técnicos e artefactos históricos que ainda contenham esses nomes
+> são preservados para compatibilidade e audit trail; não representam a identidade
+> atual do projeto.
 
 > **Estado do produto:** o *pricing* de mercado, fair odds e expected edge são
 > experimentais e estão em validação fora da amostra. O bot não executa apostas
@@ -18,16 +27,19 @@ e um resumo Telegram.
    explícitas (`FORCED_TOURNAMENT_IDS`).
 2. Obtém fixtures por torneio, remove duplicados e mantém apenas jogos na
    janela `LOOKAHEAD_HOURS_MIN..LOOKAHEAD_HOURS_MAX` (por omissão, 0–36h).
-3. Valida que o evento de odds é o mesmo fixture e ainda pré-live; usa a
-   Moneyline `recent-odds` da RapidAPI, com evento, ordem e bookmaker
-   verificáveis, para pricing/PAPER, e guarda a The Odds API como comparação
+3. Valida que a Moneyline pré-live do feed regular RapidAPI pertence ao mesmo
+   fixture, contém os dois lados e ainda é pré-live; usa esse par bilateral
+   para pricing/PAPER quando a identidade é verificável. O feed não expõe a
+   casa, por isso o relatório não inventa bookmaker nem o chama consenso.
+   Endpoints premium de odds são auxiliares e não bloqueiam o fluxo. Guarda a
+   The Odds API como comparação
    independente opcional; constrói, em paralelo, um payload factual por jogo:
    ranking, H2H, superfície, forma, fadiga, serviço/resposta,
    cenários, mãos, estatísticas ricas e qualidade dos dados.
 4. Calcula o índice Fenzobot em Python e avalia se há cobertura factual mínima
    para publicar uma decisão pré-live.
 5. Aplica o *Market-Residual Pricing* experimental apenas sobre um par de odds
-   recente, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
+   estruturalmente válido, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
    `EDGE_ZERO`, `PRICING_UNAVAILABLE` ou `REPORT_NULL`. Um edge positivo só
    entra em PAPER com cobertura ponderada mínima de 60%; abaixo disso fica
    visível como edge positivo sem PAPER.
@@ -51,9 +63,13 @@ publicar. Entre 80% e 95% é publicada como degradada; a partir de 95% é normal
 | `src/pricing.py` | De-vig, residual em logit, fair odds, expected edge e gates de qualidade. |
 | `src/calibration_store.py` | Snapshots pré-jogo imutáveis, liquidação e métricas de calibração. |
 | `src/paper_trading.py` | Carteira PAPER append-only, liquidação e histórico em unidades. |
+| `src/market_ledger.py` | Ledger temporal append-only das odds já recolhidas, linkage e CLV. |
+| `src/match_identity_v2.py` | Resolver prospetivo mint-once para instâncias canónicas de jogos singles. |
+| `src/market_memory_report.py` | Vista SHADOW reconstruível: mercado, closing e Market+Fenzobot. |
 | `src/cache_store.py` | Cache JSON versionada, com TTL e escrita atómica. |
 | `src/analyze.py` | Política seletiva, cache, fallback e validação do output LLM. |
 | `src/run_metrics.py` | Telemetria de execução, custo LLM estimado e alertas. |
+| `src/dashboard.py` | Projeção read-only dos artefactos existentes para o Control Dashboard estático. |
 
 ## Motor Fenzobot
 
@@ -77,7 +93,7 @@ em logit:
 
 A qualidade reduz o residual em caso de poucos fatores, massa efetiva baixa,
 cobertura insuficiente, resolução de identidade incerta ou falha crítica de
-dados. O resultado apresenta *Sharp estimate*, fair odd e expected edge para
+dados. O resultado apresenta *Fenzobot estimate*, fair odd e expected edge para
 os dois lados, sempre com a etiqueta **EXPERIMENTAL — EM VALIDAÇÃO**.
 
 O estado PAPER depende da validade factual e de edge positivo no lado escolhido
@@ -89,16 +105,25 @@ que por si só crie uma entrada PAPER.
 - **RapidAPI Matchstat:** descoberta, fixtures, ranking,
   jogos recentes, H2H, perfis e dados ricos. O contador é persistido durante a
   execução; limites por run/dia e retry de timeout, 429 e 503 são obrigatórios.
-  A RapidAPI `all-upcoming` serve exclusivamente para descobrir fixtures e
-  nunca alimenta pricing. O preço operacional é o par da mesma casa em
-  `recent-odds`, depois de confirmar evento, jogadores, ordem e estado
-  pré-live. A auditoria `CHANGE-2026-08-30-010` mostrou que o campo `addTime`
-  pode ficar congelado mesmo quando as odds mudam; por isso é guardado como
-  metadado, enquanto a frescura operacional é a hora da resposta observada
-  nesta execução. A The Odds API é uma comparação independente opcional, não
+  A RapidAPI `all-upcoming` serve para descobrir fixtures e fornece o par
+  Moneyline bilateral pré-live usado no pricing depois de confirmar fixture,
+  jogadores, orientação e estado pré-live. O feed não expõe bookmaker nem
+  timestamp próprio da quote: fica marcado como observado na captura e não
+  autoriza claims de closing/CLV temporalmente comparável. `recent-odds`,
+  movimentos, arbitragem e comparações são funcionalidades premium opcionais;
+  uma recusa de acesso não bloqueia o pricing básico. A The Odds API é uma comparação independente opcional, `OFF`
+  por defeito (`THE_ODDS_API_ENABLED=0`), não
   é misturada com o preço RapidAPI e a sua ausência não bloqueia pricing/PAPER.
   Sem um par RapidAPI válido, o relatório mantém a análise factual como
   `PRICING_UNAVAILABLE` e bloqueia edge/PAPER.
+- **Contrato de odds:** `rapidapi-bilateral-prelive-v2` exige event identity,
+  orientação bilateral e duas odds válidas do mesmo registo pré-live do
+  fornecedor, Market Quote Integrity e
+  `operational_pricing_eligible=True` explícito. Quando o fornecedor não
+  identifica bookmaker, essa ausência é preservada; não se declara consenso.
+  Versão e fingerprint seguem
+  pricing, snapshot, PAPER e Ledger apenas prospetivamente. Ausência da flag
+  falha fechada e o histórico anterior não recebe fingerprint retrospetiva.
 - **Históricos:** TennisMyLife, Sackmann e tennis-data.co.uk são usados como
   complemento/fallback consoante o tour e a métrica. Nunca se inventa um valor
   quando uma fonte falha.
@@ -116,11 +141,58 @@ tipo de captura), métricas, pricing,
 configuração/fingerprint e resultado da análise. Repetições do mesmo jogo não
 substituem essa fotografia.
 
+Como o provider pode reutilizar o mesmo `match_id`, a key legacy só é ligada a
+uma fotografia existente depois de confirmar bilateralmente os jogadores e o
+contexto disponível. Uma colisão `PROVIDER_MATCH_ID_REUSED` mantém o relatório
+factual, mas bloqueia a herança de validation, a criação de PAPER nessa key e o
+settlement direto. O dashboard expõe estas colisões em
+`SNAPSHOT_COVERAGE_RECONCILIATION_V1`; não é feito backfill ex post.
+
+Desde `CHANGE-2026-09-21-049`, objetos novos usam uma identidade canónica v2
+prospetiva quando existe estrutura factual mínima (`tour`, torneio e os dois
+player IDs) e um discriminador forte (`event_id` bilateralmente validado ou
+`round_id`). O resolver minta uma única key opaca `mi2_<uuid4-hex>` e mantém
+`EVENT_ID`/`MATCH_ID` apenas como aliases auditáveis; alterações de hora,
+orientação A/B, nomes ou metadata progressiva nunca recalculam essa key.
+Nomes+hora e `match_id` isolado nunca chegam para criar identidade elegível.
+O `round_id` factual é preservado na instância e resolvido dentro do scope
+bilateral antes de qualquer alias fraco `MATCH_ID`; evidence forte
+incompatível falha fechada em vez de herdar uma instância antiga.
+Estados provisional, insufficient ou conflict mantêm o relatório factual, mas
+falham fechados para snapshot canónico e PAPER. Registry e audit trail vivem em
+`data/match_identity/`; começam vazios, sem backfill, e coexistem com o
+containment legacy do CHANGE-047. O workflow persiste estes dois ficheiros
+tanto no caminho de sucesso como no de falha. Merge/split automático fica fora
+de scope.
+
 Depois da run, `scripts/update_calibration_outcomes.py` usa apenas as caches
 locais de jogos concluídos para liquidar snapshots e a carteira PAPER. O
 histórico de acerto e os intervalos de Wilson só são mostrados quando existe
 amostra suficiente. Isto permite validação OOS sem reescrever informação
 pré-jogo.
+
+O registo operacional manual **PAPER 22Bet** é separado da carteira técnica
+automática. A Sheet oficial publica apenas métricas agregadas em
+`data/manual_paper_22bet.json`; os relatórios mostram entradas, W–L, ROI,
+unidades e segmentos por mercado/perfil sem misturar estes dados com sinais
+PAPER automáticos, reconstruído/backtest ou REAL. A configuração está em
+`docs/PAPER_22BET_SYNC.md`.
+
+### Market Memory
+
+O `CHANGE-2026-09-03-024` acrescenta um Market-Time Ledger sem novas chamadas
+API. Todas as Moneylines válidas já presentes nas respostas do pipeline e do
+Odds Monitor são normalizadas em JSONL diário append-only, com odds originais,
+de-vig, captura UTC, bookmaker, frescura, ordem dos jogadores e hash de
+proveniência. Snapshot e PAPER congelam o ID da observação de entrada; o
+settlement pode ligar a última cotação comparável anterior ao início e calcular
+CLV. Falhas desta camada são não bloqueantes e deixam Market Memory como N/D.
+
+Após 45 dias, por omissão, ficheiros diários fechados são comprimidos e
+verificados em `data/market_ledger/archive/`, sem sobrescrever arquivos. A vista
+`data/market_ledger/derived/market-memory-v1.json` compara, em modo SHADOW, o
+baseline de mercado com a estimativa Fenzobot congelada. O contrato completo está
+em `MARKET_MEMORY_CONTRACT.md`.
 
 ## Relatórios e distribuição
 
@@ -130,6 +202,20 @@ falha de análise produz layout factual reduzido, não um sinal inventado.
 
 Os ficheiros entram em `docs/relatorios/`; `docs/index.html` reúne a execução
 do dia e GitHub Pages serve `https://sharp-signals.github.io/Tennis`.
+Esse endereço conserva o identificador técnico legacy do repositório e **não é
+o nome canónico do projeto**.
+
+O **Fenzobot Control Dashboard** é reconstruído offline em
+`docs/dashboard/index.html` e publicado em `/Tennis/dashboard/`. É uma vista
+observacional derivada: não cria decisões, não executa apostas e não expõe
+linhas privadas do PAPER 22Bet. A ausência de uma fonte degrada apenas o painel
+respetivo para `N/D`; a geração nunca bloqueia o pipeline ou o settlement.
+Inclui ajuda contextual em português para distinguir execução, qualidade dos
+dados e validação. O topo apresenta `GREEN_MONETIZATION_V1`, uma simulação
+histórica/experimental de €10 por leg GREEN tecnicamente registada ex ante,
+depois das exclusões de integridade e sem reconstruir odds ou linhas. A seleção
+manual GUERRA continua consultável apenas como histórico **SUPERSEDED**. Estas
+vistas não usam dinheiro real nem demonstram edge futuro.
 
 O Telegram recebe um resumo por grupos de decisão, com links para cada
 relatório. Mensagens longas são divididas abaixo do limite do Telegram.
@@ -159,10 +245,14 @@ publicar relatórios parciais.
 
 ### Secrets necessários
 
-`RAPIDAPI_KEY`, `ODDS_API_KEY`, `TELEGRAM_BOT_TOKEN`,
+`RAPIDAPI_KEY`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`, `TELEGRAPH_ACCESS_TOKEN` e `REPORT_EMAIL_APP_PASSWORD`.
 O último é uma App Password da conta Gmail `fenzobot@gmail.com`, não a sua
 palavra-passe normal.
+
+`ODDS_API_KEY` é opcional e só é lida quando
+`THE_ODDS_API_ENABLED=1`; a configuração de produção mantém esta integração
+desativada por defeito.
 
 ## Desenvolvimento
 
@@ -183,4 +273,8 @@ decisão, o relatório, a carteira PAPER e a calibração histórica.
 - Valores em falta devem permanecer visíveis como indisponíveis; não devem ser
   preenchidos com estimativas silenciosas.
 
-Projeto pessoal de análise informativa.
+**Fenzobot — projeto da Fenzo Intelligence (Hugo e Guerra).**
+
+### Continuidade das métricas e auditoria
+
+O CHANGE-2026-09-08-030 acrescenta observabilidade e uma comparação emparelhada descritiva, sem substituir métricas legacy ou alterar decisões. Consulte [o contrato de continuidade](docs/AUDIT_METRIC_CONTINUITY.md). `python -m scripts.refresh_observability` reconstrói apenas vistas locais, sem aquisição ou settlement.

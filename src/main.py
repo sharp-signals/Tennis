@@ -14,8 +14,8 @@ torneios menores como o Umag):
 4. Enriquecer com Moneyline atual da RapidAPI Extend, por eventId.
 5. Pedir ao Claude uma análise estruturada por jogo (JSON), só com dados reais.
 6. Montar o resumo curto (1 linha + emoji por jogo) e o relatório completo.
-7. Publicar o relatório completo no Telegra.ph.
-8. Enviar o resumo curto para o Telegram, com link no fim para o Telegra.ph.
+7. Gravar os relatórios HTML e preparar um manifesto efémero de notificação.
+8. O workflow publica, confirma o conteúdo no GitHub Pages e só então envia.
 
 Se não houver jogos elegíveis nesta janela, o script termina sem enviar
 nada — não faz sentido mandar uma mensagem vazia.
@@ -29,7 +29,8 @@ import os
 import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from pathlib import Path
+from typing import Mapping, Optional
 
 from dateutil import parser as date_parser
 
@@ -45,6 +46,8 @@ from .config import (
     MATCH_PROCESSING_WORKERS,
     PROCESSING_FAILURE_BELOW_RATIO,
     PROCESSING_SUCCESS_MIN_RATIO,
+    RAPIDAPI_MAX_CALLS_PER_DAY,
+    RAPIDAPI_MAX_CALLS_PER_RUN,
     RECENT_FORM_MATCHES,
     RECENT_FORM_WINDOW_DAYS,
     RECENT_QUALITY_WINDOW_DAYS,
@@ -52,16 +55,35 @@ from .config import (
     SKIP_ANALYSIS_ODDS_THRESHOLD,
 )
 from . import fetch_data
+from . import forward_only
 from . import run_metrics
 from . import calibration_store
+from . import market_ledger
+from . import market_integrity
+from . import match_identity_v2
+from . import market_memory_report
+from . import green_strong_validation
+from . import dashboard
 from . import player_images
 from . import paper_trading
+from . import tournament_policy
+from . import incremental_runs
+from . import report_notifications
 from .analyze import analyze_match
 from .pricing import estimate_market_residual_pricing
 from .prelive_decision import assess_report, build_decision
 from .report_html import build_report_html, calcular_divergencia_publico
 from .telegram_bot import send_message
-from .email_reports import send_run_report_email
+from .email_reports import (
+    EMAIL_NO_ELIGIBLE,
+    EMAIL_DELIVERY_STATUSES,
+    EMAIL_REPORTS,
+    EMAIL_RUN_FAILED,
+    prepare_run_report_email,
+    sanitize_error_message,
+    send_no_eligible_heartbeat,
+    send_run_failed_heartbeat,
+)
 from .telegram_summary import decision_row as _decision_row, state_counts as telegram_state_counts
 from .config import SITE_BASE_URL, SITE_OUTPUT_DIR, SITE_REPORTS_SUBDIR
 
@@ -76,6 +98,66 @@ def _classify_processing_status(eligible: int, processed: int) -> tuple[str, flo
     if ratio < PROCESSING_SUCCESS_MIN_RATIO:
         return "degraded", ratio
     return "success", ratio
+
+
+def _apply_discovery_health_status(status: str, diagnostics: dict) -> str:
+    """Uma descoberta core parcial nunca pode terminar operacionalmente verde."""
+    if status in {"success", "no_eligible_matches"} and (
+        diagnostics.get("discovery_partial") is True
+    ):
+        return "degraded"
+    return status
+
+
+def _trigger_context() -> dict:
+    slot = os.environ.get("FENZOBOT_TRIGGER_SLOT", "").strip() or "manual"
+    source = os.environ.get("FENZOBOT_TRIGGER_SOURCE", "").strip() or "manual"
+    local_date = os.environ.get("FENZOBOT_TRIGGER_LOCAL_DATE", "").strip() or "manual"
+    attempt_id = os.environ.get("FENZOBOT_DISPATCH_ATTEMPT_ID", "").strip()
+    run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
+    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+    result = {
+        "trigger_slot": slot,
+        "trigger_source": source,
+        "trigger_local_date": local_date,
+    }
+    if attempt_id:
+        result["dispatch_attempt_id"] = attempt_id
+    if run_id:
+        result["github_run_id"] = run_id
+    if run_id and repository:
+        result["github_actions_url"] = (
+            f"{server}/{repository}/actions/runs/{run_id}"
+        )
+    return result
+
+
+def _record_email_delivery(result: dict, expected_kind: str) -> dict:
+    """Normaliza telemetria sem permitir que uma integração mude a run."""
+    status = str((result or {}).get("status") or "FAILED")
+    if status not in EMAIL_DELIVERY_STATUSES:
+        status = "FAILED"
+    delivery = {"status": status, "kind": expected_kind}
+    reason = (result or {}).get("reason_code")
+    if reason:
+        delivery["reason_code"] = str(reason)
+    run_metrics.update_context(email_delivery=delivery)
+    return delivery
+
+
+def _attempt_no_eligible_email(reason: str) -> dict:
+    details = run_metrics.context_snapshot()
+    try:
+        result = send_no_eligible_heartbeat(
+            datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            details,
+            reason=reason,
+        )
+    except Exception:
+        result = {"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"}
+        print("[email] heartbeat sem relatórios falhou; detalhes omitidos.")
+    return _record_email_delivery(result, EMAIL_NO_ELIGIBLE)
 
 
 def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dict]:
@@ -242,7 +324,10 @@ def _prelive_start_evidence(match: dict) -> tuple[bool, dict]:
     if live not in (None, False, 0, "0", "false", "False", ""):
         evidence["live"] = live
         return True, evidence
-    for key in ("score", "result", "timeGame", "current_score"):
+    # ``timeGame`` é a hora programada pela API, não um resultado. Um jogo
+    # pode continuar scheduled depois dessa hora por chuva/atrasos, pelo que
+    # nunca pode, isoladamente, excluir uma fixture pré-live.
+    for key in ("score", "result", "current_score"):
         value = match.get(key)
         if value not in (None, "", [], {}):
             evidence[key] = value
@@ -250,7 +335,12 @@ def _prelive_start_evidence(match: dict) -> tuple[bool, dict]:
 
 
 def _filter_prelive_matches(matches: list[dict]) -> list[dict]:
-    """Exclui jogos com evidência de início antes de qualquer análise."""
+    """Exclui jogos com prova factual de início antes de qualquer análise.
+
+    A hora marcada não basta: chuva, atrasos e mudanças de court podem deixar
+    uma fixture ``scheduled`` depois dessa hora. Só estado live/terminal,
+    flag live ou score/resultado são evidência suficiente para excluir.
+    """
     eligible = []
     for match in matches:
         started, evidence = _prelive_start_evidence(match)
@@ -657,17 +747,29 @@ def _compute_features(payload: dict) -> dict:
     # Cenário ao vivo, mas "sem dados" no Mapa de Forças). Passa a usar a
     # MESMA ordem de prioridade nos dois sítios: dados ricos primeiro,
     # histórico local como reserva.
-    _e_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
+    # O payload já transporta o formato apurado na descoberta do jogo.
+    # Usamo-lo primeiro para que nenhuma futura competição BO5 dependa de
+    # uma etiqueta textual de tier; o fallback mantém compatibilidade com
+    # payloads antigos que ainda não tinham ``match_format``.
+    _payload_format = str(payload.get("match_format") or "").strip().casefold()
+    _e_bo5 = _payload_format == "bo5" or (
+        payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
+    )
     _fmt_bo = "bo5" if _e_bo5 else "bo3"
 
     def _comeback_rate_amostra(side):
+        raw = payload.get(f"set1_comeback_stats_{side}") or {}
+        fallback = raw.get(_fmt_bo) or {}
+        # A estatística rica da API não declara o formato. Em BO5, usar
+        # apenas o histórico explicitamente BO5; nunca misturar BO3 numa
+        # variável que afeta o score pré-live.
+        if _fmt_bo == "bo5":
+            return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
         rich = (payload.get(f"rich_stats_{side}") or {}).get("scenarios") or {}
         rate = rich.get("first_set_lose_then_win_pct")
         amostra = rich.get("first_set_lose_count")
         if rate is not None and isinstance(amostra, (int, float)) and amostra > 0:
             return rate, amostra
-        raw = payload.get(f"set1_comeback_stats_{side}") or {}
-        fallback = raw.get(_fmt_bo) or {}
         return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
 
     _pa, _amostra_a = _comeback_rate_amostra("a")
@@ -1001,9 +1103,184 @@ def _compact_match_history(matches, player_id=None, limit=10, *, tour=None,
     return compact[:limit]
 
 
+def _report_data_status(data_coverage: dict) -> str:
+    """Resume cobertura sem transformar ausência parcial em dados neutros."""
+    coverage_states = []
+    for family in data_coverage.values():
+        if isinstance(family, dict) and "status" in family:
+            coverage_states.append(family["status"])
+        elif isinstance(family, dict):
+            coverage_states.extend(
+                side.get("status") for side in family.values() if isinstance(side, dict)
+            )
+    complete_states = {"AVAILABLE", "NONE_OBSERVED", "NOT_APPLICABLE"}
+    return "COMPLETE" if coverage_states and all(
+        state in complete_states for state in coverage_states
+    ) else "DEGRADED"
+
+
+def _apply_identity_persistence_gate(payload: dict) -> None:
+    """Keep factual pricing visible while blocking persistence without canonical v2 identity."""
+    if payload.get("identity_schema_version") != match_identity_v2.SCHEMA_VERSION:
+        return
+    if match_identity_v2.is_canonical(payload):
+        return
+    decision = payload.get("prelive_decision")
+    if not isinstance(decision, dict):
+        return
+    decision["paper_eligible"] = False
+    decision["paper_markets"] = []
+    decision["identity_gate"] = {
+        "status": payload.get("identity_status"),
+        "reason_code": payload.get("identity_reason_code"),
+        "snapshot_eligible": False,
+        "paper_eligible": False,
+    }
+
+
+def _experimental_tier_metrics(
+    discovered: list[dict],
+    process_targets: list[dict],
+    analyses: list[tuple[dict, dict]],
+) -> dict:
+    """Telemetria agregada do EXPERIMENT sem publicar identidades individuais."""
+    tier = "Challenger 125"
+    candidates = [item for item in discovered if item.get("tier") == tier]
+    identity_eligible = [item for item in process_targets if item.get("tier") == tier]
+    payloads = [payload for payload, _ in analyses if payload.get("tier") == tier]
+
+    identity: dict[str, int] = {}
+    for item in candidates:
+        status = str((item.get("_rapidapi_event_integrity") or {}).get("status") or "unverified")
+        identity[status] = identity.get(status, 0) + 1
+
+    report_status = {"complete": 0, "degraded": 0}
+    factor_available_counts: list[int] = []
+    missing_reasons: dict[str, int] = {}
+    market = {
+        "recent_odds_available": 0,
+        "recent_odds_unavailable": 0,
+        "bookmakers_observed": {},
+        "market_quote_integrity": {},
+        "operational_pricing_eligible": 0,
+        "unavailable_by_reason": {},
+    }
+    pricing = {"available": 0, "unavailable": 0}
+    potential_paper = 0
+    paper_reason_codes: dict[str, int] = {}
+    for payload in payloads:
+        status = "complete" if payload.get("report_data_status") == "COMPLETE" else "degraded"
+        report_status[status] += 1
+        available = 0
+        for family in (payload.get("data_coverage") or {}).values():
+            rows = family.values() if isinstance(family, dict) and "status" not in family else [family]
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if row.get("status") == "AVAILABLE":
+                    available += 1
+                elif row.get("reason"):
+                    reason = str(row["reason"])
+                    missing_reasons[reason] = missing_reasons.get(reason, 0) + 1
+        factor_available_counts.append(available)
+
+        if payload.get("market_odds_decimal"):
+            market["recent_odds_available"] += 1
+        else:
+            market["recent_odds_unavailable"] += 1
+            reason = str(payload.get("odds_unavailable_reason") or "unknown")
+            unavailable = market["unavailable_by_reason"]
+            unavailable[reason] = unavailable.get(reason, 0) + 1
+        bookmaker = payload.get("odds_bookmaker")
+        if bookmaker:
+            observed = market["bookmakers_observed"]
+            observed[str(bookmaker)] = observed.get(str(bookmaker), 0) + 1
+        integrity_status = str(
+            (payload.get("odds_market_integrity") or {}).get("status") or "UNAVAILABLE"
+        )
+        integrity = market["market_quote_integrity"]
+        integrity[integrity_status] = integrity.get(integrity_status, 0) + 1
+        market["operational_pricing_eligible"] += int(
+            payload.get("odds_operational_pricing_eligible") is True
+        )
+        pricing_available = bool((payload.get("pricing") or {}).get("available"))
+        pricing["available" if pricing_available else "unavailable"] += 1
+        gate = (payload.get("prelive_decision") or {}).get("experimental_tier_gate") or {}
+        if gate.get("would_be_paper_candidate") is True:
+            potential_paper += 1
+        reason = gate.get("reason_code")
+        if reason:
+            paper_reason_codes[str(reason)] = paper_reason_codes.get(str(reason), 0) + 1
+
+    call_context = fetch_data.get_rapidapi_call_context_metrics()
+    challenger_cost = call_context.get(tier, {"calls": 0, "by_endpoint_family": {}})
+    main_tour_calls = sum(
+        int(row.get("calls") or 0)
+        for label, row in call_context.items()
+        if label not in {tier, "shared"}
+    )
+    total_calls = fetch_data.get_rapidapi_call_count()
+    recorded_before_run = fetch_data.get_rapidapi_recorded_today_calls()
+    return {
+        "mode": "EXPERIMENT",
+        "tier": tier,
+        "discovery": {
+            "candidates_found": len(candidates),
+            "tournaments_accepted": len({
+                item.get("tournamentId") for item in candidates
+                if item.get("tournamentId") is not None
+            }),
+            "fixtures_found": len(candidates),
+            "fixtures_in_window": len(candidates),
+            "fixtures_post_identity": len(identity_eligible),
+            "games_processed": len(payloads),
+        },
+        "data": {
+            "reports": report_status,
+            "available_factor_counts": {
+                "min": min(factor_available_counts) if factor_available_counts else None,
+                "max": max(factor_available_counts) if factor_available_counts else None,
+                "average": (
+                    round(sum(factor_available_counts) / len(factor_available_counts), 2)
+                    if factor_available_counts else None
+                ),
+            },
+            "missing_reasons": dict(sorted(missing_reasons.items())),
+            "identity": dict(sorted(identity.items())),
+        },
+        "market": market,
+        "pricing": pricing,
+        "paper": {
+            "would_be_candidates": potential_paper,
+            "persisted": 0,
+            "blocked_by_reason": dict(sorted(paper_reason_codes.items())),
+        },
+        "cost": {
+            "rapidapi_calls_total": total_calls,
+            "challenger_125_attributed_calls": challenger_cost.get("calls", 0),
+            "challenger_125_calls_by_endpoint_family": challenger_cost.get(
+                "by_endpoint_family", {}
+            ),
+            "challenger_125_calls_per_game": (
+                round(float(challenger_cost.get("calls", 0)) / len(payloads), 3)
+                if payloads else None
+            ),
+            "main_tour_attributed_calls": main_tour_calls,
+            "shared_calls": (call_context.get("shared") or {}).get("calls", 0),
+            "run_limit_pct": round(100 * total_calls / RAPIDAPI_MAX_CALLS_PER_RUN, 3),
+            "daily_limit_pct": round(
+                100 * (recorded_before_run + total_calls) / RAPIDAPI_MAX_CALLS_PER_DAY, 3
+            ),
+        },
+    }
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour)
+    # Fonte separada, apenas para a comparação descritiva por faixa de odds.
+    # No ATP, o histórico principal TennisMyLife não contém odds históricas.
+    historical_odds_history = fetch_data.get_historical_odds_history(tour)
 
     player_a = (match.get("player1") or {}).get("name", "?")
     player_b = (match.get("player2") or {}).get("name", "?")
@@ -1042,13 +1319,89 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # RapidAPI recent-odds é a observação operacional: a auditoria demonstrou
-    # que os preços atualizam, embora o addTime não seja fiável. The Odds API
-    # é uma comparação independente, nunca uma mistura de preços.
-    odds, odds_provenance = fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+    # A Moneyline pré-live bilateral do feed regular está incluída no plano
+    # operacional. Endpoints premium de odds são auxiliares e nunca bloqueiam
+    # pricing, edge ou PAPER.
+    odds, odds_provenance = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
     reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+    embedded_odds, embedded_provenance = (
+        fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+    )
     odds_provenance = odds_provenance or {}
+    operational_pricing_eligible = market_integrity.is_operational_pricing_provenance(
+        odds_provenance
+    )
+    if odds and not operational_pricing_eligible:
+        print(
+            "[aviso:odds-contract] quote rejeitada fail-closed antes do pricing: "
+            f"{player_a} vs {player_b}."
+        )
+        odds = None
+        odds_provenance["availability_status"] = "UNAVAILABLE"
+        odds_provenance["unavailable_reason"] = "operational_odds_contract_rejected"
+
+    embedded_provenance = embedded_provenance or {}
+
+    # CHANGE-049: identidade prospetiva mint-once. A resolução reutiliza apenas
+    # evidence já obtida pelo pipeline e não introduz chamadas externas. Uma
+    # falha do registry mantém o relatório factual, mas bloqueia snapshot/PAPER.
+    # Pricing may retain an exact-name mapping under CHANGE-050, but identity
+    # v2 consumes the independent structural validation basis and may be more
+    # conservative. Preserve a non-strong event as provisional evidence
+    # instead of upgrading generic ``VERIFIED``.
+    identity_provenance = (
+        odds_provenance
+        if odds_provenance.get("event_id")
+        else embedded_provenance
+    )
+    identity_observed_at = (
+        identity_provenance.get("captured_at_utc")
+        or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    )
+    identity_result = match_identity_v2.resolve_observation(
+        match,
+        event_id=identity_provenance.get("event_id"),
+        event_id_validated=match_identity_v2.event_id_is_strong_identity_evidence(
+            identity_provenance
+        ),
+        provider="RapidAPI",
+        observed_at_utc=identity_observed_at,
+    )
+    match_for_ledger = dict(match)
+    match_for_ledger.update(identity_result)
+
+    embedded_market_memory = market_ledger.record_market_batch_best_effort(
+        match_for_ledger,
+        embedded_odds,
+        embedded_provenance,
+        role="SHADOW_MONITOR",
+        pipeline="PRELIVE_EMBEDDED_OBSERVATION",
+    )
+    if embedded_market_memory.get("errors"):
+        print(
+            "[market-memory] observação embedded SHADOW não bloqueante: "
+            + "; ".join(embedded_market_memory["errors"][:3])
+        )
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
+    market_memory = market_ledger.record_market_batch_best_effort(
+        match_for_ledger,
+        odds,
+        odds_provenance,
+        role="OPERATIONAL_PRICING",
+        pipeline="PRELIVE",
+    )
+    reference_market_memory = market_ledger.record_market_batch_best_effort(
+        match_for_ledger,
+        reference_odds,
+        reference_odds_provenance,
+        role="REFERENCE_COMPARATOR",
+        pipeline="PRELIVE",
+    )
+    if market_memory.get("errors"):
+        print(
+            "[market-memory] observação operacional não bloqueante: "
+            + "; ".join(market_memory["errors"][:3])
+        )
     odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)
 
     _pid_a = match.get("player1Id")
@@ -1077,8 +1430,23 @@ def _build_match_payload(match: dict) -> dict:
 
     # H2H rico via matchstat (stats de serviço/resposta específicas do confronto)
     h2h_rich_stats = None
+    h2h_rich_stats_coverage = {
+        "status": "NOT_APPLICABLE",
+        "source": None,
+        "endpoint_family": f"{tour}/h2h/stats",
+        "reason": "wta_only_endpoint",
+    }
     if tour == "wta" and _pid_a is not None and _pid_b is not None:
-        h2h_rich_stats = fetch_data.fetch_h2h_stats(tour, _pid_a, _pid_b)
+        h2h_rich_stats, h2h_rich_stats_coverage = (
+            fetch_data.fetch_h2h_stats_with_coverage(tour, _pid_a, _pid_b)
+        )
+    elif tour == "wta":
+        h2h_rich_stats_coverage = {
+            "status": "UNAVAILABLE",
+            "source": "rapidapi_wta_h2h_stats",
+            "endpoint_family": "wta/h2h/stats",
+            "reason": "player_identity_unavailable",
+        }
 
     # Dados básicos: do histórico (ATP, via TennisMyLife). Para WTA — ou
     # sempre que o histórico não tiver o jogador — usamos a RapidAPI, que
@@ -1122,6 +1490,11 @@ def _build_match_payload(match: dict) -> dict:
 
     # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
     _recent_a_cache = _recent_b_cache = None
+    _h2h_matches = _h2h_api = None
+    _form_api_a = _form_api_b = None
+    _surface_api_a = _surface_api_b = None
+    _rs_a = _rs_b = None
+    _srv_a = _srv_b = None
     h2h_history = recent_history_a = recent_history_b = None
     market_form_a = market_form_b = None
     opposition_quality_a = opposition_quality_b = None
@@ -1152,12 +1525,14 @@ def _build_match_payload(match: dict) -> dict:
             # (Sackmann) se a RapidAPI não tiver o dado. Antes era ao contrário
             # — e o Sackmann partido, por devolver valores errados mas não
             # vazios, ganhava sempre. Agora a RapidAPI manda.
-            if _fa.get("form"): form_a = _fa["form"]
-            if _fb.get("form"): form_b = _fb["form"]
+            _form_api_a, _form_api_b = _fa.get("form"), _fb.get("form")
+            _surface_api_a, _surface_api_b = _fa.get("surface"), _fb.get("surface")
+            if _form_api_a: form_a = _form_api_a
+            if _form_api_b: form_b = _form_api_b
             if _fa.get("season"): season_a = _fa["season"]
             if _fb.get("season"): season_b = _fb["season"]
-            if _fa.get("surface"): surface_a = _fa["surface"]
-            if _fb.get("surface"): surface_b = _fb["surface"]
+            if _surface_api_a: surface_a = _surface_api_a
+            if _surface_api_b: surface_b = _surface_api_b
 
             # COMPARAÇÃO DE FONTES: registar onde Sackmann e RapidAPI divergem
             # (a RapidAPI já ganhou acima; isto é só para SABER). Compara o
@@ -1217,16 +1592,24 @@ def _build_match_payload(match: dict) -> dict:
     # desatualizado para quem não joga há semanas.
     official = fetch_data.fetch_official_ranking(tour)
 
-    def _resolve_ranking(player_name: str):
-        if official:
-            key = fetch_data._normalize_name(player_name)
-            if key in official:
-                r = official[key]
-                return {"rank": r["rank"], "points": r["points"], "as_of": "oficial (ao vivo)"}
-        return fetch_data.get_player_ranking(history, player_name)
+    def _resolve_ranking(player_name: str, player_id: object = None):
+        official_entry, official_source = fetch_data.resolve_official_ranking(
+            official, player_name, player_id
+        )
+        if official_entry:
+            return (
+                {
+                    "rank": official_entry["rank"],
+                    "points": official_entry["points"],
+                    "as_of": "oficial (ao vivo)",
+                },
+                official_source,
+            )
+        historical = fetch_data.get_player_ranking(history, player_name)
+        return historical, "local_history" if historical is not None else None
 
-    rank_a = _resolve_ranking(player_a)
-    rank_b = _resolve_ranking(player_b)
+    rank_a, _rank_source_a = _resolve_ranking(player_a, _pid_a)
+    rank_b, _rank_source_b = _resolve_ranking(player_b, _pid_b)
     # DIAGNÓSTICO (15/08/2026, a pedido — "ranking: sem dados" em jogos WTA
     # onde as jogadoras são claramente top-100, o que não devia acontecer).
     # Diz-nos se o problema é o ranking oficial não ter a jogadora, ou a
@@ -1237,6 +1620,8 @@ def _build_match_payload(match: dict) -> dict:
               f"({len(official) if official else 0} jogadores) | "
               f"A resolvido: {'sim' if rank_a else 'NÃO'} | "
               f"B resolvido: {'sim' if rank_b else 'NÃO'} | "
+              f"fonte A: {_rank_source_a or 'desconhecida'} | "
+              f"fonte B: {_rank_source_b or 'desconhecida'} | "
               f"chave normalizada A: {fetch_data._normalize_name(player_a)!r} | "
               f"chave normalizada B: {fetch_data._normalize_name(player_b)!r}")
     # NOVO (14/08/2026, a pedido): evolução de ranking (pontos, 6m/12m)
@@ -1272,8 +1657,22 @@ def _build_match_payload(match: dict) -> dict:
     game_margin_b = fetch_data.compute_game_margin_stats(history, player_b)
     game_differential_a = fetch_data.compute_game_differential_profile(history, player_a)
     game_differential_b = fetch_data.compute_game_differential_profile(history, player_b)
-    historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(history, player_a)
-    historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(history, player_b)
+    historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(
+        historical_odds_history, player_a
+    )
+    historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(
+        historical_odds_history, player_b
+    )
+    # O Excel ``Fenzobot_Historico_do_Sistema`` é uma vista do arquivo
+    # canónico de snapshots. Esta leitura usa exatamente esse arquivo local
+    # para dar contexto de vitória por faixa de odd quando existe, sem
+    # confundir estes resultados com linhas de handicap ou odds 22Bet.
+    canonical_odds_context_a = fetch_data.compute_canonical_snapshot_odds_context(
+        tour, player_a, odds.get(player_a) if odds else None, match.get("date")
+    )
+    canonical_odds_context_b = fetch_data.compute_canonical_snapshot_odds_context(
+        tour, player_b, odds.get(player_b) if odds else None, match.get("date")
+    )
     # NOVO (22/08/2026, a pedido): efeito de mudança de piso — jogador que
     # vem de outra superfície e entra fresco no piso de hoje.
     surface_transition_a = fetch_data.compute_surface_transition(history, player_a, surface)
@@ -1348,12 +1747,13 @@ def _build_match_payload(match: dict) -> dict:
         if _srv_b:
             serve_b = _srv_b
         # -- Sets decisivos --
+        # O recent-stats não declara BO3/BO5. Mantemos a estatística local
+        # separada por formato para não transformar um 5.º set de Slam num
+        # agregado misto de sets decisivos.
         _ds_a = fetch_data.compute_deciding_set_from_recent_stats(_rs_a) if _rs_a else None
         _ds_b = fetch_data.compute_deciding_set_from_recent_stats(_rs_b) if _rs_b else None
-        if _ds_a:
-            deciding_set_a = _ds_a
-        if _ds_b:
-            deciding_set_b = _ds_b
+        if _ds_a or _ds_b:
+            print("[info] deciding-set recent-stats ignorado no payload pré-live: formato BO3/BO5 não declarado.")
         # -- Recuperação de 1º set (past-matches, reaproveita cache) --
         _pm_a = _recent_a_cache if _recent_a_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_a)
         _pm_b = _recent_b_cache if _recent_b_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_b)
@@ -1361,8 +1761,13 @@ def _build_match_payload(match: dict) -> dict:
         recent_history_b = _compact_match_history(_pm_b, _pid_b, 10)
         market_form_a = fetch_data.compute_market_adjusted_form(_pm_a, _pid_a)
         market_form_b = fetch_data.compute_market_adjusted_form(_pm_b, _pid_b)
-        _sc_a = fetch_data.compute_scenarios_from_past_matches(_pm_a, _pid_a) if _pm_a else None
-        _sc_b = fetch_data.compute_scenarios_from_past_matches(_pm_b, _pid_b) if _pm_b else None
+        _expected_best_of = 5 if _match_format(match) == "bo5" else 3
+        _sc_a = fetch_data.compute_scenarios_from_past_matches(
+            _pm_a, _pid_a, expected_best_of=_expected_best_of,
+        ) if _pm_a else None
+        _sc_b = fetch_data.compute_scenarios_from_past_matches(
+            _pm_b, _pid_b, expected_best_of=_expected_best_of,
+        ) if _pm_b else None
         if _sc_a:
             set1_comeback_a = _sc_a
         if _sc_b:
@@ -1410,7 +1815,88 @@ def _build_match_payload(match: dict) -> dict:
     surface_momentum_a = fetch_data.compute_surface_momentum(rich_a, surface, start.year)
     surface_momentum_b = fetch_data.compute_surface_momentum(rich_b, surface, start.year)
 
+    def _coverage(value, source, *, unavailable_reason="source_unavailable"):
+        if value is None:
+            return {"status": "UNAVAILABLE", "source": source, "reason": unavailable_reason}
+        return {"status": "AVAILABLE", "source": source, "reason": None}
+
+    def _historical_coverage(recent_rows, resolved_name):
+        if isinstance(recent_rows, list) and recent_rows:
+            return _coverage(recent_rows, "rapidapi_player_past_matches")
+        if resolved_name is not None and not history.empty:
+            return _coverage(True, "local_history")
+        return _coverage(None, None, unavailable_reason="no_verified_historical_matches")
+
+    if isinstance(_h2h_matches, list) and _h2h_matches:
+        _h2h_coverage = _coverage(_h2h_matches, "rapidapi_h2h_matches")
+    elif h2h is not None:
+        _h2h_coverage = _coverage(h2h, "local_history")
+    elif isinstance(_h2h_matches, list):
+        _h2h_coverage = {
+            "status": "NONE_OBSERVED", "source": "rapidapi_h2h_matches",
+            "reason": "no_prior_head_to_head_observed",
+        }
+    else:
+        _h2h_coverage = _coverage(
+            None, None, unavailable_reason="h2h_endpoint_and_local_history_unavailable",
+        )
+
+    data_coverage = {
+        "ranking": {
+            "a": _coverage(rank_a, _rank_source_a, unavailable_reason="ranking_unavailable"),
+            "b": _coverage(rank_b, _rank_source_b, unavailable_reason="ranking_unavailable"),
+        },
+        "historical_matches": {
+            "a": _historical_coverage(_recent_a_cache, _resolved_a),
+            "b": _historical_coverage(_recent_b_cache, _resolved_b),
+        },
+        "h2h": _h2h_coverage,
+        "h2h_rich_stats": h2h_rich_stats_coverage,
+        "recent_form": {
+            "a": _coverage(
+                form_a, "rapidapi_player_past_matches" if _form_api_a else "local_history",
+                unavailable_reason="recent_form_unavailable",
+            ),
+            "b": _coverage(
+                form_b, "rapidapi_player_past_matches" if _form_api_b else "local_history",
+                unavailable_reason="recent_form_unavailable",
+            ),
+        },
+        "service_return": {
+            "a": _coverage(
+                serve_a, "rapidapi_recent_stats" if _srv_a else "local_history",
+                unavailable_reason="service_return_unavailable",
+            ),
+            "b": _coverage(
+                serve_b, "rapidapi_recent_stats" if _srv_b else "local_history",
+                unavailable_reason="service_return_unavailable",
+            ),
+        },
+        "surface": {
+            "a": _coverage(
+                surface_a, "rapidapi_player_past_matches" if _surface_api_a else "local_history",
+                unavailable_reason="surface_record_unavailable",
+            ),
+            "b": _coverage(
+                surface_b, "rapidapi_player_past_matches" if _surface_api_b else "local_history",
+                unavailable_reason="surface_record_unavailable",
+            ),
+        },
+        "tournament_record": {
+            "a": _coverage(
+                tournament_record_a, "rapidapi_tournament_record",
+                unavailable_reason="tournament_record_unavailable",
+            ),
+            "b": _coverage(
+                tournament_record_b, "rapidapi_tournament_record",
+                unavailable_reason="tournament_record_unavailable",
+            ),
+        },
+    }
+    report_data_status = _report_data_status(data_coverage)
+
     payload = {
+        **identity_result,
         "match_id": match.get("id"),
         "tournament_id": _tournament_id,
         "player_a_id": _pid_a,
@@ -1431,6 +1917,12 @@ def _build_match_payload(match: dict) -> dict:
         "market_odds_decimal": odds,
         "reference_market_odds_decimal": reference_odds,
         "reference_odds_provenance": reference_odds_provenance,
+        "event_key": market_ledger.event_key(match_for_ledger),
+        "entry_market_observation_id": market_memory.get("entry_observation_id"),
+        "market_memory_status": market_memory.get("status"),
+        "market_memory_eligible": bool(market_memory.get("entry_memory_eligible")),
+        "market_memory_errors": market_memory.get("errors") or [],
+        "reference_market_observation_ids": reference_market_memory.get("observation_ids") or [],
         "odds_source": odds_provenance.get("source") if odds else None,
         "odds_endpoint": odds_provenance.get("endpoint") if odds else None,
         "odds_event_id": odds_provenance.get("event_id") if odds else None,
@@ -1438,10 +1930,22 @@ def _build_match_payload(match: dict) -> dict:
         "odds_capture_kind": odds_provenance.get("capture_kind") if odds else None,
         "odds_provider_timestamp": odds_provenance.get("provider_timestamp") if odds else None,
         "odds_provider_timestamp_status": odds_provenance.get("provider_timestamp_status") if odds else None,
+        "odds_freshness_status": odds_provenance.get("freshness_status") if odds else None,
         "odds_bookmaker": odds_provenance.get("bookmaker") if odds else None,
         "odds_from_cache": odds_provenance.get("from_cache") if odds else None,
         "odds_cache_age_seconds": odds_provenance.get("cache_age_seconds") if odds else None,
+        "odds_raw_payload_sha256": odds_provenance.get("raw_payload_sha256") if odds else None,
+        "odds_availability_status": odds_provenance.get("availability_status") or ("AVAILABLE" if odds else "UNAVAILABLE"),
+        "odds_unavailable_reason": odds_provenance.get("unavailable_reason") if not odds else None,
+        "odds_market_integrity": odds_provenance.get("market_integrity"),
+        "odds_operational_pricing_eligible": operational_pricing_eligible if odds else False,
+        "odds_source_contract_version": odds_provenance.get("odds_source_contract_version") if odds else None,
+        "odds_source_contract_fingerprint": odds_provenance.get("odds_source_contract_fingerprint") if odds else None,
+        "odds_source_contract": odds_provenance.get("odds_source_contract") if odds else None,
+        "odds_contract_activation": odds_provenance.get("odds_contract_activation") if odds else None,
         "odds_movement": odds_movement,
+        "data_coverage": data_coverage,
+        "report_data_status": report_data_status,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
         "h2h": h2h,
         "h2h_history": h2h_history,
@@ -1495,6 +1999,8 @@ def _build_match_payload(match: dict) -> dict:
         "game_differential_b": game_differential_b,
         "historical_moneyline_margins_a": historical_moneyline_margins_a,
         "historical_moneyline_margins_b": historical_moneyline_margins_b,
+        "canonical_odds_context_a": canonical_odds_context_a,
+        "canonical_odds_context_b": canonical_odds_context_b,
         "surface_transition_a": surface_transition_a,  # NOVO: efeito mudança de piso
         "surface_transition_b": surface_transition_b,
         "tournament_record_a": tournament_record_a,  # NOVO: histórico neste torneio
@@ -1549,6 +2055,12 @@ def _build_match_payload(match: dict) -> dict:
         payload["pricing"] = estimate_market_residual_pricing(
             payload, payload.get("divergencia")
         )
+        if (
+            isinstance(payload["pricing"], dict)
+            and not payload["pricing"].get("available")
+            and payload.get("odds_unavailable_reason")
+        ):
+            payload["pricing"]["reason"] = payload["odds_unavailable_reason"]
     except Exception as exc:
         print(f"[aviso:pricing] pricing residual indisponível para "
               f"{payload.get('player_a')} vs {payload.get('player_b')}: {exc}")
@@ -1560,6 +2072,8 @@ def _build_match_payload(match: dict) -> dict:
         payload.get("pricing"),
         payload.get("report_assessment"),
     )
+    tournament_policy.apply_experimental_paper_gate(payload)
+    _apply_identity_persistence_gate(payload)
     if payload["prelive_decision"].get("conflict") == "both_sides_positive_edge":
         print(
             f"[anomalia:edge] ambos os lados positivos em {payload.get('player_a')} vs "
@@ -1582,6 +2096,28 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
     from .report_html import COLORS
 
     cards = []
+    frozen_link = ""
+    boundary = forward_only.load_boundary_for_store(Path(reports_dir))
+    if boundary.fail_closed:
+        raise RuntimeError(boundary.reason_code)
+    if boundary.active:
+        versions = (((boundary.manifest or {}).get("protected") or {}).get(
+            "mutable_index_versions"
+        ) or [])
+        source = f"docs/relatorios/index-{today_str}.html"
+        for version in versions:
+            if isinstance(version, Mapping) and version.get("source_path") == source:
+                target = Path(str(version.get("path") or ""))
+                frozen_link = (
+                    '<a class="dash-link" href="'
+                    + html.escape(
+                        f"frozen-indexes/{target.name}"
+                        if target.parent.name == "frozen-indexes"
+                        else target.as_posix()
+                    )
+                    + '">Versão histórica congelada em T0 →</a>'
+                )
+                break
     for payload, result, url in match_reports:
         if not url:
             continue
@@ -1593,9 +2129,15 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         href = html.escape(url)
         decision = payload.get("prelive_decision") or {}
         state = decision.get("state")
+        identity_blocks_paper = (
+            payload.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION
+            and (decision.get("identity_gate") or {}).get("paper_eligible") is False
+        )
         level, flag = {
             "EDGE_POSITIVE": (3, "🟢"), "EDGE_NEGATIVE": (2, "🔴"),
+            "EDGE_POSITIVE_EXPERIMENTAL_TIER": (2.5, "🟡"),
             "EDGE_ZERO": (1, "⚪"), "PRICING_UNAVAILABLE": (0, "🟡"),
+            "EXPERIMENTAL_FACTUAL_PARTIAL": (0.5, "🟡"),
             "REPORT_NULL": (0, "⚫"),
         }.get(state, (0, "⚫"))
         if not decision:
@@ -1606,12 +2148,28 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
                 level = legacy_level
                 flag = {3: "🔴", 2: "🟢", 1: "🟡", 0: "⚪"}.get(level, "⚫")
         if state == "EDGE_POSITIVE":
+            if identity_blocks_paper:
+                level, flag = 2.5, "🟡"
+                line = html.escape(
+                    f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
+                    "identidade canónica pendente · sem PAPER"
+                )
+            else:
+                line = html.escape(
+                    f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
+                    f"PAPER {(decision.get('market') or {}).get('market') or 'Moneyline'}"
+                )
+        elif state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":
             line = html.escape(
                 f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
-                f"PAPER {(decision.get('market') or {}).get('market') or 'Moneyline'}"
+                "Challenger 125 EXPERIMENTAL · sem PAPER"
             )
         elif state == "REPORT_NULL":
             line = html.escape(f"Relatório nulo · {decision.get('reason') or 'dados insuficientes'}")
+        elif state == "EXPERIMENTAL_FACTUAL_PARTIAL":
+            line = html.escape(
+                "Challenger 125 · cobertura parcial · sem edge/PAPER"
+            )
         elif state == "PRICING_UNAVAILABLE":
             line = html.escape("Análise factual disponível · preço de mercado indisponível · sem PAPER")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
@@ -1631,6 +2189,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
 body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',system-ui,sans-serif;margin:0;padding:0 16px 50px;}}
 .head{{max-width:760px;margin:0 auto;padding:28px 0 10px;border-bottom:2px solid {COLORS['steel']};}}
 .head h1{{font-size:22px;margin:0;}} .head p{{color:{COLORS['text_dim']};margin:6px 0 0;font-size:14px;}}
+.dash-link{{display:inline-block;margin-top:10px;color:{COLORS['steel']};text-decoration:none;font-size:13px;font-weight:650;}}
+.dash-link:hover,.dash-link:focus{{text-decoration:underline;}}
 .filters{{max-width:760px;margin:16px auto 0;display:grid;grid-template-columns:1fr 170px;gap:10px;}}
 .filters input,.filters select{{background:{COLORS['surface']};color:{COLORS['text']};border:1px solid {COLORS['line']};border-radius:8px;padding:10px 12px;font:inherit;}}
 .filters input:focus,.filters select:focus{{outline:2px solid {COLORS['steel']};outline-offset:1px;}}
@@ -1645,12 +2205,13 @@ body{{background:{COLORS['bg']};color:{COLORS['text']};font-family:'Segoe UI',sy
 @media(max-width:600px){{.filters{{grid-template-columns:1fr;}}.idx-card{{align-items:flex-start;}}}}
 </style></head>
 <body>
-<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p></div>
+<div class="head"><h1>🎾 Relatórios Pré-Live</h1><p>{today_str} · {len([m for m in match_reports if m[2]])} jogos</p><a class="dash-link" href="{html.escape(f'{SITE_BASE_URL}/dashboard/')}">Fenzobot Control Dashboard →</a>{frozen_link}</div>
 <div class="filters">
   <input id="search" type="search" placeholder="Pesquisar jogador ou torneio" aria-label="Pesquisar relatórios"/>
   <select id="priority" aria-label="Filtrar por prioridade">
     <option value="all">Todas as prioridades</option>
     <option value="3">Edge positivo / PAPER</option><option value="2">Edge negativo</option>
+    <option value="2.5">Edge positivo / sem PAPER</option>
     <option value="1">Edge zero</option><option value="0">Relatório nulo</option>
   </select>
 </div>
@@ -1687,7 +2248,14 @@ def _telegram_decision_row(payload: dict) -> tuple[int, str, str]:
 
 def run() -> None:
     run_metrics.reset()
-    run_metrics.update_context(status="running", phase="initializing")
+    run_metrics.update_context(
+        status="running",
+        phase="initializing",
+        email_delivery={"status": "NOT_ATTEMPTED", "kind": EMAIL_REPORTS},
+        report_publication={"status": "NOT_APPLICABLE", "expected": 0, "ready": 0},
+        report_notification_status="REPORTS_WITHHELD",
+        **_trigger_context(),
+    )
     # O contador RapidAPI é opcional; versões anteriores de fetch_data.py podem não expor estas funções.
     reset_calls = getattr(fetch_data, "reset_rapidapi_call_count", None)
     if callable(reset_calls):
@@ -1695,21 +2263,60 @@ def run() -> None:
     else:
         print("[info] contador RapidAPI local não disponível em fetch_data.py; a execução continua.")
     run_metrics.update_context(phase="fetching_fixtures")
-    raw_matches = fetch_data.fetch_tracked_tournament_fixtures()
+    raw_matches = fetch_data.fetch_resilient_discovery_fixtures()
+    def _tour_counts(items):
+        counts = {"atp": 0, "wta": 0}
+        for item in items:
+            tour_name = str(item.get("_tour") or "").casefold()
+            if tour_name in counts:
+                counts[tour_name] += 1
+        return counts
+
+    discovery_diagnostics = fetch_data.get_discovery_diagnostics()
+    run_metrics.update_context(
+        fixtures_discovered=len(raw_matches),
+        fixtures_discovered_by_tour=_tour_counts(raw_matches),
+        **discovery_diagnostics,
+    )
     print(f"[info] {len(raw_matches)} jogo(s) devolvidos pelos torneios seguidos, antes da deduplicação.")
     raw_matches = _deduplicate_matches(raw_matches)
     print(f"[info] {len(raw_matches)} jogo(s) após deduplicação, antes de qualquer outro filtro.")
 
     windowed = _filter_matches_in_window(raw_matches)
+    run_metrics.update_context(fixtures_in_window=len(windowed))
     windowed = _filter_prelive_matches(windowed)
     eligible = _filter_and_enrich_with_tournament_info(windowed)
-    run_metrics.update_context(eligible=len(eligible), phase="filtering")
+    tournament_eligible = list(eligible)
+    run_metrics.update_context(
+        eligible=len(eligible),
+        eligible_before_identity=len(eligible),
+        eligible_by_tour=_tour_counts(eligible),
+        phase="filtering",
+        challenger_125_experiment=_experimental_tier_metrics(
+            tournament_eligible, [], [],
+        ),
+    )
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
 
+    # Uma API indisponível não é o mesmo que um calendário sem jogos. Falhar
+    # torna o problema visível no Actions e ativa o alerta Telegram do
+    # workflow, em vez de o mascarar como ``no_eligible_matches``.
+    if not raw_matches and fetch_data.discovery_unavailable():
+        raise RuntimeError(
+            "DISCOVERY_UNAVAILABLE: todas as fontes factuais RapidAPI de descoberta "
+            "falharam; não é seguro concluir que não existem jogos elegíveis."
+        )
+
     if not eligible:
-        run_metrics.update_context(status="no_eligible_matches", phase="complete")
-        fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
+        final_status = _apply_discovery_health_status(
+            "no_eligible_matches", discovery_diagnostics,
+        )
+        run_metrics.update_context(
+            status=final_status, phase="complete", eligible_after_identity=0,
+        )
+        _attempt_no_eligible_email("nenhum jogo elegível nesta execução")
+        fetch_data.persist_rapidapi_usage(status=final_status, matches=0)
         print("[info] Sem jogos elegíveis nesta janela (fora do tier permitido ou fora de horas). Nada a enviar.")
         return
 
@@ -1725,26 +2332,53 @@ def run() -> None:
     # API não permite verificar, mantemos o jogo factual, mas sem pricing.
     verified_eligible = []
     for match in eligible:
-        integrity = fetch_data.rapidapi_event_integrity(match)
+        with fetch_data.rapidapi_call_context(match.get("tier")):
+            integrity = fetch_data.rapidapi_event_integrity(match)
+        match["_rapidapi_event_integrity"] = integrity
         if integrity.get("status") == "rejected":
             print("[prelive] PRELIVE_EXCLUDED_EVENT_INTEGRITY "
                   f"id={match.get('id')} reason={integrity.get('reason')} "
                   f"event_id={integrity.get('event_id')}")
             continue
-        match["_rapidapi_event_integrity"] = integrity
         verified_eligible.append(match)
     eligible = verified_eligible
-    run_metrics.update_context(eligible=len(eligible), phase="event_integrity")
+    run_metrics.update_context(
+        eligible=len(eligible),
+        eligible_after_identity=len(eligible),
+        post_identity_eligible_by_tour=_tour_counts(eligible),
+        event_identity=fetch_data.get_rapidapi_identity_metrics(),
+        phase="event_integrity",
+    )
     if not eligible:
-        run_metrics.update_context(status="no_eligible_matches", phase="complete")
-        fetch_data.persist_rapidapi_usage(status="no_eligible_matches", matches=0)
+        final_status = _apply_discovery_health_status(
+            "no_eligible_matches", discovery_diagnostics,
+        )
+        run_metrics.update_context(status=final_status, phase="complete")
+        _attempt_no_eligible_email("nenhum jogo com identidade pré-live válida")
+        fetch_data.persist_rapidapi_usage(status=final_status, matches=0)
         print("[info] Sem jogos pré-live com identidade de evento válida. Nada a enviar.")
         return
 
+    # Publicamos uma fotografia completa em cada execução. Isto mantém os
+    # relatórios e as notificações visíveis mesmo quando o preço não mudou,
+    # permitindo ao operador rever todos os jogos que continuam pré-live.
+    # O estado incremental continua a ser gravado para auditoria, mas deixa de
+    # ser um bloqueio de publicação.
+    process_targets = list(eligible)
+    for match in process_targets:
+        match["_incremental_reason"] = "full_pre_live_run"
+
+    run_metrics.update_context(
+        incremental_candidates=len(eligible),
+        incremental_process_targets=len(process_targets),
+        incremental_skipped=0,
+        incremental_reasons={"full_pre_live_run": len(process_targets)},
+        phase="full_pre_live_selection",
+    )
+
     # A The Odds API é apenas uma comparação independente. Só a consultamos
-    # depois de o gate de integridade já ter eliminado fixtures impossíveis,
-    # para não gastar créditos em jogos terminados ou mal mapeados.
-    fetch_data.prepare_the_odds_market_index(eligible)
+    # para os jogos que efetivamente serão publicados, preservando créditos.
+    fetch_data.prepare_the_odds_market_index(process_targets)
 
     # Processar os jogos em PARALELO (resolve a lentidão: antes era um loop
     # sequencial que com muitos jogos chegava a ~30 min). Poucos workers para
@@ -1755,7 +2389,8 @@ def run() -> None:
     def _process_one(match):
         stage = "payload"
         try:
-            payload = _build_match_payload(match)
+            with fetch_data.rapidapi_call_context(match.get("tier")):
+                payload = _build_match_payload(match)
             # Saltar a análise do Claude para SUPERFAVORITOS (odd <= 1.09):
             # a esse preço não há valor de mercado a observar, por isso gastar
             # tokens do Claude não se justifica. O jogo continua a sair no
@@ -1796,7 +2431,7 @@ def run() -> None:
     analyses = []
     analysis_errors = []
     with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
-        for res, error in executor.map(_process_one, eligible):
+        for res, error in executor.map(_process_one, process_targets):
             if res is not None:
                 analyses.append(res)
             if error is not None:
@@ -1834,7 +2469,10 @@ def run() -> None:
         category = error["category"]
         error_counts[category] = error_counts.get(category, 0) + 1
     processing_status, processing_ratio = _classify_processing_status(
-        len(eligible), len(analyses)
+        len(process_targets), len(analyses)
+    )
+    processing_status = _apply_discovery_health_status(
+        processing_status, discovery_diagnostics,
     )
     run_metrics.update_context(
         processed=len(analyses),
@@ -1842,6 +2480,38 @@ def run() -> None:
         processing_ratio=round(processing_ratio, 4),
         analysis_error_counts=dict(sorted(error_counts.items())),
         analysis_error_samples=analysis_errors[:5],
+    )
+    market_by_tour = {
+        "atp": {"available": 0, "unavailable": 0, "unavailable_by_reason": {}},
+        "wta": {"available": 0, "unavailable": 0, "unavailable_by_reason": {}},
+    }
+    reports_by_tour = {
+        "atp": {"complete": 0, "degraded": 0},
+        "wta": {"complete": 0, "degraded": 0},
+    }
+    for payload, _result in analyses:
+        tour_name = str(payload.get("tour") or "").casefold()
+        if tour_name not in market_by_tour:
+            continue
+        if payload.get("market_odds_decimal"):
+            market_by_tour[tour_name]["available"] += 1
+        else:
+            market_by_tour[tour_name]["unavailable"] += 1
+            reason = str(payload.get("odds_unavailable_reason") or "unknown")
+            reasons = market_by_tour[tour_name]["unavailable_by_reason"]
+            reasons[reason] = reasons.get(reason, 0) + 1
+        status_key = "complete" if payload.get("report_data_status") == "COMPLETE" else "degraded"
+        reports_by_tour[tour_name][status_key] += 1
+    run_metrics.update_context(
+        market_coverage_by_tour=market_by_tour,
+        report_data_status_by_tour=reports_by_tour,
+        rapidapi_calls_per_processed=(
+            round(fetch_data.get_rapidapi_call_count() / len(analyses), 3)
+            if analyses else None
+        ),
+        challenger_125_experiment=_experimental_tier_metrics(
+            tournament_eligible, process_targets, analyses,
+        ),
     )
 
     # Nunca publicar um relatório parcial como se fosse uma execução normal
@@ -1858,7 +2528,7 @@ def run() -> None:
         # Anthropic sem créditos). Alertamos e saímos com erro para o
         # GitHub Actions ficar vermelho e o alerta de falha disparar.
         error_msg = (
-            f"⚠️ Tennis Bot: {len(eligible)} jogo(s) elegível(is), mas NENHUMA "
+            f"⚠️ Tennis Bot: {len(process_targets)} jogo(s) a atualizar, mas NENHUMA "
             "análise foi concluída — provável falha da API (créditos? rede?). "
             "Verifica os logs do GitHub Actions."
         )
@@ -1872,7 +2542,7 @@ def run() -> None:
     if processing_status == "failed":
         raise RuntimeError(
             "Execucao com cobertura insuficiente: "
-            f"{len(analyses)}/{len(eligible)} jogos processados "
+            f"{len(analyses)}/{len(process_targets)} jogos processados "
             f"({processing_ratio:.1%}; minimo "
             f"{PROCESSING_FAILURE_BELOW_RATIO:.0%}). Nenhum relatorio parcial "
             "foi publicado."
@@ -1883,20 +2553,92 @@ def run() -> None:
     # repeticao do bot nao reescreve a fotografia original.
     snapshots = []
     for payload, result in analyses:
-        snapshot = calibration_store.build_snapshot(payload, result)
-        # A mesma identidade liga relatório, snapshot e carteira PAPER.
-        payload["snapshot_key"] = snapshot["key"]
-        payload["report_id"] = snapshot["report_id"]
-        payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
-        snapshots.append(snapshot)
+        incremental_runs.record_processed(
+            {
+                "_tour": payload.get("tour"),
+                "id": payload.get("match_id"),
+                "date": payload.get("commence_time_utc"),
+                "player1": {"name": payload.get("player_a")},
+                "player2": {"name": payload.get("player_b")},
+            },
+            payload.get("market_odds_decimal"),
+        )
+        if match_identity_v2.is_canonical(payload):
+            snapshot = calibration_store.build_snapshot(payload, result)
+            # A mesma identidade liga relatório, snapshot e carteira PAPER.
+            payload["snapshot_key"] = snapshot["key"]
+            payload["report_id"] = snapshot["report_id"]
+            payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
+            snapshots.append(snapshot)
+        else:
+            # O relatório factual continua disponível, sem fabricar um
+            # snapshot canónico para identidade provisional/insuficiente.
+            report_identity = calibration_store.report_identity(payload)
+            payload["snapshot_key"] = None
+            payload.update(report_identity)
+            payload["snapshot_linkage"] = {
+                "status": "UNLINKED",
+                "reason_code": payload.get("identity_reason_code")
+                or "IDENTITY_V2_NOT_CANONICAL",
+            }
     added_snapshots = calibration_store.upsert_snapshots(snapshots)
     print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
+    persisted_snapshots = calibration_store.read_snapshots_by_key(
+        (snapshot["key"] for snapshot in snapshots)
+    )
+    linkage_counts = {"linked": 0, "collisions": 0, "unlinked": 0}
+    linkage_reasons: dict[str, int] = {}
+    for payload, _ in analyses:
+        # O badge e qualquer consumo downstream seguem exclusivamente a
+        # primeira fotografia aceite pelo first-write-wins. Um rerun nunca
+        # expõe a classificação de um snapshot calculado mas descartado.
+        if not match_identity_v2.is_canonical(payload):
+            linkage = payload["snapshot_linkage"]
+        else:
+            persisted = persisted_snapshots.get(str(payload.get("snapshot_key")))
+            linkage = calibration_store.apply_persisted_validation(payload, persisted)
+        status = str(linkage.get("status") or "UNLINKED")
+        bucket = "linked" if status == "LINKED" else "collisions" if status == "COLLISION" else "unlinked"
+        linkage_counts[bucket] += 1
+        reason = str(linkage.get("reason_code") or "SNAPSHOT_IDENTITY_INSUFFICIENT")
+        linkage_reasons[reason] = linkage_reasons.get(reason, 0) + 1
+        if status == "COLLISION":
+            print(
+                "[calibracao] PROVIDER_MATCH_ID_REUSED / SNAPSHOT_IDENTITY_COLLISION: "
+                f"{payload.get('player_a')} vs {payload.get('player_b')} — "
+                "validation antiga e PAPER bloqueados."
+            )
+    run_metrics.update_context(snapshot_reconciliation={
+        "status": "DEGRADED" if linkage_counts["collisions"] or linkage_counts["unlinked"] else "HEALTHY",
+        "counts": linkage_counts,
+        "reason_codes": dict(sorted(linkage_reasons.items())),
+        "time_tolerance_hours": 48,
+    })
 
     paper_entries = [
         entry for payload, _ in analyses for entry in paper_trading.build_entries(payload)
     ]
     added_paper = paper_trading.append_entries(paper_entries)
     print(f"[paper] {added_paper} entrada(s) PAPER nova(s) guardada(s).")
+    try:
+        memory = market_memory_report.build_and_write()
+        green_report = green_strong_validation.build_and_write(memory_report=memory)
+        print(
+            "[green-strong] vista prospetiva atualizada: "
+            f"{green_report['metrics']['sample_size']} candidato(s)."
+        )
+    except Exception as exc:
+        # A validação é SHADOW e nunca bloqueia decisão ou PAPER técnico.
+        print(f"[green-strong] atualização não bloqueante indisponível: {type(exc).__name__}: {exc}")
+        green_report = None
+    try:
+        archived_days = market_ledger.rotate_archives()
+        if archived_days:
+            print(f"[market-memory] {len(archived_days)} dia(s) antigo(s) arquivado(s).")
+    except Exception as exc:
+        # Por decisão do CHANGE, o ledger nunca muda decisão/PAPER nem o
+        # resultado operacional do pipeline.
+        print(f"[market-memory] rotação não bloqueante indisponível: {exc}")
 
     # --- Relatório completo: UMA página do Telegra.ph POR JOGO ---
     # (Antes era uma única página com todos os jogos — com muitos jogos
@@ -1918,6 +2660,7 @@ def run() -> None:
 
     run_metrics.update_context(phase="report_generation")
     match_reports = []  # (payload, result, url_ou_None)
+    report_artifacts = []  # HTML local + URL; consumido apenas após publicação.
     generated_slugs = []
     # NOVO (22/08/2026, a pedido): histórico de acerto do próprio sistema,
     # calculado uma vez a partir dos snapshots já resolvidos e mostrado em
@@ -1939,6 +2682,8 @@ def run() -> None:
             payload["system_accuracy"] = _system_accuracy
         if _paper_history:
             payload["paper_history"] = _paper_history
+        if green_report:
+            payload["green_strong_history"] = green_report
         # Versão imutável: a identidade inclui o instante do snapshot. Uma
         # nova execução cria outro relatório; nunca substitui o original.
         slug = _slugify(
@@ -1954,6 +2699,7 @@ def run() -> None:
             except FileExistsError:
                 print(f"[relatorio] versão imutável já existe: {filename}")
             url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/{filename}"
+            report_artifacts.append({"url": url, "local_path": report_path})
             generated_slugs.append((payload, result, slug))
         except Exception as exc:
             print(f"[aviso] falha a gerar HTML para {payload['player_a']} vs {payload['player_b']}: {exc}")
@@ -1975,10 +2721,16 @@ def run() -> None:
 
     # Construir e ordenar: fortes primeiro, sem odds no fim.
     linhas_dados = []
+    linhas_challenger = []
     for payload, result, url in match_reports:
         nivel, bola, txt = _linha_telegram(payload, result)
-        linhas_dados.append((nivel, bola, txt, url))
+        line = (nivel, bola, txt, url)
+        if str(payload.get("tier") or "").strip() == "Challenger 125":
+            linhas_challenger.append(line)
+        else:
+            linhas_dados.append(line)
     linhas_dados.sort(key=lambda x: x[0], reverse=True)
+    linhas_challenger.sort(key=lambda x: x[0], reverse=True)
 
     n_high = sum(1 for n, _, _, _ in linhas_dados if n == 3)
     n_low_coverage = sum(1 for n, _, _, _ in linhas_dados if n == 2.5)
@@ -1991,24 +2743,25 @@ def run() -> None:
     # cor diferentes. Agora tem a sua própria contagem, separada do "sem
     # edge" a sério (sem sinal nenhum).
     n_alinhamento_forte = 0
+    n_challenger = len(linhas_challenger)
+    n_pending_market = sum(1 for n, _, _, _ in linhas_dados if n == 0.5)
     n_none = sum(1 for n, _, _, _ in linhas_dados if n == 0)
-    n_no_odds = 0
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
-        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura) · 🔴 {n_value} edge negativo · "
-        f"⚪ {n_watch} edge zero · ⚫ {n_none} relatório nulo"
+        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
+        f"⚪ {n_watch} edge zero · 🟣 {n_challenger} Challenger 125 experimental · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
-    if n_no_odds:
-        cabecalho += f"\n⚠️ {n_no_odds} sem odds"
     cabecalho += "\n"
     summary_lines = [cabecalho]
 
     # Separadores tornam a lista muito mais legível sem repetir informação.
     previous_group = None
-    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / COBERTURA INSUFICIENTE",
+    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / SEM PAPER",
                    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
-                   1: "⚪ EDGE ZERO / EXCLUÍDO", 0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
+                    1: "⚪ EDGE ZERO / EXCLUÍDO",
+                    0.5: "🟡 MERCADO PENDENTE / RECONSULTA AUTOMÁTICA",
+                   0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
     for nivel, bola, txt, url in linhas_dados:
         group = nivel if nivel in group_names else 0
         if group != previous_group:
@@ -2022,6 +2775,20 @@ def run() -> None:
             summary_lines.append(f'<a href="{safe_url}">📄 ABRIR RELATÓRIO</a>')
         else:
             summary_lines.append("⚠️ Relatório indisponível.")
+
+    # Challenger 125 nunca fica misturado com os sinais main-tour. Mesmo os
+    # casos com edge elevado continuam observações experimentais sem PAPER.
+    if linhas_challenger:
+        if summary_lines:
+            summary_lines.append("")
+        summary_lines.append("<b>🟣 CHALLENGER 125 · ESTRATÉGIA EXPERIMENTAL / SEM PAPER</b>")
+        for _, bola, txt, url in linhas_challenger:
+            summary_lines.append(f"{bola} {txt}")
+            if url:
+                safe_url = html.escape(url, quote=True)
+                summary_lines.append(f'<a href="{safe_url}">📄 ABRIR RELATÓRIO</a>')
+            else:
+                summary_lines.append("⚠️ Relatório indisponível.")
 
     # B3 da auditoria (28/07/2026): o Telegram limita mensagens a 4096
     # caracteres — com um torneio inteiro (20+ jogos com links), uma
@@ -2041,30 +2808,45 @@ def run() -> None:
     if current:
         chunks.append("\n".join(current))
 
-    run_metrics.update_context(phase="telegram")
+    notification_chunks = []
     for i, chunk in enumerate(chunks):
         prefix = f"(parte {i + 1}/{len(chunks)})\n" if len(chunks) > 1 and i > 0 else ""
-        send_message(prefix + chunk)
+        notification_chunks.append(prefix + chunk)
 
-    # Entrega adicional, opcional e independente do Telegram. Se o SMTP
-    # falhar, os relatórios e o resumo Telegram já publicados não são
-    # invalidados; o aviso fica explícito no log da run.
-    try:
-        send_run_report_email(today_str, match_reports)
-    except RuntimeError as exc:
-        print(f"[aviso] {exc}")
-    print(f"[info] Enviado com sucesso. {len(analyses)} jogo(s).")
+    # CHANGE-059: nenhuma notificação com links sai antes de o conteúdo
+    # público ser comprovadamente igual aos HTML desta run. O manifesto vive
+    # em RUNNER_TEMP e contém apenas a apresentação já calculada.
+    prepared_email = prepare_run_report_email(today_str, match_reports)
+    manifest = report_notifications.write_manifest(
+        run_date=today_str,
+        reports=report_artifacts,
+        telegram_chunks=notification_chunks,
+        email=prepared_email,
+        github_run_id=os.environ.get("GITHUB_RUN_ID"),
+    )
+    if manifest is not None:
+        run_metrics.update_context(
+            phase="notification_deferred",
+            report_publication={
+                "status": "PENDING",
+                "expected": len(report_artifacts),
+                "ready": 0,
+            },
+            report_notification_status="REPORTS_DEFERRED",
+        )
+        print(f"[notification] {len(report_artifacts)} relatório(s) diferido(s) até GitHub Pages READY.")
 
     reports_ok = sum(1 for _, _, url in match_reports if url)
     run_metrics.update_context(
         status=processing_status, phase="complete", processed=len(analyses),
-        analysis_failed=len(eligible) - len(analyses), reports_ok=reports_ok,
-        reports_failed=len(match_reports) - reports_ok, telegram_chunks=len(chunks),
+        analysis_failed=len(process_targets) - len(analyses), reports_ok=reports_ok,
+        reports_failed=len(match_reports) - reports_ok,
+        telegram_chunks=len(notification_chunks),
     )
     print(
         "[run_summary] "
-        f"eligible={len(eligible)} processed={len(analyses)} "
-        f"analysis_failed={len(eligible) - len(analyses)} "
+        f"eligible={len(eligible)} targets={len(process_targets)} processed={len(analyses)} "
+        f"analysis_failed={len(process_targets) - len(analyses)} "
         f"status={processing_status} processing_ratio={processing_ratio:.1%} "
         f"reports_ok={reports_ok} reports_failed={len(match_reports) - reports_ok} "
         f"telegram_chunks={len(chunks)}"
@@ -2083,6 +2865,11 @@ def run() -> None:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         today_calls = fetch_data.get_rapidapi_recorded_today_calls()
         print(f"[rapidapi_usage] Acumulado hoje ({today}): {today_calls} chamadas.")
+        run_metrics.update_context(
+            challenger_125_experiment=_experimental_tier_metrics(
+                tournament_eligible, process_targets, analyses,
+            )
+        )
     except Exception as exc:
         print(f"[aviso] falha ao registar uso da RapidAPI: {exc}")
 
@@ -2095,8 +2882,18 @@ def main() -> None:
         failure = exc
         run_metrics.update_context(
             status="failed", error_type=type(exc).__name__,
-            error_message=str(exc)[:500],
+            error_message=sanitize_error_message(exc),
         )
+        try:
+            result = send_run_failed_heartbeat(
+                datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                run_metrics.context_snapshot(),
+                exc,
+            )
+        except Exception:
+            result = {"status": "FAILED", "reason_code": "SMTP_SEND_FAILED"}
+            print("[email] heartbeat de falha indisponível; detalhes omitidos.")
+        _record_email_delivery(result, EMAIL_RUN_FAILED)
     finally:
         if failure is not None:
             try:
@@ -2107,6 +2904,8 @@ def main() -> None:
             metrics = run_metrics.append_run(context={
                 "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
                 "rapidapi_calls_by_endpoint": fetch_data.get_rapidapi_endpoint_counts(),
+                "rapidapi_calls_by_endpoint_family": fetch_data.get_rapidapi_endpoint_family_counts(),
+                "event_identity": fetch_data.get_rapidapi_identity_metrics(),
             })
             print(f"[metrics] {json.dumps(metrics, ensure_ascii=False, sort_keys=True)}")
             alerts = run_metrics.health_alerts(metrics)
@@ -2119,6 +2918,17 @@ def main() -> None:
                     print(f"[aviso] falha ao enviar alerta de saúde: {alert_exc}")
         except Exception as metrics_exc:
             print(f"[aviso] falha ao persistir métricas operacionais: {metrics_exc}")
+        dashboard_status = dashboard.build_and_write_best_effort()
+        if dashboard_status.get("status") == "AVAILABLE":
+            print(
+                "[dashboard] vista read-only atualizada: "
+                f"{dashboard_status.get('semantic_fingerprint', '')[:12]}"
+            )
+        else:
+            print(
+                "[dashboard] atualização não bloqueante indisponível: "
+                f"{dashboard_status.get('error', 'erro desconhecido')}"
+            )
     if failure is not None:
         raise failure
 

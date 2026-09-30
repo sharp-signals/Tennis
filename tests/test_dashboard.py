@@ -1,0 +1,1131 @@
+"""Contrato do Fenzobot Control Dashboard read-only."""
+
+from __future__ import annotations
+
+import copy
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from src import dashboard, dashboard_ui, report_html, run_metrics
+
+
+NOW = "2026-09-06T20:00:00+00:00"
+RID_GREEN = "11111111111111111111"
+RID_YELLOW = "22222222222222222222"
+
+
+def write_json(path: Path, value) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value), encoding="utf-8")
+
+
+def snapshot(
+    report_id: str,
+    key: str,
+    flag: str,
+    decision_state: str,
+    *,
+    outcome=None,
+    green=False,
+):
+    value = {
+        "key": key,
+        "report_id": report_id,
+        "commence_time_utc": "2026-09-06T18:00:00+00:00",
+        "player_a": {"name": f"Alpha {report_id[0]}"},
+        "player_b": {"name": f"Beta {report_id[0]}"},
+        "analysis": {"flag": flag},
+        "outcome": outcome,
+        "metrics": {"prelive_decision": {"state": decision_state}},
+    }
+    if green:
+        value["validation"] = {"cohorts": {"GREEN_STRONG_V1": {"eligible": True}}}
+    return value
+
+
+def summary(total=0, settled=0, pending=0, wins=0, losses=0, units=None, roi=None, odd=None):
+    return {
+        "total_entries": total,
+        "settled": settled,
+        "pending": pending,
+        "wins": wins,
+        "losses": losses,
+        "pushes": 0,
+        "win_rate_pct": round(100 * wins / (wins + losses), 2) if wins + losses else None,
+        "units": units,
+        "roi_pct": roi,
+        "average_odd": odd,
+    }
+
+
+class DashboardTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def _report(
+        self,
+        filename: str,
+        title: str,
+        *,
+        color: str | None = None,
+        decision_state: str | None = None,
+        snapshot_linkage: str | None = None,
+        snapshot_linkage_reason: str | None = None,
+    ) -> Path:
+        path = self.root / "docs/relatorios" / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        marker = (
+            f'<meta name="{report_html.REPORT_COLOR_META_NAME}" content="{color}">'
+            if color is not None else ""
+        )
+        if snapshot_linkage is not None:
+            marker += (
+                f'<meta name="{report_html.REPORT_SNAPSHOT_LINKAGE_META_NAME}" '
+                f'content="{snapshot_linkage}">'
+            )
+        if snapshot_linkage_reason is not None:
+            marker += (
+                f'<meta name="{report_html.REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME}" '
+                f'content="{snapshot_linkage_reason}">'
+            )
+        decision = ""
+        if decision_state is not None:
+            label, css_class, ball, _color = report_html.REPORT_DECISION_PRESENTATION[decision_state]
+            decision = (
+                f'<section class="decision-box {css_class}"><div class="decision-head">'
+                f'<span>{ball}</span><b>{label}</b></div></section>'
+            )
+        path.write_text(
+            f"<!doctype html><head>{marker}<title>{title}</title></head><body>{decision}</body>",
+            encoding="utf-8",
+        )
+        return path
+
+    def _base_sources(self) -> None:
+        snapshots = [
+            snapshot(
+                RID_GREEN, "atp:1", "🟢", "EDGE_POSITIVE", outcome={"winner_side": "a"}
+            ),
+            snapshot(
+                RID_YELLOW, "wta:2", "🟡", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT", green=True
+            ),
+        ]
+        write_json(self.root / "data/calibration_snapshots.json", {
+            "snapshots": snapshots, "updated_at_utc": NOW,
+        })
+        write_json(self.root / "data/paper_trades.json", {"schema_version": 1, "entries": [{
+            "key": "paper-1",
+            "pregame": {
+                "report_id": RID_GREEN, "snapshot_key": "atp:1",
+                "analyzed_at_utc": NOW, "selected_side": "a",
+                "market_type": "Moneyline", "odd": 2.0,
+            },
+            "settlement": {"result": "WIN", "pnl_units": 1.0},
+        }], "updated_at_utc": NOW})
+        manual_summary = summary(3, 2, 1, 1, 1, units=0.5, roi=25.0, odd=1.9)
+        write_json(self.root / "data/manual_paper_22bet.json", {
+            "schema_version": 1,
+            "source": {"synced_at_utc": NOW, "reference_bookmaker": "22Bet"},
+            "summary": manual_summary,
+            "by_market": {"Moneyline": manual_summary},
+            "by_side": {"UNDERDOG": manual_summary},
+        })
+        green_metrics = {
+            "sample_size": 1,
+            "settled_sample_size": 0,
+            "average_selected_market_probability": 0.44,
+            "average_selected_fenzobot_probability": 0.61,
+            "win_rate_pct": None,
+            "market": {"sample_size": 0, "accuracy_pct": None, "brier_score": None, "log_loss": None},
+            "fenzobot": {"sample_size": 0, "accuracy_pct": None, "brier_score": None, "log_loss": None},
+            "paired_delta": {"brier": None, "log_loss": None},
+            "closing_market_comparable": 0,
+            "closing_movement": {"average_probability_pp": None, "median_probability_pp": None, "positive_direction_pct": None},
+        }
+        write_json(self.root / "data/validation/green-strong-v1.json", {
+            "generated_at_utc": NOW,
+            "claims": "EXPERIMENTAL_NOT_VALIDATED",
+            "metrics": green_metrics,
+            "eligible_observations": [{"snapshot_key": "wta:2"}],
+            "guerra_selection_v1": {"status": "UNAVAILABLE"},
+        })
+        market_eval = {"sample_size": 1, "accuracy_pct": 100.0, "brier_score": 0.16, "log_loss": 0.51}
+        write_json(self.root / "data/market_ledger/derived/market-memory-v1.json", {
+            "generated_at_utc": NOW,
+            "claims": "EXPERIMENTAL_NOT_VALIDATED",
+            "observation_count": 2,
+            "events": [{
+                "event_key": "atp:1",
+                "entry_market_probabilities": {"a": 0.4, "b": 0.6},
+                "last_valid_prestart_market_probabilities": {"a": 0.45, "b": 0.55},
+            }],
+            "evaluation": {"market_only": market_eval, "market_plus_sharp": market_eval},
+        })
+        ledger = self.root / "data/market_ledger/observations/2026-09-06.jsonl"
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        rows = [
+            {"record_type": "MARKET_OBSERVATION", "observation_id": str(i), "capture": {"captured_at_utc": NOW}, "event": {"event_key": "atp:1"}}
+            for i in range(2)
+        ]
+        ledger.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        write_json(self.root / "data/run_metrics_log.json", [{
+            "timestamp": NOW, "status": "success", "phase": "complete", "eligible": 2,
+            "processed": 2, "analysis_failed": 0, "reports_failed": 0,
+            "rapidapi_calls": 10, "llm_calls": 0, "llm_estimated_cost_usd": 0,
+            "duration_seconds": 12.5,
+        }])
+        self._report(f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html", "Alpha vs Beta")
+        self._report(f"gamma-vs-delta-2026-09-06-{RID_YELLOW}.html", "Gamma vs Delta")
+
+    def _set_manual_reference(self, *, pending: int = 0) -> None:
+        manual_summary = summary(
+            52 + pending, 52, pending, 34, 18, units=14, roi=26.923, odd=1.931
+        )
+        manual_summary["win_rate_pct"] = 65.385
+        write_json(self.root / "data/manual_paper_22bet.json", {
+            "schema_version": 2,
+            "source": {"synced_at_utc": NOW, "reference_bookmaker": "22Bet"},
+            "summary": manual_summary,
+            "by_market": {
+                "Moneyline": {
+                    **summary(16, 16, 0, 12, 4, units=9.28, roi=58, odd=2.086),
+                    "win_rate_pct": 75,
+                },
+                "Handicap games": {
+                    **summary(36, 36, 0, 22, 14, units=4.72, roi=13.111, odd=1.862),
+                    "win_rate_pct": 61.111,
+                },
+            },
+            "by_side": {
+                "Underdog": {
+                    **summary(21, 21, 0, 16, 5, units=11.5, roi=54.762, odd=2.02),
+                    "win_rate_pct": 76.19,
+                },
+                "Favorito": {
+                    **summary(31, 31, 0, 18, 13, units=2.5, roi=8.065, odd=1.871),
+                    "win_rate_pct": 58.065,
+                },
+            },
+            "by_strategy": {
+                "GUERRA_SELECTION_V1": {
+                    "status": "AVAILABLE",
+                    "summary": summary(999, 999, 0, 999, 0, units=999, roi=999, odd=9.99),
+                    "private_rows": ["PRIVATE-GUERRA-ROW"],
+                }
+            },
+            "private_names": ["PRIVATE-PLAYER-NAME"],
+            "snapshot_keys": ["PRIVATE-SNAPSHOT-KEY"],
+        })
+
+    @staticmethod
+    def _comparison(
+        *,
+        green_wins=6,
+        green_losses=4,
+        guerra_wins=5,
+        guerra_losses=5,
+        green_roi=10.0,
+        guerra_roi=8.0,
+        green_profit=20.0,
+        guerra_profit=15.0,
+        green_resolved=10,
+        guerra_resolved=8,
+    ):
+        return dashboard._paper_results_comparison(
+            {
+                "wins": green_wins,
+                "losses": green_losses,
+                "resolved_entries": green_resolved,
+                "roi_pct": green_roi,
+                "net_profit_eur": green_profit,
+            },
+            {
+                "wins": guerra_wins,
+                "losses": guerra_losses,
+                "settled": guerra_resolved,
+                "flat_stake_projection": {
+                    "roi_pct": guerra_roi,
+                    "net_profit_eur": guerra_profit,
+                },
+            },
+        )
+
+    def build(self):
+        return dashboard.build_dashboard(root=self.root, generated_at_utc=NOW)
+
+    def test_build_without_any_source_uses_unavailable_not_artificial_zero(self):
+        result = self.build()
+        self.assertEqual(result["global"]["total_reports"], None)
+        self.assertEqual(result["global"]["total_snapshots"], None)
+        self.assertEqual(result["market_memory"]["total_observations"], None)
+        self.assertEqual(result["system_health"]["status"], "UNKNOWN")
+
+    def test_snapshot_totals_and_settled_are_counted(self):
+        self._base_sources()
+        result = self.build()
+        self.assertEqual(result["global"]["total_snapshots"], 2)
+        self.assertEqual(result["global"]["settled_snapshots"], 1)
+
+    def test_pending_snapshot_does_not_count_as_settled(self):
+        self._base_sources()
+        self.assertEqual(self.build()["report_history"]["snapshot_universe"], {"total": 2, "settled": 1})
+
+    def test_colors_do_not_conflate_green_strong(self):
+        self._base_sources()
+        result = self.build()
+        self.assertEqual(result["global"]["report_colors"]["GREEN"], 1)
+        self.assertEqual(result["global"]["report_colors"]["YELLOW"], 1)
+        self.assertEqual(result["global"]["green_strong_candidates"], 1)
+        self.assertTrue(result["days"][0]["reports"][1]["green_strong"])
+
+    def test_green_strong_zero_is_explicit_and_html_explains_no_conclusion(self):
+        self._base_sources()
+        path = self.root / "data/validation/green-strong-v1.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["metrics"]["sample_size"] = 0
+        value["eligible_observations"] = []
+        write_json(path, value)
+        result = self.build()
+        self.assertEqual(result["green_strong_v1"]["sample"]["candidates"], 0)
+        self.assertIn("N=0 — acumulação prospetiva iniciada", dashboard.render_dashboard_html(result))
+
+    def test_green_strong_metrics_are_copied_without_recalculation(self):
+        self._base_sources()
+        path = self.root / "data/validation/green-strong-v1.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["metrics"].update({
+            "win_rate_pct": 37.12,
+            "market": {"sample_size": 7, "brier_score": 0.271234, "log_loss": 0.812345},
+            "fenzobot": {"sample_size": 7, "brier_score": 0.251111, "log_loss": 0.799999},
+            "paired_delta": {"brier": -0.020123, "log_loss": -0.012346},
+        })
+        write_json(path, value)
+        panel = self.build()["green_strong_v1"]
+        self.assertEqual(panel["forecast"]["observed_win_rate_pct"], 37.12)
+        self.assertEqual(panel["proper_scoring"]["market_brier"], 0.271234)
+        self.assertEqual(panel["proper_scoring"]["delta_log_loss"], -0.012346)
+
+    def test_guerra_selection_is_allowlisted_aggregate_only(self):
+        self._base_sources()
+        path = self.root / "data/validation/green-strong-v1.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["guerra_selection_v1"] = {
+            "status": "AVAILABLE", "eligible_green_strong": 5, "selected_candidates": 2,
+            "selection_rate_pct": 40.0, "paper_entries": 3, "summary": summary(3, 2, 1, 2, 0),
+            "flat_stake_simulation": {
+                "status": "AVAILABLE", "stake_per_entry_eur": 10,
+                "included_resolved_entries": 2, "pending_entries": 1, "void_entries": 0,
+                "excluded_entries": 0, "resolved_stake_eur": 20,
+                "pending_exposure_eur": 10, "net_profit_eur": 9,
+                "roi_pct": 45, "exclusion_reasons": {},
+            },
+            "snapshot_keys": ["PRIVATE-KEY"], "names": ["PRIVATE-NAME"], "notes": "PRIVATE-NOTE",
+        }
+        write_json(path, value)
+        result = self.build()
+        serialized = json.dumps(result)
+        self.assertEqual(result["guerra_selection_v1"]["selected_candidates"], 2)
+        self.assertEqual(result["guerra_selection_v1"]["flat_stake_simulation"]["net_profit_eur"], 9)
+        self.assertNotIn("PRIVATE-KEY", serialized)
+        self.assertNotIn("PRIVATE-NAME", serialized)
+        self.assertNotIn("PRIVATE-NOTE", serialized)
+
+    def test_flat_stake_simulation_is_allowlisted_and_rendered_with_required_warning(self):
+        self._base_sources()
+        path = self.root / "data/validation/green-strong-v1.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["guerra_selection_v1"] = {
+            "status": "AVAILABLE", "summary": {},
+            "flat_stake_simulation": {
+                "status": "DEGRADED", "stake_per_entry_eur": 10,
+                "included_resolved_entries": 4, "pending_entries": 1,
+                "void_entries": 1, "excluded_entries": 2,
+                "resolved_stake_eur": 40, "pending_exposure_eur": 10,
+                "net_profit_eur": 7.5, "roi_pct": 18.75,
+                "exclusion_reasons": {"INVALID_DECIMAL_ODD": 1, "UNRECOGNIZED_RESULT": 1},
+                "private_rows": ["PRIVATE-ROW"],
+            },
+        }
+        write_json(path, value)
+        result = self.build()
+        simulation = result["guerra_selection_v1"]["flat_stake_simulation"]
+        self.assertEqual(simulation["status"], "DEGRADED")
+        self.assertEqual(simulation["resolved_stake_eur"], 40)
+        self.assertNotIn("PRIVATE-ROW", json.dumps(result))
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Se apostássemos €10 em cada aposta GUERRA", rendered)
+        self.assertIn("€10 por aposta/leg; não é dinheiro real", rendered)
+        self.assertIn("INVALID_DECIMAL_ODD", rendered)
+
+    def test_zero_guerra_sample_is_unavailable_without_zero_profit_conclusion(self):
+        self._base_sources()
+        result = self.build()
+        simulation = result["guerra_selection_v1"]["flat_stake_simulation"]
+        self.assertEqual(simulation["status"], "UNAVAILABLE")
+        self.assertIsNone(simulation["net_profit_eur"])
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Ainda sem amostra válida — não interpretar como resultado €0", rendered)
+
+    def test_underdog_pair_completeness_is_copied(self):
+        self._base_sources()
+        path = self.root / "data/validation/green-strong-v1.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["guerra_selection_v1"] = {
+            "status": "AVAILABLE", "summary": {},
+            "underdog_pair_completeness": {
+                "underdog_selected_candidates": 4,
+                "complete_moneyline_positive_handicap_pairs": 2,
+                "moneyline_only": 1, "positive_handicap_only": 1,
+                "incomplete_or_unrecognized": 0,
+            },
+        }
+        write_json(path, value)
+        pair = self.build()["guerra_selection_v1"]["underdog_pair_completeness"]
+        self.assertEqual(pair["complete_moneyline_positive_handicap_pairs"], 2)
+        self.assertEqual(pair["positive_handicap_only"], 1)
+
+    def test_paper_universes_remain_separate(self):
+        self._base_sources()
+        result = self.build()
+        self.assertEqual(result["paper_technical"]["total_entries"], 1)
+        self.assertEqual(result["paper_22bet"]["total_entries"], 3)
+
+    def test_green_monetization_is_prominent_and_separate_from_guerra(self):
+        self._base_sources()
+        result = self.build()
+        green = result["green_monetization_v1"]
+        self.assertEqual(green["status"], "AVAILABLE")
+        self.assertEqual(green["eligible_entries"], 1)
+        self.assertEqual(green["resolved_stake_eur"], 10.0)
+        self.assertEqual(green["net_profit_eur"], 10.0)
+        self.assertEqual(green["roi_pct"], 100.0)
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Resultados PAPER — visão simples", rendered)
+        self.assertIn("Fonte: green_monetization_v1", rendered)
+        self.assertIn("return paperResultsHero()+simpleSystemStatus()", rendered)
+        self.assertIn("Histórico GUERRA — SUPERSEDED", rendered)
+        self.assertIn("Não é dinheiro real", rendered)
+        self.assertNotEqual(
+            result["green_monetization_v1"].get("net_profit_eur"),
+            result["guerra_selection_v1"]["flat_stake_simulation"].get("net_profit_eur"),
+        )
+
+    def test_guerra_hero_uses_total_manual_summary_not_superseded_strategy(self):
+        self._base_sources()
+        self._set_manual_reference()
+        result = self.build()
+        manual = result["paper_22bet"]
+        self.assertEqual(manual["total_entries"], 52)
+        self.assertEqual(manual["flat_stake_projection"]["net_profit_eur"], 140.0)
+        self.assertNotEqual(manual["total_entries"], 999)
+        self.assertEqual(result["guerra_selection_v1"]["status"], "UNAVAILABLE")
+
+    def test_manual_units_project_to_ten_euro_profit_and_stake(self):
+        self._base_sources()
+        self._set_manual_reference()
+        projection = self.build()["paper_22bet"]["flat_stake_projection"]
+        self.assertEqual(projection["basis"], "paper_22bet.summary")
+        self.assertEqual(projection["net_profit_eur"], 140.0)
+        self.assertEqual(projection["resolved_stake_eur"], 520.0)
+        self.assertEqual(projection["roi_pct"], 26.923)
+
+    def test_manual_market_and_side_breakdowns_are_preserved(self):
+        self._base_sources()
+        self._set_manual_reference()
+        manual = self.build()["paper_22bet"]
+        self.assertEqual(manual["by_market"]["Moneyline"]["wins"], 12)
+        self.assertEqual(manual["by_market"]["Moneyline"]["units"], 9.28)
+        self.assertEqual(manual["by_market"]["Handicap games"]["losses"], 14)
+        self.assertEqual(manual["by_side"]["Underdog"]["win_rate_pct"], 76.19)
+        self.assertEqual(manual["by_side"]["Favorito"]["roi_pct"], 8.065)
+
+    def test_missing_manual_source_is_unavailable_never_zero_euros(self):
+        self._base_sources()
+        (self.root / "data/manual_paper_22bet.json").unlink()
+        manual = self.build()["paper_22bet"]
+        self.assertEqual(manual["status"], "UNAVAILABLE")
+        self.assertEqual(manual["flat_stake_projection"]["status"], "UNAVAILABLE")
+        self.assertIsNone(manual["flat_stake_projection"]["net_profit_eur"])
+        self.assertIsNone(manual["flat_stake_projection"]["resolved_stake_eur"])
+
+    def test_manual_pending_is_separate_from_resolved_projection(self):
+        self._base_sources()
+        self._set_manual_reference(pending=3)
+        projection = self.build()["paper_22bet"]["flat_stake_projection"]
+        self.assertEqual(projection["settled_entries"], 52)
+        self.assertEqual(projection["pending_entries"], 3)
+        self.assertEqual(projection["resolved_stake_eur"], 520.0)
+        self.assertEqual(projection["pending_exposure_eur"], 30.0)
+
+    def test_comparison_is_descriptive_and_never_combines_profit(self):
+        self._set_manual_reference()
+        manual_doc = json.loads(
+            (self.root / "data/manual_paper_22bet.json").read_text(encoding="utf-8")
+        )
+        manual = dashboard._paper_22bet(manual_doc)
+        comparison = dashboard._paper_results_comparison({
+            "wins": 51,
+            "losses": 24,
+            "resolved_entries": 75,
+            "roi_pct": -0.43,
+            "net_profit_eur": -3.19,
+        }, manual)
+        self.assertEqual(
+            comparison["statement"],
+            "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do "
+            "Guerra apresenta maior ROI e resultado acumulado, com menos apostas.",
+        )
+        self.assertTrue(comparison["profit_is_never_aggregated"])
+        self.assertNotIn("combined", json.dumps(comparison).casefold())
+        for forbidden in (
+            "melhor estratégia", "superior", "vencedor", "edge comprovado",
+            "expectativa futura",
+        ):
+            self.assertNotIn(forbidden, comparison["statement"].casefold())
+
+    def test_comparison_all_equal_values_use_explicit_tie_copy(self):
+        comparison = self._comparison(
+            green_wins=5,
+            green_losses=5,
+            guerra_wins=5,
+            guerra_losses=5,
+            green_roi=8.0,
+            guerra_roi=8.0,
+            green_profit=15.0,
+            guerra_profit=15.0,
+            green_resolved=10,
+            guerra_resolved=10,
+        )
+        statement = comparison["statement"]
+        self.assertIn("o mesmo win rate", statement)
+        self.assertIn("o mesmo ROI", statement)
+        self.assertIn("o mesmo resultado acumulado", statement)
+        self.assertIn("o mesmo número de apostas resolvidas", statement)
+        self.assertNotIn("maior", statement)
+        self.assertNotIn("menos apostas", statement)
+
+    def test_comparison_single_ties_do_not_claim_greater_for_equal_dimension(self):
+        cases = (
+            (
+                {"green_wins": 5, "green_losses": 5, "guerra_wins": 5, "guerra_losses": 5},
+                "o mesmo win rate",
+                "maior win rate",
+            ),
+            (
+                {"green_roi": 8.0, "guerra_roi": 8.0},
+                "o mesmo ROI",
+                "maior ROI",
+            ),
+            (
+                {"green_profit": 15.0, "guerra_profit": 15.0},
+                "o mesmo resultado acumulado",
+                "maior resultado acumulado",
+            ),
+            (
+                {"green_resolved": 10, "guerra_resolved": 10},
+                "o mesmo número de apostas resolvidas",
+                "menos apostas",
+            ),
+        )
+        for overrides, expected, forbidden in cases:
+            with self.subTest(expected=expected):
+                statement = self._comparison(**overrides)["statement"]
+                self.assertIn(expected, statement)
+                self.assertNotIn(forbidden, statement)
+
+    def test_comparison_two_ties_preserve_non_tied_comparisons(self):
+        statement = self._comparison(
+            green_wins=5,
+            green_losses=5,
+            guerra_wins=5,
+            guerra_losses=5,
+            green_roi=8.0,
+            guerra_roi=8.0,
+            green_profit=20.0,
+            guerra_profit=15.0,
+            green_resolved=10,
+            guerra_resolved=8,
+        )["statement"]
+        self.assertIn("o mesmo win rate", statement)
+        self.assertIn("o mesmo ROI", statement)
+        self.assertIn("os GREEN apresentam maior resultado acumulado", statement)
+        self.assertIn("PAPER manual do Guerra tem menos apostas resolvidas", statement)
+        self.assertNotIn("maior win rate", statement)
+        self.assertNotIn("maior ROI", statement)
+
+    def test_guerra_private_rows_names_and_keys_are_never_published(self):
+        self._base_sources()
+        self._set_manual_reference()
+        serialized = json.dumps(self.build())
+        self.assertNotIn("PRIVATE-GUERRA-ROW", serialized)
+        self.assertNotIn("PRIVATE-PLAYER-NAME", serialized)
+        self.assertNotIn("PRIVATE-SNAPSHOT-KEY", serialized)
+
+    def test_progressive_disclosure_keeps_history_and_technical_metrics(self):
+        self._base_sources()
+        self._set_manual_reference()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn("Ver análise dos GREEN", rendered)
+        self.assertIn("Ver análise do PAPER Guerra", rendered)
+        self.assertIn("Detalhes técnicos e validação", rendered)
+        self.assertIn("Histórico GUERRA — SUPERSEDED", rendered)
+        self.assertIn("GUERRA_SELECTION_V1 · histórico preservado", rendered)
+        self.assertIn("SNAPSHOT_COVERAGE_RECONCILIATION_V1", rendered)
+        self.assertIn("PAIRED_COMPARISON", rendered)
+
+    def test_paper_disclaimer_and_manual_simulation_label_are_visible(self):
+        self._base_sources()
+        self._set_manual_reference()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn(
+            "Simulação €10 por aposta a partir das unidades do PAPER manual",
+            rendered,
+        )
+        self.assertIn(
+            "Amostras diferentes; comparação descritiva, não prova de desempenho futuro.",
+            rendered,
+        )
+        self.assertIn("Não é dinheiro real", rendered)
+
+    def test_paper_hero_mobile_layout_collapses_without_horizontal_overflow(self):
+        self._base_sources()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn(
+            "@media(max-width:720px){.paper-result-grid,.simple-games{grid-template-columns:1fr}",
+            rendered,
+        )
+        self.assertIn(".paper-result-card{min-width:0", rendered)
+
+    def test_market_observation_count_uses_existing_derived_metric(self):
+        self._base_sources()
+        result = self.build()
+        self.assertEqual(result["market_memory"]["total_observations"], 2)
+        self.assertEqual(result["market_memory"]["observations_by_day"][-1]["observations"], 2)
+
+    def test_closing_coverage_uses_only_comparable_closing(self):
+        self._base_sources()
+        path = self.root / "data/market_ledger/derived/market-memory-v1.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["events"].append({"event_key": "wta:2", "entry_market_probabilities": {"a": 0.5, "b": 0.5}})
+        write_json(path, value)
+        market = self.build()["market_memory"]
+        self.assertEqual(market["events_with_comparable_closing"], 1)
+        self.assertEqual(market["closing_coverage_pct"], 50.0)
+
+    def test_system_health_reuses_existing_alerts(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["rapidapi_calls"] = 700
+        write_json(path, value)
+        with patch.dict(os.environ, {"ALERT_RAPIDAPI_CALLS": "600"}):
+            panel = self.build()["system_health"]
+        self.assertEqual(panel["status"], "DEGRADED")
+        self.assertEqual(panel["alerts"], run_metrics.health_alerts(value[-1]))
+
+    def test_simple_status_is_neutral_for_reports_failed_degraded_run(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["reports_failed"] = 1
+        write_json(path, value)
+        result = self.build()
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertEqual(result["system_health"]["status"], "DEGRADED")
+        self.assertIn("Bot com alertas", rendered)
+        self.assertIn("relatórios falhados: 1", rendered)
+        self.assertNotIn("dados secundários", rendered)
+
+    def test_simple_status_is_neutral_for_analysis_failed_degraded_run(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["analysis_failed"] = 1
+        write_json(path, value)
+        result = self.build()
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertEqual(result["system_health"]["status"], "DEGRADED")
+        self.assertIn("Bot com alertas", rendered)
+        self.assertIn("análises falhadas: 1/2 (50%)", rendered)
+        self.assertNotIn("dados secundários", rendered)
+
+    def test_simple_status_keeps_healthy_copy(self):
+        self._base_sources()
+        result = self.build()
+        self.assertEqual(result["system_health"]["status"], "HEALTHY")
+        self.assertIn("Bot operacional", dashboard.render_dashboard_html(result))
+
+    def test_failed_run_has_failed_status(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["status"] = "failed"
+        write_json(path, value)
+        result = self.build()
+        self.assertEqual(result["system_health"]["status"], "FAILED")
+        self.assertIn(
+            "Atenção · falha registada na execução",
+            dashboard.render_dashboard_html(result),
+        )
+
+    def test_unrecognized_or_missing_run_status_is_unknown(self):
+        self._base_sources()
+        path = self.root / "data/run_metrics_log.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value[-1]["status"] = "future-state"
+        write_json(path, value)
+        result = self.build()["system_health"]
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["recent_runs"][-1]["status"], "UNKNOWN")
+        value[-1].pop("status")
+        write_json(path, value)
+        self.assertEqual(self.build()["system_health"]["status"], "UNKNOWN")
+
+    def test_legacy_report_is_listed_without_fuzzy_linkage(self):
+        self._base_sources()
+        self._report("alpha-vs-beta-2026-09-05.html", "Alpha 1 vs Beta 1")
+        legacy = next(row for day in self.build()["days"] for row in day["reports"] if row["date"] == "2026-09-05")
+        self.assertEqual(legacy["linkage"], "LEGACY_UNLINKED")
+        self.assertEqual(legacy["color"], "UNAVAILABLE")
+        self.assertIsNone(legacy["scheduled_start_utc"])
+
+    def test_report_id_linkage_is_exact(self):
+        self._base_sources()
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "GREEN")
+        self.assertTrue(report["paper_technical"])
+
+    def test_exact_report_id_has_priority_over_self_described_color(self):
+        self._base_sources()
+        path = self.root / "docs/relatorios" / f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html"
+        path.unlink()
+        self._report(path.name, "Alpha vs Beta", color="RED")
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "GREEN")
+
+    def test_exact_report_color_uses_decision_state_not_analysis_flag(self):
+        self._base_sources()
+        path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["analysis"]["flag"] = "🟢"
+        value["snapshots"][0]["metrics"]["prelive_decision"]["state"] = "EDGE_NEGATIVE"
+        write_json(path, value)
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "RED")
+        self.assertTrue(report["paper_technical"])
+
+    def test_exact_legacy_snapshot_uses_report_contract_not_analysis_flag(self):
+        self._base_sources()
+        snapshots_path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(snapshots_path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["metrics"].pop("prelive_decision")
+        write_json(snapshots_path, value)
+        report_path = self.root / "docs/relatorios" / f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html"
+        report_path.unlink()
+        self._report(report_path.name, "Alpha vs Beta", decision_state="EDGE_NEGATIVE")
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "RED")
+        self.assertTrue(report["paper_technical"])
+
+    def test_exact_legacy_snapshot_prefers_self_described_report_color(self):
+        self._base_sources()
+        snapshots_path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(snapshots_path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["metrics"].pop("prelive_decision")
+        write_json(snapshots_path, value)
+        report_path = self.root / "docs/relatorios" / f"alpha-vs-beta-2026-09-06-{RID_GREEN}.html"
+        report_path.unlink()
+        self._report(report_path.name, "Alpha vs Beta", color="YELLOW")
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "YELLOW")
+        self.assertTrue(report["paper_technical"])
+
+    def test_exact_legacy_snapshot_without_report_contract_is_unavailable(self):
+        self._base_sources()
+        snapshots_path = self.root / "data/calibration_snapshots.json"
+        value = json.loads(snapshots_path.read_text(encoding="utf-8"))
+        value["snapshots"][0]["metrics"].pop("prelive_decision")
+        write_json(snapshots_path, value)
+        report = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha 1 vs Beta 1")
+        self.assertEqual(report["linkage"], "EXACT_REPORT_ID")
+        self.assertEqual(report["color"], "UNAVAILABLE")
+        self.assertTrue(report["paper_technical"])
+
+    def test_rerun_with_new_report_id_uses_self_described_canonical_color(self):
+        self._base_sources()
+        self._report("alpha-vs-beta-2026-09-06-33333333333333333333.html", "Alpha rerun", color="RED")
+        rerun = next(row for row in self.build()["days"][0]["reports"] if row["title"] == "Alpha rerun")
+        self.assertEqual(rerun["linkage"], "SELF_DESCRIBED_REPORT")
+        self.assertEqual(rerun["color"], "RED")
+        self.assertFalse(rerun["green_strong"])
+        self.assertFalse(rerun["paper_technical"])
+
+    def test_collision_report_is_self_describing_and_counted_without_snapshot_linkage(self):
+        self._base_sources()
+        self._report(
+            "new-a-vs-new-b-2026-09-06-33333333333333333334.html",
+            "New A vs New B",
+            color="GREEN",
+            snapshot_linkage="COLLISION",
+            snapshot_linkage_reason="PROVIDER_MATCH_ID_REUSED",
+        )
+        result = self.build()
+        row = next(item for item in result["days"][0]["reports"] if item["title"] == "New A vs New B")
+        self.assertEqual(row["linkage"], "SNAPSHOT_IDENTITY_COLLISION")
+        self.assertEqual(row["snapshot_linkage_reason"], "PROVIDER_MATCH_ID_REUSED")
+        self.assertEqual(row["color"], "GREEN")
+        self.assertFalse(row["paper_technical"])
+        self.assertIn("snapshot_reconciliation_v1", result)
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("Cobertura jogos → snapshots", rendered)
+
+    def test_known_historical_dom_contract_is_not_a_css_class_shortcut(self):
+        self._base_sources()
+        self._report(
+            "known-vs-contract-2026-09-05-44444444444444444444.html",
+            "Known contract",
+            decision_state="EDGE_NEGATIVE",
+        )
+        known = next(row for day in self.build()["days"] for row in day["reports"] if row["title"] == "Known contract")
+        self.assertEqual(known["linkage"], "HISTORICAL_DOM_CONTRACT")
+        self.assertEqual(known["color"], "RED")
+        self.assertFalse(known["green_strong"])
+        self.assertFalse(known["paper_technical"])
+
+        fake = self._report("fake-vs-class-2026-09-05.html", "Fake class")
+        fake.write_text(
+            '<!doctype html><title>Fake class</title><section class="decision-box negative">not canonical</section>',
+            encoding="utf-8",
+        )
+        fake_row = next(row for day in self.build()["days"] for row in day["reports"] if row["title"] == "Fake class")
+        self.assertEqual(fake_row["linkage"], "LEGACY_UNLINKED")
+        self.assertEqual(fake_row["color"], "UNAVAILABLE")
+
+    def test_supported_report_markers_reduce_unavailable_without_inference(self):
+        self._base_sources()
+        for index, color in enumerate(("GREEN", "YELLOW", "RED", "GREEN", "RED")):
+            self._report(
+                f"marked-{index}-vs-player-2026-09-05-{index + 5:020x}.html",
+                f"Marked {index}",
+                color=color,
+            )
+        self._report("unknown-vs-player-2026-09-05.html", "Unknown legacy")
+        day = next(item for item in self.build()["days"] if item["date"] == "2026-09-05")
+        self.assertEqual(day["counts"]["UNAVAILABLE"], 1)
+        self.assertLess(day["counts"]["UNAVAILABLE"], day["counts"]["reports"] / 2)
+        self.assertEqual(day["counts"]["GREEN_STRONG"], 0)
+        self.assertEqual(day["counts"]["PAPER_TECHNICAL"], 0)
+
+    def test_private_sheet_fields_never_enter_outputs(self):
+        self._base_sources()
+        os.environ["DASHBOARD_TEST_SECRET"] = "SECRET-MUST-NOT-LEAK"
+        try:
+            result = self.build()
+            rendered = dashboard.render_dashboard_html(result)
+        finally:
+            os.environ.pop("DASHBOARD_TEST_SECRET", None)
+        self.assertNotIn("SECRET-MUST-NOT-LEAK", json.dumps(result))
+        self.assertNotIn("SECRET-MUST-NOT-LEAK", rendered)
+
+    def test_script_json_escapes_script_termination(self):
+        value = {"title": "</script><script>alert(1)</script>"}
+        rendered = dashboard.render_dashboard_html({
+            "generated_at_utc": NOW, "days": [], "global": {}, "source_freshness": {},
+            "report_history": {}, "green_strong_v1": {}, "guerra_selection_v1": {},
+            "market_memory": {}, "paper_technical": {}, "paper_22bet": {}, "system_health": {},
+            **value,
+        })
+        self.assertNotIn("</script><script>alert(1)</script>", rendered)
+
+    def test_generation_makes_no_network_or_llm_call(self):
+        self._base_sources()
+        with patch("socket.create_connection", side_effect=AssertionError("network")), patch(
+            "src.analyze.analyze_match", side_effect=AssertionError("llm")
+        ) as llm:
+            result = self.build()
+        self.assertEqual(result["mode"], "READ_ONLY_DERIVED_DASHBOARD")
+        llm.assert_not_called()
+
+    def test_best_effort_boundary_swallows_dashboard_failure(self):
+        with patch("src.dashboard.build_and_write", side_effect=RuntimeError("boom")):
+            status = dashboard.build_and_write_best_effort(root=self.root)
+        self.assertEqual(status["status"], "UNAVAILABLE")
+        self.assertIn("RuntimeError", status["error"])
+
+    def test_report_links_resolve_to_existing_files(self):
+        self._base_sources()
+        for day in self.build()["days"]:
+            for report in day["reports"]:
+                filename = report["url"].split("/")[-1]
+                self.assertTrue((self.root / "docs/relatorios" / filename).exists())
+
+    def test_build_and_write_generates_dashboard_route_and_contract(self):
+        self._base_sources()
+        result = dashboard.build_and_write(root=self.root, generated_at_utc=NOW)
+        self.assertTrue((self.root / "docs/dashboard/index.html").exists())
+        saved = json.loads((self.root / "data/dashboard/fenzobot-dashboard-v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(saved["change_id"], dashboard.CHANGE_ID)
+        self.assertEqual(saved["semantic_fingerprint"], result["semantic_fingerprint"])
+
+    def test_html_contains_global_day_toggle_and_sidebar(self):
+        self._base_sources()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn('id="global-toggle"', rendered)
+        self.assertIn('id="day-toggle"', rendered)
+        self.assertIn("Histórico de relatórios", rendered)
+
+    def test_guidance_dictionary_covers_every_required_metric_family(self):
+        required = {
+            "Jogos distintos", "Versões de relatório", "Snapshots", "Liquidados",
+            "Taxa", "Intervalo", "Mercado médio", "Win rate observado",
+            "Market Brier", "Fenzobot Brier", "Δ Brier", "Δ Log Loss",
+            "Closing comparável N", "Movimento médio", "Na direção Fenzobot",
+            "GS elegíveis", "Candidatos selecionados", "Taxa de seleção", "Entradas / legs",
+            "W–L", "Unidades", "ROI", "Odd média", "Market-only N",
+            "Market + Fenzobot N", "RapidAPI calls", "LLM calls", "Custo LLM USD",
+            "Duração", "Frescura da fonte", "Timestamp da fonte",
+            "Resultado acumulado", "Total apostado concluído", "Em aberto", "ROI stake fixa",
+            "Resultado GREEN", "Stake resolvida GREEN", "Exposição pendente GREEN",
+            "ROI GREEN", "Legs resolvidas", "Legs pendentes", "Legs excluídas",
+            "Vitórias GREEN", "Derrotas GREEN", "Voids GREEN",
+            "Matchups observados", "Identidades elegíveis", "Ligação exata",
+            "Colisões de ID", "Sem snapshot elegível", "Snapshots criados",
+            "Snapshots liquidados", "Cobertura elegível → snapshot",
+        }
+        self.assertEqual(required - set(dashboard_ui.METRIC_HELP), set())
+        self.assertEqual(
+            {
+                "REPORT_HISTORY", "GREEN_STRONG_V1", "GUERRA_SELECTION_V1",
+                "GREEN_MONETIZATION_V1",
+                "SNAPSHOT_RECONCILIATION_V1",
+                "PAIRED_COMPARISON", "MARKET_MEMORY", "PAPER_TECHNICAL",
+                "PAPER_22BET", "SYSTEM_HEALTH", "SOURCE_FRESHNESS",
+            } - set(dashboard_ui.PANEL_GUIDANCE),
+            set(),
+        )
+
+    def test_guidance_is_visible_progressive_and_keyboard_accessible(self):
+        self._base_sources()
+        result = self.build()
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertIn("guidance_v1", result)
+        self.assertIn("HEALTHY/OK não certifica qualidade das odds", rendered)
+        self.assertIn('class=\"dashboard-legend\"', rendered)
+        self.assertIn('class=\"help-trigger\"', rendered)
+        self.assertIn('type=\"button\"', rendered)
+        self.assertIn('aria-expanded=\"false\"', rendered)
+        self.assertIn("event.key!=='Escape'", rendered)
+        self.assertIn("@media(max-width:560px)", rendered)
+        self.assertIn("overflow-wrap:anywhere", rendered)
+
+    def test_sidebar_groups_days_descending(self):
+        self._base_sources()
+        self._report("old-vs-report-2026-09-05.html", "Old vs Report")
+        days = self.build()["days"]
+        self.assertEqual([day["date"] for day in days], ["2026-09-06", "2026-09-05"])
+
+    def test_three_versions_of_same_matchup_keep_report_count_and_group_once(self):
+        for index, color in enumerate(("GREEN", "YELLOW", "RED"), start=1):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{index:020d}.html",
+                "Alpha vs Beta",
+                color=color,
+            )
+        result = self.build()
+        day = result["days"][0]
+        self.assertEqual(day["counts"]["reports"], 3)
+        self.assertEqual(day["counts"]["matchups"], 1)
+        self.assertEqual(len(day["matchups"]), 1)
+        self.assertEqual(day["matchups"][0]["version_count"], 3)
+        self.assertEqual(len(day["matchups"][0]["version_indexes"]), 3)
+        self.assertEqual(result["global"]["total_reports"], 3)
+        self.assertEqual(result["global"]["distinct_matchups"], 1)
+
+    def test_two_matchups_and_five_versions_have_explicit_daily_counts(self):
+        for index in range(3):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{index + 1:020d}.html",
+                "Alpha vs Beta",
+                color="GREEN",
+            )
+        for index in range(2):
+            self._report(
+                f"gamma-vs-delta-2026-09-06-{index + 11:020d}.html",
+                "Gamma vs Delta",
+                color="RED",
+            )
+        day = self.build()["days"][0]
+        self.assertEqual(day["counts"]["matchups"], 2)
+        self.assertEqual(day["counts"]["reports"], 5)
+        self.assertEqual(sorted(row["version_count"] for row in day["matchups"]), [2, 3])
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn("${c.matchups} jogos · ${c.reports} versões", rendered)
+
+    def test_different_report_ids_with_same_snapshot_key_group_together(self):
+        report_ids = ("33333333333333333331", "33333333333333333332")
+        snapshots = [snapshot(report_id, "atp:shared", "🟢", "EDGE_POSITIVE") for report_id in report_ids]
+        write_json(self.root / "data/calibration_snapshots.json", {"snapshots": snapshots})
+        for report_id in report_ids:
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{report_id}.html",
+                "Alpha vs Beta",
+                color="RED",
+            )
+        result = self.build()
+        matchup = result["days"][0]["matchups"][0]
+        self.assertEqual(result["days"][0]["counts"]["matchups"], 1)
+        self.assertEqual(matchup["version_count"], 2)
+        self.assertEqual(matchup["match_key_source"], "SNAPSHOT_KEY")
+        self.assertFalse(matchup["match_key_fallback"])
+
+    def test_self_described_fallback_groups_only_within_same_date(self):
+        for day in ("2026-09-05", "2026-09-06"):
+            for index in range(2):
+                self._report(
+                    f"alpha-vs-beta-{day}-{index + 41:020d}.html",
+                    "Álpha vs Béta",
+                    color="YELLOW",
+                )
+        result = self.build()
+        self.assertEqual(result["global"]["total_reports"], 4)
+        self.assertEqual(result["global"]["distinct_matchups"], 2)
+        for day in result["days"]:
+            self.assertEqual(day["counts"]["matchups"], 1)
+            self.assertTrue(day["matchups"][0]["match_key_fallback"])
+            self.assertEqual(day["matchups"][0]["match_key_source"], "DATE_NORMALIZED_TITLE")
+
+    def test_canonical_identifiers_take_precedence_over_identical_title_fallback(self):
+        first = snapshot("44444444444444444441", "atp:event-a", "🟢", "EDGE_POSITIVE")
+        second = snapshot("44444444444444444442", "atp:event-b", "🟢", "EDGE_POSITIVE")
+        for item in (first, second):
+            item["player_a"] = {"name": "Alpha"}
+            item["player_b"] = {"name": "Beta"}
+        write_json(self.root / "data/calibration_snapshots.json", {"snapshots": [first, second]})
+        for report_id in (first["report_id"], second["report_id"]):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{report_id}.html",
+                "Alpha vs Beta",
+                color="GREEN",
+            )
+        day = self.build()["days"][0]
+        self.assertEqual(day["counts"]["reports"], 2)
+        self.assertEqual(day["counts"]["matchups"], 2)
+        self.assertEqual({row["match_key_source"] for row in day["matchups"]}, {"SNAPSHOT_KEY"})
+
+    def test_unlinked_rerun_joins_one_unambiguous_canonical_matchup(self):
+        linked = snapshot("55555555555555555551", "wta:event-a", "🟡", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT")
+        linked["player_a"] = {"name": "Alpha"}
+        linked["player_b"] = {"name": "Beta"}
+        write_json(self.root / "data/calibration_snapshots.json", {"snapshots": [linked]})
+        self._report(
+            f"alpha-vs-beta-2026-09-06-{linked['report_id']}.html",
+            "Alpha vs Beta",
+            color="YELLOW",
+        )
+        self._report(
+            "alpha-vs-beta-2026-09-06-55555555555555555552.html",
+            "Alpha vs Beta",
+            color="YELLOW",
+        )
+        day = self.build()["days"][0]
+        matchup = day["matchups"][0]
+        self.assertEqual(day["counts"], {
+            "reports": 2,
+            "matchups": 1,
+            "GREEN": 0,
+            "YELLOW": 2,
+            "RED": 0,
+            "UNAVAILABLE": 0,
+            "GREEN_STRONG": 0,
+            "PAPER_TECHNICAL": 0,
+        })
+        self.assertEqual(matchup["match_key_source"], "SNAPSHOT_KEY")
+        self.assertFalse(matchup["match_key_fallback"])
+        self.assertEqual(matchup["fallback_version_count"], 1)
+        self.assertEqual(matchup["version_count"], 2)
+
+    def test_color_counts_remain_version_based_and_filter_semantics_are_explicit(self):
+        for index, color in enumerate(("GREEN", "GREEN", "RED"), start=51):
+            self._report(
+                f"alpha-vs-beta-2026-09-06-{index:020d}.html",
+                "Alpha vs Beta",
+                color=color,
+            )
+        result = self.build()
+        day = result["days"][0]
+        self.assertEqual(day["counts"]["GREEN"], 2)
+        self.assertEqual(day["counts"]["RED"], 1)
+        self.assertEqual(day["counts"]["matchups"], 1)
+        self.assertEqual(day["color_filter_semantics"], "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS")
+        self.assertEqual(result["report_grouping"]["color_filter_semantics"], day["color_filter_semantics"])
+
+    def test_all_historical_urls_remain_in_flat_and_grouped_views(self):
+        self._base_sources()
+        result = self.build()
+        flat_urls = {report["url"] for day in result["days"] for report in day["reports"]}
+        grouped_urls = {
+            day["reports"][index]["url"]
+            for day in result["days"]
+            for matchup in day["matchups"]
+            for index in matchup["version_indexes"]
+        }
+        self.assertEqual(grouped_urls, flat_urls)
+
+    def test_dashboard_cards_distinguish_matchups_from_report_versions(self):
+        self._base_sources()
+        rendered = dashboard.render_dashboard_html(self.build())
+        self.assertIn("Jogos distintos", rendered)
+        self.assertIn("Versões de relatório", rendered)
+        self.assertNotIn("mais recente", rendered.casefold())
+
+    def test_rendering_and_filters_do_not_mutate_data(self):
+        self._base_sources()
+        result = self.build()
+        before = copy.deepcopy(result)
+        rendered = dashboard.render_dashboard_html(result)
+        self.assertEqual(result, before)
+        self.assertIn("data-filter", rendered)
+
+    def test_missing_individual_source_degrades_only_its_panel(self):
+        self._base_sources()
+        (self.root / "data/manual_paper_22bet.json").unlink()
+        result = self.build()
+        self.assertEqual(result["paper_22bet"]["status"], "UNAVAILABLE")
+        self.assertEqual(result["paper_technical"]["status"], "AVAILABLE")
+        self.assertEqual(result["market_memory"]["status"], "AVAILABLE")
+
+    def test_invalid_source_is_nd_not_zero(self):
+        self._base_sources()
+        (self.root / "data/calibration_snapshots.json").write_text("not-json", encoding="utf-8")
+        result = self.build()
+        self.assertIsNone(result["global"]["total_snapshots"])
+        self.assertEqual(result["source_freshness"]["snapshots"]["status"], "INVALID")
+
+    def test_semantic_noop_preserves_generated_timestamp(self):
+        self._base_sources()
+        first = dashboard.build_and_write(root=self.root, generated_at_utc=NOW)
+        second = dashboard.build_and_write(root=self.root, generated_at_utc="2026-09-06T21:00:00+00:00")
+        self.assertEqual(second["generated_at_utc"], first["generated_at_utc"])
+
+    def test_public_dashboard_contains_no_snapshot_keys(self):
+        self._base_sources()
+        serialized = json.dumps(self.build())
+        self.assertNotIn('"snapshot_key"', serialized)
+        self.assertNotIn("atp:1", serialized)
+
+
+if __name__ == "__main__":
+    unittest.main()

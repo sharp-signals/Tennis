@@ -17,6 +17,8 @@ class RapidAPIBudgetTests(unittest.TestCase):
         fetch_data._RAPIDAPI_RECORDED_TODAY["n"] = 0
         fetch_data._RAPIDAPI_BUDGET_EXCEEDED["value"] = False
         fetch_data._RAPIDAPI_ENDPOINT_CALLS.clear()
+        fetch_data._RAPIDAPI_PURPOSE_CALLS.clear()
+        fetch_data._RAPIDAPI_BACKFILL_BUDGET_EXCEEDED["value"] = False
 
     def test_run_budget_blocks_before_external_request(self) -> None:
         fetch_data._RAPIDAPI_CALL_COUNT["n"] = 2
@@ -34,6 +36,48 @@ class RapidAPIBudgetTests(unittest.TestCase):
             fetch_data._reserve_rapidapi_call()
             with self.assertRaises(fetch_data.RapidAPIBudgetExceeded):
                 fetch_data._reserve_rapidapi_call()
+
+    def test_global_hard_guard_remains_4500(self) -> None:
+        fetch_data._RAPIDAPI_RECORDED_TODAY["n"] = 4499
+        with patch.object(fetch_data, "RAPIDAPI_MAX_CALLS_PER_DAY", 4500), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"):
+            fetch_data._reserve_rapidapi_call(purpose="operational")
+            with self.assertRaises(fetch_data.RapidAPIBudgetExceeded):
+                fetch_data._reserve_rapidapi_call(purpose="operational")
+        self.assertEqual(fetch_data.get_rapidapi_call_count(), 1)
+
+    def test_backfill_stops_at_global_ceiling_and_preserves_reserve(self) -> None:
+        fetch_data._RAPIDAPI_RECORDED_TODAY["n"] = 2999
+        with patch.object(fetch_data, "RAPIDAPI_BACKFILL_GLOBAL_CEILING", 3000), \
+             patch.object(fetch_data, "RAPIDAPI_MAX_CALLS_PER_DAY", 4500), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"):
+            fetch_data._reserve_rapidapi_call(purpose="backfill")
+            with self.assertRaises(fetch_data.RapidAPIBackfillBudgetExceeded):
+                fetch_data._reserve_rapidapi_call(purpose="backfill")
+        self.assertEqual(fetch_data.get_rapidapi_call_count(), 1)
+        self.assertEqual(fetch_data.get_rapidapi_purpose_counts(), {"backfill": 1})
+        self.assertTrue(fetch_data.rapidapi_backfill_budget_exceeded())
+
+    def test_operational_calls_count_against_backfill_but_can_use_reserve(self) -> None:
+        fetch_data._RAPIDAPI_RECORDED_TODAY["n"] = 2999
+        with patch.object(fetch_data, "RAPIDAPI_BACKFILL_GLOBAL_CEILING", 3000), \
+             patch.object(fetch_data, "RAPIDAPI_MAX_CALLS_PER_DAY", 4500), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"):
+            fetch_data._reserve_rapidapi_call(purpose="operational")
+            with self.assertRaises(fetch_data.RapidAPIBackfillBudgetExceeded):
+                fetch_data._reserve_rapidapi_call(purpose="backfill")
+            fetch_data._reserve_rapidapi_call(purpose="operational")
+        self.assertEqual(fetch_data.get_rapidapi_purpose_counts(), {"operational": 2})
+
+    def test_backfill_retries_are_counted_in_shared_accounting(self) -> None:
+        response = unittest.mock.Mock(status_code=429, headers={})
+        with patch.object(fetch_data, "RAPIDAPI_MIN_INTERVAL", 0), \
+             patch.object(fetch_data, "_write_rapidapi_checkpoint"), \
+             patch.object(fetch_data.requests, "get", return_value=response), \
+             patch.object(fetch_data.time, "sleep"):
+            fetch_data._rapidapi_get("https://example.invalid", rapidapi_purpose="backfill")
+        self.assertEqual(fetch_data.get_rapidapi_call_count(), 3)
+        self.assertEqual(fetch_data.get_rapidapi_purpose_counts(), {"backfill": 3})
 
     def test_retry_attempts_each_consume_budget(self) -> None:
         response = unittest.mock.Mock(status_code=429, headers={})

@@ -21,8 +21,8 @@ on:
 concurrency:
   # mesmo grupo do bot principal (tennis-bot.yml) — evita que os dois
   # escrevam no repositório ao mesmo tempo e colidam no git push.
-  group: tennis-pre-live-production
-  cancel-in-progress: false
+  group: tennis-data-writers
+  queue: max
 
 jobs:
   warm-up:
@@ -35,6 +35,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -63,37 +66,30 @@ jobs:
           # adicionado; git status via-o e entrava no "if", mas como nada
           # tinha sido preparado (git add) para commit, o "git commit" falhava
           # com "nothing added to commit but untracked files present".
-          git add data/cache/ data/rapidapi_usage_log.json \
-            data/rapidapi_usage_inflight.json data/run_metrics_log.json 2>/dev/null || true
+          python scripts/stage_generated_outputs.py --profile warmup
           # Verifica especificamente se há algo PREPARADO (staged) para
           # commit — mais robusto que "git status --porcelain" (que também
           # apanha ficheiros não-preparados/não relacionados e podia voltar
           # a cair no mesmo erro se aparecer outro ficheiro novo no futuro).
           if ! git diff --cached --quiet; then
             git commit -m "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"
-            # Mesma proteção do bot principal: rebase antes de enviar, para
-            # não colidir com alterações remotas entretanto feitas.
-            push_ok=0
-            for tentativa in 1 2 3; do
-              if ! git pull --rebase --autostash origin main; then
-                echo "Rebase falhou; não é seguro continuar para push."
-                exit 1
-              fi
-              if bash scripts/publish-generated-changes.sh "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"; then
-                echo "Push concluído (tentativa $tentativa)."
-                push_ok=1
-                break
-              fi
-              echo "Push falhou na tentativa $tentativa; a repetir..."
-              sleep 3
-            done
-            if [ "$push_ok" -ne 1 ]; then
-              echo "Push falhou definitivamente após 3 tentativas."
-              exit 1
-            fi
+            FENZOBOT_WRITER_PROFILE=warmup bash scripts/publish-generated-changes.sh "chore: aquecer cache de mão (${{ github.event.inputs.tour }}, top ${{ github.event.inputs.top_n }})"
           else
             echo "Sem alterações a gravar (provavelmente já tudo em cache)."
           fi
+
+      - name: Preservar recuperação de publicação
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile warmup --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason WARMUP_WORKFLOW_FAILED
+      - name: Carregar recuperação de publicação
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: warmup-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/fenzobot-data-recovery/
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Alertar no Telegram se algo falhou
         if: failure()

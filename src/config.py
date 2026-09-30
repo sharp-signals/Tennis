@@ -23,8 +23,24 @@ RAPIDAPI_BASE = f"https://{RAPIDAPI_HOST}/tennis/v2"
 # continua a proteger contra consumo desproporcionado — há folga de sobra.
 RAPIDAPI_MAX_CALLS_PER_RUN = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_RUN", "2250"))
 RAPIDAPI_MAX_CALLS_PER_DAY = int(os.environ.get("RAPIDAPI_MAX_CALLS_PER_DAY", "4500"))
+RAPIDAPI_OPERATIONAL_RESERVE = int(os.environ.get("RAPIDAPI_OPERATIONAL_RESERVE", "1500"))
+RAPIDAPI_BACKFILL_GLOBAL_CEILING = int(
+    os.environ.get(
+        "RAPIDAPI_BACKFILL_GLOBAL_CEILING",
+        str(RAPIDAPI_MAX_CALLS_PER_DAY - RAPIDAPI_OPERATIONAL_RESERVE),
+    )
+)
 if RAPIDAPI_MAX_CALLS_PER_RUN <= 0 or RAPIDAPI_MAX_CALLS_PER_DAY <= 0:
     raise ValueError("Os limites RapidAPI têm de ser inteiros positivos.")
+if not (
+    0 <= RAPIDAPI_OPERATIONAL_RESERVE <= RAPIDAPI_MAX_CALLS_PER_DAY
+    and 0 <= RAPIDAPI_BACKFILL_GLOBAL_CEILING <= RAPIDAPI_MAX_CALLS_PER_DAY
+    and RAPIDAPI_BACKFILL_GLOBAL_CEILING
+    <= RAPIDAPI_MAX_CALLS_PER_DAY - RAPIDAPI_OPERATIONAL_RESERVE
+):
+    raise ValueError(
+        "O ceiling de backfill tem de preservar a reserva operacional dentro do limite diário."
+    )
 
 # Tiers a incluir no bot. Confirmado manualmente: "ATP 250" é o valor exato
 # devolvido pelo campo "tier" do endpoint getTournamentInfo.
@@ -37,21 +53,51 @@ ALLOWED_TOURNAMENT_TIERS = {
     "Grand Slam",
     "ATP Masters 1000",
     "ATP 500",
+    "ATP 250",
     "WTA 1000",   # reativado 28/07/2026 (H2H rico via matchstat + Sackmann de volta)
     "WTA 500",    # valor exato confirmado via getTournamentInfo no id 16738
+    "WTA 250",
+    "Challenger 125",
 }
-# Nível 250 (ATP/WTA) ficou de fora por decisão explícita: a Odds API não
-# tem cobertura fiável de mercado para este nível (confirmado na prática
-# com Umag, Gstaad, Bastad, Athens, Iasi — nenhum apareceu em 3 fornecedores
-# de odds diferentes testados). Como as odds de mercado são o propósito
-# central do bot, preferimos garantir odds em todos os jogos analisados a
-# cobrir mais torneios sem essa peça. Se no futuro aparecer uma fonte de
-# odds fiável para o nível 250, é só acrescentar "ATP 250"/"WTA 250" aqui.
-# Tiers conhecidos que ficam sempre de fora (ITF/Challenger — dados mais
-# esparsos, conforme decidido na fase de planeamento).
-EXCLUDED_TOURNAMENT_TIERS = {"Future", "Challenger"}
+# CHANGE-2026-09-24-052: ATP/WTA 250 integram a cobertura main-tour normal.
+# A antiga exclusão por cobertura da The Odds API ficou SUPERSEDED pelo
+# contrato operacional RapidAPI recent-odds do CHANGE-050. A inclusão do
+# torneio não garante pricing/PAPER: esses caminhos mantêm todos os gates
+# fail-closed de identidade, proveniência e Market Quote Integrity.
+# CHANGE-2026-09-25-053: Challenger 125 entra apenas em modo EXPERIMENT.
+# Pode atravessar discovery, análise factual, relatório e pricing quando
+# cumprir integralmente o CHANGE-050, mas permanece fail-closed para PAPER
+# e GREEN até uma promoção futura com CHANGE-ID próprio. Esta lista pequena
+# é a fonte única dessa separação; não usar nomes ou IDs de torneios.
+EXPERIMENTAL_REPORT_ONLY_TIERS = frozenset({"Challenger 125"})
+EXPERIMENTAL_TIER_PAPER_REASON_CODE = "EXPERIMENTAL_TIER_CHALLENGER_125"
 
-# Quantos dias (incluindo hoje) pedir ao getDateFixtures. 2 = hoje + amanhã.
+# Challenger 125 é um universo experimental próprio. Estes limiares medem a
+# completude dos factores do relatório (não a percentagem de cobertura de um
+# handicap). Nunca tornam o tier elegível para PAPER: apenas decidem se um
+# edge é suficientemente robusto para ser assinalado como observação.
+CHALLENGER_EXPERIMENTAL_MIN_DATA_COVERAGE = 0.50
+CHALLENGER_EXPERIMENTAL_HIGH_CONFIDENCE_COVERAGE = 0.65
+CHALLENGER_EXPERIMENTAL_STRONG_EVIDENCE_COVERAGE = 0.75
+CHALLENGER_EXPERIMENTAL_MIN_EDGE_PARTIAL_PCT = 5.0
+CHALLENGER_EXPERIMENTAL_MIN_EDGE_HIGH_CONFIDENCE_PCT = 4.0
+
+# Tiers conhecidos que continuam fora. O racional histórico de excluir todos
+# os Challengers fica preservado no CHANGE-053, mas é agora parcialmente
+# SUPERSEDED apenas para Challenger 125; 100/75/50 e os restantes níveis não
+# foram promovidos para cobertura.
+EXCLUDED_TOURNAMENT_TIERS = {
+    "Challenger",
+    "Challenger 100",
+    "Challenger 75",
+    "Challenger 50",
+    "Future",
+    "ITF",
+    "Juniors",
+}
+
+# Legacy: o fallback CHANGE-054 já não usa este valor; deriva as datas de
+# LOOKAHEAD_HOURS_MIN/MAX para cobrir integralmente a janela configurada.
 FIXTURES_LOOKAHEAD_DAYS = 2
 
 # Cache local de info de torneio (tier, piso, nome), para não gastar
@@ -92,11 +138,9 @@ TRACKED_TOURNAMENT_IDS = {
 
 # Exceções deliberadas à política global de tiers. Estes IDs são sempre
 # combinados com a descoberta automática e podem ultrapassar o filtro de
-# ALLOWED_TOURNAMENT_TIERS. Manter esta lista curta: incluir aqui um ATP 250
-# não ativa os restantes torneios desse nível.
-FORCED_TOURNAMENT_IDS = {
-    21348: "atp",  # Winston-Salem Open (ATP 250), 2026
-}
+# ALLOWED_TOURNAMENT_TIERS. Manter esta lista curta e reservada a exceções
+# explícitas que não possam ser expressas pela política normal de tiers.
+FORCED_TOURNAMENT_IDS = {}
 
 # Quantos jogos pedir por página do getTournamentFixtures (o default da
 # API é 10; pedimos mais para reduzir o número de páginas/pedidos).
@@ -110,6 +154,11 @@ TOURS_TO_FOLLOW = ("atp", "wta")
 # Já não decide "que jogos existem" — só tenta enriquecer com odds quando
 # o jogo (por nomes dos jogadores) também aparecer aqui. Se não aparecer,
 # o campo de odds fica None, tal como qualquer outro dado em falta.
+# CHANGE-2026-09-03-024: fica OFF por defeito. A presença acidental do secret
+# não autoriza chamadas nem cria uma dependência paga para o pipeline v1.
+THE_ODDS_API_ENABLED = os.environ.get("THE_ODDS_API_ENABLED", "0").strip().casefold() in {
+    "1", "true", "yes", "on",
+}
 # Chaves ATP e WTA, alinhadas com os tours seguidos pelo pipeline.
 ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_aus_open_singles", "tennis_atp_french_open",
@@ -136,10 +185,11 @@ ODDS_API_TENNIS_SPORT_KEYS = [
 ]
 
 
-# Janela de antecedência: só considera jogos que arrancam dentro
-# destas horas a partir do momento em que o workflow corre.
+# Janela de antecedência: cobre três dias para detetar cedo todos os jogos
+# já marcados de um torneio, incluindo jogos que antes ficavam fora da janela
+# de 36 horas apesar de já terem mercado publicado.
 LOOKAHEAD_HOURS_MIN = 0
-LOOKAHEAD_HOURS_MAX = 36
+LOOKAHEAD_HOURS_MAX = 72
 
 SURFACES = ["Hard", "Clay", "Grass"]
 

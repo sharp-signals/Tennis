@@ -21,8 +21,14 @@ class RunMetricsTests(unittest.TestCase):
         run_metrics.increment("llm_input_tokens", 120)
         self.assertEqual(
             run_metrics.snapshot(),
-            {"llm_calls": 1, "llm_input_tokens": 120},
+            {"llm_calls": 1, "llm_input_tokens": 120, "llm_provider_invocations": 0, "llm_external_requests": 0},
         )
+
+    def test_context_snapshot_is_a_copy(self) -> None:
+        run_metrics.update_context(trigger_slot="11:30")
+        snapshot = run_metrics.context_snapshot()
+        snapshot["trigger_slot"] = "changed"
+        self.assertEqual(run_metrics.context_snapshot()["trigger_slot"], "11:30")
 
     def test_append_is_atomic_and_retains_bounded_history(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -103,6 +109,31 @@ class RunMetricsTests(unittest.TestCase):
 
         self.assertTrue(any("cache LLM inválida: 2" in alert for alert in alerts))
         self.assertTrue(any("gravar cache LLM: 1" in alert for alert in alerts))
+
+    def test_partial_discovery_is_visible_in_health_alerts(self) -> None:
+        alerts = run_metrics.health_alerts({
+            "status": "degraded",
+            "discovery_partial": True,
+            "discovery_sources": {
+                "core_date_fixtures": {
+                    "requests": 8,
+                    "successful_requests": 7,
+                    "unavailable_requests": 1,
+                    "reason_codes": ["HTTP_500"],
+                }
+            },
+        })
+
+        self.assertIn(
+            "discovery parcial: 1/8 consultas indisponível", alerts
+        )
+
+    def test_settlement_timeout_is_visible_without_hiding_published_report(self) -> None:
+        alerts = run_metrics.health_alerts({
+            "status": "success",
+            "settlement_maintenance": {"status": "TIMED_OUT"},
+        })
+        self.assertIn("manutenção de resultados: TIMED_OUT", alerts)
 
     def test_invalid_numeric_configuration_falls_back_safely(self) -> None:
         metrics = {"llm_input_tokens": 1_000_000, "llm_output_tokens": "invalid"}

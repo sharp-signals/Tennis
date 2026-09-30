@@ -27,14 +27,33 @@
 - [ ] **Erste Bank Open - Vienna** (ATP 500) — Hard indoor — **~26 de outubro**
 - [ ] **Rolex Paris Masters** (Masters 1000) — Hard indoor — **~2 a 8 de novembro**
 
-## Fora do âmbito atual (não seguimos, por decisão já tomada)
+## Fora do âmbito atual
 
 - ATP Finals - Turin (tier "Finals", não é Grand Slam/Masters/500 — fora
   de `ALLOWED_TOURNAMENT_TIERS`; podes acrescentar se quiseres alargar o
   âmbito no futuro)
-- Todos os ATP 250 do calendário (Winston-Salem, Los Cabos, Almaty,
-  Bruxelas, Lyon, Estocolmo, etc.) — excluídos desde a decisão de âmbito
-  de 15/07/2026 (falta de odds fiáveis nesse nível)
+- Challenger 100, Challenger 75, Challenger 50, Futures, ITF, Juniors e
+  restantes níveis inferiores continuam fora. Challenger 125 é a única
+  exceção e está em regime experimental report-only, sem PAPER/GREEN.
+
+### Contexto histórico SUPERSEDED
+
+Todos os ATP 250 estiveram excluídos desde a decisão de âmbito de 15/07/2026
+porque a antiga Odds API não oferecia cobertura fiável nesse nível.
+
+**SUPERSEDED por CHANGE-2026-09-24-052:** ATP/WTA 250 passaram a integrar a
+cobertura normal após adoção do contrato operacional RapidAPI recent-odds.
+Isto alarga a descoberta de torneios, mas não garante pricing nem PAPER: sem
+quote operacional válida, esses caminhos continuam bloqueados fail-closed.
+
+Todos os Challengers estiveram excluídos por cobertura operacional ainda não
+demonstrada. Esse racional permanece válido para Challenger 100/75/50 e
+restantes níveis.
+
+**Parcialmente SUPERSEDED por CHANGE-2026-09-25-053:** apenas Challenger 125
+entra como EXPERIMENT para discovery, análise factual, relatórios e pricing
+quando o CHANGE-050 for integralmente satisfeito. PAPER e GREEN permanecem
+bloqueados, sem backfill nem identificação do Porto Open por nome/ID antigo.
 
 ## Nota sobre precisão das datas
 

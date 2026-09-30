@@ -8,14 +8,26 @@ import math
 import os
 import re
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+
+from . import (
+    market_integrity,
+    market_ledger,
+    match_identity_v2,
+    forward_only,
+    snapshot_identity,
+    tournament_policy,
+)
 
 
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/paper_trades.json")
 DEFAULT_EXCLUSIONS_PATH = Path("data/paper_integrity_exclusions.json")
+MANUAL_22BET_SCHEMA_VERSIONS = {1, 2}
+DEFAULT_MANUAL_22BET_PATH = Path("data/manual_paper_22bet.json")
 _LOCK = threading.Lock()
 
 
@@ -37,8 +49,26 @@ def read_entries(path: Path = DEFAULT_PATH) -> list[dict[str, Any]]:
     return copy.deepcopy(_read(path)["entries"])
 
 
-def excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
-    """Chaves anuladas por incidente de integridade, sem reescrever PAPER."""
+def read_manual_22bet_history(path: Path = DEFAULT_MANUAL_22BET_PATH) -> dict[str, Any] | None:
+    """Lê o resumo publicado pela Sheet oficial de PAPER 22Bet.
+
+    Este documento não é uma carteira gerada pelo bot nem liquida entradas
+    automaticamente. É apenas uma projeção auditável do registo manual, para
+    ser mostrado separado dos sinais PAPER técnicos e do backtest.
+    """
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(document, Mapping) or document.get("schema_version") not in MANUAL_22BET_SCHEMA_VERSIONS:
+        return None
+    summary = document.get("summary")
+    if not isinstance(summary, Mapping) or not isinstance(summary.get("total_entries"), int):
+        return None
+    return copy.deepcopy(dict(document))
+
+
+def _legacy_excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
@@ -47,6 +77,14 @@ def excluded_keys(path: Path = DEFAULT_EXCLUSIONS_PATH) -> set[str]:
     if not isinstance(records, list):
         return set()
     return {str(item.get("paper_key")) for item in records if isinstance(item, Mapping) and item.get("paper_key")}
+
+
+def excluded_keys(
+    path: Path = DEFAULT_EXCLUSIONS_PATH,
+    market_integrity_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
+) -> set[str]:
+    """Chaves em quarentena aditiva, sem reescrever a carteira PAPER."""
+    return _legacy_excluded_keys(path) | market_integrity.excluded_paper_keys(market_integrity_path)
 
 
 def _write(path: Path, document: Mapping[str, Any]) -> None:
@@ -67,10 +105,29 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
 
 def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Cria uma entrada por mercado elegivel, sem alterar o payload."""
+    # Defesa final independente do chamador: tiers report-only podem mostrar
+    # pricing experimental, mas nunca persistem PAPER durante o experimento.
+    if tournament_policy.paper_block_reason(payload):
+        return []
+    if not market_integrity.is_operational_pricing_payload(
+        payload,
+        require_pricing_contract=True,
+    ):
+        return []
+    identity_v2 = payload.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION
+    if identity_v2 and not match_identity_v2.is_canonical(payload):
+        return []
+    linkage = payload.get("snapshot_linkage")
+    if isinstance(linkage, Mapping) and linkage.get("status") in {"COLLISION", "UNLINKED"}:
+        # A decisão pode continuar visível no relatório factual, mas uma
+        # identidade não ligada nunca cria PAPER sob a key reutilizada.
+        return []
     decision = payload.get("prelive_decision")
     if not isinstance(decision, Mapping) or not decision.get("paper_eligible"):
         return []
     snapshot_key = str(payload.get("snapshot_key") or "")
+    if identity_v2 and snapshot_key != str(payload.get("canonical_match_instance_id") or ""):
+        return []
     analyzed_at = payload.get("analyzed_at_utc") or _utc_now()
     entries = []
     for market in decision.get("paper_markets") or []:
@@ -82,6 +139,12 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         entry_key = f"{snapshot_key}:{market_type.casefold()}:{side}:{line if line is not None else 'na'}"
         pregame = {
             "snapshot_key": snapshot_key,
+            "event_key": snapshot_key if identity_v2 else payload.get("event_key") or snapshot_key,
+            "identity_schema_version": payload.get("identity_schema_version"),
+            "canonical_match_instance_id": payload.get("canonical_match_instance_id"),
+            "identity_status": payload.get("identity_status"),
+            "identity_reason_code": payload.get("identity_reason_code"),
+            "legacy_key": payload.get("legacy_key"),
             "report_id": payload.get("report_id"),
             "match_id": payload.get("match_id"),
             "tour": payload.get("tour"),
@@ -109,7 +172,14 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             "pricing_configuration_fingerprint": (payload.get("pricing") or {}).get(
                 "configuration_fingerprint"
             ),
+            "odds_source_contract_version": payload.get("odds_source_contract_version"),
+            "odds_source_contract_fingerprint": payload.get("odds_source_contract_fingerprint"),
+            "odds_source_contract": copy.deepcopy(payload.get("odds_source_contract")),
+            "odds_contract_activation": copy.deepcopy(payload.get("odds_contract_activation")),
             "decision_contract_version": decision.get("contract_version"),
+            "entry_market_observation_id": payload.get("entry_market_observation_id"),
+            "market_memory_status": payload.get("market_memory_status") or "UNAVAILABLE",
+            "market_memory_eligible": bool(payload.get("market_memory_eligible")),
             "market_odds_decimal": copy.deepcopy(payload.get("market_odds_decimal")),
             "odds_provenance": {
                 "source": payload.get("odds_source"),
@@ -118,9 +188,13 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "captured_at_utc": payload.get("odds_captured_at_utc"),
                 "capture_kind": payload.get("odds_capture_kind"),
                 "provider_timestamp": payload.get("odds_provider_timestamp"),
+                "provider_timestamp_status": payload.get("odds_provider_timestamp_status"),
+                "freshness_status": payload.get("odds_freshness_status"),
                 "bookmaker": payload.get("odds_bookmaker"),
                 "from_cache": payload.get("odds_from_cache"),
                 "cache_age_seconds": payload.get("odds_cache_age_seconds"),
+                "market_integrity": copy.deepcopy(payload.get("odds_market_integrity")),
+                "operational_pricing_eligible": payload.get("odds_operational_pricing_eligible") is True,
             },
         }
         entries.append({
@@ -132,15 +206,25 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     return entries
 
 
-def append_entries(entries: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:
+def append_entries(
+    entries: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH, *,
+    protection_manifest_path: Path | None = None,
+    diagnostics: dict[str, Any] | None = None,
+) -> int:
     """Acrescenta entradas novas; duplicados nunca reescrevem o pre-jogo."""
     with _LOCK:
         document = _read(path)
         existing = {item.get("key") for item in document["entries"] if item.get("key")}
         added = 0
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
+        blocked: dict[str, int] = {}
         for entry in entries:
             key = entry.get("key")
             if key and key not in existing:
+                allowed, reason = boundary.new_record_eligibility("paper", entry)
+                if not allowed:
+                    blocked[reason] = blocked.get(reason, 0) + 1
+                    continue
                 document["entries"].append(copy.deepcopy(dict(entry)))
                 existing.add(key)
                 added += 1
@@ -148,6 +232,12 @@ def append_entries(entries: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PA
             document["entries"].sort(key=lambda item: (item.get("pregame") or {}).get("analyzed_at_utc") or "")
             document["updated_at_utc"] = _utc_now()
             _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "added": added,
+                "blocked": blocked,
+            })
         return added
 
 
@@ -177,7 +267,18 @@ def _game_margin(result: Any, selected_is_player1: bool) -> int | None:
     return margin if selected_is_player1 else -margin
 
 
-def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH) -> int:
+def settle_from_matches(
+    matches: Iterable[Mapping[str, Any]],
+    path: Path = DEFAULT_PATH,
+    *,
+    ledger_root: Path = market_ledger.DEFAULT_ROOT,
+    identity_registry_path: Path = match_identity_v2.DEFAULT_REGISTRY_PATH,
+    protection_manifest_path: Path | None = None,
+    max_settlements: int | None = None,
+    candidate_keys: set[str] | None = None,
+    diagnostics: dict[str, Any] | None = None,
+    deadline_monotonic: float | None = None,
+) -> int:
     completed = []
     for match in matches:
         if match.get("match_winner") is None:
@@ -185,12 +286,39 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
         if str(match.get("result_type") or "").casefold() not in {"completed", "finished"}:
             continue
         completed.append(match)
-    by_id = {str(match.get("id")): match for match in completed if match.get("id") is not None}
+    by_id: dict[str, list[Mapping[str, Any]]] = {}
+    for match in completed:
+        if match.get("id") is not None:
+            by_id.setdefault(str(match.get("id")), []).append(match)
 
     def find(pregame: Mapping[str, Any]):
-        direct = by_id.get(str(pregame.get("match_id")))
+        if pregame.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION:
+            canonical_id = str(pregame.get("canonical_match_instance_id") or "")
+            resolved = []
+            for match in completed:
+                event_id = match.get("event_id", match.get("eventId"))
+                result = match_identity_v2.resolve_existing(
+                    match,
+                    canonical_id,
+                    event_id=event_id,
+                    event_id_validated=event_id not in (None, ""),
+                    registry_path=identity_registry_path,
+                )
+                if result.get("canonical_match_instance_id") == canonical_id:
+                    resolved.append(match)
+            return resolved[0] if len(resolved) == 1 else None
+        direct = [
+            match for match in by_id.get(str(pregame.get("match_id")), [])
+            if snapshot_identity.compare(match, pregame)["status"] == snapshot_identity.MATCH
+        ]
         if direct:
-            return direct
+            scheduled = _parse_time(pregame.get("commence_time_utc"))
+            ranked = []
+            for match in direct:
+                played = _parse_time(match.get("date"))
+                delta = abs((played - scheduled).total_seconds()) if played and scheduled else 0
+                ranked.append((delta, match))
+            return min(ranked, key=lambda item: item[0])[1]
         ids = frozenset(str((pregame.get("players") or {}).get(side, {}).get("id")) for side in ("a", "b"))
         scheduled = _parse_time(pregame.get("commence_time_utc"))
         candidates = []
@@ -205,16 +333,40 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
 
     with _LOCK:
         document = _read(path)
+        boundary = forward_only.load_boundary_for_store(path, protection_manifest_path)
         settled = 0
+        eligible_candidates = 0
+        examined = 0
+        pending_no_result = 0
+        last_examined_key = None
+        deadline_reached = False
+        blocked: dict[str, int] = {}
         excluded = excluded_keys()
         for entry in document["entries"]:
+            if candidate_keys is not None and str(entry.get("key") or "") not in candidate_keys:
+                continue
             if str(entry.get("key")) in excluded:
                 continue
             if entry.get("settlement") is not None:
                 continue
+            allowed, reason = forward_only.settlement_eligibility(
+                "paper", entry, boundary=boundary,
+            )
+            if not allowed:
+                blocked[reason] = blocked.get(reason, 0) + 1
+                continue
+            eligible_candidates += 1
+            if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+                deadline_reached = True
+                break
+            examined += 1
+            last_examined_key = str(entry.get("key") or "")
+            if max_settlements is not None and settled >= max_settlements:
+                break
             pregame = entry.get("pregame") or {}
             match = find(pregame)
             if not match:
+                pending_no_result += 1
                 continue
             selected_side = pregame.get("selected_side")
             selected_id = (pregame.get("players") or {}).get(selected_side, {}).get("id")
@@ -238,19 +390,51 @@ def settle_from_matches(matches: Iterable[Mapping[str, Any]], path: Path = DEFAU
                 pnl = float(odd) - 1.0 if result == "WIN" else -1.0 if result == "LOSS" else 0.0
             except (TypeError, ValueError):
                 pnl = None
+            market_memory = None
+            market_memory_error = None
+            if market_type == "moneyline" and pregame.get("market_memory_eligible"):
+                try:
+                    market_memory = market_ledger.clv_for_pregame(pregame, root=ledger_root)
+                except Exception as exc:
+                    # O outcome/PAPER continua a ser liquidado mesmo que o
+                    # ledger esteja ausente ou corrompido.
+                    market_memory_error = f"{type(exc).__name__}:{exc}"
             entry["settlement"] = {
                 "result": result,
                 "pnl_units": round(pnl, 4) if pnl is not None else None,
                 "match_result": match.get("result"),
                 "winner_id": winner_id,
-                "closing_odd": None,
-                "clv_pct": None,
+                "entry_market_observation_id": pregame.get("entry_market_observation_id"),
+                "closing_market_observation_id": (market_memory or {}).get("closing_market_observation_id"),
+                "entry_market_probability": (market_memory or {}).get("entry_market_probability"),
+                "last_valid_prestart_market_probability": (market_memory or {}).get("last_valid_prestart_market_probability"),
+                "closing_odd": (market_memory or {}).get("closing_odd"),
+                "clv_probability_pp": (market_memory or {}).get("clv_probability_pp"),
+                "clv_price_pct": (market_memory or {}).get("clv_price_pct"),
+                "clv_pct": (market_memory or {}).get("clv_pct"),
+                "market_memory_status": (
+                    "AVAILABLE" if market_memory else
+                    "INELIGIBLE" if "market_memory_eligible" in pregame and not pregame.get("market_memory_eligible") else
+                    "UNAVAILABLE"
+                ),
+                "market_memory_error": market_memory_error,
                 "settled_at_utc": _utc_now(),
             }
             settled += 1
         if settled:
             document["updated_at_utc"] = _utc_now()
             _write(path, document)
+        if diagnostics is not None:
+            diagnostics.update({
+                "activation_status": boundary.reason_code,
+                "eligible_candidates": eligible_candidates,
+                "settled": settled,
+                "blocked": blocked,
+                "examined": examined,
+                "pending_no_result": pending_no_result,
+                "last_examined_key": last_examined_key,
+                "deadline_reached": deadline_reached,
+            })
         return settled
 
 
@@ -266,6 +450,8 @@ def _summary(entries: list[Mapping[str, Any]]) -> dict[str, Any]:
     odds = [float(value) for value in odds if isinstance(value, (int, float))]
     edges = [(entry.get("pregame") or {}).get("expected_edge_pct") for entry in entries]
     edges = [float(value) for value in edges if isinstance(value, (int, float))]
+    clv_values = [(entry.get("settlement") or {}).get("clv_probability_pp") for entry in settled]
+    clv_values = [float(value) for value in clv_values if isinstance(value, (int, float))]
     equity = peak = drawdown = 0.0
     cumulative = []
     for entry in sorted(settled, key=lambda item: (item.get("pregame") or {}).get("analyzed_at_utc") or ""):
@@ -289,23 +475,39 @@ def _summary(entries: list[Mapping[str, Any]]) -> dict[str, Any]:
         "yield_pct": round(100 * units / len(pnl_values), 2) if pnl_values else None,
         "average_odd": round(sum(odds) / len(odds), 3) if odds else None,
         "average_edge_pct": round(sum(edges) / len(edges), 2) if edges else None,
-        "clv_pct": None,
+        "clv_pct": round(sum(clv_values) / len(clv_values), 4) if clv_values else None,
+        "clv_sample_size": len(clv_values),
         "max_drawdown_units": round(drawdown, 4) if pnl_values else None,
         "cumulative": cumulative,
     }
 
 
-def compute_history(path: Path = DEFAULT_PATH) -> dict[str, Any]:
-    exclusions = excluded_keys()
+def compute_history(
+    path: Path = DEFAULT_PATH,
+    manual_22bet_path: Path = DEFAULT_MANUAL_22BET_PATH,
+    market_integrity_path: Path = market_integrity.DEFAULT_EXCLUSIONS_PATH,
+) -> dict[str, Any]:
+    data_quality_records = market_integrity.read_exclusions(market_integrity_path)
+    data_quality_keys = {
+        str(item["paper_key"]) for item in data_quality_records if item.get("paper_key")
+    }
+    exclusions = _legacy_excluded_keys() | data_quality_keys
     entries = [entry for entry in _read(path)["entries"] if str(entry.get("key")) not in exclusions]
     by_market = {}
     for kind in ("Moneyline", "Handicap"):
         subset = [entry for entry in entries if str((entry.get("pregame") or {}).get("market_type")) == kind]
         by_market[kind] = _summary(subset) if subset else None
+    reasons: dict[str, int] = {}
+    for item in data_quality_records:
+        reason = str(item.get("reason_code") or "UNSPECIFIED")
+        reasons[reason] = reasons.get(reason, 0) + 1
     return {
         "PAPER": {**_summary(entries), "by_market": by_market, "edge_buckets": None},
+        "MANUAL_22BET": read_manual_22bet_history(manual_22bet_path),
         "BACKTEST_RECONSTRUCTED": None,
         "REAL": None,
-        "history_version": "paper-history-v1",
+        "history_version": "paper-history-v2-market-memory",
         "excluded_integrity_entries": len(exclusions),
+        "excluded_data_quality_entries": len(data_quality_keys),
+        "data_quality_exclusions_by_reason": dict(sorted(reasons.items())),
     }

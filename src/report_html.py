@@ -54,6 +54,58 @@ COLORS = {
     "line": "#2c313b",
 }
 
+REPORT_COLOR_META_NAME = "fenzobot-report-color"
+REPORT_SNAPSHOT_LINKAGE_META_NAME = "fenzobot-snapshot-linkage"
+REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME = "fenzobot-snapshot-linkage-reason"
+REPORT_IDENTITY_SCHEMA_META_NAME = "fenzobot-identity-schema-version"
+REPORT_IDENTITY_STATUS_META_NAME = "fenzobot-identity-status"
+REPORT_IDENTITY_REASON_META_NAME = "fenzobot-identity-reason-code"
+REPORT_DECISION_PRESENTATION = {
+    "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
+    "EDGE_POSITIVE_EXPERIMENTAL_TIER": (
+        "EDGE POSITIVO — CHALLENGER 125 EXPERIMENTAL / SEM PAPER",
+        "zero", "🟡", "YELLOW",
+    ),
+    "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": (
+        "EDGE POSITIVO — COBERTURA INSUFICIENTE PARA PAPER", "zero", "🟡", "YELLOW",
+    ),
+    "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴", "RED"),
+    "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪", "UNAVAILABLE"),
+    "EXPERIMENTAL_FACTUAL_PARTIAL": (
+        "CHALLENGER 125 — COBERTURA PARCIAL / SEM PAPER", "zero", "🟡", "YELLOW",
+    ),
+    "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": (
+        "CHALLENGER 125 — EDGE ABAIXO DO LIMIAR EXPERIMENTAL", "zero", "🟣", "YELLOW",
+    ),
+    "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
+    "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
+}
+
+
+def canonical_report_color_from_state(state: object) -> str:
+    """Mapeia o estado pela unica apresentacao canonica do report."""
+    if not isinstance(state, str):
+        state = "REPORT_NULL"
+    return REPORT_DECISION_PRESENTATION.get(
+        state, REPORT_DECISION_PRESENTATION["REPORT_NULL"]
+    )[3]
+
+
+def canonical_report_color(payload: dict) -> str:
+    """Cor operacional exibida pelo report, sem reinterpretar a decisao."""
+    decision = payload.get("prelive_decision")
+    state = decision.get("state") if isinstance(decision, dict) else None
+    return canonical_report_color_from_state(state)
+
+
+def historical_report_color_from_decision_head(text: str) -> str | None:
+    """Reconhece apenas a assinatura textual completa do contrato V2 conhecido."""
+    normalized = " ".join(str(text).split())
+    for label, _css_class, ball, color in REPORT_DECISION_PRESENTATION.values():
+        if normalized == f"{ball} {label}":
+            return color
+    return None
+
 
 def _esc(text) -> str:
     return html.escape(str(text if text is not None else ""))
@@ -1668,6 +1720,7 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
         flag = {3: "🟢", 2: "🟡", 1: "🟡", 0: "🔴"}.get(_nivel_flag, "🔴")
     _label_flag = {3: "oportunidade", 2: "a acompanhar", 1: "a acompanhar",
                    0: "mercado eficiente"}.get(_nivel_flag if (_mvm_flag and _mvm_flag.get("market")) else -1, "sinal")
+    v1_report_color = {"🟢": "GREEN", "🟡": "YELLOW", "🔴": "RED"}.get(flag, "UNAVAILABLE")
 
     # Grau de confiança global (0-100) com cor por faixa
     # Confiança: dois eixos separados (auditoria) — cobertura de dados e
@@ -1864,6 +1917,7 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="{REPORT_COLOR_META_NAME}" content="{v1_report_color}"/>
 <title>{a} vs {b}</title>
 <style>
 :root {{
@@ -2103,12 +2157,18 @@ def _pct_str(v, casas=0):
 # o que era enganador. Agora: par alargado, depois +1.5, e só a partir de
 # ~2.20/2.30 é que aparecem os handicaps mais positivos.
 _HANDICAP_REF_BO5_FAVORITO = [
-    # Referências analíticas internas fornecidas para a leitura humana.
-    # Não são odds/linhas capturadas nem entram em pricing/PAPER.
-    (1.225, ("-5", "-6")),   # faixa 1.20-1.25
-    (1.30, ("-4", "-4.5")),
-    (1.40, ("-3.5", "-4")),
-    (1.60, ("-2", "-3.5")),
+    # Faixas, e não âncoras mais próximas: a linha indicada deve ser a que
+    # tende a estar ao par na faixa inteira. Assim, 1.33 ou 1.363 continuam
+    # a estudar -4/-4.5, em vez de saltar prematuramente para -3.5/-4.
+    # São referências internas; não são linhas/odds capturadas nem entram
+    # em pricing ou PAPER.
+    (1.00, 1.30, ("-5", "-6")),
+    (1.30, 1.40, ("-4", "-4.5")),
+    (1.40, 1.51, ("-3.5", "-4")),
+    (1.51, 1.61, ("-2.5", "-3.5")),
+    # Favorito equilibrado: a zona curta evita sugerir uma margem pesada
+    # quando a Moneyline já se aproxima do par.
+    (1.61, 1.75, ("-1", "-1.5")),
 ]
 # Tabela BO3 fornecida pelo BRAIN em 29/08/2026. Os limites são explícitos
 # para impedir que 1.40 caia simultaneamente em duas bandas: 1.40 pertence à
@@ -2119,6 +2179,7 @@ _HANDICAP_REF_BO3_FAVORITO = [
     (1.30, 1.40, ("-4", "-4.5")),
     (1.40, 1.51, ("-3", "-3.5")),
     (1.51, 1.61, ("-1.5", "-2.5")),
+    (1.61, 1.75, ("-1", "-1.5")),
 ]
 # underdog: (limiar_min_odd, handicap). A odd tem de ser >= limiar para o
 # handicap se aplicar. Ordenada do mais positivo para o menos, para
@@ -2159,9 +2220,13 @@ def estimate_typical_handicap(odd, match_format="bo5"):
     if _HANDICAP_REF_AO_PAR[0] <= odd <= _HANDICAP_REF_AO_PAR[1]:
         return {"tipo": "ao_par", "handicap": None}
     if odd < _HANDICAP_REF_AO_PAR[0]:
-        tabela, tipo = _HANDICAP_REF_BO5_FAVORITO, "favorito"
-        ancora, handicap = min(tabela, key=lambda par: abs(par[0] - odd))
-        return {"tipo": tipo, "handicap": handicap, "odd_ancora": ancora, "format": fmt}
+        for low, high, handicap in _HANDICAP_REF_BO5_FAVORITO:
+            if low <= odd < high:
+                return {
+                    "tipo": "favorito", "handicap": handicap,
+                    "moneyline_bucket": (low, high), "format": fmt,
+                }
+        return None
     # underdog: primeiro limiar (do mais alto) que a odd atinge
     for limiar, handicap in _HANDICAP_REF_UNDERDOG:
         if odd >= limiar:
@@ -2169,6 +2234,60 @@ def estimate_typical_handicap(odd, match_format="bo5"):
     # odd acima do par mas abaixo do primeiro limiar underdog (2.00):
     # não há handicap positivo que compense -> tratar como neutro
     return {"tipo": "ao_par", "handicap": None}
+
+
+def _opposite_handicap_line(value) -> str | None:
+    """Espelha uma linha do favorito para o lado underdog correspondente."""
+    try:
+        return f"{-float(value):+g}"
+    except (TypeError, ValueError):
+        return None
+
+
+def handicap_reference_for_player(payload, player, match_format=None):
+    """Devolve a zona interna para o lado operacional indicado.
+
+    Se o lado escolhido for o underdog, a zona relevante é o espelho da zona
+    do favorito observado no mesmo jogo: favorito -4/-4.5 -> underdog +4/+4.5.
+    """
+    odds = _d(payload.get("market_odds_decimal"))
+    valid = [
+        (str(name), float(value))
+        for name, value in odds.items()
+        if isinstance(value, (int, float)) and value > 1
+    ]
+    if not player or not valid:
+        return None
+    target = next((pair for pair in valid if pair[0] == str(player)), None)
+    if target is None:
+        return None
+    fmt = str(match_format or payload.get("match_format") or "bo3").casefold()
+    favourite_name, favourite_odd = min(valid, key=lambda pair: pair[1])
+    target_name, target_odd = target
+    if target_name != favourite_name:
+        favourite_reference = estimate_typical_handicap(favourite_odd, fmt)
+        favourite_lines = (favourite_reference or {}).get("handicap") or ()
+        if (favourite_reference or {}).get("tipo") == "favorito" and favourite_lines:
+            mirrored = tuple(
+                line for line in (_opposite_handicap_line(value) for value in favourite_lines)
+                if line is not None
+            )
+            if len(mirrored) == len(favourite_lines):
+                return {
+                    "player": target_name,
+                    "odd": target_odd,
+                    "reference": {
+                        **favourite_reference,
+                        "tipo": "underdog",
+                        "handicap": mirrored,
+                        "mirrored_from_favourite": favourite_name,
+                    },
+                }
+    return {
+        "player": target_name,
+        "odd": target_odd,
+        "reference": estimate_typical_handicap(target_odd, fmt),
+    }
 
 
 def handicap_coverage_thresholds(reference):
@@ -2182,6 +2301,27 @@ def handicap_coverage_thresholds(reference):
         except (TypeError, ValueError):
             return []
     return sorted(set(values))
+
+
+def handicap_settlement_counts(margins, line):
+    """Conta coberturas, devoluções e falhas de uma linha por margem factual."""
+    try:
+        line = float(line)
+    except (TypeError, ValueError):
+        return (0, 0, 0)
+    cover = push = miss = 0
+    for margin in margins or ():
+        try:
+            result = float(margin) + line
+        except (TypeError, ValueError):
+            continue
+        if result > 0:
+            cover += 1
+        elif result < 0:
+            miss += 1
+        else:
+            push += 1
+    return cover, push, miss
 
 
 COLORS_V2 = {
@@ -2271,6 +2411,7 @@ body {{ background:var(--bg); color:var(--text);
 .report-nav {{ max-width:1080px; margin:0 auto 10px; }}
 .report-nav a {{ color:var(--dim); text-decoration:none; font-size:14px; }}
 .report-nav a:hover, .report-nav a:focus {{ color:var(--text); text-decoration:underline; }}
+.report-nav .nav-sep {{ color:var(--line); margin:0 8px; }}
 .sr-only {{ position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }}
 .num {{ font-variant-numeric:tabular-nums; }}
@@ -2578,18 +2719,47 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
   border-left:3px solid var(--mint); background:rgba(63,185,168,.07);
   border-radius:0 9px 9px 0; margin-bottom:12px; }}
 .action-list {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
-.action-item {{ border:1px solid var(--line); border-radius:10px; padding:12px;
+.action-item {{ border:1px solid var(--line); border-radius:10px; padding:15px;
   background:var(--surface2); min-width:0; }}
 .action-item-perfil {{ border-color:var(--mint); box-shadow:0 0 0 1px var(--mint) inset; }}
 .action-perfil-tag {{ color:var(--mint); text-transform:none; letter-spacing:0; font-weight:700; }}
 .action-kind {{ color:var(--dim); font-size:9px; font-weight:750; text-transform:uppercase;
   letter-spacing:.7px; margin-bottom:4px; }}
-.action-title {{ font-size:13px; font-weight:750; margin-bottom:5px; }}
-.action-headline {{ display:inline-block; font-size:18px; font-weight:800; color:var(--mint);
+.action-title {{ font-size:14px; font-weight:750; margin-bottom:7px; }}
+.action-headline {{ display:inline-block; font-size:19px; font-weight:800; color:var(--mint);
   background:rgba(63,185,168,.12); border-radius:7px; padding:2px 10px; margin-bottom:7px; }}
 .action-small-sample {{ font-size:10px; color:var(--amber); margin-bottom:6px; font-weight:600; }}
-.action-text {{ color:var(--dim); font-size:11px; line-height:1.5; }}
+.action-text {{ color:var(--dim); font-size:12.5px; line-height:1.65; white-space:pre-line; }}
 .action-source {{ color:var(--dim); opacity:.75; font-size:9px; margin-top:6px; }}
+.action-item-handicap {{ grid-column:1 / -1; }}
+.handicap-visual {{ margin-top:4px; }}
+.handicap-zone {{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--dim); font-size:12px;
+  margin:2px 0 11px; }}
+.handicap-zone strong {{ color:var(--text); font-size:13px; }}
+.handicap-zone .hz-odd {{ color:#79b8ff; font-weight:800; }}
+.handicap-zone .hz-arrow {{ color:var(--mint); font-size:16px; font-weight:800; }}
+.handicap-choices {{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }}
+.handicap-choice {{ border:1px solid var(--line); border-radius:9px; padding:12px; background:rgba(255,255,255,.025); }}
+.handicap-choice.protected {{ border-color:#4f8fcf; background:rgba(79,143,207,.10); }}
+.handicap-choice.reference {{ border-color:var(--mint); background:rgba(48,201,179,.09); }}
+.handicap-choice.alternative {{ border-color:var(--amber); background:rgba(225,170,72,.08); }}
+.handicap-choice-tag {{ color:var(--dim); font-size:9px; font-weight:800; letter-spacing:.65px; }}
+.handicap-choice.protected .handicap-choice-tag {{ color:#79b8ff; }}
+.handicap-choice.alternative .handicap-choice-tag {{ color:var(--amber); }}
+.handicap-choice-line {{ color:var(--text); font-size:18px; font-weight:850; margin:4px 0; }}
+.handicap-choice-rate {{ color:var(--mint); font-size:20px; font-weight:850; line-height:1.1; }}
+.handicap-choice-rate span {{ color:var(--text); font-size:11px; font-weight:600; }}
+.handicap-choice-primary-count {{ color:var(--dim); font-size:10px; font-weight:700; margin-top:3px; }}
+.handicap-choice-detail {{ color:var(--dim); font-size:11px; line-height:1.5; margin-top:5px; }}
+.handicap-protection-alert {{ margin-top:8px; padding:7px 8px; border-radius:6px; background:rgba(224,108,91,.13); color:#ffb4a8; font-size:10px; line-height:1.45; }}
+.handicap-protection-alert strong {{ display:block; color:var(--error); font-size:9px; letter-spacing:.45px; margin-bottom:2px; }}
+.handicap-validation {{ border-radius:8px; margin-top:11px; padding:10px 12px; font-size:12px; line-height:1.5; }}
+.handicap-validation.ready {{ background:rgba(63,185,168,.10); border-left:3px solid var(--mint); }}
+.handicap-validation.missing {{ background:rgba(224,108,91,.10); border-left:3px solid var(--error); }}
+.handicap-validation-title {{ font-size:10px; font-weight:800; letter-spacing:.6px; color:var(--text); }}
+.handicap-validation.missing .handicap-validation-title {{ color:var(--error); }}
+.handicap-validation-detail {{ color:var(--dim); }}
+@media(max-width:640px) {{ .handicap-choices {{ grid-template-columns:1fr; }} }}
 @media(max-width:640px) {{ .action-list {{ grid-template-columns:1fr; }}
   details.report-map>summary, .action-map-head {{ min-height:78px; }} }}
 
@@ -2643,6 +2813,10 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .photo-credits {{ margin-top:18px; color:var(--dim); font-size:10px; line-height:1.6; }}
 .photo-credits summary {{ cursor:pointer; width:max-content; max-width:100%; }}
 .photo-credits a {{ color:var(--dim); text-decoration:underline; }}
+.experimental-tier-notice {{ margin:10px 0 16px;padding:10px 13px;border:1px solid
+  rgba(224,163,74,.45);border-radius:9px;background:rgba(224,163,74,.08);
+  color:var(--dim);font-size:11px;line-height:1.55; }}
+.experimental-tier-notice b {{ color:var(--amber);letter-spacing:.04em; }}
 @media(max-width:640px) {{
   .mh-player {{ gap:7px; align-items:flex-start; }}
   .mh-player-photo {{ width:52px; height:52px; flex-basis:52px; }}
@@ -2712,10 +2886,21 @@ def _mod_header(payload, div, estado):
         odds_meta_parts.append(f"Captura: {_esc(payload['odds_captured_at_utc'])}")
     if payload.get("odds_capture_kind") == "rapidapi_response_observed_at_capture":
         odds_meta_parts.append("RapidAPI observada nesta execução; addTime apenas informativo")
+    if payload.get("odds_freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE":
+        odds_meta_parts.append("Quote estruturalmente válida; idade real não verificada")
     if payload.get("odds_capture_kind") == "feed_observed_at_capture":
         odds_meta_parts.append("Observação do feed nesta execução; hora do bookmaker N/D")
     odds_meta_parts.append(f"Provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
-    odds_meta_parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_bookmaker"):
+        odds_meta_parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
+    elif payload.get("odds_bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED":
+        odds_meta_parts.append("Casa: não indicada pelo feed RapidAPI")
+    else:
+        odds_meta_parts.append("Bookmaker: N/D")
+    if payload.get("odds_source_contract_version"):
+        odds_meta_parts.append(
+            f"Contrato: {_esc(payload['odds_source_contract_version'])}"
+        )
     if payload.get("odds_from_cache") is not None:
         cache = "hit" if payload.get("odds_from_cache") else "miss"
         age = payload.get("odds_cache_age_seconds")
@@ -2799,7 +2984,11 @@ def _mod_photo_credits(payload):
         if not image.get("path"):
             continue
         name = payload.get(f"player_{side}", "Jogador")
-        modified = "; miniatura/enquadramento adaptado" if image.get("modified") else ""
+        modifications = image.get("modifications")
+        if modifications:
+            modified = f"; {_esc(modifications)}"
+        else:
+            modified = "; miniatura/enquadramento adaptado" if image.get("modified") else ""
         credits.append(
             f'{_esc(name)}: <a href="{_esc(image.get("source_url", "#"))}">{_esc(image.get("author", "autor desconhecido"))}</a>, '
             f'<a href="{_esc(image.get("license_url", "#"))}">{_esc(image.get("license", "licença na origem"))}</a>{modified}'
@@ -2810,22 +2999,41 @@ def _mod_photo_credits(payload):
             f'<div>{"<br>".join(credits)}</div></details>')
 
 
+def _mod_experimental_tier_notice(payload):
+    """Badge factual discreto; EXPERIMENT não é erro nem degradação."""
+    policy = _d(payload.get("tournament_coverage"))
+    if policy.get("mode") != "EXPERIMENTAL_REPORT_ONLY":
+        return ""
+    return (
+        '<div class="experimental-tier-notice">'
+        f'<b>{_esc(policy.get("label") or "COBERTURA EXPERIMENTAL")}</b> · '
+        'Cobertura e pricing em avaliação. Este jogo não é promovido para '
+        'PAPER ou GREEN nesta fase, mesmo quando existe edge experimental.'
+        '</div>'
+    )
+
+
 def _mod_decision_box(payload):
     """Decisão operacional única, sem reinterpretar o motor no HTML."""
     decision = _d(payload.get("prelive_decision"))
     state = decision.get("state") or "REPORT_NULL"
     coverage = _d(decision.get("coverage"))
     coverage_text = f'{coverage.get("weighted_pct", 0):g}% · {coverage.get("status", "insuficiente")}'
-    labels = {
-        "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢"),
-        "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": ("EDGE POSITIVO — COBERTURA INSUFICIENTE PARA PAPER", "zero", "🟡"),
-        "EDGE_NEGATIVE": ("EDGE NEGATIVO — EXCLUÍDO", "negative", "🔴"),
-        "EDGE_ZERO": ("EDGE ZERO — EXCLUÍDO", "zero", "⚪"),
-        "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫"),
-        "PRICING_UNAVAILABLE": ("PREÇO DE MERCADO INDISPONÍVEL", "zero", "🟡"),
-    }
-    label, css_class, ball = labels.get(state, labels["REPORT_NULL"])
-    if state in {"EDGE_POSITIVE", "EDGE_POSITIVE_COVERAGE_INSUFFICIENT"}:
+    label, css_class, ball, _color = REPORT_DECISION_PRESENTATION.get(
+        state, REPORT_DECISION_PRESENTATION["REPORT_NULL"]
+    )
+    identity_gate = _d(decision.get("identity_gate"))
+    identity_blocks_paper = (
+        payload.get("identity_schema_version") == 2
+        and identity_gate.get("paper_eligible") is False
+    )
+    if state == "EDGE_POSITIVE" and identity_blocks_paper:
+        label = "EDGE POSITIVO — IDENTIDADE AINDA NÃO ELEGÍVEL PARA PAPER"
+    if state in {
+        "EDGE_POSITIVE",
+        "EDGE_POSITIVE_COVERAGE_INSUFFICIENT",
+        "EDGE_POSITIVE_EXPERIMENTAL_TIER",
+    }:
         market = _d(decision.get("market"))
         edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
         body = (
@@ -2833,12 +3041,26 @@ def _mod_decision_box(payload):
             f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
             f'<div class="decision-grid"><span>Mercado <b>{_esc(market.get("market"))}</b></span>'
             f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
-            f'<span>Cobertura <b>{_esc(coverage_text)}</b></span></div>'
+            f'<span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
             + (
-                '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
+                (
+                    '<div class="decision-note">Não entra em PAPER: identidade canónica ainda não resolvida. '
+                    f'{_esc(identity_gate.get("status") or "IDENTITY_UNAVAILABLE")} · '
+                    f'{_esc(identity_gate.get("reason_code") or "sem reason code")}. '
+                    'Consultar o relatório integral antes de qualquer utilização.</div>'
+                    if identity_blocks_paper else
+                    '<div class="decision-note">Entrada PAPER automática. Consultar o relatório integral antes de qualquer utilização.</div>'
+                )
                 if state == "EDGE_POSITIVE" else
                 f'<div class="decision-note">Não entra em PAPER: {_esc(decision.get("reason"))}. Consultar o relatório integral antes de qualquer utilização.</div>'
             )
+        )
+    elif state == "EDGE_ZERO" and decision.get("side") is None:
+        body = (
+            '<div class="decision-primary">Índice Fenzobot equilibrado · sem lado preferido</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            '<div class="decision-note">Não entra em PAPER: os indicadores disponíveis ficaram equilibrados. '
+            'Não é uma falha de dados nem uma recomendação contra qualquer jogador.</div>'
         )
     elif state in {"EDGE_NEGATIVE", "EDGE_ZERO"}:
         edge = decision.get("expected_edge_pct")
@@ -2848,10 +3070,40 @@ def _mod_decision_box(payload):
             f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
             f'<div class="decision-note">Não entra em PAPER. Cobertura {_esc(coverage_text)}.</div>'
         )
-    elif state == "PRICING_UNAVAILABLE":
+    elif state == "EXPERIMENTAL_FACTUAL_PARTIAL":
         body = (
-            '<div class="decision-primary">Análise factual disponível; edge e PAPER bloqueados por ausência de cotação fresca verificável.</div>'
-            f'<div class="decision-note">{_esc(decision.get("reason") or "Preço de mercado indisponível")} · Cobertura {_esc(coverage_text)}.</div>'
+            '<div class="decision-primary">Relatório factual Challenger 125 · cobertura parcial</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            f'<div class="decision-note">Sem edge, PAPER ou GREEN: {_esc(decision.get("reason") or "dados bilaterais incompletos")}. '
+            'Os dados disponíveis permanecem visíveis para observação e aprendizagem.</div>'
+        )
+    elif state == "EXPERIMENTAL_EDGE_BELOW_THRESHOLD":
+        body = (
+            '<div class="decision-primary">Challenger 125 · edge abaixo do limiar experimental</div>'
+            f'<div class="decision-grid"><span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
+            f'<div class="decision-note">Sem PAPER ou GREEN: {_esc(decision.get("reason") or "evidência experimental insuficiente")}.</div>'
+        )
+    elif state == "PRICING_UNAVAILABLE":
+        reason = str(decision.get("reason") or "")
+        unavailable_messages = {
+            "event_identity_unavailable": "O evento de odds não pôde ser associado com segurança aos dois jogadores.",
+            "event_lookup_http_error": "A consulta de associação do evento devolveu uma resposta inválida.",
+            "event_lookup_request_failed": "A consulta de associação do evento falhou temporariamente.",
+            "recent_odds_request_failed": "A consulta de odds atuais falhou temporariamente.",
+            "recent_odds_missing_valid_two_way_moneyline": "O mercado devolveu odds incompletas ou inválidas para um dos dois jogadores.",
+            "MARKET_BOUNDARY_SENTINEL": "A cotação apresentava o padrão-limite inválido do fornecedor e foi rejeitada.",
+            "NO_VALID_MONEYLINE_CANDIDATE": "Nenhum bookmaker devolveu um par Moneyline estruturalmente válido.",
+            "INSUFFICIENT_BOOKMAKER_CONSENSUS": "Só existia um bookmaker válido; a cotação fica observável, mas não pode alimentar pricing ou PAPER.",
+            "CROSS_BOOK_DISPERSION": "Os bookmakers válidos divergiam mais de 15 p.p.; o preço operacional foi bloqueado.",
+            "MONEYLINE_INCOMPLETE": "As cotações Moneyline estavam incompletas e foram rejeitadas.",
+            "MONEYLINE_NON_NUMERIC": "As cotações Moneyline não eram numéricas e foram rejeitadas.",
+            "MONEYLINE_NON_FINITE": "As cotações Moneyline não eram finitas e foram rejeitadas.",
+            "MONEYLINE_ODDS_AT_OR_BELOW_ONE": "As cotações Moneyline tinham valores iguais ou inferiores a 1.0 e foram rejeitadas.",
+        }
+        detail = unavailable_messages.get(reason, "Não foi recebida uma cotação atual verificável para os dois jogadores.")
+        body = (
+            '<div class="decision-primary">Análise factual disponível; edge e PAPER aguardam uma cotação bilateral verificável.</div>'
+            f'<div class="decision-note">{_esc(detail)} · O mercado entra em reconsulta automática; não cria PAPER. Cobertura {_esc(coverage_text)}.</div>'
         )
     else:
         assessment = _d(decision.get("report_assessment"))
@@ -2868,9 +3120,48 @@ def _mod_decision_box(payload):
     )
 
 
+def _mod_green_strong_candidate(payload):
+    membership = _d(_d(_d(payload.get("validation")).get("cohorts")).get("GREEN_STRONG_V1"))
+    if membership.get("eligible") is not True:
+        return ""
+    source = _d(membership.get("source"))
+    snapshot_key = source.get("snapshot_key") or payload.get("snapshot_key") or "UNAVAILABLE"
+    probabilities = _d(source.get("market_probabilities"))
+    side = membership.get("selected_side")
+    other = "b" if side == "a" else "a"
+    try:
+        is_underdog = (
+            side in {"a", "b"}
+            and float(probabilities[side]) < float(probabilities[other])
+        )
+    except (KeyError, TypeError, ValueError):
+        is_underdog = False
+    underdog_rule = (
+        ' Sendo o lado Fenzobot o underdog, uma eventual seleção GUERRA_SELECTION_V1 usa duas legs manuais '
+        'para este snapshot: Moneyline direto + Handicap games positivo, sempre com linha e odds reais 22Bet.'
+        if is_underdog else ""
+    )
+    return (
+        '<section class="green-strong-candidate">'
+        '<div class="green-strong-title">GREEN_STRONG_V1 — candidato à validação</div>'
+        '<p>Registo prospetivo SHADOW; não é prova de vantagem nem recomendação de execução.</p>'
+        f'<div class="green-strong-id">Snapshot {_esc(snapshot_key)} · Validação {_esc(membership.get("validation_id") or "UNAVAILABLE")}</div>'
+        '<div class="green-strong-check"><b>Revisão manual 22Bet</b> · Moneyline ≥ 1.75 pode ser considerada; '
+        'abaixo de 1.75 encaminhar apenas para revisão de handicap. Confirmar preço, cobertura equivalente e contexto; '
+        f'nenhuma entrada ou handicap é automático.{_esc(underdog_rule)}</div></section>'
+    )
+
+
 def _mod_system_history(payload):
     history = _d(payload.get("paper_history"))
     paper = _d(history.get("PAPER"))
+    manual_document = _d(history.get("MANUAL_22BET"))
+    manual = _d(manual_document.get("summary"))
+    green_report = _d(payload.get("green_strong_history"))
+    green_metrics = _d(green_report.get("metrics"))
+    guerra = _d(green_report.get("guerra_selection_v1"))
+    guerra_summary = _d(guerra.get("summary"))
+    guerra_pairs = _d(guerra.get("underdog_pair_completeness"))
 
     def value(raw, suffix=""):
         if raw is None:
@@ -2919,20 +3210,83 @@ def _mod_system_history(payload):
     )
     paper_market_line = market_line("Moneyline", ml)
     paper_html = (
-        f'<p>{_esc(paper_status)}</p>' if not total_entries else
+        '<p>Ainda não há sinais PAPER técnicos registados.</p>' if not total_entries else
         f'<div class="history-metrics">{cells}</div><div class="history-split">{_esc(paper_status or paper_market_line)}</div>'
-        '<div class="history-split">A odd média é calculada apenas sobre entradas PAPER válidas; não representa backtest/reconstruído.</div>'
+        '<div class="history-split">Carteira técnica gerada pelo bot; não representa o registo manual 22Bet nem reconstruído.</div>'
+    )
+
+    manual_total = int(manual.get("total_entries") or 0)
+    manual_settled = int(manual.get("settled") or (manual.get("wins") or 0) + (manual.get("losses") or 0))
+    manual_pending = int(manual.get("pending") or max(0, manual_total - manual_settled))
+    manual_metrics = (
+        ("Entradas 22Bet", value(manual_total)),
+        ("Liquidadas", value(manual_settled)),
+        ("Pendentes", value(manual_pending)),
+        ("W–L liquidado", f'{value(manual.get("wins"))}–{value(manual.get("losses"))}'),
+        ("Win rate liquidado", value(manual.get("win_rate_pct"), "%")),
+        ("Resultado acumulado", value(manual.get("units"), " u")),
+        ("ROI liquidado", value(manual.get("roi_pct"), "%")),
+        ("Odd média das entradas", value(manual.get("average_odd"))),
+    )
+    manual_cells = "".join(
+        f'<div><span>{_esc(label)}</span><b>{_esc(raw)}</b></div>'
+        for label, raw in manual_metrics
+    )
+    manual_market_parts = []
+    for label in ("Moneyline", "Handicap games", "Handicap sets"):
+        data = _d(_d(manual_document.get("by_market")).get(label))
+        if not data.get("total_entries"):
+            continue
+        manual_market_parts.append(
+            f'{label}: {value(data.get("total_entries"))} entradas · '
+            f'{value(data.get("wins"))}–{value(data.get("losses"))} · '
+            f'{value(data.get("roi_pct"), "%")} ROI'
+        )
+    manual_side_parts = []
+    for label in ("Favorito", "Underdog"):
+        data = _d(_d(manual_document.get("by_side")).get(label))
+        if not data.get("total_entries"):
+            continue
+        manual_side_parts.append(
+            f'{label}: {value(data.get("total_entries"))} entradas · '
+            f'{value(data.get("roi_pct"), "%")} ROI'
+        )
+    source = _d(manual_document.get("source"))
+    source_url = str(source.get("url") or "")
+    source_link = (
+        f'<a class="history-sheet-link" href="{_esc(source_url)}" target="_blank" rel="noopener">'
+        'Abrir registo PAPER Trading 22Bet</a>'
+        if source_url.startswith("https://docs.google.com/spreadsheets/") else ""
+    )
+    manual_html = (
+        '<p>O registo manual 22Bet ainda não foi sincronizado.</p>'
+        if not manual_total else
+        f'<div class="history-metrics">{manual_cells}</div>'
+        f'<div class="history-split">{" · ".join(manual_market_parts)}</div>'
+        f'<div class="history-split">{" · ".join(manual_side_parts)}</div>'
+        f'<div class="history-split">Fonte operacional manual: 22Bet. {source_link}</div>'
     )
     reconstructed_html = (
         f'<p>{_esc(reconstructed_text)}</p>' if reconstructed_text else
         '<p>Ainda sem amostra reconstruída liquidada suficiente para métricas. '
         'Este bloco é reconstruído a partir de snapshots resolvidos; não é o PAPER nem histórico REAL.</p>'
     )
+    validation_html = (
+        f'<p>GREEN_STRONG_V1: {_esc(green_metrics.get("sample_size", 0))} candidatos prospetivos · '
+        f'{_esc(green_metrics.get("settled_sample_size", 0))} liquidados · '
+        f'win rate {_esc(value(green_metrics.get("win_rate_pct"), "%"))}. '
+        f'GUERRA_SELECTION_V1: {_esc(guerra.get("selected_candidates", 0))} candidatos únicos · '
+        f'{_esc(guerra.get("paper_entries", guerra_summary.get("total_entries", 0)))} entradas PAPER · '
+        f'{_esc(guerra_pairs.get("complete_moneyline_positive_handicap_pairs", 0))} pares underdog completos.</p>'
+        '<p>SHADOW experimental; amostra e métricas descritivas não demonstram edge.</p>'
+    )
     return (
         '<details class="system-history"><summary>Histórico do sistema'
-        '<span class="more-hint">PAPER, reconstruído e REAL sem misturar universos</span></summary>'
-        f'<div class="system-history-body"><h4>PAPER</h4>{paper_html}'
+        '<span class="more-hint">PAPER 22Bet, sinais técnicos, reconstruído e REAL separados</span></summary>'
+        f'<div class="system-history-body"><h4>PAPER 22Bet · registo manual</h4>{manual_html}'
+        f'<h4>Sinais PAPER do sistema · técnico</h4>{paper_html}'
         f'<h4>Reconstruído / backtest</h4>{reconstructed_html}'
+        f'<h4>Validação prospetiva · GREEN_STRONG_V1</h4>{validation_html}'
         '<h4>REAL</h4><p>Ainda sem histórico REAL. Não é misturado com PAPER nem com reconstruído.</p></div></details>'
     )
 def _mod_fatores(payload, div):
@@ -3038,19 +3392,28 @@ def _fd_bar(chave, st):
             f'<span class="fd-bar-val b">{_esc(label_b)}</span></div>')
 
 
-def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
+def _mod_fatores_detalhados(
+    payload,
+    div,
+    overview_html="",
+    extras_html="",
+    tail_html="",
+):
     """Módulo: TODOS os fatores do motor (não só o top-3/4), com quem tem
     vantagem em cada um, OS NÚMEROS reais por trás, e uma barra proporcional
     — "sem dados"/"empate"/"abaixo do limiar" quando aplicável. 100% Python,
     a partir de `fatores_status` (ver _calcular_divergencia) — o Claude
     nunca vê nem decide isto.
 
+    overview_html: leitura editorial compacta injetada no início do Mapa de
+    Forças, antes dos módulos analíticos já existentes.
+
     extras_html: conteúdo adicional (Serviço/Resposta, Carga, H2H) injetado
     DENTRO do mesmo colapsável, ANTES das linhas por fator — feedback de
     teste (13/08/2026): "acho que esta info devia estar dentro do mapa de
     forças", em vez de cartões à parte antes dele."""
     status = (div or {}).get("fatores_status") or {}
-    if not status and not extras_html and not tail_html:
+    if not status and not overview_html and not extras_html and not tail_html:
         return ""
     max_impact = max(
         (float(st.get("peso_efetivo") or 0) for st in status.values()),
@@ -3121,7 +3484,7 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
             f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
             f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
             f'{bar_html}{impact_bar}</div>')
-    if not linhas and not extras_html and not tail_html:
+    if not linhas and not overview_html and not extras_html and not tail_html:
         return ""
     total_tag = f" ({len(linhas)})" if linhas else ""
     factor_bars = (
@@ -3135,7 +3498,7 @@ def _mod_fatores_detalhados(payload, div, extras_html="", tail_html=""):
     )
     return (f'<details class="more report-map mais-forcas"><summary>Mapa de Forças{total_tag}'
             f'<span class="more-hint">comparação visual de todos os fatores</span></summary>'
-            f'<div class="more-body">{extras_html}{factor_bars}{tail_html}</div></details>')
+            f'<div class="more-body">{overview_html}{extras_html}{factor_bars}{tail_html}</div></details>')
 
 
 def _mod_mercado_vs_sinal(payload, div):
@@ -3221,8 +3584,8 @@ def _mod_market_residual_pricing(payload):
             f'<div class="pricing-player-name">{_esc(name)}</div>'
             '<div class="pricing-metrics">'
             f'<div><span>Market probability</span><b>{fmt(data.get("market_probability_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>Sharp estimate</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>Sharp adjustment</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
+            f'<div><span>Fenzobot estimate</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>Fenzobot adjustment</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
             f'<div><span>Fair odd</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
             f'<div><span>Market odd</span><b>{fmt(data.get("market_odd"), 2)}</b></div>'
             f'<div class="pricing-edge{edge_class}"><span>Expected edge</span>'
@@ -3250,8 +3613,9 @@ def _mod_market_residual_pricing(payload):
     return (
         '<section class="pricing-block">'
         '<div class="pricing-head"><div>'
-        '<div class="pricing-kicker">SHARP PRICING — MARKET RESIDUAL</div>'
-        '<div class="pricing-path">Mercado sem margem → ajuste residual limitado → estimativa Sharp</div>'
+        '<div class="pricing-kicker">FENZOBOT PRICING — MARKET RESIDUAL</div>'
+        '<p class="pricing-disclaimer">PAPER técnico automático e revisão manual 22Bet são estratégias separadas. As coberturas operacional e de pricing têm bases distintas.</p>'
+        '<div class="pricing-path">Mercado sem margem → ajuste residual limitado → estimativa Fenzobot</div>'
         '</div><span class="pricing-status">EXPERIMENTAL — EM VALIDAÇÃO</span></div>'
         f'<div class="pricing-grid">{card("a", payload.get("player_a", "A"))}'
         f'{card("b", payload.get("player_b", "B"))}</div>'
@@ -3260,8 +3624,8 @@ def _mod_market_residual_pricing(payload):
         f'<span>Qualidade da evidência <b>{quality_pct:.0f}%</b></span>'
         f'<span><b>{int(evidence.get("factor_count") or 0)}</b> fatores</span>'
         f'<span>Massa efetiva <b>{fmt(evidence.get("effective_mass"), 1)}</b></span>'
-        f'<span>Cobertura <b>{coverage_pct:.0f}%</b></span>'
-        f'<span>Fiabilidade das fontes <b>{source_pct:.0f}%</b></span>'
+        f'<span>Cobertura do pricing <b>{coverage_pct:.0f}%</b></span>'
+        f'<span>Coeficiente de fonte (pricing) <b>{source_pct:.0f}%</b></span>'
         f'<span>Overround observado <b>{fmt(overround, 2, suffix="%")}</b></span>'
         f'<span>{_esc(version)} · config {_esc(fingerprint)}</span>'
         '</div>'
@@ -4083,7 +4447,8 @@ def _mod_action_map(payload, div, result):
     names = {"a": a, "b": b}
     actions = []
 
-    def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None):
+    def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None,
+            card_class="", visual=None):
         # NOVO (22/08/2026, a pedido): "headline" é só para destaque
         # visual (número grande e colorido no topo do cartão) — separado
         # de "odd_justa", que continua a controlar SÓ o destaque por
@@ -4094,7 +4459,8 @@ def _mod_action_map(payload, div, result):
         # um com n=30. Só marca "amostra pequena" abaixo de 15; acima
         # disso não mostra selo (é amostra saudável, não precisa de aviso).
         actions.append({"kind": kind, "title": title, "text": text, "source": source,
-                        "odd_justa": odd_justa, "headline": headline, "n_amostra": n_amostra})
+                        "odd_justa": odd_justa, "headline": headline, "n_amostra": n_amostra,
+                        "card_class": card_class, "visual": visual})
 
     div = _d(div)
     level = _d(div.get("classificacao")).get("nivel", 0) or 0
@@ -4107,6 +4473,176 @@ def _mod_action_map(payload, div, result):
     def observed_odd(side):
         name = names.get(side)
         return market.get(name, market.get(f"player_{side}"))
+
+    def comparable_moneyline_history(side):
+        """Devolve apenas histórico de odds do mesmo formato do jogo atual."""
+        try:
+            current_odd = float(observed_odd(side))
+        except (TypeError, ValueError):
+            return None
+        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        for band, stats in _d(history.get("buckets")).items():
+            try:
+                low, high = (float(value) for value in band.split("-", 1))
+            except (TypeError, ValueError):
+                continue
+            if not (low <= current_odd <= high and stats.get("n")):
+                continue
+            format_stats = _d(_d(stats.get("by_format")).get(match_format))
+            # Compatibilidade com payloads históricos anteriores à divisão
+            # explícita BO3/BO5, sem alterar o comportamento deles.
+            if not stats.get("by_format"):
+                format_stats = _d(stats)
+            if format_stats.get("n"):
+                return {"band": band, "stats": format_stats, "current_odd": current_odd}
+        return None
+
+    def _odds_band_for(value):
+        """Etiqueta da banda exata, mesmo quando ainda não tem observações."""
+        bands = (
+            (1.20, 1.25), (1.26, 1.30), (1.31, 1.40), (1.41, 1.50),
+            (1.51, 1.60), (1.61, 1.80), (1.81, 2.00), (2.01, 2.09),
+            (2.10, 2.30), (2.31, 2.60), (2.61, 3.00), (3.01, 3.50),
+            (3.51, 4.50), (4.51, 6.00), (6.01, 10.00),
+        )
+        for low, high in bands:
+            if low <= value <= high:
+                return f"{low:.2f}-{high:.2f}"
+        return None
+
+    def _format_stats(raw):
+        """Lê o recorte BO3/BO5, mantendo compatibilidade com payloads antigos."""
+        raw = _d(raw)
+        format_stats = _d(_d(raw.get("by_format")).get(match_format))
+        return format_stats if raw.get("by_format") else raw
+
+    def _historical_odds_overview(side, current_odd):
+        """Contexto honesto quando a banda exata não tem amostra.
+
+        Não junta bandas para fabricar uma estatística comparável. Mostra o
+        histórico geral do mesmo formato e, separadamente, a banda vizinha
+        mais próxima que tenha observações reais.
+        """
+        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        buckets = _d(history.get("buckets"))
+        total_n = total_wins = 0
+        nearest = None
+        for band, raw in buckets.items():
+            stats = _format_stats(raw)
+            n = int(stats.get("n") or 0)
+            if not n:
+                continue
+            wins = int(stats.get("wins") or 0)
+            total_n += n
+            total_wins += wins
+            try:
+                low, high = (float(value) for value in band.split("-", 1))
+            except (TypeError, ValueError):
+                continue
+            distance = 0.0 if low <= current_odd <= high else min(
+                abs(current_odd - low), abs(current_odd - high)
+            )
+            candidate = (distance, low, band, stats)
+            if nearest is None or candidate[:2] < nearest[:2]:
+                nearest = candidate
+        return {
+            "exact_band": _odds_band_for(current_odd),
+            "general_n": total_n,
+            "general_wins": total_wins,
+            "nearest": nearest,
+        }
+
+    def moneyline_history_note(side):
+        context = comparable_moneyline_history(side)
+        notes = []
+
+        # Para uma seleção underdog, a taxa global como underdog explica se
+        # o preço alto costuma ser apenas derrota ou se o jogador realmente
+        # vence uma parte relevante destes jogos. É sempre do mesmo formato.
+        try:
+            current_odd = float(observed_odd(side))
+        except (TypeError, ValueError):
+            current_odd = None
+        if current_odd and current_odd > 2.0:
+            history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+            underdog = _d(history.get("underdog"))
+            format_stats = _d(_d(underdog.get("by_format")).get(match_format))
+            if not underdog.get("by_format"):
+                format_stats = underdog
+            n = int(format_stats.get("n") or 0)
+            wins = int(format_stats.get("wins") or 0)
+            if n:
+                notes.append(
+                    f"Histórico como underdog (>2.00, {match_format.upper()}): "
+                    f"venceu {wins}/{n} ({100 * wins / n:.1f}%)."
+                )
+
+        if context:
+            stats = context["stats"]
+            n = int(stats.get("n") or 0)
+            wins = int(stats.get("wins") or 0)
+            win_rate = stats.get("win_rate_pct")
+            if not isinstance(win_rate, (int, float)) and n:
+                win_rate = round(100 * wins / n, 1)
+            if n and isinstance(win_rate, (int, float)):
+                notes.append(
+                    f"Faixa de odd comparável {context['band']} ({match_format.upper()}): "
+                    f"vitórias {float(win_rate):.1f}% ({wins}/{n})."
+                )
+        elif current_odd:
+            # A ausência da banda exata não significa ausência de historial
+            # do jogador. Mostramos ambas as coisas sem tratar uma banda
+            # adjacente como se fosse a faixa atual.
+            overview = _historical_odds_overview(side, current_odd)
+            band = overview.get("exact_band") or "atual"
+            notes.append(
+                f"Faixa exata {band} ({match_format.upper()}): sem casos com odds e score completos."
+            )
+            general_n = int(overview.get("general_n") or 0)
+            general_wins = int(overview.get("general_wins") or 0)
+            if general_n:
+                notes.append(
+                    f"Histórico geral com odds ({match_format.upper()}): vitórias "
+                    f"{100 * general_wins / general_n:.1f}% ({general_wins}/{general_n})."
+                )
+            nearest = overview.get("nearest")
+            if nearest:
+                _, _, nearest_band, nearest_stats = nearest
+                nearest_n = int(nearest_stats.get("n") or 0)
+                nearest_wins = int(nearest_stats.get("wins") or 0)
+                if nearest_n:
+                    notes.append(
+                        f"Faixa próxima {nearest_band} ({match_format.upper()}): vitórias "
+                        f"{100 * nearest_wins / nearest_n:.1f}% ({nearest_wins}/{nearest_n}); "
+                        "é contexto, não a faixa exata."
+                    )
+
+        # O Excel Histórico é construído a partir deste arquivo canónico de
+        # snapshots. Não o misturamos com a fonte externa de scores completos:
+        # este bloco comunica só vitórias por faixa de odd, com regra temporal
+        # explícita, e é especialmente útil para ATP onde ainda não existe a
+        # mesma cobertura histórica de odds da WTA.
+        canonical = _d(payload.get(f"canonical_odds_context_{side}"))
+        exact = _d(canonical.get("exact"))
+        general = _d(canonical.get("general"))
+        source = canonical.get("source") or "Fenzobot · histórico canónico"
+        exact_n = int(exact.get("n") or 0)
+        exact_wins = int(exact.get("wins") or 0)
+        if exact_n:
+            notes.append(
+                f"{source} — faixa {canonical.get('exact_band')}: vitórias "
+                f"{float(exact.get('win_rate_pct') or 0):.1f}% ({exact_wins}/{exact_n})."
+            )
+        else:
+            general_n = int(general.get("n") or 0)
+            general_wins = int(general.get("wins") or 0)
+            if general_n:
+                notes.append(
+                    f"{source} — faixa {canonical.get('exact_band') or 'atual'} ainda sem "
+                    f"amostra; geral: vitórias {100 * general_wins / general_n:.1f}% "
+                    f"({general_wins}/{general_n})."
+                )
+        return ("\n" + " ".join(notes)) if notes else ""
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
     # económica vem exclusivamente do pricing residual v0.1; a antiga faixa
@@ -4133,7 +4669,8 @@ def _mod_action_map(payload, div, result):
         if _odd_fav is not None and float(_odd_fav) < INVESTOR_PROFILE_ODDS_LOW:
             add("Mercado principal", f"{fav} · favorito claro @ {_odd_fav_txt}",
                 f"Os indicadores apontam para {fav}, mas a odd é baixa demais para o Moneyline compensar. "
-                "O valor, a existir, está no handicap negativo (ver abaixo).",
+                "Mercado a observar: handicap negativo (ver abaixo)."
+                f"{moneyline_history_note(fav_side)}",
                 "Motor de divergência", headline=f"Handicap de {fav}")
         else:
             _pricing_note = ""
@@ -4146,7 +4683,8 @@ def _mod_action_map(payload, div, result):
                 )
             add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
                 f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}."
-                f"{_pricing_note} Confirmar o preço antes de decidir.",
+                f"{_pricing_note} Confirmar o preço antes de decidir."
+                f"{moneyline_history_note(fav_side)}",
                 "Motor de divergência + pricing residual experimental",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
@@ -4156,7 +4694,8 @@ def _mod_action_map(payload, div, result):
         if _odd_fav is not None and float(_odd_fav) < INVESTOR_PROFILE_ODDS_LOW:
             add("Mercado principal", f"{fav} · favorito claro @ {_odd_fav_txt}",
                 f"Mercado e indicadores concordam em {fav}, mas a odd é baixa demais para o Moneyline compensar. "
-                "O valor, a existir, está no handicap negativo (ver abaixo).",
+                "Mercado a observar: handicap negativo (ver abaixo)."
+                f"{moneyline_history_note(fav_side)}",
                 "Mercado + índice de sinais", headline=f"Handicap de {fav}")
         else:
             if _pricing_candidate and _pricing_side == fav_side:
@@ -4176,7 +4715,8 @@ def _mod_action_map(payload, div, result):
                     "Mercado e indicadores concordam, mas não há pricing residual disponível "
                     "para avaliar o preço."
                 )
-            add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}", _nota_alinhamento,
+            add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}",
+                f"{_nota_alinhamento}{moneyline_history_note(fav_side)}",
                 "Mercado + índice de sinais + pricing residual experimental",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     else:
@@ -4204,17 +4744,31 @@ def _mod_action_map(payload, div, result):
         return round(100.0 / rate_pct, 2)
 
     def scenario(side, rate_key, count_key):
+        # Dados ricos não separam BO3/BO5. Num encontro BO5, a única
+        # evidência aceitável para cenários de sets é a série BO5 explícita.
+        if match_format == "bo5":
+            if rate_key == "first_set_lose_then_win_pct":
+                fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo5"))
+                return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+            if rate_key == "deciding_set_win_pct":
+                fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo5"))
+                return fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
         rich = _d(_d(payload.get(f"rich_stats_{side}")).get("scenarios"))
-        return rich.get(rate_key), rich.get(count_key)
+        rate, count = rich.get(rate_key), rich.get(count_key)
+        if rate is not None:
+            return rate, count
+        if rate_key == "first_set_lose_then_win_pct":
+            fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo3"))
+            return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+        if rate_key == "deciding_set_win_pct":
+            fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo3"))
+            return fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
+        return rate, count
 
     # Recuperação depois do primeiro set: gatilho condicional live.
     comeback = {}
     for side in ("a", "b"):
         rate, count = scenario(side, "first_set_lose_then_win_pct", "first_set_lose_count")
-        if rate is None:
-            is_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
-            fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo5" if is_bo5 else "bo3"))
-            rate, count = fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
         if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 5:
             comeback[side] = (float(rate), int(count))
     if comeback:
@@ -4231,71 +4785,65 @@ def _mod_action_map(payload, div, result):
         rate, count = comeback[side]
         if rate >= 30:
             _odd_cb = _odd_justa(rate)
+            try:
+                _is_super_favourite = float(observed_odd(side)) <= 1.45
+            except (TypeError, ValueError):
+                _is_super_favourite = False
             # SIMPLIFICADO (22/08/2026, a pedido — linguagem simples,
             # número em destaque separado do texto).
-            add("Cenário ao vivo", f"{names[side]} perde o 1.º set",
-                f"Recupera e ganha o jogo {rate:.0f}% das vezes (em {count} jogos assim).",
-                "Moneyline", headline=(f"Moneyline ~{_odd_cb:.2f}" if _odd_cb else None), n_amostra=count)
+            if not _is_super_favourite:
+                add("Cenário ao vivo", f"{names[side]} perde o 1.º set",
+                    f"Recupera e ganha o jogo {rate:.0f}% das vezes (em {count} jogos assim).",
+                    "Moneyline", headline=(f"Moneyline ~{_odd_cb:.2f}" if _odd_cb else None), n_amostra=count)
             # CORREÇÃO (21/08/2026, a pedido — "falar em linhas de
             # handicap se o histórico justificar"): antes usava um valor
             # fixo (+2.5/+3.5) sem ligação aos dados; agora usa a odd
             # justa já calculada para indicar a linha típica real.
             _ref_hc_cb = estimate_typical_handicap(_odd_cb, match_format) if _odd_cb else None
-            if _ref_hc_cb and _ref_hc_cb["tipo"] != "ao_par":
+            if not _is_super_favourite and _ref_hc_cb and _ref_hc_cb["tipo"] != "ao_par":
                 _hb_cb, _ha_cb = _ref_hc_cb["handicap"]
                 add("Cenário ao vivo", f"Alternativa: handicap para {names[side]}",
                     "Perder por poucos jogos é mais fácil de acontecer do que ganhar o jogo todo.",
                     f"Histórico de recuperações · n={count}", headline=f"Handicap {_hb_cb}/{_ha_cb}", n_amostra=count)
 
-    # NOVO (21/08/2026, a pedido): caso especial — favoritos com odd
-    # pré-jogo entre 1.25 e 1.40. Se perderem o 1.º set, a odd ao vivo
-    # tipicamente sobe para 1.80-2.40 (estimativa GENÉRICA de mercado,
-    # fornecida pelo utilizador — não calculada por nós). Compara essa
-    # faixa típica com a taxa REAL de recuperação deste jogador (já
-    # calculada pelo motor, reaproveitada do bloco anterior) — se a taxa
-    # real implica uma odd justa mais baixa do que a faixa típica de
-    # mercado, é um sinal de valor a assinalar.
-    _FAVORITO_ESPECIAL_RANGE = (1.25, 1.40)
-    _ODD_AO_VIVO_TIPICA_RANGE = (1.80, 2.40)
+    # Super favoritos (ML <=1.45): o Mapa prioriza a recuperação depois de
+    # perder o primeiro set. A recuperação após uma quebra isolada não é
+    # quantificável sem histórico ponto-a-ponto; é um gatilho de observação,
+    # nunca uma taxa inventada.
+    _SUPER_FAVOURITE_MAX_ODD = 1.45
     for side in ("a", "b"):
         try:
             _odd_pre_jogo_f = float(observed_odd(side))
         except (TypeError, ValueError):
             continue
-        if not (_FAVORITO_ESPECIAL_RANGE[0] <= _odd_pre_jogo_f <= _FAVORITO_ESPECIAL_RANGE[1]):
+        if not (1.0 < _odd_pre_jogo_f <= _SUPER_FAVOURITE_MAX_ODD):
             continue
         if side not in comeback:
+            add("Live · super favorito", f"{names[side]} após perder o 1.º set",
+                f"Sem amostra histórica {match_format.upper()} suficiente para medir recuperação após perder o 1.º set. "
+                "Não avaliar Moneyline live por este cenário.",
+                "Sem mistura BO3/BO5 · não há taxa de recuperação publicada",
+                headline="Sem validação BO5" if match_format == "bo5" else "Sem validação BO3")
             continue
         _rate_esp, _count_esp = comeback[side]
         _odd_justa_real = _odd_justa(_rate_esp)
         if _odd_justa_real is None:
             continue
-        if _odd_justa_real < _ODD_AO_VIVO_TIPICA_RANGE[0]:
-            _ref_hc_esp = estimate_typical_handicap(_odd_justa_real, match_format)
-            _hc_txt = ""
-            if _ref_hc_esp and _ref_hc_esp["tipo"] != "ao_par":
-                _hb, _ha = _ref_hc_esp["handicap"]
-                _hc_txt = f" Handicap típico: {_hb} a {_ha}."
-            # SIMPLIFICADO (22/08/2026, a pedido): linguagem direta,
-            # número em destaque no topo do cartão.
-            add("Caso especial", f"{names[side]} · favorito, valor se perder o 1.º set",
-                f"{names[side]} recupera {_rate_esp:.0f}% dos jogos assim (n={_count_esp}) — melhor do que o mercado "
-                f"costuma oferecer nesse momento ({_ODD_AO_VIVO_TIPICA_RANGE[0]:.2f}-{_ODD_AO_VIVO_TIPICA_RANGE[1]:.2f}).{_hc_txt}",
-                "Estimativa genérica + histórico próprio", odd_justa=_odd_justa_real,
-                headline=f"Moneyline ~{_odd_justa_real:.2f}", n_amostra=_count_esp)
-        else:
-            add("Caso especial", f"{names[side]} · sem sinal extra se perder o 1.º set",
-                f"Recupera {_rate_esp:.0f}% dos jogos (n={_count_esp}) — dentro do que o mercado já costuma oferecer.",
-                "Estimativa genérica + histórico próprio", n_amostra=_count_esp)
+        add("Live · super favorito", f"{names[side]} após perder o 1.º set",
+            "DADOS HISTÓRICOS\n"
+            f"• Recupera e vence: {_rate_esp:.1f}% ({_count_esp} jogos).\n"
+            f"• Moneyline de referência após perder o set: ~{_odd_justa_real:.2f}.\n\n"
+            "AÇÃO\n"
+            "• Observar Moneyline apenas se a odd ao vivo for superior à referência.\n"
+            "• Se ficar break abaixo no 1.º set: observar a reação, mas sem percentagem histórica — "
+            "o sistema não tem ainda histórico ponto-a-ponto. Se perder o set, aplicar os dados acima.",
+            "Histórico de recuperação por set · referência factual, não odd capturada",
+            odd_justa=_odd_justa_real, headline=f"Observar ML > {_odd_justa_real:.2f}", n_amostra=_count_esp)
 
     # Set decisivo: só quando a diferença é material e tem amostra.
     deciding = {}
     for side in ("a", "b"):
         rate, count = scenario(side, "deciding_set_win_pct", "deciding_set_count")
-        if rate is None:
-            is_bo5 = payload.get("tour") == "atp" and "grand slam" in str(payload.get("tier", "")).lower()
-            fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo5" if is_bo5 else "bo3"))
-            rate, count = fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
         if isinstance(rate, (int, float)) and isinstance(count, (int, float)) and count >= 8:
             deciding[side] = (float(rate), int(count))
     if len(deciding) == 2:
@@ -4333,30 +4881,17 @@ def _mod_action_map(payload, div, result):
         _wins = _d(_profile.get("wins"))
         _losses = _d(_profile.get("losses"))
         if _wins.get("n") or _losses.get("n"):
-            _reference = estimate_typical_handicap(observed_odd(fav_side), _fmt)
+            _reference_data = handicap_reference_for_player(
+                payload, names[fav_side], _fmt,
+            )
+            _reference = _reference_data.get("reference") if _reference_data else None
             _n_wins = int(_wins.get("n") or 0)
             _n_losses = int(_losses.get("n") or 0)
             _wins_margins = list(_wins.get("margins") or [])
             _losses_margins = list(_losses.get("margins") or [])
 
-            def _settlement(values, line):
-                try:
-                    line = float(line)
-                except (TypeError, ValueError):
-                    return (0, 0, 0)
-                cover = push = miss = 0
-                for margin in values:
-                    result = float(margin) + line
-                    if result > 0:
-                        cover += 1
-                    elif result < 0:
-                        miss += 1
-                    else:
-                        push += 1
-                return cover, push, miss
-
             if not _reference or _reference.get("tipo") == "ao_par":
-                add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
+                add(f"Handicap para avaliar em PAPER ({_fmt.upper()})", names[fav_side],
                     "Sem zona interna de handicap para esta Moneyline. O jogo está numa faixa equilibrada; não há linha a avaliar.",
                     f"scores completos · {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} jogos", headline="Sem linha", n_amostra=_n_wins + _n_losses)
             else:
@@ -4379,119 +4914,161 @@ def _mod_action_map(payload, div, result):
                         return str(value)
                     return f"{number:+g}"
 
-                # Para favoritos, a linha mais acessível e a meia-unidade
-                # seguinte são a zona prática a confirmar na casa (ex.:
-                # -2/-2.5). Para underdogs mantém-se a zona positiva de
-                # referência aprovada.
+                # Para favoritos, além das duas linhas de referência,
+                # mostramos sempre uma meia-unidade MAIS protegida. Ex.:
+                # zona -4/-4.5 -> -3.5, -4, -4.5. Assim, se a casa já
+                # pagar a odd mínima desejada em -3.5, há cobertura factual
+                # dessa alternativa sem fingir que ela é a linha ao par.
+                # Para underdogs mantém-se a zona positiva aprovada.
                 _candidate_lines = list(_reference_lines)
                 if _reference.get("tipo") == "favorito" and _reference_lines:
                     _first_number = _line_number(_reference_lines[0])
                     if _first_number is not None:
-                        _candidate_lines = [_line_label(_first_number), _line_label(_first_number - 0.5)]
+                        _candidate_lines = [
+                            _line_label(_first_number + 0.5),
+                            *[_line_label(line) for line in _reference_lines],
+                        ]
                 _candidate_lines = list(dict.fromkeys(_candidate_lines))
 
-                _line_parts = []
-                for _line in _candidate_lines:
-                    _wc, _wp, _wm = _settlement(_wins_margins, _line)
-                    _lc, _lp, _lm = _settlement(_losses_margins, _line)
-                    _total = _n_wins + _n_losses
-                    _covered = _wc + _lc
-                    _pushes = _wp + _lp
-                    _piece = f"{_line_label(_line)}: {_covered}/{_total} no total"
-                    if _pushes:
-                        _piece += f" ({_pushes} devolução)"
-                    if _n_wins:
-                        _piece += f"; quando vence {_wc}/{_n_wins}"
-                    _line_parts.append((str(_line), _wc, _lc, _piece))
+                _all_margins = _wins_margins + _losses_margins
+                _total = len(_all_margins)
 
-                _losses_with_game_advantage = sum(float(margin) > 0 for margin in _losses_margins)
-                if _fmt == "bo3":
-                    # No BO3, a leitura operacional deve ser uma fotografia
-                    # curta: cobertura nas vitórias, comportamento nas derrotas
-                    # e tamanho da amostra. Não misturar uma taxa "total" que
-                    # confunda cobertura de handicap do favorito com derrotas.
-                    _win_lines = []
-                    for _line, _wc, _lc, _piece in _line_parts:
-                        _entry = f"{_line_label(_line)} cobre {_wc}/{_n_wins}"
-                        _pushes = _settlement(_wins_margins, _line)[1]
-                        if _pushes:
-                            _entry += f" ({_pushes} {'devolução' if _pushes == 1 else 'devoluções'})"
-                        _win_lines.append(_entry)
-                    _reading_parts = []
-                    if _n_wins and _win_lines:
-                        _reading_parts.append(f"Vitórias ({_n_wins}): " + " · ".join(_win_lines) + ".")
-                    if _n_losses:
-                        _reading_parts.append(
-                            f"Derrotas ({_n_losses}): terminou com mais games em "
-                            f"{_losses_with_game_advantage}/{_n_losses}."
-                        )
-                    _reading_parts.append(
-                        f"Amostra: {int(_profile.get('analyzable_matches') or _n_wins + _n_losses)} scores completos."
-                    )
-                    _headline = (
-                        f"Linha a confirmar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
-                        f"{_line_label(_candidate_lines[1])}"
-                        if _n_wins and len(_candidate_lines) >= 2
-                        else "Sem base suficiente para uma linha a avaliar"
-                    )
-                    _footnote = "referência interna · confirmar linha e odd atuais"
-                else:
-                    _top_line = _line_parts[0][0] if _line_parts else None
-                    _top_win_cover = _line_parts[0][1] if _line_parts else 0
-                    _reading_parts = []
-                    if _n_wins and _top_line is not None:
-                        _reading_parts.append(
-                            f"Quando vence, {names[fav_side]} cobriu {_line_label(_top_line)} em "
-                            f"{_top_win_cover}/{_n_wins} vitórias."
-                        )
-                    if _n_losses:
-                        _reading_parts.append(
-                            f"Mesmo quando perde, terminou com mais games totais em "
-                            f"{_losses_with_game_advantage}/{_n_losses} derrotas."
-                        )
-                    if _line_parts:
-                        _reading_parts.append("Cobertura histórica: " + " · ".join(part[3] for part in _line_parts) + ".")
-                    _reading_parts.append(
-                        "Contexto factual: confirmar linha e odd atuais antes de qualquer PAPER."
-                    )
-                    _headline = (
-                        f"Handicap a avaliar: {names[fav_side]} {_line_label(_candidate_lines[0])} / "
-                        f"{_line_label(_candidate_lines[1])}"
-                        if _n_wins and len(_candidate_lines) >= 2
-                        else "Sem base suficiente para uma linha a avaliar"
-                    )
-                    _footnote = "scores completos · vitórias e derrotas por games · referência interna, não linha real"
-                add(f"Handicap — leitura factual ({_fmt.upper()})", names[fav_side],
-                    " ".join(_reading_parts), _footnote,
-                    headline=_headline, n_amostra=_n_wins + _n_losses)
+                def _pct_count(value, total):
+                    return f"{(100 * value / total):.1f}%" if total else "N/D"
 
-        # Cruzamento opcional: só é mostrado quando a odd histórica existe no
-        # dataset e a odd atual cabe numa das faixas observadas. Não cria linha
-        # de handicap, edge ou recomendação.
-        _historical_ml = _d(payload.get(f"historical_moneyline_margins_{fav_side}"))
-        try:
-            _current_odd = float(observed_odd(fav_side))
-        except (TypeError, ValueError):
-            _current_odd = None
-        if _current_odd is not None:
-            for _band, _stats in _d(_historical_ml.get("buckets")).items():
+                def _line_outcome(line, margins, wins_margins, losses_margins):
+                    cover, push, miss = handicap_settlement_counts(margins, line)
+                    win_cover, _, _ = handicap_settlement_counts(wins_margins, line)
+                    loss_cover, _, _ = handicap_settlement_counts(losses_margins, line)
+                    return {
+                        "line": _line_label(line), "cover": cover, "push": push, "miss": miss,
+                        "total": len(margins), "cover_pct": _pct_count(cover, len(margins)),
+                        "push_pct": _pct_count(push, len(margins)),
+                        "miss_pct": _pct_count(miss, len(margins)),
+                        "win_cover": win_cover, "win_total": len(wins_margins),
+                        "win_cover_pct": _pct_count(win_cover, len(wins_margins)),
+                        "loss_cover": loss_cover, "loss_total": len(losses_margins),
+                    }
+
+                def _line_outcome_text(line, margins, wins_margins, losses_margins):
+                    outcome = _line_outcome(line, margins, wins_margins, losses_margins)
+                    text = f"• {outcome['line']} — cobre {outcome['cover_pct']} ({outcome['cover']}/{outcome['total']})"
+                    if outcome["push"]:
+                        text += f" · devolve {outcome['push_pct']}"
+                    text += f" · falha {outcome['miss_pct']}"
+                    if wins_margins:
+                        text += f" · quando vence {outcome['win_cover_pct']}"
+                    if losses_margins:
+                        text += f" · nas derrotas {outcome['loss_cover']}/{outcome['loss_total']}"
+                    return text
+
+                _overall_outcomes = [
+                    _line_outcome(_line, _all_margins, _wins_margins, _losses_margins)
+                    for _line in _candidate_lines
+                ]
+                _overall_lines = [
+                    _line_outcome_text(_line, _all_margins, _wins_margins, _losses_margins)
+                    for _line in _candidate_lines
+                ]
+
+                # A faixa de Moneyline comparável valida a zona escolhida
+                # pela tabela interna. Só usa scores do mesmo formato do jogo
+                # atual: BO3 nunca é misturado com BO5 nesta leitura.
+                _context = comparable_moneyline_history(fav_side)
+                _matching_band = _context["band"] if _context else None
+                _matching_stats = _context["stats"] if _context else None
+                _current_odd = _context["current_odd"] if _context else observed_odd(fav_side)
                 try:
-                    _low, _high = (float(v) for v in _band.split("-", 1))
+                    _current_odd = float(_current_odd)
                 except (TypeError, ValueError):
-                    continue
-                if _low <= _current_odd <= _high and _stats.get("n"):
-                    _n = int(_stats["n"])
-                    _wins_pct = _stats.get("win_rate_pct", "N/D")
-                    _mean = _stats.get("mean_game_diff", "N/D")
-                    add("Histórico odds/margem", f"{names[fav_side]} · odds {_band}",
-                        f"Em {_n} jogos históricos com odds efetivamente registadas nesta faixa: "
-                        f"vitória {_wins_pct}% e diferencial médio de games {_mean:+g}. "
-                        "Leitura descritiva; não representa uma odd, linha ou edge atuais.",
-                        f"colunas históricas: {'/'.join(_historical_ml.get('odds_columns', ())) }",
-                        headline=f"n={_n}", n_amostra=_n)
-                    break
+                    _current_odd = None
+
+                _reference_type = _reference.get("tipo")
+                _protected_line = _candidate_lines[0] if _reference_type == "favorito" else _candidate_lines[-1]
+                _reference_line = _candidate_lines[1] if _reference_type == "favorito" and len(_candidate_lines) >= 3 else None
+                _other_line = _candidate_lines[-1] if _reference_type == "favorito" else _candidate_lines[0]
+                _outcome_by_line = {outcome["line"]: outcome for outcome in _overall_outcomes}
+                _protected_outcome = _outcome_by_line.get(_line_label(_protected_line))
+                _reference_outcome = _outcome_by_line.get(_line_label(_reference_line)) if _reference_line is not None else None
+                _other_outcome = _outcome_by_line.get(_line_label(_other_line))
+                _visual = {
+                    "player": names[fav_side], "format": _fmt.upper(),
+                    "odd": _current_odd, "zone": [_line_label(line) for line in _candidate_lines],
+                    "protected": _protected_outcome, "reference": _reference_outcome, "alternative": _other_outcome,
+                    # Para favoritos/linhas negativas, a pergunta decisiva é
+                    # quantas vitórias cobrem. Para underdogs/linhas positivas,
+                    # o valor da proteção é a cobertura no total dos jogos.
+                    "emphasis": "win_cover" if _reference_type == "favorito" else "total_cover",
+                    "validation": {"state": "missing", "title": "SEM VALIDAÇÃO POR PREÇO",
+                                   "detail": f"Sem scores {_fmt.upper()} com odds históricas na faixa atual. Não concluir valor PAPER apenas pelo histórico geral."},
+                }
+                # Um handicap positivo só é realmente uma proteção se ainda
+                # cobrir uma parte material das derrotas. Caso contrário a
+                # taxa total vem quase toda das vitórias e não deve ser lida
+                # como alternativa defensiva à Moneyline.
+                if _reference_type == "underdog" and _protected_outcome:
+                    _loss_total = int(_protected_outcome.get("loss_total") or 0)
+                    _loss_cover = int(_protected_outcome.get("loss_cover") or 0)
+                    if _loss_total and 100 * _loss_cover / _loss_total < 20:
+                        _visual["protection_alert"] = (
+                            "SEM PROTEÇÃO REAL EM DERROTA",
+                            f"Só cobre {_loss_cover}/{_loss_total} derrotas "
+                            f"({100 * _loss_cover / _loss_total:.1f}%). A cobertura vem quase toda das vitórias.",
+                        )
+                if _matching_stats:
+                    _band_margins = list(_matching_stats.get("margins") or [])
+                    _band_wins = list(_matching_stats.get("win_margins") or [])
+                    _band_losses = list(_matching_stats.get("loss_margins") or [])
+                    # Um agregado de vitórias/n sem as margens de games não
+                    # permite calcular cobertura de handicap. Mantém a
+                    # validação fechada em vez de publicar 0/0 como dado.
+                    if not _band_margins:
+                        _matching_stats = None
+                    else:
+                        _band_outcomes = [
+                            _line_outcome(_line, _band_margins, _band_wins, _band_losses)
+                            for _line in _candidate_lines
+                        ]
+                        _band_lookup = {outcome["line"]: outcome for outcome in _band_outcomes}
+                        _band_protected = _band_lookup.get(_line_label(_protected_line))
+                        _band_reference = _band_lookup.get(_line_label(_reference_line)) if _reference_line is not None else None
+                        _band_alternative = _band_lookup.get(_line_label(_other_line))
+                        _band_summary = []
+                        _band_labels = [("mais protegida", _band_protected)]
+                        if _band_reference:
+                            _band_labels.append(("referência", _band_reference))
+                        _band_labels.append(("mais exigente" if _reference_type == "favorito" else "alternativa", _band_alternative))
+                        for label, outcome in _band_labels:
+                            if outcome:
+                                _band_summary.append(f"{label} {outcome['line']}: {outcome['cover_pct']} cobre ({outcome['cover']}/{outcome['total']})")
+                        _visual["validation"] = {
+                            "state": "ready", "title": f"VALIDAÇÃO NA FAIXA DE ODD {_matching_band} · n={len(_band_margins)}",
+                            "detail": " · ".join(_band_summary),
+                        }
+                else:
+                    pass
+                _headline = (
+                    f"Observar {names[fav_side]} {_line_label(_protected_line)}"
+                    if len(_candidate_lines) >= 2
+                    else "Sem base suficiente para uma linha a avaliar"
+                )
+                _footnote = (
+                    "scores completos · cobertura inclui vitórias e derrotas · "
+                    "referência interna, não linha real"
+                )
+                add(f"Handicap para avaliar em PAPER ({_fmt.upper()})", names[fav_side],
+                    "A referência não cria entrada PAPER automática de handicap.", _footnote,
+                    headline=_headline, n_amostra=_total,
+                    card_class="action-item-handicap", visual=_visual)
 
     summary = result.get("verdict") or result.get("executive_summary")
+    # O LLM é deliberadamente desligado na produção para controlar custo.
+    # Essa configuração é interna e não deve ocupar o Mapa de Ações nem
+    # aparentar uma falha da análise determinística.
+    if isinstance(summary, str) and (
+        "LLM_MODE=disabled" in summary or "síntese LLM desativada" in summary.casefold()
+    ):
+        summary = ""
     summary_html = f'<div class="action-summary">{_esc(summary)}</div>' if summary else ""
 
     # NOVO (21/08/2026, a pedido): filtro por perfil de investidor — destaca
@@ -4512,12 +5089,11 @@ def _mod_action_map(payload, div, result):
         "Pré-jogo": 0,
         "Mercado principal": 0,
         "Referência de handicap": 1,
-        "Handicap — leitura factual (BO3)": 2,
-        "Handicap — leitura factual (BO5)": 2,
+        "Handicap para avaliar em PAPER (BO3)": 2,
+        "Handicap para avaliar em PAPER (BO5)": 2,
         "Margem de jogos (bo3)": 2,
         "Margem factual (BO3)": 2,
         "Margem factual (BO5)": 2,
-        "Histórico odds/margem": 2,
         "Caso especial": 3,
         "Cenário ao vivo": 4,
         "Mercados ao vivo": 5,
@@ -4530,8 +5106,73 @@ def _mod_action_map(payload, div, result):
     # efeito do perfil dentro de cada bloco)
     actions.sort(key=lambda item: _ordem_kind.get(item.get("kind"), 9))
 
+    def _render_handicap_visual(visual):
+        if not isinstance(visual, dict):
+            return ""
+
+        def _choice(outcome, css_class, tag):
+            if not isinstance(outcome, dict):
+                return ""
+            settlement = f"{outcome['cover']}/{outcome['total']} jogos"
+            if outcome.get("push"):
+                settlement += f" · devolve {outcome['push_pct']}"
+            when_wins = (
+                f"Quando vence: {outcome['win_cover_pct']} "
+                f"({outcome['win_cover']}/{outcome['win_total']})"
+                if outcome.get("win_total") else "Quando vence: N/D"
+            )
+            when_loses = (
+                f"Nas derrotas: cobre {outcome['loss_cover']}/{outcome['loss_total']}"
+                if outcome.get("loss_total") else "Nas derrotas: N/D"
+            )
+            highlight_wins = visual.get("emphasis") == "win_cover"
+            if highlight_wins:
+                primary_rate = outcome["win_cover_pct"]
+                primary_label = "cobre quando vence"
+                primary_count = f"{outcome['win_cover']}/{outcome['win_total']} vitórias"
+                secondary = f"Total: {outcome['cover_pct']} cobre ({settlement})"
+            else:
+                primary_rate = outcome["cover_pct"]
+                primary_label = "cobre no total"
+                primary_count = settlement
+                secondary = when_wins
+            alert = ""
+            if css_class == "protected" and visual.get("protection_alert"):
+                alert = (
+                    f'<div class="handicap-protection-alert"><strong>{_esc(visual["protection_alert"][0])}</strong>'
+                    f'{_esc(visual["protection_alert"][1])}</div>'
+                )
+            return (
+                f'<div class="handicap-choice {css_class}">'
+                f'<div class="handicap-choice-tag">{_esc(tag)}</div>'
+                f'<div class="handicap-choice-line">{_esc(visual.get("player"))} {_esc(outcome["line"])}</div>'
+                f'<div class="handicap-choice-rate">{_esc(primary_rate)} <span>{_esc(primary_label)}</span></div>'
+                f'<div class="handicap-choice-primary-count">{_esc(primary_count)}</div>'
+                f'<div class="handicap-choice-detail">{_esc(secondary)}<br>{_esc(when_loses)}</div>'
+                f'{alert}</div>'
+            )
+
+        odd = visual.get("odd")
+        odd_text = f"Moneyline {float(odd):.3f}" if isinstance(odd, (int, float)) else "Moneyline atual"
+        zone = " / ".join(str(line) for line in visual.get("zone") or [])
+        validation = visual.get("validation") or {}
+        validation_class = "ready" if validation.get("state") == "ready" else "missing"
+        return (
+            '<div class="handicap-visual">'
+            f'<div class="handicap-zone"><span class="hz-odd">{_esc(odd_text)}</span><span class="hz-arrow">→</span>'
+            f'<strong>Zona { _esc(zone) }</strong><span>({ _esc(visual.get("format", "")) })</span></div>'
+            '<div class="handicap-choices">'
+            + _choice(visual.get("protected"), "protected", "MARGEM EXTRA DE PROTEÇÃO · OBSERVAR SE A ODD JÁ COMPENSAR")
+            + _choice(visual.get("reference"), "reference", "REFERÊNCIA AO PAR DA ZONA")
+            + _choice(visual.get("alternative"), "alternative", "ALTERNATIVA MAIS EXIGENTE · SÓ COM ODD MELHOR")
+            + '</div>'
+            f'<div class="handicap-validation {validation_class}">'
+            f'<div class="handicap-validation-title">{_esc(validation.get("title", ""))}</div>'
+            f'<div class="handicap-validation-detail">{_esc(validation.get("detail", ""))}</div></div></div>'
+        )
+
     rendered = "".join(
-        f'<div class="action-item{" action-item-perfil" if _no_perfil(item) else ""}">'
+        f'<div class="action-item{" action-item-perfil" if _no_perfil(item) else ""}{" " + item.get("card_class", "") if item.get("card_class") else ""}">'
         f'<div class="action-kind">{_esc(item["kind"])}'
         + (f' <span class="action-perfil-tag">★ odd na faixa preferida ({INVESTOR_PROFILE_ODDS_LOW:.2f}–{INVESTOR_PROFILE_ODDS_HIGH:.2f})</span>' if _no_perfil(item) else "")
         + '</div>'
@@ -4539,6 +5180,7 @@ def _mod_action_map(payload, div, result):
         + (f'<div class="action-headline">{_esc(item["headline"])}</div>' if item.get("headline") else "")
         + (f'<div class="action-small-sample">⚠ amostra pequena (n={item["n_amostra"]}) — leitura menos fiável</div>'
            if item.get("n_amostra") is not None and item["n_amostra"] < 15 else "")
+        + _render_handicap_visual(item.get("visual"))
         + f'<div class="action-text">{_esc(item["text"])}</div>'
         + (f'<div class="action-source">{_esc(item["source"])}</div>' if item["source"] else "")
         + '</div>'
@@ -4610,8 +5252,10 @@ def _css_editorial():
 .decision-box{border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px;background:var(--surface)}
 .decision-box.positive{border-color:var(--mint);background:linear-gradient(145deg,rgba(63,185,168,.15),var(--surface) 46%)}.decision-box.negative{border-color:var(--error);background:linear-gradient(145deg,rgba(224,108,91,.13),var(--surface) 46%)}.decision-box.zero{border-color:#8b96a3}.decision-box.null{border-color:#05070a;background:#090b0e;box-shadow:inset 0 0 0 1px #252a31}
 .decision-head{display:flex;gap:9px;align-items:center;font-size:14px;letter-spacing:.3px}.decision-primary{font-size:15px;font-weight:750;margin:11px 0 8px}.decision-grid{display:flex;flex-wrap:wrap;gap:7px 18px;color:var(--dim);font-size:12px}.decision-grid b{color:var(--text)}.decision-note{color:var(--dim);font-size:11px;margin-top:8px}.decision-reasons{margin:8px 0 0;padding-left:19px;color:var(--dim);font-size:12px;line-height:1.6}
+.green-strong-candidate{border:1px solid var(--mint);border-radius:12px;padding:13px 16px;margin:0 0 14px;background:rgba(63,185,168,.08)}.green-strong-title{color:var(--mint);font-size:12px;font-weight:850;letter-spacing:.45px}.green-strong-candidate p,.green-strong-id,.green-strong-check{font-size:10px;color:var(--dim);line-height:1.5;margin:7px 0 0}.green-strong-id{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.green-strong-check{border-top:1px solid rgba(63,185,168,.28);padding-top:7px}.green-strong-check b{color:var(--text)}
 .system-history{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:0 0 14px}.system-history>summary{cursor:pointer;padding:13px 16px;font-weight:700;list-style:none}.system-history>summary::-webkit-details-marker{display:none}.system-history>summary::before{content:"▸ ";color:var(--a)}.system-history[open]>summary::before{content:"▾ "}.system-history-body{padding:0 16px 16px}.system-history h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--a);margin:13px 0 8px}.system-history p,.history-split{color:var(--dim);font-size:11px;margin:6px 0}.history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.history-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.history-metrics span{display:block;color:var(--dim);font-size:9px}.history-metrics b{font-size:13px}
 @media(max-width:640px){.history-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-grid{display:grid;grid-template-columns:1fr 1fr}}
+.history-sheet-link{display:inline-block;color:var(--mint);font-weight:700;margin-left:4px}
 .pricing-block{background:linear-gradient(145deg,rgba(74,163,223,.14),var(--surface) 42%);border:1px solid var(--a);border-radius:14px;padding:18px;margin:0 0 16px;box-shadow:0 7px 24px rgba(0,0,0,.24)}
 .pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}.pricing-kicker{color:var(--a);font-size:12px;font-weight:800;letter-spacing:1.2px}.pricing-path{color:var(--dim);font-size:10px;margin-top:4px}.pricing-status{flex:0 0 auto;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;letter-spacing:.45px}
 .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.pricing-player{background:rgba(7,20,38,.66);border:1px solid var(--line);border-top:3px solid var(--a);border-radius:11px;padding:13px}.pricing-player.b{border-top-color:var(--b)}.pricing-player-name{font-size:14px;font-weight:800;margin-bottom:10px}.pricing-player.a .pricing-player-name{color:var(--a)}.pricing-player.b .pricing-player-name{color:var(--b)}
@@ -4625,6 +5269,7 @@ def _css_editorial():
 .section-title{font-size:11px;color:var(--b);text-transform:uppercase;letter-spacing:1.5px;margin:22px 2px 9px}.match-intro{border-left:3px solid var(--b);padding:12px 15px;background:rgba(52,200,255,.06);border-radius:0 10px 10px 0;margin-bottom:14px;color:var(--text);font-size:15px}
 .glance{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}.glance-head,.glance-row{display:grid;grid-template-columns:1fr minmax(120px,.8fr) 1fr;gap:10px;align-items:center}.glance-head{padding-bottom:9px;color:var(--dim);font-size:11px}.glance-head span:last-child,.glance-b{text-align:right}.glance-row{padding:9px 0;border-top:1px solid var(--line)}.glance-label{text-align:center;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.glance-a,.glance-b{font-size:15px;font-weight:700}.glance-win{color:var(--mint)}
 .keys{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px}.key-num{color:var(--b);font-size:11px;font-weight:800;letter-spacing:1px}.key-text{font-size:13px}.market-section{margin-top:24px;padding-top:1px;border-top:1px solid var(--line)}
+.force-map-overview{min-width:0}.force-map-overview>.market-section:first-child{margin-top:0;padding-top:0;border-top:0}.force-map-overview>.market-section:first-child>.section-title{margin-top:8px}.force-map-overview>.rh-box{margin-bottom:18px}
 .history-row{padding:10px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}.history-meta{color:var(--dim);font-size:11px}.history-result{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:13px}.history-result span{color:var(--dim)}.history-winner.a{color:var(--a)}.history-winner.b{color:var(--b)}
 .pulse-player{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1fr);gap:14px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.pulse-player:first-of-type{border-top:0}.pulse-seq{display:flex;justify-content:flex-end;gap:5px;flex-wrap:nowrap;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}.pulse-seq::-webkit-scrollbar{display:none}.pulse-seq span{display:inline-grid;place-items:center;width:25px;height:25px;flex:0 0 25px;border-radius:6px;font-size:11px;font-weight:800}.pulse-win{background:rgba(199,255,61,.13);color:var(--mint);border:1px solid rgba(199,255,61,.35)}.pulse-loss{background:rgba(224,108,91,.12);color:#f29b8d;border:1px solid rgba(224,108,91,.3)}.pulse-empty{width:auto!important;flex-basis:auto!important;padding:0 8px;color:var(--dim)}.analytics-title{margin:18px 0 10px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:rgba(52,200,255,.06);color:var(--b);font-size:12px;text-transform:uppercase;letter-spacing:1px}
 .pulse-form-bars{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
@@ -4659,15 +5304,15 @@ def _mod_header_editorial(payload):
     h2h = f"H2H {overall.get('a_wins',0)}â€“{overall.get('b_wins',0)}" if overall.get("total_matches") else "H2H â€”"
     when = ""
     try:
-        when = datetime.fromisoformat(str(payload.get("commence_time_utc", "")).replace("Z", "+00:00")).strftime("%d/%m Â· %H:%M UTC")
+        when = datetime.fromisoformat(str(payload.get("commence_time_utc", "")).replace("Z", "+00:00")).strftime("%d/%m · %H:%M UTC")
     except (TypeError, ValueError):
         pass
     w = _d(payload.get("weather")); weather = []
     if w.get("temp_c") is not None: weather.append(f"{w['temp_c']:.0f}Â°C")
     if w.get("humidity") is not None: weather.append(f"{w['humidity']:.0f}% HR")
     if w.get("wind_kmh") is not None: weather.append(f"vento {w['wind_kmh']:.0f} km/h")
-    meta_a = " Â· ".join(str(x) for x in (payload.get("player_a_country"), rank_a, form_a) if x); meta_b = " Â· ".join(str(x) for x in (payload.get("player_b_country"), rank_b, form_b) if x)
-    return f'<div class="mh"><div class="mh-kicker">Match Preview Â· {_esc(when)}</div><div class="mh-top"><div><div class="mh-name">{a}</div><div class="mh-sub">{_esc(meta_a)}</div></div><div><div class="mh-vs">VS</div><div class="mh-tourn">{tourn}<br>{tier} Â· {surf}</div></div><div><div class="mh-name b">{b}</div><div class="mh-sub b">{_esc(meta_b)}</div></div></div><div class="mh-context"><div>{_esc(" Â· ".join(weather))}</div><div class="mh-h2h">{h2h}</div><div class="b">{tier} Â· {surf}</div></div></div>'
+    meta_a = " · ".join(str(x) for x in (payload.get("player_a_country"), rank_a, form_a) if x); meta_b = " · ".join(str(x) for x in (payload.get("player_b_country"), rank_b, form_b) if x)
+    return f'<div class="mh"><div class="mh-kicker">Match Preview · {_esc(when)}</div><div class="mh-top"><div><div class="mh-name">{a}</div><div class="mh-sub">{_esc(meta_a)}</div></div><div><div class="mh-vs">VS</div><div class="mh-tourn">{tourn}<br>{tier} · {surf}</div></div><div><div class="mh-name b">{b}</div><div class="mh-sub b">{_esc(meta_b)}</div></div></div><div class="mh-context"><div>{_esc(" · ".join(weather))}</div><div class="mh-h2h">{h2h}</div><div class="b">{tier} · {surf}</div></div></div>'
 
 
 def _mod_match_intro(result):
@@ -4683,7 +5328,7 @@ def _mod_at_glance(payload):
     ra,rb=_d(payload.get("ranking_a")),_d(payload.get("ranking_b")); add("Ranking",ra.get("rank"),rb.get("rank"),False,lambda v:f"#{int(v) if float(v)==int(v) else v}")
     fa,fb=_d(payload.get("recent_form_a")),_d(payload.get("recent_form_b")); add("Forma recente",100*fa.get("wins",0)/fa.get("matches") if fa.get("matches") else None,100*fb.get("wins",0)/fb.get("matches") if fb.get("matches") else None,True,lambda v:f"{v:.0f}%")
     surface=payload.get("surface"); sa=_d(_d(payload.get("surface_stats_a")).get(surface)); sb=_d(_d(payload.get("surface_stats_b")).get(surface)); add(f"Em {surface}" if surface else "SuperfÃ­cie",100*sa.get("wins",0)/sa.get("matches") if sa.get("matches") else None,100*sb.get("wins",0)/sb.get("matches") if sb.get("matches") else None,True,lambda v:f"{v:.0f}%")
-    fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga Â· sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
+    fta,ftb=_d(payload.get("fatigue_signal_a")),_d(payload.get("fatigue_signal_b")); add("Carga · sets 7d",fta.get("sets_last_7d"),ftb.get("sets_last_7d"),False)
     pa,pb=_d(payload.get("pressure_profile_a")),_d(payload.get("pressure_profile_b")); add("1.Âº serviÃ§o ganho",pa.get("first_serve_won_pct"),pb.get("first_serve_won_pct"),True,lambda v:f"{v:.0f}%")
     da,db=_d(payload.get("deciding_set_stats_a")),_d(payload.get("deciding_set_stats_b")); add("Sets decisivos",da.get("deciding_set_win_pct"),db.get("deciding_set_win_pct"),True,lambda v:f"{v:.0f}%")
     if not rows: return ""
@@ -4728,23 +5373,35 @@ def _mod_market_provenance(payload):
     parts = []
     if payload.get("odds_source"):
         parts.append(f"Fonte: {_esc(payload['odds_source'])}")
-    if payload.get("odds_endpoint"):
-        parts.append(f"Endpoint: {_esc(payload['odds_endpoint'])}")
+    endpoint_detail = (
+        f'<details><summary>Proveniência técnica — endpoint</summary><p style="overflow-wrap:anywhere">'
+        f'{_esc(payload["odds_endpoint"])}</p></details>'
+        if payload.get("odds_endpoint") else ""
+    )
     if payload.get("odds_event_id"):
         parts.append(f"Evento: {_esc(payload['odds_event_id'])}")
     if payload.get("odds_captured_at_utc"):
-        parts.append(f"Captura Sharp Signals: {_esc(payload['odds_captured_at_utc'])}")
+        parts.append(f"Captura Fenzobot: {_esc(payload['odds_captured_at_utc'])}")
     if payload.get("odds_capture_kind") == "feed_observed_at_capture":
         parts.append("Tipo: feed observado nesta execução (hora do bookmaker N/D)")
+    if payload.get("odds_freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE":
+        parts.append("Freshness: observada agora; idade real da quote não verificada")
     parts.append(f"Timestamp do provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
-    parts.append(f"Bookmaker: {_esc(payload.get('odds_bookmaker') or 'N/D')}")
+    if payload.get("odds_bookmaker"):
+        parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
+    elif payload.get("odds_bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED":
+        parts.append("Casa: não indicada pelo feed RapidAPI")
+    else:
+        parts.append("Bookmaker: N/D")
+    if payload.get("odds_source_contract_version"):
+        parts.append(f"Contrato: {_esc(payload['odds_source_contract_version'])}")
     if payload.get("odds_from_cache") is not None:
         cache = "hit" if payload.get("odds_from_cache") else "miss"
         age = payload.get("odds_cache_age_seconds")
         if isinstance(age, (int, float)):
             cache += f" ({int(age)} s)"
         parts.append(f"Cache: {cache}")
-    return f'<div class="mh-odds-meta">{" Â· ".join(parts)}</div>' if parts else ""
+    return f'<div class="mh-odds-meta">{" · ".join(parts)}{endpoint_detail}</div>' if parts else ""
 
 
 def _mod_h2h_timeline(payload):
@@ -4933,9 +5590,19 @@ def _mod_handicap_reference_header(payload):
     valid = [(name, value) for name, value in odds.items() if isinstance(value, (int, float)) and value > 1]
     if not valid:
         return ""
-    name, odd = min(valid, key=lambda pair: pair[1])
+    decision = _d(payload.get("prelive_decision"))
+    target = decision.get("player") or _d(decision.get("market")).get("player")
+    if not target:
+        target = min(valid, key=lambda pair: pair[1])[0]
     fmt = str(payload.get("match_format") or "bo3").casefold()
-    ref = estimate_typical_handicap(odd, fmt)
+    reference_data = handicap_reference_for_player(payload, target, fmt)
+    if not reference_data:
+        return ""
+    name, odd, ref = (
+        reference_data["player"],
+        reference_data["odd"],
+        reference_data["reference"],
+    )
     if not ref or ref.get("tipo") == "ao_par":
         return ""
     low, high = ref["handicap"]
@@ -5006,8 +5673,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
+    partes.append(_mod_experimental_tier_notice(payload))
     partes.append(_mod_handicap_reference_header(payload))
     partes.append(_mod_decision_box(payload))
+    partes.append(_mod_green_strong_candidate(payload))
     partes.append(_mod_system_history(payload))
     # A nova cadeia market -> Sharp estimate -> fair odd -> expected edge e a
     # leitura economica principal. A faixa indicative_odds fica apenas como
@@ -5016,9 +5685,11 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     pricing_html = "" if is_null_report else _mod_market_residual_pricing(payload)
     if not is_null_report:
         partes.append(pricing_html or _mod_market_verdict(payload, div))
+    market_reading_html = ""
     if chave not in ("sem_odds", "erro") and not is_null_report:
-        partes.append('<div class="market-section"><div class="section-title">Leitura do mercado</div>')
-        partes.append(_mod_mercado_vs_sinal(payload, div))
+        market_reading_html = (
+            '<div class="market-section"><div class="section-title">Leitura do mercado</div>'
+            f'{_mod_mercado_vs_sinal(payload, div)}'
         # REMOVIDO (18/08/2026, a pedido): a "Faixa indicativa em
         # calibração" (_mod_indicative_odds) ficou redundante — a mesma
         # informação (probabilidade/odd justa em faixa, para os dois
@@ -5026,8 +5697,8 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         # do relatório. Duas secções a repetir os mesmos números só
         # confundia. A função continua definida (não usada), caso volte a
         # fazer sentido isolá-la no futuro.
-        partes.append(_mod_market_provenance(payload))
-        partes.append('</div>')
+            f'{_mod_market_provenance(payload)}</div>'
+        )
     # 2. Leitura do jogo (sempre — muda conforme estado)
     # REMOVIDO (23/08/2026, a pedido repetido): a caixa "match-intro"
     # (_mod_match_intro) repetia pontos factuais tipo "X superior no
@@ -5035,12 +5706,26 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     # para tirar por completo. Toda essa informação já está no "jogo num
     # relance", no Mapa de Forças e no Mapa de Ações. A função continua
     # definida (não usada), caso volte a fazer sentido no futuro.
-    partes.append(_mod_at_glance_clean(payload))
-    partes.append(_mod_match_keys(payload, div))
+    overview_sections = (
+        market_reading_html,
+        _mod_at_glance_clean(payload),
+        _mod_match_keys(payload, div),
+        _mod_ranking_h2h_box(payload),
+    )
+    overview_content = "".join(section for section in overview_sections if section)
+    _force_map_overview = (
+        f'<div class="force-map-overview">{overview_content}</div>'
+        if overview_content else ""
+    )
     partes.append(_mod_data_quality_notice(payload))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":
+        partes.append(_mod_fatores_detalhados(
+            payload,
+            {},
+            overview_html=_force_map_overview,
+        ))
         partes.append(f"""
 <div class="parcial">
   <b>⚠️ Análise parcial</b> — odds indisponíveis e análise não gerada.
@@ -5051,7 +5736,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         partes.append(_mod_fadiga(payload))
         partes.append(_mod_photo_credits(payload))
         partes.append('</div>')
-        return _pagina(a, b, "".join(partes))
+        return _pagina(
+            a, b, "".join(partes), canonical_report_color(payload),
+            payload.get("snapshot_linkage"), payload,
+        )
 
     # Os cenários vivem no Mapa de Ações como gatilhos condicionais.
     # 4. Mercado e indicadores (só com odds)
@@ -5071,11 +5759,12 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         f'{_mod_fadiga(payload)}{_mod_transparencia_pesos(payload, div)}'
         '</div></div>'
     )
-    # PROBLEMA 2 (22/08/2026, a pedido): caixa de ranking + confronto
-    # direto, entre as Chaves do Confronto e o Mapa de Forças.
-    partes.append(_mod_ranking_h2h_box(payload))
     partes.append(_mod_fatores_detalhados(
-        payload, div, extras_html=_extras_mapa, tail_html=_tail_mapa
+        payload,
+        div,
+        overview_html=_force_map_overview,
+        extras_html=_extras_mapa,
+        tail_html=_tail_mapa,
     ))
     # REVERTIDO (21/08/2026, a pedido do Hugo): Mapa de Ações volta para o
     # fim, depois de toda a análise detalhada — "Match-up -> Análise ->
@@ -5083,7 +5772,10 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes.append(_mod_action_map(payload, div, result))
     partes.append(_mod_photo_credits(payload))
     partes.append('</div>')
-    return _pagina(a, b, "".join(partes))
+    return _pagina(
+        a, b, "".join(partes), canonical_report_color(payload),
+        payload.get("snapshot_linkage"), payload,
+    )
 
 
 def _impact_toggle_script():
@@ -5137,16 +5829,55 @@ def _impact_toggle_script():
 </script>"""
 
 
-def _pagina(a, b, corpo):
+def _pagina(
+    a, b, corpo, report_color="UNAVAILABLE", snapshot_linkage=None,
+    identity_metadata=None,
+):
     hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    report_color = report_color if report_color in {"GREEN", "YELLOW", "RED", "UNAVAILABLE"} else "UNAVAILABLE"
+    linkage = snapshot_linkage if isinstance(snapshot_linkage, dict) else {}
+    linkage_status = str(linkage.get("status") or "")
+    linkage_reason = str(linkage.get("reason_code") or "")
+    linkage_meta = ""
+    if linkage_status in {"LINKED", "COLLISION", "UNLINKED"}:
+        linkage_meta += (
+            f'<meta name="{REPORT_SNAPSHOT_LINKAGE_META_NAME}" '
+            f'content="{_esc(linkage_status)}">\n'
+        )
+    if linkage_reason in {
+        "SNAPSHOT_IDENTITY_MATCH", "PROVIDER_MATCH_ID_REUSED",
+        "SNAPSHOT_IDENTITY_INSUFFICIENT", "SNAPSHOT_NOT_PERSISTED",
+    }:
+        linkage_meta += (
+            f'<meta name="{REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME}" '
+            f'content="{_esc(linkage_reason)}">\n'
+        )
+    identity = identity_metadata if isinstance(identity_metadata, dict) else {}
+    identity_meta = ""
+    if identity.get("identity_schema_version") == 2:
+        identity_meta += (
+            f'<meta name="{REPORT_IDENTITY_SCHEMA_META_NAME}" content="2">\n'
+        )
+        identity_meta += (
+            f'<meta name="{REPORT_IDENTITY_STATUS_META_NAME}" '
+            f'content="{_esc(identity.get("identity_status") or "IDENTITY_INSUFFICIENT")}">\n'
+        )
+        if identity.get("identity_reason_code"):
+            identity_meta += (
+                f'<meta name="{REPORT_IDENTITY_REASON_META_NAME}" '
+                f'content="{_esc(identity["identity_reason_code"])}">\n'
+            )
     return f"""<!DOCTYPE html>
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{_esc(a)} vs {_esc(b)}</title>
+<meta name="{REPORT_COLOR_META_NAME}" content="{report_color}">
+{linkage_meta}{identity_meta}<title>{_esc(a)} vs {_esc(b)}</title>
 <style>{_css()}{_css_editorial()}</style></head>
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">
   <a href="{_esc(SITE_BASE_URL)}/">← Todos os relatórios</a>
+  <span class="nav-sep" aria-hidden="true">·</span>
+  <a href="{_esc(SITE_BASE_URL)}/dashboard/">Dashboard</a>
 </nav>
 <main>
 <h1 class="sr-only">{_esc(a)} vs {_esc(b)}</h1>

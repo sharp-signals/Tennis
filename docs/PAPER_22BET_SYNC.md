@@ -1,0 +1,66 @@
+# Sincronização do PAPER Trading 22Bet
+
+## Seleção manual GUERRA_SELECTION_V1 — histórico SUPERSEDED
+
+`CHANGE-2026-09-21-046` preserva esta integração e os seus agregados, mas deixa
+de os usar como métrica operacional prospetiva. Não preencher nem reconstruir
+`GREEN_MONETIZATION_V1` a partir destas rows manuais.
+
+O menu `Instalar colunas GREEN_STRONG_V1` acrescenta seis colunas opcionais sem modificar as 15 existentes: snapshot key, estratégia, timestamp, odd Moneyline de revisão, linha real de Handicap games e estado. É idempotente; o timestamp é gravado uma única vez ao introduzir um novo key.
+
+Uma linha só entra no agregado da estratégia com correspondência exata a uma tag prospetiva e timestamp anterior ao início. Estados: `LINKED_EX_ANTE`, `SNAPSHOT_NOT_FOUND`, `NOT_GREEN_STRONG`, `SELECTION_AFTER_START`, `MISSING_SELECTION_TIMESTAMP` e `UNAVAILABLE`. Não há associação aproximada.
+
+O JSON público contém somente agregados em `by_strategy.GUERRA_SELECTION_V1`; nunca nomes, keys, notas ou linhas. Ver [GREEN_STRONG_VALIDATION.md](GREEN_STRONG_VALIDATION.md).
+
+Quando o selecionado é underdog, a metodologia usa duas rows com o mesmo key: Moneyline e Handicap games positivo. `selection_rate_pct` usa candidatos/keys únicos, enquanto `paper_entries` mostra as legs. `underdog_pair_completeness` separa pares completos, Moneyline-only, handicap-only e casos não reconhecidos, sem publicar os keys.
+
+O fingerprint é semântico: inclui os agregados e estados de linkage derivados, mas exclui o timestamp de sincronização e a coluna `Validation Status` escrita pelo próprio script. Assim, uma alteração do índice GREEN_STRONG volta a publicar o resumo mesmo que as rows privadas não tenham mudado.
+
+### Simulação pública de stake fixa
+
+`by_strategy.GUERRA_SELECTION_V1.flat_stake_simulation` simula €10 por cada
+row/leg `LINKED_EX_ANTE`, sem reutilizar o stake ou lucro real da Sheet. Uma
+vitória vale `10 × (odd − 1)`, uma derrota `−10`, um `VOID` vale zero e uma
+entrada pendente representa €10 de exposição aberta. Logo, um underdog com
+Moneyline e handicap positivo representa €20 de exposição.
+
+Odds decimais inválidas (`<= 1`) e resultados não reconhecidos são excluídos
+com reason codes agregados e tornam o bloco `DEGRADED`. Sem seleções válidas, o
+estado é `UNAVAILABLE` e lucro/ROI ficam `null`, nunca apresentados como uma
+conclusão de €0. A publicação continua sem nomes, keys ou linhas individuais.
+
+CHANGE-2026-09-06-023
+
+A Sheet `Track_Record_Tennis_22Bet` é o registo operacional manual. O relatório do Fenzobot lê apenas o resumo publicado em `data/manual_paper_22bet.json`; nunca lê a Sheet privada durante uma execução do bot.
+
+## Configuração única — projeto Apps Script autónomo
+
+Esta via não depende de **Extensões → Apps Script** na Sheet. Usar quando o
+projeto associado à folha não abre ou foi eliminado.
+
+1. Com sessão iniciada em `fenzobot@gmail.com`, abrir [script.new](https://script.new) no Chrome normal e criar um projeto Apps Script.
+2. Substituir o conteúdo de `Código.gs` pelo conteúdo de `scripts/google_apps_script/sync_paper_22bet.gs` deste repositório e guardar.
+3. Em Apps Script, abrir **Definições do projeto → Propriedades do script** e criar:
+   - `GITHUB_TOKEN`: token fine-grained do GitHub com permissão `Contents: Read and write` apenas para `sharp-signals/Tennis`.
+   - `GITHUB_REPOSITORY`: `sharp-signals/Tennis`.
+   - `GOOGLE_SHEETS_SPREADSHEET_ID`: `1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U`.
+   - `GITHUB_BRANCH`: `main` (opcional; este é o valor por omissão).
+4. Executar uma vez `syncPaperTradingToGitHub` e aceitar as permissões Google/GitHub.
+5. Executar uma vez `installPaperTradingSync`. O Apps Script verifica a Sheet a cada 30 minutos e só cria commit quando os dados mudaram.
+
+O menu `Fenzobot` só aparece quando o script está associado diretamente à
+Sheet. Num projeto autónomo, executar as funções pelo seletor de funções no
+topo do Apps Script.
+
+## Dados publicados
+
+O JSON contém apenas métricas agregadas: entradas, liquidações, W–L, pendentes, unidades, ROI, odd média e segmentação por mercado e favorito/underdog. Não publica jogos individuais, notas nem dados pessoais.
+
+## Uso no relatório
+
+O Histórico do Sistema apresenta quatro blocos que não se misturam:
+
+1. PAPER 22Bet — registo manual oficial.
+2. Sinais PAPER do sistema — carteira técnica automática.
+3. Reconstruído/backtest — precisão histórica do motor.
+4. REAL — apostas reais, quando existirem.

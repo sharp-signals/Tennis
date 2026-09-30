@@ -1,6 +1,14 @@
 import unittest
 
-from src import report_html
+from src import market_integrity, report_html
+
+
+def _operational_odds_fields():
+    return {
+        "odds_operational_pricing_eligible": True,
+        "odds_source_contract_version": market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
+        "odds_source_contract_fingerprint": market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
+    }
 
 
 class ReportStateTests(unittest.TestCase):
@@ -12,6 +20,24 @@ class ReportStateTests(unittest.TestCase):
         self.assertIn("Moneyline pré-live capturada", html)
         self.assertIn("tabela analítica interna", html)
         self.assertIn("BO5", html)
+
+    def test_handicap_reference_header_follows_paper_underdog_and_mirrors_favourite(self):
+        html = report_html._mod_handicap_reference_header({
+            "player_a": "Leylah Annie Fernandez", "player_b": "Mananchaya Sawangkaew",
+            "match_format": "bo3",
+            "market_odds_decimal": {
+                "Leylah Annie Fernandez": 1.32,
+                "Mananchaya Sawangkaew": 2.20,
+            },
+            "prelive_decision": {
+                "state": "EDGE_POSITIVE",
+                "player": "Mananchaya Sawangkaew",
+                "market": {"player": "Mananchaya Sawangkaew"},
+            },
+        })
+        self.assertIn("Mananchaya Sawangkaew @ 2.20", html)
+        self.assertIn("+4 a +4.5", html)
+        self.assertNotIn("Leylah Annie Fernandez @ 1.32", html)
 
     def test_percentage_normalization_accepts_fraction_percent_and_invalid(self):
         self.assertEqual(report_html._pct(0.68), 68.0)
@@ -49,6 +75,31 @@ class ReportStateTests(unittest.TestCase):
         legacy_conviction = {**strong, "tipo": "conviccao"}
         self.assertEqual(report_html.detetar_estado({}, {}, legacy_conviction)[0], "alinhado")
 
+    def test_canonical_report_color_reuses_the_decision_presentation_contract(self):
+        expected = {
+            "EDGE_POSITIVE": "GREEN",
+            "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": "YELLOW",
+            "EDGE_NEGATIVE": "RED",
+            "EDGE_ZERO": "UNAVAILABLE",
+            "REPORT_NULL": "UNAVAILABLE",
+            "PRICING_UNAVAILABLE": "YELLOW",
+        }
+        for state, color in expected.items():
+            with self.subTest(state=state):
+                payload = {"prelive_decision": {"state": state}}
+                label, _css_class, ball, presentation_color = report_html.REPORT_DECISION_PRESENTATION[state]
+                self.assertEqual(report_html.canonical_report_color(payload), color)
+                self.assertEqual(report_html.canonical_report_color_from_state(state), color)
+                self.assertEqual(presentation_color, color)
+                self.assertEqual(
+                    report_html.historical_report_color_from_decision_head(f"{ball} {label}"),
+                    color,
+                )
+
+        self.assertIsNone(
+            report_html.historical_report_color_from_decision_head("🔴 texto não canónico")
+        )
+
     def test_divergence_normalization_preserves_diagnostic_fields(self):
         raw = {
             "prob_mercado_a": 60,
@@ -84,6 +135,32 @@ class ReportStateTests(unittest.TestCase):
 
 
 class ReportRenderingTests(unittest.TestCase):
+    def test_identity_collision_is_machine_readable_without_publishing_private_detail(self):
+        payload = {
+            "player_a": "New A",
+            "player_b": "New B",
+            "features": {},
+            "snapshot_linkage": {
+                "status": "COLLISION",
+                "reason_code": "PROVIDER_MATCH_ID_REUSED",
+                "detail_code": "SNAPSHOT_IDENTITY_COLLISION",
+                "private_snapshot_key": "wta:861",
+            },
+        }
+
+        html = report_html.build_report_html_v2(payload, {}, lambda _payload: None)
+
+        self.assertIn(
+            '<meta name="fenzobot-snapshot-linkage" content="COLLISION">',
+            html,
+        )
+        self.assertIn(
+            '<meta name="fenzobot-snapshot-linkage-reason" content="PROVIDER_MATCH_ID_REUSED">',
+            html,
+        )
+        self.assertNotIn("SNAPSHOT_IDENTITY_COLLISION", html)
+        self.assertNotIn("wta:861", html)
+
     def test_no_odds_report_is_semantic_safe_and_has_no_market_section(self):
         payload = {
             "player_a": '<script>alert("a")</script>',
@@ -102,7 +179,13 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", html)
         self.assertIn("<main>", html)
         self.assertIn("Todos os relatórios", html)
-        self.assertIn("PREÇO DE MERCADO INDISPONÍVEL", html)
+        self.assertIn("Dashboard", html)
+        self.assertIn("https://sharp-signals.github.io/Tennis/dashboard/", html)
+        self.assertIn(
+            '<meta name="fenzobot-report-color" content="YELLOW">',
+            html,
+        )
+        self.assertIn("MERCADO PENDENTE DE ATUALIZAÇÃO", html)
         self.assertNotIn('<script>alert("a")</script>', html)
         self.assertNotIn('<img src=x onerror="alert(1)">', html)
         self.assertNotIn('<svg onload="alert(2)">', html)
@@ -186,6 +269,7 @@ class ReportRenderingTests(unittest.TestCase):
 
     def test_strong_alignment_is_observed_without_claiming_fair_odds_or_handicap(self):
         payload = {
+            **_operational_odds_fields(),
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 1.80, "B": 2.05},
             "features": {
@@ -265,13 +349,21 @@ class ReportRenderingTests(unittest.TestCase):
         bo3_130 = report_html.estimate_typical_handicap(1.30, "bo3")
         bo3_low = report_html.estimate_typical_handicap(1.25, "bo3")
         bo5 = report_html.estimate_typical_handicap(1.40, "bo5")
+        bo5_153 = report_html.estimate_typical_handicap(1.53, "bo5")
+        bo3_170 = report_html.estimate_typical_handicap(1.70, "bo3")
+        bo5_170 = report_html.estimate_typical_handicap(1.70, "bo5")
         bo5_130 = report_html.estimate_typical_handicap(1.30, "bo5")
+        bo5_1363 = report_html.estimate_typical_handicap(1.363, "bo5")
         bo5_low = report_html.estimate_typical_handicap(1.22, "bo5")
         self.assertEqual(bo3["handicap"], ("-3", "-3.5"))
         self.assertEqual(bo3_130["handicap"], ("-4", "-4.5"))
         self.assertEqual(bo3_low["handicap"], ("-4.5", "-5"))
         self.assertEqual(bo5["handicap"], ("-3.5", "-4"))
+        self.assertEqual(bo5_153["handicap"], ("-2.5", "-3.5"))
+        self.assertEqual(bo3_170["handicap"], ("-1", "-1.5"))
+        self.assertEqual(bo5_170["handicap"], ("-1", "-1.5"))
         self.assertEqual(bo5_130["handicap"], ("-4", "-4.5"))
+        self.assertEqual(bo5_1363["handicap"], ("-4", "-4.5"))
         self.assertEqual(bo5_low["handicap"], ("-5", "-6"))
         self.assertEqual(report_html.handicap_coverage_thresholds(bo3), [3, 4])
         self.assertEqual(report_html.handicap_coverage_thresholds(bo5), [4])
@@ -299,13 +391,21 @@ class ReportRenderingTests(unittest.TestCase):
         }
         div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
-        self.assertIn("Handicap — leitura factual (BO5)", html)
-        self.assertIn("Handicap a avaliar: A -3.5 / -4", html)
-        self.assertIn("Quando vence, A cobriu -3.5 em 1/2 vitórias.", html)
-        self.assertIn("Mesmo quando perde, terminou com mais games totais em 1/2 derrotas.", html)
-        self.assertIn("Cobertura histórica: -3.5: 2/4 no total; quando vence 1/2", html)
-        self.assertNotIn("vitórias com ≤0 games", html)
-        self.assertNotIn("derrotas que ainda cobrem", html)
+        self.assertIn("Handicap para avaliar em PAPER (BO5)", html)
+        self.assertIn("Observar A -3", html)
+        self.assertIn('class="action-item action-item-handicap"', html)
+        self.assertIn('class="handicap-visual"', html)
+        self.assertIn("MARGEM EXTRA DE PROTEÇÃO", html)
+        self.assertIn("REFERÊNCIA AO PAR DA ZONA", html)
+        self.assertIn("A -3", html)
+        self.assertIn("A -3.5", html)
+        self.assertIn("A -4", html)
+        self.assertIn("50.0% <span>cobre quando vence</span>", html)
+        self.assertIn("1/2 vitórias", html)
+        self.assertIn("Total: 50.0% cobre", html)
+        self.assertIn("Nas derrotas: cobre 1/2", html)
+        self.assertIn("SEM VALIDAÇÃO POR PREÇO", html)
+        self.assertIn("entrada PAPER automática de handicap", html)
         self.assertNotIn("Margem de jogos (bo3)", html)
         self.assertNotIn("Handicap -3.5/-4.5", html)
 
@@ -320,12 +420,178 @@ class ReportRenderingTests(unittest.TestCase):
         }
         div = {"market": {"a": 65, "b": 35}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
         html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
-        self.assertIn("Handicap — leitura factual (BO3)", html)
-        self.assertIn("Linha a confirmar: A -1.5 / -2", html)
-        self.assertIn("Vitórias (3): -1.5 cobre 2/3 · -2 cobre 1/3 (1 devolução).", html)
-        self.assertIn("Derrotas (2): terminou com mais games em 1/2.", html)
-        self.assertIn("Amostra: 5 scores completos.", html)
-        self.assertNotIn("Cobertura histórica:", html)
+        self.assertIn("Handicap para avaliar em PAPER (BO3)", html)
+        self.assertIn("Observar A -1", html)
+        self.assertIn("A -1", html)
+        self.assertIn("66.7% <span>cobre quando vence</span>", html)
+        self.assertIn("A -2", html)
+        self.assertIn("33.3% <span>cobre quando vence</span>", html)
+        self.assertIn("Nas derrotas: cobre 0/2", html)
+
+    def test_moneyline_comparable_win_rate_is_explicit_for_bo5(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.40, "B": 3.0},
+            "historical_moneyline_margins_a": {
+                "buckets": {"1.31-1.40": {
+                    "n": 9, "wins": 6,
+                    "by_format": {"bo5": {"n": 9, "wins": 6}},
+                }},
+            },
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Faixa de odd comparável 1.31-1.40 (BO5): vitórias 66.7% (6/9).", html)
+        self.assertNotIn("Faixa de odd comparável (BO5): sem amostra", html)
+
+    def test_moneyline_history_explains_missing_exact_band_without_hiding_history(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.22, "B": 4.0},
+            "historical_moneyline_margins_a": {
+                "buckets": {
+                    "1.26-1.30": {"n": 5, "wins": 4, "by_format": {"bo3": {"n": 5, "wins": 4}}},
+                    "1.41-1.50": {"n": 4, "wins": 2, "by_format": {"bo3": {"n": 4, "wins": 2}}},
+                },
+            },
+        }
+        div = {"market": {"a": 80, "b": 20}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Faixa exata 1.20-1.25 (BO3): sem casos com odds e score completos.", html)
+        self.assertIn("Histórico geral com odds (BO3): vitórias 66.7% (6/9).", html)
+        self.assertIn("Faixa próxima 1.26-1.30 (BO3): vitórias 80.0% (4/5)", html)
+
+    def test_moneyline_history_includes_the_canonical_history_behind_the_excel(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.55, "B": 2.50},
+            "canonical_odds_context_a": {
+                "source": "Fenzobot · histórico canónico",
+                "exact_band": "1.51-1.60",
+                "exact": {"n": 4, "wins": 3, "losses": 1, "win_rate_pct": 75.0},
+                "general": {"n": 7, "wins": 5, "losses": 2, "win_rate_pct": 71.4},
+            },
+        }
+        div = {"market": {"a": 65, "b": 35}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Fenzobot · histórico canónico — faixa 1.51-1.60: vitórias 75.0% (3/4).", html)
+
+    def test_handicap_card_follows_selected_underdog_with_mirrored_zone(self):
+        payload = {
+            "player_a": "Leylah Annie Fernandez", "player_b": "Mananchaya Sawangkaew",
+            "match_format": "bo3",
+            "market_odds_decimal": {
+                "Leylah Annie Fernandez": 1.32,
+                "Mananchaya Sawangkaew": 2.20,
+            },
+            "game_differential_b": {"bo3": {
+                "wins": {"n": 3, "margins": [5, 2, 1]},
+                "losses": {"n": 2, "margins": [-5, -6]}, "analyzable_matches": 5,
+            }},
+            "historical_moneyline_margins_b": {
+                "underdog": {"n": 8, "wins": 3, "by_format": {"bo3": {"n": 6, "wins": 2}}},
+                "buckets": {"2.10-2.30": {
+                    "n": 4, "wins": 2, "by_format": {"bo3": {"n": 4, "wins": 2}},
+                }},
+            },
+        }
+        div = {
+            "market": {"a": 75, "b": 25}, "tipo": "direcao",
+            "favorecido": "Mananchaya Sawangkaew", "classificacao": {"nivel": 2},
+        }
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Observar Mananchaya Sawangkaew +4.5", html)
+        self.assertIn("Mananchaya Sawangkaew +4.5", html)
+        self.assertIn("60.0% <span>cobre no total</span>", html)
+        self.assertIn("SEM PROTEÇÃO REAL EM DERROTA", html)
+        self.assertIn("Histórico como underdog (&gt;2.00, BO3): venceu 2/6 (33.3%).", html)
+        self.assertIn("Faixa de odd comparável 2.10-2.30 (BO3): vitórias 50.0% (2/4).", html)
+        self.assertNotIn("Observar Leylah Annie Fernandez -4", html)
+
+    def test_handicap_card_uses_matching_moneyline_band_with_actual_settlements(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.444, "B": 3.0},
+            "game_differential_a": {"bo3": {
+                "wins": {"n": 2, "margins": [4, 3]},
+                "losses": {"n": 1, "margins": [-2]}, "analyzable_matches": 3,
+            }},
+            "historical_moneyline_margins_a": {
+                "buckets": {"1.41-1.50": {
+                    "n": 3, "wins": 2, "margins": [4, 3, -2],
+                    "win_margins": [4, 3], "loss_margins": [-2],
+                    "by_format": {"bo3": {
+                        "n": 3, "wins": 2, "margins": [4, 3, -2],
+                        "win_margins": [4, 3], "loss_margins": [-2],
+                    }},
+                }},
+            },
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Faixa de odd comparável 1.41-1.50 (BO3): vitórias 66.7% (2/3).", html)
+        self.assertIn("VALIDAÇÃO NA FAIXA DE ODD 1.41-1.50 · n=3", html)
+        self.assertIn("mais protegida -2.5: 66.7% cobre (2/3)", html)
+        self.assertIn("referência -3: 33.3% cobre (1/3)", html)
+        self.assertIn("mais exigente -3.5: 33.3% cobre (1/3)", html)
+
+    def test_super_favourite_live_card_uses_first_set_recovery_without_inventing_break_rate(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.44, "B": 3.0},
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 45.0,
+                "first_set_lose_count": 20,
+            }},
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+        self.assertIn("Live · super favorito", html)
+        self.assertIn("A após perder o 1.º set", html)
+        self.assertIn("Recupera e vence: 45.0% (20 jogos).", html)
+        self.assertIn("Observar ML &gt; 2.22", html)
+        self.assertIn("sem percentagem histórica", html)
+        self.assertNotIn("A perde o 1.º set", html)
+
+    def test_bo5_super_favourite_uses_only_bo5_recovery_history(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.36, "B": 3.2},
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 28.0, "first_set_lose_count": 271,
+            }},
+            "set1_comeback_stats_a": {"bo5": {
+                "comeback_rate_pct": 40.0, "matches_lost_set1": 10,
+            }},
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+
+        self.assertIn("Recupera e vence: 40.0% (10 jogos).", html)
+        self.assertIn("Observar ML &gt; 2.50", html)
+        self.assertNotIn("28.0% (271 jogos)", html)
+
+    def test_bo5_super_favourite_without_bo5_history_is_not_validated(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo5",
+            "market_odds_decimal": {"A": 1.36, "B": 3.2},
+            "rich_stats_a": {"scenarios": {
+                "first_set_lose_then_win_pct": 28.0, "first_set_lose_count": 271,
+            }},
+        }
+        div = {"market": {"a": 70, "b": 30}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 2}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Teste"})
+
+        self.assertIn("Sem validação BO5", html)
+        self.assertIn("Não avaliar Moneyline live por este cenário", html)
+        self.assertNotIn("28.0% (271 jogos)", html)
+
+    def test_action_map_hides_technical_llm_disabled_summary(self):
+        payload = {"player_a": "A", "player_b": "B", "market_odds_decimal": {"A": 1.8, "B": 2.0}}
+        div = {"market": {"a": 55, "b": 45}, "tipo": "direcao", "favorecido": "A", "classificacao": {"nivel": 1}}
+        html = report_html._mod_action_map(payload, div, {"verdict": "Síntese indisponível porque LLM_MODE=disabled."})
+        self.assertNotIn("LLM_MODE=disabled", html)
+        self.assertNotIn("action-summary", html)
 
     def test_reference_only_odds_are_labelled_not_eligible_for_pricing(self):
         payload = {
@@ -339,12 +605,34 @@ class ReportRenderingTests(unittest.TestCase):
 
     def test_system_history_keeps_universes_separate_without_empty_market_rows(self):
         html = report_html._mod_system_history({"paper_history": {"PAPER": {"total_entries": 0}}})
-        self.assertIn("Ainda não há entradas PAPER registadas.", html)
+        self.assertIn("O registo manual 22Bet ainda não foi sincronizado.", html)
+        self.assertIn("Ainda não há sinais PAPER técnicos registados.", html)
         self.assertIn("Ainda sem histórico REAL.", html)
         self.assertNotIn("Handicap: N/D", html)
 
+    def test_system_history_shows_manual_22bet_separately_with_source_link(self):
+        html = report_html._mod_system_history({"paper_history": {
+            "PAPER": {"total_entries": 2, "settled": 2, "wins": 1, "losses": 1},
+            "MANUAL_22BET": {
+                "source": {"url": "https://docs.google.com/spreadsheets/d/example"},
+                "summary": {
+                    "total_entries": 40, "settled": 36, "pending": 4,
+                    "wins": 25, "losses": 11, "units": 12.88,
+                    "roi_pct": 35.78, "average_odd": 1.945,
+                },
+                "by_market": {"Moneyline": {"total_entries": 15, "wins": 11, "losses": 3, "roi_pct": 64.86}},
+                "by_side": {"Underdog": {"total_entries": 20, "roi_pct": 59.47}},
+            },
+        }})
+        self.assertIn("PAPER 22Bet · registo manual", html)
+        self.assertIn("12.88 u", html)
+        self.assertIn("Moneyline: 15 entradas · 11–3 · 64.86% ROI", html)
+        self.assertIn("Abrir registo PAPER Trading 22Bet", html)
+        self.assertIn("Sinais PAPER do sistema · técnico", html)
+
     def test_calibrated_odds_range_is_demoted_behind_primary_pricing(self):
         payload = {
+            **_operational_odds_fields(),
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 2.1, "B": 1.8},
             "features": {"ranking": {"lider": "A", "diff": 10}},
@@ -358,13 +646,14 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("SHARP PRICING — MARKET RESIDUAL", html)
+        self.assertIn("FENZOBOT PRICING — MARKET RESIDUAL", html)
         self.assertIn("Expected edge", html)
         self.assertNotIn("Faixa indicativa calibrada", html)
         self.assertNotIn("Veredicto de mercado", html)
 
     def test_uncalibrated_odds_range_does_not_define_visible_edge(self):
         payload = {
+            **_operational_odds_fields(),
             "player_a": "A", "player_b": "B",
             "market_odds_decimal": {"A": 2.1, "B": 1.8},
             "features": {"ranking": {"lider": "A", "diff": 10}},
@@ -379,7 +668,7 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("SHARP PRICING — MARKET RESIDUAL", html)
+        self.assertIn("FENZOBOT PRICING — MARKET RESIDUAL", html)
         self.assertIn("EXPERIMENTAL — EM VALIDAÇÃO", html)
         self.assertNotIn("Faixa indicativa em calibração", html)
         self.assertNotIn("Veredicto de mercado", html)
@@ -461,6 +750,55 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("2.1", hero)
         self.assertIn("1.8", hero)
         self.assertNotIn("Â", hero)
+
+    def test_editorial_sections_move_inside_force_map_in_requested_order(self):
+        payload = {
+            "player_a": "Alexandra Eala", "player_b": "Belinda Bencic",
+            "tour": "wta", "tournament": "Toronto", "tier": "WTA 1000",
+            "surface": "Hard", "commence_time_utc": "2026-08-17T20:30:00+00:00",
+            "ranking_a": {"rank": 20}, "ranking_b": {"rank": 14},
+            "recent_form_a": {"wins": 9, "losses": 1, "matches": 10},
+            "recent_form_b": {"wins": 8, "losses": 2, "matches": 10},
+            "recent_history_a": [{"won": True}, {"won": False}],
+            "recent_history_b": [{"won": False}, {"won": True}],
+            "surface_stats_a": {"Hard": {"wins": 20, "losses": 10, "matches": 30}},
+            "surface_stats_b": {"Hard": {"wins": 22, "losses": 8, "matches": 30}},
+            "market_odds_decimal": {"Alexandra Eala": 2.1, "Belinda Bencic": 1.8},
+            "h2h": {"overall": {"total_matches": 2, "a_wins": 1, "b_wins": 1}},
+            "features": {
+                "ranking": {"lider": "Belinda Bencic", "diff": 6},
+                "forma_recente": {"lider": "Alexandra Eala", "diff": 10},
+            },
+        }
+
+        html = report_html.build_report_html_v2(
+            payload, {}, report_html._calcular_divergencia,
+        )
+
+        force_map_start = html.index('<details class="more report-map mais-forcas"')
+        action_map_start = html.index('<section class="action-map-static"')
+        before_force_map = html[:force_map_start]
+        force_map_area = html[force_map_start:action_map_start]
+        labels = (
+            "Leitura do mercado",
+            "O jogo num relance",
+            "Chaves do confronto",
+            "Ranking e confronto direto",
+        )
+
+        for label in labels:
+            self.assertNotIn(label, before_force_map)
+            self.assertEqual(force_map_area.count(label), 1)
+        positions = [force_map_area.index(label) for label in labels]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn('class="force-map-overview"', force_map_area)
+        self.assertGreater(force_map_area.index("Raio-X Anal&#237;tico"), positions[-1])
+        self.assertIn("Forma Recente | &#218;ltimos 10", force_map_area)
+        self.assertGreater(action_map_start, force_map_start)
+        self.assertIn("Alexandra Eala", force_map_area)
+        self.assertIn("Belinda Bencic", force_map_area)
+        self.assertIn("46%", force_map_area)
+        self.assertIn("54%", force_map_area)
 
     def test_form_details_live_only_inside_force_map(self):
         payload = {

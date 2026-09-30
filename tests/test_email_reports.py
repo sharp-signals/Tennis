@@ -10,9 +10,11 @@ class EmailReportsTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True), \
              patch.object(email_reports.smtplib, "SMTP_SSL") as smtp, \
              patch("builtins.print") as output:
-            sent = email_reports.send_run_report_email("2026-08-29", [])
+            result = email_reports.send_run_report_email("2026-08-29", [])
 
-        self.assertFalse(sent)
+        self.assertEqual(result, {
+            "status": "NOT_CONFIGURED", "kind": "REPORTS",
+        })
         smtp.assert_not_called()
         self.assertIn("não configurado", str(output.call_args))
 
@@ -33,9 +35,9 @@ class EmailReportsTests(unittest.TestCase):
         with patch.dict(os.environ, environment, clear=True), \
              patch.object(email_reports.smtplib, "SMTP_SSL", smtp), \
              patch.object(email_reports.ssl, "create_default_context", return_value=MagicMock()):
-            sent = email_reports.send_run_report_email("2026-08-29", reports)
+            result = email_reports.send_run_report_email("2026-08-29", reports)
 
-        self.assertTrue(sent)
+        self.assertEqual(result, {"status": "SENT", "kind": "REPORTS"})
         smtp.assert_called_once()
         self.assertEqual(smtp.call_args.args[:2], ("smtp.gmail.com", 465))
         client.login.assert_called_once_with("fenzobot@gmail.com", "app-password")
@@ -58,11 +60,91 @@ class EmailReportsTests(unittest.TestCase):
         with patch.dict(os.environ, environment, clear=True), \
              patch.object(email_reports.smtplib, "SMTP_SSL", side_effect=OSError(password)), \
              patch.object(email_reports.ssl, "create_default_context", return_value=MagicMock()):
-            with self.assertRaises(RuntimeError) as raised:
-                email_reports.send_run_report_email("2026-08-29", [])
+            result = email_reports.send_run_report_email("2026-08-29", [])
 
-        self.assertNotIn(password, str(raised.exception))
-        self.assertIsNone(raised.exception.__cause__)
+        self.assertEqual(result, {
+            "status": "FAILED",
+            "kind": "REPORTS",
+            "reason_code": "SMTP_SEND_FAILED",
+        })
+        self.assertNotIn(password, str(result))
+
+    def test_no_eligible_heartbeat_contains_factual_counts_and_degraded_state(self):
+        client = MagicMock()
+        smtp = MagicMock()
+        smtp.return_value.__enter__.return_value = client
+        environment = {
+            "REPORT_EMAIL_TO": "fenzobot@gmail.com",
+            "REPORT_EMAIL_FROM": "fenzobot@gmail.com",
+            "REPORT_EMAIL_APP_PASSWORD": "app-password",
+        }
+        details = {
+            "trigger_slot": "11:30",
+            "trigger_source": "google_apps_script",
+            "fixtures_discovered": 12,
+            "fixtures_in_window": 7,
+            "eligible_before_identity": 0,
+            "eligible_after_identity": 0,
+            "discovery_selected_source": "core_date_fixtures",
+            "discovery_status": "SUCCESS_WITH_MATCHES",
+            "discovery_partial": True,
+        }
+        with patch.dict(os.environ, environment, clear=True), \
+             patch.object(email_reports.smtplib, "SMTP_SSL", smtp), \
+             patch.object(
+                 email_reports.ssl, "create_default_context", return_value=MagicMock(),
+             ):
+            result = email_reports.send_no_eligible_heartbeat(
+                "2026-09-26", details,
+                reason="nenhum jogo elegível nesta execução",
+            )
+
+        self.assertEqual(result, {
+            "status": "SENT", "kind": "NO_ELIGIBLE_HEARTBEAT",
+        })
+        message = client.send_message.call_args.args[0]
+        plain = message.get_body(preferencelist=("plain",)).get_content()
+        self.assertIn("Estado: DEGRADED", plain)
+        self.assertIn("Slot: 11:30", plain)
+        self.assertIn("Origem: google_apps_script", plain)
+        self.assertIn("Fixtures descobertas: 12", plain)
+        self.assertIn("Jogos dentro da janela: 7", plain)
+        self.assertIn("Discovery partial: sim", plain)
+
+    def test_failure_heartbeat_sanitizes_secrets(self):
+        secret = "sensitive-provider-token"
+        client = MagicMock()
+        smtp = MagicMock()
+        smtp.return_value.__enter__.return_value = client
+        environment = {
+            "REPORT_EMAIL_TO": "fenzobot@gmail.com",
+            "REPORT_EMAIL_FROM": "fenzobot@gmail.com",
+            "REPORT_EMAIL_APP_PASSWORD": "app-password",
+            "RAPIDAPI_KEY": secret,
+        }
+        with patch.dict(os.environ, environment, clear=True), \
+             patch.object(email_reports.smtplib, "SMTP_SSL", smtp), \
+             patch.object(
+                 email_reports.ssl, "create_default_context", return_value=MagicMock(),
+             ):
+            result = email_reports.send_run_failed_heartbeat(
+                "2026-09-26",
+                {
+                    "trigger_slot": "15:30",
+                    "trigger_source": "google_apps_script",
+                    "phase": "analysis",
+                    "github_run_id": "123",
+                },
+                RuntimeError(f"provider rejected api_key={secret}"),
+            )
+
+        self.assertEqual(result, {
+            "status": "SENT", "kind": "RUN_FAILED_HEARTBEAT",
+        })
+        message = client.send_message.call_args.args[0]
+        serialized = message.as_string()
+        self.assertNotIn(secret, serialized)
+        self.assertIn("[REDACTED]", serialized)
 
 
 if __name__ == "__main__":
