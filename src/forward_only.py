@@ -14,7 +14,6 @@ import os
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -87,9 +86,32 @@ def canonical_identity(collection: str, record: Mapping[str, Any]) -> str:
 
 
 def weak_aliases(collection: str, record: Mapping[str, Any]) -> set[str]:
-    """Provider/presentation identifiers; never sufficient on their own."""
+    """Provider/presentation identifiers scoped by available event context.
+
+    Provider IDs are reusable.  A bare ``match:77`` must therefore never
+    contaminate a future event in another tour or with a different bilateral
+    context.  When the full structural instance is available it is the
+    namespace; otherwise the factual tour/provider evidence is used.  Truly
+    context-free aliases remain explicitly ``unscoped`` and fail closed on a
+    collision.
+    """
     envelope, _ = _record_parts(collection, record)
     aliases: set[str] = set()
+    structural = structural_identity_token(collection, record)
+    tour = str(record.get("tour") or envelope.get("tour") or "").strip().casefold()
+    provider = str(
+        record.get("provider")
+        or envelope.get("provider")
+        or _nested(record, "capture", "provider")
+        or _nested(record, "capture", "bookmaker")
+        or ""
+    ).strip().casefold()
+    if structural:
+        namespace = structural
+    elif tour or provider:
+        namespace = "scope:" + canonical_sha256({"tour": tour, "provider": provider})[:20]
+    else:
+        namespace = "unscoped"
     values = {
         "event": record.get("event_key") or envelope.get("event_key"),
         "legacy": record.get("legacy_key") or envelope.get("legacy_event_key"),
@@ -98,7 +120,7 @@ def weak_aliases(collection: str, record: Mapping[str, Any]) -> set[str]:
     }
     for kind, value in values.items():
         if value not in (None, ""):
-            aliases.add(f"{kind}:{value}")
+            aliases.add(f"{kind}:{namespace}:{value}")
     return aliases
 
 
@@ -259,7 +281,6 @@ def activation_lock_path(path: Path) -> Path:
     return path.with_name(f"{path.stem}.lock.json")
 
 
-@lru_cache(maxsize=32)
 def _tracked_activation_exists(path: Path) -> bool:
     """Git history is the final continuity witness if both live files vanish."""
     resolved = path.resolve()
@@ -276,6 +297,43 @@ def _tracked_activation_exists(path: Path) -> bool:
             return False
         return bool(value.strip())
     return False
+
+
+def _ratified_activation_lock(path: Path) -> Mapping[str, Any] | None:
+    """Return the first lock committed in the current history.
+
+    The live manifest and lock may be internally consistent after both are
+    replaced.  The first committed lock is therefore the immutable witness of
+    the ratified T0 and inventory hash.  Before the first activation commit
+    there is deliberately no anchor yet.
+    """
+    resolved = path.resolve()
+    for root in (resolved.parent, *resolved.parents):
+        if not (root / ".git").exists():
+            continue
+        try:
+            relative = resolved.relative_to(root).as_posix()
+            history = subprocess.check_output(
+                [
+                    "git", "log", "--reverse", "--diff-filter=A",
+                    "--format=%H", "HEAD", "--", relative,
+                ],
+                cwd=root, text=True, stderr=subprocess.DEVNULL,
+            ).splitlines()
+            if not history:
+                return None
+            raw = subprocess.check_output(
+                ["git", "show", f"{history[0]}:{relative}"],
+                cwd=root, text=True, stderr=subprocess.DEVNULL,
+            )
+            value = json.loads(raw)
+        except (
+            OSError, ValueError, UnicodeError, json.JSONDecodeError,
+            subprocess.CalledProcessError,
+        ):
+            return None
+        return value if isinstance(value, Mapping) else None
+    return None
 
 
 def _active_manifest_error(document: Mapping[str, Any]) -> str | None:
@@ -369,6 +427,14 @@ def load_boundary(path: Path | None = None) -> Boundary:
         or lock.get("manifest_sha256") != canonical_sha256(document)
     ):
         return _invalid("ACTIVATION_LOCK_MISMATCH", target)
+    ratified = _ratified_activation_lock(lock_path)
+    if ratified is not None:
+        immutable_fields = (
+            "schema_version", "change_id", "effective_from_utc",
+            "manifest_sha256", "code_commit", "data_base_commit",
+        )
+        if any(lock.get(field) != ratified.get(field) for field in immutable_fields):
+            return _invalid("ACTIVATION_RATIFIED_ANCHOR_MISMATCH", target)
     return Boundary(
         active=True,
         effective_from_utc=effective,

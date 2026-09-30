@@ -171,6 +171,9 @@ def run(
             report.setdefault("candidates", {})[collection] = {
                 "eligible_pending": len(keys),
                 "batch_size": len(batches[collection]),
+                "examined": 0,
+                "pending_no_result": 0,
+                "remaining_unexamined": len(keys),
             }
         if not any(batches.values()):
             report["status"] = "NO_ELIGIBLE_WORK"
@@ -190,6 +193,15 @@ def run(
             )
             report["phases"]["snapshot_settlement"].update(snapshot_details)
             report["phases"]["snapshot_settlement"]["settled"] = snapshot_count
+            report["candidates"]["snapshots"].update({
+                "examined": int(snapshot_details.get("examined") or 0),
+                "pending_no_result": int(snapshot_details.get("pending_no_result") or 0),
+                "remaining_unexamined": max(
+                    0,
+                    report["candidates"]["snapshots"]["eligible_pending"]
+                    - int(snapshot_details.get("examined") or 0),
+                ),
+            })
             settled_total += snapshot_count
             if snapshot_details.get("last_examined_key"):
                 cursors["snapshots"] = snapshot_details["last_examined_key"]
@@ -213,17 +225,47 @@ def run(
                 )
                 report["phases"]["paper_settlement"].update(paper_details)
                 report["phases"]["paper_settlement"]["settled"] = paper_count
+                report["candidates"]["paper"].update({
+                    "examined": int(paper_details.get("examined") or 0),
+                    "pending_no_result": int(paper_details.get("pending_no_result") or 0),
+                    "remaining_unexamined": max(
+                        0,
+                        report["candidates"]["paper"]["eligible_pending"]
+                        - int(paper_details.get("examined") or 0),
+                    ),
+                })
                 settled_total += paper_count
                 if paper_details.get("last_examined_key"):
                     cursors["paper"] = paper_details["last_examined_key"]
                     checkpoint.update({"cursors": cursors, "updated_at_utc": _utc_now()})
                     _atomic_write(checkpoint_path, checkpoint)
+                deadline_reached = (
+                    paper_details.get("deadline_reached") is True
+                    or time.monotonic() >= deadline
+                )
                 more_work = any(
-                    report["candidates"][name]["eligible_pending"]
-                    > report["candidates"][name]["batch_size"]
+                    report["candidates"][name].get("remaining_unexamined", 0) > 0
                     for name in ("snapshots", "paper")
                 )
-                report["status"] = "PARTIAL" if more_work else "COMPLETED"
+                if deadline_reached:
+                    report["status"] = "TIMED_OUT"
+                else:
+                    report["status"] = "PARTIAL" if more_work else "COMPLETED"
+
+        report["work"] = {
+            "examined": sum(
+                int(values.get("examined") or 0)
+                for values in (report.get("candidates") or {}).values()
+            ),
+            "remaining_unexamined": sum(
+                int(values.get("remaining_unexamined") or 0)
+                for values in (report.get("candidates") or {}).values()
+            ),
+            "pending_no_result": sum(
+                int(values.get("pending_no_result") or 0)
+                for values in (report.get("candidates") or {}).values()
+            ),
+        }
 
         if (
             settled_total
@@ -245,25 +287,32 @@ def run(
                 checkpoint=checkpoint, checkpoint_path=checkpoint_path,
             )
             report["phases"]["market_memory"]["observations"] = memory["observation_count"]
-            _phase(
-                report, "green_projection",
-                lambda: green_strong_validation.build_and_write(
-                    memory_report=memory,
-                    manual_path=ROOT / "data/manual_paper_22bet.json",
-                    output_path=ROOT / "data/validation/green-strong-v1.json",
-                ),
-                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
-            )
-            dashboard_status = _phase(
-                report, "dashboard", lambda: dashboard.build_and_write_best_effort(root=ROOT),
-                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
-            )
-            if dashboard_status["status"] != "AVAILABLE":
-                report["phases"]["dashboard"].update({
-                    "status": "FAILED",
-                    "reason_code": "DASHBOARD_REBUILD_UNAVAILABLE",
-                })
-                report["status"] = "PARTIAL"
+            if time.monotonic() >= deadline:
+                report["status"] = "TIMED_OUT"
+            else:
+                _phase(
+                    report, "green_projection",
+                    lambda: green_strong_validation.build_and_write(
+                        memory_report=memory,
+                        manual_path=ROOT / "data/manual_paper_22bet.json",
+                        output_path=ROOT / "data/validation/green-strong-v1.json",
+                    ),
+                    checkpoint=checkpoint, checkpoint_path=checkpoint_path,
+                )
+                if time.monotonic() >= deadline:
+                    report["status"] = "TIMED_OUT"
+                else:
+                    dashboard_status = _phase(
+                        report, "dashboard",
+                        lambda: dashboard.build_and_write_best_effort(root=ROOT),
+                        checkpoint=checkpoint, checkpoint_path=checkpoint_path,
+                    )
+                    if dashboard_status["status"] != "AVAILABLE":
+                        report["phases"]["dashboard"].update({
+                            "status": "FAILED",
+                            "reason_code": "DASHBOARD_REBUILD_UNAVAILABLE",
+                        })
+                        report["status"] = "PARTIAL"
         elif settled_total and report["status"] not in {"FAILED", "TIMED_OUT"}:
             report["status"] = "TIMED_OUT"
     except Exception as exc:

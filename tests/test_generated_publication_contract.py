@@ -1,6 +1,8 @@
 import unittest
 from pathlib import Path
 
+from scripts.generated_output_contract import is_allowed
+
 
 class GeneratedPublicationContractTests(unittest.TestCase):
     @classmethod
@@ -50,6 +52,56 @@ class GeneratedPublicationContractTests(unittest.TestCase):
             text = (self.root / ".github/workflows" / name).read_text(encoding="utf-8")
             self.assertIn("actions/upload-artifact@v7", text, name)
             self.assertIn("fenzobot-data-recovery", text, name)
+
+    def test_all_seven_writer_workflows_use_scoped_profiles_for_real_outputs(self):
+        contracts = {
+            "tennis-bot.yml": {
+                "profiles": ("bot",),
+                "outputs": ("docs/relatorios/example.html", "data/cache/example.json"),
+            },
+            "odds-monitor.yml": {
+                "profiles": ("odds-source", "odds-derived", "odds"),
+                "outputs": (
+                    "data/odds_monitor/event-map.json",
+                    "data/market_ledger/observations/2026-10-01.jsonl",
+                    "data/market_ledger/derived/market-memory-v1.json",
+                ),
+            },
+            "pending-market-retry.yml": {
+                "profiles": ("retry",),
+                "outputs": ("data/pending_market/retry.json", "data/match_identity/index.json"),
+            },
+            "refresh-observability.yml": {
+                "profiles": ("observability",),
+                "outputs": (
+                    "data/market_ledger/derived/market-memory-v1.json",
+                    "data/dashboard/fenzobot-dashboard-v1.json",
+                ),
+            },
+            "warm-up-hands.yml": {
+                "profiles": ("warmup",),
+                "outputs": ("data/cache/players/1/player.json", "data/rapidapi_usage_log.json"),
+            },
+            "backtest.yml": {
+                "profiles": ("backtest",),
+                "outputs": ("data/backtest_results/pilot.json",),
+            },
+            "sync-player-images.yml": {
+                "profiles": ("images",),
+                "outputs": ("data/player_images.json", "docs/assets/players/example.webp"),
+            },
+        }
+        for workflow, contract in contracts.items():
+            text = (self.root / ".github/workflows" / workflow).read_text(encoding="utf-8")
+            for profile in contract["profiles"]:
+                self.assertIn(f"--profile {profile}", text, workflow)
+            # The first profile is the producer/staging contract.  The odds
+            # workflow deliberately splits source and derived phases.
+            for output in contract["outputs"]:
+                self.assertTrue(
+                    any(is_allowed(output, profile) for profile in contract["profiles"]),
+                    f"{workflow}: {output}",
+                )
 
 
 if __name__ == "__main__":

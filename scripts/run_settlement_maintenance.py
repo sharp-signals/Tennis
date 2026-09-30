@@ -64,10 +64,30 @@ def supervise(
     checkpoint = maintenance._read_checkpoint(checkpoint_path)
     child_report = checkpoint.get("last_run")
     report = dict(child_report) if isinstance(child_report, dict) else report
-    report.setdefault("status", "COMPLETED" if return_code == 0 else "FAILED")
+    terminal = {"COMPLETED", "NO_ELIGIBLE_WORK", "PARTIAL", "TIMED_OUT", "FAILED"}
+    if str(report.get("status") or "") not in terminal:
+        report.update({
+            "status": "FAILED",
+            "finished_at_utc": _utc_now(),
+            "reason_code": (
+                "SETTLEMENT_MAINTENANCE_CHILD_NONZERO_EXIT"
+                if return_code
+                else "SETTLEMENT_MAINTENANCE_CHILD_NO_TERMINAL_STATE"
+            ),
+        })
+    elif return_code and report.get("status") not in {"PARTIAL", "TIMED_OUT", "FAILED"}:
+        report.update({
+            "status": "FAILED",
+            "finished_at_utc": _utc_now(),
+            "reason_code": "SETTLEMENT_MAINTENANCE_CHILD_NONZERO_EXIT",
+        })
     report["supervisor"] = {"status": "EXITED", "return_code": return_code}
     checkpoint.update({"last_run": report, "updated_at_utc": _utc_now()})
     maintenance._atomic_write(checkpoint_path, checkpoint)
+    if github_run_id and metrics_path:
+        run_metrics.update_persisted_run(
+            github_run_id, {"settlement_maintenance": report}, path=str(metrics_path),
+        )
     return report
 
 

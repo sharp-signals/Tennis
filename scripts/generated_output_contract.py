@@ -31,7 +31,10 @@ PROFILES: dict[str, tuple[str, ...]] = {
         "data/odds_monitor/", "data/market_ledger/", "data/dashboard/",
         "docs/dashboard/", "data/validation/",
     ),
-    "observability": COMMON + ("data/dashboard/", "docs/dashboard/", "data/validation/"),
+    "observability": COMMON + (
+        "data/dashboard/", "docs/dashboard/", "data/validation/",
+        "data/market_ledger/derived/",
+    ),
     "retry": COMMON + (
         "data/market_ledger/", "data/match_identity/", "data/pending_market/",
         "data/cache/",

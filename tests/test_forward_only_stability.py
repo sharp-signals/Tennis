@@ -302,6 +302,43 @@ class ForwardOnlyStabilityTests(unittest.TestCase):
                 "ACTIVATION_INVENTORY_SNAPSHOTS_MISSING",
             )
 
+    def test_coherent_manifest_and_lock_replacement_cannot_move_ratified_t0(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-b", "main"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.name", "test"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=root, check=True)
+            manifest = root / "data/governance/manifest.json"
+            manifest.parent.mkdir(parents=True)
+            active_manifest(manifest, snapshots=[snapshot("protected")])
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "ratify T0"], cwd=root, check=True, capture_output=True)
+
+            replacement = json.loads(manifest.read_text(encoding="utf-8"))
+            replacement["effective_from_utc"] = "2026-10-01T10:00:00+00:00"
+            replacement["protected"]["snapshots"] = {
+                "count": 0, "records": [], "identity_tokens": [],
+                "weak_alias_contexts": {},
+            }
+            manifest.write_text(json.dumps(replacement), encoding="utf-8")
+            lock_path = forward_only.activation_lock_path(manifest)
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock.update({
+                "effective_from_utc": replacement["effective_from_utc"],
+                "manifest_sha256": forward_only.canonical_sha256(replacement),
+            })
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "replace both coherently"], cwd=root, check=True, capture_output=True)
+
+            boundary = forward_only.load_boundary(manifest)
+            self.assertTrue(boundary.fail_closed)
+            self.assertEqual(boundary.reason_code, "ACTIVATION_RATIFIED_ANCHOR_MISMATCH")
+            self.assertEqual(
+                validate_forward_only.validate(manifest, root=root),
+                ["ACTIVATION_RATIFIED_ANCHOR_MISMATCH"],
+            )
+
     def test_reused_legacy_id_with_distinct_canonical_instance_is_allowed(self):
         with tempfile.TemporaryDirectory() as tmp:
             manifest = Path(tmp) / "manifest.json"
@@ -320,6 +357,67 @@ class ForwardOnlyStabilityTests(unittest.TestCase):
                 boundary.new_record_eligibility("snapshots", new),
                 (True, "FORWARD_ONLY_ELIGIBLE"),
             )
+
+    def test_reused_numeric_id_in_distinct_tour_and_players_is_not_global(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "manifest.json"
+            old = snapshot("old-storage")
+            old.update({"event_key": "legacy-event", "match_id": 77})
+            old.pop("canonical_match_instance_id", None)
+            active_manifest(manifest, snapshots=[old])
+            new = snapshot(
+                "new-storage", start="2026-10-04T10:00:00+00:00",
+                analyzed="2026-10-03T08:00:00+00:00",
+            )
+            new.update({
+                "event_key": "new-event", "match_id": 77, "tour": "wta",
+                "canonical_match_instance_id": "canonical-new",
+                "player_a": {"id": 31, "name": "C"},
+                "player_b": {"id": 42, "name": "D"},
+            })
+            self.assertEqual(
+                forward_only.load_boundary(manifest).new_record_eligibility("snapshots", new),
+                (True, "FORWARD_ONLY_ELIGIBLE"),
+            )
+
+    def test_legacy_without_canonical_does_not_contaminate_distinct_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "manifest.json"
+            old = snapshot("old-storage")
+            old.update({"event_key": "old-event", "match_id": 77})
+            active_manifest(manifest, snapshots=[old])
+            new = snapshot(
+                "new-storage", start="2026-10-05T10:00:00+00:00",
+                analyzed="2026-10-04T08:00:00+00:00",
+            )
+            new.update({
+                "event_key": "new-event", "match_id": 77,
+                "canonical_match_instance_id": "canonical-new",
+                "player_a": {"id": 7, "name": "New A"},
+                "player_b": {"id": 8, "name": "New B"},
+            })
+            self.assertEqual(
+                forward_only.load_boundary(manifest).new_record_eligibility("snapshots", new),
+                (True, "FORWARD_ONLY_ELIGIBLE"),
+            )
+
+    def test_context_free_reused_id_remains_explicitly_ambiguous(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "manifest.json"
+            old = {"key": "old", "match_id": 77, "outcome": None}
+            active_manifest(manifest, snapshots=[old])
+            new = {
+                "key": "new", "match_id": 77,
+                "canonical_match_instance_id": "canonical-new",
+                "commence_time_utc": "2026-10-05T10:00:00+00:00",
+                "analyzed_at_utc": "2026-10-04T08:00:00+00:00",
+                "outcome": None,
+            }
+            allowed, reason = forward_only.load_boundary(manifest).new_record_eligibility(
+                "snapshots", new,
+            )
+            self.assertFalse(allowed)
+            self.assertEqual(reason, "PROTECTED_IDENTITY_AMBIGUOUS")
 
     def test_protected_instance_cannot_reappear_through_paper_collection(self):
         with tempfile.TemporaryDirectory() as tmp:

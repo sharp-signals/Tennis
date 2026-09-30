@@ -6,6 +6,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
@@ -54,6 +55,107 @@ def active_manifest(
 
 
 class ForwardOnlyProjectionTests(unittest.TestCase):
+    def test_dashboard_consumes_current_health_and_only_event_eligible_reports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshots = root / "data/calibration_snapshots.json"
+            snapshots.parent.mkdir(parents=True)
+            snapshots.write_text(json.dumps({"snapshots": [
+                {
+                    "key": "protected", "event_key": "protected-event",
+                    "report_id": "old-rerun", "tour": "atp",
+                    "commence_time_utc": "2026-10-02T10:00:00+00:00",
+                    "analyzed_at_utc": "2026-10-01T08:00:00+00:00",
+                    "player_a": {"id": 1}, "player_b": {"id": 2},
+                },
+                {
+                    "key": "new", "event_key": "new-event",
+                    "report_id": "new-report", "tour": "wta",
+                    "commence_time_utc": "2026-10-03T10:00:00+00:00",
+                    "analyzed_at_utc": "2026-10-01T09:00:00+00:00",
+                    "player_a": {"id": 3}, "player_b": {"id": 4},
+                },
+            ]}), encoding="utf-8")
+            reports = [
+                {
+                    "title": "Protected Event rerun", "url": "old-rerun.html",
+                    "report_id": "old-rerun", "color": "GREEN",
+                    "scheduled_start_utc": "2026-10-02T10:00:00+00:00",
+                },
+                {
+                    "title": "New Event", "url": "new-report.html",
+                    "report_id": "new-report", "color": "YELLOW",
+                    "scheduled_start_utc": "2026-10-03T10:00:00+00:00",
+                },
+                {
+                    "title": "Filename Only", "url": "filename-only.html",
+                    "report_id": "filename-only", "color": "RED",
+                },
+            ]
+            source = {
+                "generated_at_utc": "2026-10-01T12:00:00+00:00",
+                "days": [{
+                    "date": "2026-10-01", "reports": reports,
+                    "matchups": [
+                        {"match_key": "old", "version_indexes": [0]},
+                        {"match_key": "new", "version_indexes": [1]},
+                        {"match_key": "filename", "version_indexes": [2]},
+                    ],
+                }],
+            }
+            empty = {"identity_tokens": [], "weak_alias_contexts": {}}
+            boundary = forward_only.Boundary(
+                active=True,
+                effective_from_utc=datetime(2026, 9, 30, 10, tzinfo=timezone.utc),
+                manifest={"protected": {
+                    "snapshots": {
+                        **empty, "identity_tokens": ["snapshots:key:protected"],
+                    },
+                    "paper": dict(empty), "market_ledger": dict(empty),
+                }},
+                reason_code="ACTIVE",
+            )
+            prospective = dashboard._prospective_dashboard_payload(source, boundary, root)
+            self.assertEqual(prospective["global"]["total_reports"], 1)
+            self.assertEqual(prospective["days"][0]["reports"][0]["title"], "New Event")
+            self.assertNotIn("Protected Event rerun", json.dumps(prospective))
+            self.assertNotIn("Filename Only", json.dumps(prospective))
+
+            baseline = {
+                "generated_at_utc": "2026-09-30T09:00:00+00:00",
+                "days": [], "global": {"total_reports": 456, "distinct_matchups": 400},
+                "system_health": {"status": "HEALTHY"},
+                "source_freshness": {"baseline": {"status": "AVAILABLE"}},
+            }
+            baseline["forward_only_continuity"] = {
+                "effective_from_utc": "2026-09-30T10:00:00+00:00",
+                "historical_baseline": {"semantics": "PRESERVED_EXACTLY_NOT_RECALCULATED"},
+                "prospective": {
+                    **prospective,
+                    "projection_views": {
+                        "market_memory": {"total_observations": 7},
+                        "green_strong_v1": {"sample": {"candidates": 2, "settled": 1}},
+                        "green_monetization_v1": {"net_profit_eur": 3.5, "roi_pct": 17.5},
+                    },
+                },
+                "operational_current": {
+                    "system_health": {"status": "FAILED", "alerts": ["current failure"]},
+                    "source_freshness": {"current": {"status": "DEGRADED"}},
+                },
+            }
+            html = dashboard.render_dashboard_html(baseline)
+            self.assertIn("const HISTORIC_DATA=", html)
+            self.assertIn("const DATA=effectiveDashboardData(HISTORIC_DATA,CONTINUITY)", html)
+            self.assertIn("system_health:operational.system_health||historic.system_health", html)
+            self.assertIn("mergeDashboardDays(historic.days,prospective.days)", html)
+            self.assertIn("New Event", html)
+            self.assertIn("current failure", html)
+            self.assertIn("Resultado GREEN pós-T0", html)
+            self.assertIn("taxas, ROI e resultados desta área", html)
+            self.assertEqual(
+                baseline["global"], {"total_reports": 456, "distinct_matchups": 400},
+            )
+
     def test_imprecise_json_and_xlsx_baseline_stay_exact_with_future_component(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

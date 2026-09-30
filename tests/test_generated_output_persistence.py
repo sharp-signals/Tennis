@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import refresh_observability
 from scripts.publish_generated_changes import publish
 from scripts.recover_generated_outputs import create_recovery, restore
 from scripts.stage_generated_outputs import stage
@@ -27,6 +28,44 @@ def init_repo(root: Path) -> None:
 
 
 class GeneratedOutputPersistenceTests(unittest.TestCase):
+    def test_real_observability_writer_stages_and_recovers_market_memory_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root, artifact, fresh = base / "repo", base / "artifact", base / "fresh"
+            root.mkdir(); fresh.mkdir()
+            init_repo(root)
+            inputs = {
+                "data/calibration_snapshots.json": '{"snapshots":[]}\n',
+                "data/paper_trades.json": '{"entries":[]}\n',
+                "data/manual_paper_22bet.json": '{}\n',
+                "data/paper_integrity_exclusions.json": '{"exclusions":[]}\n',
+                "data/validation/market-integrity-exclusions-v1.json": '{"exclusions":[]}\n',
+            }
+            for relative, value in inputs.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(value, encoding="utf-8")
+            git(root, "add", "."); git(root, "commit", "-m", "local observability inputs")
+
+            statuses = refresh_observability.refresh(root)
+            self.assertEqual(statuses["market_memory"], "AVAILABLE")
+            derived = root / "data/market_ledger/derived/market-memory-v1.json"
+            expected = derived.read_bytes()
+            staged = stage(root=root, profile="observability")
+            self.assertIn("data/market_ledger/derived/market-memory-v1.json", staged)
+
+            document = create_recovery(
+                root=root, target=artifact, profile="observability",
+                reason="TEST_REAL_OBSERVABILITY", remote_ref="HEAD",
+            )
+            recovered = {item["path"] for item in document["files"]}
+            self.assertIn("data/market_ledger/derived/market-memory-v1.json", recovered)
+            restore(artifact=artifact, root=fresh)
+            self.assertEqual(
+                (fresh / "data/market_ledger/derived/market-memory-v1.json").read_bytes(),
+                expected,
+            )
+
     def test_optional_absent_path_does_not_break_explicit_staging(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
