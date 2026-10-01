@@ -46109,15 +46109,15 @@
     "status": "success",
     "phase": "complete",
     "email_delivery": {
-      "status": "NOT_ATTEMPTED",
+      "status": "SENT",
       "kind": "REPORTS"
     },
     "report_publication": {
-      "status": "PENDING",
+      "status": "READY",
       "expected": 52,
-      "ready": 0
+      "ready": 52
     },
-    "report_notification_status": "REPORTS_DEFERRED",
+    "report_notification_status": "REPORTS_SENT",
     "trigger_slot": "manual",
     "trigger_source": "manual",
     "trigger_local_date": "manual",
@@ -47611,6 +47611,68 @@
     "llm_provider_invocations": 46,
     "llm_validation_fallbacks": 1,
     "duration_seconds": 280.692,
-    "llm_estimated_cost_usd": 0.0
+    "llm_estimated_cost_usd": 0.0,
+    "report_notification_delivery": {
+      "github_run_id": "36900178923",
+      "notification_fingerprint": "142928c35146d17b37d28b6c938d0933710c52991956e237f0785d73291ea2d0",
+      "telegram_chunks_sent": 4,
+      "email_delivery": {
+        "status": "SENT",
+        "kind": "REPORTS"
+      }
+    },
+    "settlement_maintenance": {
+      "activation_status": "EXTERNAL_ACTIVATION_PENDING",
+      "cached_matches": 26816,
+      "candidates": {
+        "paper": {
+          "batch_size": 50,
+          "eligible_pending": 66,
+          "examined": 0,
+          "pending_no_result": 0,
+          "remaining_unexamined": 66
+        },
+        "snapshots": {
+          "batch_size": 50,
+          "eligible_pending": 292,
+          "examined": 12,
+          "pending_no_result": 12,
+          "remaining_unexamined": 280
+        }
+      },
+      "change_id": "CHANGE-2026-09-30-067",
+      "duration_seconds": 165.8083,
+      "finished_at_utc": "2026-10-01T17:42:08+00:00",
+      "phases": {
+        "read_local_cache": {
+          "duration_seconds": 0.4815,
+          "status": "COMPLETED"
+        },
+        "snapshot_settlement": {
+          "activation_status": "EXTERNAL_ACTIVATION_PENDING",
+          "blocked": {},
+          "deadline_reached": true,
+          "duration_seconds": 165.1423,
+          "eligible_candidates": 13,
+          "examined": 12,
+          "last_examined_key": "mi2_1546c24e4e204760b005b726ef8b6e68",
+          "pending_no_result": 12,
+          "settled": 0,
+          "status": "COMPLETED"
+        }
+      },
+      "schema_version": 1,
+      "started_at_utc": "2026-10-01T17:39:22+00:00",
+      "status": "TIMED_OUT",
+      "work": {
+        "examined": 12,
+        "pending_no_result": 12,
+        "remaining_unexamined": 346
+      },
+      "supervisor": {
+        "status": "EXITED",
+        "return_code": 1
+      }
+    }
   }
 ]
