@@ -11,14 +11,14 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-CHANGE_ID = "CHANGE-2026-09-12-040"
+CHANGE_ID = "CHANGE-2026-10-02-070"
 POLICY_VERSION = "market-quote-integrity-v2"
-ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-09-21-050"
-ODDS_SOURCE_FAMILY = "rapidapi-bilateral-prelive"
-ODDS_SOURCE_CONTRACT_VERSION = "rapidapi-bilateral-prelive-v2"
+ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-02-070"
+ODDS_SOURCE_FAMILY = "fresh-bookmaker-prelive"
+ODDS_SOURCE_CONTRACT_VERSION = "fresh-bookmaker-prelive-v3"
 ODDS_IDENTITY_POLICY_VERSION = "rapidapi-event-bilateral-v1"
-ODDS_FRESHNESS_SEMANTICS = "observed-at-capture-unverified-age-v1"
-ODDS_BOOKMAKER_POLICY = "single-factual-bookmaker-or-verified-provider-feed-v1"
+ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-verified-fresh-v1"
+ODDS_BOOKMAKER_POLICY = "verified-fresh-bookmaker-v1"
 
 _ODDS_SOURCE_CONTRACT = {
     "source_family": ODDS_SOURCE_FAMILY,
@@ -80,19 +80,17 @@ def is_operational_pricing_provenance(provenance: Mapping[str, Any] | None) -> b
     integrity = provenance.get("market_integrity")
     if not isinstance(integrity, Mapping):
         return False
-    provider_feed_without_bookmaker = (
-        str(provenance.get("bookmaker_attribution") or "").strip()
-        == "NOT_EXPOSED_BY_PROVIDER_FEED"
-    )
     return all((
         provenance.get("operational_pricing_eligible") is True,
         provenance.get("odds_source_contract_version") == ODDS_SOURCE_CONTRACT_VERSION,
         provenance.get("odds_source_contract_fingerprint") == ODDS_SOURCE_CONTRACT_FINGERPRINT,
         bool(provenance.get("event_id")),
         str(provenance.get("identity_mapping_status") or "").upper().startswith("VERIFIED"),
-        bool(str(provenance.get("bookmaker") or "").strip())
-        or provider_feed_without_bookmaker,
-        provenance.get("freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        bool(str(provenance.get("bookmaker") or "").strip()),
+        # A captura do feed RapidAPI sem hora da casa apenas prova que a
+        # resposta chegou agora; não prova a idade da cotação. Não pode
+        # alimentar pricing, edge ou PAPER.
+        provenance.get("freshness_status") == "FRESH",
         integrity.get("policy_version") == POLICY_VERSION,
         integrity.get("status") == "AVAILABLE",
     ))

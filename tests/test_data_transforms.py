@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 
-from src import fetch_data, main, match_identity_v2
+from src import fetch_data, main, market_integrity, match_identity_v2
 
 
 class MatchInputTests(unittest.TestCase):
@@ -143,7 +143,7 @@ class MatchInputTests(unittest.TestCase):
             )
 
         self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
-        self.assertTrue(provenance["operational_pricing_eligible"])
+        self.assertFalse(provenance["operational_pricing_eligible"])
         self.assertEqual(provenance["identity_mapping_status"], "VERIFIED")
         self.assertEqual(
             provenance["event_identity_validation_basis"], "EXACT_NAMES"
@@ -718,6 +718,9 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(odds, {"Alice Player": 1.28, "Bea Player": 4.10})
         self.assertEqual(provenance["bookmaker"], "Test Book")
         self.assertEqual(provenance["capture_kind"], "provider_last_update_verified")
+        self.assertEqual(provenance["freshness_status"], "FRESH")
+        self.assertTrue(provenance["operational_pricing_eligible"])
+        self.assertTrue(market_integrity.is_operational_pricing_provenance(provenance))
 
     def test_the_odds_pricing_rejects_stale_market_timestamp(self):
         match = {

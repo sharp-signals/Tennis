@@ -70,8 +70,12 @@ jobs:
           FENZOBOT_TRIGGER_LOCAL_DATE: ${{ inputs.trigger_local_date || 'manual' }}
           FENZOBOT_DISPATCH_ATTEMPT_ID: ${{ inputs.dispatch_attempt_id || github.run_id }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          # CHANGE-2026-09-03-024: comparador pago opcional, OFF por defeito.
-          THE_ODDS_API_ENABLED: "0"
+          # CHANGE-2026-10-02-070: só uma quote independente, fresca e com
+          # timestamp de bookmaker pode decidir pricing/edge/PAPER. A consulta
+          # é uma vez por competição publicada, nunca por jogador.
+          THE_ODDS_API_ENABLED: "1"
+          THE_ODDS_API_MAX_COMPETITIONS_PER_RUN: "2"
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REPORT_EMAIL_TO: fenzobot@gmail.com

@@ -63,6 +63,7 @@ from .config import (
     LOOKAHEAD_HOURS_MIN,
     MAX_FIXTURE_PAGES,
     ODDS_API_TENNIS_SPORT_KEYS,
+    THE_ODDS_API_MAX_COMPETITIONS_PER_RUN,
     THE_ODDS_API_ENABLED,
     RAPIDAPI_BASE,
     RAPIDAPI_BACKFILL_GLOBAL_CEILING,
@@ -1349,6 +1350,13 @@ def prepare_the_odds_market_index(matches: list[dict]) -> None:
     if not sport_keys:
         print("[odds] The Odds API: nenhum torneio elegível tem chave configurada.")
         return
+    if len(sport_keys) > THE_ODDS_API_MAX_COMPETITIONS_PER_RUN:
+        deferred = sport_keys[THE_ODDS_API_MAX_COMPETITIONS_PER_RUN:]
+        sport_keys = sport_keys[:THE_ODDS_API_MAX_COMPETITIONS_PER_RUN]
+        print(
+            "[odds] The Odds API: limite de competições por execução atingido; "
+            f"adiadas sem pricing operacional: {', '.join(deferred)}."
+        )
     for sport_key in sport_keys:
         if sport_key in _THE_ODDS_INDEX_READY:
             continue
@@ -1425,17 +1433,58 @@ def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
         if set(outcome_map) != {player_a, player_b}:
             continue
         overround = (1 / outcome_map[player_a]) + (1 / outcome_map[player_b]) - 1
-        candidates.append((
-            age, overround,
-            str(bookmaker.get("title") or bookmaker.get("key") or "N/D"),
-            outcome_map, captured,
-        ))
+        candidates.append({
+            "age": age,
+            "overround": overround,
+            "bookmaker": str(bookmaker.get("title") or bookmaker.get("key") or "N/D"),
+            "odds": outcome_map,
+            "captured": captured,
+        })
     if not candidates:
         return None, None
-    age, _overround, bookmaker, odds, captured = min(candidates, key=lambda item: (item[0], item[1], item[2]))
+
+    # Só uma Moneyline bilateral, da mesma casa e com timestamp fresco pode
+    # ser operacional. Avaliamos todas as casas frescas para manter a mesma
+    # regra de coerência usada nas outras fontes.
+    gate = market_integrity.evaluate_moneyline_market([
+        {
+            "bookmaker": item["bookmaker"],
+            "odd_a": item["odds"][player_a],
+            "odd_b": item["odds"][player_b],
+        }
+        for item in candidates
+    ])
+    selected = gate.get("selected")
+    if not isinstance(selected, dict):
+        return None, None
+    chosen = next(
+        (
+            item for item in candidates
+            if item["bookmaker"] == selected.get("bookmaker")
+            and item["odds"][player_a] == selected.get("odd_a")
+            and item["odds"][player_b] == selected.get("odd_b")
+        ),
+        None,
+    )
+    if not chosen:
+        return None, None
+
+    age = chosen["age"]
+    bookmaker = chosen["bookmaker"]
+    odds = dict(chosen["odds"])
+    captured = chosen["captured"]
     captured_at_utc = _odds_capture_timestamp()
     raw_hash = payload_sha256(event)
-    return odds, {
+    integrity = {
+        key: gate.get(key)
+        for key in (
+            "policy_version", "status", "reason_code", "candidate_count",
+            "valid_candidate_count", "coherent_bookmaker_count",
+            "minimum_operational_bookmakers", "median_devig_probability_a",
+            "dispersion_pp", "pricing_basis",
+        )
+    }
+    provenance = {
         "source": "The Odds API / bookmaker market",
         "endpoint": f"{ODDS_API_BASE}/sports/.../odds",
         "event_id": event.get("id"),
@@ -1448,19 +1497,32 @@ def fetch_the_odds_moneyline_with_provenance(match: dict) -> tuple[Optional[dict
         "freshness_status": "FRESH",
         "identity_mapping_status": "VERIFIED",
         "raw_payload_sha256": raw_hash,
+        "availability_status": "AVAILABLE",
+        "unavailable_reason": None,
+        "market_integrity": integrity,
+        "operational_pricing_eligible": True,
         "market_quotes": [
             {
-                "bookmaker": item_bookmaker,
-                "odds": dict(item_odds),
-                "provider_timestamp": item_captured,
+                "bookmaker": item["bookmaker"],
+                "odds": dict(item["odds"]),
+                "provider_timestamp": item["captured"],
                 "provider_timestamp_status": "AVAILABLE",
                 "freshness_status": "FRESH",
                 "identity_mapping_status": "VERIFIED",
                 "raw_payload_sha256": raw_hash,
+                "market_integrity_status": "FRESH_BOOKMAKER_CANDIDATE",
+                "operational_pricing_eligible": True,
             }
-            for item_age, _item_overround, item_bookmaker, item_odds, item_captured in candidates
+            for item in candidates
         ],
     }
+    provenance.update(market_integrity.operational_contract_metadata(captured_at_utc))
+    provenance["operational_pricing_eligible"] = (
+        market_integrity.is_operational_pricing_provenance(provenance)
+    )
+    if not provenance["operational_pricing_eligible"]:
+        return None, None
+    return odds, provenance
 
 
 def fetch_rapidapi_embedded_moneyline_with_provenance(match: dict) -> tuple[Optional[dict], Optional[dict]]:
@@ -1631,7 +1693,12 @@ def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
         market_integrity.is_operational_pricing_provenance(promoted)
     )
     if not promoted["operational_pricing_eligible"]:
-        return None, None
+        # A quote continua útil como observação SHADOW e para identidade, mas
+        # nunca é devolvida como fonte de preço operacional pelo chamador.
+        promoted["availability_status"] = "OBSERVATION_ONLY"
+        promoted["unavailable_reason"] = "provider_quote_age_unverified"
+        register_pending_market_check(match, promoted, available=False)
+        return dict(odds), promoted
     register_pending_market_check(match, promoted, available=True)
     print(
         f"[odds] {player_a} vs {player_b} | RapidAPI pre-match match-winner "

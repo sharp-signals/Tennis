@@ -452,7 +452,7 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
         )
         self.assertEqual(
             market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
-            "rapidapi-bilateral-prelive-v2",
+            "fresh-bookmaker-prelive-v3",
         )
         self.assertEqual(
             market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
