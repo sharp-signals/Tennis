@@ -95,7 +95,7 @@ def _percent_columns(ws, row_start: int, row_end: int, columns: Iterable[int]) -
 
 def _write_rankings(ws, rankings: Mapping[str, Mapping[str, Any]]) -> None:
     """Compact Top/Bottom 10 blocks; the sample threshold lives in the JSON."""
-    _title(ws, "Rankings de aprendizagem", "Top 10 e Bottom 10 por métrica. Só entram linhas com a amostra mínima indicada; são leituras factuais, não sinais.")
+    _title(ws, "Rankings de aprendizagem", "Top 10 e Bottom 10 por métrica. WTA inclui apenas jogadoras com partidas no cache dos últimos 12 meses; são leituras factuais, não sinais.")
     row = 5
     for category, blocks in rankings.items():
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
@@ -103,7 +103,7 @@ def _write_rankings(ws, rankings: Mapping[str, Mapping[str, Any]]) -> None:
         cell.fill = PatternFill("solid", fgColor=TEAL)
         cell.font = Font(name="Arial", bold=True, color="FFFFFF")
         row += 1
-        _header(ws, row, ["Top 10", "Amostra", "Métrica", "", "Bottom 10", "Amostra", "Métrica", ""])
+        _header(ws, row, ["Top 10", "Amostra", "Métrica", "", blocks.get("bottom_title", "Bottom 10"), "Amostra", "Métrica", ""])
         strongest = blocks.get("strongest", [])
         weakest = blocks.get("weakest", [])
         length = max(len(strongest), len(weakest), 1)
@@ -115,14 +115,14 @@ def _write_rankings(ws, rankings: Mapping[str, Mapping[str, Any]]) -> None:
                 ws.cell(current, 2, item["sample"])
                 ws.cell(current, 3, item["metric_pct"] / 100)
             elif offset == 0:
-                ws.cell(current, 1, "Sem amostras suficientes")
+                ws.cell(current, 1, blocks.get("empty_strongest_message", "Sem amostras suficientes"))
             if offset < len(weakest):
                 item = weakest[offset]
                 ws.cell(current, 5, item["label"])
                 ws.cell(current, 6, item["sample"])
                 ws.cell(current, 7, item["metric_pct"] / 100)
             elif offset == 0:
-                ws.cell(current, 5, "Sem amostras suficientes")
+                ws.cell(current, 5, blocks.get("empty_weakest_message", "Sem amostras suficientes"))
             for column in (3, 7):
                 ws.cell(current, column).number_format = "0.0%"
             ws.cell(current, 1).fill = PatternFill("solid", fgColor=PALE_GREEN)

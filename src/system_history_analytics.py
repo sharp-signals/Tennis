@@ -18,7 +18,7 @@ import json
 import math
 import re
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -36,6 +36,7 @@ RANKING_MIN_SAMPLES = {
     "wta_deciding_set": 10,
     "wta_tiebreak": 10,
 }
+RANKING_ACTIVE_WINDOW_DAYS = 365
 ODDS_BANDS = (
     (1.01, 1.20, "1.01–1.20"),
     (1.21, 1.30, "1.21–1.30"),
@@ -65,6 +66,38 @@ def _float(value: Any) -> float | None:
 
 def _timestamp(value: Any) -> str:
     return _text(value) or "9999-12-31T23:59:59+00:00"
+
+
+def _match_date(value: Any) -> date | None:
+    """Parse the date formats found in the locally cached WTA files."""
+    raw = _text(value)
+    for pattern in ("%Y-%m-%d", "%Y%m%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(raw, pattern).date()
+        except ValueError:
+            pass
+    return None
+
+
+def active_wta_players(matches: Iterable[Mapping[str, Any]]) -> set[str]:
+    """Players seen in the last 12 months of the local WTA cache.
+
+    The reference point is the newest cached result, rather than today's wall
+    clock, so a temporarily delayed data refresh cannot empty the rankings.
+    This filter is presentation-only: it never removes historical rows.
+    """
+    dated = [(match, _match_date(match.get("date"))) for match in matches]
+    available_dates = [played_on for _, played_on in dated if played_on]
+    if not available_dates:
+        return set()
+    cutoff = max(available_dates) - timedelta(days=RANKING_ACTIVE_WINDOW_DAYS)
+    return {
+        player
+        for match, played_on in dated
+        if played_on and played_on >= cutoff
+        for player in (_text(match.get("winner")), _text(match.get("loser")))
+        if player
+    }
 
 
 def odds_band(odd: Any) -> str | None:
@@ -208,12 +241,20 @@ def _ranking_rows(
     sample: str,
     minimum: int,
     label_fields: tuple[str, ...] = ("player",),
+    active_players: set[str] | None = None,
+    bottom_minimum_metric: float | None = None,
+    empty_strongest_message: str = "Sem amostras suficientes",
+    empty_weakest_message: str = "Sem amostras suficientes",
+    bottom_title: str = "Bottom 10",
 ) -> dict[str, Any]:
     """Return the strongest and weakest observations with enough evidence."""
     eligible = []
     for row in rows:
         count, value = _int(row.get(sample)), _float(row.get(metric))
         if count is None or count < minimum or value is None:
+            continue
+        player = _text(row.get("player"))
+        if active_players is not None and player not in active_players:
             continue
         labels = [str(row.get(field, "")).strip() for field in label_fields]
         eligible.append({
@@ -223,36 +264,57 @@ def _ranking_rows(
             "metric_pct": value,
         })
     strongest = sorted(eligible, key=lambda row: (-row["metric_pct"], -row["sample"], row["label"]))[:10]
-    weakest = sorted(eligible, key=lambda row: (row["metric_pct"], -row["sample"], row["label"]))[:10]
-    return {"minimum_sample": minimum, "strongest": strongest, "weakest": weakest}
+    weakest_candidates = (
+        [row for row in eligible if row["metric_pct"] >= bottom_minimum_metric]
+        if bottom_minimum_metric is not None else eligible
+    )
+    weakest = sorted(weakest_candidates, key=lambda row: (row["metric_pct"], -row["sample"], row["label"]))[:10]
+    return {
+        "minimum_sample": minimum,
+        "strongest": strongest,
+        "weakest": weakest,
+        "empty_strongest_message": empty_strongest_message,
+        "empty_weakest_message": empty_weakest_message,
+        "bottom_title": bottom_title,
+    }
 
 
-def build_rankings(operational: Mapping[str, Any], historical_wta: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+def build_rankings(
+    operational: Mapping[str, Any],
+    historical_wta: Mapping[str, Any],
+    *,
+    active_players: set[str] | None = None,
+) -> dict[str, dict[str, Any]]:
     """Stable shortlists for exploration, kept separate from predictive logic."""
     return {
         "Fenzobot · acerto operacional": _ranking_rows(
             operational.get("fenzobot_player_summary", []), category="Fenzobot · acerto operacional", metric="win_pct", sample="matches",
             minimum=RANKING_MIN_SAMPLES["operational_fenzobot"], label_fields=("player", "role"),
+            empty_strongest_message="Ainda não há jogador com 10 seleções Fenzobot liquidadas.",
+            empty_weakest_message="Ainda não há jogador com 10 seleções Fenzobot liquidadas.",
         ),
-        "WTA · vitória Moneyline": _ranking_rows(
+        "WTA ativa · vitória Moneyline": _ranking_rows(
             historical_wta.get("player_odds", []), category="WTA · vitória Moneyline", metric="win_pct", sample="matches",
-            minimum=RANKING_MIN_SAMPLES["wta_moneyline"], label_fields=("player", "odds_band", "role"),
+            minimum=RANKING_MIN_SAMPLES["wta_moneyline"], label_fields=("player", "odds_band", "role"), active_players=active_players,
         ),
-        "WTA · cobertura handicap interno": _ranking_rows(
+        "WTA ativa · cobertura handicap interno": _ranking_rows(
             historical_wta.get("handicap_reference", []), category="WTA · cobertura handicap interno", metric="cover_pct", sample="matches",
-            minimum=RANKING_MIN_SAMPLES["wta_handicap"], label_fields=("player", "role", "reference_line"),
+            minimum=RANKING_MIN_SAMPLES["wta_handicap"], label_fields=("player", "role", "reference_line"), active_players=active_players,
         ),
-        "WTA · recuperação após 1.º set": _ranking_rows(
+        "WTA ativa · recuperação após 1.º set": _ranking_rows(
             historical_wta.get("set1_recovery", []), category="WTA · recuperação após 1.º set", metric="recovery_pct", sample="lost_first",
-            minimum=RANKING_MIN_SAMPLES["wta_recovery"], label_fields=("player",),
+            minimum=RANKING_MIN_SAMPLES["wta_recovery"], label_fields=("player",), active_players=active_players,
+            bottom_minimum_metric=0.1,
+            empty_weakest_message="Sem recuperações positivas com amostra suficiente.",
+            bottom_title="Bottom 10 (>0%)",
         ),
-        "WTA · set decisivo": _ranking_rows(
+        "WTA ativa · set decisivo": _ranking_rows(
             historical_wta.get("deciding_set", []), category="WTA · set decisivo", metric="win_pct", sample="matches",
-            minimum=RANKING_MIN_SAMPLES["wta_deciding_set"], label_fields=("player",),
+            minimum=RANKING_MIN_SAMPLES["wta_deciding_set"], label_fields=("player",), active_players=active_players,
         ),
-        "WTA · tiebreak": _ranking_rows(
+        "WTA ativa · tiebreak": _ranking_rows(
             historical_wta.get("tiebreak", []), category="WTA · tiebreak", metric="win_pct", sample="matches",
-            minimum=RANKING_MIN_SAMPLES["wta_tiebreak"], label_fields=("player",),
+            minimum=RANKING_MIN_SAMPLES["wta_tiebreak"], label_fields=("player",), active_players=active_players,
         ),
     }
 
@@ -394,7 +456,7 @@ def build_system_history(
     canonical, removed = canonical_snapshots(raw)
     operational = snapshot_performance(canonical)
     history = historical_wta_analytics(local_wta_matches)
-    rankings = build_rankings(operational, history)
+    rankings = build_rankings(operational, history, active_players=active_wta_players(local_wta_matches))
     payload = {
         "schema_version": SCHEMA_VERSION,
         "methodology": {
