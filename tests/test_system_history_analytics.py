@@ -1,6 +1,7 @@
 import unittest
 
 from src.system_history_analytics import (
+    active_wta_players,
     build_rankings,
     build_system_history,
     canonical_snapshots,
@@ -91,3 +92,31 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
             {"player_odds": [], "handicap_reference": [], "set1_recovery": [], "deciding_set": [], "tiebreak": []},
         )
         self.assertEqual(rankings["Fenzobot · acerto operacional"]["strongest"], [])
+        self.assertEqual(
+            rankings["Fenzobot · acerto operacional"]["empty_strongest_message"],
+            "Ainda não há jogador com 10 seleções Fenzobot liquidadas.",
+        )
+
+    def test_recovery_bottom_excludes_zero_percent_rows(self):
+        rankings = build_rankings(
+            {},
+            {
+                "player_odds": [], "handicap_reference": [],
+                "set1_recovery": [
+                    {"player": "Zero", "lost_first": 20, "recovered": 0, "recovery_pct": 0.0},
+                    {"player": "Some", "lost_first": 20, "recovered": 4, "recovery_pct": 20.0},
+                ],
+                "deciding_set": [], "tiebreak": [],
+            },
+            active_players={"Zero", "Some"},
+        )
+        recovery = rankings["WTA ativa · recuperação após 1.º set"]
+        self.assertEqual(recovery["bottom_title"], "Bottom 10 (>0%)")
+        self.assertEqual([row["label"] for row in recovery["weakest"]], ["Some"])
+
+    def test_active_wta_players_uses_a_12_month_window_from_latest_cache_date(self):
+        matches = [
+            {"date": "2025-09-29", "winner": "Retired", "loser": "Old opponent"},
+            {"date": "2026-09-30", "winner": "Current", "loser": "Active opponent"},
+        ]
+        self.assertEqual(active_wta_players(matches), {"Current", "Active opponent"})

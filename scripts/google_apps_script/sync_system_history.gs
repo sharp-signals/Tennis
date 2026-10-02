@@ -179,13 +179,13 @@ function writeRankingsSheet_(spreadsheet, rankings) {
   sheet.clearConditionalFormatRules();
   sheet.getCharts().forEach(chart => sheet.removeChart(chart));
   sheet.getRange(1, 1).setValue('Rankings de aprendizagem').setFontSize(16).setFontWeight('bold').setFontColor('#17365D');
-  sheet.getRange(2, 1).setValue('Top 10 e Bottom 10 por métrica. Só entram linhas com a amostra mínima indicada; são leituras factuais, não sinais.').setFontSize(10).setFontStyle('italic').setFontColor('#5B6573');
+  sheet.getRange(2, 1).setValue('Top 10 e Bottom 10 por métrica. WTA inclui apenas jogadoras com partidas no cache dos últimos 12 meses; são leituras factuais, não sinais.').setFontSize(10).setFontStyle('italic').setFontColor('#5B6573');
   let row = 5;
   Object.keys(rankings).forEach(category => {
     const group = rankings[category] || {};
     sheet.getRange(row, 1, 1, 7).merge().setValue(category + ' · amostra mínima ' + (group.minimum_sample || '—')).setBackground('#0F766E').setFontColor('#FFFFFF').setFontWeight('bold');
     row += 1;
-    sheet.getRange(row, 1, 1, 7).setValues([['Top 10', 'Amostra', 'Métrica', '', 'Bottom 10', 'Amostra', 'Métrica']]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center');
+    sheet.getRange(row, 1, 1, 7).setValues([['Top 10', 'Amostra', 'Métrica', '', group.bottom_title || 'Bottom 10', 'Amostra', 'Métrica']]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center');
     const strongest = Array.isArray(group.strongest) ? group.strongest : [];
     const weakest = Array.isArray(group.weakest) ? group.weakest : [];
     const count = Math.max(strongest.length, weakest.length, 1);
@@ -194,8 +194,8 @@ function writeRankingsSheet_(spreadsheet, rankings) {
       const top = strongest[index] || {};
       const bottom = weakest[index] || {};
       rows.push([
-        top.label || (index === 0 ? 'Sem amostras suficientes' : ''), top.sample || '', typeof top.metric_pct === 'number' ? top.metric_pct / 100 : '', '',
-        bottom.label || (index === 0 ? 'Sem amostras suficientes' : ''), bottom.sample || '', typeof bottom.metric_pct === 'number' ? bottom.metric_pct / 100 : '',
+        top.label || (index === 0 ? (group.empty_strongest_message || 'Sem amostras suficientes') : ''), top.sample || '', typeof top.metric_pct === 'number' ? top.metric_pct / 100 : '', '',
+        bottom.label || (index === 0 ? (group.empty_weakest_message || 'Sem amostras suficientes') : ''), bottom.sample || '', typeof bottom.metric_pct === 'number' ? bottom.metric_pct / 100 : '',
       ]);
     }
     sheet.getRange(row + 1, 1, count, 7).setValues(rows);
