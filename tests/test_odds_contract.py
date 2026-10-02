@@ -30,15 +30,15 @@ class OperationalOddsContractTests(unittest.TestCase):
     def provenance(self):
         captured = "2026-09-22T10:00:00+00:00"
         value = {
-            "source": "RapidAPI Tennis API / recent-odds",
+            "source": "The Odds API / bookmaker market",
             "endpoint": "https://provider.test/event/recent-odds/get/501",
             "event_id": "501",
             "captured_at_utc": captured,
-            "capture_kind": "rapidapi_response_observed_at_capture",
+            "capture_kind": "provider_last_update_verified",
             "provider_timestamp": "2026-09-22T09:59:00+00:00",
-            "provider_timestamp_status": "unreliable_for_freshness",
+            "provider_timestamp_status": "AVAILABLE",
             "bookmaker": "Book A",
-            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "freshness_status": "FRESH",
             "identity_mapping_status": "VERIFIED",
             "operational_pricing_eligible": True,
             "market_integrity": {
@@ -113,10 +113,11 @@ class OperationalOddsContractTests(unittest.TestCase):
         }
         return payload
 
-    def test_main_uses_verified_pre_match_feed_and_keeps_raw_embedded_shadow(self):
+    def test_main_uses_fresh_independent_price_and_keeps_rapidapi_shadow(self):
         source = inspect.getsource(main._build_match_payload)
         self.assertIn("fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)", source)
-        self.assertNotIn("fetch_rapidapi_recent_moneyline_with_provenance(match)", source)
+        self.assertIn("fetch_the_odds_moneyline_with_provenance(match)", source)
+        self.assertIn("fresh_independent_moneyline_unavailable", source)
         self.assertIn("role=\"SHADOW_MONITOR\"", source)
 
     def test_embedded_is_observable_but_cannot_price_or_create_paper(self):
@@ -166,7 +167,7 @@ class OperationalOddsContractTests(unittest.TestCase):
         self.assertEqual(observation["source"]["role"], "SHADOW_MONITOR")
         self.assertFalse(observation["market_integrity"]["operational_pricing_eligible"])
 
-    def test_verified_embedded_quote_can_supply_regular_pre_match_pricing(self):
+    def test_unverified_rapidapi_quote_is_observation_only(self):
         match = self.match()
         key = fetch_data._odds_names_key("Alpha One", "Beta Two")
         embedded = {f"atp:{key}": {
@@ -181,7 +182,8 @@ class OperationalOddsContractTests(unittest.TestCase):
         ):
             promoted_odds, promoted = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
         self.assertEqual(promoted_odds, {"Alpha One": 2.1, "Beta Two": 1.8})
-        self.assertTrue(market_integrity.is_operational_pricing_provenance(promoted))
+        self.assertFalse(market_integrity.is_operational_pricing_provenance(promoted))
+        self.assertEqual(promoted["availability_status"], "OBSERVATION_ONLY")
         self.assertEqual(promoted["market_integrity"]["pricing_basis"], "verified_provider_pre_match_feed")
         self.assertIsNone(promoted["bookmaker"])
         self.assertEqual(promoted["bookmaker_attribution"], "NOT_EXPOSED_BY_PROVIDER_FEED")

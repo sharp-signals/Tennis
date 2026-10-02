@@ -1319,14 +1319,29 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # A Moneyline pré-live bilateral do feed regular está incluída no plano
-    # operacional. Endpoints premium de odds são auxiliares e nunca bloqueiam
-    # pricing, edge ou PAPER.
-    odds, odds_provenance = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
-    reference_odds, reference_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+    # O feed regular RapidAPI descobre o jogo, mas não expõe a hora da casa.
+    # Por isso uma quote desse feed é observação SHADOW: nunca pode criar
+    # pricing/edge/PAPER. A fonte independente só é promovida se trouxer uma
+    # Moneyline bilateral fresca e timestamped por bookmaker.
+    observed_odds, observed_odds_provenance = (
+        fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
+    )
+    verified_odds, verified_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
+    odds, odds_provenance = verified_odds, (verified_odds_provenance or {})
+    reference_odds, reference_odds_provenance = None, None
     embedded_odds, embedded_provenance = (
         fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
     )
+    if not odds:
+        # Não apresentar a observação não datada como preço atual. Continua
+        # guardada em SHADOW/telemetria, mas o relatório falha fechado para
+        # evitar repetir odds antigas como se fossem desta execução.
+        odds_provenance = dict(observed_odds_provenance or {})
+        odds_provenance.update({
+            "availability_status": "UNAVAILABLE",
+            "unavailable_reason": "fresh_independent_moneyline_unavailable",
+            "operational_pricing_eligible": False,
+        })
     odds_provenance = odds_provenance or {}
     operational_pricing_eligible = market_integrity.is_operational_pricing_provenance(
         odds_provenance
@@ -1350,8 +1365,8 @@ def _build_match_payload(match: dict) -> dict:
     # conservative. Preserve a non-strong event as provisional evidence
     # instead of upgrading generic ``VERIFIED``.
     identity_provenance = (
-        odds_provenance
-        if odds_provenance.get("event_id")
+        observed_odds_provenance
+        if (observed_odds_provenance or {}).get("event_id")
         else embedded_provenance
     )
     identity_observed_at = (
@@ -1383,6 +1398,13 @@ def _build_match_payload(match: dict) -> dict:
             + "; ".join(embedded_market_memory["errors"][:3])
         )
     odds_captured_at_utc = odds_provenance.get("captured_at_utc") if odds else None
+    observed_market_memory = market_ledger.record_market_batch_best_effort(
+        match_for_ledger,
+        observed_odds,
+        observed_odds_provenance,
+        role="SHADOW_MONITOR",
+        pipeline="PRELIVE_UNVERIFIED_PROVIDER_OBSERVATION",
+    )
     market_memory = market_ledger.record_market_batch_best_effort(
         match_for_ledger,
         odds,
@@ -1401,6 +1423,11 @@ def _build_match_payload(match: dict) -> dict:
         print(
             "[market-memory] observação operacional não bloqueante: "
             + "; ".join(market_memory["errors"][:3])
+        )
+    if observed_market_memory.get("errors"):
+        print(
+            "[market-memory] observação RapidAPI não datada não bloqueante: "
+            + "; ".join(observed_market_memory["errors"][:3])
         )
     odds_movement = fetch_data.record_market_odds_observation(match, odds, odds_provenance)
 

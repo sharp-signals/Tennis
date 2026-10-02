@@ -151,14 +151,19 @@ TOURNAMENT_FIXTURES_PAGE_SIZE = 50
 TOURS_TO_FOLLOW = ("atp", "wta")
 
 # --- Odds de mercado: fonte secundária/opcional (The Odds API) ----------
-# Já não decide "que jogos existem" — só tenta enriquecer com odds quando
-# o jogo (por nomes dos jogadores) também aparecer aqui. Se não aparecer,
-# o campo de odds fica None, tal como qualquer outro dado em falta.
-# CHANGE-2026-09-03-024: fica OFF por defeito. A presença acidental do secret
-# não autoriza chamadas nem cria uma dependência paga para o pipeline v1.
+# Já não decide "que jogos existem" — só fornece o preço operacional quando
+# a Moneyline vem bilateral, da mesma casa e com timestamp fresco. O feed
+# RapidAPI sem timestamp da casa fica apenas como observação/auditoria.
+# A ativação de produção é explícita no workflow.
 THE_ODDS_API_ENABLED = os.environ.get("THE_ODDS_API_ENABLED", "0").strip().casefold() in {
     "1", "true", "yes", "on",
 }
+# Dois pedidos por execução (um ATP e um WTA) no máximo: com duas execuções
+# diárias mantém o consumo teórico abaixo de 120 pedidos/mês e evita gastar
+# os 500 créditos mensais ao percorrer competições sem candidatos.
+THE_ODDS_API_MAX_COMPETITIONS_PER_RUN = int(
+    os.environ.get("THE_ODDS_API_MAX_COMPETITIONS_PER_RUN", "2")
+)
 # Chaves ATP e WTA, alinhadas com os tours seguidos pelo pipeline.
 ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_aus_open_singles", "tennis_atp_french_open",
