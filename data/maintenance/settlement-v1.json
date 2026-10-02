@@ -1,47 +1,60 @@
 {
   "cursors": {
-    "snapshots": "mi2_1546c24e4e204760b005b726ef8b6e68"
+    "snapshots": "mi2_22aff2427a2343239d00da1e73bd42df"
   },
   "last_run": {
     "activation_status": "EXTERNAL_ACTIVATION_PENDING",
-    "cached_matches": 26903,
+    "cached_matches": 26900,
     "candidates": {
       "paper": {
         "batch_size": 50,
-        "eligible_pending": 66,
+        "eligible_pending": 70,
         "examined": 0,
         "pending_no_result": 0,
-        "remaining_unexamined": 66
+        "remaining_unexamined": 70
       },
       "snapshots": {
         "batch_size": 50,
-        "eligible_pending": 292,
-        "examined": 0,
-        "pending_no_result": 0,
-        "remaining_unexamined": 292
+        "eligible_pending": 305,
+        "examined": 1,
+        "pending_no_result": 1,
+        "remaining_unexamined": 304
       }
     },
     "change_id": "CHANGE-2026-09-30-067",
-    "finished_at_utc": "2026-10-02T05:40:26+00:00",
+    "duration_seconds": 179.2043,
+    "finished_at_utc": "2026-10-02T17:41:09+00:00",
     "phases": {
       "read_local_cache": {
-        "duration_seconds": 0.3125,
+        "duration_seconds": 0.4723,
         "status": "COMPLETED"
       },
       "snapshot_settlement": {
-        "started_at_utc": "2026-10-02T05:37:26+00:00",
-        "status": "IN_PROGRESS"
+        "activation_status": "EXTERNAL_ACTIVATION_PENDING",
+        "blocked": {},
+        "deadline_reached": true,
+        "duration_seconds": 178.5415,
+        "eligible_candidates": 2,
+        "examined": 1,
+        "last_examined_key": "mi2_22aff2427a2343239d00da1e73bd42df",
+        "pending_no_result": 1,
+        "settled": 0,
+        "status": "COMPLETED"
       }
     },
-    "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT",
     "schema_version": 1,
-    "started_at_utc": "2026-10-02T05:37:26+00:00",
+    "started_at_utc": "2026-10-02T17:38:10+00:00",
     "status": "TIMED_OUT",
     "supervisor": {
-      "status": "TERMINATED",
-      "timeout_seconds": 180.0
+      "return_code": 1,
+      "status": "EXITED"
+    },
+    "work": {
+      "examined": 1,
+      "pending_no_result": 1,
+      "remaining_unexamined": 374
     }
   },
   "schema_version": 1,
-  "updated_at_utc": "2026-10-02T05:40:26+00:00"
+  "updated_at_utc": "2026-10-02T17:41:10+00:00"
 }
