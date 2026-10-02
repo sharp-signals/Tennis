@@ -27,7 +27,7 @@
       "total_snapshots": 702
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-02T16:41:37+00:00",
+      "attempted_at_utc": "2026-10-02T17:42:11+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
@@ -195,7 +195,7 @@
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
       "first_ledger_capture_utc": "2026-09-03T17:34:09+00:00",
       "fresh": 0.0,
-      "last_monitor_capture_utc": "2026-10-02T16:41:33+00:00",
+      "last_monitor_capture_utc": "2026-10-02T17:42:07+00:00",
       "stale": 0.0,
       "unknown": 0.0
     },
@@ -67663,11 +67663,11 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-02T17:37:02+00:00",
+  "generated_at_utc": "2026-10-02T17:43:14+00:00",
   "global": {
     "distinct_matchups": 2077,
     "green_strong_candidates": 3,
-    "market_observations": 4410,
+    "market_observations": 4421,
     "paper_22bet_entries": 84,
     "paper_technical_entries": 142,
     "report_colors": {
@@ -67708,7 +67708,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-02T17:37:02+00:00",
+    "generated_at_utc": "2026-10-02T17:43:14+00:00",
     "losses": 24,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -3.19,
@@ -67751,7 +67751,7 @@
       "average_market_probability": 0.427633,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-10-02T17:37:02+00:00",
+    "generated_at_utc": "2026-10-02T17:43:14+00:00",
     "market_movement": {
       "average_probability_pp": null,
       "comparable_closing_n": 0,
@@ -67978,7 +67978,7 @@
     "distinct_events": 702,
     "events_with_comparable_closing": 8,
     "events_with_entry_market": 189,
-    "generated_at_utc": "2026-10-02T17:37:02+00:00",
+    "generated_at_utc": "2026-10-02T17:43:14+00:00",
     "market_only": {
       "accuracy_pct": 73.68,
       "brier_score": 0.20332,
@@ -68110,11 +68110,11 @@
       },
       {
         "date": "2026-10-02",
-        "observations": 188
+        "observations": 199
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 4410
+    "total_observations": 4421
   },
   "match_identity_v2": {
     "activation": {
@@ -68314,7 +68314,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "ec9ba4eef67cb09a60c1c16ff31f52aa3eb01a4c875bbbda5aa3d0e1a6f23e5c",
+  "semantic_fingerprint": "d7fa19d680549ecfffe5b24fb3f6ee7563eeac79ee368bf66634d5c8b6a9f9fd",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 203,
@@ -68359,16 +68359,16 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-02T17:37:02+00:00"
+      "updated_at_utc": "2026-10-02T17:43:14+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-02T17:33:25+00:00"
+      "updated_at_utc": "2026-10-02T17:42:03+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-02T17:37:02+00:00"
+      "updated_at_utc": "2026-10-02T17:43:14+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
@@ -68396,7 +68396,9 @@
     }
   },
   "system_health": {
-    "alerts": [],
+    "alerts": [
+      "manutenção de resultados: TIMED_OUT"
+    ],
     "latest": {
       "analysis_failed": 0,
       "duration_seconds": 218.423,
@@ -68488,10 +68490,10 @@
         "timestamp": "2026-10-02T05:36:19+00:00"
       },
       {
-        "status": "HEALTHY",
+        "status": "DEGRADED",
         "timestamp": "2026-10-02T17:37:02+00:00"
       }
     ],
-    "status": "HEALTHY"
+    "status": "DEGRADED"
   }
 }
