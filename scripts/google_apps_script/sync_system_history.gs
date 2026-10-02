@@ -30,16 +30,46 @@ function syncSystemHistoryToSheet() {
   const branch = properties.getProperty('GITHUB_BRANCH') || SYSTEM_HISTORY_SYNC.defaultBranch;
   const spreadsheetId = properties.getProperty('SYSTEM_HISTORY_SHEET_ID') || SYSTEM_HISTORY_SYNC.defaultSpreadsheetId;
   const payload = fetchSystemHistoryPayload_(repository, branch);
-  const fingerprint = String(payload.input_fingerprint_sha256 || '');
+  const continuity = payload.forward_only_continuity || null;
+  const prospective = continuity && continuity.prospective || null;
+  const fingerprint = continuity
+    ? String((continuity.historical_baseline || {}).sha256_at_t0 || '') + ':' + String((prospective || {}).input_fingerprint_sha256 || '')
+    : String(payload.input_fingerprint_sha256 || '');
   if (!fingerprint) throw new Error('O JSON canónico não tem input_fingerprint_sha256.');
   if (properties.getProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty) === fingerprint) {
     return 'Histórico sem alterações; Sheet preservada.';
   }
 
   const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-  writeSystemHistoryWorkbook_(spreadsheet, payload);
+  if (continuity) {
+    writeProspectiveSystemHistory_(spreadsheet, prospective || {});
+  } else {
+    writeSystemHistoryWorkbook_(spreadsheet, payload);
+  }
   properties.setProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty, fingerprint);
   return 'Histórico & Aprendizagem atualizado com sucesso.';
+}
+
+function writeProspectiveSystemHistory_(spreadsheet, payload) {
+  // Deliberately never calls the legacy full-workbook writer: T0 sheets are
+  // immutable and only two explicitly named post-T0 sheets may be replaced.
+  const summary = payload.summary || {};
+  upsertSystemSheet_(spreadsheet, 'Pós-T0 - Resumo', [
+    ['Fenzobot — contribuições pós-T0', ''],
+    ['Universo separado; as folhas históricas publicadas em T0 não são recalculadas.', ''],
+    ['', ''],
+    ['Indicador', 'Valor'],
+    ['Snapshots pós-T0', summary.raw_snapshots || 0],
+    ['Partidas canónicas pós-T0', summary.canonical_snapshots || 0],
+    ['Liquidadas pós-T0', summary.settled_canonical_snapshots || 0],
+    ['Versões HTML pós-T0', summary.raw_report_html_versions || 0],
+  ], { titleRows: 2, headerRow: 4, widths: [42, 85], preserveCharts: false });
+  const operational = payload.operational || {};
+  upsertSystemSheet_(spreadsheet, 'Pós-T0 - Partidas', rowsWithHeaders_(
+    ['ID canónico', 'Snapshot', 'Analisado UTC', 'Início UTC', 'Tour', 'Torneio', 'Jogador A', 'Jogador B', 'Odd A', 'Odd B', 'Vencedor', 'Score', 'Fenzobot favorece'],
+    operational.event_rows || [],
+    ['event_id', 'snapshot_key', 'analyzed_at_utc', 'commence_time_utc', 'tour', 'tournament', 'player_a', 'player_b', 'odd_a', 'odd_b', 'winner_side', 'result', 'fenzobot_side'],
+  ), { headerRow: 1, widths: [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25] });
 }
 
 function installSystemHistorySync() {

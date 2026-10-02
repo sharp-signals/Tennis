@@ -17,7 +17,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import paper_trading
+from . import forward_only, forward_only_projections, paper_trading
 
 
 CHANGE_ID = "CHANGE-2026-09-21-046"
@@ -158,11 +158,20 @@ def build_report(
     legacy_exclusions_path: Path = DEFAULT_LEGACY_EXCLUSIONS_PATH,
     market_exclusions_path: Path = DEFAULT_MARKET_EXCLUSIONS_PATH,
     generated_at_utc: str | None = None,
+    boundary: forward_only.Boundary | None = None,
+    prospective_only: bool = False,
 ) -> dict[str, Any]:
     """Build the aggregate without mutating PAPER, settlement or decisions."""
     paper_path = Path(paper_path)
     source_exists = paper_path.is_file()
     entries = paper_trading.read_entries(paper_path)
+    if prospective_only:
+        if boundary is None or not boundary.active:
+            raise ValueError("prospective_only_requires_active_forward_only_boundary")
+        entries = [
+            entry for entry in entries
+            if boundary.new_record_eligibility("paper", entry)[0]
+        ]
     manifest_exclusions = _manifest_exclusions(
         Path(legacy_exclusions_path), Path(market_exclusions_path)
     )
@@ -304,6 +313,9 @@ def build_and_write(
     market_exclusions_path: Path = DEFAULT_MARKET_EXCLUSIONS_PATH,
     output_path: Path = DEFAULT_OUTPUT_PATH,
     generated_at_utc: str | None = None,
+    protection_manifest_path: Path | None = None,
+    continuity_root: Path | None = None,
+    projection_relative_path: str = DEFAULT_OUTPUT_PATH.as_posix(),
 ) -> dict[str, Any]:
     report = build_report(
         paper_path=paper_path,
@@ -311,5 +323,23 @@ def build_and_write(
         market_exclusions_path=market_exclusions_path,
         generated_at_utc=generated_at_utc,
     )
+    boundary = forward_only.load_boundary_for_store(output_path, protection_manifest_path)
+    if boundary.fail_closed:
+        raise forward_only_projections.ProjectionContinuityError(boundary.reason_code)
+    if boundary.active:
+        prospective = build_report(
+            paper_path=paper_path,
+            legacy_exclusions_path=legacy_exclusions_path,
+            market_exclusions_path=market_exclusions_path,
+            generated_at_utc=generated_at_utc,
+            boundary=boundary,
+            prospective_only=True,
+        )
+        report = forward_only_projections.compose_json(
+            boundary=boundary,
+            relative_path=projection_relative_path,
+            prospective=prospective,
+            root=continuity_root,
+        )
     write_report(report, output_path)
     return report

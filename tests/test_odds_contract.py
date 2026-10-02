@@ -113,10 +113,10 @@ class OperationalOddsContractTests(unittest.TestCase):
         }
         return payload
 
-    def test_main_uses_safe_recent_path_and_keeps_embedded_shadow_only(self):
+    def test_main_uses_verified_pre_match_feed_and_keeps_raw_embedded_shadow(self):
         source = inspect.getsource(main._build_match_payload)
-        self.assertIn("fetch_rapidapi_recent_moneyline_with_provenance(match)", source)
-        self.assertNotIn("fetch_rapidapi_moneyline_with_provenance(match)", source)
+        self.assertIn("fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)", source)
+        self.assertNotIn("fetch_rapidapi_recent_moneyline_with_provenance(match)", source)
         self.assertIn("role=\"SHADOW_MONITOR\"", source)
 
     def test_embedded_is_observable_but_cannot_price_or_create_paper(self):
@@ -165,6 +165,26 @@ class OperationalOddsContractTests(unittest.TestCase):
         self.assertEqual(recorded["status"], "RECORDED")
         self.assertEqual(observation["source"]["role"], "SHADOW_MONITOR")
         self.assertFalse(observation["market_integrity"]["operational_pricing_eligible"])
+
+    def test_verified_embedded_quote_can_supply_regular_pre_match_pricing(self):
+        match = self.match()
+        key = fetch_data._odds_names_key("Alpha One", "Beta Two")
+        embedded = {f"atp:{key}": {
+            "n1": "Alpha One", "n2": "Beta Two", "p1_id": 1, "p2_id": 2,
+            "event_id": "event-501", "o1": 2.1, "o2": 1.8,
+            "captured_at_utc": "2026-09-22T10:00:00+00:00", "endpoint": "upcoming",
+        }}
+        with patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
+            odds, provenance = fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+        with patch.object(
+            fetch_data, "fetch_rapidapi_embedded_moneyline_with_provenance", return_value=(odds, provenance)
+        ):
+            promoted_odds, promoted = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
+        self.assertEqual(promoted_odds, {"Alpha One": 2.1, "Beta Two": 1.8})
+        self.assertTrue(market_integrity.is_operational_pricing_provenance(promoted))
+        self.assertEqual(promoted["market_integrity"]["pricing_basis"], "verified_provider_pre_match_feed")
+        self.assertIsNone(promoted["bookmaker"])
+        self.assertEqual(promoted["bookmaker_attribution"], "NOT_EXPOSED_BY_PROVIDER_FEED")
 
     def test_missing_false_and_true_eligibility_are_fail_closed_then_open(self):
         payload = self.payload()

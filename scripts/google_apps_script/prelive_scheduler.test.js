@@ -30,6 +30,15 @@ function harness(initialTriggers = []) {
       getProperty: key => properties.get(key) || null,
       setProperty: (key, value) => properties.set(key, String(value)),
     })},
+    Utilities: {formatDate: (date, timezone, pattern) => {
+      const values = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+        timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+      }).formatToParts(date).map(part => [part.type, part.value]));
+      if (pattern === 'yyyy-MM-dd') return `${values.year}-${values.month}-${values.day}`;
+      if (pattern === 'HH:mm') return `${values.hour}:${values.minute}`;
+      throw new Error(`unsupported pattern ${pattern}`);
+    }},
     ScriptApp: {
       getProjectTriggers: () => state.triggers.slice(),
       deleteTrigger: item => {
@@ -90,23 +99,29 @@ test('installer removes managed legacy/new triggers but preserves unrelated ones
   assert.equal(state.created.length, 4);
 });
 
-test('dispatch payload carries slot and source without exposing token', () => {
+test('dispatch payload carries correlation metadata without exposing token', () => {
   const {context, state, logs, properties} = harness(handlers.map(item => trigger(item)));
   const result = context.dispatchPreLiveBotForSlot('11:30');
   const payload = JSON.parse(state.fetchOptions.payload);
-  assert.deepEqual(payload, {
-    ref: 'main',
-    inputs: {trigger_slot: '11:30', trigger_source: 'google_apps_script'},
-  });
-  assert.equal(properties.get('PRELIVE_LAST_DISPATCH_1130').endsWith('Z'), true);
-  assert.deepEqual(JSON.parse(JSON.stringify(result)), {status: 'SUCCESS', slot: '11:30'});
+  assert.equal(payload.ref, 'main');
+  assert.equal(payload.inputs.trigger_slot, '11:30');
+  assert.equal(payload.inputs.trigger_source, 'google_apps_script');
+  assert.match(payload.inputs.trigger_local_date, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(
+    payload.inputs.dispatch_attempt_id,
+    `${payload.inputs.trigger_local_date}:11:30:google_apps_script`,
+  );
+  const checkpoint = JSON.parse(properties.get('PRELIVE_LAST_DISPATCH_1130'));
+  assert.equal(checkpoint.http_status, 204);
+  assert.equal(checkpoint.dispatch_attempt_id, payload.inputs.dispatch_attempt_id);
+  assert.equal(result.status, 'DISPATCH_ACCEPTED');
   assert.doesNotMatch(logs.join('\n') + JSON.stringify(result), /test-secret-token/);
 });
 
 test('verify is healthy for exactly one trigger per handler', () => {
   const {context} = harness(handlers.map(item => trigger(item)));
   const result = context.verifyPreLiveSchedule();
-  assert.equal(result.status, 'HEALTHY');
+  assert.equal(result.trigger_status, 'HEALTHY');
   assert.equal(result.unexpected_legacy_triggers, 0);
   assert.deepEqual(Object.values(result.installed), [1, 1, 1, 1]);
 });
@@ -136,7 +151,7 @@ test('self-heal reinstalls only a degraded schedule', () => {
   const degraded = harness(handlers.slice(0, 3).map(item => trigger(item)));
   const result = degraded.context.ensurePreLiveSchedule();
   assert.equal(degraded.state.created.length, 4);
-  assert.equal(result.status, 'HEALTHY');
+  assert.equal(result.trigger_status, 'HEALTHY');
 });
 
 test('non-204 dispatch still throws and records no successful dispatch', () => {
@@ -150,6 +165,26 @@ test('non-204 dispatch still throws and records no successful dispatch', () => {
     /GitHub dispatch falhou: HTTP 403/,
   );
   assert.equal(properties.get('PRELIVE_LAST_DISPATCH_1530'), undefined);
+});
+
+test('daily coverage flags only slots whose Lisbon window already ended', () => {
+  const {context, properties} = harness(handlers.map(item => trigger(item)));
+  properties.set('PRELIVE_LAST_DISPATCH_0630', JSON.stringify({
+    local_date: '2026-09-30', http_status: 204,
+  }));
+  const result = context.verifyPreLiveDailyCoverage(new Date('2026-09-30T15:00:00Z'));
+  assert.deepEqual(Array.from(result.missing_past_slots), ['11:30', '15:30']);
+  assert.equal(result.status, 'DEGRADED');
+});
+
+test('Lisbon day and legal-time conversion remain explicit across DST', () => {
+  const {context} = harness();
+  const winter = context.verifyPreLiveDailyCoverage(new Date('2026-01-15T07:00:00Z'));
+  const summer = context.verifyPreLiveDailyCoverage(new Date('2026-07-15T06:00:00Z'));
+  assert.equal(winter.local_date, '2026-01-15');
+  assert.equal(summer.local_date, '2026-07-15');
+  assert.deepEqual(Array.from(winter.missing_past_slots), ['06:30']);
+  assert.deepEqual(Array.from(summer.missing_past_slots), ['06:30']);
 });
 
 test('workflow source contains no GitHub cron scheduler', () => {

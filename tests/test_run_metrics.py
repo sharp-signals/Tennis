@@ -128,6 +128,13 @@ class RunMetricsTests(unittest.TestCase):
             "discovery parcial: 1/8 consultas indisponível", alerts
         )
 
+    def test_settlement_timeout_is_visible_without_hiding_published_report(self) -> None:
+        alerts = run_metrics.health_alerts({
+            "status": "success",
+            "settlement_maintenance": {"status": "TIMED_OUT"},
+        })
+        self.assertIn("manutenção de resultados: TIMED_OUT", alerts)
+
     def test_invalid_numeric_configuration_falls_back_safely(self) -> None:
         metrics = {"llm_input_tokens": 1_000_000, "llm_output_tokens": "invalid"}
         environment = {

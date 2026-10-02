@@ -97,16 +97,24 @@ class OperationalBoundaryTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True):
             self.assertEqual(main._trigger_context(), {
                 "trigger_slot": "manual", "trigger_source": "manual",
+                "trigger_local_date": "manual",
             })
         with patch.dict("os.environ", {
             "FENZOBOT_TRIGGER_SLOT": "06:30",
             "FENZOBOT_TRIGGER_SOURCE": "google_apps_script",
+            "FENZOBOT_TRIGGER_LOCAL_DATE": "2026-09-30",
+            "FENZOBOT_DISPATCH_ATTEMPT_ID": "2026-09-30:06:30:google_apps_script",
             "GITHUB_RUN_ID": "123",
             "GITHUB_REPOSITORY": "sharp-signals/Tennis",
         }, clear=True):
             context = main._trigger_context()
         self.assertEqual(context["trigger_slot"], "06:30")
         self.assertEqual(context["trigger_source"], "google_apps_script")
+        self.assertEqual(context["trigger_local_date"], "2026-09-30")
+        self.assertEqual(
+            context["dispatch_attempt_id"],
+            "2026-09-30:06:30:google_apps_script",
+        )
         self.assertEqual(context["github_run_id"], "123")
         self.assertTrue(context["github_actions_url"].endswith("/actions/runs/123"))
 
