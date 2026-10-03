@@ -50048,5 +50048,872 @@
         "return_code": 1
       }
     }
+  },
+  {
+    "timestamp": "2026-10-03T05:36:38+00:00",
+    "status": "success",
+    "phase": "complete",
+    "email_delivery": {
+      "status": "NOT_ATTEMPTED",
+      "kind": "REPORTS"
+    },
+    "report_publication": {
+      "status": "PENDING",
+      "expected": 29,
+      "ready": 0
+    },
+    "report_notification_status": "REPORTS_DEFERRED",
+    "trigger_slot": "manual",
+    "trigger_source": "manual",
+    "trigger_local_date": "manual",
+    "dispatch_attempt_id": "37100171874",
+    "github_run_id": "37100171874",
+    "github_actions_url": "https://github.com/sharp-signals/Tennis/actions/runs/37100171874",
+    "fixtures_discovered": 35,
+    "fixtures_discovered_by_tour": {
+      "atp": 13,
+      "wta": 22
+    },
+    "discovery_sources": {
+      "upcoming_atp": {
+        "status": "SUCCESS_WITH_MATCHES",
+        "matches": 78,
+        "pages": 1
+      },
+      "upcoming_wta": {
+        "status": "SUCCESS_WITH_MATCHES",
+        "matches": 82,
+        "pages": 1
+      },
+      "upcoming_discovery": {
+        "status": "SUCCESS_WITH_MATCHES",
+        "matches": 160,
+        "eligible_tournaments": 4,
+        "fixtures": 35
+      }
+    },
+    "discovery_selected_source": "upcoming_discovery",
+    "discovery_status": "SUCCESS_WITH_MATCHES",
+    "discovery_partial": false,
+    "fixtures_in_window": 29,
+    "eligible": 29,
+    "eligible_before_identity": 29,
+    "eligible_by_tour": {
+      "atp": 11,
+      "wta": 18
+    },
+    "challenger_125_experiment": {
+      "mode": "EXPERIMENT",
+      "tier": "Challenger 125",
+      "discovery": {
+        "candidates_found": 2,
+        "tournaments_accepted": 1,
+        "fixtures_found": 2,
+        "fixtures_in_window": 2,
+        "fixtures_post_identity": 2,
+        "games_processed": 2
+      },
+      "data": {
+        "reports": {
+          "complete": 1,
+          "degraded": 1
+        },
+        "available_factor_counts": {
+          "min": 10,
+          "max": 12,
+          "average": 11.0
+        },
+        "missing_reasons": {
+          "no_prior_head_to_head_observed": 2,
+          "service_return_unavailable": 1,
+          "surface_record_unavailable": 1,
+          "wta_only_endpoint": 2
+        },
+        "identity": {
+          "verified": 2
+        }
+      },
+      "market": {
+        "recent_odds_available": 0,
+        "recent_odds_unavailable": 2,
+        "bookmakers_observed": {},
+        "market_quote_integrity": {
+          "AVAILABLE": 2
+        },
+        "operational_pricing_eligible": 0,
+        "unavailable_by_reason": {
+          "fresh_independent_moneyline_unavailable": 2
+        }
+      },
+      "pricing": {
+        "available": 0,
+        "unavailable": 2
+      },
+      "paper": {
+        "would_be_candidates": 0,
+        "persisted": 0,
+        "blocked_by_reason": {
+          "EXPERIMENTAL_TIER_CHALLENGER_125": 2
+        }
+      },
+      "cost": {
+        "rapidapi_calls_total": 154,
+        "challenger_125_attributed_calls": 6,
+        "challenger_125_calls_by_endpoint_family": {
+          "statistical_enrichment": 6
+        },
+        "challenger_125_calls_per_game": 3.0,
+        "main_tour_attributed_calls": 140,
+        "shared_calls": 8,
+        "run_limit_pct": 6.844,
+        "daily_limit_pct": 3.622
+      }
+    },
+    "eligible_after_identity": 29,
+    "post_identity_eligible_by_tour": {
+      "atp": 11,
+      "wta": 18
+    },
+    "event_identity": {
+      "fallback_attempt_cap_per_match": 6,
+      "by_tour": {
+        "atp": {
+          "matches": 11,
+          "verified": 11,
+          "unverified": 0,
+          "rejected": 0,
+          "lookup_attempts": 0,
+          "fallback_calls": 0,
+          "cache_hits": 0,
+          "cache_misses": 0,
+          "index_resolutions": 11,
+          "persistent_cache_hits": 0,
+          "in_run_cache_hits": 0,
+          "fallback_after_miss": 0,
+          "unavailable_by_reason": {},
+          "shared_index_calls": 1
+        },
+        "wta": {
+          "matches": 18,
+          "verified": 17,
+          "unverified": 1,
+          "rejected": 0,
+          "lookup_attempts": 6,
+          "fallback_calls": 6,
+          "cache_hits": 0,
+          "cache_misses": 1,
+          "index_resolutions": 17,
+          "persistent_cache_hits": 0,
+          "in_run_cache_hits": 0,
+          "fallback_after_miss": 1,
+          "unavailable_by_reason": {
+            "event_identity_not_in_response": 1
+          },
+          "shared_index_calls": 1
+        }
+      },
+      "matches": [
+        {
+          "match_key": "1205",
+          "tour": "atp",
+          "players": [
+            "Matteo Berrettini",
+            "Adolfo Daniel Vallejo"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1214",
+          "tour": "atp",
+          "players": [
+            "Jaume Antoni Munar Clar",
+            "Kyrian Jacquet"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1219",
+          "tour": "atp",
+          "players": [
+            "Valentin Vacherot",
+            "Arthur Fils"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1222",
+          "tour": "atp",
+          "players": [
+            "Ugo Humbert",
+            "Jiri Lehecka"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1268",
+          "tour": "atp",
+          "players": [
+            "Daniil Medvedev",
+            "Jan-Lennard Struff"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1271",
+          "tour": "atp",
+          "players": [
+            "Alexander Zverev",
+            "Juncheng Shang"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1277",
+          "tour": "atp",
+          "players": [
+            "Hubert Hurkacz",
+            "Karen Khachanov"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1281",
+          "tour": "atp",
+          "players": [
+            "Andrey Rublev",
+            "Roman Safiullin"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1291",
+          "tour": "atp",
+          "players": [
+            "Francisco Cerundolo",
+            "Jakub Mensik"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1313",
+          "tour": "atp",
+          "players": [
+            "David Jorda Sanchis",
+            "Inaki Montes-De La Torre"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "1348",
+          "tour": "atp",
+          "players": [
+            "Henrique Rocha",
+            "Jerome Kym"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "841",
+          "tour": "wta",
+          "players": [
+            "Ekaterina Alexandrova",
+            "Diana Shnaider"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "843",
+          "tour": "wta",
+          "players": [
+            "Belinda Bencic",
+            "Anastasia Zakharova"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "855",
+          "tour": "wta",
+          "players": [
+            "Katerina Siniakova",
+            "Elina Svitolina"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "862",
+          "tour": "wta",
+          "players": [
+            "Karolina Muchova",
+            "Liudmila Samsonova"
+          ],
+          "lookup_attempts": 6,
+          "identity_api_calls": 6,
+          "cache_status": "MISS",
+          "resolution_path": "fallback_after_miss",
+          "availability_status": "UNAVAILABLE",
+          "unavailable_reason": "event_identity_not_in_response",
+          "identity_source": "bounded_event_get",
+          "attempted_methods": [
+            "fixture_exact_direct",
+            "fixture_exact_reverse",
+            "fixture_date_-1_direct",
+            "fixture_date_-1_reverse",
+            "fixture_date_+1_direct",
+            "fixture_date_+1_reverse"
+          ]
+        },
+        {
+          "match_key": "866",
+          "tour": "wta",
+          "players": [
+            "Marie Bouzkova",
+            "Kimberly Birrell"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "873",
+          "tour": "wta",
+          "players": [
+            "Xinyu Gao",
+            "Iga Swiatek"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "878",
+          "tour": "wta",
+          "players": [
+            "Elena Rybakina",
+            "Alina Charaeva"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "887",
+          "tour": "wta",
+          "players": [
+            "Kamilla Rakhimova",
+            "Leylah Annie Fernandez"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "889",
+          "tour": "wta",
+          "players": [
+            "Sinja Kraus",
+            "Dayana Yastremska"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "896",
+          "tour": "wta",
+          "players": [
+            "Qinwen Zheng",
+            "Anna Kalinskaya"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "903",
+          "tour": "wta",
+          "players": [
+            "Daria Snigur",
+            "Taylah Preston"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "911",
+          "tour": "wta",
+          "players": [
+            "Polina Kudermetova",
+            "Mirra Andreeva"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "923",
+          "tour": "wta",
+          "players": [
+            "Sonay Kartal",
+            "Xinyu Wang"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "925",
+          "tour": "wta",
+          "players": [
+            "Linda Noskova",
+            "Viktorija Golubic"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "933",
+          "tour": "wta",
+          "players": [
+            "Nikola Bartunkova",
+            "Aryna Sabalenka"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "935",
+          "tour": "wta",
+          "players": [
+            "Sara Bejlek",
+            "Naomi Osaka"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "941",
+          "tour": "wta",
+          "players": [
+            "Iva Jovic",
+            "Harriet Dart"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        },
+        {
+          "match_key": "947",
+          "tour": "wta",
+          "players": [
+            "Xinran Sun",
+            "Cristina Bucsa"
+          ],
+          "lookup_attempts": 0,
+          "identity_api_calls": 0,
+          "availability_status": "VERIFIED",
+          "identity_source": "extend_upcoming:verified_match_id",
+          "resolution_path": "index",
+          "index_source": "extend_upcoming",
+          "event_identity_validation_basis": "STRUCTURAL_MATCH_ID",
+          "cache_status": "NOT_APPLICABLE"
+        }
+      ],
+      "cache_hit_rate": 0.0
+    },
+    "incremental_candidates": 29,
+    "incremental_process_targets": 29,
+    "incremental_skipped": 0,
+    "incremental_reasons": {
+      "full_pre_live_run": 29
+    },
+    "llm_mode": "disabled",
+    "unresolved_historical_players": 3,
+    "unresolved_historical_matches": 3,
+    "unresolved_historical_samples": [
+      "Jaume Antoni Munar Clar",
+      "Inaki Montes-De La Torre",
+      "Xinran Sun"
+    ],
+    "processed": 29,
+    "analysis_failed": 0,
+    "processing_ratio": 1.0,
+    "analysis_error_counts": {},
+    "analysis_error_samples": [],
+    "market_coverage_by_tour": {
+      "atp": {
+        "available": 5,
+        "unavailable": 6,
+        "unavailable_by_reason": {
+          "fresh_independent_moneyline_unavailable": 6
+        }
+      },
+      "wta": {
+        "available": 16,
+        "unavailable": 2,
+        "unavailable_by_reason": {
+          "fresh_independent_moneyline_unavailable": 2
+        }
+      }
+    },
+    "report_data_status_by_tour": {
+      "atp": {
+        "complete": 9,
+        "degraded": 2
+      },
+      "wta": {
+        "complete": 17,
+        "degraded": 1
+      }
+    },
+    "rapidapi_calls_per_processed": 5.31,
+    "snapshot_reconciliation": {
+      "status": "HEALTHY",
+      "counts": {
+        "linked": 29,
+        "collisions": 0,
+        "unlinked": 0
+      },
+      "reason_codes": {
+        "CANONICAL_MATCH_INSTANCE_ID_MATCH": 29
+      },
+      "time_tolerance_hours": 48
+    },
+    "reports_ok": 29,
+    "reports_failed": 0,
+    "telegram_chunks": 3,
+    "rapidapi_calls": 154,
+    "rapidapi_calls_by_endpoint": {
+      "/tennis/v2/atp/fixtures/tournament/21354": 1,
+      "/tennis/v2/atp/fixtures/tournament/21355": 1,
+      "/tennis/v2/atp/fixtures/tournament/22037": 1,
+      "/tennis/v2/atp/h2h/matches/18669/71614/": 1,
+      "/tennis/v2/atp/h2h/matches/22807/14177/": 1,
+      "/tennis/v2/atp/h2h/matches/24008/86082/": 1,
+      "/tennis/v2/atp/h2h/matches/26473/25543/": 1,
+      "/tennis/v2/atp/h2h/matches/29372/28900/": 1,
+      "/tennis/v2/atp/h2h/matches/29812/80391/": 1,
+      "/tennis/v2/atp/h2h/matches/31358/65904/": 1,
+      "/tennis/v2/atp/h2h/matches/36594/83135/": 1,
+      "/tennis/v2/atp/h2h/matches/38911/61838/": 1,
+      "/tennis/v2/atp/h2h/matches/52279/86691/": 1,
+      "/tennis/v2/atp/h2h/matches/83794/76298/": 1,
+      "/tennis/v2/atp/player/past-matches/14177": 1,
+      "/tennis/v2/atp/player/past-matches/18669": 1,
+      "/tennis/v2/atp/player/past-matches/22807": 1,
+      "/tennis/v2/atp/player/past-matches/24008": 1,
+      "/tennis/v2/atp/player/past-matches/25543": 1,
+      "/tennis/v2/atp/player/past-matches/26473": 1,
+      "/tennis/v2/atp/player/past-matches/28900": 1,
+      "/tennis/v2/atp/player/past-matches/29372": 1,
+      "/tennis/v2/atp/player/past-matches/29812": 1,
+      "/tennis/v2/atp/player/past-matches/31358": 1,
+      "/tennis/v2/atp/player/past-matches/36594": 1,
+      "/tennis/v2/atp/player/past-matches/38911": 1,
+      "/tennis/v2/atp/player/past-matches/52279": 1,
+      "/tennis/v2/atp/player/past-matches/61838": 1,
+      "/tennis/v2/atp/player/past-matches/65904": 1,
+      "/tennis/v2/atp/player/past-matches/71614": 1,
+      "/tennis/v2/atp/player/past-matches/76298": 1,
+      "/tennis/v2/atp/player/past-matches/80391": 1,
+      "/tennis/v2/atp/player/past-matches/83135": 1,
+      "/tennis/v2/atp/player/past-matches/83794": 1,
+      "/tennis/v2/atp/player/past-matches/86082": 1,
+      "/tennis/v2/atp/player/past-matches/86691": 1,
+      "/tennis/v2/atp/ranking/singles/": 2,
+      "/tennis/v2/atp/tournament/info/12823": 1,
+      "/tennis/v2/atp/tournament/info/13815": 1,
+      "/tennis/v2/atp/tournament/info/15653": 1,
+      "/tennis/v2/atp/tournament/info/15668": 1,
+      "/tennis/v2/atp/tournament/info/16916": 1,
+      "/tennis/v2/atp/tournament/info/16919": 1,
+      "/tennis/v2/atp/tournament/info/17578": 1,
+      "/tennis/v2/atp/tournament/info/19391": 1,
+      "/tennis/v2/atp/tournament/info/19411": 1,
+      "/tennis/v2/atp/tournament/info/20322": 1,
+      "/tennis/v2/atp/tournament/info/20326": 1,
+      "/tennis/v2/atp/tournament/info/20336": 1,
+      "/tennis/v2/atp/tournament/info/21318": 1,
+      "/tennis/v2/atp/tournament/info/21337": 1,
+      "/tennis/v2/extend/api/event/get/Karolina%20Muchova/Liudmila%20Samsonova/2026-10-03": 1,
+      "/tennis/v2/extend/api/event/get/Karolina%20Muchova/Liudmila%20Samsonova/2026-10-04": 1,
+      "/tennis/v2/extend/api/event/get/Karolina%20Muchova/Liudmila%20Samsonova/2026-10-05": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Karolina%20Muchova/2026-10-03": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Karolina%20Muchova/2026-10-04": 1,
+      "/tennis/v2/extend/api/event/get/Liudmila%20Samsonova/Karolina%20Muchova/2026-10-05": 1,
+      "/tennis/v2/extend/api/events/upcoming/atp": 1,
+      "/tennis/v2/extend/api/events/upcoming/wta": 1,
+      "/tennis/v2/h2h/recent-stats/atp/52279": 1,
+      "/tennis/v2/h2h/recent-stats/wta/45072": 1,
+      "/tennis/v2/h2h/recent-stats/wta/53128": 1,
+      "/tennis/v2/h2h/recent-stats/wta/55173": 1,
+      "/tennis/v2/h2h/recent-stats/wta/66591": 1,
+      "/tennis/v2/ms-api/upcoming/matches/atp": 1,
+      "/tennis/v2/ms-api/upcoming/matches/wta": 1,
+      "/tennis/v2/wta/fixtures/tournament/16749": 1,
+      "/tennis/v2/wta/h2h/matches/100576/24344/": 1,
+      "/tennis/v2/wta/h2h/matches/14054/65911/": 1,
+      "/tennis/v2/wta/h2h/matches/14056/52660/": 1,
+      "/tennis/v2/wta/h2h/matches/17501/11371/": 1,
+      "/tennis/v2/wta/h2h/matches/18482/24368/": 1,
+      "/tennis/v2/wta/h2h/matches/24572/18427/": 1,
+      "/tennis/v2/wta/h2h/matches/31727/45854/": 1,
+      "/tennis/v2/wta/h2h/matches/36558/52646/": 1,
+      "/tennis/v2/wta/h2h/matches/45072/49081/": 1,
+      "/tennis/v2/wta/h2h/matches/50943/37266/": 1,
+      "/tennis/v2/wta/h2h/matches/53128/32480/": 1,
+      "/tennis/v2/wta/h2h/matches/55173/70326/": 1,
+      "/tennis/v2/wta/h2h/matches/60791/77934/": 1,
+      "/tennis/v2/wta/h2h/matches/66591/47152/": 1,
+      "/tennis/v2/wta/h2h/matches/66597/10749/": 1,
+      "/tennis/v2/wta/h2h/matches/71092/18455/": 1,
+      "/tennis/v2/wta/h2h/matches/71163/16430/": 1,
+      "/tennis/v2/wta/h2h/matches/80381/14609/": 1,
+      "/tennis/v2/wta/h2h/stats/100576/24344/": 1,
+      "/tennis/v2/wta/h2h/stats/14054/65911/": 1,
+      "/tennis/v2/wta/h2h/stats/14056/52660/": 1,
+      "/tennis/v2/wta/h2h/stats/17501/11371/": 1,
+      "/tennis/v2/wta/h2h/stats/18482/24368/": 1,
+      "/tennis/v2/wta/h2h/stats/24572/18427/": 1,
+      "/tennis/v2/wta/h2h/stats/31727/45854/": 1,
+      "/tennis/v2/wta/h2h/stats/36558/52646/": 1,
+      "/tennis/v2/wta/h2h/stats/45072/49081/": 1,
+      "/tennis/v2/wta/h2h/stats/50943/37266/": 1,
+      "/tennis/v2/wta/h2h/stats/53128/32480/": 1,
+      "/tennis/v2/wta/h2h/stats/55173/70326/": 1,
+      "/tennis/v2/wta/h2h/stats/60791/77934/": 1,
+      "/tennis/v2/wta/h2h/stats/66591/47152/": 1,
+      "/tennis/v2/wta/h2h/stats/66597/10749/": 1,
+      "/tennis/v2/wta/h2h/stats/71092/18455/": 1,
+      "/tennis/v2/wta/h2h/stats/71163/16430/": 1,
+      "/tennis/v2/wta/h2h/stats/80381/14609/": 1,
+      "/tennis/v2/wta/player/past-matches/100576": 1,
+      "/tennis/v2/wta/player/past-matches/10749": 1,
+      "/tennis/v2/wta/player/past-matches/11371": 1,
+      "/tennis/v2/wta/player/past-matches/14054": 1,
+      "/tennis/v2/wta/player/past-matches/14056": 1,
+      "/tennis/v2/wta/player/past-matches/14609": 1,
+      "/tennis/v2/wta/player/past-matches/16430": 1,
+      "/tennis/v2/wta/player/past-matches/17501": 1,
+      "/tennis/v2/wta/player/past-matches/18427": 1,
+      "/tennis/v2/wta/player/past-matches/18455": 1,
+      "/tennis/v2/wta/player/past-matches/18482": 1,
+      "/tennis/v2/wta/player/past-matches/24344": 1,
+      "/tennis/v2/wta/player/past-matches/24368": 1,
+      "/tennis/v2/wta/player/past-matches/24572": 1,
+      "/tennis/v2/wta/player/past-matches/31727": 1,
+      "/tennis/v2/wta/player/past-matches/32480": 1,
+      "/tennis/v2/wta/player/past-matches/36558": 1,
+      "/tennis/v2/wta/player/past-matches/37266": 1,
+      "/tennis/v2/wta/player/past-matches/45072": 1,
+      "/tennis/v2/wta/player/past-matches/45854": 1,
+      "/tennis/v2/wta/player/past-matches/47152": 1,
+      "/tennis/v2/wta/player/past-matches/49081": 1,
+      "/tennis/v2/wta/player/past-matches/50943": 1,
+      "/tennis/v2/wta/player/past-matches/52646": 1,
+      "/tennis/v2/wta/player/past-matches/52660": 1,
+      "/tennis/v2/wta/player/past-matches/53128": 1,
+      "/tennis/v2/wta/player/past-matches/55173": 1,
+      "/tennis/v2/wta/player/past-matches/60791": 1,
+      "/tennis/v2/wta/player/past-matches/65911": 1,
+      "/tennis/v2/wta/player/past-matches/66591": 1,
+      "/tennis/v2/wta/player/past-matches/66597": 1,
+      "/tennis/v2/wta/player/past-matches/70326": 1,
+      "/tennis/v2/wta/player/past-matches/71092": 1,
+      "/tennis/v2/wta/player/past-matches/71163": 1,
+      "/tennis/v2/wta/player/past-matches/77934": 1,
+      "/tennis/v2/wta/player/past-matches/80381": 1,
+      "/tennis/v2/wta/ranking/singles/": 1,
+      "/tennis/v2/wta/tournament/info/11146": 1,
+      "/tennis/v2/wta/tournament/info/11755": 1,
+      "/tennis/v2/wta/tournament/info/12394": 1,
+      "/tennis/v2/wta/tournament/info/13840": 1,
+      "/tennis/v2/wta/tournament/info/15206": 1,
+      "/tennis/v2/wta/tournament/info/15216": 1,
+      "/tennis/v2/wta/tournament/info/15255": 1,
+      "/tennis/v2/wta/tournament/info/15957": 1,
+      "/tennis/v2/wta/tournament/info/15981": 1,
+      "/tennis/v2/wta/tournament/info/15990": 1,
+      "/tennis/v2/wta/tournament/info/16714": 1,
+      "/tennis/v2/wta/tournament/info/16729": 1,
+      "/tennis/v2/wta/tournament/info/16960": 1
+    },
+    "rapidapi_calls_by_endpoint_family": {
+      "event_identity": 8,
+      "fixture_discovery": 6,
+      "statistical_enrichment": 113,
+      "tournament_metadata": 27
+    },
+    "llm_calls": 24,
+    "llm_external_requests": 0,
+    "llm_provider_invocations": 24,
+    "duration_seconds": 192.173,
+    "llm_estimated_cost_usd": 0.0
   }
 ]

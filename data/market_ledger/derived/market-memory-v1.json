@@ -44109,7 +44109,18 @@
       "match_format": "BO3",
       "match_id": 1266,
       "outcome_side": null,
-      "paper": [],
+      "paper": [
+        {
+          "closing_market_observation_id": null,
+          "clv_price_pct": null,
+          "clv_probability_pp": null,
+          "entry_market_observation_id": "2fbe6368b2fb9076d519845739947b552ea86c9c57f0637e14ba36da9f9d7f94",
+          "entry_market_probability": null,
+          "last_valid_prestart_market_probability": null,
+          "paper_key": "mi2_1a8292b3b1cf47abb82678e583d91e0c:moneyline:a:na",
+          "selected_side": "a"
+        }
+      ],
       "players": {
         "a": {
           "id": 22807,
@@ -45065,6 +45076,95 @@
         "reason_code": null,
         "tier": "WTA 1000"
       }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-03T05:35:03+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "EXPERIMENTAL_TIER_CHALLENGER_125",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "PRICING_UNAVAILABLE",
+            "PROBABILITIES_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "a6fff0d36c55d4c1dd788fc3352e80ec2830dfdf",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_UNAVAILABLE",
+            "divergence_level": 0,
+            "divergence_type": "evidence_only",
+            "fenzobot_probabilities": "UNAVAILABLE",
+            "github_run_id": "37100171874",
+            "market_probabilities": "UNAVAILABLE",
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "mi2_0f4321e42eec4dc2abf07cbb468bec6e"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "83a765b833ffa35a14a2bd70"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "EXPERIMENTAL",
+      "event_key": "mi2_0f4321e42eec4dc2abf07cbb468bec6e",
+      "fenzobot_probabilities": null,
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_format": "BO3",
+      "match_id": 1348,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 83794,
+          "name": "Henrique Rocha"
+        },
+        "b": {
+          "id": 76298,
+          "name": "Jerome Kym"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": null,
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "c3280c0e684faddcb1b1",
+      "scheduled_start_utc": "2026-10-03T11:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_0f4321e42eec4dc2abf07cbb468bec6e",
+      "surface": "Hard",
+      "tier": "Challenger 125",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": false,
+        "label": "Challenger 125 · EXPERIMENTAL",
+        "mode": "EXPERIMENTAL_REPORT_ONLY",
+        "paper_allowed": false,
+        "pricing_allowed": true,
+        "reason_code": "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "tier": "Challenger 125"
+      }
     }
   ],
   "experimental_evaluation_by_tier": {
@@ -45081,12 +45181,12 @@
         "log_loss": null,
         "sample_size": 0
       },
-      "sample_size": 48
+      "sample_size": 49
     }
   },
-  "generated_at_utc": "2026-10-03T02:07:33+00:00",
+  "generated_at_utc": "2026-10-03T05:36:37+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 4441,
+  "observation_count": 4911,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."

@@ -453846,7 +453846,805 @@
           }
         }
       }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-03T05:35:03+00:00",
+      "canonical_match_instance_id": "mi2_0f4321e42eec4dc2abf07cbb468bec6e",
+      "commence_time_utc": "2026-10-03T11:30:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "mi2_0f4321e42eec4dc2abf07cbb468bec6e",
+      "identity_evidence": {
+        "event_id": "1348",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "83d855fa36e270244e1918cfa780d1f036c27c5ceec2a08cf0bdd971646f363b",
+        "match_id": "1348",
+        "orientation": {
+          "a": 83794,
+          "b": 76298
+        },
+        "provider": "RapidAPI",
+        "round_id": "10",
+        "scheduled_start_utc": "2026-10-03T11:30:00.000Z",
+        "structure": {
+          "player_ids": [
+            "76298",
+            "83794"
+          ],
+          "tour": "atp",
+          "tournament_id": "22037"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_0f4321e42eec4dc2abf07cbb468bec6e",
+      "legacy_key": "atp:1348",
+      "market_memory_eligible": false,
+      "market_memory_status": "RECORDED",
+      "market_odds_decimal": null,
+      "match_format": "BO3",
+      "match_id": 1348,
+      "metrics": {
+        "deciding_set_stats_a": {
+          "bo3": {
+            "matches_went_the_distance": 2,
+            "win_rate_pct": 50.0,
+            "wins": 1
+          },
+          "bo5": {
+            "matches_went_the_distance": 2,
+            "win_rate_pct": 100.0,
+            "wins": 2
+          }
+        },
+        "deciding_set_stats_b": {
+          "bo3": {
+            "matches_went_the_distance": 6,
+            "win_rate_pct": 33.3,
+            "wins": 2
+          },
+          "bo5": {
+            "matches_went_the_distance": 1,
+            "win_rate_pct": 100.0,
+            "wins": 1
+          }
+        },
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_moderada",
+            "nivel": 0,
+            "texto": "Alinhamento moderada"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 3,
+            "structural_factors_available": [
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "recuperação pós-1º set",
+              "Jerome Kym"
+            ],
+            [
+              "indoor/outdoor",
+              "Jerome Kym"
+            ],
+            [
+              "padrão sazonal",
+              "Henrique Rocha"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 100.0,
+              "amostra_a": 137,
+              "amostra_b": 100,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Jerome Kym",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 16,
+              "valor_b": 25
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 4
+            },
+            "forma_recente": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7,
+              "valor_a": 70.0,
+              "valor_b": 70.0
+            },
+            "h2h": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Jerome Kym",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 36.4,
+              "valor_b": 62.5
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Jerome Kym",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.767,
+              "peso_antes_cap": 1.84,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 1.84,
+              "valor_a": 50.0,
+              "valor_b": 61.5
+            },
+            "mudanca_piso": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "ambos em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7
+            },
+            "piso": {
+              "amostra": 54,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Jerome Kym",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.533,
+              "peso_antes_cap": 4.267,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 4.267,
+              "valor_a": 64.2,
+              "valor_b": 72.2
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Henrique Rocha",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.63,
+              "pontos_a": 469,
+              "pontos_b": 193,
+              "valor_a": 127.0,
+              "valor_b": 286.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Henrique Rocha",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.787,
+              "peso_antes_cap": 4.72,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.37,
+              "valor_a": -2.9,
+              "valor_b": -50.1
+            },
+            "recuperacao_sets": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "diferença irrelevante",
+              "peso_base_configurado": 9
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Henrique Rocha",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 100.0,
+              "valor_b": 57.1
+            },
+            "servico_carreira": {
+              "amostra": 2.0,
+              "confianca_amostra": 0.447,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Jerome Kym",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 1.342,
+              "peso_base_aplicado": 3.0,
+              "peso_base_configurado": 3.0,
+              "peso_efetivo": 1.342,
+              "valor_a": 58.0,
+              "valor_b": 77.0
+            },
+            "servico_recente": {
+              "amostra": 2.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Jerome Kym",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 49.1,
+              "valor_b": 76.6
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Jerome Kym",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 66.7,
+              "valor_b": 78.6
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 17,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 33,
+          "inclinacao_modelo_b": 67,
+          "indice_evidencia_a": 33,
+          "indice_evidencia_b": 67,
+          "indice_favorece": "Jerome Kym",
+          "intensidade_indicadores": "moderada",
+          "intensidade_nivel": 2,
+          "massa_evidencia": 45.448,
+          "mercado_favorece": null,
+          "n_fatores": 10,
+          "player_a": "Henrique Rocha",
+          "player_b": "Jerome Kym",
+          "prob_mercado_a": null,
+          "prob_mercado_b": null,
+          "tipo": "evidence_only"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 137,
+            "amostra_b": 100,
+            "diff": -9,
+            "lider": "Jerome Kym",
+            "valor_a": 16,
+            "valor_b": 25
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 0.0,
+            "lider": "igual",
+            "unidade": "%",
+            "valor_a": 70.0,
+            "valor_b": 70.0
+          },
+          "frescura": {
+            "jogos_7d_a": 3,
+            "jogos_7d_b": 3,
+            "mais_fresco": "igual",
+            "sets_7d_a": 6,
+            "sets_7d_b": 9
+          },
+          "indoor_outdoor": {
+            "amostra_a": 11,
+            "amostra_b": 8,
+            "diff": 26.1,
+            "lider": "Jerome Kym",
+            "unidade": "%",
+            "valor_a": 36.4,
+            "valor_b": 62.5
+          },
+          "piso": {
+            "amostra_a": 137,
+            "amostra_b": 54,
+            "diff": 8.0,
+            "lider": "Jerome Kym",
+            "unidade": "%",
+            "valor_a": 64.2,
+            "valor_b": 72.2
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 0,
+            "top50_b": 0,
+            "valor_a": 0,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 159.0,
+            "lider": "Henrique Rocha",
+            "pontos_a": 469,
+            "pontos_b": 193,
+            "valor_a": 127.0,
+            "valor_b": 286.0
+          },
+          "ranking_evolucao": {
+            "diff": 47.2,
+            "lider": "Henrique Rocha",
+            "valor_a": -2.9,
+            "valor_b": -50.1
+          },
+          "sazonal": {
+            "amostra_a": 1,
+            "amostra_b": 7,
+            "diff": 42.9,
+            "lider": "Henrique Rocha",
+            "unidade": "%",
+            "valor_a": 100.0,
+            "valor_b": 57.1
+          },
+          "servico_carreira": {
+            "amostra_a": 3,
+            "amostra_b": 2,
+            "diff": 19.0,
+            "lider": "Jerome Kym",
+            "unidade": "%",
+            "valor_a": 58.0,
+            "valor_b": 77.0
+          },
+          "servico_recente": {
+            "amostra_a": 2,
+            "amostra_b": 2,
+            "diff": 27.5,
+            "lider": "Jerome Kym",
+            "unidade": "%",
+            "valor_a": 49.1,
+            "valor_b": 76.6
+          },
+          "tiebreak": {
+            "amostra_a": 3,
+            "amostra_b": 14,
+            "diff": 11.9,
+            "lider": "Jerome Kym",
+            "unidade": "%",
+            "valor_a": 66.7,
+            "valor_b": 78.6
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 36,
+          "coverage_pct": 57.0,
+          "excluded_missing_odds": 43,
+          "excluded_missing_odds_wins": 23,
+          "expected_wins": 31.28,
+          "matches": 57,
+          "odds_eligible_matches": 57,
+          "overall_wins": 59,
+          "performance_vs_market": 4.72,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 30,
+          "coverage_pct": 55.0,
+          "excluded_missing_odds": 45,
+          "excluded_missing_odds_wins": 28,
+          "expected_wins": 30.96,
+          "matches": 55,
+          "odds_eligible_matches": 55,
+          "overall_wins": 58,
+          "performance_vs_market": -0.96,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 106.0,
+          "matches": 4,
+          "sample_status": "limitado"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 259.33,
+          "matches": 3,
+          "sample_status": "limitado"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 97.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 67.4,
+            "weighted_ratio": 0.673611
+          },
+          "experimental_tier_gate": {
+            "data_coverage_pct": 67.4,
+            "evidence_band": "evidência suficiente",
+            "green_eligible": false,
+            "minimum_experimental_edge_pct": 4.0,
+            "paper_eligible": false,
+            "reason_code": "EXPERIMENTAL_TIER_CHALLENGER_125",
+            "status": "BLOCKED",
+            "tier": "Challenger 125",
+            "would_be_paper_candidate": false,
+            "would_be_paper_market_count": 0
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "reason": "fresh_independent_moneyline_unavailable",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 16,
+              "available_weight": 97.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 67.4,
+              "weighted_ratio": 0.673611
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.5,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "state": "PRICING_UNAVAILABLE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 50.0,
+          "bp_saved_pct": 60.0,
+          "first_serve_won_pct": 58.0,
+          "matches": 3,
+          "opponent_first_serve_won_pct": 27.0,
+          "opponent_second_serve_won_pct": 50.0,
+          "sample_status": "limitado",
+          "second_serve_won_pct": 45.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 13.0,
+          "bp_saved_pct": 69.0,
+          "first_serve_won_pct": 77.0,
+          "matches": 2,
+          "opponent_first_serve_won_pct": 19.0,
+          "opponent_second_serve_won_pct": 41.0,
+          "sample_status": "limitado",
+          "second_serve_won_pct": 49.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 469,
+          "rank": 127
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 193,
+          "rank": 286
+        },
+        "recent_form_a": {
+          "losses": 3,
+          "matches": 10,
+          "wins": 7
+        },
+        "recent_form_b": {
+          "losses": 3,
+          "matches": 10,
+          "wins": 7
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 97.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 67.4,
+            "weighted_ratio": 0.673611
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.5,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 50.0,
+          "avg_break_points_saved_pct": 60.0,
+          "avg_first_serve_in_pct": 67.8,
+          "avg_first_serve_won_pct": 58.0,
+          "avg_second_serve_won_pct": 45.0,
+          "matches_used": 3
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 13.0,
+          "avg_break_points_saved_pct": 69.0,
+          "avg_first_serve_in_pct": 65.8,
+          "avg_first_serve_won_pct": 77.0,
+          "avg_second_serve_won_pct": 49.0,
+          "matches_used": 2
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 16.7,
+            "matches_lost_set1": 6,
+            "matches_lost_set1_won_overall": 1
+          },
+          "bo5": {
+            "comeback_rate_pct": 50.0,
+            "matches_lost_set1": 2,
+            "matches_lost_set1_won_overall": 1
+          }
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 0.0,
+            "matches_lost_set1": 4,
+            "matches_lost_set1_won_overall": 0
+          },
+          "bo5": {
+            "comeback_rate_pct": 50.0,
+            "matches_lost_set1": 2,
+            "matches_lost_set1_won_overall": 1
+          }
+        },
+        "surface_momentum_a": {
+          "delta_pp": -7.1,
+          "recent_win_pct": 57.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -15.1,
+          "recent_win_pct": 57.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": null,
+        "capture_kind": null,
+        "captured_at_utc": null,
+        "endpoint": null,
+        "event_id": null,
+        "freshness_status": null,
+        "from_cache": null,
+        "market_integrity": {
+          "candidate_count": 1,
+          "coherent_bookmaker_count": 1,
+          "dispersion_pp": null,
+          "median_devig_probability_a": 0.553763440860215,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v2",
+          "pricing_basis": "verified_provider_pre_match_feed",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 1
+        },
+        "odds_contract_activation": null,
+        "odds_source_contract": null,
+        "odds_source_contract_fingerprint": null,
+        "odds_source_contract_version": null,
+        "operational_pricing_eligible": false,
+        "provider_timestamp": null,
+        "provider_timestamp_status": null,
+        "raw_payload_sha256": null,
+        "source": null
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 83794,
+        "name": "Henrique Rocha"
+      },
+      "player_b": {
+        "id": 76298,
+        "name": "Jerome Kym"
+      },
+      "pricing": {
+        "available": false,
+        "candidate": false,
+        "candidate_side": null,
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "reason": "fresh_independent_moneyline_unavailable",
+        "status": "unavailable",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "c3280c0e684faddcb1b1",
+      "surface": "Hard",
+      "tier": "Challenger 125",
+      "tour": "atp",
+      "tournament": "Porto Challenger",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": false,
+        "label": "Challenger 125 · EXPERIMENTAL",
+        "mode": "EXPERIMENTAL_REPORT_ONLY",
+        "paper_allowed": false,
+        "pricing_allowed": true,
+        "reason_code": "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "tier": "Challenger 125"
+      },
+      "tournament_id": 22037,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-03T05:35:03+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "EXPERIMENTAL_TIER_CHALLENGER_125",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG",
+              "SELECTED_SIDE_UNAVAILABLE",
+              "PRICING_UNAVAILABLE",
+              "PROBABILITIES_UNAVAILABLE",
+              "SELECTED_PLAYER_UNAVAILABLE"
+            ],
+            "selected_player": null,
+            "selected_side": null,
+            "source": {
+              "code_revision": "a6fff0d36c55d4c1dd788fc3352e80ec2830dfdf",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "PRICING_UNAVAILABLE",
+              "divergence_level": 0,
+              "divergence_type": "evidence_only",
+              "fenzobot_probabilities": "UNAVAILABLE",
+              "github_run_id": "37100171874",
+              "market_probabilities": "UNAVAILABLE",
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_0f4321e42eec4dc2abf07cbb468bec6e"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "83a765b833ffa35a14a2bd70"
+          }
+        }
+      }
     }
   ],
-  "updated_at_utc": "2026-10-02T17:35:20+00:00"
+  "updated_at_utc": "2026-10-03T05:35:03+00:00"
 }

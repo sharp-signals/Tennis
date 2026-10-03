@@ -12920,8 +12920,113 @@
         "tournament_id": 16749
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_1a8292b3b1cf47abb82678e583d91e0c:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-03T05:35:03+00:00",
+        "canonical_match_instance_id": "mi2_1a8292b3b1cf47abb82678e583d91e0c",
+        "commence_time_utc": "2026-10-03T09:00:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "2fbe6368b2fb9076d519845739947b552ea86c9c57f0637e14ba36da9f9d7f94",
+        "event_key": "mi2_1a8292b3b1cf47abb82678e583d91e0c",
+        "expected_edge_pct": 1.0,
+        "fair_odd": 1.158,
+        "fenzobot_index": 97,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "atp:1268",
+        "line": null,
+        "market": "Moneyline Daniil Medvedev",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Daniil Medvedev": 1.17,
+          "Jan-Lennard Struff": 5.57
+        },
+        "market_type": "Moneyline",
+        "match_id": 1268,
+        "odd": 1.17,
+        "odds_contract_activation": {
+          "activation_commit": "a6fff0d36c55d4c1dd788fc3352e80ec2830dfdf",
+          "activation_observed_at_utc": "2026-10-03T05:33:46+00:00",
+          "activation_run_id": "37100171874",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-02-070",
+          "contract_version": "fresh-bookmaker-prelive-v3"
+        },
+        "odds_provenance": {
+          "bookmaker": "1xBet",
+          "cache_age_seconds": 18,
+          "capture_kind": "provider_last_update_verified",
+          "captured_at_utc": "2026-10-03T05:33:46+00:00",
+          "endpoint": "https://api.the-odds-api.com/v4/sports/.../odds",
+          "event_id": "84fefb7009232a1bafbed2450065664a",
+          "freshness_status": "FRESH",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 21,
+            "coherent_bookmaker_count": 21,
+            "dispersion_pp": 5.0498,
+            "median_devig_probability_a": 0.8264094955489615,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 21
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-10-03T05:33:28Z",
+          "provider_timestamp_status": null,
+          "source": "The Odds API / bookmaker market"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "verified-fresh-bookmaker-v1",
+          "freshness_semantics": "provider-timestamp-verified-fresh-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "fresh-bookmaker-prelive-v3",
+          "source_family": "fresh-bookmaker-prelive"
+        },
+        "odds_source_contract_fingerprint": "898e93dc3083c8354fa5",
+        "odds_source_contract_version": "fresh-bookmaker-prelive-v3",
+        "players": {
+          "a": {
+            "id": 22807,
+            "name": "Daniil Medvedev"
+          },
+          "b": {
+            "id": 14177,
+            "name": "Jan-Lennard Struff"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "e6515a242356983fbc8b",
+        "selected_player": "Daniil Medvedev",
+        "selected_side": "a",
+        "sharp_estimate_pct": 86.32,
+        "snapshot_key": "mi2_1a8292b3b1cf47abb82678e583d91e0c",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "China Open - Beijing",
+        "tournament_id": 21355
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-10-02T17:35:21+00:00"
+  "updated_at_utc": "2026-10-03T05:35:04+00:00"
 }
