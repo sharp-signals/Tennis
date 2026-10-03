@@ -4,57 +4,44 @@
   },
   "last_run": {
     "activation_status": "EXTERNAL_ACTIVATION_PENDING",
-    "cached_matches": 26900,
+    "cached_matches": 26911,
     "candidates": {
       "paper": {
         "batch_size": 50,
-        "eligible_pending": 71,
+        "eligible_pending": 79,
         "examined": 0,
         "pending_no_result": 0,
-        "remaining_unexamined": 71
+        "remaining_unexamined": 79
       },
       "snapshots": {
         "batch_size": 50,
-        "eligible_pending": 306,
-        "examined": 1,
-        "pending_no_result": 1,
-        "remaining_unexamined": 305
+        "eligible_pending": 320,
+        "examined": 0,
+        "pending_no_result": 0,
+        "remaining_unexamined": 320
       }
     },
     "change_id": "CHANGE-2026-09-30-067",
-    "duration_seconds": 175.8631,
-    "finished_at_utc": "2026-10-03T05:40:38+00:00",
+    "finished_at_utc": "2026-10-03T17:41:29+00:00",
     "phases": {
       "read_local_cache": {
-        "duration_seconds": 0.4568,
+        "duration_seconds": 0.4559,
         "status": "COMPLETED"
       },
       "snapshot_settlement": {
-        "activation_status": "EXTERNAL_ACTIVATION_PENDING",
-        "blocked": {},
-        "deadline_reached": true,
-        "duration_seconds": 175.2258,
-        "eligible_candidates": 2,
-        "examined": 1,
-        "last_examined_key": "mi2_3eb86b6561b44900aac86d77639b0b73",
-        "pending_no_result": 1,
-        "settled": 0,
-        "status": "COMPLETED"
+        "started_at_utc": "2026-10-03T17:38:30+00:00",
+        "status": "IN_PROGRESS"
       }
     },
+    "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT",
     "schema_version": 1,
-    "started_at_utc": "2026-10-03T05:37:42+00:00",
+    "started_at_utc": "2026-10-03T17:38:29+00:00",
     "status": "TIMED_OUT",
     "supervisor": {
-      "return_code": 1,
-      "status": "EXITED"
-    },
-    "work": {
-      "examined": 1,
-      "pending_no_result": 1,
-      "remaining_unexamined": 376
+      "status": "TERMINATED",
+      "timeout_seconds": 180.0
     }
   },
   "schema_version": 1,
-  "updated_at_utc": "2026-10-03T05:40:38+00:00"
+  "updated_at_utc": "2026-10-03T17:41:29+00:00"
 }
