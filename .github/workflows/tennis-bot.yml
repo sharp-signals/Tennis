@@ -74,7 +74,7 @@ jobs:
           # timestamp de bookmaker pode decidir pricing/edge/PAPER. A consulta
           # é uma vez por competição publicada, nunca por jogador.
           THE_ODDS_API_ENABLED: "1"
-          THE_ODDS_API_MAX_COMPETITIONS_PER_RUN: "2"
+          THE_ODDS_API_MAX_COMPETITIONS_PER_RUN: "3"
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

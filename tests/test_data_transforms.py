@@ -709,6 +709,16 @@ class MatchInputTests(unittest.TestCase):
             })
             self.assertIn("tennis_atp_japan_open", keys)
 
+    def test_the_odds_api_selection_reserves_a_competition_per_tour(self):
+        matches = [
+            {"_tour": "atp", "tournament_name": "China Open - Beijing"},
+            {"_tour": "atp", "tournament_name": "Japan Open - Tokyo"},
+            {"_tour": "wta", "tournament_name": "China Open - Beijing"},
+        ]
+        selected, deferred = fetch_data._select_the_odds_sport_keys(matches, 2)
+        self.assertEqual(selected, ["tennis_atp_china_open", "tennis_wta_china_open"])
+        self.assertEqual(deferred, ["tennis_atp_japan_open"])
+
     def test_the_odds_pricing_uses_fresh_market_timestamp_and_same_bookmaker_pair(self):
         match = {
             "player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"},
