@@ -13865,8 +13865,113 @@
         "tournament_id": 16749
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_73675b8a281e4719b9ba320850c6439b:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-03T18:33:06+00:00",
+        "canonical_match_instance_id": "mi2_73675b8a281e4719b9ba320850c6439b",
+        "commence_time_utc": "2026-10-04T08:30:00+00:00",
+        "coverage": {
+          "available_factors": 16,
+          "available_weight": 99.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 68.8,
+          "weighted_ratio": 0.6875
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "148cd9f7d9975aa5375270c19ca3d46999034d43ffa387656139de2c130fc308",
+        "event_key": "mi2_73675b8a281e4719b9ba320850c6439b",
+        "expected_edge_pct": 0.39,
+        "fair_odd": 1.365,
+        "fenzobot_index": 82,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "atp:1222",
+        "line": null,
+        "market": "Moneyline Jiri Lehecka",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Adolfo Daniel Vallejo": 3.1,
+          "Jiri Lehecka": 1.37
+        },
+        "market_type": "Moneyline",
+        "match_id": 1222,
+        "odd": 1.37,
+        "odds_contract_activation": {
+          "activation_commit": "d7f5eeef80557862f1d9ac11898e348b55551d97",
+          "activation_observed_at_utc": "2026-10-03T18:31:47+00:00",
+          "activation_run_id": "37144486177",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-02-070",
+          "contract_version": "fresh-bookmaker-prelive-v3"
+        },
+        "odds_provenance": {
+          "bookmaker": "Coolbet",
+          "cache_age_seconds": 73,
+          "capture_kind": "provider_last_update_verified",
+          "captured_at_utc": "2026-10-03T18:31:47+00:00",
+          "endpoint": "https://api.the-odds-api.com/v4/sports/.../odds",
+          "event_id": "8df898f639928a81d8b621732f0c3d95",
+          "freshness_status": "FRESH",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 19,
+            "coherent_bookmaker_count": 19,
+            "dispersion_pp": 2.0768,
+            "median_devig_probability_a": 0.6935123042505593,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v2",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 19
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-10-03T18:30:34Z",
+          "provider_timestamp_status": null,
+          "source": "The Odds API / bookmaker market"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "verified-fresh-bookmaker-v1",
+          "freshness_semantics": "provider-timestamp-verified-fresh-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v2",
+          "source_contract_version": "fresh-bookmaker-prelive-v3",
+          "source_family": "fresh-bookmaker-prelive"
+        },
+        "odds_source_contract_fingerprint": "898e93dc3083c8354fa5",
+        "odds_source_contract_version": "fresh-bookmaker-prelive-v3",
+        "players": {
+          "a": {
+            "id": 61838,
+            "name": "Jiri Lehecka"
+          },
+          "b": {
+            "id": 80391,
+            "name": "Adolfo Daniel Vallejo"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "37884f3017110bbad2d2",
+        "selected_player": "Jiri Lehecka",
+        "selected_side": "a",
+        "sharp_estimate_pct": 73.27,
+        "snapshot_key": "mi2_73675b8a281e4719b9ba320850c6439b",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "Japan Open Tennis Championships - Tokyo",
+        "tournament_id": 21354
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-10-03T17:35:31+00:00"
+  "updated_at_utc": "2026-10-03T18:33:07+00:00"
 }
