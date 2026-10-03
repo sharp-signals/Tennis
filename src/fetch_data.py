@@ -1326,6 +1326,9 @@ def _the_odds_sport_keys_for_match(match: dict) -> list[str]:
         "monte carlo": ("montecarlo",),
         "aus open singles": ("australian open",),
         "us open": ("u s open",),
+        # The Odds API usa Japan Open, enquanto o feed de fixtures pode
+        # apresentar Tokyo ou o patrocinador Kinoshita.
+        "japan open": ("tokyo", "kinoshita"),
     }
     matches = []
     for sport_key in ODDS_API_TENNIS_SPORT_KEYS:

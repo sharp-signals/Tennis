@@ -175,7 +175,7 @@ ODDS_API_TENNIS_SPORT_KEYS = [
     "tennis_atp_paris_masters",
     "tennis_atp_barcelona_open", "tennis_atp_dubai",
     "tennis_atp_qatar_open", "tennis_atp_queens_club_champ",
-    "tennis_atp_washington_open",
+    "tennis_atp_washington_open", "tennis_atp_japan_open",
     "tennis_wta_washington_open",
     # WTA — keys em falta (a integração WTA era recente e só tinha Washington).
     # Sem estes, os jogos WTA destes torneios ficavam sem odds. Nomes seguem o
