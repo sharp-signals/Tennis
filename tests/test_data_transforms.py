@@ -698,6 +698,17 @@ class MatchInputTests(unittest.TestCase):
             }])
         request.assert_not_called()
 
+    def test_the_odds_api_maps_tokyo_to_atp_japan_open(self):
+        for tournament_name in (
+            "Japan Open - Tokyo",
+            "Kinoshita Group Japan Open Tennis Championships",
+            "ATP Tokyo",
+        ):
+            keys = fetch_data._the_odds_sport_keys_for_match({
+                "_tour": "atp", "tournament_name": tournament_name,
+            })
+            self.assertIn("tennis_atp_japan_open", keys)
+
     def test_the_odds_pricing_uses_fresh_market_timestamp_and_same_bookmaker_pair(self):
         match = {
             "player1": {"name": "Alice Player"}, "player2": {"name": "Bea Player"},
