@@ -1341,6 +1341,36 @@ def _the_odds_sport_keys_for_match(match: dict) -> list[str]:
     return matches
 
 
+def _select_the_odds_sport_keys(matches: list[dict], maximum: int) -> tuple[list[str], list[str]]:
+    """Escolhe competições sem deixar um tour sem quote por ordem alfabética.
+
+    A quota é pequena e uma execução pode conter mais do que um torneio ATP e
+    WTA. Reservamos primeiro uma competição por tour e só depois preenchemos
+    as vagas restantes. Assim, por exemplo, ATP China + ATP Japão não adiam o
+    WTA China apenas por a chave deste último aparecer depois alfabeticamente.
+    """
+    keys_by_tour: dict[str, set[str]] = {}
+    for match in matches:
+        tour = str(match.get("_tour") or "").strip().lower()
+        if not tour:
+            continue
+        keys_by_tour.setdefault(tour, set()).update(_the_odds_sport_keys_for_match(match))
+
+    first_per_tour: list[str] = []
+    remaining: list[str] = []
+    for tour in ("atp", "wta"):
+        keys = sorted(keys_by_tour.pop(tour, set()))
+        if keys:
+            first_per_tour.append(keys[0])
+            remaining.extend(keys[1:])
+    for tour in sorted(keys_by_tour):
+        remaining.extend(sorted(keys_by_tour[tour]))
+
+    ordered = first_per_tour + sorted(remaining)
+    limit = max(0, int(maximum))
+    return ordered[:limit], ordered[limit:]
+
+
 def prepare_the_odds_market_index(matches: list[dict]) -> None:
     """Carrega uma vez por execução as Moneylines atuais da The Odds API."""
     if not THE_ODDS_API_ENABLED:
@@ -1349,13 +1379,13 @@ def prepare_the_odds_market_index(matches: list[dict]) -> None:
     if not ODDS_API_KEY:
         print("[odds] The Odds API indisponível: ODDS_API_KEY ausente.")
         return
-    sport_keys = sorted({key for match in matches for key in _the_odds_sport_keys_for_match(match)})
+    sport_keys, deferred = _select_the_odds_sport_keys(
+        matches, THE_ODDS_API_MAX_COMPETITIONS_PER_RUN
+    )
     if not sport_keys:
         print("[odds] The Odds API: nenhum torneio elegível tem chave configurada.")
         return
-    if len(sport_keys) > THE_ODDS_API_MAX_COMPETITIONS_PER_RUN:
-        deferred = sport_keys[THE_ODDS_API_MAX_COMPETITIONS_PER_RUN:]
-        sport_keys = sport_keys[:THE_ODDS_API_MAX_COMPETITIONS_PER_RUN]
+    if deferred:
         print(
             "[odds] The Odds API: limite de competições por execução atingido; "
             f"adiadas sem pricing operacional: {', '.join(deferred)}."

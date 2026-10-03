@@ -158,11 +158,11 @@ TOURS_TO_FOLLOW = ("atp", "wta")
 THE_ODDS_API_ENABLED = os.environ.get("THE_ODDS_API_ENABLED", "0").strip().casefold() in {
     "1", "true", "yes", "on",
 }
-# Dois pedidos por execução (um ATP e um WTA) no máximo: com duas execuções
-# diárias mantém o consumo teórico abaixo de 120 pedidos/mês e evita gastar
-# os 500 créditos mensais ao percorrer competições sem candidatos.
+# Até três pedidos por execução: com duas execuções diárias mantém o consumo
+# teórico perto de 180 pedidos/mês. Cobre o calendário atual (ATP China, ATP
+# Japão e WTA China) sem aproximar o limite de 500 créditos mensais.
 THE_ODDS_API_MAX_COMPETITIONS_PER_RUN = int(
-    os.environ.get("THE_ODDS_API_MAX_COMPETITIONS_PER_RUN", "2")
+    os.environ.get("THE_ODDS_API_MAX_COMPETITIONS_PER_RUN", "3")
 )
 # Chaves ATP e WTA, alinhadas com os tours seguidos pelo pipeline.
 ODDS_API_TENNIS_SPORT_KEYS = [
