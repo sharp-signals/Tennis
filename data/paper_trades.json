@@ -14285,8 +14285,113 @@
         "tournament_id": 21355
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_ce756b954a684060af0112cfcd00e14c:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-04T22:36:28+00:00",
+        "canonical_match_instance_id": "mi2_ce756b954a684060af0112cfcd00e14c",
+        "commence_time_utc": "2026-10-05T07:00:00+00:00",
+        "coverage": {
+          "available_factors": 18,
+          "available_weight": 116.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 80.6,
+          "weighted_ratio": 0.805556
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": null,
+        "event_key": "mi2_ce756b954a684060af0112cfcd00e14c",
+        "expected_edge_pct": 5.32,
+        "fair_odd": 2.982,
+        "fenzobot_index": 83,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "atp:1330",
+        "line": null,
+        "market": "Moneyline Yoshihito Nishioka",
+        "market_memory_eligible": false,
+        "market_memory_status": "PARTIAL",
+        "market_odds_decimal": {
+          "Alexander Shevchenko": 1.3,
+          "Yoshihito Nishioka": 3.14
+        },
+        "market_type": "Moneyline",
+        "match_id": 1330,
+        "odd": 3.14,
+        "odds_contract_activation": {
+          "activation_commit": "cd006324101b3dff67093f3b16cf3cc644722d75",
+          "activation_observed_at_utc": "2026-10-04T22:34:27+00:00",
+          "activation_run_id": "37240499763",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": null,
+          "cache_age_seconds": 0,
+          "capture_kind": "feed_observed_at_capture",
+          "captured_at_utc": "2026-10-04T22:34:27+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/atp",
+          "event_id": 1330,
+          "freshness_status": "OBSERVED_AT_CAPTURE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.7072072072072072,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "verified_provider_pre_match_feed",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": null,
+          "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+          "source": "RapidAPI Tennis API / pre-match match-winner feed"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 64891,
+            "name": "Alexander Shevchenko"
+          },
+          "b": {
+            "id": 24225,
+            "name": "Yoshihito Nishioka"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "1020ce148b8b3e4bc388",
+        "selected_player": "Yoshihito Nishioka",
+        "selected_side": "b",
+        "sharp_estimate_pct": 33.54,
+        "snapshot_key": "mi2_ce756b954a684060af0112cfcd00e14c",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "Shanghai Rolex Masters - Shanghai",
+        "tournament_id": 21356
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-10-04T17:36:38+00:00"
+  "updated_at_utc": "2026-10-04T22:36:29+00:00"
 }
