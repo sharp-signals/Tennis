@@ -490766,7 +490766,894 @@
           }
         }
       }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-04T21:32:13+00:00",
+      "canonical_match_instance_id": "mi2_1ea2b624b7fc4b7db6bab5e6411320cc",
+      "commence_time_utc": "2026-10-06T03:00:00+00:00",
+      "entry_market_observation_id": "30e00d7d9345d33fea66ee3eef0349e30fffe1ef924cbd86ab6e23261929916f",
+      "event_key": "mi2_1ea2b624b7fc4b7db6bab5e6411320cc",
+      "identity_evidence": {
+        "event_id": "868",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "d563284c65c8d8823bc7655dbaff0b51c72067a5a61a14144f81db464747eba7",
+        "match_id": "868",
+        "orientation": {
+          "a": 18482,
+          "b": 16430
+        },
+        "provider": "RapidAPI",
+        "round_id": "7",
+        "scheduled_start_utc": "2026-10-06T03:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "16430",
+            "18482"
+          ],
+          "tour": "wta",
+          "tournament_id": "16749"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_1ea2b624b7fc4b7db6bab5e6411320cc",
+      "legacy_key": "wta:868",
+      "market_memory_eligible": true,
+      "market_memory_status": "RECORDED",
+      "market_odds_decimal": {
+        "Karolina Muchova": 1.67,
+        "Naomi Osaka": 2.22
+      },
+      "match_format": "BO3",
+      "match_id": 868,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_moderada",
+            "nivel": 0,
+            "texto": "Alinhamento moderada"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "historial",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "confronto direto (piso)",
+              "Naomi Osaka"
+            ],
+            [
+              "recuperação pós-1º set",
+              "Karolina Muchova"
+            ],
+            [
+              "confronto direto",
+              "Karolina Muchova"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 190.0,
+              "amostra_a": 190,
+              "amostra_b": 220,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 29,
+              "valor_b": 25
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 4
+            },
+            "forma_recente": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7,
+              "valor_a": 80.0,
+              "valor_b": 80.0
+            },
+            "h2h": {
+              "amostra": 7,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 4,
+              "valor_b": 3
+            },
+            "h2h_piso": {
+              "amostra": 4,
+              "confianca_amostra": 0.816,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Naomi Osaka",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 9.798,
+              "peso_base_aplicado": 12.0,
+              "peso_base_configurado": 12.0,
+              "peso_efetivo": 9.798,
+              "valor_a": 1,
+              "valor_b": 3
+            },
+            "historico_torneio": {
+              "amostra": "3/6 edições",
+              "confianca_amostra": 0.775,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "historial",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 1.859,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 1.859,
+              "valor_a": "77%",
+              "valor_b": "67%"
+            },
+            "indoor_outdoor": {
+              "disponivel": true,
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 6,
+              "valor_a": 66.8,
+              "valor_b": 66.3
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 1,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "disponivel": true,
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 8
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "A vem de outro piso sem rodagem",
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Naomi Osaka",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 1.747,
+              "valor_a": "grass",
+              "valor_b": "grass"
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.446,
+              "valor_a": 50.0,
+              "valor_b": 28.0
+            },
+            "piso": {
+              "amostra": 233,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.2,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 3.2,
+              "valor_a": 70.4,
+              "valor_b": 67.0
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 0.612,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 4.899,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 1.712,
+              "valor_a": 5,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.091,
+              "pontos_a": 4683,
+              "pontos_b": 2296,
+              "valor_a": 8.0,
+              "valor_b": 17.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.909,
+              "valor_a": 97.8,
+              "valor_b": -4.6
+            },
+            "recuperacao_sets": {
+              "amostra": 172,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Naomi Osaka",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.667,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 55,
+              "valor_b": 65
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.096,
+              "valor_a": 69.0,
+              "valor_b": 65.9
+            },
+            "servico_carreira": {
+              "disponivel": true,
+              "lider": "Naomi Osaka",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 3,
+              "valor_a": 71.0,
+              "valor_b": 73.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Karolina Muchova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 66.2,
+              "valor_b": 51.2
+            },
+            "velocidade_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 10
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 19,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 69,
+          "inclinacao_modelo_b": 31,
+          "indice_evidencia_a": 69,
+          "indice_evidencia_b": 31,
+          "indice_favorece": "Karolina Muchova",
+          "intensidade_indicadores": "moderada",
+          "intensidade_nivel": 2,
+          "massa_evidencia": 55.857,
+          "mercado_favorece": "Karolina Muchova",
+          "n_fatores": 13,
+          "player_a": "Karolina Muchova",
+          "player_b": "Naomi Osaka",
+          "prob_mercado_a": 57,
+          "prob_mercado_b": 43,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 190,
+            "amostra_b": 220,
+            "diff": 4,
+            "lider": "Karolina Muchova",
+            "valor_a": 29,
+            "valor_b": 25
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 0.0,
+            "lider": "igual",
+            "unidade": "%",
+            "valor_a": 80.0,
+            "valor_b": 80.0
+          },
+          "frescura": {
+            "jogos_7d_a": 2,
+            "jogos_7d_b": 2,
+            "mais_fresco": "igual",
+            "sets_7d_a": 5,
+            "sets_7d_b": 5
+          },
+          "h2h": {
+            "a_wins": 4,
+            "b_wins": 3,
+            "lider": "Karolina Muchova",
+            "total": 7
+          },
+          "h2h_piso": {
+            "a_wins": 1,
+            "b_wins": 3,
+            "lider": "Naomi Osaka",
+            "total": 4
+          },
+          "indoor_outdoor": {
+            "amostra_a": 247,
+            "amostra_b": 329,
+            "diff": 0.5,
+            "lider": "Karolina Muchova",
+            "unidade": "%",
+            "valor_a": 66.8,
+            "valor_b": 66.3
+          },
+          "nivel_adversario": {
+            "amostra_a": 80,
+            "amostra_b": 50,
+            "diff": 22.0,
+            "lider": "Karolina Muchova",
+            "valor_a": 50.0,
+            "valor_b": 28.0
+          },
+          "piso": {
+            "amostra_a": 233,
+            "amostra_b": 367,
+            "diff": 3.4,
+            "lider": "Karolina Muchova",
+            "unidade": "%",
+            "valor_a": 70.4,
+            "valor_b": 67.0
+          },
+          "qualidade_vitorias": {
+            "lider": "Karolina Muchova",
+            "top10_a": 1,
+            "top10_b": 0,
+            "top20_a": 2,
+            "top20_b": 0,
+            "top50_a": 2,
+            "top50_b": 0,
+            "valor_a": 5,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 9.0,
+            "lider": "Karolina Muchova",
+            "pontos_a": 4683,
+            "pontos_b": 2296,
+            "valor_a": 8.0,
+            "valor_b": 17.0
+          },
+          "ranking_evolucao": {
+            "diff": 102.44999999999999,
+            "lider": "Karolina Muchova",
+            "valor_a": 97.8,
+            "valor_b": -4.6
+          },
+          "sazonal": {
+            "amostra_a": 42,
+            "amostra_b": 41,
+            "diff": 3.2,
+            "lider": "Karolina Muchova",
+            "unidade": "%",
+            "valor_a": 69.0,
+            "valor_b": 65.9
+          },
+          "servico_carreira": {
+            "amostra_a": 28,
+            "amostra_b": 32,
+            "diff": 2.0,
+            "lider": "Naomi Osaka",
+            "unidade": "%",
+            "valor_a": 71.0,
+            "valor_b": 73.0
+          },
+          "tiebreak": {
+            "amostra_a": 77,
+            "amostra_b": 80,
+            "diff": 15.0,
+            "lider": "Karolina Muchova",
+            "unidade": "%",
+            "valor_a": 66.2,
+            "valor_b": 51.2
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 39,
+          "coverage_pct": 55.0,
+          "excluded_missing_odds": 45,
+          "excluded_missing_odds_wins": 32,
+          "expected_wins": 36.74,
+          "matches": 55,
+          "odds_eligible_matches": 55,
+          "overall_wins": 71,
+          "performance_vs_market": 2.26,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 29,
+          "coverage_pct": 42.0,
+          "excluded_missing_odds": 58,
+          "excluded_missing_odds_wins": 41,
+          "expected_wins": 26.99,
+          "matches": 42,
+          "odds_eligible_matches": 42,
+          "overall_wins": 70,
+          "performance_vs_market": 2.01,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 75.75,
+          "matches": 57,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 70.0,
+          "matches": 44,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "expected_edge_pct": -1.22,
+          "fenzobot_index": 69,
+          "market": {
+            "expected_edge_pct": -1.22,
+            "fair_odd": 1.691,
+            "line": null,
+            "market": "Moneyline Karolina Muchova",
+            "market_type": "Moneyline",
+            "odd": 1.67,
+            "player": "Karolina Muchova",
+            "sharp_estimate_pct": 59.15,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Karolina Muchova",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 19,
+              "available_weight": 123.0,
+              "configured_factors": 22,
+              "configured_weight": 144.0,
+              "status": "reduzida",
+              "weighted_pct": 85.4,
+              "weighted_ratio": 0.854167
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.45,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 49.0,
+          "bp_saved_pct": 63.0,
+          "first_serve_won_pct": 71.0,
+          "matches": 28,
+          "opponent_first_serve_won_pct": 37.0,
+          "opponent_second_serve_won_pct": 54.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 51.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 49.0,
+          "bp_saved_pct": 60.0,
+          "first_serve_won_pct": 73.0,
+          "matches": 32,
+          "opponent_first_serve_won_pct": 36.0,
+          "opponent_second_serve_won_pct": 54.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 49.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 4683,
+          "rank": 8
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 2296,
+          "rank": 17
+        },
+        "recent_form_a": {
+          "losses": 2,
+          "matches": 10,
+          "wins": 8
+        },
+        "recent_form_b": {
+          "losses": 2,
+          "matches": 10,
+          "wins": 8
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.0,
+            "configured_factors": 22,
+            "configured_weight": 144.0,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854167
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.45,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 49.0,
+          "avg_break_points_saved_pct": 63.0,
+          "avg_first_serve_in_pct": 62.0,
+          "avg_first_serve_won_pct": 71.0,
+          "avg_second_serve_won_pct": 51.0,
+          "matches_used": 28
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 49.0,
+          "avg_break_points_saved_pct": 60.0,
+          "avg_first_serve_in_pct": 57.4,
+          "avg_first_serve_won_pct": 73.0,
+          "avg_second_serve_won_pct": 49.0,
+          "matches_used": 32
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 27.8,
+            "matches_lost_set1": 90,
+            "matches_lost_set1_won_overall": 25
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 25.0,
+            "matches_lost_set1": 120,
+            "matches_lost_set1_won_overall": 30
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": 0.1,
+          "recent_win_pct": 70.5,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": 4.2,
+          "recent_win_pct": 71.2,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": "Betsson",
+        "cache_age_seconds": 94,
+        "capture_kind": "provider_last_update_verified",
+        "captured_at_utc": "2026-10-04T21:31:36+00:00",
+        "endpoint": "https://api.the-odds-api.com/v4/sports/.../odds",
+        "event_id": "66c01266795342d3ed47ac9fb23b438b",
+        "freshness_status": "FRESH",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 17,
+          "coherent_bookmaker_count": 17,
+          "dispersion_pp": 2.0645,
+          "median_devig_probability_a": 0.570694087403599,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v3",
+          "pricing_basis": "cross_bookmaker_consensus",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 17
+        },
+        "odds_contract_activation": {
+          "activation_commit": "ac850d899facc278345202b4993a447dd55049bb",
+          "activation_observed_at_utc": "2026-10-04T21:31:36+00:00",
+          "activation_run_id": "37236350946",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-078",
+          "contract_version": "verified-bookmaker-prelive-v4"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "verified-named-bilateral-bookmaker-v2",
+          "freshness_semantics": "provider-timestamp-or-direct-rapidapi-capture-v1",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v3",
+          "source_contract_version": "verified-bookmaker-prelive-v4",
+          "source_family": "verified-bookmaker-prelive"
+        },
+        "odds_source_contract_fingerprint": "5f57ad6ef481ede99c6d",
+        "odds_source_contract_version": "verified-bookmaker-prelive-v4",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": "2026-10-04T21:30:02Z",
+        "provider_timestamp_status": null,
+        "raw_payload_sha256": "955b25434b346af0ce0bac7d71e7243f77b65d175418ce072561e164c4f02911",
+        "source": "The Odds API / bookmaker market"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 18482,
+        "name": "Karolina Muchova"
+      },
+      "player_b": {
+        "id": 16430,
+        "name": "Naomi Osaka"
+      },
+      "pricing": {
+        "adjustment_pp_a": 2.0809247136602815,
+        "adjustment_pp_b": -2.0809247136602815,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 55.858,
+          "factor_count": 13,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 0.75,
+          "internal_quality": 0.75,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.012189431317863098,
+        "expected_edge_b": -0.09313740267924786,
+        "fair_odd_a": 1.6906075445497504,
+        "fair_odd_b": 2.44800039891247,
+        "market_odd_a": 1.67,
+        "market_odd_b": 2.22,
+        "market_overround_pct": 4.925,
+        "market_probability_a": 0.570694087403599,
+        "market_probability_b": 0.42930591259640094,
+        "market_quote_mode": "operational",
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "5f57ad6ef481ede99c6d",
+        "odds_source_contract_version": "verified-bookmaker-prelive-v4",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 2.08,
+            "expected_edge_pct": -1.22,
+            "fair_odd": 1.691,
+            "market_odd": 1.67,
+            "market_probability_pct": 57.07,
+            "sharp_estimate_pct": 59.15
+          },
+          "b": {
+            "adjustment_pp": -2.08,
+            "expected_edge_pct": -9.31,
+            "fair_odd": 2.448,
+            "market_odd": 2.22,
+            "market_probability_pct": 42.93,
+            "sharp_estimate_pct": 40.85
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 0.75,
+        "residual_logit": 0.0855,
+        "sharp_estimate_a": 0.5915033345402018,
+        "sharp_estimate_b": 0.40849666545979824,
+        "signed_strength": 0.38,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "283a8bf636463ebe2ebf",
+      "surface": "Hard",
+      "tier": "WTA 1000",
+      "tour": "wta",
+      "tournament": "China Open - Beijing",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 1000"
+      },
+      "tournament_id": 16749,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-04T21:32:13+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Karolina Muchova",
+            "selected_side": "a",
+            "source": {
+              "code_revision": "ac850d899facc278345202b4993a447dd55049bb",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 0,
+              "divergence_type": "alinhamento",
+              "fenzobot_probabilities": {
+                "a": 0.5915,
+                "b": 0.40850000000000003
+              },
+              "github_run_id": "37236350946",
+              "market_probabilities": {
+                "a": 0.5707,
+                "b": 0.4293
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_1ea2b624b7fc4b7db6bab5e6411320cc"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "6398b3d35163a351aeb98a39"
+          }
+        }
+      }
     }
   ],
-  "updated_at_utc": "2026-10-04T17:36:37+00:00"
+  "updated_at_utc": "2026-10-04T21:32:13+00:00"
 }
