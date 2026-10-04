@@ -261,7 +261,14 @@ def estimate_market_residual_pricing(
     assessment = payload.get("report_assessment")
     if isinstance(assessment, Mapping) and assessment.get("report_null"):
         return _unavailable(parameters, "report_null_insufficient_data")
-    if not market_integrity.is_operational_pricing_payload(payload):
+    operational_quote = market_integrity.is_operational_pricing_payload(payload)
+    experimental_challenger_quote = bool(
+        payload.get("experimental_challenger_pricing_eligible") is True
+        and market_integrity.is_experimental_challenger_pricing_provenance(
+            payload.get("odds_provenance")
+        )
+    )
+    if not operational_quote and not experimental_challenger_quote:
         return _unavailable(parameters, "operational_market_quote_ineligible")
     observed = _extract_two_way_odds(payload)
     if observed is None:
@@ -351,6 +358,10 @@ def estimate_market_residual_pricing(
         "odds_source_contract_fingerprint": payload.get("odds_source_contract_fingerprint"),
         "parameters": asdict(parameters),
         "status": "experimental",
+        "market_quote_mode": (
+            "challenger_observed_feed_experimental"
+            if experimental_challenger_quote else "operational"
+        ),
         "validation_status": VALIDATION_LABEL,
         "method": METHOD,
         "market_overround_pct": round(overround * 100.0, 3),

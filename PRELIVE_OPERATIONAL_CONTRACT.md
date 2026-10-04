@@ -148,6 +148,17 @@ defeito. Não substitui, não faz média e não bloqueia o preço
 operacional RapidAPI; a ausência desse comparador não invalida um par RapidAPI
 válido. Snapshot e PAPER guardam fonte, instante UTC e tipo de captura do
 preço que efetivamente alimentou o pricing.
+
+## Exceção Challenger 125 — observação experimental
+
+Desde `CHANGE-2026-10-04-073`, quando não existir uma quote operacional com
+timestamp de bookmaker, o Challenger 125 pode usar **apenas para o relatório
+experimental** a Moneyline bilateral do feed pré-jogo RapidAPI. Os dois
+jogadores, a orientação e o `eventId` têm de estar verificados no mesmo
+registo. A origem fica marcada como `OBSERVED_AT_CAPTURE_UNVERIFIED_AGE` e
+`casa não indicada`: não afirma que seja 22Bet, melhor odd, consenso ou preço
+fresco do bookmaker. Esta exceção não satisfaz o gate operacional, não entra
+em PAPER/GREEN e não altera o contrato normal de ATP/WTA.
 A referência de handicap no relatório é apenas uma tabela interna
 de contexto por faixa de Moneyline; nunca é uma linha observada, uma odd, um
 edge ou uma entrada PAPER.

@@ -96,6 +96,40 @@ def is_operational_pricing_provenance(provenance: Mapping[str, Any] | None) -> b
     ))
 
 
+def is_experimental_challenger_pricing_provenance(
+    provenance: Mapping[str, Any] | None,
+) -> bool:
+    """Accept only the clearly-labelled RapidAPI feed observation for a 125 experiment.
+
+    ``upcoming`` does not expose a bookmaker timestamp.  It must therefore
+    never pass the normal operational gate above.  Challenger 125 is a
+    report-only experiment, though, and otherwise loses every market whenever
+    that is the sole feed available.  This narrow predicate permits an
+    *experimental* calculation only; callers must still keep
+    ``operational_pricing_eligible`` false and the tier policy blocks PAPER.
+    """
+    if not isinstance(provenance, Mapping):
+        return False
+    integrity = provenance.get("market_integrity")
+    identity = str(provenance.get("identity_mapping_status") or "").upper()
+    return all((
+        provenance.get("source") == "RapidAPI Tennis API / pre-match match-winner feed",
+        provenance.get("availability_status") in {
+            "OBSERVATION_ONLY", "AVAILABLE_EXPERIMENTAL",
+        },
+        bool(provenance.get("event_id")),
+        identity in {"VERIFIED_PROVIDER_PLAYER_IDS", "VERIFIED_PROVIDER_NAMES"},
+        provenance.get("freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        provenance.get("bookmaker") in (None, ""),
+        provenance.get("bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED",
+        isinstance(integrity, Mapping),
+        integrity.get("policy_version") == POLICY_VERSION,
+        integrity.get("status") == "AVAILABLE",
+        integrity.get("pricing_basis") == "verified_provider_pre_match_feed",
+        provenance.get("operational_pricing_eligible") is False,
+    ))
+
+
 def is_operational_pricing_payload(
     payload: Mapping[str, Any] | None,
     *,

@@ -1328,10 +1328,28 @@ def _build_match_payload(match: dict) -> dict:
     )
     verified_odds, verified_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
     odds, odds_provenance = verified_odds, (verified_odds_provenance or {})
+    experimental_challenger_pricing_eligible = False
     reference_odds, reference_odds_provenance = None, None
     embedded_odds, embedded_provenance = (
         fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
     )
+    if (
+        not odds
+        and str(match.get("tier") or "").strip() == "Challenger 125"
+        and observed_odds
+        and market_integrity.is_experimental_challenger_pricing_provenance(
+            observed_odds_provenance
+        )
+    ):
+        # Challenger 125 é report-only. Quando o fornecedor só expõe o par
+        # pré-jogo no feed regular, mostramos um pricing experimental em vez
+        # de fingir que não existe mercado. Não há timestamp de bookmaker:
+        # esta via não é operacional e nunca pode criar PAPER/GREEN.
+        odds = dict(observed_odds)
+        odds_provenance = dict(observed_odds_provenance or {})
+        odds_provenance["availability_status"] = "AVAILABLE_EXPERIMENTAL"
+        odds_provenance["unavailable_reason"] = None
+        experimental_challenger_pricing_eligible = True
     if not odds:
         # Não apresentar a observação não datada como preço atual. Continua
         # guardada em SHADOW/telemetria, mas o relatório falha fechado para
@@ -1409,8 +1427,14 @@ def _build_match_payload(match: dict) -> dict:
         match_for_ledger,
         odds,
         odds_provenance,
-        role="OPERATIONAL_PRICING",
-        pipeline="PRELIVE",
+        role=(
+            "EXPERIMENTAL_CHALLENGER_PRICING"
+            if experimental_challenger_pricing_eligible else "OPERATIONAL_PRICING"
+        ),
+        pipeline=(
+            "PRELIVE_CHALLENGER_OBSERVED_FEED"
+            if experimental_challenger_pricing_eligible else "PRELIVE"
+        ),
     )
     reference_market_memory = market_ledger.record_market_batch_best_effort(
         match_for_ledger,
@@ -1959,6 +1983,7 @@ def _build_match_payload(match: dict) -> dict:
         "odds_provider_timestamp_status": odds_provenance.get("provider_timestamp_status") if odds else None,
         "odds_freshness_status": odds_provenance.get("freshness_status") if odds else None,
         "odds_bookmaker": odds_provenance.get("bookmaker") if odds else None,
+        "odds_bookmaker_attribution": odds_provenance.get("bookmaker_attribution") if odds else None,
         "odds_from_cache": odds_provenance.get("from_cache") if odds else None,
         "odds_cache_age_seconds": odds_provenance.get("cache_age_seconds") if odds else None,
         "odds_raw_payload_sha256": odds_provenance.get("raw_payload_sha256") if odds else None,
@@ -1966,6 +1991,8 @@ def _build_match_payload(match: dict) -> dict:
         "odds_unavailable_reason": odds_provenance.get("unavailable_reason") if not odds else None,
         "odds_market_integrity": odds_provenance.get("market_integrity"),
         "odds_operational_pricing_eligible": operational_pricing_eligible if odds else False,
+        "odds_provenance": dict(odds_provenance) if odds else None,
+        "experimental_challenger_pricing_eligible": experimental_challenger_pricing_eligible,
         "odds_source_contract_version": odds_provenance.get("odds_source_contract_version") if odds else None,
         "odds_source_contract_fingerprint": odds_provenance.get("odds_source_contract_fingerprint") if odds else None,
         "odds_source_contract": odds_provenance.get("odds_source_contract") if odds else None,
