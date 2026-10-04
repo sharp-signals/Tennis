@@ -118,6 +118,7 @@ class OperationalOddsContractTests(unittest.TestCase):
         self.assertIn("fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)", source)
         self.assertIn("fetch_the_odds_moneyline_with_provenance(match)", source)
         self.assertIn("fresh_independent_moneyline_unavailable", source)
+        self.assertIn("is_experimental_challenger_pricing_provenance", source)
         self.assertIn("role=\"SHADOW_MONITOR\"", source)
 
     def test_embedded_is_observable_but_cannot_price_or_create_paper(self):
@@ -187,6 +188,36 @@ class OperationalOddsContractTests(unittest.TestCase):
         self.assertEqual(promoted["market_integrity"]["pricing_basis"], "verified_provider_pre_match_feed")
         self.assertIsNone(promoted["bookmaker"])
         self.assertEqual(promoted["bookmaker_attribution"], "NOT_EXPOSED_BY_PROVIDER_FEED")
+
+    def test_verified_upcoming_feed_can_only_price_challenger_experiment(self):
+        match = self.match()
+        key = fetch_data._odds_names_key("Alpha One", "Beta Two")
+        embedded = {f"atp:{key}": {
+            "n1": "Alpha One", "n2": "Beta Two", "p1_id": 1, "p2_id": 2,
+            "event_id": "event-501", "o1": 2.1, "o2": 1.8,
+            "captured_at_utc": "2026-09-22T10:00:00+00:00", "endpoint": "upcoming",
+        }}
+        with patch.dict(fetch_data._RAPIDAPI_EMBEDDED_ODDS, embedded, clear=True):
+            embedded_odds, embedded_provenance = fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
+        with patch.object(
+            fetch_data, "fetch_rapidapi_embedded_moneyline_with_provenance",
+            return_value=(embedded_odds, embedded_provenance),
+        ):
+            odds, provenance = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
+        self.assertEqual(odds, {"Alpha One": 2.1, "Beta Two": 1.8})
+        self.assertFalse(market_integrity.is_operational_pricing_provenance(provenance))
+        self.assertTrue(market_integrity.is_experimental_challenger_pricing_provenance(provenance))
+        payload = self.payload()
+        payload.update({
+            "tier": "Challenger 125",
+            "market_odds_decimal": odds,
+            "odds_operational_pricing_eligible": False,
+            "odds_provenance": provenance,
+            "experimental_challenger_pricing_eligible": True,
+        })
+        priced = pricing.estimate_market_residual_pricing(payload, self.divergence())
+        self.assertTrue(priced["available"])
+        self.assertEqual(priced["market_quote_mode"], "challenger_observed_feed_experimental")
 
     def test_missing_false_and_true_eligibility_are_fail_closed_then_open(self):
         payload = self.payload()

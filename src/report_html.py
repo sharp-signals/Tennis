@@ -2890,6 +2890,8 @@ def _mod_header(payload, div, estado):
         odds_meta_parts.append("Quote estruturalmente válida; idade real não verificada")
     if payload.get("odds_capture_kind") == "feed_observed_at_capture":
         odds_meta_parts.append("Observação do feed nesta execução; hora do bookmaker N/D")
+    if payload.get("experimental_challenger_pricing_eligible") is True:
+        odds_meta_parts.append("Challenger 125: preço experimental; não elegível para PAPER")
     odds_meta_parts.append(f"Provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
     if payload.get("odds_bookmaker"):
         odds_meta_parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
@@ -5386,6 +5388,8 @@ def _mod_market_provenance(payload):
         parts.append("Tipo: feed observado nesta execução (hora do bookmaker N/D)")
     if payload.get("odds_freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE":
         parts.append("Freshness: observada agora; idade real da quote não verificada")
+    if payload.get("experimental_challenger_pricing_eligible") is True:
+        parts.append("Modo: Challenger 125 experimental; bloqueado para PAPER/GREEN")
     parts.append(f"Timestamp do provider: {_esc(payload.get('odds_provider_timestamp') or 'N/D')}")
     if payload.get("odds_bookmaker"):
         parts.append(f"Bookmaker: {_esc(payload['odds_bookmaker'])}")
