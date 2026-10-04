@@ -11,14 +11,14 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-CHANGE_ID = "CHANGE-2026-10-04-078"
-POLICY_VERSION = "market-quote-integrity-v3"
-ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-04-078"
-ODDS_SOURCE_FAMILY = "verified-bookmaker-prelive"
-ODDS_SOURCE_CONTRACT_VERSION = "verified-bookmaker-prelive-v4"
+CHANGE_ID = "CHANGE-2026-10-04-079"
+POLICY_VERSION = "market-quote-integrity-v4"
+ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-04-079"
+ODDS_SOURCE_FAMILY = "verified-direct-pre-match"
+ODDS_SOURCE_CONTRACT_VERSION = "verified-direct-pre-match-v5"
 ODDS_IDENTITY_POLICY_VERSION = "rapidapi-event-bilateral-v1"
-ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-or-direct-rapidapi-capture-v1"
-ODDS_BOOKMAKER_POLICY = "verified-named-bilateral-bookmaker-v2"
+ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-or-direct-provider-capture-v2"
+ODDS_BOOKMAKER_POLICY = "named-bookmaker-or-verified-provider-feed-v3"
 
 _ODDS_SOURCE_CONTRACT = {
     "source_family": ODDS_SOURCE_FAMILY,
@@ -77,11 +77,10 @@ def is_operational_pricing_provenance(provenance: Mapping[str, Any] | None) -> b
     """Fonte única de verdade para eligibility: qualquer ausência falha fechada.
 
     Uma quote The Odds API precisa do timestamp fresco do bookmaker. A
-    RapidAPI ``recent-odds`` tem uma semântica diferente: o ``addTime`` pode
-    ficar parado apesar de a resposta mudar, mas a chamada é feita ao vivo e
-    contém uma casa nomeada e os dois lados do evento verificado. Esta via é
-    aceite apenas como captura direta da resposta, nunca a partir de cache ou
-    do feed ``upcoming`` sem bookmaker.
+    RapidAPI pode fornecer uma casa nomeada em ``recent-odds`` ou a Moneyline
+    agregada no feed pré-jogo. No segundo caso a casa não é exposta; só é
+    aceite a resposta direta desta execução, com o par e orientação do
+    fornecedor verificados. Nenhuma destas vias aceita cache.
     """
     if not isinstance(provenance, Mapping):
         return False
@@ -94,20 +93,30 @@ def is_operational_pricing_provenance(provenance: Mapping[str, Any] | None) -> b
         provenance.get("odds_source_contract_fingerprint") == ODDS_SOURCE_CONTRACT_FINGERPRINT,
         bool(provenance.get("event_id")),
         str(provenance.get("identity_mapping_status") or "").upper().startswith("VERIFIED"),
-        bool(str(provenance.get("bookmaker") or "").strip()),
         integrity.get("policy_version") == POLICY_VERSION,
         integrity.get("status") == "AVAILABLE",
     ))
     if not common:
         return False
     if provenance.get("freshness_status") == "FRESH":
-        return True
-    return all((
+        return bool(str(provenance.get("bookmaker") or "").strip())
+    if all((
         provenance.get("source") == "RapidAPI Tennis API / recent-odds",
         provenance.get("capture_kind") == "rapidapi_response_observed_at_capture",
         provenance.get("freshness_status") == "OBSERVED_AT_CAPTURE",
         provenance.get("from_cache") is False,
         provenance.get("provider_timestamp_status") == "unreliable_for_freshness",
+    )):
+        return bool(str(provenance.get("bookmaker") or "").strip())
+    return all((
+        provenance.get("source") == "RapidAPI Tennis API / pre-match match-winner feed",
+        provenance.get("capture_kind") == "feed_observed_at_capture",
+        provenance.get("freshness_status") == "OBSERVED_AT_CAPTURE",
+        provenance.get("from_cache") is False,
+        provenance.get("provider_timestamp_status") == "not_exposed_by_upcoming_feed",
+        provenance.get("bookmaker") in (None, ""),
+        provenance.get("bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED",
+        integrity.get("pricing_basis") == "verified_provider_pre_match_feed",
     ))
 
 
