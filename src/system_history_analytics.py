@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Rankings only surface sufficiently sized samples.  They are descriptive
 # study aids, not betting recommendations or a substitute for the report's
@@ -108,6 +108,24 @@ def odds_band(odd: Any) -> str | None:
         if lower <= value <= upper:
             return label
     return None
+
+
+def fenzobot_index_band(index: Any) -> str | None:
+    """Stable descriptive buckets for the selected side's Fenzobot index.
+
+    The index is an evidence score, not a probability. These bands only make
+    the settled canonical history easier to inspect; they do not tune the
+    model, pricing, or PAPER eligibility.
+    """
+    value = _float(index)
+    if value is None or value < 50 or value > 100:
+        return None
+    lower = int(value // 10) * 10
+    if lower < 50:
+        lower = 50
+    if lower >= 90:
+        return "90–100"
+    return f"{lower}–{lower + 9}"
 
 
 def snapshot_event_id(snapshot: Mapping[str, Any]) -> str:
@@ -214,6 +232,26 @@ def _aggregate_band_rows(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, An
     ]
 
 
+def _aggregate_index_rows(rows: Iterable[tuple[str, bool]]) -> list[dict[str, Any]]:
+    """One settled observational row per evidence-index band."""
+    grouped: dict[str, dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
+    for band, won in rows:
+        if not band:
+            continue
+        grouped[band]["matches"] += 1
+        grouped[band]["wins"] += int(won)
+    return [
+        {
+            "index_band": band,
+            "matches": values["matches"],
+            "wins": values["wins"],
+            "losses": values["matches"] - values["wins"],
+            "win_pct": _pct(values["wins"], values["matches"]),
+        }
+        for band, values in sorted(grouped.items(), key=lambda item: _index_band_order(item[0]))
+    ]
+
+
 def _aggregate_player_overall(rows: Iterable[tuple[str, str, str, bool]]) -> list[dict[str, Any]]:
     """One observational row per player/role, used only for the shortlist."""
     grouped: dict[tuple[str, str], dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
@@ -230,6 +268,11 @@ def _aggregate_player_overall(rows: Iterable[tuple[str, str, str, bool]]) -> lis
 
 def _odds_band_order(band: str) -> tuple[float, str]:
     match = re.match(r"(\d+(?:\.\d+)?)", band or "")
+    return (float(match.group(1)) if match else float("inf"), band)
+
+
+def _index_band_order(band: str) -> tuple[float, str]:
+    match = re.match(r"(\d+)", band or "")
     return (float(match.group(1)) if match else float("inf"), band)
 
 
@@ -323,6 +366,7 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
     """Outcome metrics from canonical Fenzobot observations only."""
     player_rows: list[tuple[str, str, str, bool]] = []
     model_rows: list[tuple[str, str, str, bool]] = []
+    model_index_rows: list[tuple[str, bool]] = []
     event_rows: list[dict[str, Any]] = []
     for snapshot in snapshots:
         a = snapshot.get("player_a") if isinstance(snapshot.get("player_a"), Mapping) else {}
@@ -339,10 +383,18 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
             player_rows.append((name, odds_band(own) or "sem faixa", _role(own, other), winner == side))
         divergence = ((snapshot.get("metrics") or {}).get("divergencia") or {}) if isinstance(snapshot.get("metrics"), Mapping) else {}
         model_side = _text(divergence.get("indice_favorece"))
+        model_index = None
+        model_index_band = None
         if settled and model_side in {name_a, name_b}:
             own = odd_a if model_side == name_a else odd_b
             other = odd_b if model_side == name_a else odd_a
-            model_rows.append((model_side, odds_band(own) or "sem faixa", _role(own, other), winner == ("a" if model_side == name_a else "b")))
+            selected_side = "a" if model_side == name_a else "b"
+            model_won = winner == selected_side
+            model_rows.append((model_side, odds_band(own) or "sem faixa", _role(own, other), model_won))
+            model_index = _float(divergence.get(f"indice_evidencia_{selected_side}"))
+            model_index_band = fenzobot_index_band(model_index)
+            if model_index_band:
+                model_index_rows.append((model_index_band, model_won))
         event_rows.append({
             "event_id": snapshot_event_id(snapshot), "snapshot_key": snapshot.get("key"),
             "analyzed_at_utc": snapshot.get("analyzed_at_utc"), "commence_time_utc": snapshot.get("commence_time_utc"),
@@ -350,6 +402,8 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
             "player_a": name_a, "player_b": name_b, "odd_a": odd_a, "odd_b": odd_b,
             "winner_side": winner or None, "result": outcome.get("result"),
             "fenzobot_side": model_side or None,
+            "fenzobot_index": model_index,
+            "fenzobot_index_band": model_index_band,
         })
     fenzobot_odds = _aggregate_player_rows(model_rows)
     return {
@@ -358,6 +412,7 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
         "fenzobot_odds": fenzobot_odds,
         "fenzobot_player_summary": _aggregate_player_overall(model_rows),
         "fenzobot_band_summary": _aggregate_band_rows(fenzobot_odds),
+        "fenzobot_index_band_summary": _aggregate_index_rows(model_index_rows),
     }
 
 
@@ -464,10 +519,12 @@ def build_system_history(
             "raw_report_html_excluded_from_metrics": True,
             "historical_wta_source": "local tennis-data.co.uk cache only",
             "handicap_reference": "BO3 internal reference line; not a bookmaker handicap settlement",
+            "fenzobot_index_learning": "settled canonical observations grouped by the selected side's 50–100 evidence-index band; descriptive only, not a probability or model tuning",
         },
         "summary": {
             "raw_snapshots": len(raw), "canonical_snapshots": len(canonical), "duplicate_snapshots_excluded": removed,
             "settled_canonical_snapshots": sum(1 for item in canonical if _text((item.get("outcome") or {}).get("winner_side")) in {"a", "b"}),
+            "settled_fenzobot_index_observations": sum(item["matches"] for item in operational["fenzobot_index_band_summary"]),
             "historical_wta_matches": len(local_wta_matches),
             "raw_report_html_versions": len(report_registry),
         },

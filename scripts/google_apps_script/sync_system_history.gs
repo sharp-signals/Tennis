@@ -1,5 +1,5 @@
 /**
- * CHANGE-2026-09-28-061
+ * CHANGE-2026-09-28-061; CHANGE-2026-10-04-074
  * Sincroniza a Sheet colaborativa "Fenzobot — Histórico & Aprendizagem" a
  * partir do JSON canónico publicado no repositório.
  *
@@ -62,14 +62,15 @@ function writeProspectiveSystemHistory_(spreadsheet, payload) {
     ['Snapshots pós-T0', summary.raw_snapshots || 0],
     ['Partidas canónicas pós-T0', summary.canonical_snapshots || 0],
     ['Liquidadas pós-T0', summary.settled_canonical_snapshots || 0],
+    ['Seleções liquidadas com índice Fenzobot', summary.settled_fenzobot_index_observations || 0],
     ['Versões HTML pós-T0', summary.raw_report_html_versions || 0],
   ], { titleRows: 2, headerRow: 4, widths: [42, 85], preserveCharts: false });
   const operational = payload.operational || {};
   upsertSystemSheet_(spreadsheet, 'Pós-T0 - Partidas', rowsWithHeaders_(
-    ['ID canónico', 'Snapshot', 'Analisado UTC', 'Início UTC', 'Tour', 'Torneio', 'Jogador A', 'Jogador B', 'Odd A', 'Odd B', 'Vencedor', 'Score', 'Fenzobot favorece'],
+    ['ID canónico', 'Snapshot', 'Analisado UTC', 'Início UTC', 'Tour', 'Torneio', 'Jogador A', 'Jogador B', 'Odd A', 'Odd B', 'Vencedor', 'Score', 'Fenzobot favorece', 'Índice Fenzobot', 'Faixa do índice'],
     operational.event_rows || [],
-    ['event_id', 'snapshot_key', 'analyzed_at_utc', 'commence_time_utc', 'tour', 'tournament', 'player_a', 'player_b', 'odd_a', 'odd_b', 'winner_side', 'result', 'fenzobot_side'],
-  ), { headerRow: 1, widths: [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25] });
+    ['event_id', 'snapshot_key', 'analyzed_at_utc', 'commence_time_utc', 'tour', 'tournament', 'player_a', 'player_b', 'odd_a', 'odd_b', 'winner_side', 'result', 'fenzobot_side', 'fenzobot_index', 'fenzobot_index_band'],
+  ), { headerRow: 1, widths: [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25, 16, 16] });
 }
 
 function installSystemHistorySync() {
@@ -110,6 +111,7 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Partidas canónicas', summary.canonical_snapshots || 0],
     ['Repetições excluídas das métricas', summary.duplicate_snapshots_excluded || 0],
     ['Partidas canónicas liquidadas', summary.settled_canonical_snapshots || 0],
+    ['Seleções liquidadas com índice Fenzobot', summary.settled_fenzobot_index_observations || 0],
     ['Versões HTML guardadas', summary.raw_report_html_versions || 0],
     ['Jogos WTA históricos locais', summary.historical_wta_matches || 0],
     ['', ''],
@@ -118,10 +120,10 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
 
   const operational = payload.operational || {};
   upsertSystemSheet_(spreadsheet, 'Partidas canónicas', rowsWithHeaders_(
-    ['ID canónico', 'Snapshot', 'Analisado UTC', 'Início UTC', 'Tour', 'Torneio', 'Jogador A', 'Jogador B', 'Odd A', 'Odd B', 'Vencedor', 'Score', 'Fenzobot favorece'],
+    ['ID canónico', 'Snapshot', 'Analisado UTC', 'Início UTC', 'Tour', 'Torneio', 'Jogador A', 'Jogador B', 'Odd A', 'Odd B', 'Vencedor', 'Score', 'Fenzobot favorece', 'Índice Fenzobot', 'Faixa do índice'],
     operational.event_rows || [],
-    ['event_id', 'snapshot_key', 'analyzed_at_utc', 'commence_time_utc', 'tour', 'tournament', 'player_a', 'player_b', 'odd_a', 'odd_b', 'winner_side', 'result', 'fenzobot_side'],
-  ), { headerRow: 1, widths: [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25] });
+    ['event_id', 'snapshot_key', 'analyzed_at_utc', 'commence_time_utc', 'tour', 'tournament', 'player_a', 'player_b', 'odd_a', 'odd_b', 'winner_side', 'result', 'fenzobot_side', 'fenzobot_index', 'fenzobot_index_band'],
+  ), { headerRow: 1, widths: [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25, 16, 16] });
   upsertSystemSheet_(spreadsheet, 'Registo HTML bruto', rowsWithHeaders_(
     ['Data indicada', 'Ficheiro HTML'], payload.report_registry || [], ['report_date', 'report_file'],
   ), { headerRow: 1, widths: [18, 100] });
@@ -133,6 +135,10 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Seleção Fenzobot', 'Faixa de odd', 'Papel', 'Jogos', 'Vitórias', 'Derrotas', '% acerto'], operational.fenzobot_odds || [],
     ['player', 'odds_band', 'role', 'matches', 'wins', 'losses', 'win_pct'],
   ), { headerRow: 1, widths: [28, 16, 14, 12, 12, 12, 14], percentageColumn: 7 });
+  upsertSystemSheet_(spreadsheet, 'Operacional - índice Fenzobot', rowsWithHeaders_(
+    ['Faixa do índice', 'Jogos', 'Vitórias', 'Derrotas', '% acerto'], operational.fenzobot_index_band_summary || [],
+    ['index_band', 'matches', 'wins', 'losses', 'win_pct'],
+  ), { headerRow: 1, widths: [20, 14, 14, 14, 16], percentageColumn: 5 });
 
   const wta = payload.historical_wta || {};
   upsertSystemSheet_(spreadsheet, 'WTA histórico - jogador odd', rowsWithHeaders_(
@@ -159,13 +165,13 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
   upsertSystemSheet_(spreadsheet, 'Metodologia e limites', [
     ['Tema', 'Regra'],
     ['Deduplicação', 'Uma partida entra uma vez: primeiro snapshot pré-jogo válido. HTMLs repetidos não são observações analíticas.'],
-    ['Operacional', 'Snapshots canónicos já liquidados; não é backtest nem carteira PAPER.'],
+    ['Operacional', 'Snapshots canónicos já liquidados; os agrupamentos por odd e por faixa de índice são observacionais, não backtest nem carteira PAPER. O índice não é probabilidade.'],
     ['Histórico WTA', 'Resultados e odds da cache local tennis-data.co.uk. Não se afirma cobertura ATP onde não existe base bruta local.'],
     ['Handicaps', 'Cobertura contra linha interna BO3 de referência, inferida da faixa de Moneyline; não é linha real de bookmaker.'],
     ['Recuperação', 'Vitórias após perder o 1.º set; ainda não existe estatística ponto-a-ponto de breaks.'],
     ['PAPER / REAL', 'Permanecem separados e devem ser avaliados nos respetivos registos financeiros.'],
   ], { headerRow: 1, widths: [28, 110] });
-  writeFenzobotChart_(spreadsheet, operational.fenzobot_band_summary || []);
+  writeFenzobotCharts_(spreadsheet, operational.fenzobot_band_summary || [], operational.fenzobot_index_band_summary || []);
 }
 
 function writeRankingsSheet_(spreadsheet, rankings) {
@@ -211,7 +217,7 @@ function writeRankingsSheet_(spreadsheet, rankings) {
   sheet.getRange(1, 1, Math.max(row - 1, 5), 7).setVerticalAlignment('top').setWrap(true);
 }
 
-function writeFenzobotChart_(spreadsheet, rows) {
+function writeFenzobotCharts_(spreadsheet, rows, indexRows) {
   const summary = spreadsheet.getSheetByName('Resumo');
   const data = spreadsheet.getSheetByName('Dados gráficos') || spreadsheet.insertSheet('Dados gráficos');
   const eligible = rows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number');
@@ -219,26 +225,47 @@ function writeFenzobotChart_(spreadsheet, rows) {
   if (existingFilter) existingFilter.remove();
   data.getRange(1, 1, data.getMaxRows(), data.getMaxColumns()).breakApart();
   data.clear({ contentsOnly: false });
-  data.getRange(1, 1, Math.max(eligible.length + 1, 1), 3).setValues([
-    ['Faixa de odd', 'Acerto Fenzobot', 'Decisões liquidadas'],
-  ].concat(eligible.map(row => [row.odds_band, row.win_pct / 100, row.matches])));
+  const eligibleIndex = indexRows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number');
+  const height = Math.max(eligible.length, eligibleIndex.length, 1) + 1;
+  data.getRange(1, 1, height, 7).setValues([
+    ['Faixa de odd', 'Acerto Fenzobot', 'Decisões liquidadas', '', 'Faixa do índice', 'Acerto Fenzobot', 'Decisões liquidadas'],
+  ].concat(Array.from({ length: height - 1 }, (_, index) => {
+    const odds = eligible[index] || {};
+    const score = eligibleIndex[index] || {};
+    return [odds.odds_band || '', typeof odds.win_pct === 'number' ? odds.win_pct / 100 : '', odds.matches || '', '', score.index_band || '', typeof score.win_pct === 'number' ? score.win_pct / 100 : '', score.matches || ''];
+  })));
   data.getRange(2, 2, Math.max(eligible.length, 1), 1).setNumberFormat('0.0%');
+  data.getRange(2, 6, Math.max(eligibleIndex.length, 1), 1).setNumberFormat('0.0%');
   data.hideSheet();
   summary.getCharts().forEach(chart => summary.removeChart(chart));
-  if (!eligible.length) {
+  if (eligible.length) {
+    const chart = summary.newChart()
+      .asColumnChart()
+      .addRange(data.getRange(1, 1, eligible.length + 1, 2))
+      .setNumHeaders(1)
+      .setPosition(4, 4, 0, 0)
+      .setOption('title', 'Acerto Fenzobot por faixa de odd (n ≥ 5)')
+      .setOption('legend', { position: 'none' })
+      .setOption('vAxis', { format: 'percent', viewWindow: { min: 0, max: 1 } })
+      .build();
+    summary.insertChart(chart);
+  } else {
     summary.getRange('D5').setValue('Gráfico pendente: ainda não há pelo menos 5 decisões liquidadas na mesma faixa de odd.').setFontStyle('italic').setFontColor('#5B6573');
-    return;
   }
-  const chart = summary.newChart()
-    .asColumnChart()
-    .addRange(data.getRange(1, 1, eligible.length + 1, 2))
-    .setNumHeaders(1)
-    .setPosition(4, 4, 0, 0)
-    .setOption('title', 'Acerto Fenzobot por faixa de odd (n ≥ 5)')
-    .setOption('legend', { position: 'none' })
-    .setOption('vAxis', { format: 'percent', viewWindow: { min: 0, max: 1 } })
-    .build();
-  summary.insertChart(chart);
+  if (eligibleIndex.length) {
+    const chart = summary.newChart()
+      .asColumnChart()
+      .addRange(data.getRange(1, 5, eligibleIndex.length + 1, 2))
+      .setNumHeaders(1)
+      .setPosition(21, 4, 0, 0)
+      .setOption('title', 'Acerto Fenzobot por faixa de índice (n ≥ 5)')
+      .setOption('legend', { position: 'none' })
+      .setOption('vAxis', { format: 'percent', viewWindow: { min: 0, max: 1 } })
+      .build();
+    summary.insertChart(chart);
+  } else {
+    summary.getRange('D21').setValue('Gráfico pendente: ainda não há pelo menos 5 decisões liquidadas na mesma faixa de índice.').setFontStyle('italic').setFontColor('#5B6573');
+  }
 }
 
 function rowsWithHeaders_(headers, objects, fields) {

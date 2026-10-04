@@ -147,6 +147,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         ("Repetições excluídas das métricas", summary["duplicate_snapshots_excluded"]),
         ("Versões HTML guardadas", summary["raw_report_html_versions"]),
         ("Partidas canónicas liquidadas", summary["settled_canonical_snapshots"]),
+        ("Seleções liquidadas com índice Fenzobot", summary.get("settled_fenzobot_index_observations", 0)),
         ("Jogos WTA históricos locais", summary["historical_wta_matches"]),
         ("Regra de contagem", "primeiro snapshot pré-jogo válido por partida"),
     ]
@@ -164,9 +165,9 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
 
     events = wb.create_sheet("Partidas canónicas")
     event_rows = payload["operational"]["event_rows"]
-    _write_rows(events, 1, ["ID canónico", "Snapshot", "Analisado UTC", "Início UTC", "Tour", "Torneio", "Jogador A", "Jogador B", "Odd A", "Odd B", "Vencedor", "Score", "Fenzobot favorece"], event_rows,
-                ["event_id", "snapshot_key", "analyzed_at_utc", "commence_time_utc", "tour", "tournament", "player_a", "player_b", "odd_a", "odd_b", "winner_side", "result", "fenzobot_side"])
-    _widths(events, [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25])
+    _write_rows(events, 1, ["ID canónico", "Snapshot", "Analisado UTC", "Início UTC", "Tour", "Torneio", "Jogador A", "Jogador B", "Odd A", "Odd B", "Vencedor", "Score", "Fenzobot favorece", "Índice Fenzobot", "Faixa do índice"], event_rows,
+                ["event_id", "snapshot_key", "analyzed_at_utc", "commence_time_utc", "tour", "tournament", "player_a", "player_b", "odd_a", "odd_b", "winner_side", "result", "fenzobot_side", "fenzobot_index", "fenzobot_index_band"])
+    _widths(events, [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25, 16, 16])
 
     reports = wb.create_sheet("Registo HTML bruto")
     _title(reports, "Registo de relatórios HTML", "Inventário de versões publicadas. Estes ficheiros não são usados nas métricas e podem repetir a mesma partida.")
@@ -176,6 +177,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     for title, rows, headers, fields, widths, pct_indices in (
         ("Operacional - jogador odd", payload["operational"]["player_odds"], ["Jogador", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% vitória"], ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"], [28, 16, 14, 12, 12, 12, 14], [7]),
         ("Operacional - Fenzobot odd", payload["operational"]["fenzobot_odds"], ["Seleção Fenzobot", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% acerto"], ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"], [28, 16, 14, 12, 12, 12, 14], [7]),
+        ("Operacional - índice Fenzobot", payload["operational"]["fenzobot_index_band_summary"], ["Faixa do índice", "Jogos", "Vitórias", "Derrotas", "% acerto"], ["index_band", "matches", "wins", "losses", "win_pct"], [20, 14, 14, 14, 16], [5]),
         ("WTA histórico - jogador odd", payload["historical_wta"]["player_odds"], ["Jogadora", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% vitória"], ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"], [28, 16, 14, 12, 12, 12, 14], [7]),
         ("WTA histórico — handicap", payload["historical_wta"]["handicap_reference"], ["Jogadora", "Papel", "Linha referência", "Jogos", "Cobre", "Devolve", "Falha", "% cobre"], ["player", "role", "reference_line", "matches", "covers", "pushes", "fails", "cover_pct"], [28, 14, 18, 12, 12, 12, 12, 14], [8]),
         ("WTA histórico — recuperação", payload["historical_wta"]["set1_recovery"], ["Jogadora", "Perdeu 1.º set", "Recuperou e venceu", "% recuperação"], ["player", "lost_first", "recovered", "recovery_pct"], [28, 18, 22, 16], [4]),
@@ -207,7 +209,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     _title(methodology, "Metodologia e limites", "Leitura correta dos universos e das métricas.")
     rows = [
         ("Deduplicação", "Uma partida entra uma vez: o primeiro snapshot pré-jogo válido. HTMLs repetidos são ficheiros de publicação, não observações analíticas."),
-        ("Operacional", "Métricas de Fenzobot por odd usam apenas snapshots canónicos já liquidados. São observacionais, não backtest."),
+        ("Operacional", "Métricas de Fenzobot por odd e por faixa de índice usam apenas snapshots canónicos já liquidados. São observacionais, não backtest; o índice não é uma probabilidade."),
         ("Histórico WTA", "Resultados e odds vêm apenas das cópias tennis-data.co.uk existentes localmente. Não houve descarga nova nesta construção."),
         ("Handicaps", "Cobertura é calculada contra uma linha interna de referência BO3, inferida pela faixa da Moneyline. Não é uma odd/linha efetivamente oferecida por bookmaker."),
         ("Recuperação", "Conta vitórias após perder o 1.º set no histórico WTA. Não há estatística ponto-a-ponto de breaks."),
@@ -225,12 +227,17 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     # repeated the same band for every player and was therefore misleading.
     chart_data = wb.create_sheet("Dados gráficos")
     chart_data.sheet_state = "hidden"
-    _header(chart_data, 1, ["Faixa", "Acerto Fenzobot", "Decisões liquidadas"])
+    _header(chart_data, 1, ["Faixa de odd", "Acerto Fenzobot", "Decisões liquidadas", "", "Faixa do índice", "Acerto Fenzobot", "Decisões liquidadas"])
     chart_rows = [row for row in payload["operational"]["fenzobot_band_summary"] if row["matches"] >= 5]
     for index, row in enumerate(chart_rows, 2):
         chart_data.cell(index, 1, row["odds_band"])
         chart_data.cell(index, 2, (row["win_pct"] or 0) / 100)
         chart_data.cell(index, 3, row["matches"])
+    index_chart_rows = [row for row in payload["operational"]["fenzobot_index_band_summary"] if row["matches"] >= 5]
+    for index, row in enumerate(index_chart_rows, 2):
+        chart_data.cell(index, 5, row["index_band"])
+        chart_data.cell(index, 6, (row["win_pct"] or 0) / 100)
+        chart_data.cell(index, 7, row["matches"])
     if chart_rows:
         chart = BarChart()
         chart.type = "col"
@@ -241,6 +248,16 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         chart.add_data(Reference(chart_data, min_col=2, min_row=1, max_row=len(chart_rows) + 1), titles_from_data=True)
         chart.set_categories(Reference(chart_data, min_col=1, min_row=2, max_row=len(chart_rows) + 1))
         ws.add_chart(chart, "D5")
+    if index_chart_rows:
+        chart = BarChart()
+        chart.type = "col"
+        chart.title = "Acerto Fenzobot por faixa de índice (n ≥ 5)"
+        chart.y_axis.title = "% acerto"
+        chart.height = 8
+        chart.width = 13
+        chart.add_data(Reference(chart_data, min_col=6, min_row=1, max_row=len(index_chart_rows) + 1), titles_from_data=True)
+        chart.set_categories(Reference(chart_data, min_col=5, min_row=2, max_row=len(index_chart_rows) + 1))
+        ws.add_chart(chart, "D22")
     return wb
 
 
