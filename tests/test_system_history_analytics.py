@@ -7,10 +7,11 @@ from src.system_history_analytics import (
     canonical_snapshots,
     historical_wta_analytics,
     odds_band,
+    fenzobot_index_band,
 )
 
 
-def _snapshot(*, analyzed_at, winner="a", key="atp:10", odd_a=1.4, odd_b=3.0):
+def _snapshot(*, analyzed_at, winner="a", key="atp:10", odd_a=1.4, odd_b=3.0, index_a=72, index_b=28):
     return {
         "key": key,
         "match_id": 10,
@@ -20,7 +21,7 @@ def _snapshot(*, analyzed_at, winner="a", key="atp:10", odd_a=1.4, odd_b=3.0):
         "player_a": {"id": 1, "name": "A"},
         "player_b": {"id": 2, "name": "B"},
         "market_odds_decimal": {"A": odd_a, "B": odd_b},
-        "metrics": {"divergencia": {"indice_favorece": "A"}},
+        "metrics": {"divergencia": {"indice_favorece": "A", "indice_evidencia_a": index_a, "indice_evidencia_b": index_b}},
         "outcome": {"winner_side": winner, "result": "6-4 6-4"},
     }
 
@@ -48,6 +49,14 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         self.assertEqual(odds_band(1.21), "1.21–1.30")
         self.assertEqual(odds_band(1.75), "1.61–1.75")
         self.assertEqual(odds_band(1.76), "1.76–2.00")
+
+    def test_fenzobot_index_bands_are_descriptive_and_keep_missing_as_missing(self):
+        self.assertEqual(fenzobot_index_band(50), "50–59")
+        self.assertEqual(fenzobot_index_band(79), "70–79")
+        self.assertEqual(fenzobot_index_band(95), "90–100")
+        self.assertEqual(fenzobot_index_band(100), "90–100")
+        self.assertIsNone(fenzobot_index_band(None))
+        self.assertIsNone(fenzobot_index_band(49))
 
     def test_wta_reference_handicap_and_recovery_are_clearly_separate(self):
         matches = [{
@@ -85,6 +94,22 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         self.assertEqual(payload["operational"]["fenzobot_band_summary"], [
             {"odds_band": "1.41–1.50", "matches": 2, "wins": 2, "win_pct": 100.0},
         ])
+
+    def test_fenzobot_index_summary_uses_selected_side_and_settled_canonical_rows_only(self):
+        won = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:1", index_a=86, index_b=14)
+        lost = _snapshot(analyzed_at="2026-09-28T06:31:00+00:00", key="atp:2", winner="b", index_a=72, index_b=28)
+        lost["match_id"] = 11
+        lost["commence_time_utc"] = "2026-09-30T12:00:00+00:00"
+        missing = _snapshot(analyzed_at="2026-09-28T06:32:00+00:00", key="atp:3", index_a=None, index_b=None)
+        missing["match_id"] = 12
+        missing["commence_time_utc"] = "2026-10-01T12:00:00+00:00"
+        payload = build_system_history({"snapshots": [won, lost, missing]}, [])
+        self.assertEqual(payload["operational"]["fenzobot_index_band_summary"], [
+            {"index_band": "70–79", "matches": 1, "wins": 0, "losses": 1, "win_pct": 0.0},
+            {"index_band": "80–89", "matches": 1, "wins": 1, "losses": 0, "win_pct": 100.0},
+        ])
+        self.assertEqual(payload["summary"]["settled_fenzobot_index_observations"], 2)
+        self.assertIsNone(payload["operational"]["event_rows"][2]["fenzobot_index"])
 
     def test_rankings_exclude_rows_below_the_evidence_threshold(self):
         rankings = build_rankings(

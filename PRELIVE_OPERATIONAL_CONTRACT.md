@@ -214,6 +214,9 @@ preço e proíbe concluir que há valor de handicap a partir da amostra geral.
   internos e não são publicados no HTML, Telegram ou email.
 - relatórios HTML: nome versionado com `report_id`; uma execução posterior não
   substitui o ficheiro original.
+- Histórico do sistema: a correlação entre o lado escolhido e faixas do índice
+  Fenzobot usa apenas snapshots canónicos já liquidados. É uma leitura
+  descritiva, não é probabilidade, calibração nem regra para PAPER/pricing.
 - `PAPER`, histórico reconstruído/backtest e `REAL` são apresentados
   separadamente. Campos sem fonte (por exemplo CLV, REAL e buckets de edge sem
   limites aprovados) aparecem como `N/D`.
