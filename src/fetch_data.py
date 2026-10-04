@@ -1707,6 +1707,11 @@ def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
         )
     }
     integrity["pricing_basis"] = "verified_provider_pre_match_feed"
+    # Challenger 125 conserva a via experimental separada: esta fonte permite
+    # relatório factual, mas não deve alterar a política de meia-unidade/PAPER
+    # desse tier. Nos restantes tiers elegíveis, a resposta foi recebida nesta
+    # execução e é a única Moneyline pré-jogo incluída no plano PRO.
+    challenger_experiment = str(match.get("tier") or "").strip() == "Challenger 125"
     promoted = dict(source)
     promoted.update({
         "source": "RapidAPI Tennis API / pre-match match-winner feed",
@@ -1716,7 +1721,10 @@ def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
         "bookmaker": None,
         "from_cache": False,
         "cache_age_seconds": 0,
-        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        "freshness_status": (
+            "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE"
+            if challenger_experiment else "OBSERVED_AT_CAPTURE"
+        ),
         "identity_mapping_status": identity_status,
         "availability_status": "AVAILABLE",
         "unavailable_reason": None,
@@ -1727,14 +1735,17 @@ def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
             "odds": {player_a: float(selected["odd_a"]), player_b: float(selected["odd_b"])},
             "provider_timestamp": None,
             "provider_timestamp_status": "not_exposed_by_upcoming_feed",
-            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "freshness_status": (
+                "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE"
+                if challenger_experiment else "OBSERVED_AT_CAPTURE"
+            ),
             "identity_mapping_status": identity_status,
             "raw_payload_sha256": source.get("raw_payload_sha256"),
             "market_integrity_status": selected.get("integrity_status"),
             "market_integrity_reason_codes": [],
             "operational_pricing_eligible": True,
         }],
-        "operational_pricing_eligible": True,
+        "operational_pricing_eligible": not challenger_experiment,
     })
     promoted.update(market_integrity.operational_contract_metadata(captured_at_utc))
     promoted["operational_pricing_eligible"] = (
@@ -1744,7 +1755,10 @@ def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
         # A quote continua útil como observação SHADOW e para identidade, mas
         # nunca é devolvida como fonte de preço operacional pelo chamador.
         promoted["availability_status"] = "OBSERVATION_ONLY"
-        promoted["unavailable_reason"] = "provider_quote_age_unverified"
+        promoted["unavailable_reason"] = (
+            "challenger_provider_quote_experimental"
+            if challenger_experiment else "provider_quote_contract_rejected"
+        )
         register_pending_market_check(match, promoted, available=False)
         return dict(odds), promoted
     register_pending_market_check(match, promoted, available=True)

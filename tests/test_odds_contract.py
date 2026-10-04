@@ -113,7 +113,7 @@ class OperationalOddsContractTests(unittest.TestCase):
         }
         return payload
 
-    def test_main_prefers_the_odds_and_falls_back_to_direct_rapidapi_recent_odds(self):
+    def test_main_prefers_the_odds_then_direct_rapidapi_feed_before_recent_odds(self):
         source = inspect.getsource(main._build_match_payload)
         self.assertIn("fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)", source)
         self.assertIn("fetch_the_odds_moneyline_with_provenance(match)", source)
@@ -169,7 +169,7 @@ class OperationalOddsContractTests(unittest.TestCase):
         self.assertEqual(observation["source"]["role"], "SHADOW_MONITOR")
         self.assertFalse(observation["market_integrity"]["operational_pricing_eligible"])
 
-    def test_unverified_rapidapi_quote_is_observation_only(self):
+    def test_verified_direct_rapidapi_feed_can_price_main_tour(self):
         match = self.match()
         key = fetch_data._odds_names_key("Alpha One", "Beta Two")
         embedded = {f"atp:{key}": {
@@ -184,14 +184,15 @@ class OperationalOddsContractTests(unittest.TestCase):
         ):
             promoted_odds, promoted = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
         self.assertEqual(promoted_odds, {"Alpha One": 2.1, "Beta Two": 1.8})
-        self.assertFalse(market_integrity.is_operational_pricing_provenance(promoted))
-        self.assertEqual(promoted["availability_status"], "OBSERVATION_ONLY")
+        self.assertTrue(market_integrity.is_operational_pricing_provenance(promoted))
+        self.assertEqual(promoted["availability_status"], "AVAILABLE")
         self.assertEqual(promoted["market_integrity"]["pricing_basis"], "verified_provider_pre_match_feed")
         self.assertIsNone(promoted["bookmaker"])
         self.assertEqual(promoted["bookmaker_attribution"], "NOT_EXPOSED_BY_PROVIDER_FEED")
 
-    def test_verified_upcoming_feed_can_only_price_challenger_experiment(self):
+    def test_verified_upcoming_feed_stays_experimental_for_challenger_125(self):
         match = self.match()
+        match["tier"] = "Challenger 125"
         key = fetch_data._odds_names_key("Alpha One", "Beta Two")
         embedded = {f"atp:{key}": {
             "n1": "Alpha One", "n2": "Beta Two", "p1_id": 1, "p2_id": 2,

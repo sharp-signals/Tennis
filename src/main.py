@@ -1319,13 +1319,11 @@ def _build_match_payload(match: dict) -> dict:
               f"{_amostra_nomes} | candidatos próximos: "
               f"{[(item['player'], item.get('candidates')) for item in unresolved]}")
 
-    # O feed regular RapidAPI descobre o jogo, mas não expõe a hora da casa.
-    # Por isso uma quote desse feed é observação SHADOW: nunca pode criar
-    # pricing/edge/PAPER. A fonte The Odds API continua preferida quando
-    # disponível: traz timestamp de quote fresco por bookmaker. Quando essa
-    # consulta é diferida pelo orçamento mensal de competições, o fallback
-    # é `recent-odds` da própria RapidAPI, mas apenas na resposta direta desta
-    # execução, com evento verificado, bookmaker nomeado e Moneyline bilateral.
+    # A The Odds API continua preferida quando traz uma quote timestamped por
+    # bookmaker. O feed RapidAPI pré-jogo é o fallback core do plano PRO:
+    # só é promovido se o par/ordem estiverem verificados e a resposta tiver
+    # sido capturada nesta execução. `recent-odds` fica reservado para casos
+    # em que nenhuma destas duas fontes entrega uma Moneyline utilizável.
     observed_odds, observed_odds_provenance = (
         fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
     )
@@ -1333,6 +1331,8 @@ def _build_match_payload(match: dict) -> dict:
     rapidapi_recent_odds, rapidapi_recent_odds_provenance = (None, None)
     if verified_odds:
         odds, odds_provenance = verified_odds, (verified_odds_provenance or {})
+    elif market_integrity.is_operational_pricing_provenance(observed_odds_provenance):
+        odds, odds_provenance = observed_odds, (observed_odds_provenance or {})
     else:
         rapidapi_recent_odds, rapidapi_recent_odds_provenance = (
             fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)

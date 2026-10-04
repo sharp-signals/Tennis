@@ -452,7 +452,7 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
         )
         self.assertEqual(
             market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
-            "verified-bookmaker-prelive-v4",
+            "verified-direct-pre-match-v5",
         )
         self.assertEqual(
             market_integrity.ODDS_SOURCE_CONTRACT_FINGERPRINT,
