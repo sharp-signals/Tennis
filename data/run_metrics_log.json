@@ -53534,15 +53534,15 @@
     "status": "success",
     "phase": "complete",
     "email_delivery": {
-      "status": "NOT_ATTEMPTED",
+      "status": "SENT",
       "kind": "REPORTS"
     },
     "report_publication": {
-      "status": "PENDING",
+      "status": "READY",
       "expected": 26,
-      "ready": 0
+      "ready": 26
     },
-    "report_notification_status": "REPORTS_DEFERRED",
+    "report_notification_status": "REPORTS_SENT",
     "trigger_slot": "manual",
     "trigger_source": "manual",
     "trigger_local_date": "manual",
@@ -54607,6 +54607,55 @@
     "llm_external_requests": 0,
     "llm_provider_invocations": 25,
     "duration_seconds": 312.966,
-    "llm_estimated_cost_usd": 0.0
+    "llm_estimated_cost_usd": 0.0,
+    "report_notification_delivery": {
+      "github_run_id": "37200187245",
+      "notification_fingerprint": "25d3807de9abc5f759f1166f31c0dfcce6ff6149f793f4f1b32ea52670ebf1d3",
+      "telegram_chunks_sent": 2,
+      "email_delivery": {
+        "status": "SENT",
+        "kind": "REPORTS"
+      }
+    },
+    "settlement_maintenance": {
+      "schema_version": 1,
+      "change_id": "CHANGE-2026-09-30-067",
+      "status": "TIMED_OUT",
+      "started_at_utc": "2026-10-04T11:59:07+00:00",
+      "supervisor": {
+        "status": "TERMINATED",
+        "timeout_seconds": 180.0
+      },
+      "phases": {
+        "read_local_cache": {
+          "duration_seconds": 0.4613,
+          "status": "COMPLETED"
+        },
+        "snapshot_settlement": {
+          "started_at_utc": "2026-10-04T11:59:07+00:00",
+          "status": "IN_PROGRESS"
+        }
+      },
+      "activation_status": "EXTERNAL_ACTIVATION_PENDING",
+      "cached_matches": 27771,
+      "candidates": {
+        "paper": {
+          "batch_size": 50,
+          "eligible_pending": 81,
+          "examined": 0,
+          "pending_no_result": 0,
+          "remaining_unexamined": 81
+        },
+        "snapshots": {
+          "batch_size": 50,
+          "eligible_pending": 337,
+          "examined": 0,
+          "pending_no_result": 0,
+          "remaining_unexamined": 337
+        }
+      },
+      "finished_at_utc": "2026-10-04T12:02:07+00:00",
+      "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT"
+    }
   }
 ]
