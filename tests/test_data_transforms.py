@@ -709,6 +709,16 @@ class MatchInputTests(unittest.TestCase):
             })
             self.assertIn("tennis_atp_japan_open", keys)
 
+    def test_the_odds_api_maps_sponsored_shanghai_name_to_masters_competition(self):
+        for tournament_name in (
+            "Shanghai Rolex Masters - Shanghai",
+            "Rolex Shanghai Masters",
+        ):
+            keys = fetch_data._the_odds_sport_keys_for_match({
+                "_tour": "atp", "tournament_name": tournament_name,
+            })
+            self.assertIn("tennis_atp_shanghai_masters", keys)
+
     def test_the_odds_api_selection_reserves_a_competition_per_tour(self):
         matches = [
             {"_tour": "atp", "tournament_name": "China Open - Beijing"},
@@ -717,6 +727,17 @@ class MatchInputTests(unittest.TestCase):
         ]
         selected, deferred = fetch_data._select_the_odds_sport_keys(matches, 2)
         self.assertEqual(selected, ["tennis_atp_china_open", "tennis_wta_china_open"])
+        self.assertEqual(deferred, ["tennis_atp_japan_open"])
+
+    def test_the_odds_api_selection_prioritizes_tournament_with_most_eligible_matches(self):
+        matches = (
+            [{"_tour": "atp", "tournament_name": "Shanghai Rolex Masters - Shanghai"}] * 12
+            + [{"_tour": "atp", "tournament_name": "China Open - Beijing"}]
+            + [{"_tour": "atp", "tournament_name": "Japan Open - Tokyo"}]
+            + [{"_tour": "wta", "tournament_name": "China Open - Beijing"}]
+        )
+        selected, deferred = fetch_data._select_the_odds_sport_keys(matches, 3)
+        self.assertEqual(selected[:2], ["tennis_atp_shanghai_masters", "tennis_wta_china_open"])
         self.assertEqual(deferred, ["tennis_atp_japan_open"])
 
     def test_the_odds_pricing_uses_fresh_market_timestamp_and_same_bookmaker_pair(self):
