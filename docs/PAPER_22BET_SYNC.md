@@ -10,11 +10,35 @@ O menu `Instalar colunas GREEN_STRONG_V1` acrescenta seis colunas opcionais sem 
 
 Uma linha só entra no agregado da estratégia com correspondência exata a uma tag prospetiva e timestamp anterior ao início. Estados: `LINKED_EX_ANTE`, `SNAPSHOT_NOT_FOUND`, `NOT_GREEN_STRONG`, `SELECTION_AFTER_START`, `MISSING_SELECTION_TIMESTAMP` e `UNAVAILABLE`. Não há associação aproximada.
 
-O JSON público contém somente agregados em `by_strategy.GUERRA_SELECTION_V1`; nunca nomes, keys, notas ou linhas. Ver [GREEN_STRONG_VALIDATION.md](GREEN_STRONG_VALIDATION.md).
+O JSON público contém somente agregados por estratégia; nunca nomes, keys,
+notas ou linhas. Ver [GREEN_STRONG_VALIDATION.md](GREEN_STRONG_VALIDATION.md).
 
 Quando o selecionado é underdog, a metodologia usa duas rows com o mesmo key: Moneyline e Handicap games positivo. `selection_rate_pct` usa candidatos/keys únicos, enquanto `paper_entries` mostra as legs. `underdog_pair_completeness` separa pares completos, Moneyline-only, handicap-only e casos não reconhecidos, sem publicar os keys.
 
 O fingerprint é semântico: inclui os agregados e estados de linkage derivados, mas exclui o timestamp de sincronização e a coluna `Validation Status` escrita pelo próprio script. Assim, uma alteração do índice GREEN_STRONG volta a publicar o resumo mesmo que as rows privadas não tenham mudado.
+
+## Challenger 125 — PAPER manual 0,5u
+
+`CHANGE-2026-10-04-076` acrescenta uma estratégia experimental isolada:
+`CHALLENGER_125_EXPERIMENTAL_V1`. Esta tag só deve ser usada para um candidato
+Challenger 125 apresentado pelo relatório, depois de confirmar o preço atual na
+22Bet. Não é PAPER técnico, GREEN ou REAL.
+
+Depois de atualizar o Apps Script, executar uma vez
+`installChallenger125TrackingColumns`. Acrescenta, sem alterar as colunas já
+existentes, `Challenger Índice Fenzobot`, `Challenger Cobertura %` e
+`Challenger Edge %`. Para cada registo manual Challenger preencher:
+
+- `Selection Strategy`: `CHALLENGER_125_EXPERIMENTAL_V1`;
+- `Stake (u)`: exatamente `0,5`;
+- `Fenzobot Snapshot Key` e `Selected At UTC`;
+- as três métricas opcionais copiadas do relatório, quando disponíveis.
+
+As linhas desta tag são excluídas dos totais PAPER 22Bet normais e publicadas
+apenas em `by_strategy.CHALLENGER_125_EXPERIMENTAL_V1`, segmentadas por
+mercado, perfil, índice Fenzobot, cobertura e edge. A Sheet
+**Histórico & Aprendizagem** mostra-as na aba separada
+`Challenger 125 · PAPER 0,5u`.
 
 ### Simulação pública de stake fixa
 

@@ -20,6 +20,7 @@ const SYSTEM_HISTORY_SYNC = {
   defaultBranch: 'main',
   defaultSpreadsheetId: '1KojvHlLEJ-d4UCaN-Jb0Eu3fEIATbQmoP6_FqGYmWdw',
   sourcePath: 'data/dashboard/system_history_analytics.json',
+  manualPaperPath: 'data/manual_paper_22bet.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
@@ -30,12 +31,22 @@ function syncSystemHistoryToSheet() {
   const branch = properties.getProperty('GITHUB_BRANCH') || SYSTEM_HISTORY_SYNC.defaultBranch;
   const spreadsheetId = properties.getProperty('SYSTEM_HISTORY_SHEET_ID') || SYSTEM_HISTORY_SYNC.defaultSpreadsheetId;
   const payload = fetchSystemHistoryPayload_(repository, branch);
+  let manualPaper = {};
+  try {
+    manualPaper = fetchPublicJson_(repository, branch, SYSTEM_HISTORY_SYNC.manualPaperPath);
+  } catch (error) {
+    // O Histórico canónico não pode deixar de atualizar só porque a Sheet
+    // manual ainda não publicou o seu primeiro agregado.
+    manualPaper = {manual_paper_fetch_error: String(error && error.message || error)};
+  }
   const continuity = payload.forward_only_continuity || null;
   const prospective = continuity && continuity.prospective || null;
-  const fingerprint = continuity
+  const historyFingerprint = continuity
     ? String((continuity.historical_baseline || {}).sha256_at_t0 || '') + ':' + String((prospective || {}).input_fingerprint_sha256 || '')
     : String(payload.input_fingerprint_sha256 || '');
-  if (!fingerprint) throw new Error('O JSON canónico não tem input_fingerprint_sha256.');
+  const manualFingerprint = String((manualPaper || {}).data_fingerprint || 'manual-paper-unavailable');
+  const fingerprint = historyFingerprint + ':' + manualFingerprint;
+  if (!historyFingerprint) throw new Error('O JSON canónico não tem input_fingerprint_sha256.');
   if (properties.getProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty) === fingerprint) {
     return 'Histórico sem alterações; Sheet preservada.';
   }
@@ -46,6 +57,7 @@ function syncSystemHistoryToSheet() {
   } else {
     writeSystemHistoryWorkbook_(spreadsheet, payload);
   }
+  writeChallengerManualPaperSheet_(spreadsheet, manualPaper || {});
   properties.setProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty, fingerprint);
   return 'Histórico & Aprendizagem atualizado com sucesso.';
 }
@@ -87,17 +99,62 @@ function installSystemHistorySync() {
 function fetchSystemHistoryPayload_(repository, branch) {
   // O repositório e o ficheiro de histórico são públicos. Usar o URL RAW
   // remove a necessidade de guardar um token pessoal no Apps Script.
-  const url = 'https://raw.githubusercontent.com/' + repository + '/' + encodeURIComponent(branch) + '/' + SYSTEM_HISTORY_SYNC.sourcePath;
+  return fetchPublicJson_(repository, branch, SYSTEM_HISTORY_SYNC.sourcePath);
+}
+
+function fetchPublicJson_(repository, branch, path) {
+  const url = 'https://raw.githubusercontent.com/' + repository + '/' + encodeURIComponent(branch) + '/' + path;
   const response = UrlFetchApp.fetch(url, {
     method: 'get',
     muteHttpExceptions: true,
   });
   if (response.getResponseCode() !== 200) {
-    throw new Error('Não foi possível obter o histórico canónico: HTTP ' + response.getResponseCode() + ': ' + response.getContentText());
+    throw new Error('Não foi possível obter JSON público (' + path + '): HTTP ' + response.getResponseCode() + ': ' + response.getContentText());
   }
   const payload = JSON.parse(response.getContentText());
-  if (!payload || typeof payload !== 'object') throw new Error('Payload histórico inválido.');
+  if (!payload || typeof payload !== 'object') throw new Error('Payload JSON inválido: ' + path);
   return payload;
+}
+
+function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
+  const strategy = ((manualPaper || {}).by_strategy || {}).CHALLENGER_125_EXPERIMENTAL_V1 || {};
+  const summary = strategy.summary || {};
+  const available = strategy.status === 'AVAILABLE';
+  const valueOrND = (value) => available ? (value == null ? 'N/D' : value) : 'N/D';
+  const statsRows = (collection) => Object.keys(collection || {}).sort().map(key => {
+    const stat = collection[key] || {};
+    return [key, stat.total_entries || 0, stat.settled || 0, stat.wins || 0, stat.losses || 0, stat.pushes || 0, stat.pending || 0, stat.units == null ? 'N/D' : stat.units, stat.roi_pct == null ? 'N/D' : stat.roi_pct, stat.average_odd == null ? 'N/D' : stat.average_odd];
+  });
+  const section = (title, rows) => [[title, '', '', '', '', '', '', '', '', ''], ['Grupo', 'Entradas', 'Liquidadas', 'Vitórias', 'Derrotas', 'Void', 'Pendentes', 'Unidades', 'ROI', 'Odd média']].concat(rows.length ? rows : [['Sem amostra', '', '', '', '', '', '', '', '', '']]);
+  const values = [
+    ['Challenger 125 — PAPER manual 0,5u', '', '', '', '', '', '', '', '', ''],
+    ['Universo separado do PAPER normal. Só entram linhas registadas com a estratégia CHALLENGER_125_EXPERIMENTAL_V1, stake de 0,5u, Snapshot Key e data de seleção.', '', '', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', '', '', ''],
+    ['Indicador', 'Valor', '', '', '', '', '', '', '', ''],
+    ['Estado', strategy.status || 'UNAVAILABLE', '', '', '', '', '', '', '', '', ''],
+    ['Entradas válidas', valueOrND(summary.total_entries), '', '', '', '', '', '', '', '', ''],
+    ['Liquidadas', valueOrND(summary.settled), '', '', '', '', '', '', '', '', ''],
+    ['W–L', available ? (summary.wins || 0) + '–' + (summary.losses || 0) : 'N/D', '', '', '', '', '', '', '', '', ''],
+    ['Void / pendentes', available ? (summary.pushes || 0) + ' / ' + (summary.pending || 0) : 'N/D', '', '', '', '', '', '', '', '', ''],
+    ['Unidades / ROI', available ? (summary.units == null ? 'N/D' : summary.units) + ' / ' + (summary.roi_pct == null ? 'N/D' : summary.roi_pct + '%') : 'N/D', '', '', '', '', '', '', '', ''],
+    ['Odd média', valueOrND(summary.average_odd), '', '', '', '', '', '', '', '', ''],
+    ['Stake fixo da estratégia', strategy.fixed_stake_units == null ? '0,5u' : String(strategy.fixed_stake_units).replace('.', ',') + 'u', '', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', '', '', ''],
+  ].concat(
+    section('Por mercado', statsRows(strategy.by_market)), [['', '', '', '', '', '', '', '', '', '']],
+    section('Por perfil', statsRows(strategy.by_side)), [['', '', '', '', '', '', '', '', '', '']],
+    section('Por índice Fenzobot', statsRows(strategy.by_fenzobot_index_band)), [['', '', '', '', '', '', '', '', '', '']],
+    section('Por cobertura', statsRows(strategy.by_coverage_band)), [['', '', '', '', '', '', '', '', '', '']],
+    section('Por edge experimental', statsRows(strategy.by_edge_band)),
+  );
+  upsertSystemSheet_(spreadsheet, 'Challenger 125 · PAPER 0,5u', values, { titleRows: 2, headerRow: 4, widths: [38, 16, 14, 12, 12, 12, 14, 14, 14, 14] });
+  const sheet = spreadsheet.getSheetByName('Challenger 125 · PAPER 0,5u');
+  for (let row = 14; row <= values.length; row += 1) {
+    if (String(values[row - 1][0] || '').indexOf('Por ') === 0) {
+      sheet.getRange(row, 1, 1, 10).setBackground('#0F766E').setFontColor('#FFFFFF').setFontWeight('bold');
+      sheet.getRange(row + 1, 1, 1, 10).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold');
+    }
+  }
 }
 
 function writeSystemHistoryWorkbook_(spreadsheet, payload) {

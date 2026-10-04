@@ -1364,7 +1364,7 @@ def _build_match_payload(match: dict) -> dict:
     operational_pricing_eligible = market_integrity.is_operational_pricing_provenance(
         odds_provenance
     )
-    if odds and not operational_pricing_eligible:
+    if odds and not operational_pricing_eligible and not experimental_challenger_pricing_eligible:
         print(
             "[aviso:odds-contract] quote rejeitada fail-closed antes do pricing: "
             f"{player_a} vs {player_b}."
@@ -2189,6 +2189,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         )
         level, flag = {
             "EDGE_POSITIVE": (3, "🟢"), "EDGE_NEGATIVE": (2, "🔴"),
+            "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": (2.75, "🟣"),
             "EDGE_POSITIVE_EXPERIMENTAL_TIER": (2.5, "🟡"),
             "EDGE_ZERO": (1, "⚪"), "PRICING_UNAVAILABLE": (0, "🟡"),
             "EXPERIMENTAL_FACTUAL_PARTIAL": (0.5, "🟡"),
@@ -2217,6 +2218,11 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             line = html.escape(
                 f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
                 "Challenger 125 EXPERIMENTAL · sem PAPER"
+            )
+        elif state == "CHALLENGER_125_MANUAL_PAPER_CANDIDATE":
+            line = html.escape(
+                f"EDGE {float(decision.get('expected_edge_pct')):+.1f}% · "
+                "Challenger 125 · candidato manual 0,5u"
             )
         elif state == "REPORT_NULL":
             line = html.escape(f"Relatório nulo · {decision.get('reason') or 'dados insuficientes'}")
@@ -2798,13 +2804,17 @@ def run() -> None:
     # edge" a sério (sem sinal nenhum).
     n_alinhamento_forte = 0
     n_challenger = len(linhas_challenger)
+    n_challenger_manual_candidates = sum(1 for payload, _, _ in match_reports
+                                         if str(payload.get("tier") or "").strip() == "Challenger 125"
+                                         and (payload.get("prelive_decision") or {}).get("state")
+                                         == "CHALLENGER_125_MANUAL_PAPER_CANDIDATE")
     n_pending_market = sum(1 for n, _, _, _ in linhas_dados if n == 0.5)
     n_none = sum(1 for n, _, _, _ in linhas_dados if n == 0)
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
         f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
-        f"⚪ {n_watch} edge zero · 🟣 {n_challenger} Challenger 125 experimental · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
+        f"⚪ {n_watch} edge zero · 🟣 {n_challenger} Challenger 125 experimental ({n_challenger_manual_candidates} candidato manual 0,5u) · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
     summary_lines = [cabecalho]
@@ -2830,12 +2840,12 @@ def run() -> None:
         else:
             summary_lines.append("⚠️ Relatório indisponível.")
 
-    # Challenger 125 nunca fica misturado com os sinais main-tour. Mesmo os
-    # casos com edge elevado continuam observações experimentais sem PAPER.
+    # Challenger 125 nunca fica misturado com os sinais main-tour. O candidato
+    # manual 0,5u é somente um gatilho de registo humano; não é PAPER técnico.
     if linhas_challenger:
         if summary_lines:
             summary_lines.append("")
-        summary_lines.append("<b>🟣 CHALLENGER 125 · ESTRATÉGIA EXPERIMENTAL / SEM PAPER</b>")
+        summary_lines.append("<b>🟣 CHALLENGER 125 · ESTRATÉGIA EXPERIMENTAL / CANDIDATOS MANUAIS 0,5u</b>")
         for _, bola, txt, url in linhas_challenger:
             summary_lines.append(f"{bola} {txt}")
             if url:
