@@ -1321,13 +1321,26 @@ def _build_match_payload(match: dict) -> dict:
 
     # O feed regular RapidAPI descobre o jogo, mas não expõe a hora da casa.
     # Por isso uma quote desse feed é observação SHADOW: nunca pode criar
-    # pricing/edge/PAPER. A fonte independente só é promovida se trouxer uma
-    # Moneyline bilateral fresca e timestamped por bookmaker.
+    # pricing/edge/PAPER. A fonte The Odds API continua preferida quando
+    # disponível: traz timestamp de quote fresco por bookmaker. Quando essa
+    # consulta é diferida pelo orçamento mensal de competições, o fallback
+    # é `recent-odds` da própria RapidAPI, mas apenas na resposta direta desta
+    # execução, com evento verificado, bookmaker nomeado e Moneyline bilateral.
     observed_odds, observed_odds_provenance = (
         fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
     )
     verified_odds, verified_odds_provenance = fetch_data.fetch_the_odds_moneyline_with_provenance(match)
-    odds, odds_provenance = verified_odds, (verified_odds_provenance or {})
+    rapidapi_recent_odds, rapidapi_recent_odds_provenance = (None, None)
+    if verified_odds:
+        odds, odds_provenance = verified_odds, (verified_odds_provenance or {})
+    else:
+        rapidapi_recent_odds, rapidapi_recent_odds_provenance = (
+            fetch_data.fetch_rapidapi_recent_moneyline_with_provenance(match)
+        )
+        odds, odds_provenance = (
+            rapidapi_recent_odds,
+            (rapidapi_recent_odds_provenance or verified_odds_provenance or {}),
+        )
     experimental_challenger_pricing_eligible = False
     reference_odds, reference_odds_provenance = None, None
     embedded_odds, embedded_provenance = (
@@ -1354,10 +1367,21 @@ def _build_match_payload(match: dict) -> dict:
         # Não apresentar a observação não datada como preço atual. Continua
         # guardada em SHADOW/telemetria, mas o relatório falha fechado para
         # evitar repetir odds antigas como se fossem desta execução.
-        odds_provenance = dict(observed_odds_provenance or {})
+        # Preserva a razão concreta do `recent-odds` quando existir: o
+        # utilizador vê a falha da fonte que realmente foi consultada, não um
+        # rótulo genérico que esconda a causa.
+        odds_provenance = dict(
+            rapidapi_recent_odds_provenance
+            or verified_odds_provenance
+            or observed_odds_provenance
+            or {}
+        )
         odds_provenance.update({
             "availability_status": "UNAVAILABLE",
-            "unavailable_reason": "fresh_independent_moneyline_unavailable",
+            "unavailable_reason": (
+                odds_provenance.get("unavailable_reason")
+                or "current_verified_moneyline_unavailable"
+            ),
             "operational_pricing_eligible": False,
         })
     odds_provenance = odds_provenance or {}

@@ -113,11 +113,12 @@ class OperationalOddsContractTests(unittest.TestCase):
         }
         return payload
 
-    def test_main_uses_fresh_independent_price_and_keeps_rapidapi_shadow(self):
+    def test_main_prefers_the_odds_and_falls_back_to_direct_rapidapi_recent_odds(self):
         source = inspect.getsource(main._build_match_payload)
         self.assertIn("fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)", source)
         self.assertIn("fetch_the_odds_moneyline_with_provenance(match)", source)
-        self.assertIn("fresh_independent_moneyline_unavailable", source)
+        self.assertIn("fetch_rapidapi_recent_moneyline_with_provenance(match)", source)
+        self.assertIn("current_verified_moneyline_unavailable", source)
         self.assertIn("is_experimental_challenger_pricing_provenance", source)
         self.assertIn("role=\"SHADOW_MONITOR\"", source)
 
