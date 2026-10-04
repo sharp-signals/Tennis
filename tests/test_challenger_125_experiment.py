@@ -15,6 +15,7 @@ from src import (
     paper_trading,
     pricing,
     report_html,
+    telegram_summary,
     tournament_policy,
 )
 from src.prelive_decision import build_decision
@@ -173,7 +174,7 @@ class Challenger125ExperimentTests(unittest.TestCase):
         payload = self._base_payload()
         payload["prelive_decision"] = {
             "state": "EDGE_POSITIVE_COVERAGE_INSUFFICIENT",
-            "expected_edge_pct": 4.9,
+            "expected_edge_pct": 3.9,
             "coverage": {"weighted_ratio": 0.55, "weighted_pct": 55.0},
             "paper_eligible": False,
             "paper_markets": [],
@@ -184,17 +185,65 @@ class Challenger125ExperimentTests(unittest.TestCase):
             decision["state"], tournament_policy.EXPERIMENTAL_EDGE_BELOW_THRESHOLD_STATE
         )
         self.assertEqual(
-            decision["experimental_tier_gate"]["minimum_experimental_edge_pct"], 5.0
+            decision["experimental_tier_gate"]["minimum_experimental_edge_pct"], 4.0
         )
         self.assertFalse(decision["paper_eligible"])
 
-        decision.update({"state": "EDGE_POSITIVE", "expected_edge_pct": 4.0,
+        decision.update({"state": "EDGE_POSITIVE", "expected_edge_pct": 3.0,
                          "coverage": {"weighted_ratio": 0.65, "weighted_pct": 65.0}})
         tournament_policy.apply_experimental_paper_gate(payload)
         self.assertEqual(decision["state"], tournament_policy.EXPERIMENTAL_EDGE_STATE)
         self.assertEqual(
             decision["experimental_tier_gate"]["evidence_band"], "evidência suficiente"
         )
+
+    def test_challenger_manual_half_unit_candidate_requires_all_priority_metrics(self):
+        payload = self._priced_payload()
+        payload.update({
+            "recent_form_a": {"wins": 8, "losses": 2, "matches": 10},
+            "recent_form_b": {"wins": 5, "losses": 5, "matches": 10},
+        })
+        tournament_policy.apply_experimental_paper_gate(payload)
+        decision = payload["prelive_decision"]
+        gate = decision["experimental_tier_gate"]
+        self.assertEqual(
+            decision["state"],
+            tournament_policy.EXPERIMENTAL_MANUAL_PAPER_CANDIDATE_STATE,
+        )
+        self.assertTrue(gate["manual_paper_candidate"])
+        self.assertEqual(gate["manual_paper_stake_units"], 0.5)
+        self.assertEqual(gate["manual_paper_strategy"], "CHALLENGER_125_EXPERIMENTAL_V1")
+        self.assertFalse(decision["paper_eligible"])
+        self.assertEqual(decision["paper_markets"], [])
+        self.assertEqual(paper_trading.build_entries(payload), [])
+
+    def test_challenger_manual_candidate_fails_closed_without_recent_sample(self):
+        payload = self._priced_payload()
+        payload.update({
+            "recent_form_a": {"wins": 8, "losses": 2, "matches": 10},
+            "recent_form_b": {"wins": 4, "losses": 5, "matches": 9},
+        })
+        tournament_policy.apply_experimental_paper_gate(payload)
+        gate = payload["prelive_decision"]["experimental_tier_gate"]
+        self.assertFalse(gate["manual_paper_candidate"])
+        self.assertIn("forma recente inferior", gate["manual_paper_candidate_reason"])
+
+    def test_manual_candidate_is_visible_but_not_presented_as_automatic_paper(self):
+        payload = self._priced_payload()
+        payload.update({
+            "recent_form_a": {"matches": 10},
+            "recent_form_b": {"matches": 10},
+        })
+        tournament_policy.apply_experimental_paper_gate(payload)
+        html = report_html.build_report_html(
+            payload,
+            {"flag": "🟣", "summary_line": "Candidato manual", "key_points": []},
+        )
+        self.assertIn("CANDIDATO PAPER MANUAL 0,5u", html)
+        self.assertIn("Confirmar preço atual na 22Bet", html)
+        priority, icon, text = telegram_summary.decision_row(payload)
+        self.assertEqual((priority, icon), (2.75, "🟣"))
+        self.assertIn("CANDIDATO PAPER MANUAL 0,5u", text)
 
     def test_paper_defence_blocks_even_if_caller_bypasses_decision_gate(self):
         payload = self._priced_payload()

@@ -62,6 +62,9 @@ REPORT_IDENTITY_STATUS_META_NAME = "fenzobot-identity-status"
 REPORT_IDENTITY_REASON_META_NAME = "fenzobot-identity-reason-code"
 REPORT_DECISION_PRESENTATION = {
     "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
+    "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": (
+        "CHALLENGER 125 — CANDIDATO PAPER MANUAL 0,5u", "zero", "🟣", "YELLOW",
+    ),
     "EDGE_POSITIVE_EXPERIMENTAL_TIER": (
         "EDGE POSITIVO — CHALLENGER 125 EXPERIMENTAL / SEM PAPER",
         "zero", "🟡", "YELLOW",
@@ -3031,7 +3034,25 @@ def _mod_decision_box(payload):
     )
     if state == "EDGE_POSITIVE" and identity_blocks_paper:
         label = "EDGE POSITIVO — IDENTIDADE AINDA NÃO ELEGÍVEL PARA PAPER"
-    if state in {
+    if state == "CHALLENGER_125_MANUAL_PAPER_CANDIDATE":
+        market = _d(decision.get("market"))
+        edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
+        gate = _d(decision.get("experimental_tier_gate"))
+        body = (
+            '<div class="decision-primary">Candidato Challenger 125 · PAPER manual de '
+            f'{_esc(str(gate.get("manual_paper_stake_units") or "0,5").replace(".", ","))}u</div>'
+            f'<div class="decision-grid"><span>Seleção <b>{_esc(decision.get("player"))}</b></span>'
+            f'<span>Mercado <b>{_esc(market.get("market"))}</b></span>'
+            f'<span>Odd observada <b>{_esc(market.get("odd"))}</b></span>'
+            f'<span>Índice Fenzobot <b>{_esc(decision.get("fenzobot_index"))}/100</b></span>'
+            f'<span>Edge experimental <b>{_esc(edge_text)}</b></span>'
+            f'<span>Cobertura <b>{_esc(coverage_text)}</b></span></div>'
+            '<div class="decision-note">Candidato de observação, não entrada automática. '
+            'Confirmar preço atual na 22Bet e, se registar, usar 0,5u com a estratégia '
+            '<b>CHALLENGER_125_EXPERIMENTAL_V1</b> na Sheet PAPER. '
+            'Não entra no PAPER técnico nem no GREEN.</div>'
+        )
+    elif state in {
         "EDGE_POSITIVE",
         "EDGE_POSITIVE_COVERAGE_INSUFFICIENT",
         "EDGE_POSITIVE_EXPERIMENTAL_TIER",

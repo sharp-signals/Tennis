@@ -33,6 +33,14 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
         except (TypeError, ValueError):
             coverage_text = "N/D"
         return 2.5, "🟡", f"{a} vs {b} — edge positivo {edge_text}, mas cobertura {coverage_text} insuficiente para PAPER"
+    if state == "CHALLENGER_125_MANUAL_PAPER_CANDIDATE":
+        gate = decision.get("experimental_tier_gate") or {}
+        stake = gate.get("manual_paper_stake_units", 0.5)
+        index = decision.get("fenzobot_index", "N/D")
+        return 2.75, "🟣", (
+            f"{a} vs {b} — <b>CHALLENGER 125 · CANDIDATO PAPER MANUAL {str(stake).replace('.', ',')}u</b> "
+            f"· índice {index}/100 · edge {edge_text} · confirmar 22Bet"
+        )
     if state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":
         reason = html.escape(str(
             (decision.get("experimental_tier_gate") or {}).get("reason_code")
@@ -69,7 +77,7 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
 
 
 def state_counts(payloads) -> dict[str, int]:
-    counts = {"EDGE_POSITIVE": 0, "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "EXPERIMENTAL_FACTUAL_PARTIAL": 0, "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0, "REPORT_NULL": 0}
+    counts = {"EDGE_POSITIVE": 0, "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": 0, "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "EXPERIMENTAL_FACTUAL_PARTIAL": 0, "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0, "REPORT_NULL": 0}
     for payload in payloads:
         state = (payload.get("prelive_decision") or {}).get("state")
         if state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":

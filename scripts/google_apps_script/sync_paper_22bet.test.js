@@ -199,3 +199,33 @@ test('legacy 15-column sheet still aggregates and is not reclassified', () => {
   assert.equal(payload.by_strategy.GUERRA_SELECTION_V1.status, 'UNAVAILABLE');
   assert.doesNotMatch(JSON.stringify(payload), /Alpha|Beta/);
 });
+
+test('manual Challenger 125 has a separate 0.5u aggregate and never changes normal PAPER totals', () => {
+  const headers = Array.from({length: 15}, (_, index) => 'Legacy ' + index).concat([
+    'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
+    'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
+  ]);
+  const challenger = Array(24).fill('');
+  challenger[0] = 'Private Player'; challenger[1] = 'Private Opponent'; challenger[5] = 'Vencedor'; challenger[7] = 'Favorito';
+  challenger[9] = 2; challenger[10] = 0.5; challenger[12] = 'GANHOU'; challenger[13] = 0.5;
+  challenger[15] = 'private:snapshot'; challenger[16] = 'CHALLENGER_125_EXPERIMENTAL_V1'; challenger[17] = '2026-10-04T10:00:00Z';
+  challenger[21] = 78; challenger[22] = 0.62; challenger[23] = 4.2;
+  const sheet = {
+    getLastRow: () => 6, getLastColumn: () => 24,
+    getRange: (sheetRow) => ({getValues: () => sheetRow === 5 ? [headers] : [challenger], setValue: () => {}}),
+  };
+  context.SpreadsheetApp = {getActiveSpreadsheet: () => ({getSheetByName: () => sheet, getUrl: () => 'https://docs.google.com/spreadsheets/d/test'})};
+  context.Utilities = {DigestAlgorithm: {SHA_256: 'SHA_256'}, computeDigest: () => [0]};
+  context.fetchGreenStrongIndex_ = () => ({available: false, eligibleCount: null, byKey: {}});
+  const payload = context.buildPaperTradingPayload_('', '', 'main');
+  const strategy = payload.by_strategy.CHALLENGER_125_EXPERIMENTAL_V1;
+  assert.equal(payload.summary.total_entries, 0);
+  assert.equal(strategy.summary.total_entries, 1);
+  assert.equal(strategy.summary.wins, 1);
+  assert.equal(strategy.summary.units, 0.5);
+  assert.equal(strategy.fixed_stake_units, 0.5);
+  assert.equal(strategy.by_fenzobot_index_band['70–79'].total_entries, 1);
+  assert.equal(strategy.by_coverage_band['50–64,9%'].total_entries, 1);
+  assert.equal(strategy.by_edge_band['4–4,9%'].total_entries, 1);
+  assert.doesNotMatch(JSON.stringify(payload), /Private Player|Private Opponent|private:snapshot/);
+});

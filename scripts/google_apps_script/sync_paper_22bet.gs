@@ -25,6 +25,11 @@ const PAPER_22BET_SYNC = {
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
     '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
   ],
+  challengerTrackingHeaders: [
+    'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
+  ],
+  challengerManualStrategy: 'CHALLENGER_125_EXPERIMENTAL_V1',
+  challengerManualStakeUnits: 0.5,
 };
 
 function onOpen() {
@@ -32,6 +37,7 @@ function onOpen() {
     .createMenu('Fenzobot')
     .addItem('Sincronizar métricas PAPER 22Bet', 'syncPaperTradingToGitHub')
     .addItem('Instalar colunas GREEN_STRONG_V1', 'installGreenStrongTrackingColumns')
+    .addItem('Instalar colunas Challenger 125 · 0,5u', 'installChallenger125TrackingColumns')
     .addItem('Ativar sincronização automática', 'installPaperTradingSync')
     .addToUi();
 }
@@ -112,6 +118,22 @@ function missingTrackingHeaders_(headers) {
   return PAPER_22BET_SYNC.trackingHeaders.filter(header => headers.indexOf(header) === -1);
 }
 
+function installChallenger125TrackingColumns() {
+  const sheet = paperTradingSpreadsheet_().getSheetByName(PAPER_22BET_SYNC.sheetName);
+  if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
+  let next = headers.length;
+  PAPER_22BET_SYNC.challengerTrackingHeaders.forEach(header => {
+    if (headers.indexOf(header) === -1) {
+      sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn + next).setValue(header);
+      headers.push(header);
+      next += 1;
+    }
+  });
+  return 'Colunas Challenger 125 instaladas. São opcionais e não alteram linhas PAPER existentes.';
+}
+
 function onEdit(e) {
   if (!e || !e.range || e.range.getSheet().getName() !== PAPER_22BET_SYNC.sheetName) return;
   if (e.range.getRow() <= PAPER_22BET_SYNC.headerRow || !e.value) return;
@@ -142,10 +164,14 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
   const rows = rowCount ? sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, PAPER_22BET_SYNC.firstColumn, rowCount, width).getValues() : [];
   const activeRows = rows.filter(row => row[0] && row[1] && row[5]);
+  const tracking = trackingIndexes_(headers);
+  // O agregado principal mantém-se exclusivamente PAPER normal. O Challenger
+  // 125 manual tem universo e stake próprios, publicados abaixo por estratégia.
+  const standardRows = activeRows.filter(row => !isChallengerManualRow_(row, tracking));
   const summary = newStats_();
   const byMarket = {};
   const bySide = {};
-  activeRows.forEach(row => {
+  standardRows.forEach(row => {
     const market = row[5] === 'Vencedor' ? 'Moneyline' : String(row[5]);
     const side = String(row[7] || 'Sem perfil');
     if (!byMarket[market]) byMarket[market] = newStats_();
@@ -155,7 +181,6 @@ function buildPaperTradingPayload_(token, repository, branch) {
     addRowToStats_(bySide[side], row);
   });
 
-  const tracking = trackingIndexes_(headers);
   const green = tracking.complete ? fetchGreenStrongIndex_(token, repository, branch) : {byKey: {}, eligibleCount: null, available: false};
   const guerraStats = newStats_();
   const guerraByMarket = {};
@@ -165,7 +190,35 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const selectedSnapshotKeys = {};
   const underdogPairs = {};
   const linkage = {LINKED_EX_ANTE: 0, SNAPSHOT_NOT_FOUND: 0, NOT_GREEN_STRONG: 0, SELECTION_AFTER_START: 0, MISSING_SELECTION_TIMESTAMP: 0, UNAVAILABLE: 0};
+  const challengerStats = newStats_();
+  const challengerByMarket = {};
+  const challengerBySide = {};
+  const challengerByIndexBand = {};
+  const challengerByCoverageBand = {};
+  const challengerByEdgeBand = {};
+  const challengerValidation = {MANUAL_CHALLENGER_RECORDED: 0, MISSING_SNAPSHOT_KEY: 0, MISSING_SELECTION_TIMESTAMP: 0, INVALID_CHALLENGER_STAKE: 0};
   rows.forEach((row, offset) => {
+    if (isChallengerManualRow_(row, tracking)) {
+      const challengerStatus = validateManualChallengerSelection_(row, tracking);
+      challengerValidation[challengerStatus] = (challengerValidation[challengerStatus] || 0) + 1;
+      if (tracking.status >= 0) sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(challengerStatus);
+      if (challengerStatus !== 'MANUAL_CHALLENGER_RECORDED') return;
+      const market = row[5] === 'Vencedor' ? 'Moneyline' : String(row[5]);
+      const side = String(row[7] || 'Sem perfil');
+      const indexBand = challengerIndexBand_(row, tracking);
+      const coverageBand = challengerCoverageBand_(row, tracking);
+      const edgeBand = challengerEdgeBand_(row, tracking);
+      [[challengerByMarket, market], [challengerBySide, side], [challengerByIndexBand, indexBand], [challengerByCoverageBand, coverageBand], [challengerByEdgeBand, edgeBand]].forEach(pair => {
+        if (!pair[0][pair[1]]) pair[0][pair[1]] = newStats_();
+      });
+      addRowToStats_(challengerStats, row);
+      addRowToStats_(challengerByMarket[market], row);
+      addRowToStats_(challengerBySide[side], row);
+      addRowToStats_(challengerByIndexBand[indexBand], row);
+      addRowToStats_(challengerByCoverageBand[coverageBand], row);
+      addRowToStats_(challengerByEdgeBand[edgeBand], row);
+      return;
+    }
     if (!(row[0] && row[1] && row[5]) || !tracking.complete || String(row[tracking.strategy] || '').trim() !== 'GUERRA_SELECTION_V1') return;
     const status = validateGuerraSelection_(row, tracking, green.byKey, green.available);
     linkage[status] = (linkage[status] || 0) + 1;
@@ -218,12 +271,25 @@ function buildPaperTradingPayload_(token, repository, branch) {
       tracking.complete && green.available,
     ),
   };
+  const challengerAggregate = {
+    summary: finishStats_(challengerStats),
+    paper_entries: challengerStats.total_entries,
+    fixed_stake_units: PAPER_22BET_SYNC.challengerManualStakeUnits,
+    by_market: finishCollection_(challengerByMarket),
+    by_side: finishCollection_(challengerBySide),
+    by_fenzobot_index_band: finishCollection_(challengerByIndexBand),
+    by_coverage_band: finishCollection_(challengerByCoverageBand),
+    by_edge_band: finishCollection_(challengerByEdgeBand),
+    validation: challengerValidation,
+    status: challengerStats.total_entries ? 'AVAILABLE' : 'UNAVAILABLE',
+  };
   const fingerprintRows = tracking.complete ? activeRows.map(row => row.filter((value, index) => index !== tracking.status)) : activeRows;
   const fingerprint = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,
     semanticFingerprintMaterial_(fingerprintRows, {
       summary: finishStats_(summary), by_market: finishCollection_(byMarket),
       by_side: finishCollection_(bySide), by_strategy: strategyAggregate,
+      challenger_manual: challengerAggregate,
     }),
   ).map(byte => ('0' + (byte & 0xff).toString(16)).slice(-2)).join('');
   return {
@@ -240,6 +306,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     by_side: finishCollection_(bySide),
     by_strategy: {
       GUERRA_SELECTION_V1: strategyAggregate,
+      CHALLENGER_125_EXPERIMENTAL_V1: challengerAggregate,
     },
   };
 }
@@ -289,8 +356,51 @@ function trackingIndexes_(headers) {
     selectedAt: indexes['Selected At UTC'], reviewOdd: indexes['22Bet Moneyline Review Odd'],
     handicapLine: indexes['22Bet Handicap Games Line'],
     status: indexes['Validation Status'],
+    challengerIndex: headers.indexOf('Challenger Índice Fenzobot'),
+    challengerCoverage: headers.indexOf('Challenger Cobertura %'),
+    challengerEdge: headers.indexOf('Challenger Edge %'),
     complete: PAPER_22BET_SYNC.trackingHeaders.every(header => indexes[header] >= 0),
   };
+}
+
+function isChallengerManualRow_(row, tracking) {
+  return tracking.strategy >= 0 && String(row[tracking.strategy] || '').trim() === PAPER_22BET_SYNC.challengerManualStrategy;
+}
+
+function validateManualChallengerSelection_(row, tracking) {
+  if (!String(row[tracking.snapshot] || '').trim()) return 'MISSING_SNAPSHOT_KEY';
+  const selectedAt = new Date(row[tracking.selectedAt]);
+  if (!row[tracking.selectedAt] || Number.isNaN(selectedAt.getTime())) return 'MISSING_SELECTION_TIMESTAMP';
+  return Number(row[10]) === PAPER_22BET_SYNC.challengerManualStakeUnits
+    ? 'MANUAL_CHALLENGER_RECORDED'
+    : 'INVALID_CHALLENGER_STAKE';
+}
+
+function challengerIndexBand_(row, tracking) {
+  const index = Number(row[tracking.challengerIndex]);
+  if (!Number.isFinite(index)) return 'N/D';
+  if (index >= 90) return '90–100';
+  if (index >= 80) return '80–89';
+  if (index >= 70) return '70–79';
+  return '<70';
+}
+
+function challengerCoverageBand_(row, tracking) {
+  const raw = Number(row[tracking.challengerCoverage]);
+  const coverage = raw > 1 ? raw / 100 : raw;
+  if (!Number.isFinite(coverage)) return 'N/D';
+  if (coverage >= 0.65) return '65%+';
+  if (coverage >= 0.50) return '50–64,9%';
+  return '<50%';
+}
+
+function challengerEdgeBand_(row, tracking) {
+  const edge = Number(row[tracking.challengerEdge]);
+  if (!Number.isFinite(edge)) return 'N/D';
+  if (edge >= 5) return '5%+';
+  if (edge >= 4) return '4–4,9%';
+  if (edge >= 3) return '3–3,9%';
+  return '<3%';
 }
 
 function manualLegType_(row, tracking) {
