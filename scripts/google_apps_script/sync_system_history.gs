@@ -159,9 +159,12 @@ function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
 
 function writeSystemHistoryWorkbook_(spreadsheet, payload) {
   const summary = payload.summary || {};
+  const operational = payload.operational || {};
+  const pricedBands = (operational.fenzobot_band_summary || []).filter(row => Number(row.matches || 0) >= 5 && typeof row.break_even_pct === 'number');
+  const aboveBreakEven = pricedBands.filter(row => Number(row.margin_vs_break_even_pp || 0) >= 0).length;
   upsertSystemSheet_(spreadsheet, 'Resumo', [
     ['Fenzobot — Histórico & Aprendizagem', ''],
-    ['Fonte: snapshots canónicos e cache WTA local. Relatórios HTML repetidos não entram nas métricas.', ''],
+    ['Fonte: snapshots canónicos e cache WTA local. ATP operacional usa snapshots Fenzobot; não existe cache ATP bruta local.', ''],
     ['', ''],
     ['Indicador', 'Valor'],
     ['Snapshots guardados (brutos)', summary.raw_snapshots || 0],
@@ -171,11 +174,12 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Seleções liquidadas com índice Fenzobot', summary.settled_fenzobot_index_observations || 0],
     ['Versões HTML guardadas', summary.raw_report_html_versions || 0],
     ['Jogos WTA históricos locais', summary.historical_wta_matches || 0],
+    ['Faixas Fenzobot ≥ break-even teórico (n ≥ 5)', pricedBands.length ? aboveBreakEven + ' / ' + pricedBands.length : 'N/D'],
     ['', ''],
+    ['Leitura do break-even', 'Usa 1 / odd média decimal de cada faixa. É um limiar teórico; não é ROI, lucro, stake nem execução 22Bet.'],
     ['Regra', 'Cada partida conta uma vez: primeiro snapshot pré-jogo válido. PAPER/REAL não são misturados neste painel.'],
-  ], { titleRows: 2, headerRow: 4, widths: [40, 85], preserveCharts: true });
+  ], { titleRows: 2, headerRow: 4, widths: [44, 105], preserveCharts: true });
 
-  const operational = payload.operational || {};
   upsertSystemSheet_(spreadsheet, 'Partidas canónicas', rowsWithHeaders_(
     ['ID canónico', 'Snapshot', 'Analisado UTC', 'Início UTC', 'Tour', 'Torneio', 'Jogador A', 'Jogador B', 'Odd A', 'Odd B', 'Vencedor', 'Score', 'Fenzobot favorece', 'Índice Fenzobot', 'Faixa do índice'],
     operational.event_rows || [],
@@ -196,6 +200,17 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Faixa do índice', 'Jogos', 'Vitórias', 'Derrotas', '% acerto'], operational.fenzobot_index_band_summary || [],
     ['index_band', 'matches', 'wins', 'losses', 'win_pct'],
   ), { headerRow: 1, widths: [20, 14, 14, 14, 16], percentageColumn: 5 });
+  upsertSystemSheet_(spreadsheet, 'Operacional — odd & break-even', rowsWithHeaders_(
+    ['Faixa de odd', 'Jogos', 'Vitórias', 'Derrotas', '% acerto', 'Odd média', 'Break-even teórico', 'Margem vs break-even (p.p.)'], operational.fenzobot_band_summary || [],
+    ['odds_band', 'matches', 'wins', 'losses', 'win_pct', 'average_odd', 'break_even_pct', 'margin_vs_break_even_pp'],
+  ), { headerRow: 1, widths: [18, 12, 12, 12, 15, 14, 18, 24], percentageColumns: [5, 7], marginColumn: 8 });
+  upsertSystemSheet_(spreadsheet, 'Operacional — índice × odd', rowsWithHeaders_(
+    ['Faixa do índice', 'Faixa de odd', 'Jogos', 'Vitórias', 'Derrotas', '% acerto', 'Odd média', 'Break-even teórico', 'Margem vs break-even (p.p.)'], operational.fenzobot_index_odds_summary || [],
+    ['index_band', 'odds_band', 'matches', 'wins', 'losses', 'win_pct', 'average_odd', 'break_even_pct', 'margin_vs_break_even_pp'],
+  ), { headerRow: 1, widths: [18, 18, 12, 12, 12, 15, 14, 18, 24], percentageColumns: [6, 8], marginColumn: 9 });
+  const byTour = operational.by_tour || {};
+  writeTourOperationalSheets_(spreadsheet, 'ATP', byTour.ATP || {});
+  writeTourOperationalSheets_(spreadsheet, 'WTA', byTour.WTA || {});
 
   const wta = payload.historical_wta || {};
   upsertSystemSheet_(spreadsheet, 'WTA histórico - jogador odd', rowsWithHeaders_(
@@ -203,7 +218,7 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['player', 'odds_band', 'role', 'matches', 'wins', 'losses', 'win_pct'],
   ), { headerRow: 1, widths: [28, 16, 14, 12, 12, 12, 14], percentageColumn: 7 });
   upsertSystemSheet_(spreadsheet, 'WTA histórico — handicap', rowsWithHeaders_(
-    ['Jogadora', 'Papel', 'Linha referência', 'Jogos', 'Cobre', 'Devolve', 'Falha', '% cobre'], wta.handicap_reference || [],
+    ['Jogadora', 'Papel', 'Linha referência BO3 (não lucro)', 'Jogos', 'Cobre', 'Devolve', 'Falha', '% cobre'], wta.handicap_reference || [],
     ['player', 'role', 'reference_line', 'matches', 'covers', 'pushes', 'fails', 'cover_pct'],
   ), { headerRow: 1, widths: [28, 14, 18, 12, 12, 12, 12, 14], percentageColumn: 8 });
   upsertSystemSheet_(spreadsheet, 'WTA histórico — recuperação', rowsWithHeaders_(
@@ -223,12 +238,26 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
     ['Tema', 'Regra'],
     ['Deduplicação', 'Uma partida entra uma vez: primeiro snapshot pré-jogo válido. HTMLs repetidos não são observações analíticas.'],
     ['Operacional', 'Snapshots canónicos já liquidados; os agrupamentos por odd e por faixa de índice são observacionais, não backtest nem carteira PAPER. O índice não é probabilidade.'],
+    ['ATP operacional', 'Não existe cache ATP bruta local neste projeto. As abas ATP operacional usam apenas snapshots canónicos já registados pelo Fenzobot; não apresentam handicap, recuperação ou tiebreak ATP como se fossem histórico completo.'],
     ['Histórico WTA', 'Resultados e odds da cache local tennis-data.co.uk. Não se afirma cobertura ATP onde não existe base bruta local.'],
-    ['Handicaps', 'Cobertura contra linha interna BO3 de referência, inferida da faixa de Moneyline; não é linha real de bookmaker.'],
+    ['Handicaps', 'O número -4.5, +2 etc. é a linha interna BO3 de referência, não lucro, retorno ou linha real de bookmaker. Os rankings são ordenados por % cobre e amostra.'],
+    ['Break-even', 'Taxa teórica 1 / odd decimal média dos snapshots canónicos da faixa. Não incorpora stake, vigor, limites ou execução numa casa de apostas.'],
     ['Recuperação', 'Vitórias após perder o 1.º set; ainda não existe estatística ponto-a-ponto de breaks.'],
     ['PAPER / REAL', 'Permanecem separados e devem ser avaliados nos respetivos registos financeiros.'],
   ], { headerRow: 1, widths: [28, 110] });
   writeFenzobotCharts_(spreadsheet, operational.fenzobot_band_summary || [], operational.fenzobot_index_band_summary || []);
+}
+
+function writeTourOperationalSheets_(spreadsheet, tour, series) {
+  const label = tour + ' operacional';
+  upsertSystemSheet_(spreadsheet, label + ' — Fenzobot odd', rowsWithHeaders_(
+    ['Seleção Fenzobot', 'Faixa de odd', 'Papel', 'Jogos', 'Vitórias', 'Derrotas', '% acerto'], series.fenzobot_odds || [],
+    ['player', 'odds_band', 'role', 'matches', 'wins', 'losses', 'win_pct'],
+  ), { headerRow: 1, widths: [28, 16, 14, 12, 12, 12, 14], percentageColumn: 7 });
+  upsertSystemSheet_(spreadsheet, label + ' — índice × odd', rowsWithHeaders_(
+    ['Faixa do índice', 'Faixa de odd', 'Jogos', 'Vitórias', 'Derrotas', '% acerto', 'Odd média', 'Break-even teórico', 'Margem vs break-even (p.p.)'], series.fenzobot_index_odds_summary || [],
+    ['index_band', 'odds_band', 'matches', 'wins', 'losses', 'win_pct', 'average_odd', 'break_even_pct', 'margin_vs_break_even_pp'],
+  ), { headerRow: 1, widths: [18, 18, 12, 12, 12, 15, 14, 18, 24], percentageColumns: [6, 8], marginColumn: 9 });
 }
 
 function writeRankingsSheet_(spreadsheet, rankings) {
@@ -242,13 +271,14 @@ function writeRankingsSheet_(spreadsheet, rankings) {
   sheet.clearConditionalFormatRules();
   sheet.getCharts().forEach(chart => sheet.removeChart(chart));
   sheet.getRange(1, 1).setValue('Rankings de aprendizagem').setFontSize(16).setFontWeight('bold').setFontColor('#17365D');
-  sheet.getRange(2, 1).setValue('Top 10 e Bottom 10 por métrica. WTA inclui apenas jogadoras com partidas no cache dos últimos 12 meses; são leituras factuais, não sinais.').setFontSize(10).setFontStyle('italic').setFontColor('#5B6573');
+  sheet.getRange(2, 1).setValue('Top 10 e Bottom 10 por métrica. Em handicap, a linha é referência interna BO3 e a métrica é % cobre — não lucro. WTA inclui apenas jogadoras ativas no cache dos últimos 12 meses.').setFontSize(10).setFontStyle('italic').setFontColor('#5B6573');
   let row = 5;
   Object.keys(rankings).forEach(category => {
     const group = rankings[category] || {};
     sheet.getRange(row, 1, 1, 7).merge().setValue(category + ' · amostra mínima ' + (group.minimum_sample || '—')).setBackground('#0F766E').setFontColor('#FFFFFF').setFontWeight('bold');
     row += 1;
-    sheet.getRange(row, 1, 1, 7).setValues([['Top 10', 'Amostra', 'Métrica', '', group.bottom_title || 'Bottom 10', 'Amostra', 'Métrica']]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center');
+    const metricLabel = group.metric_label || 'Métrica';
+    sheet.getRange(row, 1, 1, 7).setValues([['Top 10', 'Amostra', metricLabel, '', group.bottom_title || 'Bottom 10', 'Amostra', metricLabel]]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center');
     const strongest = Array.isArray(group.strongest) ? group.strongest : [];
     const weakest = Array.isArray(group.weakest) ? group.weakest : [];
     const count = Math.max(strongest.length, weakest.length, 1);
@@ -277,32 +307,33 @@ function writeRankingsSheet_(spreadsheet, rankings) {
 function writeFenzobotCharts_(spreadsheet, rows, indexRows) {
   const summary = spreadsheet.getSheetByName('Resumo');
   const data = spreadsheet.getSheetByName('Dados gráficos') || spreadsheet.insertSheet('Dados gráficos');
-  const eligible = rows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number');
+  const eligible = rows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number' && typeof row.break_even_pct === 'number');
   const existingFilter = data.getFilter();
   if (existingFilter) existingFilter.remove();
   data.getRange(1, 1, data.getMaxRows(), data.getMaxColumns()).breakApart();
   data.clear({ contentsOnly: false });
   const eligibleIndex = indexRows.filter(row => Number(row.matches || 0) >= 5 && typeof row.win_pct === 'number');
   const height = Math.max(eligible.length, eligibleIndex.length, 1) + 1;
-  data.getRange(1, 1, height, 7).setValues([
-    ['Faixa de odd', 'Acerto Fenzobot', 'Decisões liquidadas', '', 'Faixa do índice', 'Acerto Fenzobot', 'Decisões liquidadas'],
+  data.getRange(1, 1, height, 8).setValues([
+    ['Faixa de odd', 'Acerto Fenzobot', 'Break-even teórico', 'Decisões liquidadas', '', 'Faixa do índice', 'Acerto Fenzobot', 'Decisões liquidadas'],
   ].concat(Array.from({ length: height - 1 }, (_, index) => {
     const odds = eligible[index] || {};
     const score = eligibleIndex[index] || {};
-    return [odds.odds_band || '', typeof odds.win_pct === 'number' ? odds.win_pct / 100 : '', odds.matches || '', '', score.index_band || '', typeof score.win_pct === 'number' ? score.win_pct / 100 : '', score.matches || ''];
+    return [odds.odds_band || '', typeof odds.win_pct === 'number' ? odds.win_pct / 100 : '', typeof odds.break_even_pct === 'number' ? odds.break_even_pct / 100 : '', odds.matches || '', '', score.index_band || '', typeof score.win_pct === 'number' ? score.win_pct / 100 : '', score.matches || ''];
   })));
   data.getRange(2, 2, Math.max(eligible.length, 1), 1).setNumberFormat('0.0%');
-  data.getRange(2, 6, Math.max(eligibleIndex.length, 1), 1).setNumberFormat('0.0%');
+  data.getRange(2, 3, Math.max(eligible.length, 1), 1).setNumberFormat('0.0%');
+  data.getRange(2, 7, Math.max(eligibleIndex.length, 1), 1).setNumberFormat('0.0%');
   data.hideSheet();
   summary.getCharts().forEach(chart => summary.removeChart(chart));
   if (eligible.length) {
     const chart = summary.newChart()
       .asColumnChart()
-      .addRange(data.getRange(1, 1, eligible.length + 1, 2))
+      .addRange(data.getRange(1, 1, eligible.length + 1, 3))
       .setNumHeaders(1)
       .setPosition(4, 4, 0, 0)
-      .setOption('title', 'Acerto Fenzobot por faixa de odd (n ≥ 5)')
-      .setOption('legend', { position: 'none' })
+      .setOption('title', 'Acerto Fenzobot vs break-even por faixa de odd (n ≥ 5)')
+      .setOption('legend', { position: 'bottom' })
       .setOption('vAxis', { format: 'percent', viewWindow: { min: 0, max: 1 } })
       .build();
     summary.insertChart(chart);
@@ -312,7 +343,7 @@ function writeFenzobotCharts_(spreadsheet, rows, indexRows) {
   if (eligibleIndex.length) {
     const chart = summary.newChart()
       .asColumnChart()
-      .addRange(data.getRange(1, 5, eligibleIndex.length + 1, 2))
+      .addRange(data.getRange(1, 6, eligibleIndex.length + 1, 2))
       .setNumHeaders(1)
       .setPosition(21, 4, 0, 0)
       .setOption('title', 'Acerto Fenzobot por faixa de índice (n ≥ 5)')
@@ -353,10 +384,25 @@ function upsertSystemSheet_(spreadsheet, name, values, options) {
   if (values.length > headerRow) {
     sheet.getRange(headerRow + 1, 1, values.length - headerRow, values[0].length).setVerticalAlignment('top').setWrap(true);
   }
-  if (options.percentageColumn && values.length > headerRow) {
-    const range = sheet.getRange(headerRow + 1, options.percentageColumn, values.length - headerRow, 1);
-    const raw = range.getValues();
-    range.setValues(raw.map(row => [typeof row[0] === 'number' ? row[0] / 100 : row[0]])).setNumberFormat('0.0%');
+  const percentageColumns = options.percentageColumns || (options.percentageColumn ? [options.percentageColumn] : []);
+  if (values.length > headerRow) {
+    percentageColumns.forEach(column => {
+      const range = sheet.getRange(headerRow + 1, column, values.length - headerRow, 1);
+      const raw = range.getValues();
+      range.setValues(raw.map(row => [typeof row[0] === 'number' ? row[0] / 100 : row[0]])).setNumberFormat('0.0%');
+    });
+    if (options.marginColumn) {
+      const range = sheet.getRange(headerRow + 1, options.marginColumn, values.length - headerRow, 1);
+      const raw = range.getValues();
+      range.setNumberFormat('0.0 "p.p."');
+      raw.forEach((row, index) => {
+        const cell = range.getCell(index + 1, 1);
+        if (typeof row[0] !== 'number') return;
+        cell.setBackground(row[0] >= 0 ? '#E8F5E9' : '#FDECEC');
+        cell.setFontColor(row[0] >= 0 ? '#166534' : '#B42318');
+        cell.setFontWeight('bold');
+      });
+    }
   }
   sheet.getRange(headerRow, 1, values.length - headerRow + 1, values[0].length).createFilter();
 }

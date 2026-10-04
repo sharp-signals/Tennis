@@ -120815,15 +120815,5613 @@
       }
     ]
   },
-  "input_fingerprint_sha256": "fa61b1bef50a77e8b45960080f1dfa666eb1ad1e3b7f006319079b5c48dc92fc",
+  "input_fingerprint_sha256": "dcab8b9fedb9accf72a4373e148546e98d9d0dd4f663b24be4a3b6e6c2469d5f",
   "methodology": {
+    "break_even": "theoretical 1 / average decimal odds per canonical snapshot band; not ROI, stake, vig or 22Bet execution",
     "canonical_snapshot_rule": "first_valid_pre_match_snapshot_per_event",
     "fenzobot_index_learning": "settled canonical observations grouped by the selected side's 50–100 evidence-index band; descriptive only, not a probability or model tuning",
     "handicap_reference": "BO3 internal reference line; not a bookmaker handicap settlement",
+    "historical_atp_source": "unavailable; ATP sheets use canonical Fenzobot snapshots only",
     "historical_wta_source": "local tennis-data.co.uk cache only",
-    "raw_report_html_excluded_from_metrics": true
+    "raw_report_html_excluded_from_metrics": true,
+    "workbook_layout_version": 2
   },
   "operational": {
+    "by_tour": {
+      "ATP": {
+        "fenzobot_band_summary": [
+          {
+            "average_odd": 1.139,
+            "break_even_pct": 87.8,
+            "losses": 3,
+            "margin_vs_break_even_pp": -4.5,
+            "matches": 18,
+            "odds_band": "1.01–1.20",
+            "win_pct": 83.3,
+            "wins": 15
+          },
+          {
+            "average_odd": 1.244,
+            "break_even_pct": 80.4,
+            "losses": 6,
+            "margin_vs_break_even_pp": 0.8,
+            "matches": 32,
+            "odds_band": "1.21–1.30",
+            "win_pct": 81.2,
+            "wins": 26
+          },
+          {
+            "average_odd": 1.359,
+            "break_even_pct": 73.6,
+            "losses": 9,
+            "margin_vs_break_even_pp": -21.0,
+            "matches": 19,
+            "odds_band": "1.31–1.40",
+            "win_pct": 52.6,
+            "wins": 10
+          },
+          {
+            "average_odd": 1.465,
+            "break_even_pct": 68.3,
+            "losses": 8,
+            "margin_vs_break_even_pp": -15.4,
+            "matches": 17,
+            "odds_band": "1.41–1.50",
+            "win_pct": 52.9,
+            "wins": 9
+          },
+          {
+            "average_odd": 1.57,
+            "break_even_pct": 63.7,
+            "losses": 9,
+            "margin_vs_break_even_pp": -23.7,
+            "matches": 15,
+            "odds_band": "1.51–1.60",
+            "win_pct": 40.0,
+            "wins": 6
+          },
+          {
+            "average_odd": 1.665,
+            "break_even_pct": 60.1,
+            "losses": 6,
+            "margin_vs_break_even_pp": 6.6,
+            "matches": 18,
+            "odds_band": "1.61–1.75",
+            "win_pct": 66.7,
+            "wins": 12
+          },
+          {
+            "average_odd": 1.867,
+            "break_even_pct": 53.6,
+            "losses": 7,
+            "margin_vs_break_even_pp": 23.1,
+            "matches": 30,
+            "odds_band": "1.76–2.00",
+            "win_pct": 76.7,
+            "wins": 23
+          },
+          {
+            "average_odd": 2.146,
+            "break_even_pct": 46.6,
+            "losses": 5,
+            "margin_vs_break_even_pp": 3.4,
+            "matches": 10,
+            "odds_band": "2.01–2.30",
+            "win_pct": 50.0,
+            "wins": 5
+          },
+          {
+            "average_odd": 2.471,
+            "break_even_pct": 40.5,
+            "losses": 9,
+            "margin_vs_break_even_pp": -30.5,
+            "matches": 10,
+            "odds_band": "2.31–2.80",
+            "win_pct": 10.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 2.972,
+            "break_even_pct": 33.7,
+            "losses": 4,
+            "margin_vs_break_even_pp": -0.4,
+            "matches": 6,
+            "odds_band": "2.81–3.30",
+            "win_pct": 33.3,
+            "wins": 2
+          },
+          {
+            "average_odd": 5.4,
+            "break_even_pct": 18.5,
+            "losses": 1,
+            "margin_vs_break_even_pp": 31.5,
+            "matches": 2,
+            "odds_band": "3.31+",
+            "win_pct": 50.0,
+            "wins": 1
+          }
+        ],
+        "fenzobot_index_band_summary": [
+          {
+            "index_band": "50–59",
+            "losses": 10,
+            "matches": 30,
+            "win_pct": 66.7,
+            "wins": 20
+          },
+          {
+            "index_band": "60–69",
+            "losses": 18,
+            "matches": 43,
+            "win_pct": 58.1,
+            "wins": 25
+          },
+          {
+            "index_band": "70–79",
+            "losses": 19,
+            "matches": 51,
+            "win_pct": 62.7,
+            "wins": 32
+          },
+          {
+            "index_band": "80–89",
+            "losses": 16,
+            "matches": 39,
+            "win_pct": 59.0,
+            "wins": 23
+          },
+          {
+            "index_band": "90–100",
+            "losses": 9,
+            "matches": 29,
+            "win_pct": 69.0,
+            "wins": 20
+          }
+        ],
+        "fenzobot_index_odds_summary": [
+          {
+            "average_odd": 1.24,
+            "break_even_pct": 80.6,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 19.4,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.37,
+            "break_even_pct": 73.0,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 27.0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.456,
+            "break_even_pct": 68.7,
+            "index_band": "50–59",
+            "losses": 1,
+            "margin_vs_break_even_pp": 6.3,
+            "matches": 4,
+            "odds_band": "1.41–1.50",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 1.54,
+            "break_even_pct": 64.9,
+            "index_band": "50–59",
+            "losses": 2,
+            "margin_vs_break_even_pp": -64.9,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.691,
+            "break_even_pct": 59.1,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 40.9,
+            "matches": 4,
+            "odds_band": "1.61–1.75",
+            "win_pct": 100.0,
+            "wins": 4
+          },
+          {
+            "average_odd": 1.882,
+            "break_even_pct": 53.1,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 46.9,
+            "matches": 6,
+            "odds_band": "1.76–2.00",
+            "win_pct": 100.0,
+            "wins": 6
+          },
+          {
+            "average_odd": 2.163,
+            "break_even_pct": 46.2,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 53.8,
+            "matches": 3,
+            "odds_band": "2.01–2.30",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 2.562,
+            "break_even_pct": 39.0,
+            "index_band": "50–59",
+            "losses": 4,
+            "margin_vs_break_even_pp": -19.0,
+            "matches": 5,
+            "odds_band": "2.31–2.80",
+            "win_pct": 20.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 2.94,
+            "break_even_pct": 34.0,
+            "index_band": "50–59",
+            "losses": 3,
+            "margin_vs_break_even_pp": -34.0,
+            "matches": 3,
+            "odds_band": "2.81–3.30",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.163,
+            "break_even_pct": 86.0,
+            "index_band": "60–69",
+            "losses": 0,
+            "margin_vs_break_even_pp": 14.0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.234,
+            "break_even_pct": 81.0,
+            "index_band": "60–69",
+            "losses": 3,
+            "margin_vs_break_even_pp": -18.5,
+            "matches": 8,
+            "odds_band": "1.21–1.30",
+            "win_pct": 62.5,
+            "wins": 5
+          },
+          {
+            "average_odd": 1.384,
+            "break_even_pct": 72.3,
+            "index_band": "60–69",
+            "losses": 3,
+            "margin_vs_break_even_pp": -32.3,
+            "matches": 5,
+            "odds_band": "1.31–1.40",
+            "win_pct": 40.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.485,
+            "break_even_pct": 67.3,
+            "index_band": "60–69",
+            "losses": 1,
+            "margin_vs_break_even_pp": -17.3,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.55,
+            "break_even_pct": 64.5,
+            "index_band": "60–69",
+            "losses": 0,
+            "margin_vs_break_even_pp": 35.5,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.674,
+            "break_even_pct": 59.7,
+            "index_band": "60–69",
+            "losses": 3,
+            "margin_vs_break_even_pp": -9.7,
+            "matches": 6,
+            "odds_band": "1.61–1.75",
+            "win_pct": 50.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 1.911,
+            "break_even_pct": 52.3,
+            "index_band": "60–69",
+            "losses": 1,
+            "margin_vs_break_even_pp": 37.7,
+            "matches": 10,
+            "odds_band": "1.76–2.00",
+            "win_pct": 90.0,
+            "wins": 9
+          },
+          {
+            "average_odd": 2.185,
+            "break_even_pct": 45.8,
+            "index_band": "60–69",
+            "losses": 2,
+            "margin_vs_break_even_pp": -45.8,
+            "matches": 2,
+            "odds_band": "2.01–2.30",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 2.357,
+            "break_even_pct": 42.4,
+            "index_band": "60–69",
+            "losses": 3,
+            "margin_vs_break_even_pp": -42.4,
+            "matches": 3,
+            "odds_band": "2.31–2.80",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 2.81,
+            "break_even_pct": 35.6,
+            "index_band": "60–69",
+            "losses": 1,
+            "margin_vs_break_even_pp": -35.6,
+            "matches": 1,
+            "odds_band": "2.81–3.30",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 3.9,
+            "break_even_pct": 25.6,
+            "index_band": "60–69",
+            "losses": 1,
+            "margin_vs_break_even_pp": -25.6,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.122,
+            "break_even_pct": 89.1,
+            "index_band": "70–79",
+            "losses": 1,
+            "margin_vs_break_even_pp": -89.1,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.248,
+            "break_even_pct": 80.1,
+            "index_band": "70–79",
+            "losses": 1,
+            "margin_vs_break_even_pp": 11.6,
+            "matches": 12,
+            "odds_band": "1.21–1.30",
+            "win_pct": 91.7,
+            "wins": 11
+          },
+          {
+            "average_odd": 1.37,
+            "break_even_pct": 73.0,
+            "index_band": "70–79",
+            "losses": 0,
+            "margin_vs_break_even_pp": 27.0,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.472,
+            "break_even_pct": 67.9,
+            "index_band": "70–79",
+            "losses": 3,
+            "margin_vs_break_even_pp": -42.9,
+            "matches": 4,
+            "odds_band": "1.41–1.50",
+            "win_pct": 25.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.57,
+            "break_even_pct": 63.7,
+            "index_band": "70–79",
+            "losses": 6,
+            "margin_vs_break_even_pp": -30.4,
+            "matches": 9,
+            "odds_band": "1.51–1.60",
+            "win_pct": 33.3,
+            "wins": 3
+          },
+          {
+            "average_odd": 1.66,
+            "break_even_pct": 60.2,
+            "index_band": "70–79",
+            "losses": 1,
+            "margin_vs_break_even_pp": 19.8,
+            "matches": 5,
+            "odds_band": "1.61–1.75",
+            "win_pct": 80.0,
+            "wins": 4
+          },
+          {
+            "average_odd": 1.82,
+            "break_even_pct": 54.9,
+            "index_band": "70–79",
+            "losses": 4,
+            "margin_vs_break_even_pp": 11.8,
+            "matches": 12,
+            "odds_band": "1.76–2.00",
+            "win_pct": 66.7,
+            "wins": 8
+          },
+          {
+            "average_odd": 2.105,
+            "break_even_pct": 47.5,
+            "index_band": "70–79",
+            "losses": 1,
+            "margin_vs_break_even_pp": 2.5,
+            "matches": 2,
+            "odds_band": "2.01–2.30",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 2.43,
+            "break_even_pct": 41.2,
+            "index_band": "70–79",
+            "losses": 1,
+            "margin_vs_break_even_pp": -41.2,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.163,
+            "break_even_pct": 86.0,
+            "index_band": "80–89",
+            "losses": 0,
+            "margin_vs_break_even_pp": 14.0,
+            "matches": 10,
+            "odds_band": "1.01–1.20",
+            "win_pct": 100.0,
+            "wins": 10
+          },
+          {
+            "average_odd": 1.24,
+            "break_even_pct": 80.6,
+            "index_band": "80–89",
+            "losses": 2,
+            "margin_vs_break_even_pp": -47.3,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.344,
+            "break_even_pct": 74.4,
+            "index_band": "80–89",
+            "losses": 4,
+            "margin_vs_break_even_pp": -31.5,
+            "matches": 7,
+            "odds_band": "1.31–1.40",
+            "win_pct": 42.9,
+            "wins": 3
+          },
+          {
+            "average_odd": 1.462,
+            "break_even_pct": 68.4,
+            "index_band": "80–89",
+            "losses": 3,
+            "margin_vs_break_even_pp": -18.4,
+            "matches": 6,
+            "odds_band": "1.41–1.50",
+            "win_pct": 50.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 1.597,
+            "break_even_pct": 62.6,
+            "index_band": "80–89",
+            "losses": 1,
+            "margin_vs_break_even_pp": 4.1,
+            "matches": 3,
+            "odds_band": "1.51–1.60",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.61,
+            "break_even_pct": 62.1,
+            "index_band": "80–89",
+            "losses": 0,
+            "margin_vs_break_even_pp": 37.9,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.97,
+            "break_even_pct": 50.8,
+            "index_band": "80–89",
+            "losses": 1,
+            "margin_vs_break_even_pp": -50.8,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 2.13,
+            "break_even_pct": 46.9,
+            "index_band": "80–89",
+            "losses": 2,
+            "margin_vs_break_even_pp": -13.6,
+            "matches": 3,
+            "odds_band": "2.01–2.30",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "average_odd": 2.4,
+            "break_even_pct": 41.7,
+            "index_band": "80–89",
+            "losses": 1,
+            "margin_vs_break_even_pp": -41.7,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.098,
+            "break_even_pct": 91.1,
+            "index_band": "90–100",
+            "losses": 2,
+            "margin_vs_break_even_pp": -24.4,
+            "matches": 6,
+            "odds_band": "1.01–1.20",
+            "win_pct": 66.7,
+            "wins": 4
+          },
+          {
+            "average_odd": 1.249,
+            "break_even_pct": 80.1,
+            "index_band": "90–100",
+            "losses": 0,
+            "margin_vs_break_even_pp": 19.9,
+            "matches": 8,
+            "odds_band": "1.21–1.30",
+            "win_pct": 100.0,
+            "wins": 8
+          },
+          {
+            "average_odd": 1.348,
+            "break_even_pct": 74.2,
+            "index_band": "90–100",
+            "losses": 2,
+            "margin_vs_break_even_pp": -24.2,
+            "matches": 4,
+            "odds_band": "1.31–1.40",
+            "win_pct": 50.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.44,
+            "break_even_pct": 69.4,
+            "index_band": "90–100",
+            "losses": 0,
+            "margin_vs_break_even_pp": 30.6,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.627,
+            "break_even_pct": 61.5,
+            "index_band": "90–100",
+            "losses": 2,
+            "margin_vs_break_even_pp": -61.5,
+            "matches": 2,
+            "odds_band": "1.61–1.75",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.81,
+            "break_even_pct": 55.2,
+            "index_band": "90–100",
+            "losses": 1,
+            "margin_vs_break_even_pp": -55.2,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 3.1,
+            "break_even_pct": 32.3,
+            "index_band": "90–100",
+            "losses": 0,
+            "margin_vs_break_even_pp": 67.7,
+            "matches": 2,
+            "odds_band": "2.81–3.30",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 6.9,
+            "break_even_pct": 14.5,
+            "index_band": "90–100",
+            "losses": 0,
+            "margin_vs_break_even_pp": 85.5,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "win_pct": 100.0,
+            "wins": 1
+          }
+        ],
+        "fenzobot_odds": [
+          {
+            "losses": 0,
+            "matches": 4,
+            "odds_band": "1.76–2.00",
+            "player": "Frances Tiafoe",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 4
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "player": "Alex De Minaur",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.61–1.75",
+            "player": "Arthur Fils",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.01–1.20",
+            "player": "Daniil Medvedev",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "player": "Felix Auger Aliassime",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 2,
+            "matches": 3,
+            "odds_band": "1.76–2.00",
+            "player": "Flavio Cobolli",
+            "role": "favorito",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.76–2.00",
+            "player": "Jaime Faria",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "player": "Jakub Mensik",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 3,
+            "matches": 3,
+            "odds_band": "1.51–1.60",
+            "player": "Learner Tien",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "player": "Rafael Jodar",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 3,
+            "matches": 3,
+            "odds_band": "1.31–1.40",
+            "player": "Rafael Jodar",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 3,
+            "odds_band": "1.31–1.40",
+            "player": "Stefanos Tsitsipas",
+            "role": "favorito",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "losses": 2,
+            "matches": 3,
+            "odds_band": "1.41–1.50",
+            "player": "Taylor Fritz",
+            "role": "favorito",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.01–1.20",
+            "player": "Tommy Paul",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "sem faixa",
+            "player": "Yibing Wu",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "player": "Alex Michelsen",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.01–1.20",
+            "player": "Alexander Zverev",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "player": "Alexander Zverev",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "2.81–3.30",
+            "player": "Alexandre Muller",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.61–1.75",
+            "player": "Arthur Gea",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.21–1.30",
+            "player": "Ben Shelton",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "2.31–2.80",
+            "player": "Billy Harris",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.21–1.30",
+            "player": "Carlos Alcaraz",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "2.31–2.80",
+            "player": "Daniel Merida Aguilar",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "player": "Daniil Medvedev",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Frances Tiafoe",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.76–2.00",
+            "player": "Francesco Passaro",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "odds_band": "1.21–1.30",
+            "player": "Jacob Fearnley",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "player": "Jakub Mensik",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "2.01–2.30",
+            "player": "James Duckworth",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "player": "Lorenzo Musetti",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "2.81–3.30",
+            "player": "Michael Antonius",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "player": "Nicolai Budkov Kjaer",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.21–1.30",
+            "player": "Taylor Fritz",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.76–2.00",
+            "player": "Thiago Agustin Tirante",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.21–1.30",
+            "player": "Tommy Paul",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.76–2.00",
+            "player": "Vilius Gaubas",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Adolfo Daniel Vallejo",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Adrian Mannarino",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Alejandro Tabilo",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Alejandro Tabilo",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Alex De Minaur",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Alexander Blockx",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Alexander Blockx",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Alexander Zverev",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Andre Ilagan",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Andrea Pellegrino",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Andrey Rublev",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Andrey Rublev",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Andrey Rublev",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Arthur Fery",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Arthur Fils",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Arthur Fils",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Arthur Fils",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Arthur Fils",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Arthur Gea",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Arthur Gea",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Arthur Gea",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Arthur Rinderknech",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Arthur Rinderknech",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Ben Shelton",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Ben Shelton",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.81–3.30",
+            "player": "Bernard Tomic",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Botic Van De Zandschulp",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Braden Shick",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Brandon Nakashima",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Brandon Nakashima",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Bu Yunchaokete",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Carlos Alcaraz",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Chak Lam Coleman Wong",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Dalibor Svrcina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Dalibor Svrcina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Daniel Merida Aguilar",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Daniel Milavsky",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Daniil Medvedev",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Dino Prizmic",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Felix Auger Aliassime",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Felix Auger Aliassime",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Frances Tiafoe",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Frances Tiafoe",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Frederico Ferreira Silva",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Gauthier Onclin",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Grigor Dimitrov",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Grigor Dimitrov",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Guy Den Ouden",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Henri Squire",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Henrique Rocha",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "player": "Hugo Dellien",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Hugo Gaston",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Ignacio Buse",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Ignacio Buse",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Ignacio Buse",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Ignacio Buse",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Jacob Fearnley",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Jaime Faria",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Jan-Lennard Struff",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Jerome Kym",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Jiri Lehecka",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Joao Fonseca",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Juan Manuel Cerundolo",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Jurij Rodionov",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Keegan Smith",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.81–3.30",
+            "player": "Lautaro Midon",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Learner Tien",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Learner Tien",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Learner Tien",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Liam Broady",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Lorenzo Musetti",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Lorenzo Musetti",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Luca Nardi",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Luciano Darderi",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Luciano Darderi",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Mackenzie Mcdonald",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Mariano Navone",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Mark Lajal",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Matteo Berrettini",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Nicolai Budkov Kjaer",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Nishesh Basavareddy",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Novak Djokovic",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Nuno Borges",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Pablo Llamas Ruiz",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Pedro Martinez Portero",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Quentin Halys",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Rafael Jodar",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Rinky Hijikata",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Sebastian Baez",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "player": "Sebastian Gorzny",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Taro Daniel",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Toby Samuel",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Toby Samuel",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Tomas Barrios Vera",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Tomas Barrios Vera",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Tomas Machac",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Tristan Schoolkate",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Tristan Schoolkate",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Ugo Humbert",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Valentin Vacherot",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Vilius Gaubas",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Zizou Bergs",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          }
+        ],
+        "fenzobot_player_summary": [
+          {
+            "losses": 0,
+            "matches": 6,
+            "player": "Arthur Fils",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 6
+          },
+          {
+            "losses": 3,
+            "matches": 6,
+            "player": "Daniil Medvedev",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 3
+          },
+          {
+            "losses": 3,
+            "matches": 6,
+            "player": "Learner Tien",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 3
+          },
+          {
+            "losses": 3,
+            "matches": 6,
+            "player": "Rafael Jodar",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 5,
+            "player": "Felix Auger Aliassime",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 5
+          },
+          {
+            "losses": 2,
+            "matches": 5,
+            "player": "Jakub Mensik",
+            "role": "favorito",
+            "win_pct": 60.0,
+            "wins": 3
+          },
+          {
+            "losses": 2,
+            "matches": 5,
+            "player": "Taylor Fritz",
+            "role": "favorito",
+            "win_pct": 60.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 5,
+            "player": "Tommy Paul",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 5
+          },
+          {
+            "losses": 2,
+            "matches": 4,
+            "player": "Alexander Zverev",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 4,
+            "player": "Arthur Gea",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 4,
+            "player": "Frances Tiafoe",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 4
+          },
+          {
+            "losses": 0,
+            "matches": 4,
+            "player": "Lorenzo Musetti",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 4
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "player": "Alex De Minaur",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 2,
+            "matches": 3,
+            "player": "Andrey Rublev",
+            "role": "favorito",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 3,
+            "player": "Ben Shelton",
+            "role": "favorito",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 3,
+            "player": "Flavio Cobolli",
+            "role": "favorito",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "player": "Jaime Faria",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 2,
+            "matches": 3,
+            "player": "Stefanos Tsitsipas",
+            "role": "favorito",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "player": "Yibing Wu",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Alex Michelsen",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Alexandre Muller",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Billy Harris",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Brandon Nakashima",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Carlos Alcaraz",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Dalibor Svrcina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Daniel Merida Aguilar",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Frances Tiafoe",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Frances Tiafoe",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Francesco Passaro",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "player": "Grigor Dimitrov",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "player": "Ignacio Buse",
+            "role": "underdog",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "player": "Jacob Fearnley",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "James Duckworth",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Michael Antonius",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Nicolai Budkov Kjaer",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Thiago Agustin Tirante",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Vilius Gaubas",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Adolfo Daniel Vallejo",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Adrian Mannarino",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Alejandro Tabilo",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Alejandro Tabilo",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Alex De Minaur",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Alexander Blockx",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Alexander Blockx",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Alexander Zverev",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Andre Ilagan",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Andrea Pellegrino",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Arthur Fery",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Arthur Fils",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Arthur Gea",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Arthur Rinderknech",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Arthur Rinderknech",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Ben Shelton",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Bernard Tomic",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Botic Van De Zandschulp",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Braden Shick",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Bu Yunchaokete",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Carlos Alcaraz",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Chak Lam Coleman Wong",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Daniel Merida Aguilar",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Daniel Milavsky",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Dino Prizmic",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Frederico Ferreira Silva",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Gauthier Onclin",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Guy Den Ouden",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Henri Squire",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Henrique Rocha",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Hugo Dellien",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Hugo Gaston",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Ignacio Buse",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Ignacio Buse",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Jacob Fearnley",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Jaime Faria",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Jan-Lennard Struff",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Jerome Kym",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Jiri Lehecka",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Joao Fonseca",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Juan Manuel Cerundolo",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Jurij Rodionov",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Keegan Smith",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Lautaro Midon",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Liam Broady",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Luca Nardi",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Luciano Darderi",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Luciano Darderi",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Mackenzie Mcdonald",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Mariano Navone",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Mark Lajal",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Matteo Berrettini",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Nicolai Budkov Kjaer",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Nishesh Basavareddy",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Novak Djokovic",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Nuno Borges",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Pablo Llamas Ruiz",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Pedro Martinez Portero",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Quentin Halys",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Rafael Jodar",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Rinky Hijikata",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Sebastian Baez",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Sebastian Gorzny",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Taro Daniel",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Toby Samuel",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Toby Samuel",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Tomas Barrios Vera",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Tomas Barrios Vera",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Tomas Machac",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Tristan Schoolkate",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Tristan Schoolkate",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Ugo Humbert",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Valentin Vacherot",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Vilius Gaubas",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Zizou Bergs",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          }
+        ]
+      },
+      "WTA": {
+        "fenzobot_band_summary": [
+          {
+            "average_odd": 1.12,
+            "break_even_pct": 89.3,
+            "losses": 2,
+            "margin_vs_break_even_pp": 5.4,
+            "matches": 38,
+            "odds_band": "1.01–1.20",
+            "win_pct": 94.7,
+            "wins": 36
+          },
+          {
+            "average_odd": 1.258,
+            "break_even_pct": 79.5,
+            "losses": 4,
+            "margin_vs_break_even_pp": 7.6,
+            "matches": 31,
+            "odds_band": "1.21–1.30",
+            "win_pct": 87.1,
+            "wins": 27
+          },
+          {
+            "average_odd": 1.353,
+            "break_even_pct": 73.9,
+            "losses": 8,
+            "margin_vs_break_even_pp": -10.3,
+            "matches": 22,
+            "odds_band": "1.31–1.40",
+            "win_pct": 63.6,
+            "wins": 14
+          },
+          {
+            "average_odd": 1.465,
+            "break_even_pct": 68.2,
+            "losses": 5,
+            "margin_vs_break_even_pp": -1.5,
+            "matches": 15,
+            "odds_band": "1.41–1.50",
+            "win_pct": 66.7,
+            "wins": 10
+          },
+          {
+            "average_odd": 1.556,
+            "break_even_pct": 64.3,
+            "losses": 4,
+            "margin_vs_break_even_pp": -0.7,
+            "matches": 11,
+            "odds_band": "1.51–1.60",
+            "win_pct": 63.6,
+            "wins": 7
+          },
+          {
+            "average_odd": 1.671,
+            "break_even_pct": 59.9,
+            "losses": 7,
+            "margin_vs_break_even_pp": -1.1,
+            "matches": 17,
+            "odds_band": "1.61–1.75",
+            "win_pct": 58.8,
+            "wins": 10
+          },
+          {
+            "average_odd": 1.851,
+            "break_even_pct": 54.0,
+            "losses": 15,
+            "margin_vs_break_even_pp": -16.5,
+            "matches": 24,
+            "odds_band": "1.76–2.00",
+            "win_pct": 37.5,
+            "wins": 9
+          },
+          {
+            "average_odd": 2.196,
+            "break_even_pct": 45.5,
+            "losses": 2,
+            "margin_vs_break_even_pp": 32.3,
+            "matches": 9,
+            "odds_band": "2.01–2.30",
+            "win_pct": 77.8,
+            "wins": 7
+          },
+          {
+            "average_odd": 2.441,
+            "break_even_pct": 41.0,
+            "losses": 2,
+            "margin_vs_break_even_pp": 19.0,
+            "matches": 5,
+            "odds_band": "2.31–2.80",
+            "win_pct": 60.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 3.14,
+            "break_even_pct": 31.8,
+            "losses": 1,
+            "margin_vs_break_even_pp": -31.8,
+            "matches": 1,
+            "odds_band": "2.81–3.30",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 5.65,
+            "break_even_pct": 17.7,
+            "losses": 2,
+            "margin_vs_break_even_pp": -17.7,
+            "matches": 2,
+            "odds_band": "3.31+",
+            "win_pct": 0.0,
+            "wins": 0
+          }
+        ],
+        "fenzobot_index_band_summary": [
+          {
+            "index_band": "50–59",
+            "losses": 9,
+            "matches": 27,
+            "win_pct": 66.7,
+            "wins": 18
+          },
+          {
+            "index_band": "60–69",
+            "losses": 14,
+            "matches": 36,
+            "win_pct": 61.1,
+            "wins": 22
+          },
+          {
+            "index_band": "70–79",
+            "losses": 19,
+            "matches": 42,
+            "win_pct": 54.8,
+            "wins": 23
+          },
+          {
+            "index_band": "80–89",
+            "losses": 10,
+            "matches": 44,
+            "win_pct": 77.3,
+            "wins": 34
+          },
+          {
+            "index_band": "90–100",
+            "losses": 12,
+            "matches": 56,
+            "win_pct": 78.6,
+            "wins": 44
+          }
+        ],
+        "fenzobot_index_odds_summary": [
+          {
+            "average_odd": 1.175,
+            "break_even_pct": 85.1,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 14.9,
+            "matches": 2,
+            "odds_band": "1.01–1.20",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.276,
+            "break_even_pct": 78.4,
+            "index_band": "50–59",
+            "losses": 1,
+            "margin_vs_break_even_pp": 1.6,
+            "matches": 5,
+            "odds_band": "1.21–1.30",
+            "win_pct": 80.0,
+            "wins": 4
+          },
+          {
+            "average_odd": 1.35,
+            "break_even_pct": 74.1,
+            "index_band": "50–59",
+            "losses": 1,
+            "margin_vs_break_even_pp": -74.1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.455,
+            "break_even_pct": 68.7,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 31.3,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.565,
+            "break_even_pct": 63.9,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 36.1,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.727,
+            "break_even_pct": 57.9,
+            "index_band": "50–59",
+            "losses": 0,
+            "margin_vs_break_even_pp": 42.1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.808,
+            "break_even_pct": 55.3,
+            "index_band": "50–59",
+            "losses": 3,
+            "margin_vs_break_even_pp": -5.3,
+            "matches": 6,
+            "odds_band": "1.76–2.00",
+            "win_pct": 50.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 2.198,
+            "break_even_pct": 45.5,
+            "index_band": "50–59",
+            "losses": 1,
+            "margin_vs_break_even_pp": 29.5,
+            "matches": 4,
+            "odds_band": "2.01–2.30",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 2.41,
+            "break_even_pct": 41.5,
+            "index_band": "50–59",
+            "losses": 1,
+            "margin_vs_break_even_pp": 8.5,
+            "matches": 2,
+            "odds_band": "2.31–2.80",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 6.0,
+            "break_even_pct": 16.7,
+            "index_band": "50–59",
+            "losses": 1,
+            "margin_vs_break_even_pp": -16.7,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.187,
+            "break_even_pct": 84.2,
+            "index_band": "60–69",
+            "losses": 1,
+            "margin_vs_break_even_pp": -9.2,
+            "matches": 4,
+            "odds_band": "1.01–1.20",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 1.241,
+            "break_even_pct": 80.6,
+            "index_band": "60–69",
+            "losses": 0,
+            "margin_vs_break_even_pp": 19.4,
+            "matches": 5,
+            "odds_band": "1.21–1.30",
+            "win_pct": 100.0,
+            "wins": 5
+          },
+          {
+            "average_odd": 1.32,
+            "break_even_pct": 75.8,
+            "index_band": "60–69",
+            "losses": 0,
+            "margin_vs_break_even_pp": 24.2,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.5,
+            "break_even_pct": 66.7,
+            "index_band": "60–69",
+            "losses": 0,
+            "margin_vs_break_even_pp": 33.3,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.525,
+            "break_even_pct": 65.6,
+            "index_band": "60–69",
+            "losses": 0,
+            "margin_vs_break_even_pp": 34.4,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.72,
+            "break_even_pct": 58.1,
+            "index_band": "60–69",
+            "losses": 1,
+            "margin_vs_break_even_pp": -58.1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.856,
+            "break_even_pct": 53.9,
+            "index_band": "60–69",
+            "losses": 5,
+            "margin_vs_break_even_pp": -16.4,
+            "matches": 8,
+            "odds_band": "1.76–2.00",
+            "win_pct": 37.5,
+            "wins": 3
+          },
+          {
+            "average_odd": 2.18,
+            "break_even_pct": 45.9,
+            "index_band": "60–69",
+            "losses": 0,
+            "margin_vs_break_even_pp": 54.1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 5.3,
+            "break_even_pct": 18.9,
+            "index_band": "60–69",
+            "losses": 1,
+            "margin_vs_break_even_pp": -18.9,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.157,
+            "break_even_pct": 86.4,
+            "index_band": "70–79",
+            "losses": 0,
+            "margin_vs_break_even_pp": 13.6,
+            "matches": 2,
+            "odds_band": "1.01–1.20",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.249,
+            "break_even_pct": 80.1,
+            "index_band": "70–79",
+            "losses": 1,
+            "margin_vs_break_even_pp": -5.1,
+            "matches": 4,
+            "odds_band": "1.21–1.30",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "average_odd": 1.357,
+            "break_even_pct": 73.7,
+            "index_band": "70–79",
+            "losses": 4,
+            "margin_vs_break_even_pp": -18.1,
+            "matches": 9,
+            "odds_band": "1.31–1.40",
+            "win_pct": 55.6,
+            "wins": 5
+          },
+          {
+            "average_odd": 1.477,
+            "break_even_pct": 67.7,
+            "index_band": "70–79",
+            "losses": 1,
+            "margin_vs_break_even_pp": -1.0,
+            "matches": 3,
+            "odds_band": "1.41–1.50",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.595,
+            "break_even_pct": 62.7,
+            "index_band": "70–79",
+            "losses": 2,
+            "margin_vs_break_even_pp": -62.7,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.683,
+            "break_even_pct": 59.4,
+            "index_band": "70–79",
+            "losses": 3,
+            "margin_vs_break_even_pp": 3.1,
+            "matches": 8,
+            "odds_band": "1.61–1.75",
+            "win_pct": 62.5,
+            "wins": 5
+          },
+          {
+            "average_odd": 1.858,
+            "break_even_pct": 53.8,
+            "index_band": "70–79",
+            "losses": 3,
+            "margin_vs_break_even_pp": -13.8,
+            "matches": 5,
+            "odds_band": "1.76–2.00",
+            "win_pct": 40.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 2.12,
+            "break_even_pct": 47.2,
+            "index_band": "70–79",
+            "losses": 0,
+            "margin_vs_break_even_pp": 52.8,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 2.375,
+            "break_even_pct": 42.1,
+            "index_band": "70–79",
+            "losses": 0,
+            "margin_vs_break_even_pp": 57.9,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.118,
+            "break_even_pct": 89.4,
+            "index_band": "80–89",
+            "losses": 1,
+            "margin_vs_break_even_pp": 1.5,
+            "matches": 11,
+            "odds_band": "1.01–1.20",
+            "win_pct": 90.9,
+            "wins": 10
+          },
+          {
+            "average_odd": 1.268,
+            "break_even_pct": 78.9,
+            "index_band": "80–89",
+            "losses": 1,
+            "margin_vs_break_even_pp": 8.6,
+            "matches": 8,
+            "odds_band": "1.21–1.30",
+            "win_pct": 87.5,
+            "wins": 7
+          },
+          {
+            "average_odd": 1.349,
+            "break_even_pct": 74.1,
+            "index_band": "80–89",
+            "losses": 1,
+            "margin_vs_break_even_pp": -7.4,
+            "matches": 3,
+            "odds_band": "1.31–1.40",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.46,
+            "break_even_pct": 68.5,
+            "index_band": "80–89",
+            "losses": 3,
+            "margin_vs_break_even_pp": -68.5,
+            "matches": 3,
+            "odds_band": "1.41–1.50",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.55,
+            "break_even_pct": 64.5,
+            "index_band": "80–89",
+            "losses": 0,
+            "margin_vs_break_even_pp": 35.5,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 1.646,
+            "break_even_pct": 60.8,
+            "index_band": "80–89",
+            "losses": 2,
+            "margin_vs_break_even_pp": 5.9,
+            "matches": 6,
+            "odds_band": "1.61–1.75",
+            "win_pct": 66.7,
+            "wins": 4
+          },
+          {
+            "average_odd": 1.87,
+            "break_even_pct": 53.5,
+            "index_band": "80–89",
+            "losses": 2,
+            "margin_vs_break_even_pp": -20.2,
+            "matches": 3,
+            "odds_band": "1.76–2.00",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "average_odd": 2.185,
+            "break_even_pct": 45.8,
+            "index_band": "80–89",
+            "losses": 0,
+            "margin_vs_break_even_pp": 54.2,
+            "matches": 2,
+            "odds_band": "2.01–2.30",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "average_odd": 2.35,
+            "break_even_pct": 42.6,
+            "index_band": "80–89",
+            "losses": 0,
+            "margin_vs_break_even_pp": 57.4,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.097,
+            "break_even_pct": 91.2,
+            "index_band": "90–100",
+            "losses": 0,
+            "margin_vs_break_even_pp": 8.8,
+            "matches": 19,
+            "odds_band": "1.01–1.20",
+            "win_pct": 100.0,
+            "wins": 19
+          },
+          {
+            "average_odd": 1.254,
+            "break_even_pct": 79.7,
+            "index_band": "90–100",
+            "losses": 1,
+            "margin_vs_break_even_pp": 9.2,
+            "matches": 9,
+            "odds_band": "1.21–1.30",
+            "win_pct": 88.9,
+            "wins": 8
+          },
+          {
+            "average_odd": 1.353,
+            "break_even_pct": 73.9,
+            "index_band": "90–100",
+            "losses": 2,
+            "margin_vs_break_even_pp": 1.1,
+            "matches": 8,
+            "odds_band": "1.31–1.40",
+            "win_pct": 75.0,
+            "wins": 6
+          },
+          {
+            "average_odd": 1.452,
+            "break_even_pct": 68.9,
+            "index_band": "90–100",
+            "losses": 1,
+            "margin_vs_break_even_pp": 11.1,
+            "matches": 5,
+            "odds_band": "1.41–1.50",
+            "win_pct": 80.0,
+            "wins": 4
+          },
+          {
+            "average_odd": 1.55,
+            "break_even_pct": 64.5,
+            "index_band": "90–100",
+            "losses": 2,
+            "margin_vs_break_even_pp": -31.2,
+            "matches": 3,
+            "odds_band": "1.51–1.60",
+            "win_pct": 33.3,
+            "wins": 1
+          },
+          {
+            "average_odd": 1.61,
+            "break_even_pct": 62.1,
+            "index_band": "90–100",
+            "losses": 1,
+            "margin_vs_break_even_pp": -62.1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 1.91,
+            "break_even_pct": 52.4,
+            "index_band": "90–100",
+            "losses": 2,
+            "margin_vs_break_even_pp": -52.4,
+            "matches": 2,
+            "odds_band": "1.76–2.00",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 2.3,
+            "break_even_pct": 43.5,
+            "index_band": "90–100",
+            "losses": 1,
+            "margin_vs_break_even_pp": -43.5,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 2.66,
+            "break_even_pct": 37.6,
+            "index_band": "90–100",
+            "losses": 1,
+            "margin_vs_break_even_pp": -37.6,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "average_odd": 3.14,
+            "break_even_pct": 31.8,
+            "index_band": "90–100",
+            "losses": 1,
+            "margin_vs_break_even_pp": -31.8,
+            "matches": 1,
+            "odds_band": "2.81–3.30",
+            "win_pct": 0.0,
+            "wins": 0
+          }
+        ],
+        "fenzobot_odds": [
+          {
+            "losses": 6,
+            "matches": 6,
+            "odds_band": "1.76–2.00",
+            "player": "Ekaterina Alexandrova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 5,
+            "odds_band": "1.01–1.20",
+            "player": "Iga Swiatek",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 5
+          },
+          {
+            "losses": 1,
+            "matches": 4,
+            "odds_band": "1.01–1.20",
+            "player": "Aryna Sabalenka",
+            "role": "favorito",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 4,
+            "odds_band": "1.01–1.20",
+            "player": "Marta Kostyuk",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 4
+          },
+          {
+            "losses": 0,
+            "matches": 4,
+            "odds_band": "1.21–1.30",
+            "player": "Mirra Andreeva",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 4
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.01–1.20",
+            "player": "Amanda Anisimova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 1,
+            "matches": 3,
+            "odds_band": "sem faixa",
+            "player": "Cori Gauff",
+            "role": "indisponível",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.01–1.20",
+            "player": "Elena Rybakina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "player": "Iva Jovic",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "player": "Jessica Pegula",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "odds_band": "1.21–1.30",
+            "player": "Linda Noskova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 3,
+            "matches": 3,
+            "odds_band": "1.76–2.00",
+            "player": "Linda Noskova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 3,
+            "odds_band": "sem faixa",
+            "player": "Liudmila Samsonova",
+            "role": "indisponível",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.01–1.20",
+            "player": "Alexandra Eala",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.76–2.00",
+            "player": "Alexandra Eala",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "2.01–2.30",
+            "player": "Ann Li",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "player": "Anna Bondar",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Bianca Vanessa Andreescu",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.21–1.30",
+            "player": "Clara Tauson",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.01–1.20",
+            "player": "Cori Gauff",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "player": "Cori Gauff",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.61–1.75",
+            "player": "Cori Gauff",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.61–1.75",
+            "player": "Darja Vidmanova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Elvina Kalieva",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.01–1.20",
+            "player": "Harriet Dart",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.51–1.60",
+            "player": "Iva Jovic",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.76–2.00",
+            "player": "Janice Tjen",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Janice Tjen",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "player": "Jessica Pegula",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.61–1.75",
+            "player": "Julieta Pareja",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "player": "Kristina Liutova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.61–1.75",
+            "player": "Kristina Liutova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "player": "Lanlana Tararudee",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "player": "Linda Noskova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Lois Boisson",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.31–1.40",
+            "player": "Madison Keys",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "odds_band": "1.41–1.50",
+            "player": "Maja Chwalinska",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "2.01–2.30",
+            "player": "Maria Timofeeva",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Maya Joint",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "1.01–1.20",
+            "player": "Mirra Andreeva",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Nao Hibino",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Peyton Stearns",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "odds_band": "sem faixa",
+            "player": "Taylor Townsend",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Alevtina Ibragimova",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Aliaksandra Sasnovich",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Anhelina Kalinina",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Ann Li",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.81–3.30",
+            "player": "Annika Penickova",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Barbora Krejcikova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Barbora Krejcikova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Bianca Vanessa Andreescu",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Carol Young Suh Lee",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Carole Monnet",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Carson Branstine",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Clara Tauson",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Cori Gauff",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Cristina Bucsa",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Daria Kasatkina",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Darja Vidmanova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Darja Vidmanova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Darya Astakhova",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Diana Shnaider",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Diane Parry",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Donna Vekic",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Donna Vekic",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Donna Vekic",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Ekaterina Alexandrova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Ekaterina Alexandrova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Elena Pridankina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Elena Pridankina",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Elena Rybakina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Elena Rybakina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Elina Avanesyan",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Elina Svitolina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Elise Mertens",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Elise Mertens",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Elizara Yaneva",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Elvina Kalieva",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Fiona Ferro",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Francesca Jones",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Hanne Vandewinkel",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Harriet Dart",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Himeno Sakatsume",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Iga Swiatek",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Iryna Shymanovich",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Iva Jovic",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Iva Jovic",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Janice Tjen",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Janice Tjen",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Jelena Ostapenko",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Jeline Vandromme",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Jessica Pegula",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Jessica Pegula",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Joanna Garland",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Jodie Anna Burrage",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Julieta Pareja",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "player": "Kaitlin Quevedo",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Kajsa Rinaldo Persson",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Kamilla Rakhimova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Katarina Zavatska",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Katerina Siniakova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Kristina Liutova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Leylah Annie Fernandez",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Lilli Tagger",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Lilli Tagger",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Lin Zhu",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Lucia Bronzetti",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Madison Keys",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Mai Hontama",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Maria Sakkari",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Marie Bouzkova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Marie Bouzkova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Marta Kostyuk",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.01–2.30",
+            "player": "Marta Kostyuk",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Marta Kostyuk",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Maya Joint",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Maya Joint",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Mirra Andreeva",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Mona Barthel",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Naomi Osaka",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Nikola Bartunkova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Panna Udvardy",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.51–1.60",
+            "player": "Petra Marcinko",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Priscilla Hon",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Qinwen Zheng",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Qinwen Zheng",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Rebeka Masarova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Sara Sorribes Tormo",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Sinja Kraus",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Sloane Stephens",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Sofia Costoulas",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.01–1.20",
+            "player": "Sorana Cirstea",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.41–1.50",
+            "player": "Storm Hunter",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "2.31–2.80",
+            "player": "Tamara Zidansek",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Taylor Townsend",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.31–1.40",
+            "player": "Taylor Townsend",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.21–1.30",
+            "player": "Vendula Valdmannova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "1.61–1.75",
+            "player": "Vendula Valdmannova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "odds_band": "3.31+",
+            "player": "Venus Williams",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "1.76–2.00",
+            "player": "Yue Yuan",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "odds_band": "sem faixa",
+            "player": "Yulia Putintseva",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          }
+        ],
+        "fenzobot_player_summary": [
+          {
+            "losses": 6,
+            "matches": 8,
+            "player": "Ekaterina Alexandrova",
+            "role": "favorito",
+            "win_pct": 25.0,
+            "wins": 2
+          },
+          {
+            "losses": 3,
+            "matches": 8,
+            "player": "Linda Noskova",
+            "role": "favorito",
+            "win_pct": 62.5,
+            "wins": 5
+          },
+          {
+            "losses": 0,
+            "matches": 7,
+            "player": "Cori Gauff",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 7
+          },
+          {
+            "losses": 2,
+            "matches": 7,
+            "player": "Iva Jovic",
+            "role": "favorito",
+            "win_pct": 71.4,
+            "wins": 5
+          },
+          {
+            "losses": 1,
+            "matches": 6,
+            "player": "Iga Swiatek",
+            "role": "favorito",
+            "win_pct": 83.3,
+            "wins": 5
+          },
+          {
+            "losses": 0,
+            "matches": 6,
+            "player": "Jessica Pegula",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 6
+          },
+          {
+            "losses": 0,
+            "matches": 6,
+            "player": "Mirra Andreeva",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 6
+          },
+          {
+            "losses": 0,
+            "matches": 5,
+            "player": "Elena Rybakina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 5
+          },
+          {
+            "losses": 0,
+            "matches": 5,
+            "player": "Kristina Liutova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 5
+          },
+          {
+            "losses": 0,
+            "matches": 5,
+            "player": "Marta Kostyuk",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 5
+          },
+          {
+            "losses": 1,
+            "matches": 4,
+            "player": "Aryna Sabalenka",
+            "role": "favorito",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 4,
+            "player": "Darja Vidmanova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 4
+          },
+          {
+            "losses": 1,
+            "matches": 4,
+            "player": "Janice Tjen",
+            "role": "favorito",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "losses": 1,
+            "matches": 4,
+            "player": "Maya Joint",
+            "role": "favorito",
+            "win_pct": 75.0,
+            "wins": 3
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "player": "Amanda Anisimova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 1,
+            "matches": 3,
+            "player": "Clara Tauson",
+            "role": "favorito",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "losses": 1,
+            "matches": 3,
+            "player": "Cori Gauff",
+            "role": "indisponível",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "player": "Harriet Dart",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 1,
+            "matches": 3,
+            "player": "Liudmila Samsonova",
+            "role": "indisponível",
+            "win_pct": 66.7,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 3,
+            "player": "Madison Keys",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 3
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Alexandra Eala",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Alexandra Eala",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Ann Li",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Anna Bondar",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Barbora Krejcikova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Bianca Vanessa Andreescu",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "player": "Donna Vekic",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "player": "Elise Mertens",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Elvina Kalieva",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Janice Tjen",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Julieta Pareja",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Lanlana Tararudee",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "player": "Lilli Tagger",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Lois Boisson",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 2,
+            "matches": 2,
+            "player": "Maja Chwalinska",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Maria Timofeeva",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Marie Bouzkova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Nao Hibino",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Peyton Stearns",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Qinwen Zheng",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Taylor Townsend",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 0,
+            "matches": 2,
+            "player": "Taylor Townsend",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 2
+          },
+          {
+            "losses": 1,
+            "matches": 2,
+            "player": "Vendula Valdmannova",
+            "role": "favorito",
+            "win_pct": 50.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Alevtina Ibragimova",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Aliaksandra Sasnovich",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Anhelina Kalinina",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Ann Li",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Annika Penickova",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Bianca Vanessa Andreescu",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Carol Young Suh Lee",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Carole Monnet",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Carson Branstine",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Cristina Bucsa",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Daria Kasatkina",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Darya Astakhova",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Diana Shnaider",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Diane Parry",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Donna Vekic",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Elena Pridankina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Elena Pridankina",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Elina Avanesyan",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Elina Svitolina",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Elizara Yaneva",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Elvina Kalieva",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Fiona Ferro",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Francesca Jones",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Hanne Vandewinkel",
+            "role": "equilibrado",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Himeno Sakatsume",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Iryna Shymanovich",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Jelena Ostapenko",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Jeline Vandromme",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Jessica Pegula",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Joanna Garland",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Jodie Anna Burrage",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Julieta Pareja",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Kaitlin Quevedo",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Kajsa Rinaldo Persson",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Kamilla Rakhimova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Katarina Zavatska",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Katerina Siniakova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Leylah Annie Fernandez",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Lin Zhu",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Lucia Bronzetti",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Mai Hontama",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Maria Sakkari",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Marta Kostyuk",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Marta Kostyuk",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Mirra Andreeva",
+            "role": "indisponível",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Mona Barthel",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Naomi Osaka",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Nikola Bartunkova",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Panna Udvardy",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Petra Marcinko",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Priscilla Hon",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Rebeka Masarova",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Sara Sorribes Tormo",
+            "role": "indisponível",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Sinja Kraus",
+            "role": "favorito",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Sloane Stephens",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Sofia Costoulas",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Sorana Cirstea",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Storm Hunter",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Tamara Zidansek",
+            "role": "underdog",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 1,
+            "matches": 1,
+            "player": "Venus Williams",
+            "role": "underdog",
+            "win_pct": 0.0,
+            "wins": 0
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Yue Yuan",
+            "role": "equilibrado",
+            "win_pct": 100.0,
+            "wins": 1
+          },
+          {
+            "losses": 0,
+            "matches": 1,
+            "player": "Yulia Putintseva",
+            "role": "favorito",
+            "win_pct": 100.0,
+            "wins": 1
+          }
+        ]
+      }
+    },
     "event_rows": [
       {
         "analyzed_at_utc": "2026-08-16T14:36:10+00:00",
@@ -133306,76 +138904,114 @@
     ],
     "fenzobot_band_summary": [
       {
+        "average_odd": 1.126,
+        "break_even_pct": 88.8,
+        "losses": 5,
+        "margin_vs_break_even_pp": 2.3,
         "matches": 56,
         "odds_band": "1.01–1.20",
         "win_pct": 91.1,
         "wins": 51
       },
       {
+        "average_odd": 1.251,
+        "break_even_pct": 79.9,
+        "losses": 10,
+        "margin_vs_break_even_pp": 4.2,
         "matches": 63,
         "odds_band": "1.21–1.30",
         "win_pct": 84.1,
         "wins": 53
       },
       {
+        "average_odd": 1.356,
+        "break_even_pct": 73.8,
+        "losses": 17,
+        "margin_vs_break_even_pp": -15.3,
         "matches": 41,
         "odds_band": "1.31–1.40",
         "win_pct": 58.5,
         "wins": 24
       },
       {
+        "average_odd": 1.465,
+        "break_even_pct": 68.3,
+        "losses": 13,
+        "margin_vs_break_even_pp": -8.9,
         "matches": 32,
         "odds_band": "1.41–1.50",
         "win_pct": 59.4,
         "wins": 19
       },
       {
+        "average_odd": 1.564,
+        "break_even_pct": 63.9,
+        "losses": 13,
+        "margin_vs_break_even_pp": -13.9,
         "matches": 26,
         "odds_band": "1.51–1.60",
         "win_pct": 50.0,
         "wins": 13
       },
       {
+        "average_odd": 1.668,
+        "break_even_pct": 60.0,
+        "losses": 13,
+        "margin_vs_break_even_pp": 2.9,
         "matches": 35,
         "odds_band": "1.61–1.75",
         "win_pct": 62.9,
         "wins": 22
       },
       {
+        "average_odd": 1.86,
+        "break_even_pct": 53.8,
+        "losses": 22,
+        "margin_vs_break_even_pp": 5.5,
         "matches": 54,
         "odds_band": "1.76–2.00",
         "win_pct": 59.3,
         "wins": 32
       },
       {
+        "average_odd": 2.169,
+        "break_even_pct": 46.1,
+        "losses": 7,
+        "margin_vs_break_even_pp": 17.1,
         "matches": 19,
         "odds_band": "2.01–2.30",
         "win_pct": 63.2,
         "wins": 12
       },
       {
+        "average_odd": 2.461,
+        "break_even_pct": 40.6,
+        "losses": 11,
+        "margin_vs_break_even_pp": -13.9,
         "matches": 15,
         "odds_band": "2.31–2.80",
         "win_pct": 26.7,
         "wins": 4
       },
       {
+        "average_odd": 2.996,
+        "break_even_pct": 33.4,
+        "losses": 5,
+        "margin_vs_break_even_pp": -4.8,
         "matches": 7,
         "odds_band": "2.81–3.30",
         "win_pct": 28.6,
         "wins": 2
       },
       {
+        "average_odd": 5.525,
+        "break_even_pct": 18.1,
+        "losses": 3,
+        "margin_vs_break_even_pp": 6.9,
         "matches": 4,
         "odds_band": "3.31+",
         "win_pct": 25.0,
         "wins": 1
-      },
-      {
-        "matches": 45,
-        "odds_band": "sem faixa",
-        "win_pct": 62.2,
-        "wins": 28
       }
     ],
     "fenzobot_index_band_summary": [
@@ -133413,6 +139049,569 @@
         "matches": 85,
         "win_pct": 75.3,
         "wins": 64
+      }
+    ],
+    "fenzobot_index_odds_summary": [
+      {
+        "average_odd": 1.175,
+        "break_even_pct": 85.1,
+        "index_band": "50–59",
+        "losses": 0,
+        "margin_vs_break_even_pp": 14.9,
+        "matches": 2,
+        "odds_band": "1.01–1.20",
+        "win_pct": 100.0,
+        "wins": 2
+      },
+      {
+        "average_odd": 1.27,
+        "break_even_pct": 78.7,
+        "index_band": "50–59",
+        "losses": 1,
+        "margin_vs_break_even_pp": 4.6,
+        "matches": 6,
+        "odds_band": "1.21–1.30",
+        "win_pct": 83.3,
+        "wins": 5
+      },
+      {
+        "average_odd": 1.36,
+        "break_even_pct": 73.5,
+        "index_band": "50–59",
+        "losses": 1,
+        "margin_vs_break_even_pp": -23.5,
+        "matches": 2,
+        "odds_band": "1.31–1.40",
+        "win_pct": 50.0,
+        "wins": 1
+      },
+      {
+        "average_odd": 1.456,
+        "break_even_pct": 68.7,
+        "index_band": "50–59",
+        "losses": 1,
+        "margin_vs_break_even_pp": 14.6,
+        "matches": 6,
+        "odds_band": "1.41–1.50",
+        "win_pct": 83.3,
+        "wins": 5
+      },
+      {
+        "average_odd": 1.552,
+        "break_even_pct": 64.4,
+        "index_band": "50–59",
+        "losses": 2,
+        "margin_vs_break_even_pp": -14.4,
+        "matches": 4,
+        "odds_band": "1.51–1.60",
+        "win_pct": 50.0,
+        "wins": 2
+      },
+      {
+        "average_odd": 1.698,
+        "break_even_pct": 58.9,
+        "index_band": "50–59",
+        "losses": 0,
+        "margin_vs_break_even_pp": 41.1,
+        "matches": 5,
+        "odds_band": "1.61–1.75",
+        "win_pct": 100.0,
+        "wins": 5
+      },
+      {
+        "average_odd": 1.845,
+        "break_even_pct": 54.2,
+        "index_band": "50–59",
+        "losses": 3,
+        "margin_vs_break_even_pp": 20.8,
+        "matches": 12,
+        "odds_band": "1.76–2.00",
+        "win_pct": 75.0,
+        "wins": 9
+      },
+      {
+        "average_odd": 2.183,
+        "break_even_pct": 45.8,
+        "index_band": "50–59",
+        "losses": 1,
+        "margin_vs_break_even_pp": 39.9,
+        "matches": 7,
+        "odds_band": "2.01–2.30",
+        "win_pct": 85.7,
+        "wins": 6
+      },
+      {
+        "average_odd": 2.519,
+        "break_even_pct": 39.7,
+        "index_band": "50–59",
+        "losses": 5,
+        "margin_vs_break_even_pp": -11.1,
+        "matches": 7,
+        "odds_band": "2.31–2.80",
+        "win_pct": 28.6,
+        "wins": 2
+      },
+      {
+        "average_odd": 2.94,
+        "break_even_pct": 34.0,
+        "index_band": "50–59",
+        "losses": 3,
+        "margin_vs_break_even_pp": -34.0,
+        "matches": 3,
+        "odds_band": "2.81–3.30",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 6.0,
+        "break_even_pct": 16.7,
+        "index_band": "50–59",
+        "losses": 1,
+        "margin_vs_break_even_pp": -16.7,
+        "matches": 1,
+        "odds_band": "3.31+",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 1.182,
+        "break_even_pct": 84.6,
+        "index_band": "60–69",
+        "losses": 1,
+        "margin_vs_break_even_pp": -4.6,
+        "matches": 5,
+        "odds_band": "1.01–1.20",
+        "win_pct": 80.0,
+        "wins": 4
+      },
+      {
+        "average_odd": 1.237,
+        "break_even_pct": 80.8,
+        "index_band": "60–69",
+        "losses": 3,
+        "margin_vs_break_even_pp": -3.9,
+        "matches": 13,
+        "odds_band": "1.21–1.30",
+        "win_pct": 76.9,
+        "wins": 10
+      },
+      {
+        "average_odd": 1.373,
+        "break_even_pct": 72.8,
+        "index_band": "60–69",
+        "losses": 3,
+        "margin_vs_break_even_pp": -22.8,
+        "matches": 6,
+        "odds_band": "1.31–1.40",
+        "win_pct": 50.0,
+        "wins": 3
+      },
+      {
+        "average_odd": 1.492,
+        "break_even_pct": 67.0,
+        "index_band": "60–69",
+        "losses": 1,
+        "margin_vs_break_even_pp": 8.0,
+        "matches": 4,
+        "odds_band": "1.41–1.50",
+        "win_pct": 75.0,
+        "wins": 3
+      },
+      {
+        "average_odd": 1.533,
+        "break_even_pct": 65.2,
+        "index_band": "60–69",
+        "losses": 0,
+        "margin_vs_break_even_pp": 34.8,
+        "matches": 3,
+        "odds_band": "1.51–1.60",
+        "win_pct": 100.0,
+        "wins": 3
+      },
+      {
+        "average_odd": 1.68,
+        "break_even_pct": 59.5,
+        "index_band": "60–69",
+        "losses": 4,
+        "margin_vs_break_even_pp": -16.6,
+        "matches": 7,
+        "odds_band": "1.61–1.75",
+        "win_pct": 42.9,
+        "wins": 3
+      },
+      {
+        "average_odd": 1.886,
+        "break_even_pct": 53.0,
+        "index_band": "60–69",
+        "losses": 6,
+        "margin_vs_break_even_pp": 13.7,
+        "matches": 18,
+        "odds_band": "1.76–2.00",
+        "win_pct": 66.7,
+        "wins": 12
+      },
+      {
+        "average_odd": 2.183,
+        "break_even_pct": 45.8,
+        "index_band": "60–69",
+        "losses": 2,
+        "margin_vs_break_even_pp": -12.5,
+        "matches": 3,
+        "odds_band": "2.01–2.30",
+        "win_pct": 33.3,
+        "wins": 1
+      },
+      {
+        "average_odd": 2.357,
+        "break_even_pct": 42.4,
+        "index_band": "60–69",
+        "losses": 3,
+        "margin_vs_break_even_pp": -42.4,
+        "matches": 3,
+        "odds_band": "2.31–2.80",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 2.81,
+        "break_even_pct": 35.6,
+        "index_band": "60–69",
+        "losses": 1,
+        "margin_vs_break_even_pp": -35.6,
+        "matches": 1,
+        "odds_band": "2.81–3.30",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 4.6,
+        "break_even_pct": 21.7,
+        "index_band": "60–69",
+        "losses": 2,
+        "margin_vs_break_even_pp": -21.7,
+        "matches": 2,
+        "odds_band": "3.31+",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 1.145,
+        "break_even_pct": 87.3,
+        "index_band": "70–79",
+        "losses": 1,
+        "margin_vs_break_even_pp": -20.6,
+        "matches": 3,
+        "odds_band": "1.01–1.20",
+        "win_pct": 66.7,
+        "wins": 2
+      },
+      {
+        "average_odd": 1.248,
+        "break_even_pct": 80.1,
+        "index_band": "70–79",
+        "losses": 2,
+        "margin_vs_break_even_pp": 7.4,
+        "matches": 16,
+        "odds_band": "1.21–1.30",
+        "win_pct": 87.5,
+        "wins": 14
+      },
+      {
+        "average_odd": 1.36,
+        "break_even_pct": 73.5,
+        "index_band": "70–79",
+        "losses": 4,
+        "margin_vs_break_even_pp": -9.9,
+        "matches": 11,
+        "odds_band": "1.31–1.40",
+        "win_pct": 63.6,
+        "wins": 7
+      },
+      {
+        "average_odd": 1.474,
+        "break_even_pct": 67.8,
+        "index_band": "70–79",
+        "losses": 4,
+        "margin_vs_break_even_pp": -24.9,
+        "matches": 7,
+        "odds_band": "1.41–1.50",
+        "win_pct": 42.9,
+        "wins": 3
+      },
+      {
+        "average_odd": 1.575,
+        "break_even_pct": 63.5,
+        "index_band": "70–79",
+        "losses": 8,
+        "margin_vs_break_even_pp": -36.2,
+        "matches": 11,
+        "odds_band": "1.51–1.60",
+        "win_pct": 27.3,
+        "wins": 3
+      },
+      {
+        "average_odd": 1.674,
+        "break_even_pct": 59.7,
+        "index_band": "70–79",
+        "losses": 4,
+        "margin_vs_break_even_pp": 9.5,
+        "matches": 13,
+        "odds_band": "1.61–1.75",
+        "win_pct": 69.2,
+        "wins": 9
+      },
+      {
+        "average_odd": 1.831,
+        "break_even_pct": 54.6,
+        "index_band": "70–79",
+        "losses": 7,
+        "margin_vs_break_even_pp": 4.2,
+        "matches": 17,
+        "odds_band": "1.76–2.00",
+        "win_pct": 58.8,
+        "wins": 10
+      },
+      {
+        "average_odd": 2.11,
+        "break_even_pct": 47.4,
+        "index_band": "70–79",
+        "losses": 1,
+        "margin_vs_break_even_pp": 19.3,
+        "matches": 3,
+        "odds_band": "2.01–2.30",
+        "win_pct": 66.7,
+        "wins": 2
+      },
+      {
+        "average_odd": 2.402,
+        "break_even_pct": 41.6,
+        "index_band": "70–79",
+        "losses": 1,
+        "margin_vs_break_even_pp": 8.4,
+        "matches": 2,
+        "odds_band": "2.31–2.80",
+        "win_pct": 50.0,
+        "wins": 1
+      },
+      {
+        "average_odd": 1.139,
+        "break_even_pct": 87.8,
+        "index_band": "80–89",
+        "losses": 1,
+        "margin_vs_break_even_pp": 7.4,
+        "matches": 21,
+        "odds_band": "1.01–1.20",
+        "win_pct": 95.2,
+        "wins": 20
+      },
+      {
+        "average_odd": 1.26,
+        "break_even_pct": 79.4,
+        "index_band": "80–89",
+        "losses": 3,
+        "margin_vs_break_even_pp": -6.7,
+        "matches": 11,
+        "odds_band": "1.21–1.30",
+        "win_pct": 72.7,
+        "wins": 8
+      },
+      {
+        "average_odd": 1.346,
+        "break_even_pct": 74.3,
+        "index_band": "80–89",
+        "losses": 5,
+        "margin_vs_break_even_pp": -24.3,
+        "matches": 10,
+        "odds_band": "1.31–1.40",
+        "win_pct": 50.0,
+        "wins": 5
+      },
+      {
+        "average_odd": 1.462,
+        "break_even_pct": 68.4,
+        "index_band": "80–89",
+        "losses": 6,
+        "margin_vs_break_even_pp": -35.1,
+        "matches": 9,
+        "odds_band": "1.41–1.50",
+        "win_pct": 33.3,
+        "wins": 3
+      },
+      {
+        "average_odd": 1.578,
+        "break_even_pct": 63.4,
+        "index_band": "80–89",
+        "losses": 1,
+        "margin_vs_break_even_pp": 16.6,
+        "matches": 5,
+        "odds_band": "1.51–1.60",
+        "win_pct": 80.0,
+        "wins": 4
+      },
+      {
+        "average_odd": 1.641,
+        "break_even_pct": 60.9,
+        "index_band": "80–89",
+        "losses": 2,
+        "margin_vs_break_even_pp": 10.5,
+        "matches": 7,
+        "odds_band": "1.61–1.75",
+        "win_pct": 71.4,
+        "wins": 5
+      },
+      {
+        "average_odd": 1.895,
+        "break_even_pct": 52.8,
+        "index_band": "80–89",
+        "losses": 3,
+        "margin_vs_break_even_pp": -27.8,
+        "matches": 4,
+        "odds_band": "1.76–2.00",
+        "win_pct": 25.0,
+        "wins": 1
+      },
+      {
+        "average_odd": 2.152,
+        "break_even_pct": 46.5,
+        "index_band": "80–89",
+        "losses": 2,
+        "margin_vs_break_even_pp": 13.5,
+        "matches": 5,
+        "odds_band": "2.01–2.30",
+        "win_pct": 60.0,
+        "wins": 3
+      },
+      {
+        "average_odd": 2.375,
+        "break_even_pct": 42.1,
+        "index_band": "80–89",
+        "losses": 1,
+        "margin_vs_break_even_pp": 7.9,
+        "matches": 2,
+        "odds_band": "2.31–2.80",
+        "win_pct": 50.0,
+        "wins": 1
+      },
+      {
+        "average_odd": 1.097,
+        "break_even_pct": 91.2,
+        "index_band": "90–100",
+        "losses": 2,
+        "margin_vs_break_even_pp": 0.8,
+        "matches": 25,
+        "odds_band": "1.01–1.20",
+        "win_pct": 92.0,
+        "wins": 23
+      },
+      {
+        "average_odd": 1.252,
+        "break_even_pct": 79.9,
+        "index_band": "90–100",
+        "losses": 1,
+        "margin_vs_break_even_pp": 14.2,
+        "matches": 17,
+        "odds_band": "1.21–1.30",
+        "win_pct": 94.1,
+        "wins": 16
+      },
+      {
+        "average_odd": 1.351,
+        "break_even_pct": 74.0,
+        "index_band": "90–100",
+        "losses": 4,
+        "margin_vs_break_even_pp": -7.3,
+        "matches": 12,
+        "odds_band": "1.31–1.40",
+        "win_pct": 66.7,
+        "wins": 8
+      },
+      {
+        "average_odd": 1.45,
+        "break_even_pct": 69.0,
+        "index_band": "90–100",
+        "losses": 1,
+        "margin_vs_break_even_pp": 14.3,
+        "matches": 6,
+        "odds_band": "1.41–1.50",
+        "win_pct": 83.3,
+        "wins": 5
+      },
+      {
+        "average_odd": 1.55,
+        "break_even_pct": 64.5,
+        "index_band": "90–100",
+        "losses": 2,
+        "margin_vs_break_even_pp": -31.2,
+        "matches": 3,
+        "odds_band": "1.51–1.60",
+        "win_pct": 33.3,
+        "wins": 1
+      },
+      {
+        "average_odd": 1.622,
+        "break_even_pct": 61.7,
+        "index_band": "90–100",
+        "losses": 3,
+        "margin_vs_break_even_pp": -61.7,
+        "matches": 3,
+        "odds_band": "1.61–1.75",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 1.877,
+        "break_even_pct": 53.3,
+        "index_band": "90–100",
+        "losses": 3,
+        "margin_vs_break_even_pp": -53.3,
+        "matches": 3,
+        "odds_band": "1.76–2.00",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 2.3,
+        "break_even_pct": 43.5,
+        "index_band": "90–100",
+        "losses": 1,
+        "margin_vs_break_even_pp": -43.5,
+        "matches": 1,
+        "odds_band": "2.01–2.30",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 2.66,
+        "break_even_pct": 37.6,
+        "index_band": "90–100",
+        "losses": 1,
+        "margin_vs_break_even_pp": -37.6,
+        "matches": 1,
+        "odds_band": "2.31–2.80",
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      {
+        "average_odd": 3.113,
+        "break_even_pct": 32.1,
+        "index_band": "90–100",
+        "losses": 1,
+        "margin_vs_break_even_pp": 34.6,
+        "matches": 3,
+        "odds_band": "2.81–3.30",
+        "win_pct": 66.7,
+        "wins": 2
+      },
+      {
+        "average_odd": 6.9,
+        "break_even_pct": 14.5,
+        "index_band": "90–100",
+        "losses": 0,
+        "margin_vs_break_even_pp": 85.5,
+        "matches": 1,
+        "odds_band": "3.31+",
+        "win_pct": 100.0,
+        "wins": 1
       }
     ],
     "fenzobot_odds": [
@@ -142795,6 +148994,7 @@
       "bottom_title": "Bottom 10",
       "empty_strongest_message": "Ainda não há jogador com 10 seleções Fenzobot liquidadas.",
       "empty_weakest_message": "Ainda não há jogador com 10 seleções Fenzobot liquidadas.",
+      "metric_label": "% acerto",
       "minimum_sample": 10,
       "strongest": [],
       "weakest": []
@@ -142803,6 +149003,7 @@
       "bottom_title": "Bottom 10",
       "empty_strongest_message": "Sem amostras suficientes",
       "empty_weakest_message": "Sem amostras suficientes",
+      "metric_label": "% cobre · linha de referência",
       "minimum_sample": 20,
       "strongest": [
         {
@@ -142933,6 +149134,7 @@
       "bottom_title": "Bottom 10 (>0%)",
       "empty_strongest_message": "Sem amostras suficientes",
       "empty_weakest_message": "Sem recuperações positivas com amostra suficiente.",
+      "metric_label": "% acerto",
       "minimum_sample": 10,
       "strongest": [
         {
@@ -143063,6 +149265,7 @@
       "bottom_title": "Bottom 10",
       "empty_strongest_message": "Sem amostras suficientes",
       "empty_weakest_message": "Sem amostras suficientes",
+      "metric_label": "% acerto",
       "minimum_sample": 10,
       "strongest": [
         {
@@ -143193,6 +149396,7 @@
       "bottom_title": "Bottom 10",
       "empty_strongest_message": "Sem amostras suficientes",
       "empty_weakest_message": "Sem amostras suficientes",
+      "metric_label": "% acerto",
       "minimum_sample": 10,
       "strongest": [
         {
@@ -143323,6 +149527,7 @@
       "bottom_title": "Bottom 10",
       "empty_strongest_message": "Sem amostras suficientes",
       "empty_weakest_message": "Sem amostras suficientes",
+      "metric_label": "% acerto",
       "minimum_sample": 20,
       "strongest": [
         {
@@ -155296,7 +161501,7 @@
       "report_file": "zsombor-piros-vs-max-alcala-gurri-2026-08-25.html"
     }
   ],
-  "schema_version": 4,
+  "schema_version": 5,
   "summary": {
     "canonical_snapshots": 734,
     "duplicate_snapshots_excluded": 0,

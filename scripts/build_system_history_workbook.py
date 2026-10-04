@@ -95,9 +95,18 @@ def _percent_columns(ws, row_start: int, row_end: int, columns: Iterable[int]) -
                 ws.cell(row, column).number_format = "0.0%"
 
 
+def _break_even_summary(payload: Mapping[str, Any]) -> str:
+    rows = (payload.get("operational") or {}).get("fenzobot_band_summary") or []
+    eligible = [row for row in rows if int(row.get("matches") or 0) >= 5 and isinstance(row.get("break_even_pct"), (int, float))]
+    if not eligible:
+        return "N/D"
+    above = sum(1 for row in eligible if float(row.get("margin_vs_break_even_pp") or 0) >= 0)
+    return f"{above} / {len(eligible)}"
+
+
 def _write_rankings(ws, rankings: Mapping[str, Mapping[str, Any]]) -> None:
     """Compact Top/Bottom 10 blocks; the sample threshold lives in the JSON."""
-    _title(ws, "Rankings de aprendizagem", "Top 10 e Bottom 10 por métrica. WTA inclui apenas jogadoras com partidas no cache dos últimos 12 meses; são leituras factuais, não sinais.")
+    _title(ws, "Rankings de aprendizagem", "Top 10 e Bottom 10 por métrica. Em handicap, a linha é referência interna BO3 e a métrica é % cobre — não lucro. WTA inclui apenas jogadoras ativas no cache dos últimos 12 meses.")
     row = 5
     for category, blocks in rankings.items():
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
@@ -105,7 +114,8 @@ def _write_rankings(ws, rankings: Mapping[str, Mapping[str, Any]]) -> None:
         cell.fill = PatternFill("solid", fgColor=TEAL)
         cell.font = Font(name="Arial", bold=True, color="FFFFFF")
         row += 1
-        _header(ws, row, ["Top 10", "Amostra", "Métrica", "", blocks.get("bottom_title", "Bottom 10"), "Amostra", "Métrica", ""])
+        metric_label = blocks.get("metric_label", "Métrica")
+        _header(ws, row, ["Top 10", "Amostra", metric_label, "", blocks.get("bottom_title", "Bottom 10"), "Amostra", metric_label, ""])
         strongest = blocks.get("strongest", [])
         weakest = blocks.get("weakest", [])
         length = max(len(strongest), len(weakest), 1)
@@ -138,7 +148,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     wb = Workbook()
     ws = wb.active
     ws.title = "Resumo"
-    _title(ws, "Fenzobot — Histórico Canónico", "Atualização automática baseada em snapshots imutáveis. Relatórios HTML repetidos não entram nas métricas.")
+    _title(ws, "Fenzobot — Histórico Canónico", "Snapshots canónicos e cache WTA local. ATP operacional usa apenas snapshots Fenzobot; não existe cache ATP bruta local.")
     summary = payload["summary"]
     _header(ws, 5, ["Indicador", "Valor"])
     items = [
@@ -149,6 +159,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         ("Partidas canónicas liquidadas", summary["settled_canonical_snapshots"]),
         ("Seleções liquidadas com índice Fenzobot", summary.get("settled_fenzobot_index_observations", 0)),
         ("Jogos WTA históricos locais", summary["historical_wta_matches"]),
+        ("Faixas Fenzobot ≥ break-even teórico (n ≥ 5)", _break_even_summary(payload)),
         ("Regra de contagem", "primeiro snapshot pré-jogo válido por partida"),
     ]
     for row, item in enumerate(items, 6):
@@ -158,7 +169,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     ws.merge_cells("A16:B19")
     ws["A16"] = ("Operacional usa apenas o primeiro snapshot guardado de cada jogo, pelo que repetir uma run ou gerar HTML novo não multiplica o histórico. "
                  "WTA histórico usa a cache local tennis-data.co.uk para estudo factual. As linhas de handicap são referências internas BO3 e não resultados de mercados reais. "
-                 "PAPER e REAL devem ser consultados nos seus registos próprios; este ficheiro não prova lucro futuro.")
+                 "O break-even é teórico (1 / odd média), não ROI. PAPER e REAL devem ser consultados nos seus registos próprios; este ficheiro não prova lucro futuro.")
     ws["A16"].alignment = Alignment(wrap_text=True, vertical="top")
     ws["A16"].fill = PatternFill("solid", fgColor="F4F8FC")
     _widths(ws, [40, 68])
@@ -178,8 +189,10 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         ("Operacional - jogador odd", payload["operational"]["player_odds"], ["Jogador", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% vitória"], ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"], [28, 16, 14, 12, 12, 12, 14], [7]),
         ("Operacional - Fenzobot odd", payload["operational"]["fenzobot_odds"], ["Seleção Fenzobot", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% acerto"], ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"], [28, 16, 14, 12, 12, 12, 14], [7]),
         ("Operacional - índice Fenzobot", payload["operational"]["fenzobot_index_band_summary"], ["Faixa do índice", "Jogos", "Vitórias", "Derrotas", "% acerto"], ["index_band", "matches", "wins", "losses", "win_pct"], [20, 14, 14, 14, 16], [5]),
+        ("Operacional — odd & break-even", payload["operational"]["fenzobot_band_summary"], ["Faixa de odd", "Jogos", "Vitórias", "Derrotas", "% acerto", "Odd média", "Break-even teórico", "Margem vs break-even (p.p.)"], ["odds_band", "matches", "wins", "losses", "win_pct", "average_odd", "break_even_pct", "margin_vs_break_even_pp"], [18, 12, 12, 12, 15, 14, 18, 24], [5, 7]),
+        ("Operacional — índice × odd", payload["operational"]["fenzobot_index_odds_summary"], ["Faixa do índice", "Faixa de odd", "Jogos", "Vitórias", "Derrotas", "% acerto", "Odd média", "Break-even teórico", "Margem vs break-even (p.p.)"], ["index_band", "odds_band", "matches", "wins", "losses", "win_pct", "average_odd", "break_even_pct", "margin_vs_break_even_pp"], [18, 18, 12, 12, 12, 15, 14, 18, 24], [6, 8]),
         ("WTA histórico - jogador odd", payload["historical_wta"]["player_odds"], ["Jogadora", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% vitória"], ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"], [28, 16, 14, 12, 12, 12, 14], [7]),
-        ("WTA histórico — handicap", payload["historical_wta"]["handicap_reference"], ["Jogadora", "Papel", "Linha referência", "Jogos", "Cobre", "Devolve", "Falha", "% cobre"], ["player", "role", "reference_line", "matches", "covers", "pushes", "fails", "cover_pct"], [28, 14, 18, 12, 12, 12, 12, 14], [8]),
+        ("WTA histórico — handicap", payload["historical_wta"]["handicap_reference"], ["Jogadora", "Papel", "Linha referência BO3 (não lucro)", "Jogos", "Cobre", "Devolve", "Falha", "% cobre"], ["player", "role", "reference_line", "matches", "covers", "pushes", "fails", "cover_pct"], [28, 14, 28, 12, 12, 12, 12, 14], [8]),
         ("WTA histórico — recuperação", payload["historical_wta"]["set1_recovery"], ["Jogadora", "Perdeu 1.º set", "Recuperou e venceu", "% recuperação"], ["player", "lost_first", "recovered", "recovery_pct"], [28, 18, 22, 16], [4]),
         ("WTA histórico — set decisivo", payload["historical_wta"]["deciding_set"], ["Jogadora", "Sets decisivos", "Venceu", "% vitória"], ["player", "matches", "wins", "win_pct"], [28, 18, 14, 16], [4]),
         ("WTA histórico — tiebreak", payload["historical_wta"]["tiebreak"], ["Jogadora", "Tiebreaks", "Venceu", "% vitória"], ["player", "matches", "wins", "win_pct"], [28, 16, 14, 16], [4]),
@@ -188,6 +201,17 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         last = _write_rows(sheet, 1, headers, rows, fields)
         _percent_columns(sheet, 2, last, pct_indices)
         _widths(sheet, widths)
+
+    for tour in ("ATP", "WTA"):
+        series = (payload["operational"].get("by_tour") or {}).get(tour, {})
+        for title, rows, headers, fields, widths, pct_indices in (
+            (f"{tour} operacional — Fenzobot odd", series.get("fenzobot_odds", []), ["Seleção Fenzobot", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% acerto"], ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"], [28, 16, 14, 12, 12, 12, 14], [7]),
+            (f"{tour} operacional — índice × odd", series.get("fenzobot_index_odds_summary", []), ["Faixa do índice", "Faixa de odd", "Jogos", "Vitórias", "Derrotas", "% acerto", "Odd média", "Break-even teórico", "Margem vs break-even (p.p.)"], ["index_band", "odds_band", "matches", "wins", "losses", "win_pct", "average_odd", "break_even_pct", "margin_vs_break_even_pp"], [18, 18, 12, 12, 12, 15, 14, 18, 24], [6, 8]),
+        ):
+            sheet = wb.create_sheet(title)
+            last = _write_rows(sheet, 1, headers, rows, fields)
+            _percent_columns(sheet, 2, last, pct_indices)
+            _widths(sheet, widths)
 
     rankings = wb.create_sheet("Rankings")
     _write_rankings(rankings, payload["rankings"])
@@ -210,8 +234,10 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     rows = [
         ("Deduplicação", "Uma partida entra uma vez: o primeiro snapshot pré-jogo válido. HTMLs repetidos são ficheiros de publicação, não observações analíticas."),
         ("Operacional", "Métricas de Fenzobot por odd e por faixa de índice usam apenas snapshots canónicos já liquidados. São observacionais, não backtest; o índice não é uma probabilidade."),
+        ("ATP operacional", "Não existe cache ATP bruta local neste projeto. As abas ATP operacional usam apenas snapshots canónicos já registados pelo Fenzobot; não mostram handicap, recuperação ou tiebreak ATP como se fossem histórico completo."),
         ("Histórico WTA", "Resultados e odds vêm apenas das cópias tennis-data.co.uk existentes localmente. Não houve descarga nova nesta construção."),
-        ("Handicaps", "Cobertura é calculada contra uma linha interna de referência BO3, inferida pela faixa da Moneyline. Não é uma odd/linha efetivamente oferecida por bookmaker."),
+        ("Handicaps", "A linha -4.5, +2 etc. é referência interna BO3, não lucro, retorno nem linha efetivamente oferecida por bookmaker. Os rankings ordenam por % cobre e amostra."),
+        ("Break-even", "Taxa teórica 1 / odd decimal média da faixa nos snapshots canónicos. Não incorpora stake, vigor, limites ou execução numa casa de apostas."),
         ("Recuperação", "Conta vitórias após perder o 1.º set no histórico WTA. Não há estatística ponto-a-ponto de breaks."),
         ("Set decisivo e tiebreak", "Calculados com scores completos WTA. Não são disponíveis como universo ATP bruto completo neste checkout."),
         ("PAPER / REAL", "Não são misturados com estes agregados. Usar a carteira PAPER e a folha 22Bet para resultados financeiros."),
@@ -227,12 +253,13 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     # repeated the same band for every player and was therefore misleading.
     chart_data = wb.create_sheet("Dados gráficos")
     chart_data.sheet_state = "hidden"
-    _header(chart_data, 1, ["Faixa de odd", "Acerto Fenzobot", "Decisões liquidadas", "", "Faixa do índice", "Acerto Fenzobot", "Decisões liquidadas"])
-    chart_rows = [row for row in payload["operational"]["fenzobot_band_summary"] if row["matches"] >= 5]
+    _header(chart_data, 1, ["Faixa de odd", "Acerto Fenzobot", "Break-even teórico", "Decisões liquidadas", "", "Faixa do índice", "Acerto Fenzobot", "Decisões liquidadas"])
+    chart_rows = [row for row in payload["operational"]["fenzobot_band_summary"] if row["matches"] >= 5 and isinstance(row.get("break_even_pct"), (int, float))]
     for index, row in enumerate(chart_rows, 2):
         chart_data.cell(index, 1, row["odds_band"])
         chart_data.cell(index, 2, (row["win_pct"] or 0) / 100)
-        chart_data.cell(index, 3, row["matches"])
+        chart_data.cell(index, 3, (row["break_even_pct"] or 0) / 100)
+        chart_data.cell(index, 4, row["matches"])
     index_chart_rows = [row for row in payload["operational"]["fenzobot_index_band_summary"] if row["matches"] >= 5]
     for index, row in enumerate(index_chart_rows, 2):
         chart_data.cell(index, 5, row["index_band"])
@@ -241,11 +268,11 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     if chart_rows:
         chart = BarChart()
         chart.type = "col"
-        chart.title = "Acerto Fenzobot por faixa de odd (n ≥ 5)"
+        chart.title = "Acerto Fenzobot vs break-even por faixa de odd (n ≥ 5)"
         chart.y_axis.title = "% acerto"
         chart.height = 8
         chart.width = 13
-        chart.add_data(Reference(chart_data, min_col=2, min_row=1, max_row=len(chart_rows) + 1), titles_from_data=True)
+        chart.add_data(Reference(chart_data, min_col=2, max_col=3, min_row=1, max_row=len(chart_rows) + 1), titles_from_data=True)
         chart.set_categories(Reference(chart_data, min_col=1, min_row=2, max_row=len(chart_rows) + 1))
         ws.add_chart(chart, "D5")
     if index_chart_rows:

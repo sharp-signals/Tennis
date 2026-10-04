@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # Rankings only surface sufficiently sized samples.  They are descriptive
 # study aids, not betting recommendations or a substitute for the report's
@@ -198,6 +198,17 @@ def _pct(numerator: int, denominator: int) -> float | None:
     return round(numerator * 100 / denominator, 1) if denominator else None
 
 
+def _break_even_pct(average_odd: float | None) -> float | None:
+    """Taxa teórica necessária para não perder com odds decimais médias.
+
+    Isto não é ROI: usa apenas a odd média dos snapshots canónicos e não
+    incorpora stake, limites, vigor variável ou execução numa casa específica.
+    """
+    if average_odd is None or average_odd <= 1:
+        return None
+    return round(100 / average_odd, 1)
+
+
 def _aggregate_player_rows(rows: Iterable[tuple[str, str, str, bool]]) -> list[dict[str, Any]]:
     grouped: dict[tuple[str, str, str], dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
     for player, band, role, won in rows:
@@ -216,18 +227,28 @@ def _aggregate_player_rows(rows: Iterable[tuple[str, str, str, bool]]) -> list[d
     ]
 
 
-def _aggregate_band_rows(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """Collapse per-player rows into one transparent row per odds band."""
-    grouped: dict[str, dict[str, int]] = defaultdict(lambda: {"matches": 0, "wins": 0})
-    for row in rows:
-        band = _text(row.get("odds_band"))
-        matches, wins = _int(row.get("matches")), _int(row.get("wins"))
-        if not band or matches is None or wins is None:
+def _aggregate_fenzobot_band_rows(rows: Iterable[tuple[str, float, bool]]) -> list[dict[str, Any]]:
+    """One canonical Fenzobot row per odds band, with break-even context."""
+    grouped: dict[str, dict[str, Any]] = defaultdict(lambda: {"matches": 0, "wins": 0, "odds": []})
+    for band, odd, won in rows:
+        if not band or odd <= 1:
             continue
-        grouped[band]["matches"] += matches
-        grouped[band]["wins"] += wins
+        grouped[band]["matches"] += 1
+        grouped[band]["wins"] += int(won)
+        grouped[band]["odds"].append(odd)
     return [
-        {"odds_band": band, "matches": values["matches"], "wins": values["wins"], "win_pct": _pct(values["wins"], values["matches"])}
+        {
+            "odds_band": band, "matches": values["matches"], "wins": values["wins"],
+            "losses": values["matches"] - values["wins"],
+            "win_pct": _pct(values["wins"], values["matches"]),
+            "average_odd": round(sum(values["odds"]) / len(values["odds"]), 3),
+            "break_even_pct": _break_even_pct(sum(values["odds"]) / len(values["odds"])),
+            "margin_vs_break_even_pp": round(
+                (_pct(values["wins"], values["matches"]) or 0)
+                - (_break_even_pct(sum(values["odds"]) / len(values["odds"])) or 0),
+                1,
+            ),
+        }
         for band, values in sorted(grouped.items(), key=lambda item: _odds_band_order(item[0]))
     ]
 
@@ -250,6 +271,34 @@ def _aggregate_index_rows(rows: Iterable[tuple[str, bool]]) -> list[dict[str, An
         }
         for band, values in sorted(grouped.items(), key=lambda item: _index_band_order(item[0]))
     ]
+
+
+def _aggregate_index_odds_rows(rows: Iterable[tuple[str, str, float, bool]]) -> list[dict[str, Any]]:
+    """Cross Fenzobot evidence band with odds band without tuning the model."""
+    grouped: dict[tuple[str, str], dict[str, Any]] = defaultdict(
+        lambda: {"matches": 0, "wins": 0, "odds": []}
+    )
+    for index_band, band, odd, won in rows:
+        if not index_band or not band or odd <= 1:
+            continue
+        item = grouped[(index_band, band)]
+        item["matches"] += 1
+        item["wins"] += int(won)
+        item["odds"].append(odd)
+    result = []
+    for (index_band, band), values in sorted(
+        grouped.items(), key=lambda item: (_index_band_order(item[0][0]), _odds_band_order(item[0][1]))
+    ):
+        average = round(sum(values["odds"]) / len(values["odds"]), 3)
+        win_pct = _pct(values["wins"], values["matches"])
+        break_even = _break_even_pct(average)
+        result.append({
+            "index_band": index_band, "odds_band": band, "matches": values["matches"],
+            "wins": values["wins"], "losses": values["matches"] - values["wins"],
+            "win_pct": win_pct, "average_odd": average, "break_even_pct": break_even,
+            "margin_vs_break_even_pp": round((win_pct or 0) - (break_even or 0), 1),
+        })
+    return result
 
 
 def _aggregate_player_overall(rows: Iterable[tuple[str, str, str, bool]]) -> list[dict[str, Any]]:
@@ -289,6 +338,7 @@ def _ranking_rows(
     empty_strongest_message: str = "Sem amostras suficientes",
     empty_weakest_message: str = "Sem amostras suficientes",
     bottom_title: str = "Bottom 10",
+    metric_label: str = "% acerto",
 ) -> dict[str, Any]:
     """Return the strongest and weakest observations with enough evidence."""
     eligible = []
@@ -319,6 +369,7 @@ def _ranking_rows(
         "empty_strongest_message": empty_strongest_message,
         "empty_weakest_message": empty_weakest_message,
         "bottom_title": bottom_title,
+        "metric_label": metric_label,
     }
 
 
@@ -343,6 +394,7 @@ def build_rankings(
         "WTA ativa · cobertura handicap interno": _ranking_rows(
             historical_wta.get("handicap_reference", []), category="WTA · cobertura handicap interno", metric="cover_pct", sample="matches",
             minimum=RANKING_MIN_SAMPLES["wta_handicap"], label_fields=("player", "role", "reference_line"), active_players=active_players,
+            metric_label="% cobre · linha de referência",
         ),
         "WTA ativa · recuperação após 1.º set": _ranking_rows(
             historical_wta.get("set1_recovery", []), category="WTA · recuperação após 1.º set", metric="recovery_pct", sample="lost_first",
@@ -367,6 +419,11 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
     player_rows: list[tuple[str, str, str, bool]] = []
     model_rows: list[tuple[str, str, str, bool]] = []
     model_index_rows: list[tuple[str, bool]] = []
+    model_band_rows: list[tuple[str, float, bool]] = []
+    model_index_odds_rows: list[tuple[str, str, float, bool]] = []
+    model_by_tour: dict[str, dict[str, list[Any]]] = defaultdict(
+        lambda: {"rows": [], "index_rows": [], "band_rows": [], "index_odds_rows": []}
+    )
     event_rows: list[dict[str, Any]] = []
     for snapshot in snapshots:
         a = snapshot.get("player_a") if isinstance(snapshot.get("player_a"), Mapping) else {}
@@ -390,11 +447,22 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
             other = odd_b if model_side == name_a else odd_a
             selected_side = "a" if model_side == name_a else "b"
             model_won = winner == selected_side
-            model_rows.append((model_side, odds_band(own) or "sem faixa", _role(own, other), model_won))
+            band = odds_band(own)
+            selected = (model_side, band or "sem faixa", _role(own, other), model_won)
+            model_rows.append(selected)
             model_index = _float(divergence.get(f"indice_evidencia_{selected_side}"))
             model_index_band = fenzobot_index_band(model_index)
+            tour = _text(snapshot.get("tour")).upper() or "OUTROS"
+            model_by_tour[tour]["rows"].append(selected)
             if model_index_band:
                 model_index_rows.append((model_index_band, model_won))
+                model_by_tour[tour]["index_rows"].append((model_index_band, model_won))
+            if band and own is not None and own > 1:
+                model_band_rows.append((band, own, model_won))
+                model_by_tour[tour]["band_rows"].append((band, own, model_won))
+                if model_index_band:
+                    model_index_odds_rows.append((model_index_band, band, own, model_won))
+                    model_by_tour[tour]["index_odds_rows"].append((model_index_band, band, own, model_won))
         event_rows.append({
             "event_id": snapshot_event_id(snapshot), "snapshot_key": snapshot.get("key"),
             "analyzed_at_utc": snapshot.get("analyzed_at_utc"), "commence_time_utc": snapshot.get("commence_time_utc"),
@@ -405,14 +473,25 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
             "fenzobot_index": model_index,
             "fenzobot_index_band": model_index_band,
         })
-    fenzobot_odds = _aggregate_player_rows(model_rows)
+    def operational_series(rows: Mapping[str, list[Any]]) -> dict[str, list[dict[str, Any]]]:
+        fenzobot_odds = _aggregate_player_rows(rows["rows"])
+        return {
+            "fenzobot_odds": fenzobot_odds,
+            "fenzobot_player_summary": _aggregate_player_overall(rows["rows"]),
+            "fenzobot_band_summary": _aggregate_fenzobot_band_rows(rows["band_rows"]),
+            "fenzobot_index_band_summary": _aggregate_index_rows(rows["index_rows"]),
+            "fenzobot_index_odds_summary": _aggregate_index_odds_rows(rows["index_odds_rows"]),
+        }
+    all_rows = {
+        "rows": model_rows, "index_rows": model_index_rows,
+        "band_rows": model_band_rows, "index_odds_rows": model_index_odds_rows,
+    }
+    series = operational_series(all_rows)
     return {
         "event_rows": event_rows,
         "player_odds": _aggregate_player_rows(player_rows),
-        "fenzobot_odds": fenzobot_odds,
-        "fenzobot_player_summary": _aggregate_player_overall(model_rows),
-        "fenzobot_band_summary": _aggregate_band_rows(fenzobot_odds),
-        "fenzobot_index_band_summary": _aggregate_index_rows(model_index_rows),
+        **series,
+        "by_tour": {tour: operational_series(rows) for tour, rows in sorted(model_by_tour.items())},
     }
 
 
@@ -518,8 +597,11 @@ def build_system_history(
             "canonical_snapshot_rule": "first_valid_pre_match_snapshot_per_event",
             "raw_report_html_excluded_from_metrics": True,
             "historical_wta_source": "local tennis-data.co.uk cache only",
+            "historical_atp_source": "unavailable; ATP sheets use canonical Fenzobot snapshots only",
             "handicap_reference": "BO3 internal reference line; not a bookmaker handicap settlement",
             "fenzobot_index_learning": "settled canonical observations grouped by the selected side's 50–100 evidence-index band; descriptive only, not a probability or model tuning",
+            "break_even": "theoretical 1 / average decimal odds per canonical snapshot band; not ROI, stake, vig or 22Bet execution",
+            "workbook_layout_version": 2,
         },
         "summary": {
             "raw_snapshots": len(raw), "canonical_snapshots": len(canonical), "duplicate_snapshots_excluded": removed,
