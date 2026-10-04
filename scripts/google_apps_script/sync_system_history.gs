@@ -125,21 +125,24 @@ function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
     const stat = collection[key] || {};
     return [key, stat.total_entries || 0, stat.settled || 0, stat.wins || 0, stat.losses || 0, stat.pushes || 0, stat.pending || 0, stat.units == null ? 'N/D' : stat.units, stat.roi_pct == null ? 'N/D' : stat.roi_pct, stat.average_odd == null ? 'N/D' : stat.average_odd];
   });
+  // Todas as linhas desta folha têm precisamente 10 células. Evita que uma
+  // linha-resumo com um vazio a mais interrompa toda a sincronização.
+  const wide = (first, second) => [first, second, '', '', '', '', '', '', '', ''];
   const section = (title, rows) => [[title, '', '', '', '', '', '', '', '', ''], ['Grupo', 'Entradas', 'Liquidadas', 'Vitórias', 'Derrotas', 'Void', 'Pendentes', 'Unidades', 'ROI', 'Odd média']].concat(rows.length ? rows : [['Sem amostra', '', '', '', '', '', '', '', '', '']]);
   const values = [
-    ['Challenger 125 — PAPER manual 0,5u', '', '', '', '', '', '', '', '', ''],
-    ['Universo separado do PAPER normal. Só entram linhas registadas com a estratégia CHALLENGER_125_EXPERIMENTAL_V1, stake de 0,5u, Snapshot Key e data de seleção.', '', '', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', '', '', ''],
-    ['Indicador', 'Valor', '', '', '', '', '', '', '', ''],
-    ['Estado', strategy.status || 'UNAVAILABLE', '', '', '', '', '', '', '', '', ''],
-    ['Entradas válidas', valueOrND(summary.total_entries), '', '', '', '', '', '', '', '', ''],
-    ['Liquidadas', valueOrND(summary.settled), '', '', '', '', '', '', '', '', ''],
-    ['W–L', available ? (summary.wins || 0) + '–' + (summary.losses || 0) : 'N/D', '', '', '', '', '', '', '', '', ''],
-    ['Void / pendentes', available ? (summary.pushes || 0) + ' / ' + (summary.pending || 0) : 'N/D', '', '', '', '', '', '', '', '', ''],
-    ['Unidades / ROI', available ? (summary.units == null ? 'N/D' : summary.units) + ' / ' + (summary.roi_pct == null ? 'N/D' : summary.roi_pct + '%') : 'N/D', '', '', '', '', '', '', '', ''],
-    ['Odd média', valueOrND(summary.average_odd), '', '', '', '', '', '', '', '', ''],
-    ['Stake fixo da estratégia', strategy.fixed_stake_units == null ? '0,5u' : String(strategy.fixed_stake_units).replace('.', ',') + 'u', '', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', '', '', ''],
+    wide('Challenger 125 — PAPER manual 0,5u', ''),
+    wide('Universo separado do PAPER normal. Só entram linhas registadas com a estratégia CHALLENGER_125_EXPERIMENTAL_V1, stake de 0,5u, Snapshot Key e data de seleção.', ''),
+    wide('', ''),
+    wide('Indicador', 'Valor'),
+    wide('Estado', strategy.status || 'UNAVAILABLE'),
+    wide('Entradas válidas', valueOrND(summary.total_entries)),
+    wide('Liquidadas', valueOrND(summary.settled)),
+    wide('W–L', available ? (summary.wins || 0) + '–' + (summary.losses || 0) : 'N/D'),
+    wide('Void / pendentes', available ? (summary.pushes || 0) + ' / ' + (summary.pending || 0) : 'N/D'),
+    wide('Unidades / ROI', available ? (summary.units == null ? 'N/D' : summary.units) + ' / ' + (summary.roi_pct == null ? 'N/D' : summary.roi_pct + '%') : 'N/D'),
+    wide('Odd média', valueOrND(summary.average_odd)),
+    wide('Stake fixo da estratégia', strategy.fixed_stake_units == null ? '0,5u' : String(strategy.fixed_stake_units).replace('.', ',') + 'u'),
+    wide('', ''),
   ].concat(
     section('Por mercado', statsRows(strategy.by_market)), [['', '', '', '', '', '', '', '', '', '']],
     section('Por perfil', statsRows(strategy.by_side)), [['', '', '', '', '', '', '', '', '', '']],
