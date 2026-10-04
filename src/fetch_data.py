@@ -2201,8 +2201,10 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
     parado enquanto ``od1``/``od2`` continuam a atualizar. A frescura desta
     fonte é, por isso, a hora da resposta diretamente recebida pelo bot; o
     ``addTime`` é preservado como metadado, mas nunca usado para bloquear a
-    cotação. A identidade, ordem e estado pré-live do evento continuam a ser
-    obrigatórios.
+    cotação. A identidade, ordem, casa nomeada, par bilateral e estado
+    pré-live do evento continuam a ser obrigatórios. A proveniência declara
+    explicitamente que a frescura é a captura direta da resposta, não uma
+    confirmação da idade do ``addTime``.
     """
     player_a = str((match.get("player1") or {}).get("name") or "").strip()
     player_b = str((match.get("player2") or {}).get("name") or "").strip()
@@ -2323,7 +2325,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "odds": quote_odds,
             "provider_timestamp": item.get("provider_timestamp"),
             "provider_timestamp_status": "unreliable_for_freshness",
-            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "freshness_status": "OBSERVED_AT_CAPTURE",
             "identity_mapping_status": "VERIFIED",
             "event_identity_validation_basis": event.get(
                 "event_identity_validation_basis"
@@ -2372,7 +2374,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
             "bookmaker": None,
             "from_cache": False,
             "cache_age_seconds": 0,
-            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "freshness_status": "OBSERVED_AT_CAPTURE",
             "identity_mapping_status": "VERIFIED",
             "raw_payload_sha256": raw_hash,
             "availability_status": "UNAVAILABLE",
@@ -2406,7 +2408,7 @@ def fetch_rapidapi_recent_moneyline_with_provenance(match: dict) -> tuple[Option
         "bookmaker": bookmaker,
         "from_cache": False,
         "cache_age_seconds": 0,
-        "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+        "freshness_status": "OBSERVED_AT_CAPTURE",
         "identity_mapping_status": "VERIFIED",
         "provider_side_a": "od1" if participant1_is_a else "od2",
         "provider_side_b": "od2" if participant1_is_a else "od1",

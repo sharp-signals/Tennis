@@ -80,7 +80,7 @@ class MarketIntegrityGateTests(unittest.TestCase):
         self.assertEqual(result["selected"]["integrity_status"], "SINGLE_BOOKMAKER_OPERATIONAL")
         self.assertTrue(result["selected"]["operational_pricing_eligible"])
 
-    def test_fetch_single_bookmaker_returns_operational_moneyline(self):
+    def test_fetch_single_bookmaker_recent_odds_is_operational_when_directly_captured(self):
         match = {"player1": {"name": "Peyton Stearns"}, "player2": {"name": "Emiliana Arango"}}
         event = {
             "valid": True, "event_id": "3955784",
@@ -105,15 +105,34 @@ class MarketIntegrityGateTests(unittest.TestCase):
         self.assertEqual(odds, {"Peyton Stearns": 1.35, "Emiliana Arango": 3.22})
         self.assertEqual(provenance["bookmaker"], "DraftKings")
         self.assertEqual(provenance["market_integrity"]["pricing_basis"], "single_bookmaker")
-        self.assertIs(provenance["operational_pricing_eligible"], False)
+        self.assertIs(provenance["operational_pricing_eligible"], True)
         self.assertEqual(
             provenance["freshness_status"],
-            "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "OBSERVED_AT_CAPTURE",
         )
         self.assertEqual(
             provenance["odds_source_contract_version"],
             market_integrity.ODDS_SOURCE_CONTRACT_VERSION,
         )
+        self.assertTrue(market_integrity.is_operational_pricing_provenance(provenance))
+
+    def test_recent_odds_cache_hit_cannot_become_operational_pricing(self):
+        provenance = {
+            "source": "RapidAPI Tennis API / recent-odds",
+            "event_id": "event-1",
+            "bookmaker": "Test Book",
+            "capture_kind": "rapidapi_response_observed_at_capture",
+            "freshness_status": "OBSERVED_AT_CAPTURE",
+            "provider_timestamp_status": "unreliable_for_freshness",
+            "identity_mapping_status": "VERIFIED",
+            "from_cache": True,
+            "operational_pricing_eligible": True,
+            "market_integrity": {
+                "policy_version": market_integrity.POLICY_VERSION,
+                "status": "AVAILABLE",
+            },
+        }
+        provenance.update(market_integrity.operational_contract_metadata())
         self.assertFalse(market_integrity.is_operational_pricing_provenance(provenance))
 
     def test_non_finite_incomplete_and_below_one_are_rejected(self):

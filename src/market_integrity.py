@@ -11,14 +11,14 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-CHANGE_ID = "CHANGE-2026-10-02-070"
-POLICY_VERSION = "market-quote-integrity-v2"
-ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-02-070"
-ODDS_SOURCE_FAMILY = "fresh-bookmaker-prelive"
-ODDS_SOURCE_CONTRACT_VERSION = "fresh-bookmaker-prelive-v3"
+CHANGE_ID = "CHANGE-2026-10-04-078"
+POLICY_VERSION = "market-quote-integrity-v3"
+ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-04-078"
+ODDS_SOURCE_FAMILY = "verified-bookmaker-prelive"
+ODDS_SOURCE_CONTRACT_VERSION = "verified-bookmaker-prelive-v4"
 ODDS_IDENTITY_POLICY_VERSION = "rapidapi-event-bilateral-v1"
-ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-verified-fresh-v1"
-ODDS_BOOKMAKER_POLICY = "verified-fresh-bookmaker-v1"
+ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-or-direct-rapidapi-capture-v1"
+ODDS_BOOKMAKER_POLICY = "verified-named-bilateral-bookmaker-v2"
 
 _ODDS_SOURCE_CONTRACT = {
     "source_family": ODDS_SOURCE_FAMILY,
@@ -74,25 +74,40 @@ def operational_contract_metadata(captured_at_utc: str | None = None) -> dict[st
 
 
 def is_operational_pricing_provenance(provenance: Mapping[str, Any] | None) -> bool:
-    """Fonte única de verdade para eligibility: qualquer ausência falha fechada."""
+    """Fonte única de verdade para eligibility: qualquer ausência falha fechada.
+
+    Uma quote The Odds API precisa do timestamp fresco do bookmaker. A
+    RapidAPI ``recent-odds`` tem uma semântica diferente: o ``addTime`` pode
+    ficar parado apesar de a resposta mudar, mas a chamada é feita ao vivo e
+    contém uma casa nomeada e os dois lados do evento verificado. Esta via é
+    aceite apenas como captura direta da resposta, nunca a partir de cache ou
+    do feed ``upcoming`` sem bookmaker.
+    """
     if not isinstance(provenance, Mapping):
         return False
     integrity = provenance.get("market_integrity")
     if not isinstance(integrity, Mapping):
         return False
-    return all((
+    common = all((
         provenance.get("operational_pricing_eligible") is True,
         provenance.get("odds_source_contract_version") == ODDS_SOURCE_CONTRACT_VERSION,
         provenance.get("odds_source_contract_fingerprint") == ODDS_SOURCE_CONTRACT_FINGERPRINT,
         bool(provenance.get("event_id")),
         str(provenance.get("identity_mapping_status") or "").upper().startswith("VERIFIED"),
         bool(str(provenance.get("bookmaker") or "").strip()),
-        # A captura do feed RapidAPI sem hora da casa apenas prova que a
-        # resposta chegou agora; não prova a idade da cotação. Não pode
-        # alimentar pricing, edge ou PAPER.
-        provenance.get("freshness_status") == "FRESH",
         integrity.get("policy_version") == POLICY_VERSION,
         integrity.get("status") == "AVAILABLE",
+    ))
+    if not common:
+        return False
+    if provenance.get("freshness_status") == "FRESH":
+        return True
+    return all((
+        provenance.get("source") == "RapidAPI Tennis API / recent-odds",
+        provenance.get("capture_kind") == "rapidapi_response_observed_at_capture",
+        provenance.get("freshness_status") == "OBSERVED_AT_CAPTURE",
+        provenance.get("from_cache") is False,
+        provenance.get("provider_timestamp_status") == "unreliable_for_freshness",
     ))
 
 

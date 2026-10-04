@@ -143,7 +143,7 @@ class MatchInputTests(unittest.TestCase):
             )
 
         self.assertEqual(odds, {"Alice Player": 1.70, "Bea Player": 2.20})
-        self.assertFalse(provenance["operational_pricing_eligible"])
+        self.assertTrue(provenance["operational_pricing_eligible"])
         self.assertEqual(provenance["identity_mapping_status"], "VERIFIED")
         self.assertEqual(
             provenance["event_identity_validation_basis"], "EXACT_NAMES"
