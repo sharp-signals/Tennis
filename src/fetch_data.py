@@ -1329,44 +1329,59 @@ def _the_odds_sport_keys_for_match(match: dict) -> list[str]:
         # The Odds API usa Japan Open, enquanto o feed de fixtures pode
         # apresentar Tokyo ou o patrocinador Kinoshita.
         "japan open": ("tokyo", "kinoshita"),
+        # O feed atual usa "Shanghai Rolex Masters"; a The Odds API usa a
+        # chave histórica "Shanghai Masters".
+        "shanghai masters": ("shanghai rolex", "rolex shanghai"),
     }
+    tournament_tokens = set(tournament.split())
     matches = []
     for sport_key in ODDS_API_TENNIS_SPORT_KEYS:
         prefix = f"tennis_{tour}_"
         if not tour or not sport_key.startswith(prefix):
             continue
         suffix = sport_key.removeprefix(prefix).replace("_", " ")
-        if suffix in tournament or any(alias in tournament for alias in aliases.get(suffix, ())):
+        # Providers podem inserir um patrocinador no meio do nome, por
+        # exemplo "Shanghai Rolex Masters". Exigir todos os tokens próprios
+        # da competição preserva a especificidade sem depender da ordem
+        # consecutiva da frase.
+        suffix_tokens = set(suffix.split())
+        if (
+            suffix in tournament
+            or suffix_tokens.issubset(tournament_tokens)
+            or any(alias in tournament for alias in aliases.get(suffix, ()))
+        ):
             matches.append(sport_key)
     return matches
 
 
 def _select_the_odds_sport_keys(matches: list[dict], maximum: int) -> tuple[list[str], list[str]]:
-    """Escolhe competições sem deixar um tour sem quote por ordem alfabética.
+    """Escolhe competições sem deixar um tour sem quote, por cobertura.
 
     A quota é pequena e uma execução pode conter mais do que um torneio ATP e
     WTA. Reservamos primeiro uma competição por tour e só depois preenchemos
     as vagas restantes. Assim, por exemplo, ATP China + ATP Japão não adiam o
     WTA China apenas por a chave deste último aparecer depois alfabeticamente.
     """
-    keys_by_tour: dict[str, set[str]] = {}
+    keys_by_tour: dict[str, dict[str, int]] = {}
     for match in matches:
         tour = str(match.get("_tour") or "").strip().lower()
         if not tour:
             continue
-        keys_by_tour.setdefault(tour, set()).update(_the_odds_sport_keys_for_match(match))
+        counts = keys_by_tour.setdefault(tour, {})
+        for sport_key in _the_odds_sport_keys_for_match(match):
+            counts[sport_key] = counts.get(sport_key, 0) + 1
 
     first_per_tour: list[str] = []
-    remaining: list[str] = []
+    remaining: list[tuple[str, int]] = []
     for tour in ("atp", "wta"):
-        keys = sorted(keys_by_tour.pop(tour, set()))
+        keys = sorted(keys_by_tour.pop(tour, {}).items(), key=lambda item: (-item[1], item[0]))
         if keys:
-            first_per_tour.append(keys[0])
+            first_per_tour.append(keys[0][0])
             remaining.extend(keys[1:])
     for tour in sorted(keys_by_tour):
-        remaining.extend(sorted(keys_by_tour[tour]))
+        remaining.extend(keys_by_tour[tour].items())
 
-    ordered = first_per_tour + sorted(remaining)
+    ordered = first_per_tour + [key for key, _ in sorted(remaining, key=lambda item: (-item[1], item[0]))]
     limit = max(0, int(maximum))
     return ordered[:limit], ordered[limit:]
 
