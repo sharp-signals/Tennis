@@ -92,8 +92,28 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         second["commence_time_utc"] = "2026-09-30T12:00:00+00:00"
         payload = build_system_history({"snapshots": [first, second]}, [])
         self.assertEqual(payload["operational"]["fenzobot_band_summary"], [
-            {"odds_band": "1.41–1.50", "matches": 2, "wins": 2, "win_pct": 100.0},
+            {
+                "odds_band": "1.41–1.50", "matches": 2, "wins": 2, "losses": 0,
+                "win_pct": 100.0, "average_odd": 1.45, "break_even_pct": 69.0,
+                "margin_vs_break_even_pp": 31.0,
+            },
         ])
+        self.assertEqual(payload["operational"]["by_tour"]["ATP"]["fenzobot_band_summary"], payload["operational"]["fenzobot_band_summary"])
+
+    def test_index_by_odd_keeps_index_and_tour_separate(self):
+        won = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:1", odd_a=1.45, index_a=72)
+        lost = _snapshot(analyzed_at="2026-09-28T06:31:00+00:00", key="wta:2", odd_a=1.45, index_a=72, winner="b")
+        lost["tour"] = "wta"
+        lost["match_id"] = 11
+        lost["commence_time_utc"] = "2026-09-30T12:00:00+00:00"
+        payload = build_system_history({"snapshots": [won, lost]}, [])
+        self.assertEqual(payload["operational"]["fenzobot_index_odds_summary"], [{
+            "index_band": "70–79", "odds_band": "1.41–1.50", "matches": 2,
+            "wins": 1, "losses": 1, "win_pct": 50.0, "average_odd": 1.45,
+            "break_even_pct": 69.0, "margin_vs_break_even_pp": -19.0,
+        }])
+        self.assertEqual(payload["operational"]["by_tour"]["ATP"]["fenzobot_index_odds_summary"][0]["matches"], 1)
+        self.assertEqual(payload["operational"]["by_tour"]["WTA"]["fenzobot_index_odds_summary"][0]["wins"], 0)
 
     def test_fenzobot_index_summary_uses_selected_side_and_settled_canonical_rows_only(self):
         won = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:1", index_a=86, index_b=14)
@@ -138,6 +158,14 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         recovery = rankings["WTA ativa · recuperação após 1.º set"]
         self.assertEqual(recovery["bottom_title"], "Bottom 10 (>0%)")
         self.assertEqual([row["label"] for row in recovery["weakest"]], ["Some"])
+
+    def test_handicap_ranking_names_the_metric_not_a_profit(self):
+        rankings = build_rankings(
+            {},
+            {"player_odds": [], "handicap_reference": [{"player": "A", "role": "favorito", "reference_line": -3.5, "matches": 20, "cover_pct": 70.0}], "set1_recovery": [], "deciding_set": [], "tiebreak": []},
+            active_players={"A"},
+        )
+        self.assertEqual(rankings["WTA ativa · cobertura handicap interno"]["metric_label"], "% cobre · linha de referência")
 
     def test_active_wta_players_uses_a_12_month_window_from_latest_cache_date(self):
         matches = [
