@@ -136,6 +136,7 @@ jobs:
         if: steps.run_bot.outcome == 'success' && steps.publish_reports.outcome == 'success' && steps.report_readiness.outcome == 'success' && steps.report_notifications.outcome == 'success'
         continue-on-error: true
         env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           # Após a filtragem canónica pela dupla de jogadores, este lote cobre
           # a fila corrente numa run sem alterar aquisição ou pricing.
           SETTLEMENT_BATCH_SIZE: "500"
