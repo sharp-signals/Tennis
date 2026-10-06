@@ -27,7 +27,7 @@
       "total_snapshots": 787
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-05T23:10:35+00:00",
+      "attempted_at_utc": "2026-10-06T03:08:06+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
@@ -195,7 +195,7 @@
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
       "first_ledger_capture_utc": "2026-09-03T17:34:09+00:00",
       "fresh": 0.0,
-      "last_monitor_capture_utc": "2026-10-05T23:10:31+00:00",
+      "last_monitor_capture_utc": "2026-10-06T03:08:03+00:00",
       "stale": 0.0,
       "unknown": 0.0
     },
@@ -73897,12 +73897,12 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-05T23:13:38+00:00",
+  "generated_at_utc": "2026-10-06T03:11:37+00:00",
   "global": {
     "distinct_matchups": 2233,
     "green_strong_candidates": 6,
-    "market_observations": 8154,
-    "paper_22bet_entries": 94,
+    "market_observations": 8163,
+    "paper_22bet_entries": 98,
     "paper_technical_entries": 166,
     "report_colors": {
       "GREEN": 377,
@@ -73942,7 +73942,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-05T23:13:38+00:00",
+    "generated_at_utc": "2026-10-06T03:11:37+00:00",
     "losses": 24,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -3.19,
@@ -73985,7 +73985,7 @@
       "average_market_probability": 0.412033,
       "observed_win_rate_pct": null
     },
-    "generated_at_utc": "2026-10-05T23:13:38+00:00",
+    "generated_at_utc": "2026-10-06T03:11:37+00:00",
     "market_movement": {
       "average_probability_pp": -0.002,
       "comparable_closing_n": 1,
@@ -74212,7 +74212,7 @@
     "distinct_events": 787,
     "events_with_comparable_closing": 24,
     "events_with_entry_market": 226,
-    "generated_at_utc": "2026-10-05T23:13:38+00:00",
+    "generated_at_utc": "2026-10-06T03:11:37+00:00",
     "market_only": {
       "accuracy_pct": 73.68,
       "brier_score": 0.20332,
@@ -74226,10 +74226,6 @@
       "sample_size": 109
     },
     "observations_by_day": [
-      {
-        "date": "2026-09-06",
-        "observations": 119
-      },
       {
         "date": "2026-09-07",
         "observations": 70
@@ -74345,10 +74341,14 @@
       {
         "date": "2026-10-05",
         "observations": 725
+      },
+      {
+        "date": "2026-10-06",
+        "observations": 9
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 8154
+    "total_observations": 8163
   },
   "match_identity_v2": {
     "activation": {
@@ -74381,29 +74381,29 @@
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
-    "average_odd": 1.915,
+    "average_odd": 1.919,
     "by_market": {
       "Handicap games": {
         "average_odd": 1.861,
         "losses": 30,
-        "pending": 0,
+        "pending": 2,
         "pushes": 2,
         "roi_pct": 7.014,
         "settled": 71,
-        "total_entries": 73,
+        "total_entries": 75,
         "units": 4.98,
         "win_rate_pct": 57.746,
         "wins": 41,
         "yield_pct": null
       },
       "Moneyline": {
-        "average_odd": 2.104,
+        "average_odd": 2.109,
         "losses": 6,
-        "pending": 0,
+        "pending": 2,
         "pushes": 0,
         "roi_pct": 52.476,
         "settled": 21,
-        "total_entries": 21,
+        "total_entries": 23,
         "units": 11.02,
         "win_rate_pct": 71.429,
         "wins": 15,
@@ -74412,26 +74412,26 @@
     },
     "by_side": {
       "Favorito": {
-        "average_odd": 1.866,
+        "average_odd": 1.865,
         "losses": 29,
-        "pending": 0,
+        "pending": 2,
         "pushes": 2,
         "roi_pct": 1.781,
         "settled": 64,
-        "total_entries": 66,
+        "total_entries": 68,
         "units": 1.14,
         "win_rate_pct": 54.688,
         "wins": 35,
         "yield_pct": null
       },
       "Underdog": {
-        "average_odd": 2.032,
+        "average_odd": 2.042,
         "losses": 7,
-        "pending": 0,
+        "pending": 2,
         "pushes": 0,
         "roi_pct": 53.071,
         "settled": 28,
-        "total_entries": 28,
+        "total_entries": 30,
         "units": 14.86,
         "win_rate_pct": 75,
         "wins": 21,
@@ -74442,8 +74442,8 @@
       "basis": "paper_22bet.summary",
       "label": "Simulação €10 por aposta a partir das unidades do PAPER manual",
       "net_profit_eur": 160.0,
-      "pending_entries": 0,
-      "pending_exposure_eur": 0.0,
+      "pending_entries": 4,
+      "pending_exposure_eur": 40.0,
       "resolved_stake_eur": 920.0,
       "roi_pct": 17.391,
       "settled_entries": 92,
@@ -74451,14 +74451,14 @@
       "status": "AVAILABLE"
     },
     "losses": 36,
-    "pending": 0,
+    "pending": 4,
     "pushes": 2,
     "reference_bookmaker": "22Bet",
     "roi_pct": 17.391,
     "settled": 92,
     "status": "AVAILABLE",
-    "synced_at_utc": "2026-10-05T11:25:45.132Z",
-    "total_entries": 94,
+    "synced_at_utc": "2026-10-05T23:25:43.884Z",
+    "total_entries": 98,
     "units": 16,
     "win_rate_pct": 60.87,
     "wins": 56,
@@ -74548,7 +74548,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "916cea86ca8deb1fbe19655655095839272ff34788c2db03262c8786934d57ab",
+  "semantic_fingerprint": "4cad190ad9177ac400db9f13a00466daec828f7f2f9dcf3cdbbae11c08e793db",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 338,
@@ -74593,16 +74593,16 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-05T23:13:38+00:00"
+      "updated_at_utc": "2026-10-06T03:11:37+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-05T23:10:24+00:00"
+      "updated_at_utc": "2026-10-06T03:07:56+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-05T23:13:38+00:00"
+      "updated_at_utc": "2026-10-06T03:11:37+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
@@ -74610,7 +74610,7 @@
     },
     "paper_22bet": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-05T11:25:45.132Z"
+      "updated_at_utc": "2026-10-05T23:25:43.884Z"
     },
     "paper_technical": {
       "status": "AVAILABLE",
