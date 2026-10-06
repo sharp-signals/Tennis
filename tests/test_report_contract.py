@@ -12,6 +12,30 @@ def _operational_odds_fields():
 
 
 class ReportStateTests(unittest.TestCase):
+    def test_court_speed_reason_is_shown_instead_of_generic_missing_data(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "features": {
+                "velocidade_piso": {
+                    "lider": None,
+                    "motivo_exclusao": "não aplicável em terra batida — usar desempenho na superfície",
+                },
+            },
+        }
+
+        divergence = {
+            "fatores_status": {
+                "velocidade_piso": {
+                    "disponivel": False,
+                    "lider": None,
+                    "motivo_exclusao": payload["features"]["velocidade_piso"]["motivo_exclusao"],
+                },
+            },
+        }
+        html = report_html._mod_fatores_detalhados(payload, divergence)
+
+        self.assertIn("não aplicável em terra batida", html)
+
     def test_handicap_reference_header_is_explicitly_internal(self):
         html = report_html._mod_handicap_reference_header({
             "player_a": "A", "player_b": "B", "match_format": "bo5",

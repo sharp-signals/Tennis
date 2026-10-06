@@ -990,6 +990,10 @@ def _calcular_divergencia(payload):
     elif isinstance(vp, dict) and vp.get("lider") is not None:
         _reg_status("velocidade_piso", True, vp["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"))
+    elif isinstance(vp, dict) and vp.get("motivo_exclusao"):
+        _reg_status("velocidade_piso", False, motivo_exclusao=vp.get("motivo_exclusao"),
+                    valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"),
+                    amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"))
     else:
         _reg_status("velocidade_piso", False)
 
@@ -3478,9 +3482,10 @@ def _mod_fatores_detalhados(
         nome = _esc(_nome_fator(chave))
         impact_attrs, impact_bar = impact_markup(st)
         if not st.get("disponivel"):
+            txt = st.get("motivo_exclusao") or "sem dados"
             linhas.append(
                 f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">sem dados</span></div>{impact_bar}</div>')
+                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{impact_bar}</div>')
             continue
         lider = st.get("lider")
         motivo = st.get("motivo_exclusao")

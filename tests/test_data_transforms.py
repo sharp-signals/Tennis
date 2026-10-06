@@ -7,6 +7,40 @@ import pandas as pd
 from src import fetch_data, main, market_integrity, match_identity_v2
 
 
+class CourtPaceEvidenceTests(unittest.TestCase):
+    def test_shanghai_rolex_name_resolves_to_the_versioned_cpi_registry(self):
+        info = fetch_data.lookup_court_pace("Shanghai Rolex Masters - Shanghai", 2026)
+
+        self.assertIsNotNone(info)
+        self.assertEqual(info["tournament_key"], "shanghai")
+        self.assertEqual(info["bucket"], "medium_slow")
+        self.assertEqual(info["ano_usado"], 2025)
+        self.assertFalse(info["ano_exato"])
+        self.assertEqual(info["source"], "courtspeed_cpi")
+
+    def test_clay_and_grass_are_explicitly_not_speed_classified(self):
+        clay = fetch_data.court_pace_context("Rome Masters", 2026, "Clay")
+        grass = fetch_data.court_pace_context("Wimbledon", 2026, "Grass")
+
+        self.assertEqual(clay["status"], "not_applicable")
+        self.assertIn("terra batida", clay["motivo_exclusao"])
+        self.assertEqual(grass["status"], "not_applicable")
+        self.assertIn("relva", grass["motivo_exclusao"])
+
+    def test_hard_speed_form_never_mixes_clay_or_grass_history(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "surface": "Hard", "tourney_name": "Shanghai Masters", "tourney_date": 20251001},
+            {"winner_name": "A", "loser_name": "C", "surface": "Clay", "tourney_name": "Rome Masters", "tourney_date": 20251001},
+        ])
+
+        result = fetch_data.compute_court_speed_form(history, "A", "medium_slow")
+
+        self.assertEqual(result["matches"], 1)
+        self.assertEqual(result["wins"], 1)
+        self.assertFalse(result["eligible_for_index"])
+        self.assertEqual(result["sample_minimum"], 10)
+
+
 class MatchInputTests(unittest.TestCase):
     def test_official_ranking_prefers_fixture_player_id_and_never_invents_low_rank(self):
         ranking = {
