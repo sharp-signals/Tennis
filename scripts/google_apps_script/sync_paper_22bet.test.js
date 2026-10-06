@@ -200,6 +200,38 @@ test('legacy 15-column sheet still aggregates and is not reclassified', () => {
   assert.doesNotMatch(JSON.stringify(payload), /Alpha|Beta/);
 });
 
+test('Casa inserted before odds keeps all PAPER totals mapped by header', () => {
+  const headers = [
+    'Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und',
+    'Pré/Live', 'Casa', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas',
+  ];
+  const wonOn22Bet = Array(headers.length).fill('');
+  wonOn22Bet[0] = '2026-10-06'; wonOn22Bet[1] = 'Alpha vs Beta'; wonOn22Bet[5] = 'Vencedor';
+  wonOn22Bet[7] = 'Favorito'; wonOn22Bet[9] = '22Bet'; wonOn22Bet[10] = 1.8;
+  wonOn22Bet[11] = 1; wonOn22Bet[13] = 'GANHOU'; wonOn22Bet[14] = 0.8;
+  const wonOnBetfair = Array(headers.length).fill('');
+  wonOnBetfair[0] = '2026-10-06'; wonOnBetfair[1] = 'Gamma vs Delta'; wonOnBetfair[5] = 'Handicap games';
+  wonOnBetfair[7] = 'Underdog'; wonOnBetfair[9] = 'Betfair'; wonOnBetfair[10] = 2.12;
+  wonOnBetfair[11] = 1; wonOnBetfair[13] = 'GANHOU'; wonOnBetfair[14] = 1.064;
+  const sheet = {
+    getLastRow: () => 7, getLastColumn: () => headers.length,
+    getRange: (sheetRow) => ({getValues: () => sheetRow === 5 ? [headers] : [wonOn22Bet, wonOnBetfair]}),
+  };
+  context.SpreadsheetApp = {getActiveSpreadsheet: () => ({
+    getSheetByName: () => sheet, getUrl: () => 'https://docs.google.com/spreadsheets/d/test',
+  })};
+  context.Utilities = {DigestAlgorithm: {SHA_256: 'SHA_256'}, computeDigest: () => [0]};
+  const payload = context.buildPaperTradingPayload_('', '', 'main');
+  assert.equal(payload.summary.total_entries, 2);
+  assert.equal(payload.summary.settled, 2);
+  assert.equal(payload.summary.wins, 2);
+  assert.equal(payload.summary.units, 1.864);
+  assert.equal(payload.summary.roi_pct, 93.2);
+  assert.equal(payload.summary.average_odd, 1.96);
+  assert.equal(payload.by_market.Moneyline.units, 0.8);
+  assert.equal(payload.by_market['Handicap games'].units, 1.064);
+});
+
 test('manual Challenger 125 has a separate 0.5u aggregate and never changes normal PAPER totals', () => {
   const headers = Array.from({length: 15}, (_, index) => 'Legacy ' + index).concat([
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
