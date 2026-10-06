@@ -30,6 +30,11 @@ const PAPER_22BET_SYNC = {
   ],
   challengerManualStrategy: 'CHALLENGER_125_EXPERIMENTAL_V1',
   challengerManualStakeUnits: 0.5,
+  // Índices legacy (A:O) usados exclusivamente como compatibilidade para
+  // versões antigas da Sheet sem cabeçalhos reconhecíveis.
+  legacyOperationalIndexes: {
+    market: 5, side: 7, odd: 9, stake: 10, result: 12, profit: 13,
+  },
 };
 
 function onOpen() {
@@ -162,9 +167,9 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const rowCount = Math.max(0, lastRow - PAPER_22BET_SYNC.headerRow);
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
   const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
-  const rows = rowCount ? sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, PAPER_22BET_SYNC.firstColumn, rowCount, width).getValues() : [];
-  const activeRows = rows.filter(row => row[0] && row[1] && row[5]);
   const tracking = trackingIndexes_(headers);
+  const rows = rowCount ? sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, PAPER_22BET_SYNC.firstColumn, rowCount, width).getValues() : [];
+  const activeRows = rows.filter(row => row[0] && row[1] && row[tracking.market]);
   // O agregado principal mantém-se exclusivamente PAPER normal. O Challenger
   // 125 manual tem universo e stake próprios, publicados abaixo por estratégia.
   const standardRows = activeRows.filter(row => !isChallengerManualRow_(row, tracking));
@@ -172,13 +177,13 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const byMarket = {};
   const bySide = {};
   standardRows.forEach(row => {
-    const market = row[5] === 'Vencedor' ? 'Moneyline' : String(row[5]);
-    const side = String(row[7] || 'Sem perfil');
+    const market = marketName_(row, tracking);
+    const side = sideName_(row, tracking);
     if (!byMarket[market]) byMarket[market] = newStats_();
     if (!bySide[side]) bySide[side] = newStats_();
-    addRowToStats_(summary, row);
-    addRowToStats_(byMarket[market], row);
-    addRowToStats_(bySide[side], row);
+    addRowToStats_(summary, row, tracking);
+    addRowToStats_(byMarket[market], row, tracking);
+    addRowToStats_(bySide[side], row, tracking);
   });
 
   const green = tracking.complete ? fetchGreenStrongIndex_(token, repository, branch) : {byKey: {}, eligibleCount: null, available: false};
@@ -203,23 +208,23 @@ function buildPaperTradingPayload_(token, repository, branch) {
       challengerValidation[challengerStatus] = (challengerValidation[challengerStatus] || 0) + 1;
       if (tracking.status >= 0) sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(challengerStatus);
       if (challengerStatus !== 'MANUAL_CHALLENGER_RECORDED') return;
-      const market = row[5] === 'Vencedor' ? 'Moneyline' : String(row[5]);
-      const side = String(row[7] || 'Sem perfil');
+      const market = marketName_(row, tracking);
+      const side = sideName_(row, tracking);
       const indexBand = challengerIndexBand_(row, tracking);
       const coverageBand = challengerCoverageBand_(row, tracking);
       const edgeBand = challengerEdgeBand_(row, tracking);
       [[challengerByMarket, market], [challengerBySide, side], [challengerByIndexBand, indexBand], [challengerByCoverageBand, coverageBand], [challengerByEdgeBand, edgeBand]].forEach(pair => {
         if (!pair[0][pair[1]]) pair[0][pair[1]] = newStats_();
       });
-      addRowToStats_(challengerStats, row);
-      addRowToStats_(challengerByMarket[market], row);
-      addRowToStats_(challengerBySide[side], row);
-      addRowToStats_(challengerByIndexBand[indexBand], row);
-      addRowToStats_(challengerByCoverageBand[coverageBand], row);
-      addRowToStats_(challengerByEdgeBand[edgeBand], row);
+      addRowToStats_(challengerStats, row, tracking);
+      addRowToStats_(challengerByMarket[market], row, tracking);
+      addRowToStats_(challengerBySide[side], row, tracking);
+      addRowToStats_(challengerByIndexBand[indexBand], row, tracking);
+      addRowToStats_(challengerByCoverageBand[coverageBand], row, tracking);
+      addRowToStats_(challengerByEdgeBand[edgeBand], row, tracking);
       return;
     }
-    if (!(row[0] && row[1] && row[5]) || !tracking.complete || String(row[tracking.strategy] || '').trim() !== 'GUERRA_SELECTION_V1') return;
+    if (!(row[0] && row[1] && row[tracking.market]) || !tracking.complete || String(row[tracking.strategy] || '').trim() !== 'GUERRA_SELECTION_V1') return;
     const status = validateGuerraSelection_(row, tracking, green.byKey, green.available);
     linkage[status] = (linkage[status] || 0) + 1;
     sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(status);
@@ -227,15 +232,15 @@ function buildPaperTradingPayload_(token, repository, branch) {
     const snapshotKey = String(row[tracking.snapshot]).trim();
     const cohort = green.byKey[snapshotKey] || {};
     selectedSnapshotKeys[snapshotKey] = true;
-    const market = row[5] === 'Vencedor' ? 'Moneyline' : String(row[5]);
-    const side = String(row[7] || 'Sem perfil');
+    const market = marketName_(row, tracking);
+    const side = sideName_(row, tracking);
     const route = moneylineReviewRoute_(row[tracking.reviewOdd]);
     if (!guerraByMarket[market]) guerraByMarket[market] = newStats_();
     if (!guerraBySide[side]) guerraBySide[side] = newStats_();
-    addRowToStats_(guerraStats, row);
-    addRowToFlatStakeSimulation_(flatStakeSimulation, row);
-    addRowToStats_(guerraByMarket[market], row);
-    addRowToStats_(guerraBySide[side], row);
+    addRowToStats_(guerraStats, row, tracking);
+    addRowToFlatStakeSimulation_(flatStakeSimulation, row, tracking);
+    addRowToStats_(guerraByMarket[market], row, tracking);
+    addRowToStats_(guerraBySide[side], row, tracking);
     guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
     if (cohort.selected_side_market_position === 'UNDERDOG') {
       if (!underdogPairs[snapshotKey]) underdogPairs[snapshotKey] = {moneyline: false, positiveHandicap: false};
@@ -359,8 +364,28 @@ function trackingIndexes_(headers) {
     challengerIndex: headers.indexOf('Challenger Índice Fenzobot'),
     challengerCoverage: headers.indexOf('Challenger Cobertura %'),
     challengerEdge: headers.indexOf('Challenger Edge %'),
+    market: operationalIndex_(headers, 'Tipo de mercado', 'market'),
+    side: operationalIndex_(headers, 'Fav/Und', 'side'),
+    odd: operationalIndex_(headers, 'Odd aposta', 'odd'),
+    stake: operationalIndex_(headers, 'Stake (u)', 'stake'),
+    result: operationalIndex_(headers, 'Resultado', 'result'),
+    profit: operationalIndex_(headers, 'Lucro (u)', 'profit'),
     complete: PAPER_22BET_SYNC.trackingHeaders.every(header => indexes[header] >= 0),
   };
+}
+
+function operationalIndex_(headers, header, legacyKey) {
+  const index = headers.indexOf(header);
+  return index >= 0 ? index : PAPER_22BET_SYNC.legacyOperationalIndexes[legacyKey];
+}
+
+function marketName_(row, tracking) {
+  const market = row[tracking.market];
+  return market === 'Vencedor' ? 'Moneyline' : String(market);
+}
+
+function sideName_(row, tracking) {
+  return String(row[tracking.side] || 'Sem perfil');
 }
 
 function isChallengerManualRow_(row, tracking) {
@@ -371,7 +396,7 @@ function validateManualChallengerSelection_(row, tracking) {
   if (!String(row[tracking.snapshot] || '').trim()) return 'MISSING_SNAPSHOT_KEY';
   const selectedAt = new Date(row[tracking.selectedAt]);
   if (!row[tracking.selectedAt] || Number.isNaN(selectedAt.getTime())) return 'MISSING_SELECTION_TIMESTAMP';
-  return Number(row[10]) === PAPER_22BET_SYNC.challengerManualStakeUnits
+  return Number(row[tracking.stake]) === PAPER_22BET_SYNC.challengerManualStakeUnits
     ? 'MANUAL_CHALLENGER_RECORDED'
     : 'INVALID_CHALLENGER_STAKE';
 }
@@ -404,8 +429,8 @@ function challengerEdgeBand_(row, tracking) {
 }
 
 function manualLegType_(row, tracking) {
-  const market = row[5] === 'Vencedor' ? 'moneyline' : String(row[5] || '').trim().toLowerCase();
-  const odd = Number(row[9]);
+  const market = String(marketName_(row, tracking) || '').trim().toLowerCase();
+  const odd = Number(row[tracking.odd]);
   if (!Number.isFinite(odd) || odd <= 1) return 'UNAVAILABLE';
   if (market === 'moneyline') return 'MONEYLINE';
   const line = Number(row[tracking.handicapLine]);
@@ -472,12 +497,13 @@ function newStats_() {
   return {total_entries: 0, settled: 0, pending: 0, wins: 0, losses: 0, pushes: 0, units: 0, stake: 0, odds: []};
 }
 
-function addRowToStats_(stats, row) {
+function addRowToStats_(stats, row, tracking) {
+  const indexes = tracking || PAPER_22BET_SYNC.legacyOperationalIndexes;
   stats.total_entries += 1;
-  const result = String(row[12] || '').trim().toUpperCase();
-  const odd = Number(row[9]);
-  const stake = Number(row[10]);
-  const profit = Number(row[13]);
+  const result = String(row[indexes.result] || '').trim().toUpperCase();
+  const odd = Number(row[indexes.odd]);
+  const stake = Number(row[indexes.stake]);
+  const profit = Number(row[indexes.profit]);
   if (Number.isFinite(odd)) stats.odds.push(odd);
   if (result === 'GANHOU' || result === 'PERDEU') {
     stats.settled += 1;
@@ -531,10 +557,11 @@ function excludeFlatStakeEntry_(simulation, reason) {
   simulation.exclusionReasons[reason] = (simulation.exclusionReasons[reason] || 0) + 1;
 }
 
-function addRowToFlatStakeSimulation_(simulation, row) {
+function addRowToFlatStakeSimulation_(simulation, row, tracking) {
+  const indexes = tracking || PAPER_22BET_SYNC.legacyOperationalIndexes;
   const stake = 10;
-  const odd = Number(row[9]);
-  const result = String(row[12] || '').trim().toUpperCase();
+  const odd = Number(row[indexes.odd]);
+  const result = String(row[indexes.result] || '').trim().toUpperCase();
   if (!Number.isFinite(odd) || odd <= 1) {
     excludeFlatStakeEntry_(simulation, 'INVALID_DECIMAL_ODD');
     return;
