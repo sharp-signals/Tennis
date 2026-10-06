@@ -354,8 +354,16 @@ def settle_from_matches(
         if snapshot.get("identity_schema_version") != match_identity_v2.SCHEMA_VERSION:
             return None
         canonical_id = snapshot.get("canonical_match_instance_id") or snapshot.get("key")
+        a_id = (snapshot.get("player_a") or {}).get("id")
+        b_id = (snapshot.get("player_b") or {}).get("id")
+        if a_id is None or b_id is None:
+            return None
+        # A canonical match can only be one of the completed matches involving
+        # the same two player IDs. Resolving every cached result here makes the
+        # bounded maintenance pass time out before pending snapshots are read.
+        candidates = completed_by_players.get(frozenset((str(a_id), str(b_id))), [])
         resolved = []
-        for match in completed_matches:
+        for match in candidates:
             event_id = match.get("event_id", match.get("eventId"))
             result = match_identity_v2.resolve_existing(
                 match,
