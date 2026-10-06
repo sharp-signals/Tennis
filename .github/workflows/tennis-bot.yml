@@ -136,7 +136,9 @@ jobs:
         if: steps.run_bot.outcome == 'success' && steps.publish_reports.outcome == 'success' && steps.report_readiness.outcome == 'success' && steps.report_notifications.outcome == 'success'
         continue-on-error: true
         env:
-          SETTLEMENT_BATCH_SIZE: "50"
+          # Após a filtragem canónica pela dupla de jogadores, este lote cobre
+          # a fila corrente numa run sem alterar aquisição ou pricing.
+          SETTLEMENT_BATCH_SIZE: "500"
           SETTLEMENT_DEADLINE_SECONDS: "150"
           FENZOBOT_RUN_METRICS_PATH: data/run_metrics_log.json
         run: python scripts/run_settlement_maintenance.py

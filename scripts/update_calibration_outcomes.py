@@ -267,6 +267,21 @@ def run(
             ),
         }
 
+        # Publicar primeiro os outcomes já persistidos. Market Memory pode ser
+        # pesado e não deve impedir que alinhamento/divergência sejam visíveis.
+        if settled_total and report["status"] not in {"TIMED_OUT", "FAILED"}:
+            dashboard_status = _phase(
+                report, "dashboard_after_settlement",
+                lambda: dashboard.build_and_write_best_effort(root=ROOT),
+                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
+            )
+            if dashboard_status["status"] != "AVAILABLE":
+                report["phases"]["dashboard_after_settlement"].update({
+                    "status": "FAILED",
+                    "reason_code": "DASHBOARD_REBUILD_UNAVAILABLE",
+                })
+                report["status"] = "PARTIAL"
+
         if (
             settled_total
             and report["status"] not in {"TIMED_OUT", "FAILED"}
