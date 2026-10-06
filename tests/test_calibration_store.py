@@ -2,8 +2,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from src import calibration_store
+from src import calibration_store, match_identity_v2
 
 
 class CalibrationStoreTests(unittest.TestCase):
@@ -115,6 +116,34 @@ class CalibrationStoreTests(unittest.TestCase):
             self.assertEqual(calibration_store.settle_from_matches([match], path), 1)
             saved = json.loads(path.read_text(encoding="utf-8"))["snapshots"][0]
             self.assertEqual(saved["outcome"]["winner_side"], "b")
+
+    def test_canonical_settlement_consults_only_same_player_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            snapshot = calibration_store.build_snapshot(self._payload())
+            snapshot.update({
+                "identity_schema_version": match_identity_v2.SCHEMA_VERSION,
+                "canonical_match_instance_id": "canonical-1",
+            })
+            calibration_store.upsert_snapshots([snapshot], path)
+            relevant = {
+                "id": "m1", "player1Id": 10, "player2Id": 20,
+                "match_winner": 10, "result_type": "completed", "result": "6-4 6-4",
+            }
+            unrelated = {
+                "id": "other", "player1Id": 30, "player2Id": 40,
+                "match_winner": 30, "result_type": "completed", "result": "6-4 6-4",
+            }
+            with patch.object(
+                calibration_store.match_identity_v2,
+                "resolve_existing",
+                return_value={"canonical_match_instance_id": "canonical-1"},
+            ) as resolve:
+                self.assertEqual(
+                    calibration_store.settle_from_matches([unrelated, relevant], path), 1,
+                )
+            self.assertEqual(resolve.call_count, 1)
+            self.assertEqual(resolve.call_args.args[0]["id"], "m1")
 
     def test_incomplete_match_is_not_settled(self):
         with tempfile.TemporaryDirectory() as directory:

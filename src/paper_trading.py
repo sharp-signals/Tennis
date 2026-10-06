@@ -287,15 +287,28 @@ def settle_from_matches(
             continue
         completed.append(match)
     by_id: dict[str, list[Mapping[str, Any]]] = {}
+    by_players: dict[frozenset[str], list[Mapping[str, Any]]] = {}
     for match in completed:
         if match.get("id") is not None:
             by_id.setdefault(str(match.get("id")), []).append(match)
+        p1, p2 = _players(match)
+        if p1 is not None and p2 is not None:
+            by_players.setdefault(frozenset((str(p1), str(p2))), []).append(match)
 
     def find(pregame: Mapping[str, Any]):
         if pregame.get("identity_schema_version") == match_identity_v2.SCHEMA_VERSION:
             canonical_id = str(pregame.get("canonical_match_instance_id") or "")
+            ids = frozenset(
+                str((pregame.get("players") or {}).get(side, {}).get("id"))
+                for side in ("a", "b")
+            )
+            if "None" in ids:
+                return None
+            # Keep canonical verification, but only inspect results for the
+            # same pair. A full-cache scan here blocks PAPER settlement too.
+            candidates = by_players.get(ids, [])
             resolved = []
-            for match in completed:
+            for match in candidates:
                 event_id = match.get("event_id", match.get("eventId"))
                 result = match_identity_v2.resolve_existing(
                     match,

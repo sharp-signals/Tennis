@@ -3,8 +3,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from src import calibration_store, market_integrity, paper_trading
+from src import calibration_store, market_integrity, match_identity_v2, paper_trading
 from src.telegram_summary import decision_row as _telegram_decision_row, state_counts as telegram_state_counts
 from src.prelive_decision import (
     EDGE_NEGATIVE,
@@ -262,6 +263,34 @@ class PreliveOperationalContractTests(unittest.TestCase):
             self.assertEqual(saved["pregame"], original_pregame)
             self.assertEqual(saved["settlement"]["result"], "WIN")
             self.assertEqual(saved["settlement"]["pnl_units"], 1.0)
+
+    def test_canonical_paper_settlement_consults_only_same_player_pair(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "paper.json"
+            payload = self.payload()
+            payload["prelive_decision"] = self.decision(0.1)
+            entry = paper_trading.build_entries(payload)[0]
+            entry["pregame"].update({
+                "identity_schema_version": match_identity_v2.SCHEMA_VERSION,
+                "canonical_match_instance_id": "canonical-1",
+            })
+            paper_trading.append_entries([entry], path)
+            relevant = {
+                "id": 77, "player1Id": 1, "player2Id": 2,
+                "match_winner": 1, "result_type": "completed", "result": "6-4 6-4",
+            }
+            unrelated = {
+                "id": 78, "player1Id": 3, "player2Id": 4,
+                "match_winner": 3, "result_type": "completed", "result": "6-4 6-4",
+            }
+            with patch.object(
+                paper_trading.match_identity_v2,
+                "resolve_existing",
+                return_value={"canonical_match_instance_id": "canonical-1"},
+            ) as resolve:
+                self.assertEqual(paper_trading.settle_from_matches([unrelated, relevant], path), 1)
+            self.assertEqual(resolve.call_count, 1)
+            self.assertEqual(resolve.call_args.args[0]["id"], 77)
 
     def test_paper_history_appends_instead_of_replacing(self):
         with tempfile.TemporaryDirectory() as tmp:
