@@ -202,12 +202,20 @@ def run(
             checkpoint=checkpoint, checkpoint_path=checkpoint_path,
         )
         report["cached_matches"] = len(matches)
-        recovered, recovery_details = _phase(
-            report, "result_recovery",
-            lambda: recover_completed_fixtures(boundary),
-            checkpoint=checkpoint, checkpoint_path=checkpoint_path,
-        )
-        report["phases"]["result_recovery"].update(recovery_details)
+        if fetch_data.RAPIDAPI_KEY:
+            recovered, recovery_details = _phase(
+                report, "result_recovery",
+                lambda: recover_completed_fixtures(boundary),
+                checkpoint=checkpoint, checkpoint_path=checkpoint_path,
+            )
+            report["phases"]["result_recovery"].update(recovery_details)
+        else:
+            recovered = []
+            report["phases"]["result_recovery"] = {
+                "status": "SKIPPED", "reason_code": "RAPIDAPI_KEY_UNAVAILABLE",
+                "eligible_date_groups": 0, "queried_date_groups": 0,
+                "recovered_matches": 0, "unavailable_groups": 0,
+            }
         matches.extend(recovered)
         report["result_recovery_matches"] = len(recovered)
         batches: dict[str, list[str]] = {}
