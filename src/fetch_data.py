@@ -5070,6 +5070,14 @@ def compute_ranking_evolution(history: pd.DataFrame, player: str,
 #
 # Categorias oficiais do CPI (courtspeed.com): <30 lento, 30-34
 # médio-lento, 35-39 médio, 40-44 médio-rápido, >44 rápido.
+#
+# Esta estrutura é o registo versionado de evidência do Fenzobot: cada valor
+# é rastreável à fonte pública e não se infere velocidade para eventos que
+# não estejam explicitamente cobertos. A velocidade só pode pesar no índice
+# quando os DOIS jogadores tiverem pelo menos esta amostra comparável.
+COURT_PACE_SOURCE = "courtspeed_cpi"
+COURT_PACE_SOURCE_URL = "https://courtspeed.com/"
+COURT_PACE_MIN_MATCHES = 10
 COURT_PACE_INDEX: dict = {
     "indian wells": {2016: 30, 2017: 27.4, 2018: 27.9, 2019: 32.1, 2021: 32,
                       2023: 35.4, 2024: 36.9, 2025: 30.9, 2026: 39.3},
@@ -5106,6 +5114,7 @@ _CPI_NOME_ALIASES = {
     "montreal": "canadian open", "toronto": "canadian open",
     "cincinnati open": "cincinnati", "western southern open": "cincinnati",
     "shanghai masters": "shanghai", "rolex shanghai masters": "shanghai",
+    "shanghai rolex masters": "shanghai",
     "paris masters": "paris", "rolex paris masters": "paris", "bercy": "paris",
     "nitto atp finals": "atp finals", "tour finals": "atp finals",
     "monte carlo masters": "monte carlo", "rolex monte carlo masters": "monte carlo",
@@ -5142,11 +5151,32 @@ def _cpi_bucket(cpi: float) -> str:
     return "fast"
 
 
+def _surface_family(surface) -> Optional[str]:
+    """Normaliza somente a família de piso necessária para o CPI.
+
+    Não tentamos adivinhar a rapidez de terra batida/relva. Para estes pisos
+    o fator de velocidade é deliberadamente não aplicável: a evidência de
+    superfície normal continua a ser o contexto apropriado.
+    """
+    if not isinstance(surface, str) or not surface.strip():
+        return None
+    normalized = _normalize_name(surface)
+    if "hard" in normalized:
+        return "hard"
+    if "clay" in normalized:
+        return "clay"
+    if "grass" in normalized:
+        return "grass"
+    return None
+
+
 def lookup_court_pace(tournament_name, year: Optional[int]) -> Optional[dict]:
-    """Devolve {"cpi": float, "bucket": str, "ano_usado": int} para o
-    torneio/ano pedido, ou o ano mais próximo disponível na tabela (até 2
-    anos de diferença) se o exato não existir. None se o torneio não
-    estiver na tabela (a maioria — cobertura limitada, ver nota acima)."""
+    """Devolve o registo CPI factual para o torneio/ano pedido.
+
+    O retorno preserva ``cpi``, ``bucket`` e ``ano_usado`` por
+    compatibilidade, acrescentando proveniência e se o ano é exato. Quando
+    o ano exato não existe, usa o mais próximo a até dois anos de distância.
+    Devolve ``None`` fora da cobertura do registo factual."""
     canon = _normalize_tournament_name(tournament_name)
     if canon is None:
         return None
@@ -5155,18 +5185,58 @@ def lookup_court_pace(tournament_name, year: Optional[int]) -> Optional[dict]:
         return None
     if year is not None and year in anos:
         cpi = anos[year]
-        return {"cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": year}
+        return {
+            "cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": year,
+            "ano_exato": True, "source": COURT_PACE_SOURCE,
+            "source_url": COURT_PACE_SOURCE_URL, "tournament_key": canon,
+        }
     if year is not None:
         proximos = sorted(anos.keys(), key=lambda y: abs(y - year))
         for y in proximos:
             if abs(y - year) <= 2:
                 cpi = anos[y]
-                return {"cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": y}
+                return {
+                    "cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": y,
+                    "ano_exato": False, "source": COURT_PACE_SOURCE,
+                    "source_url": COURT_PACE_SOURCE_URL, "tournament_key": canon,
+                }
         return None
     # sem ano pedido: usa o mais recente disponível
     y = max(anos.keys())
     cpi = anos[y]
-    return {"cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": y}
+    return {
+        "cpi": cpi, "bucket": _cpi_bucket(cpi), "ano_usado": y,
+        "ano_exato": False, "source": COURT_PACE_SOURCE,
+        "source_url": COURT_PACE_SOURCE_URL, "tournament_key": canon,
+    }
+
+
+def court_pace_context(tournament_name, year: Optional[int], surface) -> dict:
+    """Contexto auditável da velocidade do piso para o jogo atual.
+
+    Em hard, só expõe CPI quando o torneio está no registo factual. Em clay e
+    grass declara explicitamente que o fator não é aplicável; isso impede que
+    uma classificação CPI de outro tipo de superfície seja usada por engano.
+    """
+    family = _surface_family(surface)
+    if family in {"clay", "grass"}:
+        label = "terra batida" if family == "clay" else "relva"
+        return {
+            "status": "not_applicable", "surface_family": family,
+            "motivo_exclusao": f"não aplicável em {label} — usar desempenho na superfície",
+        }
+    if family != "hard":
+        return {
+            "status": "unknown_surface", "surface_family": family,
+            "motivo_exclusao": "tipo de piso não identificado para classificação de velocidade",
+        }
+    info = lookup_court_pace(tournament_name, year)
+    if info is None:
+        return {
+            "status": "unclassified_hard", "surface_family": "hard",
+            "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio",
+        }
+    return {"status": "available", "surface_family": "hard", **info}
 
 
 def compute_court_speed_form(history: pd.DataFrame, player: str, current_bucket: str) -> Optional[dict]:
@@ -5196,9 +5266,19 @@ def compute_court_speed_form(history: pd.DataFrame, player: str, current_bucket:
     else:
         played["_ano"] = None
 
+    # Sem a coluna de piso, não há base para afirmar que os jogos históricos
+    # são hard. Falhar fechado é preferível a misturar terra/relva num fator
+    # pensado exclusivamente para hard.
+    surface_col = "surface" if "surface" in played.columns else (
+        "Surface" if "Surface" in played.columns else None)
+    if surface_col is None:
+        return None
+
     matches = 0
     wins = 0
     for _, row in played.iterrows():
+        if _surface_family(row.get(surface_col)) != "hard":
+            continue
         info = lookup_court_pace(row.get(nome_col), row.get("_ano"))
         if info is None or info["bucket"] != current_bucket:
             continue
@@ -5208,7 +5288,11 @@ def compute_court_speed_form(history: pd.DataFrame, player: str, current_bucket:
 
     if matches == 0:
         return None
-    return {"matches": matches, "wins": wins, "losses": matches - wins}
+    return {
+        "matches": matches, "wins": wins, "losses": matches - wins,
+        "bucket": current_bucket, "sample_minimum": COURT_PACE_MIN_MATCHES,
+        "eligible_for_index": matches >= COURT_PACE_MIN_MATCHES,
+    }
 
 
 def compute_round_stage_stats(history: pd.DataFrame, player: str) -> Optional[dict]:

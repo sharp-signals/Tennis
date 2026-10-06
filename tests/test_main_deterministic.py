@@ -59,6 +59,30 @@ class DeterministicFeatureTests(unittest.TestCase):
     def test_feature_computation_with_no_comparable_data_returns_none(self):
         self.assertIsNone(main._compute_features({"player_a": "A", "player_b": "B"}))
 
+    def test_court_speed_is_context_only_until_both_players_reach_minimum_sample(self):
+        features = main._compute_features({
+            "player_a": "A", "player_b": "B",
+            "court_speed_hoje": {"status": "available", "bucket": "medium"},
+            "court_speed_a": {"wins": 8, "matches": 9, "eligible_for_index": False},
+            "court_speed_b": {"wins": 2, "matches": 9, "eligible_for_index": False},
+        })
+
+        speed = features["velocidade_piso"]
+        self.assertIsNone(speed["lider"])
+        self.assertIn("amostra insuficiente", speed["motivo_exclusao"])
+        self.assertEqual(speed["amostra_a"], 9)
+
+    def test_court_speed_is_not_applicable_on_clay(self):
+        features = main._compute_features({
+            "player_a": "A", "player_b": "B",
+            "court_speed_hoje": {
+                "status": "not_applicable",
+                "motivo_exclusao": "não aplicável em terra batida — usar desempenho na superfície",
+            },
+        })
+
+        self.assertIn("terra batida", features["velocidade_piso"]["motivo_exclusao"])
+
     def test_bo5_comeback_feature_rejects_generic_rich_scenarios(self):
         payload = {
             "player_a": "A", "player_b": "B", "tour": "atp", "tier": "Grand Slam",

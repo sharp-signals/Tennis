@@ -725,12 +725,37 @@ def _compute_features(payload: dict) -> dict:
     _edge(_pct(_io_a), _pct(_io_b), "indoor_outdoor",
           amostra_a=(_io_a or {}).get("matches"), amostra_b=(_io_b or {}).get("matches"))
 
-    # NOVO (14/08/2026, a pedido): velocidade do piso — cobertura limitada
-    # (só Slams/Masters1000/ATP Finals). "sem dados" na maioria dos jogos.
+    # Velocidade do piso: só hard com classificação factual do torneio e
+    # amostra bilateral mínima. Uma amostra fina continua visível como
+    # contexto, mas não pode inclinar o índice Fenzobot.
     _cs_a = payload.get("court_speed_a")
     _cs_b = payload.get("court_speed_b")
-    _edge(_pct(_cs_a), _pct(_cs_b), "velocidade_piso",
-          amostra_a=(_cs_a or {}).get("matches"), amostra_b=(_cs_b or {}).get("matches"))
+    _cs_context = payload.get("court_speed_hoje") or {}
+    _cs_status = _cs_context.get("status")
+    if _cs_status in {"not_applicable", "unclassified_hard", "unknown_surface"}:
+        feats["velocidade_piso"] = {
+            "lider": None,
+            "motivo_exclusao": _cs_context.get("motivo_exclusao"),
+        }
+    elif _cs_a and _cs_b:
+        _eligible_a = _cs_a.get("eligible_for_index", _cs_a.get("matches", 0) >= fetch_data.COURT_PACE_MIN_MATCHES)
+        _eligible_b = _cs_b.get("eligible_for_index", _cs_b.get("matches", 0) >= fetch_data.COURT_PACE_MIN_MATCHES)
+        if _eligible_a and _eligible_b:
+            _edge(_pct(_cs_a), _pct(_cs_b), "velocidade_piso",
+                  amostra_a=_cs_a.get("matches"), amostra_b=_cs_b.get("matches"))
+        else:
+            _minimum = fetch_data.COURT_PACE_MIN_MATCHES
+            feats["velocidade_piso"] = {
+                "lider": None,
+                "motivo_exclusao": f"amostra insuficiente para o índice (mínimo n={_minimum} por jogador)",
+                "valor_a": _pct(_cs_a), "valor_b": _pct(_cs_b),
+                "amostra_a": _cs_a.get("matches"), "amostra_b": _cs_b.get("matches"),
+            }
+    elif _cs_status == "available":
+        feats["velocidade_piso"] = {
+            "lider": None,
+            "motivo_exclusao": "sem histórico hard comparável no perfil de velocidade",
+        }
 
     # NOVO (14/08/2026, a pedido): tie-break
     _tb_a = payload.get("tiebreak_a")
@@ -1703,11 +1728,11 @@ def _build_match_payload(match: dict) -> dict:
     ranking_evo_a = fetch_data.compute_ranking_evolution(history, player_a, (rank_a or {}).get("points"))
     ranking_evo_b = fetch_data.compute_ranking_evolution(history, player_b, (rank_b or {}).get("points"))
 
-    # NOVO (14/08/2026, a pedido): velocidade do piso — cobertura limitada
-    # (só Slams/Masters1000/ATP Finals, ver COURT_PACE_INDEX). "sem dados"
-    # é o resultado esperado na maioria dos jogos, por desenho.
-    _cpi_hoje = fetch_data.lookup_court_pace(tournament, start.year)
-    _cpi_bucket_hoje = _cpi_hoje["bucket"] if _cpi_hoje else None
+    # Velocidade do piso: apenas em hard e apenas com uma classificação CPI
+    # factual do torneio. Terra/relva mantêm-se deliberadamente no fator de
+    # desempenho por superfície, sem velocidade inventada.
+    _cpi_hoje = fetch_data.court_pace_context(tournament, start.year, surface)
+    _cpi_bucket_hoje = _cpi_hoje.get("bucket") if _cpi_hoje.get("status") == "available" else None
     court_speed_a = fetch_data.compute_court_speed_form(history, player_a, _cpi_bucket_hoje)
     court_speed_b = fetch_data.compute_court_speed_form(history, player_b, _cpi_bucket_hoje)
 
