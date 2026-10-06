@@ -503,7 +503,7 @@ function fetchGreenStrongIndex_(token, repository, branch) {
 }
 
 function newStats_() {
-  return {total_entries: 0, settled: 0, pending: 0, wins: 0, losses: 0, pushes: 0, units: 0, stake: 0, odds: []};
+  return {total_entries: 0, settled: 0, pending: 0, wins: 0, losses: 0, pushes: 0, units: 0, stake: 0, pendingStake: 0, odds: []};
 }
 
 function addRowToStats_(stats, row, tracking) {
@@ -525,6 +525,7 @@ function addRowToStats_(stats, row, tracking) {
     if (Number.isFinite(profit)) stats.units += profit;
   } else {
     stats.pending += 1;
+    if (Number.isFinite(stake)) stats.pendingStake += stake;
   }
 }
 
@@ -540,6 +541,8 @@ function finishStats_(stats) {
     win_rate_pct: stats.settled ? round(100 * stats.wins / stats.settled) : null,
     units: round(stats.units),
     roi_pct: stats.stake ? round(100 * stats.units / stats.stake) : null,
+    settled_stake_units: round(stats.stake),
+    pending_stake_units: round(stats.pendingStake),
     average_odd: stats.odds.length ? round(stats.odds.reduce((total, odd) => total + odd, 0) / stats.odds.length) : null,
   };
 }
