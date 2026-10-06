@@ -15440,8 +15440,113 @@
         "tournament_id": 16749
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_30533119074644fbad11cfc50d960f7c:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-06T05:35:57+00:00",
+        "canonical_match_instance_id": "mi2_30533119074644fbad11cfc50d960f7c",
+        "commence_time_utc": "2026-10-06T11:00:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.0,
+          "configured_factors": 22,
+          "configured_weight": 144.0,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854167
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "4e11a2fdd92be8ce635be63e16cb19b2d8ac66d001ad04fa9e8117f2975c2981",
+        "event_key": "mi2_30533119074644fbad11cfc50d960f7c",
+        "expected_edge_pct": 2.74,
+        "fair_odd": 1.46,
+        "fenzobot_index": 91,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "atp:1258",
+        "line": null,
+        "market": "Moneyline Novak Djokovic",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Alex De Minaur": 2.55,
+          "Novak Djokovic": 1.5
+        },
+        "market_type": "Moneyline",
+        "match_id": 1258,
+        "odd": 1.5,
+        "odds_contract_activation": {
+          "activation_commit": "4991392b837910b979bf71fde9bfaa08eccc2571",
+          "activation_observed_at_utc": "2026-10-06T05:34:26+00:00",
+          "activation_run_id": "37419076715",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": "Winamax (FR)",
+          "cache_age_seconds": 64,
+          "capture_kind": "provider_last_update_verified",
+          "captured_at_utc": "2026-10-06T05:34:26+00:00",
+          "endpoint": "https://api.the-odds-api.com/v4/sports/.../odds",
+          "event_id": "d77588347c84136dd9fe6fb7a54b40b4",
+          "freshness_status": "FRESH",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 21,
+            "coherent_bookmaker_count": 21,
+            "dispersion_pp": 2.4421,
+            "median_devig_probability_a": 0.6296296296296295,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 21
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-10-06T05:33:22Z",
+          "provider_timestamp_status": null,
+          "source": "The Odds API / bookmaker market"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 5992,
+            "name": "Novak Djokovic"
+          },
+          "b": {
+            "id": 39309,
+            "name": "Alex De Minaur"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "79c0f93715e3d748f3d2",
+        "selected_player": "Novak Djokovic",
+        "selected_side": "a",
+        "sharp_estimate_pct": 68.5,
+        "snapshot_key": "mi2_30533119074644fbad11cfc50d960f7c",
+        "surface": "Hard",
+        "tour": "atp",
+        "tournament": "China Open - Beijing",
+        "tournament_id": 21355
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-10-05T17:36:42+00:00"
+  "updated_at_utc": "2026-10-06T05:35:58+00:00"
 }
