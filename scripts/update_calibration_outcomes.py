@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 from src import (  # noqa: E402
     calibration_store,
     dashboard,
+    fetch_data,
     forward_only,
     green_strong_validation,
     market_ledger,
@@ -37,6 +38,7 @@ PAPER_PATH = ROOT / "data/paper_trades.json"
 LEDGER_ROOT = ROOT / "data/market_ledger"
 DEFAULT_BATCH_SIZE = 50
 DEFAULT_DEADLINE_SECONDS = 150
+RESULT_RECOVERY_DATE_BATCH = 8
 
 
 def _utc_now() -> str:
@@ -56,6 +58,42 @@ def cached_matches(cache_root: Path):
             if match_id is not None and str(match_id) not in seen:
                 seen.add(str(match_id))
                 yield match
+
+
+def recover_completed_fixtures(boundary: forward_only.Boundary, *, max_groups: int = RESULT_RECOVERY_DATE_BATCH) -> tuple[list[dict], dict[str, Any]]:
+    """Recupera resultados por data/tour para snapshots passados, em lote limitado."""
+    now = datetime.now(timezone.utc)
+    groups: set[tuple[str, str]] = set()
+    for snapshot in calibration_store._read(SNAPSHOTS_PATH).get("snapshots") or []:
+        if snapshot.get("outcome") is not None:
+            continue
+        allowed, _ = forward_only.settlement_eligibility("snapshots", snapshot, boundary=boundary)
+        raw_start = snapshot.get("commence_time_utc")
+        tour = str(snapshot.get("tour") or "").casefold()
+        if not allowed or tour not in {"atp", "wta"} or not raw_start:
+            continue
+        try:
+            start = datetime.fromisoformat(str(raw_start).replace("Z", "+00:00"))
+            start = start if start.tzinfo else start.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if start < now:
+            groups.add((start.date().isoformat(), tour))
+    selected = sorted(groups)[:max(0, max_groups)]
+    details: dict[str, Any] = {"eligible_date_groups": len(groups), "queried_date_groups": len(selected), "recovered_matches": 0, "unavailable_groups": 0}
+    recovered: list[dict] = []
+    for date_text, tour in selected:
+        try:
+            day = datetime.fromisoformat(date_text).replace(tzinfo=timezone.utc)
+            fixtures, status = fetch_data.fetch_date_fixtures(day, tour, return_status=True)
+            if str((status or {}).get("status")) == fetch_data.DISCOVERY_SOURCE_UNAVAILABLE:
+                details["unavailable_groups"] += 1
+            else:
+                recovered.extend(item for item in fixtures if isinstance(item, dict))
+        except (OSError, ValueError, TypeError):
+            details["unavailable_groups"] += 1
+    details["recovered_matches"] = len(recovered)
+    return recovered, details
 
 
 def _read_checkpoint(path: Path) -> dict[str, Any]:
@@ -164,6 +202,14 @@ def run(
             checkpoint=checkpoint, checkpoint_path=checkpoint_path,
         )
         report["cached_matches"] = len(matches)
+        recovered, recovery_details = _phase(
+            report, "result_recovery",
+            lambda: recover_completed_fixtures(boundary),
+            checkpoint=checkpoint, checkpoint_path=checkpoint_path,
+        )
+        report["phases"]["result_recovery"].update(recovery_details)
+        matches.extend(recovered)
+        report["result_recovery_matches"] = len(recovered)
         batches: dict[str, list[str]] = {}
         for collection, path in (("snapshots", SNAPSHOTS_PATH), ("paper", PAPER_PATH)):
             keys = _pending_keys(collection, path, boundary)
