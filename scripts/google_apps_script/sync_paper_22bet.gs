@@ -86,10 +86,7 @@ function syncPaperTradingToGitHub() {
 
   const body = {
     message: 'chore: sincronizar métricas PAPER 22Bet [skip ci]',
-    content: Utilities.base64Encode(
-      JSON.stringify(payload, null, 2),
-      Utilities.Charset.UTF_8,
-    ),
+    content: githubContentBase64_(JSON.stringify(payload, null, 2)),
     branch: branch,
   };
   if (sha) body.sha = sha;
@@ -101,6 +98,18 @@ function syncPaperTradingToGitHub() {
     throw new Error('Não foi possível publicar o resumo: HTTP ' + writeResponse.getResponseCode() + ': ' + writeResponse.getContentText());
   }
   return 'Métricas PAPER 22Bet sincronizadas com sucesso.';
+}
+
+/**
+ * GitHub Contents exige Base64 de bytes. Codificar o Blob UTF-8 evita a
+ * sobrecarga de texto do Apps Script, que em alguns projetos autónomos gera
+ * uma sequência que a API rejeita como Base64 inválido.
+ */
+function githubContentBase64_(text) {
+  const bytes = Utilities.newBlob(
+    String(text), 'application/json', 'manual_paper_22bet.json',
+  ).getBytes();
+  return Utilities.base64Encode(bytes);
 }
 
 function installGreenStrongTrackingColumns() {

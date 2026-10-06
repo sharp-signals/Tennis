@@ -46,6 +46,22 @@ test('tracking column installation is idempotent', () => {
   assert.deepEqual(Array.from(context.missingTrackingHeaders_(all)), []);
 });
 
+test('GitHub content is Base64-encoded from UTF-8 bytes', () => {
+  context.Utilities = {
+    newBlob: (text, contentType, name) => {
+      assert.equal(text, 'ação');
+      assert.equal(contentType, 'application/json');
+      assert.equal(name, 'manual_paper_22bet.json');
+      return {getBytes: () => [97, 195, 167, 195, 163, 111]};
+    },
+    base64Encode: (bytes) => {
+      assert.deepEqual(Array.from(bytes), [97, 195, 167, 195, 163, 111]);
+      return 'YcOnw6Nv';
+    },
+  };
+  assert.equal(context.githubContentBase64_('ação'), 'YcOnw6Nv');
+});
+
 test('derived linkage changes semantic fingerprint with identical sheet rows', () => {
   const rows = [['same', 'rows']];
   const missing = context.semanticFingerprintMaterial_(rows, {linkage: {SNAPSHOT_NOT_FOUND: 1}, eligible_green_strong: 0});
