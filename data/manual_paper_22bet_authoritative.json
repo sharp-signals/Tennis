@@ -1,0 +1,120 @@
+{
+  "schema_version": 2,
+  "source": {
+    "label": "Track Record PAPER Trading — 22Bet",
+    "url": "https://docs.google.com/spreadsheets/d/1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U/edit",
+    "reference_bookmaker": "22Bet",
+    "synced_at_utc": "2026-10-07T10:52:29.928Z",
+    "operational_columns": {
+      "market": 6,
+      "side": 8,
+      "odd": 11,
+      "stake": 12,
+      "result": 14,
+      "profit": 15
+    }
+  },
+  "data_fingerprint": "3dda6e32b544d16a442bebdb880f0b2347a0a251f165894f12481c35b841ff43",
+  "summary": {
+    "total_entries": 105,
+    "settled": 95,
+    "pending": 8,
+    "wins": 59,
+    "losses": 36,
+    "pushes": 2,
+    "win_rate_pct": 62.105,
+    "units": 19.585,
+    "settled_stake_units": 95,
+    "pending_stake_units": 7,
+    "roi_pct": 20.616,
+    "average_odd": 1.925
+  },
+  "by_market": {
+    "Moneyline": {
+      "total_entries": 25,
+      "settled": 22,
+      "pending": 3,
+      "wins": 16,
+      "losses": 6,
+      "pushes": 0,
+      "win_rate_pct": 72.727,
+      "units": 12.6,
+      "settled_stake_units": 22,
+      "pending_stake_units": 3,
+      "roi_pct": 57.273,
+      "average_odd": 2.122
+    },
+    "Handicap games": {
+      "total_entries": 80,
+      "settled": 73,
+      "pending": 5,
+      "wins": 43,
+      "losses": 30,
+      "pushes": 2,
+      "win_rate_pct": 58.904,
+      "units": 6.985,
+      "settled_stake_units": 73,
+      "pending_stake_units": 4,
+      "roi_pct": 9.568,
+      "average_odd": 1.864
+    }
+  },
+  "by_side": {
+    "Underdog": {
+      "total_entries": 33,
+      "settled": 30,
+      "pending": 3,
+      "wins": 23,
+      "losses": 7,
+      "pushes": 0,
+      "win_rate_pct": 76.667,
+      "units": 17.4,
+      "settled_stake_units": 30,
+      "pending_stake_units": 3,
+      "roi_pct": 58,
+      "average_odd": 2.053
+    },
+    "Favorito": {
+      "total_entries": 72,
+      "settled": 65,
+      "pending": 5,
+      "wins": 36,
+      "losses": 29,
+      "pushes": 2,
+      "win_rate_pct": 55.385,
+      "units": 2.185,
+      "settled_stake_units": 65,
+      "pending_stake_units": 4,
+      "roi_pct": 3.362,
+      "average_odd": 1.867
+    }
+  },
+  "by_strategy": {
+    "GUERRA_SELECTION_V1": {
+      "summary": {"total_entries": 0, "settled": 0, "pending": 0, "wins": 0, "losses": 0, "pushes": 0, "win_rate_pct": null, "units": 0, "settled_stake_units": 0, "pending_stake_units": 0, "roi_pct": null, "average_odd": null},
+      "paper_entries": 0,
+      "selected_candidates": 0,
+      "by_market": {},
+      "by_side": {},
+      "moneyline_review_routes": {},
+      "underdog_pair_completeness": {"underdog_selected_candidates": 0, "complete_moneyline_positive_handicap_pairs": 0, "moneyline_only": 0, "positive_handicap_only": 0, "incomplete_or_unrecognized": 0},
+      "linkage": {"LINKED_EX_ANTE": 0, "SNAPSHOT_NOT_FOUND": 0, "NOT_GREEN_STRONG": 0, "SELECTION_AFTER_START": 0, "MISSING_SELECTION_TIMESTAMP": 0, "UNAVAILABLE": 0},
+      "eligible_green_strong": null,
+      "selection_rate_pct": null,
+      "status": "UNAVAILABLE",
+      "flat_stake_simulation": {"status": "UNAVAILABLE", "stake_per_entry_eur": 10, "included_resolved_entries": 0, "pending_entries": 0, "void_entries": 0, "excluded_entries": 0, "resolved_stake_eur": 0, "pending_exposure_eur": 0, "net_profit_eur": null, "roi_pct": null, "exclusion_reasons": {}}
+    },
+    "CHALLENGER_125_EXPERIMENTAL_V1": {
+      "summary": {"total_entries": 0, "settled": 0, "pending": 0, "wins": 0, "losses": 0, "pushes": 0, "win_rate_pct": null, "units": 0, "settled_stake_units": 0, "pending_stake_units": 0, "roi_pct": null, "average_odd": null},
+      "paper_entries": 0,
+      "fixed_stake_units": 0.5,
+      "by_market": {},
+      "by_side": {},
+      "by_fenzobot_index_band": {},
+      "by_coverage_band": {},
+      "by_edge_band": {},
+      "validation": {"MANUAL_CHALLENGER_RECORDED": 0, "MISSING_SNAPSHOT_KEY": 0, "MISSING_SELECTION_TIMESTAMP": 0, "INVALID_CHALLENGER_STAKE": 0},
+      "status": "UNAVAILABLE"
+    }
+  }
+}

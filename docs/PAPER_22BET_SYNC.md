@@ -55,7 +55,7 @@ conclusão de €0. A publicação continua sem nomes, keys ou linhas individuai
 
 CHANGE-2026-09-06-023
 
-A Sheet `Track_Record_Tennis_22Bet` é o registo operacional manual. O relatório do Fenzobot lê apenas o resumo publicado em `data/manual_paper_22bet.json`; nunca lê a Sheet privada durante uma execução do bot.
+A Sheet `Track_Record_Tennis_22Bet` é o registo operacional manual. O relatório do Fenzobot lê apenas o resumo promovido em `data/manual_paper_22bet_authoritative.json`; nunca lê a Sheet privada durante uma execução do bot. O ficheiro `data/manual_paper_22bet.json` permanece apenas como caixa de entrada compatível com sincronizadores antigos e não alimenta métricas, dashboard ou relatórios.
 
 ## Configuração única — projeto Apps Script autónomo
 

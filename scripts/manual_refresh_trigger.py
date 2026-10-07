@@ -6,7 +6,12 @@ import re
 import subprocess
 from pathlib import Path
 
-TARGET = 'data/manual_paper_22bet.json'
+TARGETS = {
+    # O inbox legado inicia a promoção. A cópia autorizada também inicia uma
+    # reconstrução quando é semeada ou atualizada diretamente.
+    'data/manual_paper_22bet.json',
+    'data/manual_paper_22bet_authoritative.json',
+}
 
 
 def needs_refresh(event: str, source_sha: str, root: Path = Path('.')) -> bool:
@@ -20,11 +25,11 @@ def needs_refresh(event: str, source_sha: str, root: Path = Path('.')) -> bool:
                        cwd=root, check=True, capture_output=True, timeout=10)
         files = subprocess.check_output(
             ['git', 'diff-tree', '--root', '-m', '--first-parent', '--no-commit-id',
-             '--name-only', '-r', source_sha, '--', TARGET],
+             '--name-only', '-r', source_sha, '--', *sorted(TARGETS)],
             cwd=root, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return False
-    return TARGET in files.splitlines()
+    return bool(TARGETS.intersection(files.splitlines()))
 
 
 if __name__ == '__main__':

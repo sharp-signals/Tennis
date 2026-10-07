@@ -964,7 +964,8 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
     generated_at = generated_at_utc or _utc_now()
     snapshots_doc, snapshots_status = _read_json(root / "data/calibration_snapshots.json")
     paper_doc, paper_status = _read_json(root / "data/paper_trades.json")
-    manual_doc, manual_status = _read_json(root / "data/manual_paper_22bet.json")
+    manual_path = root / paper_trading.DEFAULT_MANUAL_22BET_PATH
+    manual_doc, manual_status = _read_json(manual_path)
     memory_doc, memory_status = _read_json(root / "data/market_ledger/derived/market-memory-v1.json")
     green_doc, green_status = _read_json(root / "data/validation/green-strong-v1.json")
     runs_doc, runs_status = _read_json(root / "data/run_metrics_log.json")
@@ -1058,7 +1059,7 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
     technical = _paper_technical(
         paper_status,
         root / "data/paper_trades.json",
-        root / "data/manual_paper_22bet.json",
+        manual_path,
         root / "data/validation/market-integrity-exclusions-v1.json",
     )
     manual = _paper_22bet(_mapping(manual_doc) if manual_status["status"] == "AVAILABLE" else None)
