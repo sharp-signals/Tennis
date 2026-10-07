@@ -37,7 +37,10 @@ SNAPSHOTS_PATH = ROOT / "data/calibration_snapshots.json"
 PAPER_PATH = ROOT / "data/paper_trades.json"
 LEDGER_ROOT = ROOT / "data/market_ledger"
 DEFAULT_BATCH_SIZE = 50
-DEFAULT_DEADLINE_SECONDS = 150
+# O rebuild de Market Memory pode ultrapassar os 150s depois de uma recuperação
+# material de resultados. O limite continua finito, mas tem margem para publicar
+# a projeção GREEN e o dashboard derivados da liquidação já confirmada.
+DEFAULT_DEADLINE_SECONDS = 240
 # A descoberta por calendário só devolve fixtures futuras em vários torneios.
 # Para recuperar resultados já jogados, a fonte apropriada é o histórico
 # recente dos próprios jogadores, que inclui partidas acabadas.

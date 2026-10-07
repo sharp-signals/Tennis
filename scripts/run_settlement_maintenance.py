@@ -94,7 +94,7 @@ def supervise(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout-seconds", type=float, default=float(
-        os.environ.get("SETTLEMENT_HARD_TIMEOUT_SECONDS", "180")
+        os.environ.get("SETTLEMENT_HARD_TIMEOUT_SECONDS", "270")
     ))
     parser.add_argument("--checkpoint", type=Path, default=maintenance.CHECKPOINT_PATH)
     args = parser.parse_args()
