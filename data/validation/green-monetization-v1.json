@@ -1,11 +1,11 @@
 {
   "by_market": {
     "Moneyline": {
-      "eligible_entries": 189,
+      "eligible_entries": 181,
       "losses": 46,
       "net_profit_eur": 107.07,
-      "pending_entries": 35,
-      "pending_exposure_eur": 350.0,
+      "pending_entries": 27,
+      "pending_exposure_eur": 270.0,
       "resolved_entries": 154,
       "resolved_stake_eur": 1540.0,
       "roi_pct": 6.95,
@@ -13,25 +13,26 @@
       "wins": 108
     }
   },
-  "change_id": "CHANGE-2026-09-21-046",
+  "change_id": "CHANGE-2026-10-07-091",
   "claims": "HISTORICAL_EXPERIMENTAL_SIMULATION_NOT_REAL_NOT_PROOF_OF_FUTURE_EDGE",
   "deduplication": {
     "contract": "snapshot_key + market_type + line/selection",
-    "unique_leg_identities": 189
+    "unique_leg_identities": 181
   },
-  "eligible_entries": 189,
-  "excluded_entries": 3,
+  "eligible_entries": 181,
+  "excluded_entries": 11,
   "exclusion_reasons": {
     "MARKET_BOUNDARY_SENTINEL": 1,
+    "STALE_UNRESOLVED_PRE_CUTOFF": 8,
     "VOID_DATA_INTEGRITY": 1,
     "VOID_PRICING_SOURCE": 1
   },
-  "generated_at_utc": "2026-10-07T18:20:52+00:00",
+  "generated_at_utc": "2026-10-07T22:06:37+00:00",
   "losses": 46,
   "metric_id": "GREEN_MONETIZATION_V1",
   "net_profit_eur": 107.07,
-  "pending_entries": 35,
-  "pending_exposure_eur": 350.0,
+  "pending_entries": 27,
+  "pending_exposure_eur": 270.0,
   "resolved_entries": 154,
   "resolved_stake_eur": 1540.0,
   "roi_pct": 6.95,
@@ -39,9 +40,10 @@
   "source": {
     "exclusion_manifests": [
       "data/paper_integrity_exclusions.json",
-      "data/validation/market-integrity-exclusions-v1.json"
+      "data/validation/market-integrity-exclusions-v1.json",
+      "data/validation/green-projection-exclusions-v1.json"
     ],
-    "fingerprint_sha256": "958cd11ee5b8144c3772df984badde44d2029df9ea3a1dd8ec107d97a5a0f0ca",
+    "fingerprint_sha256": "2c84aa7ef505938aefe757702c510efffa71220dc16ad59a5c33508406ef5934",
     "paper_path": "data/paper_trades.json",
     "physical_entries": 192,
     "universe": "PAPER_TECHNICAL_EDGE_POSITIVE_BASELINE"
