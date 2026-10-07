@@ -140,7 +140,11 @@ jobs:
           # Após a filtragem canónica pela dupla de jogadores, este lote cobre
           # a fila corrente numa run sem alterar aquisição ou pricing.
           SETTLEMENT_BATCH_SIZE: "500"
-          SETTLEMENT_DEADLINE_SECONDS: "150"
+          # A recuperação acaba de liquidar resultados antes de reconstruir as
+          # vistas derivadas. Damos margem ao Market Memory sem remover o
+          # timeout nem alterar aquisição/pricing.
+          SETTLEMENT_DEADLINE_SECONDS: "240"
+          SETTLEMENT_HARD_TIMEOUT_SECONDS: "270"
           FENZOBOT_RUN_METRICS_PATH: data/run_metrics_log.json
         run: python scripts/run_settlement_maintenance.py
 
