@@ -465,6 +465,20 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(projection["resolved_stake_eur"], 520.0)
         self.assertEqual(projection["pending_exposure_eur"], 30.0)
 
+    def test_manual_projection_uses_real_stake_units_when_published(self):
+        self._base_sources()
+        manual = json.loads((self.root / "data/manual_paper_22bet.json").read_text(encoding="utf-8"))
+        manual["summary"].update({
+            "total_entries": 2, "settled": 1, "pending": 1,
+            "wins": 1, "losses": 0, "units": 0.85,
+            "settled_stake_units": 1, "pending_stake_units": 0.5,
+        })
+        write_json(self.root / "data/manual_paper_22bet.json", manual)
+        projection = self.build()["paper_22bet"]["flat_stake_projection"]
+        self.assertEqual(projection["resolved_stake_eur"], 10.0)
+        self.assertEqual(projection["pending_exposure_eur"], 5.0)
+        self.assertEqual(projection["net_profit_eur"], 8.5)
+
     def test_comparison_is_descriptive_and_never_combines_profit(self):
         self._set_manual_reference()
         manual_doc = json.loads(

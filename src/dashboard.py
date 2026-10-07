@@ -54,6 +54,8 @@ SUMMARY_FIELDS = (
     "pushes",
     "win_rate_pct",
     "units",
+    "settled_stake_units",
+    "pending_stake_units",
     "roi_pct",
     "yield_pct",
     "average_odd",
@@ -577,7 +579,16 @@ def _manual_flat_stake_projection(
     units = _finite_number(summary.get("units"))
     source_roi = _finite_number(summary.get("roi_pct"))
     available = settled is not None and units is not None
-    resolved_stake = settled * stake_per_entry_eur if settled is not None else None
+    settled_stake_units = _finite_number(summary.get("settled_stake_units"))
+    pending_stake_units = _finite_number(summary.get("pending_stake_units"))
+    # Os documentos antigos não trazem stake por linha. Mantemos o fallback
+    # explícito de €10 por entrada, mas preferimos sempre as unidades reais
+    # publicadas pela Sheet (por exemplo, 0,5u num handicap WTA).
+    resolved_stake = (
+        settled_stake_units * stake_per_entry_eur
+        if settled_stake_units is not None
+        else (settled * stake_per_entry_eur if settled is not None else None)
+    )
     net_profit = units * stake_per_entry_eur if units is not None else None
     roi = (
         round(100 * net_profit / resolved_stake, 3)
@@ -593,7 +604,9 @@ def _manual_flat_stake_projection(
         "pending_entries": pending,
         "resolved_stake_eur": resolved_stake,
         "pending_exposure_eur": (
-            pending * stake_per_entry_eur if pending is not None else None
+            pending_stake_units * stake_per_entry_eur
+            if pending_stake_units is not None
+            else (pending * stake_per_entry_eur if pending is not None else None)
         ),
         "net_profit_eur": net_profit,
         "roi_pct": roi,

@@ -38,7 +38,10 @@ PAPER_PATH = ROOT / "data/paper_trades.json"
 LEDGER_ROOT = ROOT / "data/market_ledger"
 DEFAULT_BATCH_SIZE = 50
 DEFAULT_DEADLINE_SECONDS = 150
-RESULT_RECOVERY_DATE_BATCH = 8
+# A descoberta por calendário só devolve fixtures futuras em vários torneios.
+# Para recuperar resultados já jogados, a fonte apropriada é o histórico
+# recente dos próprios jogadores, que inclui partidas acabadas.
+RESULT_RECOVERY_PLAYER_BATCH = 48
 
 
 def _utc_now() -> str:
@@ -60,38 +63,98 @@ def cached_matches(cache_root: Path):
                 yield match
 
 
-def recover_completed_fixtures(boundary: forward_only.Boundary, *, max_groups: int = RESULT_RECOVERY_DATE_BATCH) -> tuple[list[dict], dict[str, Any]]:
-    """Recupera resultados por data/tour para snapshots passados, em lote limitado."""
+def _past_pending_player_keys(boundary: forward_only.Boundary) -> list[str]:
+    """IDs dos jogadores de registos passados ainda sem settlement.
+
+    A chave inclui o tour porque o endpoint ``past-matches`` também o exige.
+    Só usa candidatos que a política forward-only já permite liquidar.
+    """
     now = datetime.now(timezone.utc)
-    groups: set[tuple[str, str]] = set()
+    players: set[str] = set()
+
+    def include(tour: Any, commence: Any, player_ids: list[Any], collection: str, record: Mapping[str, Any]) -> None:
+        normalised_tour = str(tour or "").casefold()
+        if normalised_tour not in {"atp", "wta"}:
+            return
+        allowed, _ = forward_only.settlement_eligibility(
+            collection, record, boundary=boundary,
+        )
+        if not allowed or not commence:
+            return
+        try:
+            start = datetime.fromisoformat(str(commence).replace("Z", "+00:00"))
+            start = start if start.tzinfo else start.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return
+        if start >= now:
+            return
+        for player_id in player_ids:
+            if player_id not in (None, ""):
+                players.add(f"{normalised_tour}:{player_id}")
+
     for snapshot in calibration_store._read(SNAPSHOTS_PATH).get("snapshots") or []:
         if snapshot.get("outcome") is not None:
             continue
-        allowed, _ = forward_only.settlement_eligibility("snapshots", snapshot, boundary=boundary)
-        raw_start = snapshot.get("commence_time_utc")
-        tour = str(snapshot.get("tour") or "").casefold()
-        if not allowed or tour not in {"atp", "wta"} or not raw_start:
+        include(
+            snapshot.get("tour"), snapshot.get("commence_time_utc"),
+            [
+                (snapshot.get("player_a") or {}).get("id"),
+                (snapshot.get("player_b") or {}).get("id"),
+            ], "snapshots", snapshot,
+        )
+
+    for entry in paper_trading._read(PAPER_PATH).get("entries") or []:
+        if entry.get("settlement") is not None:
             continue
-        try:
-            start = datetime.fromisoformat(str(raw_start).replace("Z", "+00:00"))
-            start = start if start.tzinfo else start.replace(tzinfo=timezone.utc)
-        except ValueError:
-            continue
-        if start < now:
-            groups.add((start.date().isoformat(), tour))
-    selected = sorted(groups)[:max(0, max_groups)]
-    details: dict[str, Any] = {"eligible_date_groups": len(groups), "queried_date_groups": len(selected), "recovered_matches": 0, "unavailable_groups": 0}
+        pregame = entry.get("pregame") or {}
+        include(
+            pregame.get("tour"), pregame.get("commence_time_utc"),
+            [
+                ((pregame.get("players") or {}).get("a") or {}).get("id"),
+                ((pregame.get("players") or {}).get("b") or {}).get("id"),
+            ], "paper", entry,
+        )
+    return sorted(players)
+
+
+def recover_completed_matches(
+    boundary: forward_only.Boundary, *, cursor: str | None = None,
+    max_players: int = RESULT_RECOVERY_PLAYER_BATCH,
+) -> tuple[list[dict], dict[str, Any]]:
+    """Recupera resultados por jogador, em lote rotativo e estritamente limitado."""
+    player_keys = _past_pending_player_keys(boundary)
+    selected = _batch(player_keys, cursor, max_players)
+    details: dict[str, Any] = {
+        "eligible_players": len(player_keys), "queried_players": len(selected),
+        "recovered_matches": 0, "unavailable_players": 0,
+        "last_player_key": selected[-1] if selected else None,
+    }
     recovered: list[dict] = []
-    for date_text, tour in selected:
+    seen: set[str] = set()
+    for player_key in selected:
         try:
-            day = datetime.fromisoformat(date_text).replace(tzinfo=timezone.utc)
-            fixtures, status = fetch_data.fetch_date_fixtures(day, tour, return_status=True)
-            if str((status or {}).get("status")) == fetch_data.DISCOVERY_SOURCE_UNAVAILABLE:
-                details["unavailable_groups"] += 1
-            else:
-                recovered.extend(item for item in fixtures if isinstance(item, dict))
+            tour, raw_player_id = player_key.split(":", 1)
+            player_id = int(raw_player_id)
+            recent = fetch_data.fetch_player_recent_matches(tour, player_id)
+            if not isinstance(recent, list):
+                details["unavailable_players"] += 1
+                continue
+            for original in recent:
+                if not isinstance(original, Mapping):
+                    continue
+                match = dict(original)
+                match.setdefault("tour", tour)
+                identity = str(match.get("id") or "")
+                if not identity:
+                    identity = "|".join(str(match.get(field) or "") for field in (
+                        "tournamentId", "player1Id", "player2Id", "date",
+                    ))
+                if not identity or identity in seen:
+                    continue
+                seen.add(identity)
+                recovered.append(match)
         except (OSError, ValueError, TypeError):
-            details["unavailable_groups"] += 1
+            details["unavailable_players"] += 1
     details["recovered_matches"] = len(recovered)
     return recovered, details
 
@@ -205,16 +268,22 @@ def run(
         if fetch_data.RAPIDAPI_KEY:
             recovered, recovery_details = _phase(
                 report, "result_recovery",
-                lambda: recover_completed_fixtures(boundary),
+                lambda: recover_completed_matches(
+                    boundary, cursor=cursors.get("result_recovery_players"),
+                ),
                 checkpoint=checkpoint, checkpoint_path=checkpoint_path,
             )
             report["phases"]["result_recovery"].update(recovery_details)
+            if recovery_details.get("last_player_key"):
+                cursors["result_recovery_players"] = recovery_details["last_player_key"]
+                checkpoint.update({"cursors": cursors, "updated_at_utc": _utc_now()})
+                _atomic_write(checkpoint_path, checkpoint)
         else:
             recovered = []
             report["phases"]["result_recovery"] = {
                 "status": "SKIPPED", "reason_code": "RAPIDAPI_KEY_UNAVAILABLE",
-                "eligible_date_groups": 0, "queried_date_groups": 0,
-                "recovered_matches": 0, "unavailable_groups": 0,
+                "eligible_players": 0, "queried_players": 0,
+                "recovered_matches": 0, "unavailable_players": 0,
             }
         matches.extend(recovered)
         report["result_recovery_matches"] = len(recovered)
