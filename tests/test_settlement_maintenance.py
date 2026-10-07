@@ -32,6 +32,28 @@ def _write_active_manifest(path: Path) -> None:
 
 
 class SettlementMaintenanceTests(unittest.TestCase):
+    def test_through_date_scope_includes_only_records_on_or_before_date(self):
+        cutoff = maintenance._through_end_exclusive("2026-10-06")
+        self.assertTrue(maintenance._is_inside_through_date(
+            "snapshots", {"commence_time_utc": "2026-10-06T23:59:59+00:00"}, cutoff,
+        ))
+        self.assertFalse(maintenance._is_inside_through_date(
+            "snapshots", {"commence_time_utc": "2026-10-07T00:00:00+00:00"}, cutoff,
+        ))
+        self.assertTrue(maintenance._is_inside_through_date(
+            "paper", {"pregame": {"commence_time_utc": "2026-10-06T10:00:00+00:00"}}, cutoff,
+        ))
+        self.assertFalse(maintenance._is_inside_through_date(
+            "paper", {"pregame": {"commence_time_utc": "2026-10-07T10:00:00+00:00"}}, cutoff,
+        ))
+        self.assertFalse(maintenance._is_inside_through_date(
+            "paper", {"pregame": {}}, cutoff,
+        ))
+
+    def test_invalid_through_date_fails_before_external_recovery(self):
+        with self.assertRaisesRegex(ValueError, "YYYY-MM-DD"):
+            maintenance._through_end_exclusive("06-10-2026")
+
     def test_batch_rotates_from_durable_cursor(self):
         self.assertEqual(maintenance._batch(["a", "b", "c"], "a", 2), ["b", "c"])
         self.assertEqual(maintenance._batch(["a", "b", "c"], "c", 2), ["a", "b"])

@@ -12,7 +12,7 @@ import os
 import sys
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -51,6 +51,10 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
 def cached_matches(cache_root: Path):
     seen = set()
     for path in cache_root.glob("*/*.json"):
@@ -66,7 +70,42 @@ def cached_matches(cache_root: Path):
                 yield match
 
 
-def _past_pending_player_keys(boundary: forward_only.Boundary) -> list[str]:
+def _through_end_exclusive(value: str | None) -> datetime | None:
+    """Fim exclusivo UTC de uma data de recuperação YYYY-MM-DD."""
+    if not value:
+        return None
+    try:
+        parsed = date.fromisoformat(str(value))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("SETTLEMENT_THROUGH_DATE deve usar YYYY-MM-DD") from exc
+    return datetime.combine(parsed + timedelta(days=1), datetime_time.min, tzinfo=timezone.utc)
+
+
+def _record_commence_time(collection: str, record: Mapping[str, Any]) -> str | None:
+    if collection == "paper":
+        return _mapping(record.get("pregame")).get("commence_time_utc")
+    return record.get("commence_time_utc")
+
+
+def _is_inside_through_date(
+    collection: str, record: Mapping[str, Any], through_end_exclusive: datetime | None,
+) -> bool:
+    if through_end_exclusive is None:
+        return True
+    raw = _record_commence_time(collection, record)
+    try:
+        commence = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        # Uma recuperação limitada por data não deve alargar-se a registos sem
+        # data verificável. Estes continuam elegíveis nas runs normais.
+        return False
+    commence = commence if commence.tzinfo else commence.replace(tzinfo=timezone.utc)
+    return commence < through_end_exclusive
+
+
+def _past_pending_player_keys(
+    boundary: forward_only.Boundary, *, through_end_exclusive: datetime | None = None,
+) -> list[str]:
     """IDs dos jogadores de registos passados ainda sem settlement.
 
     A chave inclui o tour porque o endpoint ``past-matches`` também o exige.
@@ -90,6 +129,8 @@ def _past_pending_player_keys(boundary: forward_only.Boundary) -> list[str]:
         except ValueError:
             return
         if start >= now:
+            return
+        if not _is_inside_through_date(collection, record, through_end_exclusive):
             return
         for player_id in player_ids:
             if player_id not in (None, ""):
@@ -123,9 +164,12 @@ def _past_pending_player_keys(boundary: forward_only.Boundary) -> list[str]:
 def recover_completed_matches(
     boundary: forward_only.Boundary, *, cursor: str | None = None,
     max_players: int = RESULT_RECOVERY_PLAYER_BATCH,
+    through_end_exclusive: datetime | None = None,
 ) -> tuple[list[dict], dict[str, Any]]:
     """Recupera resultados por jogador, em lote rotativo e estritamente limitado."""
-    player_keys = _past_pending_player_keys(boundary)
+    player_keys = _past_pending_player_keys(
+        boundary, through_end_exclusive=through_end_exclusive,
+    )
     selected = _batch(player_keys, cursor, max_players)
     details: dict[str, Any] = {
         "eligible_players": len(player_keys), "queried_players": len(selected),
@@ -193,7 +237,10 @@ def _atomic_write(path: Path, document: Mapping[str, Any]) -> None:
                 pass
 
 
-def _pending_keys(collection: str, path: Path, boundary: forward_only.Boundary) -> list[str]:
+def _pending_keys(
+    collection: str, path: Path, boundary: forward_only.Boundary, *,
+    through_end_exclusive: datetime | None = None,
+) -> list[str]:
     if collection == "snapshots":
         records = calibration_store._read(path).get("snapshots") or []
         pending = [item for item in records if item.get("outcome") is None]
@@ -202,6 +249,8 @@ def _pending_keys(collection: str, path: Path, boundary: forward_only.Boundary) 
         pending = [item for item in records if item.get("settlement") is None]
     eligible = []
     for record in pending:
+        if not _is_inside_through_date(collection, record, through_end_exclusive):
+            continue
         allowed, _ = forward_only.settlement_eligibility(
             collection, record, boundary=boundary,
         )
@@ -243,6 +292,8 @@ def run(
     batch_size: int = DEFAULT_BATCH_SIZE,
     deadline_seconds: int = DEFAULT_DEADLINE_SECONDS,
     manifest_path: Path | None = None,
+    through_date: str | None = None,
+    recovery_player_batch: int = RESULT_RECOVERY_PLAYER_BATCH,
 ) -> dict[str, Any]:
     started = time.monotonic()
     deadline = started + max(1, deadline_seconds)
@@ -257,6 +308,12 @@ def run(
     cursors = dict(checkpoint.get("cursors") or {})
     boundary = forward_only.load_boundary(manifest_path)
     report["activation_status"] = boundary.reason_code
+    through_end_exclusive = _through_end_exclusive(through_date)
+    if through_end_exclusive is not None:
+        report["scope"] = {
+            "through_date_utc": str(through_date),
+            "through_end_exclusive_utc": through_end_exclusive.isoformat(),
+        }
     settled_total = 0
     checkpoint.update({"last_run": report, "updated_at_utc": _utc_now(), "cursors": cursors})
     _atomic_write(checkpoint_path, checkpoint)
@@ -273,6 +330,8 @@ def run(
                 report, "result_recovery",
                 lambda: recover_completed_matches(
                     boundary, cursor=cursors.get("result_recovery_players"),
+                    max_players=max(1, recovery_player_batch),
+                    through_end_exclusive=through_end_exclusive,
                 ),
                 checkpoint=checkpoint, checkpoint_path=checkpoint_path,
             )
@@ -292,7 +351,17 @@ def run(
         report["result_recovery_matches"] = len(recovered)
         batches: dict[str, list[str]] = {}
         for collection, path in (("snapshots", SNAPSHOTS_PATH), ("paper", PAPER_PATH)):
-            keys = _pending_keys(collection, path, boundary)
+            # Preserva a chamada histórica sem keyword no fluxo normal: além
+            # de compatibilidade, deixa explícito que a limitação por data só
+            # existe no workflow de recuperação manual.
+            keys = (
+                _pending_keys(
+                    collection, path, boundary,
+                    through_end_exclusive=through_end_exclusive,
+                )
+                if through_end_exclusive is not None
+                else _pending_keys(collection, path, boundary)
+            )
             batches[collection] = _batch(keys, cursors.get(collection), batch_size)
             report.setdefault("candidates", {})[collection] = {
                 "eligible_pending": len(keys),
@@ -474,11 +543,16 @@ def run(
 
 
 def main() -> int:
+    through_date = os.environ.get("SETTLEMENT_THROUGH_DATE", "").strip() or None
     report = run(
         batch_size=max(1, int(os.environ.get("SETTLEMENT_BATCH_SIZE", DEFAULT_BATCH_SIZE))),
         deadline_seconds=max(
             1, int(os.environ.get("SETTLEMENT_DEADLINE_SECONDS", DEFAULT_DEADLINE_SECONDS)),
         ),
+        through_date=through_date,
+        recovery_player_batch=max(1, int(os.environ.get(
+            "RESULT_RECOVERY_PLAYER_BATCH", RESULT_RECOVERY_PLAYER_BATCH,
+        ))),
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0 if report["status"] in {"COMPLETED", "NO_ELIGIBLE_WORK"} else 1
