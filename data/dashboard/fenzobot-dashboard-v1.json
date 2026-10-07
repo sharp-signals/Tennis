@@ -6,7 +6,7 @@
       "decision_positive": 69,
       "direction_strong": 9,
       "eligible": 6,
-      "eligible_settled": 0,
+      "eligible_settled": 3,
       "exclusion_reason_counts": {
         "DECISION_STATE_NOT_EDGE_POSITIVE": 350,
         "DIVERGENCE_LEVEL_NOT_STRONG": 410,
@@ -39,6 +39,25 @@
     },
     "paired_comparison": {
       "by_code_revision": {
+        "29683bb79ddc7846d581847fa01a8915c005e45e": {
+          "delta": {
+            "brier_score": -0.041622,
+            "log_loss": -0.084713
+          },
+          "fenzobot": {
+            "accuracy_pct": 0.0,
+            "brier_score": 0.298407,
+            "log_loss": 0.790244,
+            "sample_size": 1
+          },
+          "market": {
+            "accuracy_pct": 0.0,
+            "brier_score": 0.340029,
+            "log_loss": 0.874957,
+            "sample_size": 1
+          },
+          "sample_size": 1
+        },
         "6f43a2183e5fa21f9353197e3128f83f564d617b": {
           "delta": {
             "brier_score": 0.010965,
@@ -133,35 +152,92 @@
             "sample_size": 1
           },
           "sample_size": 1
+        },
+        "bf418fa4e074e850c11909b1ccb4677d2fcd9d55": {
+          "delta": {
+            "brier_score": -0.020849,
+            "log_loss": -0.047681
+          },
+          "fenzobot": {
+            "accuracy_pct": 66.67,
+            "brier_score": 0.1649,
+            "log_loss": 0.510225,
+            "sample_size": 3
+          },
+          "market": {
+            "accuracy_pct": 66.67,
+            "brier_score": 0.185749,
+            "log_loss": 0.557906,
+            "sample_size": 3
+          },
+          "sample_size": 3
+        },
+        "d63f8008ace8d312ec621a70c21590880c6a862e": {
+          "delta": {
+            "brier_score": 0.000288,
+            "log_loss": -0.000799
+          },
+          "fenzobot": {
+            "accuracy_pct": 100.0,
+            "brier_score": 0.107224,
+            "log_loss": 0.393919,
+            "sample_size": 2
+          },
+          "market": {
+            "accuracy_pct": 100.0,
+            "brier_score": 0.106936,
+            "log_loss": 0.394718,
+            "sample_size": 2
+          },
+          "sample_size": 2
+        },
+        "fecf765ecf4f850ed8380b6f03d52b249126626c": {
+          "delta": {
+            "brier_score": -0.031113,
+            "log_loss": -0.0713
+          },
+          "fenzobot": {
+            "accuracy_pct": 66.67,
+            "brier_score": 0.24668,
+            "log_loss": 0.688704,
+            "sample_size": 3
+          },
+          "market": {
+            "accuracy_pct": 66.67,
+            "brier_score": 0.277793,
+            "log_loss": 0.760004,
+            "sample_size": 3
+          },
+          "sample_size": 3
         }
       },
       "by_pricing_version": {
         "[\"market-residual-v0.3\", \"f46ec3e2aa6f92a9\"]": {
           "delta": {
-            "brier_score": -0.002618,
-            "log_loss": -0.003808
+            "brier_score": -0.009039,
+            "log_loss": -0.018955
           },
           "fenzobot": {
-            "accuracy_pct": 72.22,
-            "brier_score": 0.207889,
-            "log_loss": 0.610095,
-            "sample_size": 18
+            "accuracy_pct": 70.37,
+            "brier_score": 0.203319,
+            "log_loss": 0.598392,
+            "sample_size": 27
           },
           "market": {
-            "accuracy_pct": 72.22,
-            "brier_score": 0.210507,
-            "log_loss": 0.613903,
-            "sample_size": 18
+            "accuracy_pct": 70.37,
+            "brier_score": 0.212358,
+            "log_loss": 0.617347,
+            "sample_size": 27
           },
-          "sample_size": 18
+          "sample_size": 27
         }
       },
       "change_id": "CHANGE-2026-09-08-030",
       "claims": "EXPERIMENTAL_NOT_VALIDATED",
       "contract_version": "PAIRED_PRICING_MARKET_V1",
       "delta": {
-        "brier_score": -0.002618,
-        "log_loss": -0.003808
+        "brier_score": -0.009039,
+        "log_loss": -0.018955
       },
       "eligibility_hash": "fc335b884feb3d6a5b3f357c945df2183a2fe634000529fc52fecae981f26c5f",
       "eligible_forecasts": 73,
@@ -172,22 +248,22 @@
         "TEMPORAL_PROVENANCE_INVALID": 54
       },
       "fenzobot": {
-        "accuracy_pct": 72.22,
-        "brier_score": 0.207889,
-        "log_loss": 0.610095,
-        "sample_size": 18
+        "accuracy_pct": 70.37,
+        "brier_score": 0.203319,
+        "log_loss": 0.598392,
+        "sample_size": 27
       },
       "market": {
-        "accuracy_pct": 72.22,
-        "brier_score": 0.210507,
-        "log_loss": 0.613903,
-        "sample_size": 18
+        "accuracy_pct": 70.37,
+        "brier_score": 0.212358,
+        "log_loss": 0.617347,
+        "sample_size": 27
       },
       "mode": "RETROSPECTIVE_DESCRIPTIVE",
-      "pending_or_unresolved": 55,
+      "pending_or_unresolved": 46,
       "probability_basis": "FROZEN_PRICING_FULL_PRECISION",
-      "sample_size": 18,
-      "scored_snapshot_keys_hash": "43814702b35118df620982cb91e772aad29b1b8b57bd3a625afb53ada45df5ba",
+      "sample_size": 27,
+      "scored_snapshot_keys_hash": "1d62bbe7fd268fb5dd3a779f5590cb2c715299f13851aac27face9da67040d04",
       "status": "AVAILABLE",
       "total_snapshots": 809
     },
@@ -77775,7 +77851,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-07T11:21:14+00:00",
+  "generated_at_utc": "2026-10-07T11:23:05+00:00",
   "global": {
     "distinct_matchups": 2321,
     "green_strong_candidates": 6,
@@ -77788,7 +77864,7 @@
       "UNAVAILABLE": 1396,
       "YELLOW": 287
     },
-    "settled_snapshots": 397,
+    "settled_snapshots": 492,
     "total_reports": 3298,
     "total_snapshots": 809
   },
@@ -77796,15 +77872,15 @@
     "by_market": {
       "Moneyline": {
         "eligible_entries": 185,
-        "losses": 25,
-        "net_profit_eur": -3.33,
-        "pending_entries": 107,
-        "pending_exposure_eur": 1070.0,
-        "resolved_entries": 78,
-        "resolved_stake_eur": 780.0,
-        "roi_pct": -0.43,
+        "losses": 30,
+        "net_profit_eur": 121.54,
+        "pending_entries": 78,
+        "pending_exposure_eur": 780.0,
+        "resolved_entries": 107,
+        "resolved_stake_eur": 1070.0,
+        "roi_pct": 11.36,
         "void_entries": 0,
-        "wins": 53
+        "wins": 77
       }
     },
     "change_id": "CHANGE-2026-09-21-046",
@@ -77820,22 +77896,22 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-07T11:21:14+00:00",
-    "losses": 25,
+    "generated_at_utc": "2026-10-07T11:23:05+00:00",
+    "losses": 30,
     "metric_id": "GREEN_MONETIZATION_V1",
-    "net_profit_eur": -3.33,
-    "pending_entries": 107,
-    "pending_exposure_eur": 1070.0,
-    "resolved_entries": 78,
-    "resolved_stake_eur": 780.0,
-    "roi_pct": -0.43,
+    "net_profit_eur": 121.54,
+    "pending_entries": 78,
+    "pending_exposure_eur": 780.0,
+    "resolved_entries": 107,
+    "resolved_stake_eur": 1070.0,
+    "roi_pct": 11.36,
     "schema_version": 1,
     "source": {
       "exclusion_manifests": [
         "data/paper_integrity_exclusions.json",
         "data/validation/market-integrity-exclusions-v1.json"
       ],
-      "fingerprint_sha256": "8e69ed47d5b87ac9b6bcc10bb706f5842143d6f64dc03103959dfdbc3a7afcda",
+      "fingerprint_sha256": "4db875efbb89bc6c23f9d2e6e1f568fcc81b37bca72029fb498ddfab0416e0ef",
       "paper_path": "data/paper_trades.json",
       "physical_entries": 188,
       "universe": "PAPER_TECHNICAL_EDGE_POSITIVE_BASELINE"
@@ -77848,7 +77924,7 @@
       "real": "NOT_INCLUDED"
     },
     "void_entries": 0,
-    "wins": 53
+    "wins": 77
   },
   "green_strong_v1": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
@@ -78357,7 +78433,7 @@
   "paper_results_comparison_v1": {
     "change_id": "CHANGE-2026-09-23-051",
     "disclaimer": "Amostras diferentes; comparação descritiva, não prova de desempenho futuro.",
-    "green_win_rate_pct": 67.949,
+    "green_win_rate_pct": 71.963,
     "guerra_win_rate_pct": null,
     "profit_is_never_aggregated": true,
     "statement": null,
@@ -78369,18 +78445,18 @@
       "Handicap": null,
       "Moneyline": {
         "average_odd": 1.587,
-        "losses": 25,
-        "pending": 107,
+        "losses": 30,
+        "pending": 78,
         "pending_stake_units": null,
         "pushes": 0,
-        "roi_pct": -0.43,
-        "settled": 78,
+        "roi_pct": 11.36,
+        "settled": 107,
         "settled_stake_units": null,
         "total_entries": 185,
-        "units": -0.333,
-        "win_rate_pct": 67.95,
-        "wins": 53,
-        "yield_pct": -0.43
+        "units": 12.154,
+        "win_rate_pct": 71.96,
+        "wins": 77,
+        "yield_pct": 11.36
       }
     },
     "data_quality_exclusions_by_reason": {
@@ -78388,19 +78464,19 @@
     },
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
-    "losses": 25,
-    "pending": 107,
+    "losses": 30,
+    "pending": 78,
     "pending_stake_units": null,
     "pushes": 0,
-    "roi_pct": -0.43,
-    "settled": 78,
+    "roi_pct": 11.36,
+    "settled": 107,
     "settled_stake_units": null,
     "status": "AVAILABLE",
     "total_entries": 185,
-    "units": -0.333,
-    "win_rate_pct": 67.95,
-    "wins": 53,
-    "yield_pct": -0.43
+    "units": 12.154,
+    "win_rate_pct": 71.96,
+    "wins": 77,
+    "yield_pct": 11.36
   },
   "report_grouping": {
     "canonical_precedence": [
@@ -78418,31 +78494,31 @@
   },
   "report_history": {
     "alignment": {
-      "acertos": 200,
+      "acertos": 234,
       "intervalo_pct": [
-        64.9,
-        75.4
+        66.7,
+        76.4
       ],
-      "taxa_pct": 70.4,
-      "total": 284
+      "taxa_pct": 71.8,
+      "total": 326
     },
     "divergence": {
-      "acertos": 18,
+      "acertos": 23,
       "intervalo_pct": [
-        32.5,
-        62.7
+        35.3,
+        62.8
       ],
-      "taxa_pct": 47.4,
-      "total": 38
+      "taxa_pct": 48.9,
+      "total": 47
     },
     "snapshot_universe": {
-      "settled": 397,
+      "settled": 492,
       "total": 809
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "82e1d5cbfe282fe38ff719cd3553e41a39ad253ce86d333f1412b419c7dc4f44",
+  "semantic_fingerprint": "2d4fecf7d700af361c74f7f8abe11ff8d9d56915f2fa984fb9d7e0869a593185",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 317,
@@ -78451,7 +78527,7 @@
     },
     "change_id": "CHANGE-2026-09-21-047",
     "conversion": {
-      "created_to_settled_pct": 0.0,
+      "created_to_settled_pct": 25.32,
       "eligible_to_snapshot_pct": 0.0
     },
     "counts": {
@@ -78466,7 +78542,7 @@
       "self_described_versions": 540,
       "snapshot_identity_matches": 0,
       "snapshots_created": 154,
-      "snapshots_settled": 0
+      "snapshots_settled": 39
     },
     "integrity": {
       "eligible_identities_reconciled": true,
@@ -78508,7 +78584,7 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-07T11:14:28+00:00"
+      "updated_at_utc": "2026-10-07T11:23:05+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
@@ -78520,7 +78596,7 @@
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-07T11:14:28+00:00"
+      "updated_at_utc": "2026-10-07T11:22:51+00:00"
     }
   },
   "system_health": {
