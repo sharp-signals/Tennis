@@ -248,6 +248,33 @@ test('Casa inserted before odds keeps all PAPER totals mapped by header', () => 
   assert.equal(payload.by_market['Handicap games'].units, 1.064);
 });
 
+test('operational headers tolerate accents and invisible whitespace and preserve 0.5u exposure', () => {
+  const headers = [
+    'Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de Mercado\u00a0', 'Seleção', 'Fav/Und',
+    'Pré/Live', 'Casa', 'Odd Aposta ', 'Stake (u)', 'EDGE', 'Resultado\u00a0', 'Lucro (u)', 'Notas',
+  ];
+  const settled = Array(headers.length).fill('');
+  settled[0] = '2026-10-07'; settled[1] = 'Alpha vs Beta'; settled[5] = 'Vencedor'; settled[7] = 'Favorito';
+  settled[10] = 1.85; settled[11] = 1; settled[13] = 'GANHOU'; settled[14] = 0.85;
+  const pending = Array(headers.length).fill('');
+  pending[0] = '2026-10-07'; pending[1] = 'Gamma vs Delta'; pending[5] = 'Handicap games'; pending[7] = 'Favorito';
+  pending[10] = 1.82; pending[11] = 0.5; pending[13] = 'PENDENTE';
+  const sheet = {
+    getLastRow: () => 7, getLastColumn: () => headers.length,
+    getRange: (sheetRow) => ({getValues: () => sheetRow === 5 ? [headers] : [settled, pending]}),
+  };
+  context.SpreadsheetApp = {getActiveSpreadsheet: () => ({getSheetByName: () => sheet, getUrl: () => 'https://docs.google.com/spreadsheets/d/test'})};
+  context.Utilities = {DigestAlgorithm: {SHA_256: 'SHA_256'}, computeDigest: () => [0]};
+  const payload = context.buildPaperTradingPayload_('', '', 'main');
+  assert.equal(payload.summary.settled, 1);
+  assert.equal(payload.summary.pending, 1);
+  assert.equal(payload.summary.settled_stake_units, 1);
+  assert.equal(payload.summary.pending_stake_units, 0.5);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.source.operational_columns)), {
+    market: 6, side: 8, odd: 11, stake: 12, result: 14, profit: 15,
+  });
+});
+
 test('manual Challenger 125 has a separate 0.5u aggregate and never changes normal PAPER totals', () => {
   const headers = Array.from({length: 15}, (_, index) => 'Legacy ' + index).concat([
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',

@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from scripts import run_settlement_maintenance as supervisor
 from scripts import update_calibration_outcomes as maintenance
-from src import forward_only
+from src import calibration_store, forward_only
 
 
 def _write_active_manifest(path: Path) -> None:
@@ -91,6 +91,44 @@ class SettlementMaintenanceTests(unittest.TestCase):
             )
             saved = json.loads(snapshots.read_text(encoding="utf-8"))["snapshots"][0]
             self.assertEqual(saved["outcome"]["winner_side"], "a")
+
+    def test_result_recovery_uses_pending_player_history_not_future_fixture_calendar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshots = root / "data/calibration_snapshots.json"
+            paper = root / "data/paper_trades.json"
+            snapshots.parent.mkdir(parents=True)
+            snapshots.write_text(json.dumps({"schema_version": 1, "snapshots": [{
+                "key": "settle-me", "match_id": "provider-match", "tour": "atp",
+                "commence_time_utc": "2026-10-02T10:00:00+00:00",
+                "analyzed_at_utc": "2026-10-01T08:00:00+00:00",
+                "player_a": {"id": 11}, "player_b": {"id": 22},
+                "metrics": {}, "outcome": None,
+            }]}), encoding="utf-8")
+            paper.write_text('{"schema_version":1,"entries":[]}\n', encoding="utf-8")
+            _write_active_manifest(root / "manifest.json")
+            completed = {
+                "id": "provider-match", "player1Id": 11, "player2Id": 22,
+                "match_winner": 22, "result_type": "completed", "result": "4-6 4-6",
+                "date": "2026-10-02T11:00:00+00:00", "tournamentId": 123,
+            }
+            with (
+                patch.object(maintenance, "SNAPSHOTS_PATH", snapshots),
+                patch.object(maintenance, "PAPER_PATH", paper),
+                patch.object(maintenance.fetch_data, "fetch_player_recent_matches", return_value=[completed]) as recent,
+            ):
+                recovered, details = maintenance.recover_completed_matches(
+                    forward_only.load_boundary(root / "manifest.json"), max_players=10,
+                )
+            self.assertEqual(details["eligible_players"], 2)
+            self.assertEqual(details["queried_players"], 2)
+            self.assertEqual(details["recovered_matches"], 1)
+            self.assertEqual(recent.call_count, 2)
+            self.assertEqual(recovered[0]["tour"], "atp")
+            self.assertEqual(
+                calibration_store.settle_from_matches(recovered, snapshots, protection_manifest_path=root / "manifest.json"),
+                1,
+            )
 
     def test_no_eligible_work_does_not_rebuild_historic_projections(self):
         with tempfile.TemporaryDirectory() as tmp:

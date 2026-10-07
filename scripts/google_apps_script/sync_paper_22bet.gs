@@ -313,6 +313,10 @@ function buildPaperTradingPayload_(token, repository, branch) {
       url: spreadsheet.getUrl(),
       reference_bookmaker: '22Bet',
       synced_at_utc: new Date().toISOString(),
+      // Só publica a posição das colunas operacionais, nunca valores de
+      // linhas individuais. Torna auditável a leitura depois de mudanças na
+      // Sheet (por exemplo, a coluna Casa inserida antes da odd).
+      operational_columns: publicOperationalColumnMap_(headers, tracking),
     },
     data_fingerprint: fingerprint,
     summary: finishStats_(summary),
@@ -370,9 +374,9 @@ function trackingIndexes_(headers) {
     selectedAt: indexes['Selected At UTC'], reviewOdd: indexes['22Bet Moneyline Review Odd'],
     handicapLine: indexes['22Bet Handicap Games Line'],
     status: indexes['Validation Status'],
-    challengerIndex: headers.indexOf('Challenger Índice Fenzobot'),
-    challengerCoverage: headers.indexOf('Challenger Cobertura %'),
-    challengerEdge: headers.indexOf('Challenger Edge %'),
+    challengerIndex: headerIndex_(headers, 'Challenger Índice Fenzobot'),
+    challengerCoverage: headerIndex_(headers, 'Challenger Cobertura %'),
+    challengerEdge: headerIndex_(headers, 'Challenger Edge %'),
     market: operationalIndex_(headers, 'Tipo de mercado', 'market'),
     side: operationalIndex_(headers, 'Fav/Und', 'side'),
     odd: operationalIndex_(headers, 'Odd aposta', 'odd'),
@@ -384,8 +388,35 @@ function trackingIndexes_(headers) {
 }
 
 function operationalIndex_(headers, header, legacyKey) {
-  const index = headers.indexOf(header);
+  const index = headerIndex_(headers, header);
   return index >= 0 ? index : PAPER_22BET_SYNC.legacyOperationalIndexes[legacyKey];
+}
+
+function normalisedHeader_(value) {
+  return String(value == null ? '' : value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u00a0\s]+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function headerIndex_(headers, expected) {
+  const wanted = normalisedHeader_(expected);
+  for (let index = 0; index < headers.length; index += 1) {
+    if (normalisedHeader_(headers[index]) === wanted) return index;
+  }
+  return -1;
+}
+
+function publicOperationalColumnMap_(headers, tracking) {
+  const fields = ['market', 'side', 'odd', 'stake', 'result', 'profit'];
+  const mapped = {};
+  fields.forEach(field => {
+    const index = tracking[field];
+    mapped[field] = index >= 0 && index < headers.length ? index + 1 : null;
+  });
+  return mapped;
 }
 
 function marketName_(row, tracking) {
@@ -503,7 +534,7 @@ function fetchGreenStrongIndex_(token, repository, branch) {
 }
 
 function newStats_() {
-  return {total_entries: 0, settled: 0, pending: 0, wins: 0, losses: 0, pushes: 0, units: 0, stake: 0, odds: []};
+  return {total_entries: 0, settled: 0, pending: 0, wins: 0, losses: 0, pushes: 0, units: 0, stake: 0, pendingStake: 0, odds: []};
 }
 
 function addRowToStats_(stats, row, tracking) {
@@ -525,6 +556,7 @@ function addRowToStats_(stats, row, tracking) {
     if (Number.isFinite(profit)) stats.units += profit;
   } else {
     stats.pending += 1;
+    if (Number.isFinite(stake)) stats.pendingStake += stake;
   }
 }
 
@@ -539,6 +571,8 @@ function finishStats_(stats) {
     pushes: stats.pushes,
     win_rate_pct: stats.settled ? round(100 * stats.wins / stats.settled) : null,
     units: round(stats.units),
+    settled_stake_units: round(stats.stake),
+    pending_stake_units: round(stats.pendingStake),
     roi_pct: stats.stake ? round(100 * stats.units / stats.stake) : null,
     average_odd: stats.odds.length ? round(stats.odds.reduce((total, odd) => total + odd, 0) / stats.odds.length) : null,
   };
