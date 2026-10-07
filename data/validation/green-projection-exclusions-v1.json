@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "change_id": "CHANGE-2026-10-07-091",
+  "metric_id": "GREEN_MONETIZATION_V1",
+  "cutoff_utc": "2026-10-06T00:00:00+00:00",
+  "policy": "Projection-only cutover: preserve every PAPER row and its pre-game evidence; exclude only pre-cutoff unresolved legs after completed result recovery.",
+  "exclusions": [
+    {
+      "paper_key": "atp:1203:moneyline:b:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-08-31T18:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    },
+    {
+      "paper_key": "wta:826:moneyline:a:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-09-16T16:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    },
+    {
+      "paper_key": "wta:825:moneyline:a:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-09-16T23:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    },
+    {
+      "paper_key": "wta:881:moneyline:b:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-09-21T02:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    },
+    {
+      "paper_key": "wta:939:moneyline:b:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-09-21T03:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    },
+    {
+      "paper_key": "mi2_75133bb6f76b43e58cdc9c7deccfac54:moneyline:b:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-09-30T02:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    },
+    {
+      "paper_key": "mi2_d41e5f40201b4c358c079887828442eb:moneyline:a:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-10-02T03:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    },
+    {
+      "paper_key": "mi2_863cdf87453b48629bc390c62d13c3c6:moneyline:a:na",
+      "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+      "commence_time_utc": "2026-10-05T07:00:00+00:00",
+      "reason": "No confirmed result after dedicated recovery; excluded from GREEN projection only."
+    }
+  ]
+}
