@@ -27,7 +27,7 @@
       "total_snapshots": 818
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-07T13:57:58+00:00",
+      "attempted_at_utc": "2026-10-07T17:51:28+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
@@ -290,7 +290,7 @@
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
       "first_ledger_capture_utc": "2026-09-03T17:34:09+00:00",
       "fresh": 0.0,
-      "last_monitor_capture_utc": "2026-10-07T11:51:27+00:00",
+      "last_monitor_capture_utc": "2026-10-07T17:51:25+00:00",
       "stale": 0.0,
       "unknown": 0.0
     },
@@ -78432,11 +78432,11 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-07T17:46:11+00:00",
+  "generated_at_utc": "2026-10-07T17:59:57+00:00",
   "global": {
     "distinct_matchups": 2330,
     "green_strong_candidates": 6,
-    "market_observations": 12413,
+    "market_observations": 12425,
     "paper_22bet_entries": 105,
     "paper_technical_entries": 189,
     "report_colors": {
@@ -78477,7 +78477,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-07T17:46:11+00:00",
+    "generated_at_utc": "2026-10-07T17:59:57+00:00",
     "losses": 35,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": 103.92,
@@ -78520,7 +78520,7 @@
       "average_market_probability": 0.412033,
       "observed_win_rate_pct": 66.67
     },
-    "generated_at_utc": "2026-10-07T17:44:14+00:00",
+    "generated_at_utc": "2026-10-07T17:59:57+00:00",
     "market_movement": {
       "average_probability_pp": -0.002,
       "comparable_closing_n": 1,
@@ -78749,18 +78749,18 @@
     "distinct_events": 818,
     "events_with_comparable_closing": 45,
     "events_with_entry_market": 254,
-    "generated_at_utc": "2026-10-07T17:44:14+00:00",
+    "generated_at_utc": "2026-10-07T17:59:57+00:00",
     "market_only": {
-      "accuracy_pct": 71.43,
-      "brier_score": 0.194695,
-      "log_loss": 0.57576,
-      "sample_size": 56
+      "accuracy_pct": 69.33,
+      "brier_score": 0.200824,
+      "log_loss": 0.588451,
+      "sample_size": 75
     },
     "market_plus_fenzobot": {
-      "accuracy_pct": 70.89,
-      "brier_score": 0.187648,
-      "log_loss": 0.553506,
-      "sample_size": 158
+      "accuracy_pct": 68.82,
+      "brier_score": 0.198389,
+      "log_loss": 0.579133,
+      "sample_size": 186
     },
     "observations_by_day": [
       {
@@ -78881,11 +78881,11 @@
       },
       {
         "date": "2026-10-07",
-        "observations": 1826
+        "observations": 1838
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 12413
+    "total_observations": 12425
   },
   "match_identity_v2": {
     "activation": {
@@ -79099,7 +79099,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "9589b3b833b29ed60fe6d39b8d4cfa0a8c92a3167167fdebff0909149279f72f",
+  "semantic_fingerprint": "a6bf8c16e087b08980d61708187b9e3356d7a65a0d268a6a74d016aac9c893f9",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 344,
@@ -79144,16 +79144,16 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-07T17:44:14+00:00"
+      "updated_at_utc": "2026-10-07T17:59:57+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-07T17:35:10+00:00"
+      "updated_at_utc": "2026-10-07T17:51:20+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-07T17:44:14+00:00"
+      "updated_at_utc": "2026-10-07T17:59:57+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
@@ -79181,7 +79181,9 @@
     }
   },
   "system_health": {
-    "alerts": [],
+    "alerts": [
+      "manutenção de resultados: TIMED_OUT"
+    ],
     "latest": {
       "analysis_failed": 0,
       "duration_seconds": 649.323,
@@ -79273,10 +79275,10 @@
         "timestamp": "2026-10-07T11:21:14+00:00"
       },
       {
-        "status": "HEALTHY",
+        "status": "DEGRADED",
         "timestamp": "2026-10-07T17:44:15+00:00"
       }
     ],
-    "status": "HEALTHY"
+    "status": "DEGRADED"
   }
 }
