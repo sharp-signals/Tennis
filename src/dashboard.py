@@ -1098,6 +1098,9 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
             paper_path=root / "data/paper_trades.json",
             legacy_exclusions_path=root / "data/paper_integrity_exclusions.json",
             market_exclusions_path=root / "data/validation/market-integrity-exclusions-v1.json",
+            projection_exclusions_path=(
+                root / "data/validation/green-projection-exclusions-v1.json"
+            ),
             generated_at_utc=generated_at,
         )
     except Exception as exc:
@@ -1507,6 +1510,9 @@ def build_and_write(
             legacy_exclusions_path=root / "data/paper_integrity_exclusions.json",
             market_exclusions_path=(
                 root / "data/validation/market-integrity-exclusions-v1.json"
+            ),
+            projection_exclusions_path=(
+                root / "data/validation/green-projection-exclusions-v1.json"
             ),
             protection_manifest_path=protection_manifest_path,
             continuity_root=root,

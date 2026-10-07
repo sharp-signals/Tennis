@@ -20,13 +20,19 @@ from typing import Any, Mapping
 from . import forward_only, forward_only_projections, paper_trading
 
 
-CHANGE_ID = "CHANGE-2026-09-21-046"
+CHANGE_ID = "CHANGE-2026-10-07-091"
 SCHEMA_VERSION = 1
 METRIC_ID = "GREEN_MONETIZATION_V1"
 STAKE_EUR = Decimal("10.00")
 DEFAULT_OUTPUT_PATH = Path("data/validation/green-monetization-v1.json")
 DEFAULT_LEGACY_EXCLUSIONS_PATH = Path("data/paper_integrity_exclusions.json")
 DEFAULT_MARKET_EXCLUSIONS_PATH = Path("data/validation/market-integrity-exclusions-v1.json")
+# This manifest is intentionally narrower than the integrity manifests above:
+# it only removes known-unresolvable legacy entries from the *GREEN projection*.
+# The append-only technical PAPER ledger and its pre-game evidence remain intact.
+DEFAULT_PROJECTION_EXCLUSIONS_PATH = Path(
+    "data/validation/green-projection-exclusions-v1.json"
+)
 VALID_RESULTS = {"WIN", "LOSS", "VOID", "PUSH"}
 
 
@@ -46,23 +52,17 @@ def _read_json(path: Path) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
-def _manifest_exclusions(
-    legacy_path: Path,
-    market_path: Path,
-) -> dict[str, str]:
+def _manifest_exclusions(*paths: Path) -> dict[str, str]:
     result: dict[str, str] = {}
-    for item in _read_json(legacy_path).get("exclusions", []):
-        if not isinstance(item, Mapping) or not item.get("paper_key"):
-            continue
-        result[str(item["paper_key"])] = str(
-            item.get("disposition") or item.get("reason_code") or "LEGACY_INTEGRITY_EXCLUSION"
-        )
-    for item in _read_json(market_path).get("exclusions", []):
-        if not isinstance(item, Mapping) or not item.get("paper_key"):
-            continue
-        result[str(item["paper_key"])] = str(
-            item.get("reason_code") or item.get("disposition") or "MARKET_INTEGRITY_EXCLUSION"
-        )
+    for path in paths:
+        for item in _read_json(path).get("exclusions", []):
+            if not isinstance(item, Mapping) or not item.get("paper_key"):
+                continue
+            result[str(item["paper_key"])] = str(
+                item.get("reason_code")
+                or item.get("disposition")
+                or "GREEN_PROJECTION_EXCLUSION"
+            )
     return result
 
 
@@ -157,6 +157,7 @@ def build_report(
     paper_path: Path = paper_trading.DEFAULT_PATH,
     legacy_exclusions_path: Path = DEFAULT_LEGACY_EXCLUSIONS_PATH,
     market_exclusions_path: Path = DEFAULT_MARKET_EXCLUSIONS_PATH,
+    projection_exclusions_path: Path = DEFAULT_PROJECTION_EXCLUSIONS_PATH,
     generated_at_utc: str | None = None,
     boundary: forward_only.Boundary | None = None,
     prospective_only: bool = False,
@@ -173,7 +174,9 @@ def build_report(
             if boundary.new_record_eligibility("paper", entry)[0]
         ]
     manifest_exclusions = _manifest_exclusions(
-        Path(legacy_exclusions_path), Path(market_exclusions_path)
+        Path(legacy_exclusions_path),
+        Path(market_exclusions_path),
+        Path(projection_exclusions_path),
     )
     exclusion_reasons: Counter[str] = Counter()
     seen: set[str] = set()
@@ -266,6 +269,7 @@ def build_report(
             "exclusion_manifests": [
                 DEFAULT_LEGACY_EXCLUSIONS_PATH.as_posix(),
                 DEFAULT_MARKET_EXCLUSIONS_PATH.as_posix(),
+                DEFAULT_PROJECTION_EXCLUSIONS_PATH.as_posix(),
             ],
             "fingerprint_sha256": fingerprint,
         },
@@ -311,6 +315,7 @@ def build_and_write(
     paper_path: Path = paper_trading.DEFAULT_PATH,
     legacy_exclusions_path: Path = DEFAULT_LEGACY_EXCLUSIONS_PATH,
     market_exclusions_path: Path = DEFAULT_MARKET_EXCLUSIONS_PATH,
+    projection_exclusions_path: Path = DEFAULT_PROJECTION_EXCLUSIONS_PATH,
     output_path: Path = DEFAULT_OUTPUT_PATH,
     generated_at_utc: str | None = None,
     protection_manifest_path: Path | None = None,
@@ -321,6 +326,7 @@ def build_and_write(
         paper_path=paper_path,
         legacy_exclusions_path=legacy_exclusions_path,
         market_exclusions_path=market_exclusions_path,
+        projection_exclusions_path=projection_exclusions_path,
         generated_at_utc=generated_at_utc,
     )
     boundary = forward_only.load_boundary_for_store(output_path, protection_manifest_path)

@@ -50,8 +50,10 @@ class GreenMonetizationTests(unittest.TestCase):
         self.paper = self.root / "paper.json"
         self.legacy = self.root / "legacy.json"
         self.market = self.root / "market.json"
+        self.projection = self.root / "projection.json"
         write_json(self.legacy, {"schema_version": 1, "exclusions": []})
         write_json(self.market, {"schema_version": 1, "exclusions": []})
+        write_json(self.projection, {"schema_version": 1, "exclusions": []})
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -62,6 +64,7 @@ class GreenMonetizationTests(unittest.TestCase):
             paper_path=self.paper,
             legacy_exclusions_path=self.legacy,
             market_exclusions_path=self.market,
+            projection_exclusions_path=self.projection,
             generated_at_utc=NOW,
         )
 
@@ -120,6 +123,24 @@ class GreenMonetizationTests(unittest.TestCase):
         self.assertEqual(report["exclusion_reasons"], {
             "MARKET_BOUNDARY_SENTINEL": 1,
             "VOID_DATA_INTEGRITY": 1,
+        })
+
+    def test_projection_cutover_excludes_only_the_named_legacy_pending_leg(self):
+        entries = [
+            leg("stale-pending", snapshot="atp:old"),
+            leg("current-pending", snapshot="atp:current"),
+            leg("settled", snapshot="atp:settled", result="WIN"),
+        ]
+        write_json(self.projection, {"schema_version": 1, "exclusions": [{
+            "paper_key": "stale-pending",
+            "reason_code": "STALE_UNRESOLVED_PRE_CUTOFF",
+        }]})
+        report = self.build(entries)
+        self.assertEqual(report["eligible_entries"], 2)
+        self.assertEqual(report["pending_entries"], 1)
+        self.assertEqual(report["resolved_entries"], 1)
+        self.assertEqual(report["exclusion_reasons"], {
+            "STALE_UNRESOLVED_PRE_CUTOFF": 1,
         })
 
     def test_missing_or_invalid_odd_is_excluded_not_zero(self):
