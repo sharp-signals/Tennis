@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 
 from src import audit_observability as audit, dashboard, run_metrics
 from src.llm_provider import AnthropicProvider, DisabledProvider, PaidLLMDisabledError
-from scripts.refresh_observability import refresh
+from scripts.refresh_observability import promote_manual_paper_aggregate, refresh
 from tests import test_dashboard as dashboard_fixtures
 
 
@@ -200,6 +200,45 @@ class AuditTests(unittest.TestCase):
             self.assertEqual(result['dashboard'], 'AVAILABLE')
             self.assertFalse((Path(tmp)/'data/paper_trades.json').exists())
             self.assertFalse((Path(tmp)/'data/calibration_snapshots.json').exists())
+
+    def test_legacy_manual_writer_cannot_replace_authoritative_aggregate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "data"
+            data.mkdir()
+            current = {
+                "schema_version": 2,
+                "source": {
+                    "synced_at_utc": "2026-10-07T10:52:29Z",
+                    "operational_columns": {
+                        "market": 6, "side": 8, "odd": 11,
+                        "stake": 12, "result": 14, "profit": 15,
+                    },
+                },
+                "summary": {
+                    "total_entries": 2, "settled": 1, "pending": 1,
+                    "wins": 1, "losses": 0, "pushes": 0, "units": 0.8,
+                    "settled_stake_units": 1, "pending_stake_units": 0.5,
+                },
+            }
+            (data / "manual_paper_22bet_authoritative.json").write_text(
+                json.dumps(current), encoding="utf-8",
+            )
+            stale = copy.deepcopy(current)
+            stale["source"] = {"synced_at_utc": "2026-10-07T10:55:43Z"}
+            stale["summary"].update({"settled": 0, "pending": 2, "wins": 0, "units": 0})
+            (data / "manual_paper_22bet.json").write_text(json.dumps(stale), encoding="utf-8")
+            self.assertEqual(promote_manual_paper_aggregate(root), "REJECTED_LEGACY_OR_INCOMPLETE")
+            saved = json.loads((data / "manual_paper_22bet_authoritative.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["summary"]["settled"], 1)
+
+            valid = copy.deepcopy(current)
+            valid["source"]["synced_at_utc"] = "2026-10-07T11:00:00Z"
+            valid["summary"].update({"settled": 2, "pending": 0, "wins": 2, "units": 1.7})
+            (data / "manual_paper_22bet.json").write_text(json.dumps(valid), encoding="utf-8")
+            self.assertEqual(promote_manual_paper_aggregate(root), "PROMOTED")
+            saved = json.loads((data / "manual_paper_22bet_authoritative.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["summary"]["settled"], 2)
 
     def test_disabled_provider_has_zero_external_requests(self):
         run_metrics.reset()

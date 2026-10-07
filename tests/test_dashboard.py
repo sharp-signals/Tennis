@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src import dashboard, dashboard_ui, report_html, run_metrics
+from src import dashboard, dashboard_ui, paper_trading, report_html, run_metrics
 
 
 NOW = "2026-09-06T20:00:00+00:00"
@@ -131,7 +131,7 @@ class DashboardTests(unittest.TestCase):
             "settlement": {"result": "WIN", "pnl_units": 1.0},
         }], "updated_at_utc": NOW})
         manual_summary = summary(3, 2, 1, 1, 1, units=0.5, roi=25.0, odd=1.9)
-        write_json(self.root / "data/manual_paper_22bet.json", {
+        write_json(self.root / paper_trading.DEFAULT_MANUAL_22BET_PATH, {
             "schema_version": 1,
             "source": {"synced_at_utc": NOW, "reference_bookmaker": "22Bet"},
             "summary": manual_summary,
@@ -190,7 +190,7 @@ class DashboardTests(unittest.TestCase):
             52 + pending, 52, pending, 34, 18, units=14, roi=26.923, odd=1.931
         )
         manual_summary["win_rate_pct"] = 65.385
-        write_json(self.root / "data/manual_paper_22bet.json", {
+        write_json(self.root / paper_trading.DEFAULT_MANUAL_22BET_PATH, {
             "schema_version": 2,
             "source": {"synced_at_utc": NOW, "reference_bookmaker": "22Bet"},
             "summary": manual_summary,
@@ -449,7 +449,7 @@ class DashboardTests(unittest.TestCase):
 
     def test_missing_manual_source_is_unavailable_never_zero_euros(self):
         self._base_sources()
-        (self.root / "data/manual_paper_22bet.json").unlink()
+        (self.root / paper_trading.DEFAULT_MANUAL_22BET_PATH).unlink()
         manual = self.build()["paper_22bet"]
         self.assertEqual(manual["status"], "UNAVAILABLE")
         self.assertEqual(manual["flat_stake_projection"]["status"], "UNAVAILABLE")
@@ -467,13 +467,13 @@ class DashboardTests(unittest.TestCase):
 
     def test_manual_projection_uses_real_stake_units_when_published(self):
         self._base_sources()
-        manual = json.loads((self.root / "data/manual_paper_22bet.json").read_text(encoding="utf-8"))
+        manual = json.loads((self.root / paper_trading.DEFAULT_MANUAL_22BET_PATH).read_text(encoding="utf-8"))
         manual["summary"].update({
             "total_entries": 2, "settled": 1, "pending": 1,
             "wins": 1, "losses": 0, "units": 0.85,
             "settled_stake_units": 1, "pending_stake_units": 0.5,
         })
-        write_json(self.root / "data/manual_paper_22bet.json", manual)
+        write_json(self.root / paper_trading.DEFAULT_MANUAL_22BET_PATH, manual)
         projection = self.build()["paper_22bet"]["flat_stake_projection"]
         self.assertEqual(projection["resolved_stake_eur"], 10.0)
         self.assertEqual(projection["pending_exposure_eur"], 5.0)
@@ -482,7 +482,7 @@ class DashboardTests(unittest.TestCase):
     def test_comparison_is_descriptive_and_never_combines_profit(self):
         self._set_manual_reference()
         manual_doc = json.loads(
-            (self.root / "data/manual_paper_22bet.json").read_text(encoding="utf-8")
+            (self.root / paper_trading.DEFAULT_MANUAL_22BET_PATH).read_text(encoding="utf-8")
         )
         manual = dashboard._paper_22bet(manual_doc)
         comparison = dashboard._paper_results_comparison({
@@ -1115,7 +1115,7 @@ class DashboardTests(unittest.TestCase):
 
     def test_missing_individual_source_degrades_only_its_panel(self):
         self._base_sources()
-        (self.root / "data/manual_paper_22bet.json").unlink()
+        (self.root / paper_trading.DEFAULT_MANUAL_22BET_PATH).unlink()
         result = self.build()
         self.assertEqual(result["paper_22bet"]["status"], "UNAVAILABLE")
         self.assertEqual(result["paper_technical"]["status"], "AVAILABLE")

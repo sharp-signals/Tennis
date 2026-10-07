@@ -27,7 +27,11 @@ SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/paper_trades.json")
 DEFAULT_EXCLUSIONS_PATH = Path("data/paper_integrity_exclusions.json")
 MANUAL_22BET_SCHEMA_VERSIONS = {1, 2}
-DEFAULT_MANUAL_22BET_PATH = Path("data/manual_paper_22bet.json")
+# O ficheiro histórico continua a ser uma caixa de entrada compatível com
+# Apps Scripts antigos. As vistas do produto leem apenas a cópia promovida,
+# que exige os campos de stake introduzidos no contrato atual.
+LEGACY_MANUAL_22BET_PATH = Path("data/manual_paper_22bet.json")
+DEFAULT_MANUAL_22BET_PATH = Path("data/manual_paper_22bet_authoritative.json")
 _LOCK = threading.Lock()
 
 

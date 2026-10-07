@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from . import forward_only, forward_only_projections, market_memory_report
+from . import forward_only, forward_only_projections, market_memory_report, paper_trading
 
 
 CHANGE_ID = "CHANGE-2026-09-06-026"
@@ -23,7 +23,7 @@ COHORT_NAME = "GREEN_STRONG_V1"
 CONTRACT_VERSION = "green-strong-v1"
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_PATH = Path("data/validation/green-strong-v1.json")
-DEFAULT_MANUAL_PATH = Path("data/manual_paper_22bet.json")
+DEFAULT_MANUAL_PATH = paper_trading.DEFAULT_MANUAL_22BET_PATH
 
 
 def _now() -> str:

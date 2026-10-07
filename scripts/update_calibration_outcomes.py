@@ -435,7 +435,7 @@ def run(
                     report, "green_projection",
                     lambda: green_strong_validation.build_and_write(
                         memory_report=memory,
-                        manual_path=ROOT / "data/manual_paper_22bet.json",
+                        manual_path=ROOT / paper_trading.DEFAULT_MANUAL_22BET_PATH,
                         output_path=ROOT / "data/validation/green-strong-v1.json",
                     ),
                     checkpoint=checkpoint, checkpoint_path=checkpoint_path,

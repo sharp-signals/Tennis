@@ -20,7 +20,7 @@ const SYSTEM_HISTORY_SYNC = {
   defaultBranch: 'main',
   defaultSpreadsheetId: '1KojvHlLEJ-d4UCaN-Jb0Eu3fEIATbQmoP6_FqGYmWdw',
   sourcePath: 'data/dashboard/system_history_analytics.json',
-  manualPaperPath: 'data/manual_paper_22bet.json',
+  manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
