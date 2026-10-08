@@ -72,6 +72,27 @@ projeto associado à folha não abre ou foi eliminado.
 4. Executar uma vez `syncPaperTradingToGitHub` e aceitar as permissões Google/GitHub.
 5. Executar uma vez `installPaperTradingSync`. O Apps Script verifica a Sheet a cada 30 minutos e só cria commit quando os dados mudaram.
 
+### Garantia de atualização do dashboard
+
+Após uma alteração na Sheet, a cadeia esperada é: **Apps Script → resumo
+agregado no GitHub → promoção validada → dashboard**. O Apps Script atual
+publica a posição das seis colunas operacionais juntamente com os agregados.
+Se uma coluna for movida ou o layout deixar de ser reconhecível, a execução
+falha antes de publicar — o dashboard conserva o último resumo validado, em
+vez de converter apostas liquidadas em pendentes.
+
+O GitHub tenta o refresh assim que o Pages termina e tem ainda uma verificação
+de recuperação aos minutos 07, 27 e 47 de cada hora. Esta recuperação é offline
+e só corre quando encontra um resumo válido mais recente do que a cópia
+autorizada. Assim, uma falha isolada do trigger do Pages não deixa o dashboard
+desatualizado indefinidamente.
+
+Depois de atualizar este ficheiro no Apps Script, executar uma vez
+`syncPaperTradingToGitHub`. A mensagem de sucesso não é suficiente por si só:
+confirmar no dashboard que W–L, lucro e pendentes coincidem com a Sheet. Se a
+estrutura da Sheet não for reconhecida, a execução mostra um erro com os
+cabeçalhos lidos e não altera o último resumo válido.
+
 O menu `Fenzobot` só aparece quando o script está associado diretamente à
 Sheet. Num projeto autónomo, executar as funções pelo seletor de funções no
 topo do Apps Script.
