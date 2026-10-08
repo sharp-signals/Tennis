@@ -27,7 +27,7 @@
       "total_snapshots": 818
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-08T05:51:29+00:00",
+      "attempted_at_utc": "2026-10-08T12:06:31+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
@@ -309,7 +309,7 @@
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
       "first_ledger_capture_utc": "2026-09-03T17:34:09+00:00",
       "fresh": 0.0,
-      "last_monitor_capture_utc": "2026-10-08T05:51:25+00:00",
+      "last_monitor_capture_utc": "2026-10-08T12:06:27+00:00",
       "stale": 0.0,
       "unknown": 0.0
     },
@@ -79337,11 +79337,11 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-08T06:00:44+00:00",
+  "generated_at_utc": "2026-10-08T12:15:40+00:00",
   "global": {
     "distinct_matchups": 2361,
     "green_strong_candidates": 6,
-    "market_observations": 13096,
+    "market_observations": 13106,
     "paper_22bet_entries": 105,
     "paper_technical_entries": 191,
     "report_colors": {
@@ -79383,7 +79383,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-08T06:00:44+00:00",
+    "generated_at_utc": "2026-10-08T12:15:40+00:00",
     "losses": 47,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": 97.07,
@@ -79427,7 +79427,7 @@
       "average_market_probability": 0.412033,
       "observed_win_rate_pct": 75
     },
-    "generated_at_utc": "2026-10-08T06:00:44+00:00",
+    "generated_at_utc": "2026-10-08T12:15:40+00:00",
     "market_movement": {
       "average_probability_pp": -0.002,
       "comparable_closing_n": 1,
@@ -79526,6 +79526,7 @@
       "Acertos Guerra": "Vitórias do PAPER manual divididas pelas vitórias e derrotas manuais liquidadas.",
       "Análises falhadas": "Análises que falharam na última execução conhecida.",
       "Apostas resolvidas": "Entradas com resultado final conhecido no universo indicado; GREEN e Guerra permanecem separados.",
+      "Break-even médio": "Taxa média de acerto necessária pelas odds pré-jogo dessa amostra para não ganhar nem perder, calculada pelas probabilidades implícitas de cada odd.",
       "Brier": "Erro quadrático médio das probabilidades. Menor é melhor; leia com o N.",
       "Brier Fenzobot": "Brier do Fenzobot calculado apenas na amostra emparelhada.",
       "Brier mercado": "Brier do mercado calculado apenas na amostra emparelhada.",
@@ -79579,9 +79580,11 @@
       "Movimento médio": "Variação média da probabilidade entre entrada e último preço válido pré-início.",
       "N": "Tamanho da amostra efetivamente usada nesta métrica.",
       "N emparelhado": "Snapshots em que mercado e Fenzobot são comparados na mesma amostra.",
+      "N odds": "Número de casos da taxa que também têm uma odd decimal pré-jogo congelada e utilizável no cálculo de retorno.",
       "Na direção Fenzobot": "Percentagem de movimentos do mercado no sentido indicado pelo Fenzobot.",
       "Observações": "Registos append-only presentes na vista derivada de mercado.",
       "Odd média": "Média aritmética das odds decimais válidas incluídas.",
+      "Odd média regime": "Média das odds decimais pré-jogo congeladas do lado avaliado naquele regime. Só entram odds demonstráveis; por isso N odds pode ser inferior a N.",
       "PAPER 22Bet": "Entradas manuais 22Bet; uma partida pode originar mais de uma leg.",
       "PAPER técnico": "Entradas simuladas criadas pelo pipeline automático, sem dinheiro real.",
       "Pares completos": "Underdogs com Moneyline e handicap de jogos positivo.",
@@ -79589,11 +79592,13 @@
       "Previsões elegíveis": "Previsões que passaram os critérios de integridade desta comparação.",
       "Processados": "Jogos efetivamente processados nessa execução.",
       "ROI": "Resultado dividido pelo stake da fonte; não é o ROI da simulação fixa.",
+      "ROI 1u regime": "Retorno descritivo com 1 unidade por seleção e odds pré-jogo congeladas: vitória rende odd−1, derrota perde 1. Não representa PAPER manual, GREEN nem dinheiro real.",
       "ROI GREEN": "Resultado GREEN realizado dividido pela stake resolvida; não inclui exposição pendente.",
       "ROI Guerra": "Resultado projetado dividido pela stake resolvida projetada do PAPER manual.",
       "ROI stake fixa": "Resultado simulado dividido pelo total apostado nas legs concluídas.",
       "RapidAPI calls": "Chamadas RapidAPI da execução; não é o saldo mensal restante.",
       "Relatórios falhados": "Relatórios cuja geração falhou na última execução conhecida.",
+      "Resultado 1u": "Lucro/prejuízo agregado da simulação técnica de 1 unidade por seleção, restrita às odds pré-jogo congeladas do regime.",
       "Resultado GREEN": "Lucro ou prejuízo realizado da simulação de €10 por leg GREEN válida e liquidada.",
       "Resultado Guerra": "Projeção determinística de €10 multiplicada pelas unidades agregadas do PAPER manual; não é dinheiro real.",
       "Resultado acumulado": "Lucro/prejuízo simulado com €10 por leg válida liquidada; não usa stake real.",
@@ -79637,7 +79642,7 @@
       "PAPER_22BET": "Resume apenas agregados da folha manual 22Bet. Não publica nomes, snapshot keys nem linhas individuais.",
       "PAPER_RESULTS_V1": "Compara descritivamente dois universos PAPER independentes. GREEN usa a monetização automática; Guerra usa o resumo manual total da Sheet 22Bet. Os resultados nunca são somados.",
       "PAPER_TECHNICAL": "Resume entradas PAPER geradas pelas regras automáticas existentes. Não representa dinheiro real e permanece separado da seleção manual GUERRA.",
-      "REPORT_HISTORY": "Compara o desempenho observado das versões com divergência ou alinhamento. Leia sempre a taxa com N e intervalo; amostras pequenas não demonstram vantagem futura.",
+      "REPORT_HISTORY": "Compara alinhamento e divergência em snapshots resolvidos. Odd média e ROI 1u usam só a seleção e odd pré-jogo congeladas; leia sempre com N odds e não confunda com PAPER ou REAL.",
       "SNAPSHOT_RECONCILIATION_V1": "Reconcilia jogos, versões, identidades elegíveis e snapshots numa janela factual. Colisão significa que o provider reutilizou a mesma key para jogadores diferentes; não é ausência silenciosa nem autoriza backfill.",
       "SOURCE_FRESHNESS": "Indica quando cada fonte foi atualizada e se está disponível. STALE ou N/D pede cautela; a causa técnica é mostrada quando o artefacto a fornece.",
       "SYSTEM_HEALTH": "System Health mostra se a execução técnica terminou e que recursos consumiu. HEALTHY ou OK não certifica qualidade das odds, validade do modelo ou vantagem económica."
@@ -79656,7 +79661,7 @@
     "distinct_events": 818,
     "events_with_comparable_closing": 53,
     "events_with_entry_market": 254,
-    "generated_at_utc": "2026-10-08T06:00:44+00:00",
+    "generated_at_utc": "2026-10-08T12:15:40+00:00",
     "market_only": {
       "accuracy_pct": 70,
       "brier_score": 0.19198,
@@ -79788,11 +79793,11 @@
       },
       {
         "date": "2026-10-08",
-        "observations": 647
+        "observations": 657
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 13096
+    "total_observations": 13106
   },
   "match_identity_v2": {
     "activation": {
@@ -79987,8 +79992,44 @@
         66.2,
         74.6
       ],
+      "odds_retorno": {
+        "average_odd": 1.405,
+        "break_even_pct": 73.2,
+        "losses": 131,
+        "median_odd": 1.36,
+        "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
+        "net_units": -17.91,
+        "odds_sample_size": 445,
+        "roi_pct": -4.02,
+        "stake_units": 445,
+        "win_pct": 70.6,
+        "wins": 314
+      },
       "taxa_pct": 70.6,
       "total": 445
+    },
+    "alignment_min_odd": {
+      "acertos": 193,
+      "intervalo_pct": [
+        56.9,
+        67.7
+      ],
+      "minimum_odd": 1.25,
+      "odds_retorno": {
+        "average_odd": 1.519,
+        "break_even_pct": 66.9,
+        "losses": 116,
+        "median_odd": 1.5,
+        "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
+        "net_units": -20.314,
+        "odds_sample_size": 309,
+        "roi_pct": -6.57,
+        "stake_units": 309,
+        "win_pct": 62.5,
+        "wins": 193
+      },
+      "taxa_pct": 62.5,
+      "total": 309
     },
     "divergence": {
       "acertos": 32,
@@ -79996,6 +80037,19 @@
         36.3,
         59.5
       ],
+      "odds_retorno": {
+        "average_odd": 2.343,
+        "break_even_pct": 44.4,
+        "losses": 35,
+        "median_odd": 2.2,
+        "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
+        "net_units": 1.949,
+        "odds_sample_size": 67,
+        "roi_pct": 2.91,
+        "stake_units": 67,
+        "win_pct": 47.8,
+        "wins": 32
+      },
       "taxa_pct": 47.8,
       "total": 67
     },
@@ -80006,7 +80060,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "03b2d04fa8993442dc6b40e8d164d0a72addcb98d8846bf9a288b4d4199713ce",
+  "semantic_fingerprint": "6a9d9c918644164a5b84f8f9c39d591b1cb2b906e8832642fe3c9901629af8e3",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 326,
@@ -80052,16 +80106,16 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-08T06:00:44+00:00"
+      "updated_at_utc": "2026-10-08T12:15:40+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-08T05:51:21+00:00"
+      "updated_at_utc": "2026-10-08T12:06:26+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-08T06:00:44+00:00"
+      "updated_at_utc": "2026-10-08T12:15:40+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
