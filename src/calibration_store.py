@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+import statistics
 import threading
 import time
 from datetime import datetime, timezone
@@ -476,9 +477,52 @@ def compute_system_accuracy(
         return None
 
     MIN_CASOS = 10
+    ALINHAMENTO_ODD_MINIMA = 1.25
 
     alinhamento_ok = alinhamento_total = 0
     diverg_ok = diverg_total = 0
+    alinhamento_odds: list[tuple[float, bool]] = []
+    alinhamento_odds_minimas: list[tuple[float, bool]] = []
+    diverg_odds: list[tuple[float, bool]] = []
+
+    def frozen_odd(snapshot: Mapping[str, Any], selected_name: Any) -> float | None:
+        """Devolve apenas a odd pré-jogo que foi congelada no snapshot.
+
+        O cálculo de retorno abaixo não tenta reconstruir preços ausentes.  Se
+        a seleção ou a odd não ficaram comprovadas no instante pré-jogo, o
+        jogo continua a contar para a taxa de acerto, mas não para a amostra
+        financeira (``n odds`` fica explicitamente menor).
+        """
+        odds = snapshot.get("market_odds_decimal")
+        if not isinstance(odds, Mapping) or not selected_name:
+            return None
+        try:
+            value = float(odds.get(str(selected_name)))
+        except (TypeError, ValueError):
+            return None
+        return value if math.isfinite(value) and value > 1.0 else None
+
+    def odds_return(rows: list[tuple[float, bool]]) -> dict[str, Any] | None:
+        """Resumo descritivo com stake plana de 1u, sem usar PAPER/REAL."""
+        if not rows:
+            return None
+        odds = [odd for odd, _ in rows]
+        wins = sum(won for _, won in rows)
+        total = len(rows)
+        net_units = sum((odd - 1.0) if won else -1.0 for odd, won in rows)
+        return {
+            "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
+            "odds_sample_size": total,
+            "average_odd": round(sum(odds) / total, 3),
+            "median_odd": round(statistics.median(odds), 3),
+            "break_even_pct": round(100 * sum(1.0 / odd for odd in odds) / total, 1),
+            "wins": wins,
+            "losses": total - wins,
+            "win_pct": round(100 * wins / total, 1),
+            "stake_units": total,
+            "net_units": round(net_units, 3),
+            "roi_pct": round(100 * net_units / total, 2),
+        }
 
     for s in snaps:
         div = (s.get("metrics") or {}).get("divergencia") or {}
@@ -497,14 +541,22 @@ def compute_system_accuracy(
         if nivel >= 2 and indice_favorece and indice_favorece != mercado_favorece:
             # Divergência real: os indicadores apontaram contra o mercado.
             diverg_total += 1
-            if vencedor_nome == indice_favorece:
+            won = vencedor_nome == indice_favorece
+            if won:
                 diverg_ok += 1
+            if (odd := frozen_odd(s, indice_favorece)) is not None:
+                diverg_odds.append((odd, won))
         elif nivel == 0 and mercado_favorece:
             # Alinhado: mercado e indicadores concordam. Conta se o
             # favorecido confirmou.
             alinhamento_total += 1
-            if vencedor_nome == mercado_favorece:
+            won = vencedor_nome == mercado_favorece
+            if won:
                 alinhamento_ok += 1
+            if (odd := frozen_odd(s, mercado_favorece)) is not None:
+                alinhamento_odds.append((odd, won))
+                if odd >= ALINHAMENTO_ODD_MINIMA:
+                    alinhamento_odds_minimas.append((odd, won))
 
     resultado: dict[str, Any] = {}
     if alinhamento_total >= MIN_CASOS:
@@ -513,6 +565,19 @@ def compute_system_accuracy(
             "acertos": alinhamento_ok, "total": alinhamento_total,
             "taxa_pct": round(100 * alinhamento_ok / alinhamento_total, 1),
             "intervalo_pct": [round(lo * 100, 1), round(hi * 100, 1)],
+            "odds_retorno": odds_return(alinhamento_odds),
+        }
+    if len(alinhamento_odds_minimas) >= MIN_CASOS:
+        acertos = sum(won for _, won in alinhamento_odds_minimas)
+        total = len(alinhamento_odds_minimas)
+        lo, hi = _wilson_interval(acertos, total)
+        resultado["alinhamento_odd_min_125"] = {
+            "minimum_odd": ALINHAMENTO_ODD_MINIMA,
+            "acertos": acertos,
+            "total": total,
+            "taxa_pct": round(100 * acertos / total, 1),
+            "intervalo_pct": [round(lo * 100, 1), round(hi * 100, 1)],
+            "odds_retorno": odds_return(alinhamento_odds_minimas),
         }
     if diverg_total >= MIN_CASOS:
         lo, hi = _wilson_interval(diverg_ok, diverg_total)
@@ -520,6 +585,7 @@ def compute_system_accuracy(
             "acertos": diverg_ok, "total": diverg_total,
             "taxa_pct": round(100 * diverg_ok / diverg_total, 1),
             "intervalo_pct": [round(lo * 100, 1), round(hi * 100, 1)],
+            "odds_retorno": odds_return(diverg_odds),
         }
     return resultado or None
 

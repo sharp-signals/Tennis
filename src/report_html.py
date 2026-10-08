@@ -3216,10 +3216,26 @@ def _mod_system_history(payload):
     for label, key in (("Alinhamento", "alinhamento_forte"), ("Divergência", "divergencia")):
         cell = _d(reconstructed.get(key))
         if cell:
-            reconstructed_parts.append(
+            text = (
                 f'{label}: {value(cell.get("taxa_pct"), "%")} '
                 f'({value(cell.get("acertos"))}/{value(cell.get("total"))})'
             )
+            odds_retorno = _d(cell.get("odds_retorno"))
+            if odds_retorno:
+                text += (
+                    f' · odd média {value(odds_retorno.get("average_odd"))}'
+                    f' · ROI 1u {value(odds_retorno.get("roi_pct"), "%")} '
+                    f'(n odds: {value(odds_retorno.get("odds_sample_size"))})'
+                )
+            if key == "alinhamento_forte":
+                operational = _d(reconstructed.get("alinhamento_odd_min_125"))
+                if operational:
+                    text += (
+                        f' · odd ≥ {value(operational.get("minimum_odd"))}: '
+                        f'{value(operational.get("taxa_pct"), "%")} '
+                        f'({value(operational.get("acertos"))}/{value(operational.get("total"))})'
+                    )
+            reconstructed_parts.append(text)
     reconstructed_text = " · ".join(reconstructed_parts)
     def market_line(label, data):
         if not data or not data.get("total_entries"):
@@ -3294,7 +3310,10 @@ def _mod_system_history(payload):
         f'<div class="history-split">Fonte operacional manual: 22Bet. {source_link}</div>'
     )
     reconstructed_html = (
-        f'<p>{_esc(reconstructed_text)}</p>' if reconstructed_text else
+        f'<p>{_esc(reconstructed_text)}</p><p class="history-split">'
+        'ROI 1u usa apenas odds pré-jogo congeladas, com stake plana de 1 unidade; '
+        'é leitura histórica descritiva e não é PAPER manual, GREEN nem REAL.</p>'
+        if reconstructed_text else
         '<p>Ainda sem amostra reconstruída liquidada suficiente para métricas. '
         'Este bloco é reconstruído a partir de snapshots resolvidos; não é o PAPER nem histórico REAL.</p>'
     )

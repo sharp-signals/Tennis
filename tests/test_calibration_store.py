@@ -9,7 +9,9 @@ from src import calibration_store, match_identity_v2
 
 class CalibrationStoreTests(unittest.TestCase):
     @staticmethod
-    def _accuracy_snapshot(key, *, winner="a", tournament_coverage=None):
+    def _accuracy_snapshot(
+        key, *, winner="a", tournament_coverage=None, odd_a=2.0, odd_b=2.0,
+    ):
         snapshot = {
             "key": key,
             "tier": "Challenger 125",
@@ -23,6 +25,7 @@ class CalibrationStoreTests(unittest.TestCase):
                 "player_b": "B",
             }},
             "outcome": {"winner_side": winner},
+            "market_odds_decimal": {"A": odd_a, "B": odd_b},
         }
         if tournament_coverage is not None:
             snapshot["tournament_coverage"] = tournament_coverage
@@ -228,6 +231,7 @@ class CalibrationStoreTests(unittest.TestCase):
             accuracy = calibration_store.compute_system_accuracy(path)
             self.assertEqual(accuracy["divergencia"]["total"], 10)
             self.assertEqual(accuracy["divergencia"]["acertos"], 10)
+            self.assertEqual(accuracy["divergencia"]["odds_retorno"]["roi_pct"], 100.0)
 
             legacy = [
                 self._accuracy_snapshot(f"legacy:{index}")
@@ -239,6 +243,83 @@ class CalibrationStoreTests(unittest.TestCase):
             }), encoding="utf-8")
             legacy_accuracy = calibration_store.compute_system_accuracy(path)
             self.assertEqual(legacy_accuracy["divergencia"]["total"], 10)
+
+    def test_accuracy_keeps_return_by_regime_separate_and_uses_frozen_odd(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            aligned = []
+            for index in range(10):
+                snapshot = self._accuracy_snapshot(
+                    f"aligned:{index}",
+                    winner="a" if index < 7 else "b",
+                    odd_a=1.5,
+                )
+                divergence = snapshot["metrics"]["divergencia"]
+                divergence["classificacao"] = {"nivel": 0}
+                divergence["mercado_favorece"] = "A"
+                divergence["indice_favorece"] = "A"
+                aligned.append(snapshot)
+            divergent = [
+                self._accuracy_snapshot(
+                    f"divergent:{index}",
+                    winner="a" if index < 5 else "b",
+                    odd_a=2.5,
+                )
+                for index in range(10)
+            ]
+            path.write_text(json.dumps({
+                "schema_version": 1,
+                "snapshots": aligned + divergent,
+            }), encoding="utf-8")
+
+            accuracy = calibration_store.compute_system_accuracy(path)
+            alignment = accuracy["alinhamento_forte"]["odds_retorno"]
+            divergence = accuracy["divergencia"]["odds_retorno"]
+
+            self.assertEqual(alignment["odds_sample_size"], 10)
+            self.assertEqual(alignment["average_odd"], 1.5)
+            self.assertEqual(alignment["break_even_pct"], 66.7)
+            self.assertEqual(alignment["roi_pct"], 5.0)
+            self.assertEqual(divergence["odds_sample_size"], 10)
+            self.assertEqual(divergence["average_odd"], 2.5)
+            self.assertEqual(divergence["roi_pct"], 25.0)
+
+    def test_alignment_minimum_odd_excludes_lower_prices(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            snapshots = []
+            for index in range(10):
+                snapshot = self._accuracy_snapshot(
+                    f"eligible:{index}",
+                    winner="a" if index < 6 else "b",
+                    odd_a=1.25,
+                )
+                divergence = snapshot["metrics"]["divergencia"]
+                divergence["classificacao"] = {"nivel": 0}
+                divergence["mercado_favorece"] = "A"
+                divergence["indice_favorece"] = "A"
+                snapshots.append(snapshot)
+            for index in range(2):
+                snapshot = self._accuracy_snapshot(
+                    f"lower:{index}", winner="a", odd_a=1.24,
+                )
+                divergence = snapshot["metrics"]["divergencia"]
+                divergence["classificacao"] = {"nivel": 0}
+                divergence["mercado_favorece"] = "A"
+                divergence["indice_favorece"] = "A"
+                snapshots.append(snapshot)
+            path.write_text(json.dumps({
+                "schema_version": 1, "snapshots": snapshots,
+            }), encoding="utf-8")
+
+            accuracy = calibration_store.compute_system_accuracy(path)
+            filtered = accuracy["alinhamento_odd_min_125"]
+            self.assertEqual(accuracy["alinhamento_forte"]["total"], 12)
+            self.assertEqual(filtered["minimum_odd"], 1.25)
+            self.assertEqual(filtered["total"], 10)
+            self.assertEqual(filtered["acertos"], 6)
+            self.assertEqual(filtered["taxa_pct"], 60.0)
+            self.assertEqual(filtered["odds_retorno"]["odds_sample_size"], 10)
 
     def test_experimental_outcome_does_not_change_standard_indicative_odds(self):
         with tempfile.TemporaryDirectory() as directory:

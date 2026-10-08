@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 PANEL_GUIDANCE = {
-    "REPORT_HISTORY": "Compara o desempenho observado das versões com divergência ou alinhamento. Leia sempre a taxa com N e intervalo; amostras pequenas não demonstram vantagem futura.",
+    "REPORT_HISTORY": "Compara alinhamento e divergência em snapshots resolvidos. Odd média e ROI 1u usam só a seleção e odd pré-jogo congeladas; leia sempre com N odds e não confunda com PAPER ou REAL.",
     "GREEN_STRONG_V1": "Acompanha, em modo SHADOW, os casos que cumpriram o contrato GREEN_STRONG. Serve para validar o sinal prospectivamente; não é uma recomendação nem um resultado financeiro.",
     "GREEN_MONETIZATION_V1": "Projeta €10 por leg GREEN auditável a partir do PAPER técnico ex ante. É uma simulação histórica experimental, não dinheiro real nem prova de edge futuro.",
     "PAPER_RESULTS_V1": "Compara descritivamente dois universos PAPER independentes. GREEN usa a monetização automática; Guerra usa o resumo manual total da Sheet 22Bet. Os resultados nunca são somados.",
@@ -38,6 +38,11 @@ METRIC_HELP = {
     "Acertos": "Previsões corretas dentro da amostra apresentada.",
     "N": "Tamanho da amostra efetivamente usada nesta métrica.",
     "Taxa": "Percentagem de acertos observada; deve ser lida com N e intervalo.",
+    "Odd média regime": "Média das odds decimais pré-jogo congeladas do lado avaliado naquele regime. Só entram odds demonstráveis; por isso N odds pode ser inferior a N.",
+    "ROI 1u regime": "Retorno descritivo com 1 unidade por seleção e odds pré-jogo congeladas: vitória rende odd−1, derrota perde 1. Não representa PAPER manual, GREEN nem dinheiro real.",
+    "N odds": "Número de casos da taxa que também têm uma odd decimal pré-jogo congelada e utilizável no cálculo de retorno.",
+    "Break-even médio": "Taxa média de acerto necessária pelas odds pré-jogo dessa amostra para não ganhar nem perder, calculada pelas probabilidades implícitas de cada odd.",
+    "Resultado 1u": "Lucro/prejuízo agregado da simulação técnica de 1 unidade por seleção, restrita às odds pré-jogo congeladas do regime.",
     "Intervalo": "Faixa de incerteza estatística; não é garantia para o próximo jogo.",
     "Candidatos": "Snapshots que cumpriram todos os critérios da coorte indicada.",
     "Pendentes": "Entradas ou candidatos ainda sem resultado final.",
