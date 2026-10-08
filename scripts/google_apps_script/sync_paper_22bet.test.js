@@ -97,7 +97,7 @@ test('standalone sync retries by canonical URL when ID lookup is empty', () => {
 });
 
 test('underdog pair counts one candidate, two PAPER legs and one complete pair', () => {
-  const headers = Array.from({length: 15}, (_, index) => 'Legacy ' + index).concat(
+  const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat(
     ['Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status'],
   );
   const moneyline = row('wta:pair', '2026-09-07T10:00:00Z');
@@ -275,8 +275,17 @@ test('operational headers tolerate accents and invisible whitespace and preserve
   });
 });
 
+test('an expanded sheet with unrecognised operational headers fails closed', () => {
+  const headers = Array.from({length: 16}, (_, index) => 'Unknown column ' + index);
+  const tracking = context.trackingIndexes_(headers);
+  assert.throws(
+    () => context.assertOperationalTracking_(tracking, headers),
+    /Contrato operacional da Sheet não reconhecido/,
+  );
+});
+
 test('manual Challenger 125 has a separate 0.5u aggregate and never changes normal PAPER totals', () => {
-  const headers = Array.from({length: 15}, (_, index) => 'Legacy ' + index).concat([
+  const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat([
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
     'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
   ]);

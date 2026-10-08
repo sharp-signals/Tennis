@@ -7,6 +7,10 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch: {}
+  # Fallback autónomo: workflow_run pode não ser emitido para uma publicação
+  # Pages iniciada por token. Não consulta providers nem altera decisões.
+  schedule:
+    - cron: '7,27,47 * * * *'
 concurrency:
   group: tennis-data-writers
   queue: max
@@ -14,7 +18,7 @@ permissions:
   contents: write
 jobs:
   refresh:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

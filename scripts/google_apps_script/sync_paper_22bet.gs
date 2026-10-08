@@ -30,6 +30,7 @@ const PAPER_22BET_SYNC = {
   ],
   challengerManualStrategy: 'CHALLENGER_125_EXPERIMENTAL_V1',
   challengerManualStakeUnits: 0.5,
+  syncContractVersion: 3,
   // Índices legacy (A:O) usados exclusivamente como compatibilidade para
   // versões antigas da Sheet sem cabeçalhos reconhecíveis.
   legacyOperationalIndexes: {
@@ -177,6 +178,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
   const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
   const tracking = trackingIndexes_(headers);
+  assertOperationalTracking_(tracking, headers);
   const rows = rowCount ? sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, PAPER_22BET_SYNC.firstColumn, rowCount, width).getValues() : [];
   const activeRows = rows.filter(row => row[0] && row[1] && row[tracking.market]);
   // O agregado principal mantém-se exclusivamente PAPER normal. O Challenger
@@ -313,6 +315,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
       url: spreadsheet.getUrl(),
       reference_bookmaker: '22Bet',
       synced_at_utc: new Date().toISOString(),
+      sync_contract_version: PAPER_22BET_SYNC.syncContractVersion,
       // Só publica a posição das colunas operacionais, nunca valores de
       // linhas individuais. Torna auditável a leitura depois de mudanças na
       // Sheet (por exemplo, a coluna Casa inserida antes da odd).
@@ -387,9 +390,45 @@ function trackingIndexes_(headers) {
   };
 }
 
+/**
+ * Falhar antes de publicar é preferível a transformar, por engano, todas as
+ * apostas em pendentes quando alguém insere, move ou renomeia uma coluna.
+ * O dashboard conserva o último resumo validado até a Sheet ficar legível.
+ */
+function assertOperationalTracking_(tracking, headers) {
+  const required = ['market', 'side', 'odd', 'stake', 'result', 'profit'];
+  const missing = required.filter(field => !Number.isInteger(tracking[field]) || tracking[field] < 0 || tracking[field] >= headers.length);
+  const duplicate = required.some((field, index) => required.slice(index + 1).some(other => tracking[field] === tracking[other]));
+  if (missing.length || duplicate) {
+    const visible = headers.map(value => String(value || '').trim()).filter(Boolean).join(' | ');
+    throw new Error(
+      'Contrato operacional da Sheet não reconhecido; não foi publicado nenhum resumo. ' +
+      'Campos em falta: ' + (missing.length ? missing.join(', ') : 'nenhum') +
+      (duplicate ? ' · colunas operacionais duplicadas' : '') +
+      ' · Cabeçalhos lidos: ' + visible,
+    );
+  }
+}
+
 function operationalIndex_(headers, header, legacyKey) {
-  const index = headerIndex_(headers, header);
-  return index >= 0 ? index : PAPER_22BET_SYNC.legacyOperationalIndexes[legacyKey];
+  const aliases = {
+    market: ['Tipo de mercado', 'Mercado'],
+    side: ['Fav/Und', 'Favorito/Underdog'],
+    odd: ['Odd aposta', 'Odd 22Bet', 'Odd 22bet', 'Odd'],
+    stake: ['Stake (u)', 'Stake', 'Unidades'],
+    result: ['Resultado', 'Resultado final'],
+    profit: ['Lucro (u)', 'Lucro', 'Profit (u)'],
+  };
+  const candidates = aliases[legacyKey] || [header];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const resolved = headerIndex_(headers, candidates[index]);
+    if (resolved >= 0) return resolved;
+  }
+  // A folha original tinha exatamente A:O. Só esta forma histórica pode usar
+  // índices fixos; uma folha alargada tem de se identificar pelos cabeçalhos.
+  return headers.length <= PAPER_22BET_SYNC.columnCount
+    ? PAPER_22BET_SYNC.legacyOperationalIndexes[legacyKey]
+    : -1;
 }
 
 function normalisedHeader_(value) {

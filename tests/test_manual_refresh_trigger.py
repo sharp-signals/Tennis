@@ -52,3 +52,31 @@ class ManualRefreshTriggerTests(unittest.TestCase):
 
     def test_explicit_dispatch_is_supported(self):
         self.assertTrue(needs_refresh('workflow_dispatch', '', self.root))
+
+    def test_schedule_recovers_valid_newer_sheet_aggregate(self):
+        current = {
+            'schema_version': 2,
+            'source': {'synced_at_utc': '2026-10-08T10:00:00Z', 'operational_columns': {
+                'market': 6, 'side': 8, 'odd': 11, 'stake': 12, 'result': 14, 'profit': 15,
+            }},
+            'summary': {'total_entries': 2, 'settled': 1, 'pending': 1, 'wins': 1,
+                        'losses': 0, 'pushes': 0, 'units': 1, 'settled_stake_units': 1,
+                        'pending_stake_units': 1},
+        }
+        incoming = dict(current)
+        incoming['source'] = dict(current['source'], synced_at_utc='2026-10-08T10:30:00Z')
+        (self.root / 'data').mkdir()
+        (self.root / 'data/manual_paper_22bet_authoritative.json').write_text(__import__('json').dumps(current), encoding='utf-8')
+        (self.root / 'data/manual_paper_22bet.json').write_text(__import__('json').dumps(incoming), encoding='utf-8')
+        self.assertTrue(needs_refresh('schedule', '', self.root))
+
+    def test_schedule_rejects_incomplete_sheet_aggregate_without_rebuilding_dashboard(self):
+        (self.root / 'data').mkdir()
+        (self.root / 'data/manual_paper_22bet.json').write_text(__import__('json').dumps({
+            'schema_version': 2,
+            'source': {'synced_at_utc': '2026-10-08T10:30:00Z'},
+            'summary': {'total_entries': 108, 'settled': 0, 'pending': 108, 'wins': 0,
+                        'losses': 0, 'pushes': 0, 'units': 0, 'settled_stake_units': 0,
+                        'pending_stake_units': 108},
+        }), encoding='utf-8')
+        self.assertFalse(needs_refresh('schedule', '', self.root))
