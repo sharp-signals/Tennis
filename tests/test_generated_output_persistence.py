@@ -180,6 +180,14 @@ class GeneratedOutputPersistenceTests(unittest.TestCase):
             expected = derived.read_bytes()
             staged = stage(root=root, profile="observability")
             self.assertIn("data/market_ledger/derived/market-memory-v1.json", staged)
+            # The observability writer may promote a verified manual Sheet
+            # aggregate to the authoritative dashboard input.  It must be
+            # publishable by this same restricted writer profile.
+            (root / "data/manual_paper_22bet_authoritative.json").write_text(
+                '{"schema_version":2}\n', encoding="utf-8",
+            )
+            staged = stage(root=root, profile="observability")
+            self.assertIn("data/manual_paper_22bet_authoritative.json", staged)
 
             document = create_recovery(
                 root=root, target=artifact, profile="observability",
