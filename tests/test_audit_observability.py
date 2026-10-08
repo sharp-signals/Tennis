@@ -240,6 +240,47 @@ class AuditTests(unittest.TestCase):
             saved = json.loads((data / "manual_paper_22bet_authoritative.json").read_text(encoding="utf-8"))
             self.assertEqual(saved["summary"]["settled"], 2)
 
+    def test_incomplete_manual_writer_recovers_newest_verified_git_payload(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "data"
+            data.mkdir()
+            current = {
+                "schema_version": 2,
+                "source": {
+                    "synced_at_utc": "2026-10-07T10:52:29Z",
+                    "operational_columns": {
+                        "market": 6, "side": 8, "odd": 11,
+                        "stake": 12, "result": 14, "profit": 15,
+                    },
+                },
+                "summary": {
+                    "total_entries": 105, "settled": 95, "pending": 8,
+                    "wins": 59, "losses": 36, "pushes": 2, "units": 19.585,
+                    "settled_stake_units": 95, "pending_stake_units": 7,
+                },
+            }
+            (data / "manual_paper_22bet_authoritative.json").write_text(
+                json.dumps(current), encoding="utf-8",
+            )
+            incomplete = copy.deepcopy(current)
+            incomplete["source"] = {"synced_at_utc": "2026-10-08T20:25:43Z"}
+            incomplete["summary"].update({"total_entries": 117, "settled": 0, "pending": 117})
+            (data / "manual_paper_22bet.json").write_text(json.dumps(incomplete), encoding="utf-8")
+
+            recovered = copy.deepcopy(current)
+            recovered["source"]["synced_at_utc"] = "2026-10-08T19:41:39Z"
+            recovered["summary"].update({"total_entries": 108, "settled": 104, "pending": 2})
+            with patch(
+                "scripts.refresh_observability.subprocess.check_output",
+                side_effect=["f10791c6f8\n", json.dumps(recovered)],
+            ):
+                self.assertEqual(promote_manual_paper_aggregate(root), "RECOVERED_LAST_VALID")
+
+            saved = json.loads((data / "manual_paper_22bet_authoritative.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["summary"]["total_entries"], 108)
+            self.assertEqual(saved["summary"]["settled"], 104)
+
     def test_disabled_provider_has_zero_external_requests(self):
         run_metrics.reset()
         DisabledProvider().generate(system_prompt='', user_prompt='', max_tokens=1)

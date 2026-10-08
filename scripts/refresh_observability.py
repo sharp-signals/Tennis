@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -35,6 +36,41 @@ def _sync_timestamp(document: object) -> str:
     return str(source.get("synced_at_utc") or "") if isinstance(source, dict) else ""
 
 
+def _last_valid_manual_candidate(root: Path) -> dict | None:
+    """Return the newest valid manual aggregate still present in Git history.
+
+    A legacy Apps Script writer can replace the inbox with an incomplete document.
+    The dashboard must never turn that into an all-pending portfolio.  The workflow
+    checks out full history, so recover the newest *verified* payload rather than
+    manufacturing totals from an incomplete one.
+    """
+    relative_path = paper_trading.LEGACY_MANUAL_22BET_PATH.as_posix()
+    try:
+        commits = subprocess.check_output(
+            ["git", "log", "--format=%H", "--", relative_path],
+            cwd=root,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).splitlines()
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    for commit in commits:
+        try:
+            content = subprocess.check_output(
+                ["git", "show", f"{commit}:{relative_path}"],
+                cwd=root,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            candidate = json.loads(content)
+        except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+            continue
+        if _valid_manual_candidate(candidate):
+            return candidate
+    return None
+
+
 def promote_manual_paper_aggregate(root: Path) -> str:
     """Promote only a verified Sheet aggregate into the dashboard/report source."""
     root = Path(root)
@@ -48,14 +84,18 @@ def promote_manual_paper_aggregate(root: Path) -> str:
         current = json.loads(authoritative_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         current = None
+    recovered_from_history = False
     if not _valid_manual_candidate(candidate):
-        return "REJECTED_LEGACY_OR_INCOMPLETE"
+        candidate = _last_valid_manual_candidate(root)
+        if candidate is None:
+            return "REJECTED_LEGACY_OR_INCOMPLETE"
+        recovered_from_history = True
     if _valid_manual_candidate(current) and _sync_timestamp(candidate) <= _sync_timestamp(current):
         return "RETAINED_CURRENT"
     dashboard._atomic_write_text(
         authoritative_path, json.dumps(candidate, ensure_ascii=False, sort_keys=True) + "\n",
     )
-    return "PROMOTED"
+    return "RECOVERED_LAST_VALID" if recovered_from_history else "PROMOTED"
 
 
 def refresh(root: Path = Path('.')) -> dict:
