@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 # Rankings only surface sufficiently sized samples.  They are descriptive
 # study aids, not betting recommendations or a substitute for the report's
@@ -49,6 +49,16 @@ ODDS_BANDS = (
     (2.31, 2.80, "2.31–2.80"),
     (2.81, 3.30, "2.81–3.30"),
     (3.31, math.inf, "3.31+"),
+)
+
+# Estas faixas descrevem a intensidade com que um fator entrou na decisão
+# naquele snapshot. Não são novos pesos nem gatilhos de aposta: existem apenas
+# para permitir auditar se uma contribuição forte se comporta de forma distinta
+# de uma contribuição leve antes de qualquer calibração futura.
+FACTOR_WEIGHT_BANDS = (
+    (0.0, 3.0, "Leve (<3)"),
+    (3.0, 6.0, "Médio (3–5,99)"),
+    (6.0, math.inf, "Forte (≥6)"),
 )
 
 
@@ -495,6 +505,161 @@ def snapshot_performance(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, li
     }
 
 
+def _factor_weight_band(weight: float) -> str:
+    for lower, upper, label in FACTOR_WEIGHT_BANDS:
+        if lower <= weight < upper:
+            return label
+    return FACTOR_WEIGHT_BANDS[-1][2]
+
+
+def _normalised_market_probability(own_odd: float | None, opponent_odd: float | None) -> float | None:
+    """Return the two-way market probability after removing the simple margin.
+
+    This is intentionally an observational comparator, rather than a pricing
+    model: it answers whether a factor's indicated side won more often than
+    the contemporaneous two-way market expected in the canonical snapshot.
+    """
+    if own_odd is None or opponent_odd is None or own_odd <= 1 or opponent_odd <= 1:
+        return None
+    own_implied, opponent_implied = 1 / own_odd, 1 / opponent_odd
+    return own_implied / (own_implied + opponent_implied)
+
+
+def factor_attribution_analysis(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Audit each active factor against settled canonical outcomes.
+
+    The unit is one factor direction in one canonical match.  A factor is
+    considered active only where it supplied a directional impact (``a`` or
+    ``b``) and a positive effective weight.  The result deliberately keeps
+    the all-tour, ATP and WTA universes separate and compares each factor to
+    the no-vig two-way expectation available at the time of the snapshot.
+
+    It is not used by the model, PAPER eligibility or pricing.  Its purpose is
+    to make future *small* calibration changes evidence-led rather than based
+    on raw win rate (which is biased toward favourites).
+    """
+    grouped: dict[tuple[str, str], dict[str, Any]] = defaultdict(
+        lambda: {
+            "seen": 0, "available": 0, "active": 0, "wins": 0,
+            "weight_sum": 0.0, "correct_weight_sum": 0.0,
+            "odds": [], "market_expected": [],
+        }
+    )
+    grouped_by_weight: dict[tuple[str, str, str], dict[str, Any]] = defaultdict(
+        lambda: {
+            "matches": 0, "wins": 0, "weight_sum": 0.0,
+            "odds": [], "market_expected": [],
+        }
+    )
+
+    for snapshot in snapshots:
+        outcome = snapshot.get("outcome") if isinstance(snapshot.get("outcome"), Mapping) else {}
+        winner = _text(outcome.get("winner_side"))
+        if winner not in {"a", "b"}:
+            continue
+        metrics = snapshot.get("metrics") if isinstance(snapshot.get("metrics"), Mapping) else {}
+        divergence = metrics.get("divergencia") if isinstance(metrics.get("divergencia"), Mapping) else {}
+        statuses = divergence.get("fatores_status") if isinstance(divergence.get("fatores_status"), Mapping) else {}
+        if not statuses:
+            continue
+        player_a = snapshot.get("player_a") if isinstance(snapshot.get("player_a"), Mapping) else {}
+        player_b = snapshot.get("player_b") if isinstance(snapshot.get("player_b"), Mapping) else {}
+        name_a, name_b = _text(player_a.get("name")), _text(player_b.get("name"))
+        odds = snapshot.get("market_odds_decimal") if isinstance(snapshot.get("market_odds_decimal"), Mapping) else {}
+        odd_a, odd_b = _float(odds.get(name_a)), _float(odds.get(name_b))
+        tour = _text(snapshot.get("tour")).upper() or "OUTROS"
+
+        for factor, raw_status in statuses.items():
+            if not isinstance(raw_status, Mapping):
+                continue
+            factor_key = _text(factor)
+            if not factor_key:
+                continue
+            scopes = ("GLOBAL", tour)
+            for scope in scopes:
+                item = grouped[(scope, factor_key)]
+                item["seen"] += 1
+                item["available"] += int(bool(raw_status.get("disponivel")))
+
+            direction = _text(raw_status.get("direcao_impacto")).casefold()
+            weight = _float(raw_status.get("peso_efetivo")) or 0.0
+            if direction not in {"a", "b"} or weight <= 0:
+                continue
+            won = winner == direction
+            own_odd, opponent_odd = (odd_a, odd_b) if direction == "a" else (odd_b, odd_a)
+            expected = _normalised_market_probability(own_odd, opponent_odd)
+            band = _factor_weight_band(weight)
+            for scope in scopes:
+                item = grouped[(scope, factor_key)]
+                item["active"] += 1
+                item["wins"] += int(won)
+                item["weight_sum"] += weight
+                item["correct_weight_sum"] += weight if won else 0.0
+                if own_odd is not None:
+                    item["odds"].append(own_odd)
+                if expected is not None:
+                    item["market_expected"].append(expected)
+
+                by_weight = grouped_by_weight[(scope, factor_key, band)]
+                by_weight["matches"] += 1
+                by_weight["wins"] += int(won)
+                by_weight["weight_sum"] += weight
+                if own_odd is not None:
+                    by_weight["odds"].append(own_odd)
+                if expected is not None:
+                    by_weight["market_expected"].append(expected)
+
+    scope_order = {"GLOBAL": 0, "ATP": 1, "WTA": 2}
+    summary_rows: list[dict[str, Any]] = []
+    for (scope, factor), values in sorted(grouped.items(), key=lambda item: (scope_order.get(item[0][0], 9), item[0][0], item[0][1])):
+        active = values["active"]
+        wins = values["wins"]
+        expected_values = values["market_expected"]
+        hit_pct = _pct(wins, active)
+        expected_pct = round(100 * sum(expected_values) / len(expected_values), 1) if expected_values else None
+        summary_rows.append({
+            "scope": scope,
+            "factor": factor,
+            "seen_snapshots": values["seen"],
+            "available_snapshots": values["available"],
+            "active_matches": active,
+            "coverage_pct": _pct(active, values["seen"]),
+            "wins": wins,
+            "losses": active - wins,
+            "hit_pct": hit_pct,
+            "weighted_hit_pct": round(100 * values["correct_weight_sum"] / values["weight_sum"], 1) if values["weight_sum"] else None,
+            "average_effective_weight": round(values["weight_sum"] / active, 3) if active else None,
+            "average_odd": round(sum(values["odds"]) / len(values["odds"]), 3) if values["odds"] else None,
+            "market_expected_pct": expected_pct,
+            "market_residual_pp": round((hit_pct or 0) - expected_pct, 1) if hit_pct is not None and expected_pct is not None else None,
+        })
+
+    weight_order = {label: index for index, (_, _, label) in enumerate(FACTOR_WEIGHT_BANDS)}
+    weight_rows: list[dict[str, Any]] = []
+    for (scope, factor, band), values in sorted(
+        grouped_by_weight.items(),
+        key=lambda item: (scope_order.get(item[0][0], 9), item[0][0], item[0][1], weight_order.get(item[0][2], 99)),
+    ):
+        matches, wins = values["matches"], values["wins"]
+        expected_values = values["market_expected"]
+        hit_pct = _pct(wins, matches)
+        expected_pct = round(100 * sum(expected_values) / len(expected_values), 1) if expected_values else None
+        weight_rows.append({
+            "scope": scope,
+            "factor": factor,
+            "weight_band": band,
+            "matches": matches,
+            "wins": wins,
+            "losses": matches - wins,
+            "hit_pct": hit_pct,
+            "average_effective_weight": round(values["weight_sum"] / matches, 3) if matches else None,
+            "average_odd": round(sum(values["odds"]) / len(values["odds"]), 3) if values["odds"] else None,
+            "market_expected_pct": expected_pct,
+            "market_residual_pp": round((hit_pct or 0) - expected_pct, 1) if hit_pct is not None and expected_pct is not None else None,
+        })
+    return {"summary": summary_rows, "by_weight_band": weight_rows}
+
+
 def _int(value: Any) -> int | None:
     try:
         parsed = float(str(value).strip())
@@ -589,6 +754,7 @@ def build_system_history(
     raw = snapshot_document.get("snapshots") if isinstance(snapshot_document.get("snapshots"), list) else []
     canonical, removed = canonical_snapshots(raw)
     operational = snapshot_performance(canonical)
+    operational["factor_attribution"] = factor_attribution_analysis(canonical)
     history = historical_wta_analytics(local_wta_matches)
     rankings = build_rankings(operational, history, active_players=active_wta_players(local_wta_matches))
     payload = {
@@ -600,6 +766,7 @@ def build_system_history(
             "historical_atp_source": "unavailable; ATP sheets use canonical Fenzobot snapshots only",
             "handicap_reference": "BO3 internal reference line; not a bookmaker handicap settlement",
             "fenzobot_index_learning": "settled canonical observations grouped by the selected side's 50–100 evidence-index band; descriptive only, not a probability or model tuning",
+            "factor_attribution": "active directional factor contributions compared with settled canonical outcomes and no-vig two-way market expectation; descriptive audit only, not automatic model tuning",
             "break_even": "theoretical 1 / average decimal odds per canonical snapshot band; not ROI, stake, vig or 22Bet execution",
             "workbook_layout_version": 2,
         },

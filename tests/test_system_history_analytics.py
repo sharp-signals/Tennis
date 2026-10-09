@@ -5,6 +5,7 @@ from src.system_history_analytics import (
     build_rankings,
     build_system_history,
     canonical_snapshots,
+    factor_attribution_analysis,
     historical_wta_analytics,
     odds_band,
     fenzobot_index_band,
@@ -27,6 +28,30 @@ def _snapshot(*, analyzed_at, winner="a", key="atp:10", odd_a=1.4, odd_b=3.0, in
 
 
 class SystemHistoryAnalyticsTests(unittest.TestCase):
+    def test_factor_attribution_keeps_tours_and_weight_bands_separate(self):
+        atp = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:factor")
+        atp["metrics"]["divergencia"]["fatores_status"] = {
+            "forma_recente": {"disponivel": True, "direcao_impacto": "a", "peso_efetivo": 4.0},
+            "fadiga": {"disponivel": True, "direcao_impacto": "b", "peso_efetivo": 2.0},
+        }
+        wta = _snapshot(analyzed_at="2026-09-29T06:30:00+00:00", key="wta:factor", winner="b")
+        wta["tour"] = "wta"
+        wta["match_id"] = 11
+        wta["commence_time_utc"] = "2026-09-30T12:00:00+00:00"
+        wta["metrics"]["divergencia"]["fatores_status"] = {
+            "forma_recente": {"disponivel": True, "direcao_impacto": "b", "peso_efetivo": 7.0},
+        }
+        attribution = factor_attribution_analysis([atp, wta])
+        global_form = next(row for row in attribution["summary"] if row["scope"] == "GLOBAL" and row["factor"] == "forma_recente")
+        self.assertEqual(global_form["active_matches"], 2)
+        self.assertEqual(global_form["wins"], 2)
+        self.assertEqual(global_form["hit_pct"], 100.0)
+        self.assertEqual(global_form["coverage_pct"], 100.0)
+        self.assertEqual(
+            {(row["scope"], row["weight_band"]) for row in attribution["by_weight_band"] if row["factor"] == "forma_recente"},
+            {("GLOBAL", "Médio (3–5,99)"), ("GLOBAL", "Forte (≥6)"), ("ATP", "Médio (3–5,99)"), ("WTA", "Forte (≥6)")},
+        )
+
     def test_canonical_snapshot_keeps_the_first_observation_not_repeat(self):
         first = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", odd_a=1.4)
         later = _snapshot(analyzed_at="2026-09-28T18:30:00+00:00", odd_a=1.2)
