@@ -5933,18 +5933,28 @@ _RECENT_MATCHES_CACHE: dict = {}
 RECENT_MATCHES_CACHE_MAX_AGE_HOURS = 4
 
 
-def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
+def fetch_player_recent_matches(
+    tour: str,
+    player_id: int,
+    *,
+    force_refresh: bool = False,
+) -> Optional[list]:
     """
     Jogos recentes do jogador (endpoint past-matches), por ID matchstat.
     Devolve uma lista de jogos (mais recente primeiro), cada um com date
     (ISO), tournamentId, match_winner, result, player1Id, player2Id.
     É a fonte FIÁVEL para a fadiga real: inclui os jogos do torneio em
     curso (que o histórico Sackmann/tennis-data só regista com atraso).
-    Cache 4 horas. None se falhar (a fadiga cai então no fallback do histórico).
+
+    Por defeito usa cache de 4 horas. ``force_refresh=True`` é reservado à
+    análise pré-jogo em torneios em curso: consulta de novo a API antes de
+    calcular forma/fadiga para que uma vitória ou derrota da ronda anterior
+    não fique escondida por uma fotografia antiga. Se a chamada fresca
+    falhar, preserva o comportamento resiliente e usa a cache ainda válida.
     """
     cache_key = f"{tour}:{player_id}"
     cached = _RECENT_MATCHES_CACHE.get(cache_key)
-    if cached is not None:
+    if cached is not None and not force_refresh:
         age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
         if age_hours < RECENT_MATCHES_CACHE_MAX_AGE_HOURS:
             return cached["data"]
@@ -5955,7 +5965,7 @@ def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
         "recent_matches",
         RECENT_MATCHES_CACHE_MAX_AGE_HOURS,
     )
-    if persistent is not None:
+    if persistent is not None and not force_refresh:
         _RECENT_MATCHES_CACHE[cache_key] = {
             "fetched_at": datetime.now(timezone.utc),
             "data": persistent,
@@ -5963,7 +5973,11 @@ def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
         return persistent
 
     if not RAPIDAPI_KEY:
-        return None
+        # Sem credencial não há como refrescar; a cache continua a ser melhor
+        # do que descartar toda a evidência recente.
+        if cached is not None:
+            return cached["data"]
+        return persistent
 
     url = f"{RAPIDAPI_BASE}/{tour}/player/past-matches/{player_id}"
     try:
@@ -5977,7 +5991,12 @@ def fetch_player_recent_matches(tour: str, player_id: int) -> Optional[list]:
         return data
     except requests.RequestException as exc:
         print(f"[aviso] falha a obter jogos recentes ({tour}, id {player_id}): {exc}")
-        return None
+        # Uma indisponibilidade temporária da fonte não deve anular a análise
+        # factual que já tínhamos. O relatório mantém a proveniência/cobertura
+        # normal; esta é apenas uma degradação de frescura.
+        if cached is not None:
+            return cached["data"]
+        return persistent
 
 
 def compute_fatigue_from_recent(recent_matches: list, player_id: int,

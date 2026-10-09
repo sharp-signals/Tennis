@@ -1617,8 +1617,17 @@ def _build_match_payload(match: dict) -> dict:
             if _h2h_api:
                 h2h = _h2h_api
             # forma/época/piso via jogos recentes da API
-            _recent_a_cache = fetch_data.fetch_player_recent_matches(tour, _pid_a)
-            _recent_b_cache = fetch_data.fetch_player_recent_matches(tour, _pid_b)
+            # Regra de frescura de torneio: antes de avaliar o próximo jogo,
+            # não reutilizar uma lista de "past-matches" com até quatro horas.
+            # Assim que a RapidAPI confirmar a ronda anterior, ela entra na
+            # forma, no piso, na época e na fadiga deste relatório. A função
+            # mantém a cache apenas como fallback se a chamada fresca falhar.
+            _recent_a_cache = fetch_data.fetch_player_recent_matches(
+                tour, _pid_a, force_refresh=True,
+            )
+            _recent_b_cache = fetch_data.fetch_player_recent_matches(
+                tour, _pid_b, force_refresh=True,
+            )
             _fa = fetch_data.compute_form_from_recent(_recent_a_cache, _pid_a, start, RECENT_FORM_MATCHES, surface)
             _fb = fetch_data.compute_form_from_recent(_recent_b_cache, _pid_b, start, RECENT_FORM_MATCHES, surface)
             # PRIORIDADE À RAPIDAPI (fonte fiável). Só cai no valor anterior
