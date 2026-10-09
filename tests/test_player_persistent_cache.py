@@ -98,6 +98,30 @@ class PlayerPersistentCacheTests(unittest.TestCase):
         self.assertEqual(expected, actual)
         blocked_request.assert_not_called()
 
+    def test_recent_matches_force_refresh_bypasses_persistent_cache(self) -> None:
+        cached = [{"id": 7, "player1Id": 123, "player2Id": 456}]
+        refreshed = [{"id": 8, "player1Id": 123, "player2Id": 789}]
+        path = fetch_data._player_cache_path("wta", 123)
+        fetch_data._PLAYER_CACHE_STORE.set_entry(
+            path,
+            "recent_matches",
+            cached,
+            metadata={"tour": "wta", "player_id": 123},
+        )
+        fetch_data.RAPIDAPI_KEY = "offline-test"
+
+        with patch.object(
+            fetch_data,
+            "_rapidapi_get",
+            return_value=FakeResponse({"data": refreshed}),
+        ) as request:
+            actual = fetch_data.fetch_player_recent_matches(
+                "wta", 123, force_refresh=True,
+            )
+
+        self.assertEqual(refreshed, actual)
+        request.assert_called_once()
+
     def test_perf_breakdown_persists_aggregated_result(self) -> None:
         payload = {
             "data": {
