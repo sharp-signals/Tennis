@@ -614,17 +614,17 @@ PESOS = {
     "h2h": 6,                  # MÉDIO — confronto direto na carreira toda (o piso é mais relevante)
     "indoor_outdoor": 6,       # MÉDIO — performance no mesmo contexto (indoor/outdoor) do jogo de hoje (14/08/2026, a pedido)
     "ranking": 5,              # MÉDIO — conta, mas dá falsos positivos
-    "ranking_evolucao": 6,     # MÉDIO — tendência de subida/descida em pontos, 6m/12m (14/08/2026, a pedido)
+    "ranking_evolucao": 6.25,  # MÉDIO — ajuste prudente +0,25 após auditoria descritiva (CHANGE-2026-10-09-097)
     "lesao": 5,                # MÉDIO — só ativa em regressos claros/longos
     "tiebreak": 5,             # MÉDIO — competência estreita, distinta de "sets decisivos" (14/08/2026, a pedido)
     "pressao_ronda": 6,        # MÉDIO — desempenho em rondas decisivas (QF+), carreira toda (18/08/2026, a pedido)
     "nivel_adversario": 7,     # MÉDIO-ALTO — desempenho vs nível do adversário de hoje, carreira toda (18/08/2026, a pedido)
     "historico_torneio": 6,    # MÉDIO — afinidade com ESTE torneio específico, ano a ano, ponderado pela recência (22/08/2026, a pedido)
     "comeback_set1": 7,        # MÉDIO-ALTO — recuperação após perder o 1º set, relevante para observação em live (14/08/2026, a pedido)
-    "fadiga": 4,               # MÉDIO-BAIXO — sobe se último jogo foi longo
+    "fadiga": 3.75,            # MÉDIO-BAIXO — ajuste prudente -0,25; sobe +3 se último jogo foi longo
     "mudanca_piso": 5,         # MÉDIO-BAIXO — jogador entra fresco num piso diferente do que vinha a jogar (22/08/2026, a pedido)
     "servico_recente": 5,      # MÉDIO — últimos 2 jogos (14/08/2026, a pedido)
-    "servico_carreira": 3,     # MÉDIO-BAIXO — desceu (4->3), agora coexiste com a versão recente
+    "servico_carreira": 3.25,  # MÉDIO-BAIXO — ajuste prudente +0,25 após auditoria descritiva
     "meteo": 1,                # BAIXO — raramente decisiva
 }
 
@@ -1150,7 +1150,9 @@ def _calcular_divergencia(payload):
             return (f.get("last_match_sets") or 0) >= 3 or (f.get("sets_last_7d") or 0) >= 8
         peso_fadiga = PESOS["fadiga"]
         if _jogo_longo(fa) or _jogo_longo(fb):
-            peso_fadiga = 7  # sobe quando há jogo longo
+            # Preserva o reforço histórico de +3 sem reintroduzir o peso-base
+            # anterior depois do ajuste prudente do CHANGE-2026-10-09-097.
+            peso_fadiga = PESOS["fadiga"] + 3
         ja = fa.get("matches_last_7d"); jb = fb.get("matches_last_7d")
         if ja is not None and jb is not None and ja != jb:
             lider = a if ja < jb else b
