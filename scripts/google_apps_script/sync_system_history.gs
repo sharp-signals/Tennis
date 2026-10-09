@@ -57,6 +57,11 @@ function syncSystemHistoryToSheet() {
   } else {
     writeSystemHistoryWorkbook_(spreadsheet, payload);
   }
+  // É uma auditoria nova, deliberadamente fora das folhas históricas
+  // protegidas. Em forward-only, usa o produto operacional atual para poder
+  // estudar todos os snapshots canónicos sem recalcular as métricas legadas.
+  const currentOperational = continuity && continuity.operational_current || (payload.operational || {});
+  writeFactorAttributionSheets_(spreadsheet, currentOperational.factor_attribution || {});
   writeChallengerManualPaperSheet_(spreadsheet, manualPaper || {});
   properties.setProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty, fingerprint);
   return 'Histórico & Aprendizagem atualizado com sucesso.';
@@ -258,6 +263,21 @@ function writeTourOperationalSheets_(spreadsheet, tour, series) {
     ['Faixa do índice', 'Faixa de odd', 'Jogos', 'Vitórias', 'Derrotas', '% acerto', 'Odd média', 'Break-even teórico', 'Margem vs break-even (p.p.)'], series.fenzobot_index_odds_summary || [],
     ['index_band', 'odds_band', 'matches', 'wins', 'losses', 'win_pct', 'average_odd', 'break_even_pct', 'margin_vs_break_even_pp'],
   ), { headerRow: 1, widths: [18, 18, 12, 12, 12, 15, 14, 18, 24], percentageColumns: [6, 8], marginColumn: 9 });
+}
+
+function writeFactorAttributionSheets_(spreadsheet, attribution) {
+  const summary = attribution.summary || [];
+  const byWeight = attribution.by_weight_band || [];
+  upsertSystemSheet_(spreadsheet, 'Atribuição — fatores', rowsWithHeaders_(
+    ['Universo', 'Fator', 'Snapshots com estado', 'Disponível', 'Ativo', '% ativo', 'Acertos', 'Erros', '% acerto', '% acerto ponderado', 'Peso efetivo médio', 'Odd média do lado', '% esperado mercado', 'Residual vs mercado (p.p.)'],
+    summary,
+    ['scope', 'factor', 'seen_snapshots', 'available_snapshots', 'active_matches', 'coverage_pct', 'wins', 'losses', 'hit_pct', 'weighted_hit_pct', 'average_effective_weight', 'average_odd', 'market_expected_pct', 'market_residual_pp'],
+  ), { headerRow: 1, widths: [14, 24, 20, 14, 12, 12, 12, 12, 14, 22, 22, 18, 20, 24], percentageColumns: [6, 9, 10, 13], marginColumn: 14 });
+  upsertSystemSheet_(spreadsheet, 'Atribuição — força do peso', rowsWithHeaders_(
+    ['Universo', 'Fator', 'Faixa de peso', 'Jogos', 'Acertos', 'Erros', '% acerto', 'Peso efetivo médio', 'Odd média do lado', '% esperado mercado', 'Residual vs mercado (p.p.)'],
+    byWeight,
+    ['scope', 'factor', 'weight_band', 'matches', 'wins', 'losses', 'hit_pct', 'average_effective_weight', 'average_odd', 'market_expected_pct', 'market_residual_pp'],
+  ), { headerRow: 1, widths: [14, 24, 18, 12, 12, 12, 14, 22, 18, 20, 24], percentageColumns: [7, 10], marginColumn: 11 });
 }
 
 function writeRankingsSheet_(spreadsheet, rankings) {

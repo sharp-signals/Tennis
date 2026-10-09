@@ -144,6 +144,43 @@ def _write_rankings(ws, rankings: Mapping[str, Mapping[str, Any]]) -> None:
     _widths(ws, [40, 12, 14, 4, 40, 12, 14, 4])
 
 
+def _write_factor_attribution_sheets(wb: Workbook, attribution: Mapping[str, Any]) -> None:
+    """Write the descriptive factor audit without touching core historic tabs."""
+    for name in ("Atribuição — fatores", "Atribuição — força do peso"):
+        if name in wb.sheetnames:
+            del wb[name]
+
+    factors = wb.create_sheet("Atribuição — fatores")
+    _title(
+        factors,
+        "Atribuição dos fatores Fenzobot",
+        "Auditoria descritiva por fator e universo. Compara a direção ativa do fator com o resultado e com a probabilidade two-way sem margem no snapshot; não altera pesos automaticamente.",
+    )
+    last = _write_rows(
+        factors, 5,
+        ["Universo", "Fator", "Snapshots com estado", "Disponível", "Ativo", "% ativo", "Acertos", "Erros", "% acerto", "% acerto ponderado", "Peso efetivo médio", "Odd média do lado", "% esperado mercado", "Residual vs mercado (p.p.)"],
+        attribution.get("summary") or [],
+        ["scope", "factor", "seen_snapshots", "available_snapshots", "active_matches", "coverage_pct", "wins", "losses", "hit_pct", "weighted_hit_pct", "average_effective_weight", "average_odd", "market_expected_pct", "market_residual_pp"],
+    )
+    _percent_columns(factors, 6, last, [6, 9, 10, 13])
+    _widths(factors, [14, 24, 20, 14, 12, 12, 12, 12, 14, 22, 22, 18, 20, 24])
+
+    factor_weights = wb.create_sheet("Atribuição — força do peso")
+    _title(
+        factor_weights,
+        "Atribuição por intensidade do peso",
+        "Leve, médio e forte referem-se ao peso efetivo aplicado naquele snapshot. Serve para verificar se maior influência do fator melhora ou piora a leitura, mantendo ATP e WTA separados.",
+    )
+    last = _write_rows(
+        factor_weights, 5,
+        ["Universo", "Fator", "Faixa de peso", "Jogos", "Acertos", "Erros", "% acerto", "Peso efetivo médio", "Odd média do lado", "% esperado mercado", "Residual vs mercado (p.p.)"],
+        attribution.get("by_weight_band") or [],
+        ["scope", "factor", "weight_band", "matches", "wins", "losses", "hit_pct", "average_effective_weight", "average_odd", "market_expected_pct", "market_residual_pp"],
+    )
+    _percent_columns(factor_weights, 6, last, [7, 10])
+    _widths(factor_weights, [14, 24, 18, 12, 12, 12, 14, 22, 18, 20, 24])
+
+
 def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> Workbook:
     wb = Workbook()
     ws = wb.active
@@ -212,6 +249,8 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
             last = _write_rows(sheet, 1, headers, rows, fields)
             _percent_columns(sheet, 2, last, pct_indices)
             _widths(sheet, widths)
+
+    _write_factor_attribution_sheets(wb, payload["operational"].get("factor_attribution") or {})
 
     rankings = wb.create_sheet("Rankings")
     _write_rankings(rankings, payload["rankings"])
@@ -319,6 +358,10 @@ def _prospective_workbook(baseline: bytes, payload: Mapping[str, Any]) -> Workbo
         ["event_id", "snapshot_key", "analyzed_at_utc", "commence_time_utc", "tour", "tournament", "player_a", "player_b", "odd_a", "odd_b", "winner_side", "result", "fenzobot_side"],
     )
     _widths(events, [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25])
+    _write_factor_attribution_sheets(
+        workbook,
+        (payload.get("operational") or {}).get("factor_attribution") or {},
+    )
     return workbook
 
 
@@ -356,6 +399,13 @@ def main() -> int:
             boundary=boundary,
             relative_path=ANALYTICS_JSON.relative_to(ROOT).as_posix(),
             prospective=prospective,
+            # A auditoria por fator é um novo produto descritivo. Mantém a
+            # baseline histórica intacta, mas pode consultar os snapshots
+            # canónicos completos para que a amostra não comece artificialmente
+            # em T0.
+            operational_current={
+                "factor_attribution": (payload.get("operational") or {}).get("factor_attribution") or {},
+            },
             root=ROOT,
         )
     if boundary.active:
