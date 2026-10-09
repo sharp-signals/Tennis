@@ -191,6 +191,37 @@ def test_pesos_h2h_piso_maiores_que_ranking():
     assert PESOS["meteo"] < PESOS["ranking"]
 
 
+def test_change_097_aplica_ajustes_pequenos_aos_tres_fatores_auditados():
+    """Os pesos aprovados devem ficar explícitos e protegidos contra regressão."""
+    assert PESOS["ranking_evolucao"] == 6.25
+    assert PESOS["servico_carreira"] == 3.25
+    assert PESOS["fadiga"] == 3.75
+
+
+def test_fadiga_com_jogo_longo_preserva_reforco_de_tres_pontos():
+    r = _calcular_divergencia(_payload(
+        1.80,
+        2.10,
+        {"ranking": {"lider": "A", "diff": 20}},
+        fatigue_signal_a={
+            "fatigue_source": "api_recent",
+            "last_match_sets": 3,
+            "sets_last_7d": 5,
+            "matches_last_7d": 2,
+        },
+        fatigue_signal_b={
+            "fatigue_source": "api_recent",
+            "last_match_sets": 2,
+            "sets_last_7d": 2,
+            "matches_last_7d": 1,
+        },
+    ))
+    status = r["fatores_status"]["fadiga"]
+    assert status["peso_base_configurado"] == 3.75
+    assert status["peso_base_aplicado"] == 6.75
+    assert status["peso_efetivo"] == 6.75
+
+
 def test_fatores_chave_presentes():
     """A divergência deve vir com fatores-chave que a justificam."""
     r = _calcular_divergencia(_payload(2.6, 1.5, {
