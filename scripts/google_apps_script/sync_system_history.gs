@@ -22,6 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
+  projectionSchemaVersion: '2026-10-09-factor-attribution-v1',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 
@@ -45,13 +46,26 @@ function syncSystemHistoryToSheet() {
     ? String((continuity.historical_baseline || {}).sha256_at_t0 || '') + ':' + String((prospective || {}).input_fingerprint_sha256 || '')
     : String(payload.input_fingerprint_sha256 || '');
   const manualFingerprint = String((manualPaper || {}).data_fingerprint || 'manual-paper-unavailable');
-  const fingerprint = historyFingerprint + ':' + manualFingerprint;
+  // A versão da projeção faz parte do fingerprint. Assim, uma atualização
+  // apenas visual/estrutural do Apps Script não fica bloqueada por o JSON
+  // canónico continuar exatamente igual.
+  const fingerprint = SYSTEM_HISTORY_SYNC.projectionSchemaVersion + ':' + historyFingerprint + ':' + manualFingerprint;
   if (!historyFingerprint) throw new Error('O JSON canónico não tem input_fingerprint_sha256.');
-  if (properties.getProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty) === fingerprint) {
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  const attributionSheetsMissing = [
+    'Atribuição — fatores',
+    'Atribuição — força do peso',
+  ].some(name => {
+    const sheet = spreadsheet.getSheetByName(name);
+    return !sheet || sheet.getLastRow() < 2;
+  });
+  if (
+    properties.getProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty) === fingerprint
+    && !attributionSheetsMissing
+  ) {
     return 'Histórico sem alterações; Sheet preservada.';
   }
 
-  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
   if (continuity) {
     writeProspectiveSystemHistory_(spreadsheet, prospective || {});
   } else {
