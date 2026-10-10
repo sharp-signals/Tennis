@@ -312,9 +312,11 @@ SKIP_ANALYSIS_ODDS_THRESHOLD = 1.09
 # destacar no Mapa de Ações os cenários cuja odd justa cai dentro dela —
 # sem esconder os restantes, só reordenar por relevância para este
 # perfil. Valor por omissão é o exemplo dado pelo próprio utilizador
-# (1.75-1.90); ajustável por variável de ambiente sem mexer no código.
-INVESTOR_PROFILE_ODDS_LOW = float(os.environ.get("INVESTOR_PROFILE_ODDS_LOW", "1.75"))
-INVESTOR_PROFILE_ODDS_HIGH = float(os.environ.get("INVESTOR_PROFILE_ODDS_HIGH", "1.90"))
+# (atualizado para 1.70-2.50 em 10/10/2026); ajustável por variável de
+# ambiente sem mexer no código. Estes limites orientam apenas a apresentação
+# e a revisão humana do relatório; não alteram os gates automáticos de PAPER.
+INVESTOR_PROFILE_ODDS_LOW = float(os.environ.get("INVESTOR_PROFILE_ODDS_LOW", "1.70"))
+INVESTOR_PROFILE_ODDS_HIGH = float(os.environ.get("INVESTOR_PROFILE_ODDS_HIGH", "2.50"))
 
 # --- Sharp Signals Market-Residual Pricing v0.1 -------------------------
 # O mercado sem margem e o baseline. O indice de evidencia determina apenas

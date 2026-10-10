@@ -2333,6 +2333,288 @@ def handicap_settlement_counts(margins, line):
     return cover, push, miss
 
 
+def _historical_price_reference(cover, push, miss, *, min_decisions=15):
+    """Preço de equilíbrio factual para um handicap, com void neutro.
+
+    A referência usa apenas decisões (win/loss): ``1 + perdas/vitórias``.
+    Não é uma odd capturada nem uma previsão. A função fecha quando a amostra
+    é pequena, evitando transformar meia dúzia de scores numa faixa de valor.
+    """
+    try:
+        cover, push, miss = int(cover), int(push), int(miss)
+    except (TypeError, ValueError):
+        return None
+    decisions = cover + miss
+    if cover <= 0 or decisions < min_decisions:
+        return None
+    fair = 1.0 + (miss / cover)
+    # Um cêntimo acima do equilíbrio: a fronteira inferior nunca é vendida
+    # como tendo valor quando a expectativa histórica seria exatamente zero.
+    minimum = math.floor((fair + 0.010000001) * 100) / 100
+    minimum = max(INVESTOR_PROFILE_ODDS_LOW, minimum)
+    if minimum > INVESTOR_PROFILE_ODDS_HIGH:
+        return {
+            "fair_odd": round(fair, 2), "minimum_odd": None,
+            "decisions": decisions, "pushes": push,
+        }
+    return {
+        "fair_odd": round(fair, 2), "minimum_odd": round(minimum, 2),
+        "maximum_odd": round(INVESTOR_PROFILE_ODDS_HIGH, 2),
+        "decisions": decisions, "pushes": push,
+    }
+
+
+def _moneyline_price_reference(fair_odd):
+    """Interseta a odd justa do pricing com a janela operacional humana."""
+    try:
+        fair = float(fair_odd)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(fair) or fair <= 1:
+        return None
+    minimum = math.floor((fair + 0.010000001) * 100) / 100
+    minimum = max(INVESTOR_PROFILE_ODDS_LOW, minimum)
+    if minimum > INVESTOR_PROFILE_ODDS_HIGH:
+        return {"fair_odd": round(fair, 2), "minimum_odd": None}
+    return {
+        "fair_odd": round(fair, 2), "minimum_odd": round(minimum, 2),
+        "maximum_odd": round(INVESTOR_PROFILE_ODDS_HIGH, 2),
+    }
+
+
+def _operational_entry_model(payload, div):
+    """Constrói a leitura manual do cabeçalho sem criar uma aposta.
+
+    Moneyline usa o pricing residual já calculado. Handicap usa resultados
+    factuais: prefere a faixa comparável de Moneyline com n>=15 e só recorre
+    ao histórico geral com n>=30. A cobertura quando vence é explicativa;
+    o preço de equilíbrio usa sempre todas as decisões, incluindo derrotas.
+    """
+    decision = _d(payload.get("prelive_decision"))
+    if decision.get("state") == "REPORT_NULL":
+        return {"status": "unavailable", "reason": "Relatório nulo: sem entrada operacional."}
+    pricing = _d(payload.get("pricing"))
+    side = pricing.get("candidate_side") if pricing.get("candidate") else None
+    if side not in {"a", "b"}:
+        return {
+            "status": "withheld",
+            "reason": "Sem edge positivo calculável no lado Fenzobot; não formular entrada.",
+        }
+    player = payload.get(f"player_{side}")
+    market = _d(payload.get("market_odds_decimal"))
+    try:
+        odd = float(market.get(player, market.get(f"player_{side}")))
+    except (TypeError, ValueError):
+        return {"status": "unavailable", "reason": "Preço atual indisponível para formular entrada."}
+    other_side = "b" if side == "a" else "a"
+    other_player = payload.get(f"player_{other_side}")
+    try:
+        other_odd = float(market.get(other_player, market.get(f"player_{other_side}")))
+    except (TypeError, ValueError):
+        other_odd = None
+    is_underdog = other_odd is not None and odd > other_odd
+    player_pricing = _d(_d(pricing.get("players")).get(side))
+    model = {
+        "status": "candidate", "side": side, "player": player, "market_odd": odd,
+        "edge_pct": player_pricing.get("expected_edge_pct"),
+        "is_underdog": is_underdog, "markets": [],
+    }
+
+    # Moneyline é a primeira via quando já está na janela operacional.
+    if INVESTOR_PROFILE_ODDS_LOW <= odd <= INVESTOR_PROFILE_ODDS_HIGH:
+        price = _moneyline_price_reference(player_pricing.get("fair_odd"))
+        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        fmt = str(payload.get("match_format") or "bo3").casefold()
+        comparable = None
+        for band, raw in _d(history.get("buckets")).items():
+            try:
+                low, high = (float(value) for value in str(band).split("-", 1))
+            except (TypeError, ValueError):
+                continue
+            stats = _d(_d(raw).get("by_format")).get(fmt) if _d(raw).get("by_format") else raw
+            stats = _d(stats)
+            if low <= odd <= high and stats.get("n"):
+                comparable = {
+                    "band": band, "n": int(stats.get("n") or 0),
+                    "wins": int(stats.get("wins") or 0),
+                }
+                break
+        model["markets"].append({
+            "type": "moneyline", "label": f"Moneyline {player}",
+            "price": price, "observed_odd": odd, "history": comparable,
+            "primary": True,
+        })
+
+    # Favorito barato -> handicap negativo. Underdog -> handicap positivo
+    # como alternativa (ou via principal se a ML exceder o perfil).
+    wants_handicap = odd < INVESTOR_PROFILE_ODDS_LOW or is_underdog
+    if wants_handicap:
+        fmt = str(payload.get("match_format") or "bo3").casefold()
+        reference_data = handicap_reference_for_player(payload, player, fmt)
+        reference = _d(_d(reference_data).get("reference"))
+        profile = _d(_d(payload.get(f"game_differential_{side}")).get(fmt))
+        wins_margins = list(_d(profile.get("wins")).get("margins") or [])
+        losses_margins = list(_d(profile.get("losses")).get("margins") or [])
+        all_margins = wins_margins + losses_margins
+        lines = list(reference.get("handicap") or ())
+        if reference.get("tipo") == "favorito" and lines:
+            try:
+                lines = [f"{float(lines[0]) + 0.5:+g}", *lines]
+            except (TypeError, ValueError):
+                pass
+        lines = list(dict.fromkeys(lines))
+
+        band_margins = []
+        band_label = None
+        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        for band, raw in _d(history.get("buckets")).items():
+            try:
+                low, high = (float(value) for value in str(band).split("-", 1))
+            except (TypeError, ValueError):
+                continue
+            stats = _d(_d(raw).get("by_format")).get(fmt) if _d(raw).get("by_format") else raw
+            stats = _d(stats)
+            margins = list(stats.get("margins") or [])
+            if low <= odd <= high and len(margins) >= 15:
+                band_margins, band_label = margins, str(band)
+                break
+        pricing_margins = band_margins or (all_margins if len(all_margins) >= 30 else [])
+        pricing_source = (
+            f"faixa comparável {band_label}" if band_margins
+            else "histórico geral" if pricing_margins else None
+        )
+        line_models = []
+        for raw_line in lines:
+            try:
+                line = float(raw_line)
+            except (TypeError, ValueError):
+                continue
+            cover, push, miss = handicap_settlement_counts(all_margins, line)
+            win_cover, _, _ = handicap_settlement_counts(wins_margins, line)
+            price_counts = handicap_settlement_counts(pricing_margins, line)
+            line_models.append({
+                "line": f"{line:+g}", "cover": cover, "push": push, "miss": miss,
+                "total": len(all_margins),
+                "cover_pct": (100 * cover / len(all_margins)) if all_margins else None,
+                "win_cover": win_cover, "win_total": len(wins_margins),
+                "win_cover_pct": (100 * win_cover / len(wins_margins)) if wins_margins else None,
+                "price": _historical_price_reference(*price_counts),
+                "price_source": pricing_source,
+            })
+        if line_models:
+            model["markets"].append({
+                "type": "positive_handicap" if is_underdog else "negative_handicap",
+                "label": f"Handicap de {player}", "lines": line_models,
+                "primary": not model["markets"], "format": fmt.upper(),
+            })
+    if not model["markets"]:
+        model["status"] = "withheld"
+        model["reason"] = (
+            f"Odd {odd:.2f} fora da janela {INVESTOR_PROFILE_ODDS_LOW:.2f}–"
+            f"{INVESTOR_PROFILE_ODDS_HIGH:.2f} e sem handicap factual utilizável."
+        )
+    return model
+
+
+def _format_entry_price_zone(price):
+    price = _d(price)
+    if price.get("minimum_odd") is None:
+        return "Sem intervalo validado"
+    return f"{float(price['minimum_odd']):.2f}–{float(price['maximum_odd']):.2f}"
+
+
+def _mod_operational_entry_card(payload, div):
+    model = _operational_entry_model(payload, div)
+    if model.get("status") != "candidate":
+        return (
+            '<section class="entry-focus entry-focus-withheld">'
+            '<div class="entry-eyebrow">LEITURA OPERACIONAL · DECISÃO HUMANA</div>'
+            '<div class="entry-main">SEM ENTRADA FORMULADA</div>'
+            f'<div class="entry-reason">{_esc(model.get("reason", "Evidência insuficiente."))}</div>'
+            '</section>'
+        )
+    market_cards = []
+    for market in model.get("markets") or []:
+        primary = " primary" if market.get("primary") else ""
+        if market.get("type") == "moneyline":
+            history = _d(market.get("history"))
+            history_html = (
+                f'<div class="entry-history"><b>{100 * history["wins"] / history["n"]:.1f}% vitórias</b>'
+                f' na faixa { _esc(history["band"]) } · {history["wins"]}/{history["n"]}</div>'
+                if history.get("n") else
+                '<div class="entry-history muted">Sem amostra completa na faixa atual.</div>'
+            )
+            price = _d(market.get("price"))
+            fair_text = (
+                f'{float(price["fair_odd"]):.2f}'
+                if isinstance(price.get("fair_odd"), (int, float)) else "N/D"
+            )
+            market_cards.append(
+                f'<div class="entry-market{primary}"><div class="entry-market-tag">MONEYLINE</div>'
+                f'<div class="entry-selection">{_esc(market["label"])}</div>'
+                f'<div class="entry-zone-label">ODD PARA CONSIDERAR</div>'
+                f'<div class="entry-zone">{_esc(_format_entry_price_zone(price))}</div>'
+                f'<div class="entry-current">Atual: {float(market["observed_odd"]):.2f} · '
+                f'equilíbrio estimado {fair_text}</div>{history_html}</div>'
+            )
+            continue
+        line_cards = []
+        positive = market.get("type") == "positive_handicap"
+        for line in market.get("lines") or []:
+            if positive:
+                highlight = (
+                    f'{line["cover_pct"]:.1f}% <span>cobre no total</span>'
+                    if line.get("cover_pct") is not None else 'N/D'
+                )
+                secondary = (
+                    f'Quando vence: {line["win_cover_pct"]:.1f}% '
+                    f'({line["win_cover"]}/{line["win_total"]})'
+                    if line.get("win_cover_pct") is not None else "Quando vence: N/D"
+                )
+            else:
+                highlight = (
+                    f'{line["win_cover_pct"]:.1f}% <span>cobre quando vence</span>'
+                    if line.get("win_cover_pct") is not None else 'N/D'
+                )
+                secondary = (
+                    f'Total: {line["cover_pct"]:.1f}% ({line["cover"]}/{line["total"]})'
+                    if line.get("cover_pct") is not None else "Total: N/D"
+                )
+            source = (
+                f' · { _esc(line["price_source"]) }' if line.get("price_source") else ""
+            )
+            line_cards.append(
+                '<div class="entry-line">'
+                f'<div class="entry-line-name">{_esc(model["player"])} {_esc(line["line"])}</div>'
+                f'<div class="entry-line-rate">{highlight}</div>'
+                f'<div class="entry-line-secondary">{_esc(secondary)}</div>'
+                f'<div class="entry-zone-label">ODD PARA CONSIDERAR</div>'
+                f'<div class="entry-line-zone">{_esc(_format_entry_price_zone(line.get("price")))}</div>'
+                f'<div class="entry-line-source">Referência por cobertura total{source}</div>'
+                '</div>'
+            )
+        market_cards.append(
+            f'<div class="entry-market entry-handicap{primary}">'
+            f'<div class="entry-market-tag">'
+            f'{"HANDICAP POSITIVO" if market["type"] == "positive_handicap" else "HANDICAP NEGATIVO"}'
+            f' · {_esc(market["format"])}</div>'
+            f'<div class="entry-selection">{_esc(market["label"])}</div>'
+            f'<div class="entry-lines">{"".join(line_cards)}</div></div>'
+        )
+    edge = model.get("edge_pct")
+    edge_text = f" · edge ML do modelo {float(edge):+.1f}%" if isinstance(edge, (int, float)) else ""
+    return (
+        '<section class="entry-focus"><div class="entry-focus-head">'
+        '<div><div class="entry-eyebrow">ENTRADA A VALIDAR NO MERCADO</div>'
+        f'<div class="entry-main">{_esc(model["player"])}</div></div>'
+        f'<div class="entry-profile">PERFIL {INVESTOR_PROFILE_ODDS_LOW:.2f}–{INVESTOR_PROFILE_ODDS_HIGH:.2f}</div>'
+        f'</div><div class="entry-markets">{"".join(market_cards)}</div>'
+        '<div class="entry-disclaimer"><b>Decisão manual.</b> Os intervalos são referências analíticas, '
+        'não odds capturadas nem garantia de valor. Confirmar linha, preço, liquidez e notícias na casa; '
+        f'não cria PAPER automático{_esc(edge_text)}.</div></section>'
+    )
+
+
 COLORS_V2 = {
     "bg": "#071426", "surface": "#0d2038", "surface2": "#122a47",
     "text": "#f4f7fb", "dim": "#91a5bc", "line": "#23415f",
@@ -2826,7 +3108,39 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
   rgba(224,163,74,.45);border-radius:9px;background:rgba(224,163,74,.08);
   color:var(--dim);font-size:11px;line-height:1.55; }}
 .experimental-tier-notice b {{ color:var(--amber);letter-spacing:.04em; }}
+.entry-focus {{ margin:-2px 0 16px; padding:18px; border:2px solid var(--mint);
+  border-radius:14px; background:linear-gradient(135deg,rgba(63,185,168,.18),rgba(13,32,56,.98) 48%);
+  box-shadow:0 12px 32px rgba(0,0,0,.22),0 0 0 1px rgba(63,185,168,.12) inset; }}
+.entry-focus-withheld {{ border-color:var(--line); background:var(--surface); box-shadow:none; }}
+.entry-focus-head {{ display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:13px; }}
+.entry-eyebrow {{ color:var(--mint);font-size:10px;font-weight:850;letter-spacing:1.15px; }}
+.entry-main {{ color:var(--text);font-size:24px;font-weight:900;line-height:1.1;margin-top:3px; }}
+.entry-profile {{ color:#061b19;background:var(--mint);border-radius:999px;padding:6px 10px;
+  font-size:10px;font-weight:900;letter-spacing:.45px;white-space:nowrap; }}
+.entry-reason {{ color:var(--dim);font-size:13px;margin-top:7px; }}
+.entry-markets {{ display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px; }}
+.entry-market {{ border:1px solid var(--line);border-radius:11px;padding:13px;background:rgba(7,20,38,.7); }}
+.entry-market.primary {{ border-color:var(--mint);box-shadow:0 0 0 1px rgba(63,185,168,.2) inset; }}
+.entry-market-tag {{ color:#79b8ff;font-size:9px;font-weight:850;letter-spacing:.85px;margin-bottom:4px; }}
+.entry-selection {{ color:var(--text);font-size:16px;font-weight:850;margin-bottom:9px; }}
+.entry-zone-label {{ color:var(--dim);font-size:8px;font-weight:800;letter-spacing:.7px;margin-top:8px; }}
+.entry-zone {{ color:var(--mint);font-size:28px;font-weight:900;line-height:1.05;margin:2px 0 4px; }}
+.entry-current,.entry-line-source {{ color:var(--dim);font-size:10px;line-height:1.45; }}
+.entry-history {{ color:var(--text);font-size:11px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line); }}
+.entry-history b {{ color:var(--mint);font-size:13px; }}
+.entry-history.muted {{ color:var(--dim); }}
+.entry-lines {{ display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px; }}
+.entry-line {{ border:1px solid rgba(145,165,188,.24);border-radius:9px;padding:10px;background:rgba(255,255,255,.025); }}
+.entry-line-name {{ color:var(--text);font-size:15px;font-weight:900; }}
+.entry-line-rate {{ color:var(--mint);font-size:21px;font-weight:900;line-height:1.12;margin:4px 0; }}
+.entry-line-rate span {{ color:var(--text);font-size:9px;font-weight:700;display:block; }}
+.entry-line-secondary {{ color:var(--dim);font-size:10px; }}
+.entry-line-zone {{ color:#79b8ff;font-size:18px;font-weight:900;margin:1px 0 3px; }}
+.entry-disclaimer {{ color:var(--dim);font-size:9px;line-height:1.5;margin-top:11px; }}
+.entry-disclaimer b {{ color:var(--text); }}
 @media(max-width:640px) {{
+  .entry-focus-head {{ display:block; }} .entry-profile {{ display:inline-block;margin-top:9px; }}
+  .entry-main {{ font-size:21px; }} .entry-lines {{ grid-template-columns:1fr; }}
   .mh-player {{ gap:7px; align-items:flex-start; }}
   .mh-player-photo {{ width:52px; height:52px; flex-basis:52px; }}
   .mh-player-avatar {{ font-size:15px; }}
@@ -5724,6 +6038,9 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     partes = ['<div class="wrap">']
     # 1. Header (sempre)
     partes.append(_mod_header(payload, div, estado))
+    # A decisão humana começa pelo mercado acionável. Esta caixa fica
+    # deliberadamente colada ao confronto e não altera pricing/PAPER.
+    partes.append(_mod_operational_entry_card(payload, div))
     partes.append(_mod_experimental_tier_notice(payload))
     partes.append(_mod_handicap_reference_header(payload))
     partes.append(_mod_decision_box(payload))

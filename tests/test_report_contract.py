@@ -12,6 +12,17 @@ def _operational_odds_fields():
 
 
 class ReportStateTests(unittest.TestCase):
+    def test_handicap_historical_price_treats_push_as_void(self):
+        price = report_html._historical_price_reference(10, 5, 10)
+
+        self.assertEqual(price["fair_odd"], 2.0)
+        self.assertEqual(price["minimum_odd"], 2.01)
+        self.assertEqual(price["decisions"], 20)
+        self.assertEqual(price["pushes"], 5)
+
+    def test_handicap_historical_price_fails_closed_on_small_sample(self):
+        self.assertIsNone(report_html._historical_price_reference(8, 2, 6))
+
     def test_court_speed_reason_is_shown_instead_of_generic_missing_data(self):
         payload = {
             "player_a": "A", "player_b": "B",
@@ -159,6 +170,98 @@ class ReportStateTests(unittest.TestCase):
 
 
 class ReportRenderingTests(unittest.TestCase):
+    def test_operational_entry_card_prioritises_moneyline_inside_profile(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.90, "B": 2.10},
+            "pricing": {
+                "available": True, "candidate": True, "candidate_side": "a",
+                "players": {"a": {"fair_odd": 1.82, "expected_edge_pct": 4.4}},
+            },
+            "prelive_decision": {
+                "state": "EDGE_POSITIVE", "player": "A", "fenzobot_index": 60,
+                "expected_edge_pct": 4.4, "market": {"market": "Moneyline", "odd": 1.90},
+                "coverage": {"weighted_pct": 80, "status": "suficiente"},
+            },
+            "historical_moneyline_margins_a": {"buckets": {
+                "1.81-2.00": {"by_format": {"bo3": {"n": 20, "wins": 12}}},
+            }},
+        }
+
+        html = report_html._mod_operational_entry_card(payload, {})
+
+        self.assertIn("ENTRADA A VALIDAR NO MERCADO", html)
+        self.assertIn("Moneyline A", html)
+        self.assertIn("1.83–2.50", html)
+        self.assertIn("60.0% vitórias", html)
+        self.assertIn("Decisão manual", html)
+        self.assertIn("não cria PAPER automático", html)
+
+    def test_operational_entry_card_uses_negative_handicap_and_win_cover_prominently(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.30, "B": 3.60},
+            "pricing": {
+                "available": True, "candidate": True, "candidate_side": "a",
+                "players": {"a": {"fair_odd": 1.25, "expected_edge_pct": 4.0}},
+            },
+            "prelive_decision": {"state": "EDGE_POSITIVE"},
+            "game_differential_a": {"bo3": {
+                "wins": {"n": 20, "margins": [5] * 15 + [3] * 5},
+                "losses": {"n": 10, "margins": [-2] * 10},
+            }},
+        }
+
+        html = report_html._mod_operational_entry_card(payload, {})
+
+        self.assertNotIn("Moneyline A</div>", html)
+        self.assertIn("HANDICAP NEGATIVO · BO3", html)
+        self.assertIn("A -3.5", html)
+        self.assertIn("75.0% <span>cobre quando vence</span>", html)
+        self.assertIn("Total: 50.0% (15/30)", html)
+        self.assertIn("2.01–2.50", html)
+
+    def test_operational_entry_card_adds_positive_handicap_for_underdog(self):
+        payload = {
+            "player_a": "Favorito", "player_b": "Underdog", "match_format": "bo3",
+            "market_odds_decimal": {"Favorito": 1.60, "Underdog": 2.20},
+            "pricing": {
+                "available": True, "candidate": True, "candidate_side": "b",
+                "players": {"b": {"fair_odd": 2.10, "expected_edge_pct": 4.8}},
+            },
+            "prelive_decision": {"state": "EDGE_POSITIVE"},
+            "game_differential_b": {"bo3": {
+                "wins": {"n": 15, "margins": [2] * 15},
+                "losses": {"n": 15, "margins": [-1] * 10 + [-4] * 5},
+            }},
+        }
+
+        html = report_html._mod_operational_entry_card(payload, {})
+
+        self.assertIn("Moneyline Underdog", html)
+        self.assertIn("HANDICAP POSITIVO · BO3", html)
+        self.assertIn("Underdog +1.5", html)
+        self.assertIn("83.3% <span>cobre no total</span>", html)
+
+    def test_operational_entry_card_is_immediately_after_match_header(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.90, "B": 2.10},
+            "pricing": {"available": True, "candidate": True, "candidate_side": "a",
+                        "players": {"a": {"fair_odd": 1.82, "expected_edge_pct": 4.4}}},
+            "prelive_decision": {
+                "state": "EDGE_POSITIVE", "player": "A", "fenzobot_index": 60,
+                "expected_edge_pct": 4.4, "market": {"market": "Moneyline", "odd": 1.90},
+                "coverage": {"weighted_pct": 80, "status": "suficiente"},
+            },
+            "report_assessment": {"report_null": False, "coverage": {}},
+        }
+
+        html = report_html.build_report_html_v2(payload, {}, lambda _payload: None)
+
+        self.assertLess(html.index('class="mh"'), html.index('class="entry-focus"'))
+        self.assertLess(html.index('class="entry-focus"'), html.index('class="decision-box'))
+
     def test_identity_collision_is_machine_readable_without_publishing_private_detail(self):
         payload = {
             "player_a": "New A",
