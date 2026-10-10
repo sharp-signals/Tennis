@@ -124,6 +124,15 @@ def _tournament_text(record: Mapping[str, Any]) -> str:
         _value(record, "event_name"),
         _value(record, "tournament.name"),
     ]
+    # Some provider result rows expose the competition only as top-level
+    # name. That key is otherwise ambiguous (it can be a player or match
+    # label), so accept it only for an explicit Davis/Laver Cup marker.
+    ambiguous_name = _value(record, "name")
+    if (
+        ambiguous_name not in (None, "")
+        and re.search(r"\b(?:davis|laver)\s+cup\b", str(ambiguous_name), re.IGNORECASE)
+    ):
+        values.append(ambiguous_name)
     return " | ".join(str(value) for value in values if value not in (None, ""))
 
 
