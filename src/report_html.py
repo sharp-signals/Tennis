@@ -687,8 +687,23 @@ def _calcular_divergencia(payload):
     # os que não contribuíram (sem dados, empate, ou abaixo do limiar) —
     # 100% Python, o Claude nunca vê nem decide isto.
     status: dict = {}
+    policy_blockers = {
+        str(item.get("feature")): str(
+            item.get("reason_code") or "COMPETITION_EVIDENCE_NOT_SEPARABLE"
+        )
+        for item in (
+            (payload.get("competition_evidence_policy") or {}).get("feature_blockers")
+            or []
+        )
+        if isinstance(item, dict) and item.get("feature")
+    }
 
     def _reg_status(chave, disponivel, lider=None, motivo_exclusao=None, **extra):
+        if chave in policy_blockers:
+            disponivel = False
+            lider = None
+            motivo_exclusao = policy_blockers[chave]
+            extra["competition_evidence_eligible"] = False
         entry = {"disponivel": disponivel, "lider": lider, "motivo_exclusao": motivo_exclusao}
         entry.update(extra)
         status[chave] = entry
@@ -729,6 +744,10 @@ def _calcular_divergencia(payload):
         return min(sample_a, sample_b)
 
     def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
+        # Gate final no ponto real de consumo: dados factuais podem continuar
+        # no payload/HTML, mas uma origem não separável nunca inclina o índice.
+        if chave in policy_blockers:
+            return
         # peso efetivo = peso base × força da diferença × confiança da amostra
         base = peso_override if peso_override is not None else PESOS.get(chave, 0)
         peso = base * forca_rel * conf_amostra

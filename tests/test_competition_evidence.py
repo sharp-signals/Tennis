@@ -89,13 +89,41 @@ class CompetitionClassificationTests(unittest.TestCase):
         self.assertIsNone(actual["weight"])
         self.assertEqual(actual["status"], "BLOCKED")
 
-    def test_ambiguous_top_level_name_does_not_misclassify_a_player(self):
+    def test_ambiguous_top_level_name_is_not_promoted_to_individual(self):
         actual = competition_evidence.classify_match({
             "name": "Davis Smith vs Player B",
             "match_winner": 101,
         })
-        self.assertEqual(actual["competition"], "INDIVIDUAL_OR_OTHER")
-        self.assertEqual(actual["weight"], 1.0)
+        self.assertEqual(actual["competition"], "UNRESOLVED")
+        self.assertIsNone(actual["weight"])
+        self.assertEqual(
+            actual["reason_code"], "COMPETITION_IDENTITY_UNRESOLVED"
+        )
+
+    def test_id_only_generic_cup_and_conflict_fail_closed(self):
+        for record, reason in (
+            ({"tournamentId": 999}, "COMPETITION_IDENTITY_UNRESOLVED"),
+            (
+                {"tournament": {"rankId": 5}},
+                "COMPETITION_IDENTITY_UNRESOLVED",
+            ),
+            (
+                {"tournament_name": "Mystery Cup"},
+                "COMPETITION_CUP_IDENTITY_UNRESOLVED",
+            ),
+            (
+                {
+                    "tournamentId": 21353,
+                    "tournament_name": "Davis Cup",
+                    "davis_tie_status_before_match": "IN_DISPUTE",
+                },
+                "COMPETITION_IDENTITY_CONFLICT",
+            ),
+        ):
+            with self.subTest(record=record):
+                actual = competition_evidence.classify_match(record)
+                self.assertIsNone(actual["weight"])
+                self.assertEqual(actual["reason_code"], reason)
 
     def test_same_sample_is_selected_before_weights_and_raw_counts_remain_integer(self):
         records = [
@@ -270,7 +298,7 @@ class CompetitionContractTests(unittest.TestCase):
         self.assertTrue(active["active"])
         self.assertEqual(active["application"], "PROSPECTIVE_ONLY")
 
-    def test_unseparable_aggregates_are_removed_from_engine_not_reweighted(self):
+    def test_unseparable_factors_remain_factual_but_are_blocked_at_consumption(self):
         guarded, blockers = competition_evidence.guard_features(
             {
                 "ranking": {"lider": "A"},
@@ -280,16 +308,33 @@ class CompetitionContractTests(unittest.TestCase):
                 "frescura": {"mais_fresco": "A"},
             },
             active=True,
+            tour="atp",
         )
         self.assertIn("ranking", guarded)
         self.assertIn("forma_recente", guarded)
         self.assertIn("frescura", guarded)
-        self.assertNotIn("servico_carreira", guarded)
-        self.assertNotIn("nivel_adversario", guarded)
+        self.assertIn("servico_carreira", guarded)
+        self.assertIn("nivel_adversario", guarded)
+        blocked = {item["feature"] for item in blockers}
+        self.assertTrue(
+            {"forma_recente", "servico_carreira", "nivel_adversario"}.issubset(
+                blocked
+            )
+        )
         self.assertEqual(
             {item["reason_code"] for item in blockers},
             {"COMPETITION_EVIDENCE_NOT_SEPARABLE"},
         )
+
+    def test_wta_is_out_of_scope_and_unchanged(self):
+        scoped = competition_evidence.activation_for_tour(ACTIVE, "wta")
+        self.assertFalse(scoped["active"])
+        features = {"servico_carreira": {"lider": "A"}}
+        guarded, blockers = competition_evidence.guard_features(
+            features, active=scoped["active"], tour="wta"
+        )
+        self.assertEqual(guarded, features)
+        self.assertEqual(blockers, [])
 
     def test_raw_cache_key_is_reusable_and_derived_scope_is_versioned(self):
         self.assertEqual(

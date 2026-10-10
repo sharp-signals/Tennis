@@ -1,7 +1,7 @@
 """Prospective weighting of team-event evidence for individual performance.
 
-CHANGE-2026-10-10-099.  The policy is inert until an explicit version and
-UTC cutover are configured.  Historical artefacts are never rewritten.
+CHANGE-2026-10-10-099. The policy is inert until an explicit version and
+UTC cutover are configured. Historical artefacts are never rewritten.
 """
 from __future__ import annotations
 
@@ -19,9 +19,8 @@ POLICY_VERSION = "davis-laver-performance-v1"
 ACTIVATION_VERSION_ENV = "FENZOBOT_COMPETITION_EVIDENCE_VERSION"
 ACTIVATION_UTC_ENV = "FENZOBOT_COMPETITION_EVIDENCE_EFFECTIVE_FROM_UTC"
 
-# Tournament ids are factual identifiers observed in repository fixtures.
-# Davis ids are deliberately not mapped to a weight: an id or final tie score
-# cannot prove whether the tie was still competitive before an individual match.
+# Factual ids observed in repository fixtures. Davis ids are deliberately not
+# mapped: an id or a final tie score cannot prove the pre-match tie state.
 LAVER_TOURNAMENT_IDS = frozenset({"19409", "20363", "21353"})
 _POLICY_SPEC = {
     "change_id": CHANGE_ID,
@@ -35,23 +34,42 @@ _POLICY_SPEC = {
     "fatigue_load": "raw_factual_unweighted",
 }
 CONFIG_HASH = hashlib.sha256(
-    json.dumps(_POLICY_SPEC, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    json.dumps(
+        _POLICY_SPEC, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
 ).hexdigest()[:20]
 
 _DAVIS_RE = re.compile(r"\bdavis(?:\s+cup)?\b", re.IGNORECASE)
 _LAVER_RE = re.compile(r"\blaver(?:\s+cup)?\b", re.IGNORECASE)
+_GENERIC_CUP_RE = re.compile(r"\bcup\b", re.IGNORECASE)
 _COMPETITIVE = frozenset({"IN_DISPUTE", "COMPETITIVE", "LIVE", "TIE_LIVE"})
-_DECIDED = frozenset({"DECIDED", "DEAD_RUBBER", "TIE_DECIDED", "NON_COMPETITIVE"})
+_DECIDED = frozenset(
+    {"DECIDED", "DEAD_RUBBER", "TIE_DECIDED", "NON_COMPETITIVE"}
+)
 
-# These result-derived features currently use provider aggregates or local
-# helpers without match-level competition provenance.  They must not enter the
-# decision engine while the policy is active.  Raw factual display may remain.
-UNSEPARABLE_FEATURE_KEYS = frozenset({
-    "qualidade_vitorias", "indoor_outdoor", "velocidade_piso", "tiebreak",
-    "pressao_ronda", "nivel_adversario", "historico_torneio", "comeback_set1",
-    "sazonal", "recuperacao_sets", "matchup_maos", "servico_carreira",
+# Explicitly identified competitions outside this CHANGE keep their existing
+# treatment. This is not an inference that they are individual tournaments.
+_OUT_OF_SCOPE_TEAM_COMPETITIONS = (
+    re.compile(r"\bunited\s+cup\b", re.IGNORECASE),
+    re.compile(r"\batp\s+cup\b", re.IGNORECASE),
+    re.compile(r"\bbillie\s+jean\s+king\s+cup\b", re.IGNORECASE),
+    re.compile(r"\bfed\s+cup\b", re.IGNORECASE),
+    re.compile(r"\bolympic", re.IGNORECASE),
+)
+
+# Result-derived factor families. They stay present for factual display. The
+# decision engine admits each factor only when its own source carries compatible
+# match-level competition provenance.
+RESULT_DERIVED_FEATURE_KEYS = frozenset({
+    "h2h", "h2h_piso", "piso", "forma_recente", "qualidade_vitorias",
+    "indoor_outdoor", "velocidade_piso", "tiebreak", "pressao_ronda",
+    "nivel_adversario", "historico_torneio", "comeback_set1", "sazonal",
+    "recuperacao_sets", "matchup_maos", "servico_carreira",
     "servico_recente", "surface_momentum", "opposition_quality",
     "pressure_profile", "game_margin", "game_differential",
+})
+DIRECT_UNSEPARABLE_CONSUMERS = frozenset({
+    "recuperacao_sets", "matchup_maos", "historico_torneio", "comeback_set1",
 })
 INSEPARABLE_SOURCE_BLOCKERS = (
     "rapidapi_recent_stats_aggregate",
@@ -61,7 +79,9 @@ INSEPARABLE_SOURCE_BLOCKERS = (
 )
 
 
-def activation_from_environment(environ: Mapping[str, str] | None = None) -> dict[str, Any]:
+def activation_from_environment(
+    environ: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
     """Return the explicit forward-only activation state; never auto-activate."""
     source = os.environ if environ is None else environ
     requested = str(source.get(ACTIVATION_VERSION_ENV) or "").strip()
@@ -99,7 +119,22 @@ def activation_from_environment(environ: Mapping[str, str] | None = None) -> dic
         "effective_from_utc": effective_from or None,
         "requested_version": requested or None,
         "application": "PROSPECTIVE_ONLY",
+        "scope": "ATP_ONLY",
     }
+
+
+def activation_for_tour(
+    activation: Mapping[str, Any], tour: str | None,
+) -> dict[str, Any]:
+    """Limit the approved experiment to ATP without changing other circuits."""
+    scoped = dict(activation)
+    normalized = str(tour or "").strip().casefold()
+    if activation.get("active") is True and normalized != "atp":
+        scoped["active"] = False
+        scoped["status"] = "OUT_OF_SCOPE_TOUR"
+        scoped["scope_reason_code"] = "COMPETITION_POLICY_ATP_ONLY"
+    scoped["tour"] = normalized or None
+    return scoped
 
 
 def _value(record: Mapping[str, Any], *paths: str) -> Any:
@@ -119,25 +154,30 @@ def _tournament_text(record: Mapping[str, Any]) -> str:
     values = [
         _value(record, "tourney_name"),
         _value(record, "tournament_name"),
-        _value(record, "tournament"),
         _value(record, "competition_name"),
         _value(record, "event_name"),
         _value(record, "tournament.name"),
     ]
-    # Some provider result rows expose the competition only as top-level
-    # name. That key is otherwise ambiguous (it can be a player or match
-    # label), so accept it only for an explicit Davis/Laver Cup marker.
+    tournament = _value(record, "tournament")
+    if isinstance(tournament, str) and tournament.strip():
+        values.append(tournament)
     ambiguous_name = _value(record, "name")
     if (
         ambiguous_name not in (None, "")
-        and re.search(r"\b(?:davis|laver)\s+cup\b", str(ambiguous_name), re.IGNORECASE)
+        and re.search(
+            r"\b(?:davis|laver)\s+cup\b",
+            str(ambiguous_name),
+            re.IGNORECASE,
+        )
     ):
         values.append(ambiguous_name)
-    return " | ".join(str(value) for value in values if value not in (None, ""))
+    return " | ".join(str(value).strip() for value in values if value not in (None, ""))
 
 
 def _tournament_id(record: Mapping[str, Any]) -> str | None:
-    value = _value(record, "tournamentId", "tournament_id", "tourney_id", "tournament.id")
+    value = _value(
+        record, "tournamentId", "tournament_id", "tourney_id", "tournament.id"
+    )
     return str(value) if value not in (None, "") else None
 
 
@@ -154,11 +194,37 @@ def _explicit_davis_state(record: Mapping[str, Any]) -> str | None:
     return str(raw).strip().upper().replace("-", "_").replace(" ", "_")
 
 
+def _blocked(
+    reason_code: str,
+    *,
+    competition: str = "UNRESOLVED",
+    tournament_id: str | None = None,
+    **extra: Any,
+) -> dict[str, Any]:
+    return {
+        "competition": competition,
+        "weight": None,
+        "status": "BLOCKED",
+        "reason_code": reason_code,
+        "tournament_id": tournament_id,
+        **extra,
+    }
+
+
 def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
-    """Classify one historical result without inferring Davis tie state."""
+    """Classify one result without inventing identity or Davis tie state."""
     name = _tournament_text(record)
     tournament_id = _tournament_id(record)
-    if tournament_id in LAVER_TOURNAMENT_IDS or _LAVER_RE.search(name):
+    davis_name = bool(_DAVIS_RE.search(name))
+    laver_name = bool(_LAVER_RE.search(name))
+    laver_id = tournament_id in LAVER_TOURNAMENT_IDS
+
+    if (davis_name and (laver_name or laver_id)) or (laver_name and davis_name):
+        return _blocked(
+            "COMPETITION_IDENTITY_CONFLICT",
+            tournament_id=tournament_id,
+        )
+    if laver_id or laver_name:
         return {
             "competition": "LAVER_CUP",
             "weight": 0.0,
@@ -166,7 +232,7 @@ def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
             "reason_code": "LAVER_EXCLUDED_FROM_PERFORMANCE",
             "tournament_id": tournament_id,
         }
-    if _DAVIS_RE.search(name):
+    if davis_name:
         state = _explicit_davis_state(record)
         if state in _COMPETITIVE:
             return {
@@ -178,24 +244,39 @@ def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
                 "tournament_id": tournament_id,
             }
         if state in _DECIDED:
-            return {
-                "competition": "DAVIS_CUP",
-                "weight": None,
-                "status": "BLOCKED",
-                "reason_code": "DAVIS_TIE_ALREADY_DECIDED_NO_COEFFICIENT",
-                "davis_tie_status_before_match": state,
-                "tournament_id": tournament_id,
-            }
+            return _blocked(
+                "DAVIS_TIE_ALREADY_DECIDED_NO_COEFFICIENT",
+                competition="DAVIS_CUP",
+                tournament_id=tournament_id,
+                davis_tie_status_before_match=state,
+            )
+        return _blocked(
+            "DAVIS_PRE_MATCH_TIE_STATE_UNKNOWN",
+            competition="DAVIS_CUP",
+            tournament_id=tournament_id,
+            davis_tie_status_before_match=state,
+        )
+
+    if not name:
+        return _blocked(
+            "COMPETITION_IDENTITY_UNRESOLVED",
+            tournament_id=tournament_id,
+        )
+    if any(pattern.search(name) for pattern in _OUT_OF_SCOPE_TEAM_COMPETITIONS):
         return {
-            "competition": "DAVIS_CUP",
-            "weight": None,
-            "status": "BLOCKED",
-            "reason_code": "DAVIS_PRE_MATCH_TIE_STATE_UNKNOWN",
-            "davis_tie_status_before_match": state,
+            "competition": "OUT_OF_SCOPE_IDENTIFIED",
+            "weight": 1.0,
+            "status": "PRESERVED",
+            "reason_code": "OUT_OF_SCOPE_COMPETITION_PRESERVED",
             "tournament_id": tournament_id,
         }
+    if _GENERIC_CUP_RE.search(name):
+        return _blocked(
+            "COMPETITION_CUP_IDENTITY_UNRESOLVED",
+            tournament_id=tournament_id,
+        )
     return {
-        "competition": "INDIVIDUAL_OR_OTHER",
+        "competition": "INDIVIDUAL_REFERENCE",
         "weight": 1.0,
         "status": "WEIGHTED",
         "reason_code": "INDIVIDUAL_REFERENCE",
@@ -209,11 +290,7 @@ def weighted_binary_record(
     *,
     active: bool,
 ) -> dict[str, Any]:
-    """Apply weights after the caller selected the sample.
-
-    Raw counts remain integer/factual.  Any unresolved Davis match blocks the
-    weighted rate instead of being silently dropped or assigned a coefficient.
-    """
+    """Apply weights after sample selection, preserving raw factual counts."""
     selected = [dict(record) for record in records if isinstance(record, Mapping)]
     raw_wins = sum(1 for record in selected if won(record))
     raw_matches = len(selected)
@@ -237,12 +314,13 @@ def weighted_binary_record(
         weight = classification.get("weight")
         if weight is None:
             blockers[reason] += 1
+        elif won(record):
+            weighted_wins += float(weight)
         else:
-            if won(record):
-                weighted_wins += float(weight)
-            else:
-                weighted_losses += float(weight)
-        source_id = _value(record, "id", "matchId", "match_id", "eventId", "event_id")
+            weighted_losses += float(weight)
+        source_id = _value(
+            record, "id", "matchId", "match_id", "eventId", "event_id"
+        )
         if source_id not in (None, ""):
             source_ids.append(str(source_id))
 
@@ -274,7 +352,9 @@ def weighted_binary_record(
     }
 
 
-def record_rate(record: Mapping[str, Any] | None) -> tuple[float | None, float | None]:
+def record_rate(
+    record: Mapping[str, Any] | None,
+) -> tuple[float | None, float | None]:
     """Return decision rate/sample, preferring prospective weighted values."""
     if not isinstance(record, Mapping):
         return None, None
@@ -293,6 +373,53 @@ def record_rate(record: Mapping[str, Any] | None) -> tuple[float | None, float |
         return None, None
 
 
+def evidence_is_compatible(record: Mapping[str, Any] | None) -> bool:
+    evidence = record.get("competition_evidence") if isinstance(record, Mapping) else None
+    return (
+        isinstance(evidence, Mapping)
+        and evidence.get("version") == POLICY_VERSION
+        and evidence.get("config_hash") == CONFIG_HASH
+        and evidence.get("eligible_for_performance") is True
+    )
+
+
+def annotate_feature(
+    feature: dict[str, Any] | None,
+    sources: Iterable[Mapping[str, Any] | None],
+    *,
+    active: bool,
+) -> None:
+    """Attach factor-local eligibility without removing factual feature data."""
+    if not active or not isinstance(feature, dict):
+        return
+    source_list = list(sources)
+    eligible = bool(source_list) and all(
+        evidence_is_compatible(source) for source in source_list
+    )
+    feature["competition_evidence"] = {
+        "version": POLICY_VERSION,
+        "config_hash": CONFIG_HASH,
+        "eligible_for_performance": eligible,
+        "reason_code": (
+            "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED"
+            if eligible
+            else "COMPETITION_EVIDENCE_NOT_SEPARABLE"
+        ),
+    }
+
+
+def feature_is_eligible(feature: Any, *, active: bool) -> bool:
+    if not active:
+        return True
+    evidence = feature.get("competition_evidence") if isinstance(feature, Mapping) else None
+    return (
+        isinstance(evidence, Mapping)
+        and evidence.get("version") == POLICY_VERSION
+        and evidence.get("config_hash") == CONFIG_HASH
+        and evidence.get("eligible_for_performance") is True
+    )
+
+
 def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
     """Build immutable provenance copied to new payload/snapshot/PAPER."""
     result = dict(activation)
@@ -307,26 +434,139 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
     result["fatigue_load_unweighted"] = True
     result["integral_laver_exclusion_claimed"] = False
     result["known_blockers"] = list(INSEPARABLE_SOURCE_BLOCKERS)
+    result["separability_contract"] = "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE"
     return result
 
 
-def guard_features(features: Mapping[str, Any], *, active: bool) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Fail closed for result-derived features without separable provenance."""
+def guard_features(
+    features: Mapping[str, Any],
+    *,
+    active: bool,
+    tour: str | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Audit factor-local provenance while preserving all factual features."""
     output = dict(features)
-    blockers: list[dict[str, Any]] = []
-    if not active:
-        return output, blockers
-    for key in sorted(UNSEPARABLE_FEATURE_KEYS):
-        if key in output:
-            output.pop(key, None)
+    if not active or (tour is not None and str(tour).casefold() != "atp"):
+        return output, []
+    blockers = []
+    audited_keys = (
+        RESULT_DERIVED_FEATURE_KEYS.intersection(output)
+        | DIRECT_UNSEPARABLE_CONSUMERS
+    )
+    for key in sorted(audited_keys):
+        if not feature_is_eligible(output.get(key), active=True):
             blockers.append({
                 "feature": key,
+                "impact": "DECISION_FACTOR_BLOCKED",
                 "reason_code": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
             })
     return output, blockers
 
 
-def derived_cache_scope(base_key: str, activation: Mapping[str, Any]) -> str:
+def factor_impact_matrix(
+    features: Mapping[str, Any],
+    *,
+    active: bool,
+    tour: str | None,
+) -> list[dict[str, Any]]:
+    """Return the auditable separability/impact matrix for this payload."""
+    _, blockers = guard_features(features, active=active, tour=tour)
+    blocked = {item["feature"]: item for item in blockers}
+    matrix = []
+    audited_keys = (
+        RESULT_DERIVED_FEATURE_KEYS.intersection(features)
+        | DIRECT_UNSEPARABLE_CONSUMERS
+    )
+    for key in sorted(audited_keys):
+        if key in blocked:
+            matrix.append({
+                **blocked[key],
+                "separability": "UNAVAILABLE",
+                "report_factual_display": "PRESERVED",
+            })
+        else:
+            matrix.append({
+                "feature": key,
+                "separability": "MATCH_LEVEL",
+                "impact": "DECISION_FACTOR_ELIGIBLE",
+                "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+                "report_factual_display": "PRESERVED",
+            })
+    return matrix
+
+
+
+def canonical_cutover_gate(
+    identity: Mapping[str, Any],
+    *,
+    activation: Mapping[str, Any],
+    tour: str | None,
+    tournament_id: Any,
+    player_ids: Iterable[Any],
+    persisted_snapshot: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Decide policy eligibility from canonical identity before new decisions.
+
+    Schedule, odds and A/B orientation are intentionally absent from this
+    comparison. They may change on rerun without creating a new match instance.
+    """
+    canonical_id = str(identity.get("canonical_match_instance_id") or "")
+    if activation.get("active") is not True or str(tour or "").casefold() != "atp":
+        return {"status": "POLICY_NOT_APPLICABLE", "apply_policy": False}
+    if not canonical_id or identity.get("identity_persisted") is not True:
+        return {
+            "status": "CANONICAL_IDENTITY_UNAVAILABLE",
+            "apply_policy": False,
+            "reason_code": "COMPETITION_POLICY_REQUIRES_CANONICAL_IDENTITY",
+        }
+    if not isinstance(persisted_snapshot, Mapping):
+        return {
+            "status": "NEW_CANONICAL_MATCH",
+            "apply_policy": True,
+            "canonical_match_instance_id": canonical_id,
+        }
+
+    persisted_id = str(
+        persisted_snapshot.get("canonical_match_instance_id")
+        or persisted_snapshot.get("key")
+        or ""
+    )
+    current_players = frozenset(
+        str(value) for value in player_ids if value not in (None, "")
+    )
+    persisted_players = frozenset(
+        str((persisted_snapshot.get(side) or {}).get("id"))
+        for side in ("player_a", "player_b")
+        if (persisted_snapshot.get(side) or {}).get("id") not in (None, "")
+    )
+    context_matches = (
+        persisted_id == canonical_id
+        and current_players == persisted_players
+        and str(tour or "").casefold()
+        == str(persisted_snapshot.get("tour") or "").casefold()
+        and str(tournament_id) == str(persisted_snapshot.get("tournament_id"))
+    )
+    if context_matches:
+        return {
+            "status": "PRESERVE_EXISTING_CANONICAL_DECISION",
+            "apply_policy": False,
+            "skip_new_decision": True,
+            "canonical_match_instance_id": canonical_id,
+            "persisted_report_id": persisted_snapshot.get("report_id"),
+            "reason_code": "CANONICAL_MATCH_ALREADY_HAS_PREGAME_SNAPSHOT",
+        }
+    return {
+        "status": "CANONICAL_CONTEXT_COLLISION",
+        "apply_policy": False,
+        "fail_closed": True,
+        "canonical_match_instance_id": canonical_id,
+        "reason_code": "CANONICAL_MATCH_INSTANCE_CONTEXT_CONFLICT",
+    }
+
+
+def derived_cache_scope(
+    base_key: str, activation: Mapping[str, Any]
+) -> str:
     """Version derived caches without invalidating raw factual caches."""
     if activation.get("active") is True:
         return f"{base_key}:{POLICY_VERSION}:{CONFIG_HASH}"

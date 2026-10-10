@@ -692,6 +692,10 @@ def _compute_features(payload: dict) -> dict:
         _form_pct_a, _form_pct_b, "forma_recente",
         amostra_a=_form_sample_a, amostra_b=_form_sample_b,
     )
+    competition_evidence.annotate_feature(
+        feats.get("forma_recente"), [_form_a, _form_b],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (score
     # graduado vs top-10/20/50, ver compute_recent_quality_wins). Não usa
@@ -841,7 +845,7 @@ def _compute_features(payload: dict) -> dict:
         elif "hard" in s: skey = "hard"
         cell = bs.get(skey) if skey else None
         if cell and cell.get("matches"):
-            return cell["win_pct"], cell["matches"]
+            return cell["win_pct"], cell["matches"], cell
         # CORREÇÃO (12/08/2026): `basic` (surface_stats_a/b) é um dicionário
         # POR PISO — {"Hard": {...}, "Clay": {...}, "Grass": {...}} — mas
         # ia inteiro para _pct(), que espera um dict PLANO {"matches",
@@ -861,11 +865,19 @@ def _compute_features(payload: dict) -> dict:
             else (basic or {}).get(basic_key) if basic_key else None
         )
         p, sample = competition_evidence.record_rate(basic_cell)
-        return p, sample
+        return p, sample, basic_cell
     surf = payload.get("surface")
-    pa, na = _surf_pct(payload.get("rich_stats_a"), payload.get("surface_stats_a"), surf)
-    pb, nb = _surf_pct(payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf)
+    pa, na, source_a = _surf_pct(
+        payload.get("rich_stats_a"), payload.get("surface_stats_a"), surf
+    )
+    pb, nb, source_b = _surf_pct(
+        payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf
+    )
     _edge(pa, pb, "piso", amostra_a=na, amostra_b=nb)
+    competition_evidence.annotate_feature(
+        feats.get("piso"), [source_a, source_b],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     # Serviço — CARREIRA (últimos SERVE_RETURN_STATS_MATCHES=10 jogos) e
     # RECENTE (últimos 2 jogos) como fatores SEPARADOS, com pesos
@@ -932,11 +944,25 @@ def _compute_features(payload: dict) -> dict:
                 "lider": a if aw > bw else (b if bw > aw else "igual"),
                 "a_wins": aw, "b_wins": bw, "total": total,
             }
+            competition_evidence.annotate_feature(
+                feats["h2h"], [h2h],
+                active=policy_active,
+            )
         # NOVO (22/08/2026, a pedido): expor também o H2H ponderado pela
         # recência (calculado em compute_h2h). "lider" ali vem como o nome
         # resolvido do jogador; traduz-se para os rótulos a/b deste
         # relatório. O motor decide o que fazer com isto (report_html.py).
-        _wr = None if policy_active else h2h_obj.get("weighted_recency")
+        _h2h_evidence = h2h.get("competition_evidence") or {}
+        _h2h_has_affected_rows = bool(
+            _h2h_evidence.get("laver_excluded")
+            or _h2h_evidence.get("davis_weighted")
+            or _h2h_evidence.get("unresolved")
+        )
+        _wr = (
+            None
+            if policy_active and _h2h_has_affected_rows
+            else h2h_obj.get("weighted_recency")
+        )
         if isinstance(_wr, dict) and _wr.get("lider") not in (None, "igual"):
             # o líder ponderado vem como nome do jogador; mapear para a/b
             _lider_wr = a if _wr["lider"] == payload.get("player_a") else (
@@ -961,6 +987,10 @@ def _compute_features(payload: dict) -> dict:
                 "lider": a if aw_s > bw_s else (b if bw_s > aw_s else "igual"),
                 "a_wins": aw_s, "b_wins": bw_s, "total": total_s,
             }
+            competition_evidence.annotate_feature(
+                feats["h2h_piso"], [h2h_surf],
+                active=policy_active,
+            )
 
     # NOVO (18/08/2026, a pedido): desempenho em rondas decisivas (QF+),
     # carreira toda — não condicionado à ronda de hoje (não temos o nome
@@ -1041,13 +1071,16 @@ def _compute_features(payload: dict) -> dict:
             "amostra_a": _amostra_nivel_a, "amostra_b": _amostra_nivel_b,
         }
 
-    guarded, blockers = competition_evidence.guard_features(
-        feats,
-        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
-    )
     policy = payload.get("competition_evidence_policy")
+    active = bool((policy or {}).get("active"))
+    guarded, blockers = competition_evidence.guard_features(
+        feats, active=active, tour=payload.get("tour"),
+    )
     if isinstance(policy, dict):
         policy["feature_blockers"] = blockers
+        policy["factor_impact_matrix"] = competition_evidence.factor_impact_matrix(
+            guarded, active=active, tour=payload.get("tour"),
+        )
         policy["integral_laver_exclusion_claimed"] = False
     return guarded or None
 
@@ -1095,13 +1128,21 @@ def _factual_key_points(payload: dict) -> list:
     if fr and fr.get("mais_fresco") != "igual":
         pts.append(f"**{fr['mais_fresco']}** mais fresco ({fr['jogos_7d_a']} vs {fr['jogos_7d_b']} jogos nos últimos 7 dias).")
 
-    # Recuperação após 1º set (dado rico com valor de trading)
-    ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
-    rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
-    if ra.get("first_set_win_then_win_pct") is not None:
-        pts.append(f"{a} fecha {ra['first_set_win_then_win_pct']}% dos jogos após ganhar o 1º set.")
-    if rb.get("first_set_lose_then_win_pct") is not None:
-        pts.append(f"{b} recupera {rb['first_set_lose_then_win_pct']}% quando perde o 1º set.")
+    # Recuperação após 1º set: só é sugestão quando a origem está separável.
+    blockers = {
+        item.get("feature")
+        for item in (
+            (payload.get("competition_evidence_policy") or {}).get("feature_blockers")
+            or []
+        )
+    }
+    if not {"recuperacao_sets", "comeback_set1"}.intersection(blockers):
+        ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
+        rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+        if ra.get("first_set_win_then_win_pct") is not None:
+            pts.append(f"{a} fecha {ra['first_set_win_then_win_pct']}% dos jogos após ganhar o 1º set.")
+        if rb.get("first_set_lose_then_win_pct") is not None:
+            pts.append(f"{b} recupera {rb['first_set_lose_then_win_pct']}% quando perde o 1º set.")
 
     return pts[:6]  # limite
 
@@ -1357,7 +1398,9 @@ def _build_match_payload(match: dict) -> dict:
     tournament = match["tournament_name"]
     surface = match["surface"]
     start = _parse_utc(match["date"])
-    competition_policy = competition_evidence.activation_from_environment()
+    competition_policy = competition_evidence.activation_for_tour(
+        competition_evidence.activation_from_environment(), tour
+    )
 
     # DIAGNÓSTICO (15/08/2026, a pedido — muitos fatores "sem dados" em
     # jogos WTA que não deviam faltar). Se resolve_player_name falhar aqui,
@@ -1495,6 +1538,36 @@ def _build_match_payload(match: dict) -> dict:
         provider="RapidAPI",
         observed_at_utc=identity_observed_at,
     )
+    canonical_id = identity_result.get("canonical_match_instance_id")
+    persisted_snapshot = None
+    if competition_policy.get("active") is True and canonical_id:
+        persisted_snapshot = calibration_store.read_snapshots_by_key(
+            [str(canonical_id)]
+        ).get(str(canonical_id))
+    cutover_gate = competition_evidence.canonical_cutover_gate(
+        identity_result,
+        activation=competition_policy,
+        tour=tour,
+        tournament_id=match.get("tournamentId") or match.get("tournament_id"),
+        player_ids=(
+            match.get("player1Id") or (match.get("player1") or {}).get("id"),
+            match.get("player2Id") or (match.get("player2") or {}).get("id"),
+        ),
+        persisted_snapshot=persisted_snapshot,
+    )
+    if cutover_gate.get("fail_closed") is True:
+        raise RuntimeError(cutover_gate["reason_code"])
+    if cutover_gate.get("skip_new_decision") is True:
+        return {
+            **identity_result,
+            "_competition_cutover_skip": True,
+            "competition_evidence_cutover": cutover_gate,
+            "tour": tour,
+            "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
+            "player_a": player_a,
+            "player_b": player_b,
+        }
+
     match_for_ledger = dict(match)
     match_for_ledger.update(identity_result)
 
@@ -2595,6 +2668,8 @@ def run() -> None:
         try:
             with fetch_data.rapidapi_call_context(match.get("tier")):
                 payload = _build_match_payload(match)
+            if payload.get("_competition_cutover_skip") is True:
+                return None, None, payload["competition_evidence_cutover"]
             # Saltar a análise do Claude para SUPERFAVORITOS (odd <= 1.09):
             # a esse preço não há valor de mercado a observar, por isso gastar
             # tokens do Claude não se justifica. O jogo continua a sair no
@@ -2604,7 +2679,7 @@ def run() -> None:
             odds_vals = [v for v in odds.values() if isinstance(v, (int, float)) and v > 1]
             if odds_vals and min(odds_vals) <= SKIP_ANALYSIS_ODDS_THRESHOLD:
                 result = _factual_only_result(payload)
-                return (payload, result), None
+                return (payload, result), None, None
             stage = "analysis"
             result = analyze_match(payload)
             stage = "post_processing"
@@ -2612,7 +2687,7 @@ def run() -> None:
             # Opção B: os pontos-chave factuais são gerados pelo BOT (não pelo
             # Claude, que já não os escreve). Injetamos aqui a partir das features.
             result["key_points"] = _factual_key_points(payload)
-            return (payload, result), None
+            return (payload, result), None, None
         except Exception as exc:
             p1 = (match.get("player1") or {}).get("name", "?")
             p2 = (match.get("player2") or {}).get("name", "?")
@@ -2629,17 +2704,20 @@ def run() -> None:
                 "category": f"{stage}:{type(exc).__name__}",
                 "match": f"{p1} vs {p2}",
                 "message": str(exc)[:200],
-            }
+            }, None
 
     run_metrics.update_context(phase="analysis")
     analyses = []
     analysis_errors = []
+    cutover_skips = []
     with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
-        for res, error in executor.map(_process_one, process_targets):
+        for res, error, cutover_skip in executor.map(_process_one, process_targets):
             if res is not None:
                 analyses.append(res)
             if error is not None:
                 analysis_errors.append(error)
+            if cutover_skip is not None:
+                cutover_skips.append(cutover_skip)
 
     unresolved_players: dict[str, dict] = {}
     affected_matches = 0
@@ -2672,8 +2750,9 @@ def run() -> None:
     for error in analysis_errors:
         category = error["category"]
         error_counts[category] = error_counts.get(category, 0) + 1
+    decision_targets = len(process_targets) - len(cutover_skips)
     processing_status, processing_ratio = _classify_processing_status(
-        len(process_targets), len(analyses)
+        decision_targets, len(analyses)
     )
     processing_status = _apply_discovery_health_status(
         processing_status, discovery_diagnostics,
@@ -2681,6 +2760,7 @@ def run() -> None:
     run_metrics.update_context(
         processed=len(analyses),
         analysis_failed=len(analysis_errors),
+        competition_existing_decisions_preserved=len(cutover_skips),
         processing_ratio=round(processing_ratio, 4),
         analysis_error_counts=dict(sorted(error_counts.items())),
         analysis_error_samples=analysis_errors[:5],
@@ -2725,6 +2805,19 @@ def run() -> None:
             "Execução interrompida pelo orçamento RapidAPI; nenhum relatório "
             "parcial foi publicado. Consulta o contador nos logs."
         )
+
+    if not analyses and cutover_skips and not analysis_errors:
+        run_metrics.update_context(
+            status="success",
+            phase="complete",
+            reason="all_targets_already_have_canonical_pregame_snapshot",
+        )
+        fetch_data.persist_rapidapi_usage(status="success", matches=0)
+        print(
+            "[competition-evidence] decisões canónicas existentes preservadas; "
+            "nenhum relatório, snapshot ou PAPER substituído."
+        )
+        return
 
     if not analyses:
         # A3 da auditoria (28/07/2026): terminar "verde" sem qualquer
