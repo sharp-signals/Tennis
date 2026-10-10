@@ -2426,6 +2426,14 @@ def _operational_entry_model(payload, div):
     if decision.get("state") == "REPORT_NULL":
         return {"status": "unavailable", "reason": "Relatório nulo: sem entrada operacional."}
     pricing = _d(payload.get("pricing"))
+    policy_active = bool(
+        _d(payload.get("competition_evidence_policy")).get("active")
+    )
+    # Margens históricas e perfis de diferencial não conservam atualmente
+    # competição por encontro. Com a política ativa continuam disponíveis
+    # nas secções factuais, mas nunca geram uma taxa, preço ou handicap
+    # acionável neste cartão. A Moneyline permanece baseada no pricing válido.
+    actionable_margin_history = not policy_active
     side = pricing.get("candidate_side") if pricing.get("candidate") else None
     if side not in {"a", "b"}:
         return {
@@ -2455,7 +2463,10 @@ def _operational_entry_model(payload, div):
     # Moneyline é a primeira via quando já está na janela operacional.
     if INVESTOR_PROFILE_ODDS_LOW <= odd <= INVESTOR_PROFILE_ODDS_HIGH:
         price = _moneyline_price_reference(player_pricing.get("fair_odd"))
-        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        history = (
+            _d(payload.get(f"historical_moneyline_margins_{side}"))
+            if actionable_margin_history else {}
+        )
         fmt = str(payload.get("match_format") or "bo3").casefold()
         comparable = None
         for band, raw in _d(history.get("buckets")).items():
@@ -2480,7 +2491,7 @@ def _operational_entry_model(payload, div):
     # Favorito barato -> handicap negativo. Underdog -> handicap positivo
     # como alternativa (ou via principal se a ML exceder o perfil).
     wants_handicap = odd < INVESTOR_PROFILE_ODDS_LOW or is_underdog
-    if wants_handicap:
+    if wants_handicap and actionable_margin_history:
         fmt = str(payload.get("match_format") or "bo3").casefold()
         reference_data = handicap_reference_for_player(payload, player, fmt)
         reference = _d(_d(reference_data).get("reference"))

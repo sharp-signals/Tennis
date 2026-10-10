@@ -111,10 +111,119 @@ def _apply_discovery_health_status(status: str, diagnostics: dict) -> str:
     return status
 
 
+def _competition_delivery_identity(
+    payload: Mapping, fallback_date: str,
+) -> dict:
+    """Return the immutable report identity for a first policy delivery."""
+    recovery = payload.get("_competition_delivery_recovery")
+    delivery = payload.get("_competition_delivery")
+    if not isinstance(delivery, Mapping) and isinstance(recovery, Mapping):
+        delivery = recovery.get("delivery")
+    delivery = dict(delivery) if isinstance(delivery, Mapping) else {}
+    report_date = str(delivery.get("report_date_utc") or fallback_date)
+    filename = delivery.get("report_filename")
+    if not filename:
+        slug = _slugify(
+            f"{payload['player_a']}-vs-{payload['player_b']}-"
+            f"{report_date}-{payload.get('report_id')}"
+        )
+        filename = f"{slug}.html"
+    else:
+        filename = Path(str(filename)).name
+        slug = filename[:-5] if filename.endswith(".html") else filename
+    return {
+        "schema_version": "competition-delivery-identity-v1",
+        "report_date_utc": report_date,
+        "report_filename": filename,
+        "slug": slug,
+    }
+
+
+def _frozen_delivery_complete(recovery: Mapping | None) -> bool:
+    """A persisted HTML proves the ordered snapshot -> PAPER -> HTML delivery."""
+    if not isinstance(recovery, Mapping):
+        return False
+    frozen = recovery.get("payload")
+    if not isinstance(frozen, Mapping):
+        return False
+    identity = _competition_delivery_identity(
+        {
+            **dict(frozen),
+            "_competition_delivery_recovery": recovery,
+        },
+        str(frozen.get("analyzed_at_utc") or "")[:10],
+    )
+    report_path = (
+        Path(SITE_OUTPUT_DIR)
+        / SITE_REPORTS_SUBDIR
+        / identity["report_filename"]
+    )
+    return report_path.is_file()
+
+
+def _write_report_artifact(
+    payload: dict,
+    result: dict,
+    reports_dir: str | Path,
+    fallback_date: str,
+) -> dict:
+    """Writer used by run(); recovery keeps one path across UTC days."""
+    identity = _competition_delivery_identity(payload, fallback_date)
+    report_path = Path(reports_dir) / identity["report_filename"]
+    existed = report_path.is_file()
+    if not existed:
+        html_page = build_report_html(payload, result)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with report_path.open("x", encoding="utf-8") as handle:
+                handle.write(html_page)
+        except FileExistsError:
+            existed = True
+    return {
+        **identity,
+        "local_path": str(report_path),
+        "url": (
+            f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/"
+            f"{identity['report_filename']}"
+        ),
+        "created": not existed,
+        "already_complete": existed,
+    }
+
+
+def _freeze_report_context(
+    payload: dict,
+    *,
+    system_accuracy: Mapping | None,
+    paper_history: Mapping | None,
+    green_strong_history: Mapping | None,
+) -> None:
+    """Freeze every mutable report-only aggregate before first snapshot."""
+    policy = payload.get("competition_evidence_policy") or {}
+    if policy.get("active") is not True:
+        return
+    for key, value in (
+        ("system_accuracy", system_accuracy),
+        ("paper_history", paper_history),
+        ("green_strong_history", green_strong_history),
+    ):
+        if value:
+            payload[key] = copy.deepcopy(value)
+
+
+def _read_json_mapping(path: Path) -> dict | None:
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+        return value if isinstance(value, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
 def _freeze_competition_delivery(
     snapshot: dict, payload: dict, result: dict,
 ) -> None:
-    """Persist the first post-cutover delivery inputs in the first snapshot."""
+    """Persist the immutable inputs and path of the first policy delivery."""
     policy = payload.get("competition_evidence_policy") or {}
     if not (
         policy.get("active") is True
@@ -122,10 +231,19 @@ def _freeze_competition_delivery(
         and policy.get("config_hash") == competition_evidence.CONFIG_HASH
     ):
         return
+    report_date = str(
+        payload.get("analyzed_at_utc")
+        or snapshot.get("analyzed_at_utc")
+        or payload.get("commence_time_utc")
+        or ""
+    )[:10]
+    delivery = _competition_delivery_identity(payload, report_date)
+    payload["_competition_delivery"] = copy.deepcopy(delivery)
     frozen_payload = copy.deepcopy(payload)
     frozen_payload.pop("_competition_delivery_recovered", None)
     snapshot["delivery_recovery"] = {
-        "schema_version": "competition-delivery-recovery-v1",
+        "schema_version": "competition-delivery-recovery-v2",
+        "delivery": copy.deepcopy(delivery),
         "payload": frozen_payload,
         "result": copy.deepcopy(result),
     }
@@ -140,12 +258,14 @@ def _recover_competition_delivery(payload: dict) -> tuple[dict, dict] | None:
     frozen_result = copy.deepcopy(recovery.get("result"))
     if not isinstance(frozen_payload, dict) or not isinstance(frozen_result, dict):
         raise RuntimeError("COMPETITION_DELIVERY_RECOVERY_INVALID")
+    delivery = recovery.get("delivery")
+    if isinstance(delivery, Mapping):
+        frozen_payload["_competition_delivery"] = copy.deepcopy(delivery)
     frozen_payload["_competition_delivery_recovered"] = True
     frozen_payload["competition_evidence_cutover"] = payload.get(
         "competition_evidence_cutover"
     )
     return frozen_payload, frozen_result
-
 
 def _trigger_context() -> dict:
     slot = os.environ.get("FENZOBOT_TRIGGER_SLOT", "").strip() or "manual"
@@ -1650,11 +1770,24 @@ def _build_match_payload(match: dict) -> dict:
     if cutover_gate.get("fail_closed") is True:
         raise RuntimeError(cutover_gate["reason_code"])
     if cutover_gate.get("recover_frozen_delivery") is True:
+        recovery = copy.deepcopy(persisted_snapshot.get("delivery_recovery"))
+        if _frozen_delivery_complete(recovery):
+            return {
+                **identity_result,
+                "_competition_cutover_skip": True,
+                "competition_evidence_cutover": {
+                    **cutover_gate,
+                    "status": "FIRST_DELIVERY_ALREADY_COMPLETE",
+                    "reason_code": "FIRST_DELIVERY_ALREADY_COMPLETE",
+                },
+                "tour": tour,
+                "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
+                "player_a": player_a,
+                "player_b": player_b,
+            }
         return {
             **identity_result,
-            "_competition_delivery_recovery": copy.deepcopy(
-                persisted_snapshot.get("delivery_recovery")
-            ),
+            "_competition_delivery_recovery": recovery,
             "competition_evidence_cutover": cutover_gate,
             "tour": tour,
             "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
@@ -2987,6 +3120,29 @@ def run() -> None:
             "foi publicado."
         )
 
+    # Congelar os agregados de apresentação antes do primeiro snapshot.
+    # Uma recuperação futura usa exatamente estes inputs, não o estado global
+    # de outro dia. O caminho legacy continua a calcular o contexto no ponto
+    # original, depois de PAPER.
+    try:
+        _frozen_system_accuracy = calibration_store.compute_system_accuracy()
+    except Exception:
+        _frozen_system_accuracy = None
+    try:
+        _frozen_paper_history = paper_trading.compute_history()
+    except Exception:
+        _frozen_paper_history = None
+    _frozen_green_history = _read_json_mapping(
+        green_strong_validation.DEFAULT_OUTPUT_PATH
+    )
+    for payload, _result in analyses:
+        _freeze_report_context(
+            payload,
+            system_accuracy=_frozen_system_accuracy,
+            paper_history=_frozen_paper_history,
+            green_strong_history=_frozen_green_history,
+        )
+
     # Guardar a fotografia factual antes do jogo para calibracao futura.
     # E feita apenas depois de a execucao atingir cobertura publicavel; uma
     # repeticao do bot nao reescreve a fotografia original.
@@ -3126,29 +3282,31 @@ def run() -> None:
         print(f"[aviso] falha a calcular histórico PAPER: {exc}")
         _paper_history = None
     for payload, result in analyses:
-        if _system_accuracy:
-            payload["system_accuracy"] = _system_accuracy
-        if _paper_history:
-            payload["paper_history"] = _paper_history
-        if green_report:
-            payload["green_strong_history"] = green_report
-        # Versão imutável: a identidade inclui o instante do snapshot. Uma
-        # nova execução cria outro relatório; nunca substitui o original.
-        slug = _slugify(
-            f"{payload['player_a']}-vs-{payload['player_b']}-{today_str}-{payload.get('report_id')}"
+        policy_active = bool(
+            (payload.get("competition_evidence_policy") or {}).get("active")
         )
-        filename = f"{slug}.html"
+        if not policy_active:
+            if _system_accuracy:
+                payload["system_accuracy"] = _system_accuracy
+            if _paper_history:
+                payload["paper_history"] = _paper_history
+            if green_report:
+                payload["green_strong_history"] = green_report
         try:
-            html_page = build_report_html(payload, result)
-            report_path = os.path.join(reports_dir, filename)
-            try:
-                with open(report_path, "x", encoding="utf-8") as f:
-                    f.write(html_page)
-            except FileExistsError:
-                print(f"[relatorio] versão imutável já existe: {filename}")
-            url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/{filename}"
-            report_artifacts.append({"url": url, "local_path": report_path})
-            generated_slugs.append((payload, result, slug))
+            artifact = _write_report_artifact(
+                payload, result, reports_dir, today_str
+            )
+            if artifact["already_complete"]:
+                print(
+                    "[relatorio] entrega congelada já concluída: "
+                    f"{artifact['report_filename']}"
+                )
+            url = artifact["url"]
+            report_artifacts.append({
+                "url": url,
+                "local_path": artifact["local_path"],
+            })
+            generated_slugs.append((payload, result, artifact["slug"]))
         except Exception as exc:
             print(f"[aviso] falha a gerar HTML para {payload['player_a']} vs {payload['player_b']}: {exc}")
             url = None

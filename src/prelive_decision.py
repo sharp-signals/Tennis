@@ -100,35 +100,36 @@ def _scenario(payload: Mapping[str, Any], side: str, rate: str, count: str) -> b
 def _action_block_available(
     payload: Mapping[str, Any], divergence: Mapping[str, Any] | None = None,
 ) -> bool:
-    """Detecta se existe ao menos um bloco bilateral que possa gerar acao.
+    """Preserva o gate bilateral legado, filtrando só fontes inelegíveis.
 
-    Com a política competitiva ativa, agregados sem proveniência nunca
-    satisfazem este gate. O mapa pode abrir com mercado factual e ao menos
-    um fator ponderado elegível; cenários adicionais são filtrados no HTML.
+    Carga/fadiga é factual e não ponderada, pelo que continua a satisfazer o
+    gate sem odds. Fontes result-derived apenas contam quando o fator
+    correspondente é elegível pela política competitiva.
     """
-    if _mapping(payload.get("competition_evidence_policy")).get("active") is True:
-        market = _mapping(payload.get("market_odds_decimal"))
-        return bool(market) and _factor_available(
-            divergence,
-            "forma_recente", "qualidade_vitorias", "indoor_outdoor",
-            "velocidade_piso", "sazonal", "piso", "h2h", "h2h_piso",
-            "servico_carreira", "servico_recente",
-        )
-    if all(
+    active = _mapping(
+        payload.get("competition_evidence_policy")
+    ).get("active") is True
+
+    def allowed(factor: str) -> bool:
+        return not active or _factor_available(divergence, factor)
+
+    if allowed("comeback_set1") and all(
         _scenario(payload, side, "first_set_lose_then_win_pct", "first_set_lose_count")
         for side in ("a", "b")
     ):
         return True
-    if all(
+    if allowed("recuperacao_sets") and all(
         _scenario(payload, side, "deciding_set_win_pct", "deciding_set_count")
         for side in ("a", "b")
     ):
         return True
-    for key, sample_key in (
-        ("deciding_set_stats", "deciding_set_count"),
-        ("game_margin", "matches"),
-        ("fatigue_signal", "matches_last_7d"),
+    for key, sample_key, factor in (
+        ("deciding_set_stats", "deciding_set_count", "recuperacao_sets"),
+        ("game_margin", "matches", "game_margin"),
+        ("fatigue_signal", "matches_last_7d", None),
     ):
+        if factor is not None and not allowed(factor):
+            continue
         left = _mapping(payload.get(f"{key}_a"))
         right = _mapping(payload.get(f"{key}_b"))
         if left.get(sample_key) is not None and right.get(sample_key) is not None:

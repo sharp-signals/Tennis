@@ -310,6 +310,8 @@ class ActiveRuntimeIntegrationTests(unittest.TestCase):
     def _pricing() -> dict:
         return {
             "available": True,
+            "candidate": True,
+            "candidate_side": "a",
             "players": {
                 "a": {
                     "market_odd": 2.05, "fair_odd": 1.80,
@@ -372,6 +374,199 @@ class ActiveRuntimeIntegrationTests(unittest.TestCase):
         self.assertEqual(outputs[0], outputs[1])
         self.assertNotIn("Recupera e ganha o jogo", outputs[0][2])
         self.assertNotIn("se chegar ao set decisivo", outputs[0][2])
+
+
+    def test_operational_header_never_turns_blocked_margins_into_handicap(self):
+        payloads = [self._payload(False), self._payload(True)]
+        rendered_models = []
+        for payload in payloads:
+            payload["game_differential_a"] = {
+                "bo3": {
+                    "wins": {"margins": [9] * 40},
+                    "losses": {"margins": [-1] * 40},
+                }
+            }
+            payload["historical_moneyline_margins_a"] = {
+                "buckets": {
+                    "2.01-2.09": {
+                        "n": 40,
+                        "wins": 36,
+                        "margins": [8] * 40,
+                    }
+                }
+            }
+            payload["features"] = main._compute_features(payload)
+            divergence = report_html.calcular_divergencia_publico(payload)
+            assessment = prelive_decision.assess_report(payload, divergence)
+            decision = prelive_decision.build_decision(
+                payload, divergence, self._pricing(), assessment
+            )
+            payload.update({
+                "divergencia": divergence,
+                "report_assessment": assessment,
+                "prelive_decision": decision,
+                "pricing": self._pricing(),
+            })
+            model = report_html._operational_entry_model(payload, divergence)
+            html = report_html.build_report_html(payload, {"flag": "🟢"})
+            self.assertEqual(
+                [market["type"] for market in model["markets"]],
+                ["moneyline"],
+            )
+            self.assertNotIn("entry-handicap", html)
+            self.assertNotIn("HANDICAP POSITIVO", html)
+            self.assertNotIn("HANDICAP NEGATIVO", html)
+            rendered_models.append(model)
+        self.assertEqual(rendered_models[0], rendered_models[1])
+
+    def test_operational_header_keeps_legacy_handicap_when_policy_is_off(self):
+        payload = self._payload()
+        payload["competition_evidence_policy"] = {
+            **payload["competition_evidence_policy"],
+            "active": False,
+        }
+        payload["game_differential_a"] = {
+            "bo3": {
+                "wins": {"margins": [9] * 40},
+                "losses": {"margins": [-1] * 40},
+            }
+        }
+        payload["historical_moneyline_margins_a"] = {
+            "buckets": {
+                "2.01-2.09": {
+                    "n": 40,
+                    "wins": 36,
+                    "margins": [8] * 40,
+                }
+            }
+        }
+        payload["features"] = main._compute_features(payload)
+        divergence = report_html.calcular_divergencia_publico(payload)
+        payload.update({
+            "prelive_decision": {"state": "EDGE_POSITIVE"},
+            "pricing": self._pricing(),
+        })
+        model = report_html._operational_entry_model(payload, divergence)
+        self.assertIn(
+            "positive_handicap",
+            [market["type"] for market in model["markets"]],
+        )
+
+    def test_action_gate_preserves_legacy_bilateral_semantics(self):
+        divergence = {
+            "fatores_status": {
+                "forma_recente": {"disponivel": True},
+                "recuperacao_sets": {"disponivel": False},
+                "game_margin": {"disponivel": False},
+            }
+        }
+        market_and_form_only = {
+            "competition_evidence_policy": copy.deepcopy(ACTIVE),
+            "market_odds_decimal": {"Alpha": 1.8, "Beta": 2.1},
+        }
+        self.assertFalse(
+            prelive_decision._action_block_available(
+                market_and_form_only, divergence
+            )
+        )
+
+        factual_load_without_odds = {
+            "competition_evidence_policy": copy.deepcopy(ACTIVE),
+            "fatigue_signal_a": {"matches_last_7d": 1},
+            "fatigue_signal_b": {"matches_last_7d": 3},
+        }
+        self.assertTrue(
+            prelive_decision._action_block_available(
+                factual_load_without_odds, divergence
+            )
+        )
+
+    def test_real_transformer_impact_matrix_for_missing_inputs(self):
+        def measured(payload):
+            payload["features"] = main._compute_features(payload)
+            divergence = report_html.calcular_divergencia_publico(payload)
+            assessment = prelive_decision.assess_report(payload, divergence)
+            return {
+                "coverage": assessment["coverage"]["weighted_ratio"],
+                "report_null": assessment["report_null"],
+                "action_map": assessment["essential_blocks"]["action_map"],
+                "h2h": divergence["fatores_status"]["h2h"]["disponivel"],
+                "h2h_surface": divergence["fatores_status"]["h2h_piso"]["disponivel"],
+                "court_speed": divergence["fatores_status"]["velocidade_piso"]["disponivel"],
+            }
+
+        full = self._payload()
+        no_cpi = self._payload()
+        for key in ("court_speed_hoje", "court_speed_a", "court_speed_b"):
+            no_cpi.pop(key, None)
+        no_h2h = self._payload()
+        no_h2h.pop("h2h", None)
+        no_both = self._payload()
+        no_both.pop("h2h", None)
+        for key in ("court_speed_hoje", "court_speed_a", "court_speed_b"):
+            no_both.pop(key, None)
+        no_odds = self._payload()
+        no_odds.pop("market_odds_decimal", None)
+
+        matrix = {
+            "full": measured(full),
+            "without_cpi": measured(no_cpi),
+            "without_h2h": measured(no_h2h),
+            "without_h2h_cpi": measured(no_both),
+            "without_odds": measured(no_odds),
+        }
+        self.assertGreaterEqual(matrix["full"]["coverage"], 0.60)
+        self.assertLess(matrix["without_cpi"]["coverage"], 0.60)
+        self.assertLess(matrix["without_h2h"]["coverage"], 0.60)
+        self.assertLess(
+            matrix["without_h2h_cpi"]["coverage"],
+            matrix["without_h2h"]["coverage"],
+        )
+        self.assertFalse(matrix["without_h2h"]["h2h"])
+        self.assertFalse(matrix["without_h2h"]["h2h_surface"])
+        self.assertFalse(matrix["without_cpi"]["court_speed"])
+        self.assertTrue(matrix["without_odds"]["action_map"])
+        self.assertFalse(matrix["without_odds"]["report_null"])
+
+        competitive_davis = competition_evidence.weighted_binary_record(
+            [
+                {
+                    "id": "davis-1",
+                    "tournament_name": "Davis Cup",
+                    "davis_tie_status_before_match": "COMPETITIVE",
+                    "won": True,
+                },
+                {
+                    "id": "tour-1",
+                    "tournament_name": "Vienna Open",
+                    "won": True,
+                },
+            ],
+            lambda row: row["won"],
+            active=True,
+        )
+        self.assertEqual(competitive_davis["matches"], 2)
+        self.assertEqual(competitive_davis["weighted_matches"], 1.5)
+        self.assertTrue(
+            competitive_davis["competition_evidence"][
+                "eligible_for_performance"
+            ]
+        )
+        unknown_davis = competition_evidence.weighted_binary_record(
+            [{
+                "id": "davis-unknown",
+                "tournament_name": "Davis Cup",
+                "won": True,
+            }],
+            lambda row: row["won"],
+            active=True,
+        )
+        self.assertIsNone(unknown_davis["weighted_matches"])
+        self.assertFalse(
+            unknown_davis["competition_evidence"][
+                "eligible_for_performance"
+            ]
+        )
 
 
 class CanonicalCutoverIntegrationTests(unittest.TestCase):
@@ -471,7 +666,7 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
         self.assertTrue(gate["fail_closed"])
 
 
-    def test_partial_first_delivery_recovers_only_from_frozen_snapshot(self):
+    def test_partial_first_delivery_is_idempotent_across_utc_days(self):
         builder = ActiveRuntimeIntegrationTests()
         payload = builder._payload()
         payload.update({
@@ -497,9 +692,15 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
             "prelive_decision": decision,
             "pricing": builder._pricing(),
         })
+        main._freeze_report_context(
+            payload,
+            system_accuracy={"sample_size": 11},
+            paper_history={"PAPER": {"entries": 7}},
+            green_strong_history={"metrics": {"sample_size": 3}},
+        )
         snapshot = calibration_store.build_snapshot(
             payload, {"flag": "🟢"},
-            analyzed_at_utc="2026-10-10T12:00:00+00:00",
+            analyzed_at_utc="2026-10-10T23:59:59+00:00",
         )
         payload.update({
             "snapshot_key": snapshot["key"],
@@ -507,13 +708,16 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
             "analyzed_at_utc": snapshot["analyzed_at_utc"],
         })
         main._freeze_competition_delivery(snapshot, payload, {"flag": "🟢"})
-        self.assertIn("delivery_recovery", snapshot)
+        self.assertEqual(
+            snapshot["delivery_recovery"]["schema_version"],
+            "competition-delivery-recovery-v2",
+        )
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            reports_dir = root / "reports"
             snapshot_path = root / "snapshots.json"
             paper_path = root / "paper.json"
-            report_path = root / "report.html"
             self.assertEqual(
                 calibration_store.upsert_snapshots(
                     [snapshot], path=snapshot_path, max_entries=None
@@ -535,27 +739,25 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
                 persisted_snapshot=persisted,
             )
             self.assertTrue(gate["recover_frozen_delivery"])
-
-            # A second runner has only the durable snapshot. Changed schedule
-            # and odds never enter the recovered delivery.
             carrier = {
                 "_competition_delivery_recovery": copy.deepcopy(
                     persisted["delivery_recovery"]
                 ),
                 "competition_evidence_cutover": gate,
-                "commence_time_utc": "2026-10-20T15:00:00+00:00",
+                "commence_time_utc": "2026-10-21T15:00:00+00:00",
                 "market_odds_decimal": {"Alpha": 1.40, "Beta": 3.20},
             }
-            recovered = main._recover_competition_delivery(carrier)
-            self.assertIsNotNone(recovered)
-            recovered_payload, recovered_result = recovered
+
+            recovered_payload, recovered_result = (
+                main._recover_competition_delivery(carrier)
+            )
             self.assertEqual(
                 recovered_payload["market_odds_decimal"],
                 payload["market_odds_decimal"],
             )
             self.assertEqual(
-                recovered_payload["commence_time_utc"],
-                payload["commence_time_utc"],
+                recovered_payload["system_accuracy"],
+                {"sample_size": 11},
             )
             calibration_store.apply_persisted_validation(
                 recovered_payload, persisted
@@ -571,20 +773,19 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
             ):
                 entries = paper_trading.build_entries(recovered_payload)
             self.assertEqual(len(entries), 1)
+
+            # Failure after snapshot: retry writes the first missing PAPER only.
             self.assertEqual(
                 paper_trading.append_entries(entries, path=paper_path), 1
             )
-            html = report_html.build_report_html(
-                recovered_payload, recovered_result
-            )
-            report_path.write_text(html, encoding="utf-8")
+            self.assertFalse(reports_dir.exists())
 
-            # Idempotent retry: no new PAPER and identical real HTML.
-            second_payload, second_result = main._recover_competition_delivery(
+            # Failure after PAPER: next-day retry reuses the frozen report date.
+            next_payload, next_result = main._recover_competition_delivery(
                 carrier
             )
             calibration_store.apply_persisted_validation(
-                second_payload, persisted
+                next_payload, persisted
             )
             with patch.object(
                 paper_trading.tournament_policy,
@@ -595,14 +796,50 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
                 "is_operational_pricing_payload",
                 return_value=True,
             ):
-                second_entries = paper_trading.build_entries(second_payload)
+                self.assertEqual(
+                    paper_trading.append_entries(
+                        paper_trading.build_entries(next_payload),
+                        path=paper_path,
+                    ),
+                    0,
+                )
+            artifact = main._write_report_artifact(
+                next_payload, next_result, reports_dir, "2026-10-11"
+            )
+            self.assertTrue(artifact["created"])
+            self.assertIn("2026-10-10", artifact["report_filename"])
+            report_path = Path(artifact["local_path"])
+            first_hash = hashlib.sha256(report_path.read_bytes()).hexdigest()
+
+            # Failure after HTML: a later runner neither renders nor creates
+            # a second path, even when its current UTC date has changed.
+            last_payload, last_result = main._recover_competition_delivery(
+                carrier
+            )
+            with patch.object(
+                main, "build_report_html",
+                side_effect=AssertionError("completed delivery re-rendered"),
+            ) as renderer:
+                repeated = main._write_report_artifact(
+                    last_payload, last_result, reports_dir, "2026-10-12"
+                )
+            renderer.assert_not_called()
+            self.assertTrue(repeated["already_complete"])
             self.assertEqual(
-                paper_trading.append_entries(second_entries, path=paper_path), 0
+                repeated["report_filename"], artifact["report_filename"]
             )
             self.assertEqual(
-                report_html.build_report_html(second_payload, second_result),
-                report_path.read_text(encoding="utf-8"),
+                hashlib.sha256(report_path.read_bytes()).hexdigest(),
+                first_hash,
             )
+            with patch.object(main, "SITE_OUTPUT_DIR", str(root)), patch.object(
+                main, "SITE_REPORTS_SUBDIR", "reports"
+            ):
+                self.assertTrue(
+                    main._frozen_delivery_complete(
+                        persisted["delivery_recovery"]
+                    )
+                )
 
             # First-write-wins also preserves an already settled outcome.
             settled = copy.deepcopy(persisted)
