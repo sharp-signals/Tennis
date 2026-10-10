@@ -98,6 +98,19 @@ class ConsumptionBoundaryIntegrationTests(unittest.TestCase):
     def test_blocked_raw_aggregates_cannot_reenter_index_pricing_or_decision(self):
         left = self._payload(False)
         right = self._payload(True)
+        for payload in (left, right):
+            direct = competition_evidence.direct_consumers_from_payload(payload)
+            _, blockers = competition_evidence.guard_features(
+                payload["features"],
+                active=True,
+                tour="atp",
+                direct_consumers=direct,
+            )
+            payload["competition_evidence_policy"]["feature_blockers"] = blockers
+            self.assertTrue(
+                {"recuperacao_sets", "matchup_maos", "historico_torneio"}
+                .issubset({item["feature"] for item in blockers})
+            )
         left_div = report_html.calcular_divergencia_publico(left)
         right_div = report_html.calcular_divergencia_publico(right)
 

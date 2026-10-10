@@ -438,11 +438,38 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
+def direct_consumers_from_payload(payload: Mapping[str, Any]) -> set[str]:
+    """Identify direct report consumers only when their factual source exists."""
+    consumers: set[str] = set()
+    rich_a = payload.get("rich_stats_a")
+    rich_b = payload.get("rich_stats_b")
+    scenarios_present = any(
+        isinstance((rich or {}).get("scenarios"), Mapping)
+        and bool((rich or {}).get("scenarios"))
+        for rich in (rich_a, rich_b)
+        if isinstance(rich, Mapping)
+    )
+    if scenarios_present or payload.get("deciding_set_stats_a") or payload.get(
+        "deciding_set_stats_b"
+    ):
+        consumers.add("recuperacao_sets")
+    if scenarios_present:
+        consumers.add("comeback_set1")
+    if payload.get("handedness_matchup_a") or payload.get(
+        "handedness_matchup_b"
+    ):
+        consumers.add("matchup_maos")
+    if payload.get("tournament_record_a") or payload.get("tournament_record_b"):
+        consumers.add("historico_torneio")
+    return consumers
+
+
 def guard_features(
     features: Mapping[str, Any],
     *,
     active: bool,
     tour: str | None = None,
+    direct_consumers: Iterable[str] = (),
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Audit factor-local provenance while preserving all factual features."""
     output = dict(features)
@@ -451,7 +478,7 @@ def guard_features(
     blockers = []
     audited_keys = (
         RESULT_DERIVED_FEATURE_KEYS.intersection(output)
-        | DIRECT_UNSEPARABLE_CONSUMERS
+        | DIRECT_UNSEPARABLE_CONSUMERS.intersection(direct_consumers)
     )
     for key in sorted(audited_keys):
         if not feature_is_eligible(output.get(key), active=True):
@@ -468,14 +495,20 @@ def factor_impact_matrix(
     *,
     active: bool,
     tour: str | None,
+    direct_consumers: Iterable[str] = (),
 ) -> list[dict[str, Any]]:
     """Return the auditable separability/impact matrix for this payload."""
-    _, blockers = guard_features(features, active=active, tour=tour)
+    _, blockers = guard_features(
+        features,
+        active=active,
+        tour=tour,
+        direct_consumers=direct_consumers,
+    )
     blocked = {item["feature"]: item for item in blockers}
     matrix = []
     audited_keys = (
         RESULT_DERIVED_FEATURE_KEYS.intersection(features)
-        | DIRECT_UNSEPARABLE_CONSUMERS
+        | DIRECT_UNSEPARABLE_CONSUMERS.intersection(direct_consumers)
     )
     for key in sorted(audited_keys):
         if key in blocked:

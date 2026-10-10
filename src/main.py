@@ -1073,13 +1073,20 @@ def _compute_features(payload: dict) -> dict:
 
     policy = payload.get("competition_evidence_policy")
     active = bool((policy or {}).get("active"))
+    direct_consumers = competition_evidence.direct_consumers_from_payload(payload)
     guarded, blockers = competition_evidence.guard_features(
-        feats, active=active, tour=payload.get("tour"),
+        feats,
+        active=active,
+        tour=payload.get("tour"),
+        direct_consumers=direct_consumers,
     )
     if isinstance(policy, dict):
         policy["feature_blockers"] = blockers
         policy["factor_impact_matrix"] = competition_evidence.factor_impact_matrix(
-            guarded, active=active, tour=payload.get("tour"),
+            guarded,
+            active=active,
+            tour=payload.get("tour"),
+            direct_consumers=direct_consumers,
         )
         policy["integral_laver_exclusion_claimed"] = False
     return guarded or None
