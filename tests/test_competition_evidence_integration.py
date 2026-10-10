@@ -486,10 +486,23 @@ class ActiveRuntimeIntegrationTests(unittest.TestCase):
             payload["features"] = main._compute_features(payload)
             divergence = report_html.calcular_divergencia_publico(payload)
             assessment = prelive_decision.assess_report(payload, divergence)
+            with patch.object(
+                pricing.market_integrity,
+                "is_operational_pricing_payload",
+                return_value=True,
+            ):
+                priced = pricing.estimate_market_residual_pricing(
+                    payload, divergence
+                )
+            decision = prelive_decision.build_decision(
+                payload, divergence, priced, assessment
+            )
             return {
                 "coverage": assessment["coverage"]["weighted_ratio"],
                 "report_null": assessment["report_null"],
                 "action_map": assessment["essential_blocks"]["action_map"],
+                "pricing_available": priced.get("available") is True,
+                "paper_eligible": decision.get("paper_eligible") is True,
                 "h2h": divergence["fatores_status"]["h2h"]["disponivel"],
                 "h2h_surface": divergence["fatores_status"]["h2h_piso"]["disponivel"],
                 "court_speed": divergence["fatores_status"]["velocidade_piso"]["disponivel"],
@@ -515,9 +528,20 @@ class ActiveRuntimeIntegrationTests(unittest.TestCase):
             "without_h2h_cpi": measured(no_both),
             "without_odds": measured(no_odds),
         }
-        self.assertGreaterEqual(matrix["full"]["coverage"], 0.60)
-        self.assertLess(matrix["without_cpi"]["coverage"], 0.60)
-        self.assertLess(matrix["without_h2h"]["coverage"], 0.60)
+        self.assertAlmostEqual(
+            matrix["full"]["coverage"], 96.25 / 144.25, places=5
+        )
+        self.assertAlmostEqual(
+            matrix["without_cpi"]["coverage"], 86.25 / 144.25, places=5
+        )
+        self.assertAlmostEqual(
+            matrix["without_h2h"]["coverage"], 78.25 / 144.25, places=5
+        )
+        self.assertAlmostEqual(
+            matrix["without_h2h_cpi"]["coverage"],
+            68.25 / 144.25,
+            places=5,
+        )
         self.assertLess(
             matrix["without_h2h_cpi"]["coverage"],
             matrix["without_h2h"]["coverage"],
@@ -527,6 +551,10 @@ class ActiveRuntimeIntegrationTests(unittest.TestCase):
         self.assertFalse(matrix["without_cpi"]["court_speed"])
         self.assertTrue(matrix["without_odds"]["action_map"])
         self.assertFalse(matrix["without_odds"]["report_null"])
+        self.assertFalse(matrix["without_odds"]["pricing_available"])
+        self.assertFalse(matrix["without_odds"]["paper_eligible"])
+        self.assertFalse(matrix["without_cpi"]["paper_eligible"])
+        self.assertFalse(matrix["without_h2h"]["paper_eligible"])
 
         competitive_davis = competition_evidence.weighted_binary_record(
             [
