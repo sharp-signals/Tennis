@@ -9,16 +9,16 @@
   },
   "evaluation": {
     "market_only": {
-      "accuracy_pct": 67.66,
-      "brier_score": 0.200928,
-      "log_loss": 0.584875,
-      "sample_size": 201
+      "accuracy_pct": 68.45,
+      "brier_score": 0.199256,
+      "log_loss": 0.581371,
+      "sample_size": 206
     },
     "market_plus_sharp": {
-      "accuracy_pct": 67.87,
-      "brier_score": 0.209969,
-      "log_loss": 0.607939,
-      "sample_size": 305
+      "accuracy_pct": 68.49,
+      "brier_score": 0.207886,
+      "log_loss": 0.603115,
+      "sample_size": 311
     }
   },
   "evaluation_by_cohort": {
@@ -93,16 +93,16 @@
     },
     "market-residual-v0.3:f46ec3e2aa6f92a9": {
       "market_only": {
-        "accuracy_pct": 67.66,
-        "brier_score": 0.200928,
-        "log_loss": 0.584875,
-        "sample_size": 201
+        "accuracy_pct": 68.45,
+        "brier_score": 0.199256,
+        "log_loss": 0.581371,
+        "sample_size": 206
       },
       "market_plus_sharp": {
-        "accuracy_pct": 69.49,
-        "brier_score": 0.206726,
-        "log_loss": 0.601154,
-        "sample_size": 272
+        "accuracy_pct": 70.14,
+        "brier_score": 0.204466,
+        "log_loss": 0.595904,
+        "sample_size": 278
       },
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3"
@@ -55168,7 +55168,7 @@
       },
       "match_format": "BO3",
       "match_id": 1253,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -55269,7 +55269,7 @@
       },
       "match_format": "BO3",
       "match_id": 1266,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [
         {
           "closing_market_observation_id": "8f4163b02c8c4703d3ba01b1c3cd7dfd2f373f26d125b3dcafa2bb4c952d80b0",
@@ -55382,7 +55382,7 @@
       },
       "match_format": "BO3",
       "match_id": 1327,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [
         {
           "closing_market_observation_id": "259d20b7e91a105433d2fe4310fa6bcf9207f95ec56c65b891408662b7c2c2f9",
@@ -55942,7 +55942,7 @@
       },
       "match_format": "BO3",
       "match_id": 1240,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [
         {
           "closing_market_observation_id": "024dc5182230558fdc02ec49c137a1b4dad00b58a79cb6f42928b7d2e41bb1ea",
@@ -56051,7 +56051,7 @@
       },
       "match_format": "BO3",
       "match_id": 1248,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -56601,7 +56601,7 @@
       },
       "match_format": "BO3",
       "match_id": 1329,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [
         {
           "closing_market_observation_id": null,
@@ -61509,9 +61509,9 @@
       "sample_size": 50
     }
   },
-  "generated_at_utc": "2026-10-10T05:47:52+00:00",
+  "generated_at_utc": "2026-10-10T09:19:19+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 16051,
+  "observation_count": 16057,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
