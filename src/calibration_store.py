@@ -110,6 +110,9 @@ def build_snapshot(payload: Mapping[str, Any], result: Mapping[str, Any] | None 
         "tournament": payload.get("tournament"),
         "tier": payload.get("tier"),
         "tournament_coverage": copy.deepcopy(payload.get("tournament_coverage")),
+        "competition_evidence_policy": copy.deepcopy(
+            payload.get("competition_evidence_policy")
+        ),
         "surface": payload.get("surface"),
         "match_format": _match_format(payload),
         "commence_time_utc": payload.get("commence_time_utc"),

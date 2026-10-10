@@ -23,6 +23,7 @@ nada — não faz sentido mandar uma mensagem vazia.
 
 from __future__ import annotations
 
+import copy
 import html
 import json
 import os
@@ -54,6 +55,7 @@ from .config import (
     SERVE_RETURN_STATS_MATCHES,
     SKIP_ANALYSIS_ODDS_THRESHOLD,
 )
+from . import competition_evidence
 from . import fetch_data
 from . import forward_only
 from . import run_metrics
@@ -108,6 +110,162 @@ def _apply_discovery_health_status(status: str, diagnostics: dict) -> str:
         return "degraded"
     return status
 
+
+def _competition_delivery_identity(
+    payload: Mapping, fallback_date: str,
+) -> dict:
+    """Return the immutable report identity for a first policy delivery."""
+    recovery = payload.get("_competition_delivery_recovery")
+    delivery = payload.get("_competition_delivery")
+    if not isinstance(delivery, Mapping) and isinstance(recovery, Mapping):
+        delivery = recovery.get("delivery")
+    delivery = dict(delivery) if isinstance(delivery, Mapping) else {}
+    report_date = str(delivery.get("report_date_utc") or fallback_date)
+    filename = delivery.get("report_filename")
+    if not filename:
+        slug = _slugify(
+            f"{payload['player_a']}-vs-{payload['player_b']}-"
+            f"{report_date}-{payload.get('report_id')}"
+        )
+        filename = f"{slug}.html"
+    else:
+        filename = Path(str(filename)).name
+        slug = filename[:-5] if filename.endswith(".html") else filename
+    return {
+        "schema_version": "competition-delivery-identity-v1",
+        "report_date_utc": report_date,
+        "report_filename": filename,
+        "slug": slug,
+    }
+
+
+def _frozen_delivery_complete(recovery: Mapping | None) -> bool:
+    """A persisted HTML proves the ordered snapshot -> PAPER -> HTML delivery."""
+    if not isinstance(recovery, Mapping):
+        return False
+    frozen = recovery.get("payload")
+    if not isinstance(frozen, Mapping):
+        return False
+    identity = _competition_delivery_identity(
+        {
+            **dict(frozen),
+            "_competition_delivery_recovery": recovery,
+        },
+        str(frozen.get("analyzed_at_utc") or "")[:10],
+    )
+    report_path = (
+        Path(SITE_OUTPUT_DIR)
+        / SITE_REPORTS_SUBDIR
+        / identity["report_filename"]
+    )
+    return report_path.is_file()
+
+
+def _write_report_artifact(
+    payload: dict,
+    result: dict,
+    reports_dir: str | Path,
+    fallback_date: str,
+) -> dict:
+    """Writer used by run(); recovery keeps one path across UTC days."""
+    identity = _competition_delivery_identity(payload, fallback_date)
+    report_path = Path(reports_dir) / identity["report_filename"]
+    existed = report_path.is_file()
+    if not existed:
+        html_page = build_report_html(payload, result)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with report_path.open("x", encoding="utf-8") as handle:
+                handle.write(html_page)
+        except FileExistsError:
+            existed = True
+    return {
+        **identity,
+        "local_path": str(report_path),
+        "url": (
+            f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/"
+            f"{identity['report_filename']}"
+        ),
+        "created": not existed,
+        "already_complete": existed,
+    }
+
+
+def _freeze_report_context(
+    payload: dict,
+    *,
+    system_accuracy: Mapping | None,
+    paper_history: Mapping | None,
+    green_strong_history: Mapping | None,
+) -> None:
+    """Freeze every mutable report-only aggregate before first snapshot."""
+    policy = payload.get("competition_evidence_policy") or {}
+    if policy.get("active") is not True:
+        return
+    for key, value in (
+        ("system_accuracy", system_accuracy),
+        ("paper_history", paper_history),
+        ("green_strong_history", green_strong_history),
+    ):
+        if value:
+            payload[key] = copy.deepcopy(value)
+
+
+def _read_json_mapping(path: Path) -> dict | None:
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+        return value if isinstance(value, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def _freeze_competition_delivery(
+    snapshot: dict, payload: dict, result: dict,
+) -> None:
+    """Persist the immutable inputs and path of the first policy delivery."""
+    policy = payload.get("competition_evidence_policy") or {}
+    if not (
+        policy.get("active") is True
+        and policy.get("version") == competition_evidence.POLICY_VERSION
+        and policy.get("config_hash") == competition_evidence.CONFIG_HASH
+    ):
+        return
+    report_date = str(
+        payload.get("analyzed_at_utc")
+        or snapshot.get("analyzed_at_utc")
+        or payload.get("commence_time_utc")
+        or ""
+    )[:10]
+    delivery = _competition_delivery_identity(payload, report_date)
+    payload["_competition_delivery"] = copy.deepcopy(delivery)
+    frozen_payload = copy.deepcopy(payload)
+    frozen_payload.pop("_competition_delivery_recovered", None)
+    snapshot["delivery_recovery"] = {
+        "schema_version": "competition-delivery-recovery-v2",
+        "delivery": copy.deepcopy(delivery),
+        "payload": frozen_payload,
+        "result": copy.deepcopy(result),
+    }
+
+
+def _recover_competition_delivery(payload: dict) -> tuple[dict, dict] | None:
+    """Recover missing first-delivery writers without recomputing analysis."""
+    recovery = payload.get("_competition_delivery_recovery")
+    if not isinstance(recovery, dict):
+        return None
+    frozen_payload = copy.deepcopy(recovery.get("payload"))
+    frozen_result = copy.deepcopy(recovery.get("result"))
+    if not isinstance(frozen_payload, dict) or not isinstance(frozen_result, dict):
+        raise RuntimeError("COMPETITION_DELIVERY_RECOVERY_INVALID")
+    delivery = recovery.get("delivery")
+    if isinstance(delivery, Mapping):
+        frozen_payload["_competition_delivery"] = copy.deepcopy(delivery)
+    frozen_payload["_competition_delivery_recovered"] = True
+    frozen_payload["competition_evidence_cutover"] = payload.get(
+        "competition_evidence_cutover"
+    )
+    return frozen_payload, frozen_result
 
 def _trigger_context() -> dict:
     slot = os.environ.get("FENZOBOT_TRIGGER_SLOT", "").strip() or "manual"
@@ -614,9 +772,8 @@ def _compute_features(payload: dict) -> dict:
     feats = {}
 
     def _pct(d):
-        if isinstance(d, dict) and d.get("matches"):
-            return 100.0 * d["wins"] / d["matches"]
-        return None
+        value, _sample = competition_evidence.record_rate(d)
+        return value
 
     def _edge(va, vb, nome, unidade="%", amostra_a=None, amostra_b=None):
         """Regista a vantagem (diferença) entre A e B numa métrica."""
@@ -684,10 +841,18 @@ def _compute_features(payload: dict) -> dict:
         }
 
     # Forma recente (win%)
-    _edge(_pct(payload.get("recent_form_a")), _pct(payload.get("recent_form_b")),
-          "forma_recente",
-          amostra_a=(payload.get("recent_form_a") or {}).get("matches"),
-          amostra_b=(payload.get("recent_form_b") or {}).get("matches"))
+    _form_a = payload.get("recent_form_a")
+    _form_b = payload.get("recent_form_b")
+    _form_pct_a, _form_sample_a = competition_evidence.record_rate(_form_a)
+    _form_pct_b, _form_sample_b = competition_evidence.record_rate(_form_b)
+    _edge(
+        _form_pct_a, _form_pct_b, "forma_recente",
+        amostra_a=_form_sample_a, amostra_b=_form_sample_b,
+    )
+    competition_evidence.annotate_feature(
+        feats.get("forma_recente"), [_form_a, _form_b],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (score
     # graduado vs top-10/20/50, ver compute_recent_quality_wins). Não usa
@@ -696,14 +861,22 @@ def _compute_features(payload: dict) -> dict:
     _qa = payload.get("recent_quality_a") or {}
     _qb = payload.get("recent_quality_b") or {}
     if _qa.get("matches") is not None and _qb.get("matches") is not None:
-        _sa, _sb = _qa.get("score", 0), _qb.get("score", 0)
-        feats["qualidade_vitorias"] = {
-            "lider": a if _sa > _sb else (b if _sb > _sa else "igual"),
-            "valor_a": _sa, "valor_b": _sb,
-            "top10_a": _qa.get("top10_wins", 0), "top10_b": _qb.get("top10_wins", 0),
-            "top20_a": _qa.get("top20_wins", 0), "top20_b": _qb.get("top20_wins", 0),
-            "top50_a": _qa.get("top50_wins", 0), "top50_b": _qb.get("top50_wins", 0),
-        }
+        _qa_weighted = isinstance(_qa.get("competition_evidence"), dict)
+        _qb_weighted = isinstance(_qb.get("competition_evidence"), dict)
+        _sa = _qa.get("weighted_score") if _qa_weighted else _qa.get("score", 0)
+        _sb = _qb.get("weighted_score") if _qb_weighted else _qb.get("score", 0)
+        if _sa is not None and _sb is not None:
+            feats["qualidade_vitorias"] = {
+                "lider": a if _sa > _sb else (b if _sb > _sa else "igual"),
+                "valor_a": _sa, "valor_b": _sb,
+                "top10_a": _qa.get("top10_wins", 0), "top10_b": _qb.get("top10_wins", 0),
+                "top20_a": _qa.get("top20_wins", 0), "top20_b": _qb.get("top20_wins", 0),
+                "top50_a": _qa.get("top50_wins", 0), "top50_b": _qb.get("top50_wins", 0),
+            }
+        competition_evidence.annotate_feature(
+            feats.get("qualidade_vitorias"), [_qa, _qb],
+            active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+        )
 
     # REMOVIDO (14/08/2026, a pedido): "época atual" (ano civil inteiro)
     # ficou redundante como fator do motor com a chegada de forma_recente
@@ -723,7 +896,12 @@ def _compute_features(payload: dict) -> dict:
     _io_a = (payload.get("indoor_outdoor_a") or {}).get(_ctx)
     _io_b = (payload.get("indoor_outdoor_b") or {}).get(_ctx)
     _edge(_pct(_io_a), _pct(_io_b), "indoor_outdoor",
-          amostra_a=(_io_a or {}).get("matches"), amostra_b=(_io_b or {}).get("matches"))
+          amostra_a=competition_evidence.record_rate(_io_a)[1],
+          amostra_b=competition_evidence.record_rate(_io_b)[1])
+    competition_evidence.annotate_feature(
+        feats.get("indoor_outdoor"), [_io_a, _io_b],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     # Velocidade do piso: só hard com classificação factual do torneio e
     # amostra bilateral mínima. Uma amostra fina continua visível como
@@ -742,7 +920,12 @@ def _compute_features(payload: dict) -> dict:
         _eligible_b = _cs_b.get("eligible_for_index", _cs_b.get("matches", 0) >= fetch_data.COURT_PACE_MIN_MATCHES)
         if _eligible_a and _eligible_b:
             _edge(_pct(_cs_a), _pct(_cs_b), "velocidade_piso",
-                  amostra_a=_cs_a.get("matches"), amostra_b=_cs_b.get("matches"))
+                  amostra_a=competition_evidence.record_rate(_cs_a)[1],
+                  amostra_b=competition_evidence.record_rate(_cs_b)[1])
+            competition_evidence.annotate_feature(
+                feats.get("velocidade_piso"), [_cs_a, _cs_b],
+                active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+            )
         else:
             _minimum = fetch_data.COURT_PACE_MIN_MATCHES
             feats["velocidade_piso"] = {
@@ -820,11 +1003,20 @@ def _compute_features(payload: dict) -> dict:
     _saz_a = payload.get("sazonal_a")
     _saz_b = payload.get("sazonal_b")
     _edge(_pct(_saz_a), _pct(_saz_b), "sazonal",
-          amostra_a=(_saz_a or {}).get("matches"), amostra_b=(_saz_b or {}).get("matches"))
+          amostra_a=competition_evidence.record_rate(_saz_a)[1],
+          amostra_b=competition_evidence.record_rate(_saz_b)[1])
+    competition_evidence.annotate_feature(
+        feats.get("sazonal"), [_saz_a, _saz_b],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     # Piso (win%) — preferir o rico by_surface, senão surface_stats
     def _surf_pct(rich, basic, surface):
-        bs = (rich or {}).get("by_surface") or {}
+        # Provider aggregates have no match-level competition provenance.
+        policy_active = bool(
+            (payload.get("competition_evidence_policy") or {}).get("active")
+        )
+        bs = {} if policy_active else ((rich or {}).get("by_surface") or {})
         skey = None
         s = (surface or "").lower()
         if "clay" in s: skey = "clay"
@@ -833,7 +1025,7 @@ def _compute_features(payload: dict) -> dict:
         elif "hard" in s: skey = "hard"
         cell = bs.get(skey) if skey else None
         if cell and cell.get("matches"):
-            return cell["win_pct"], cell["matches"]
+            return cell["win_pct"], cell["matches"], cell
         # CORREÇÃO (12/08/2026): `basic` (surface_stats_a/b) é um dicionário
         # POR PISO — {"Hard": {...}, "Clay": {...}, "Grass": {...}} — mas
         # ia inteiro para _pct(), que espera um dict PLANO {"matches",
@@ -847,13 +1039,25 @@ def _compute_features(payload: dict) -> dict:
         if "clay" in s: basic_key = "Clay"
         elif "grass" in s: basic_key = "Grass"
         elif "hard" in s: basic_key = "Hard"
-        basic_cell = (basic or {}).get(basic_key) if basic_key else None
-        p = _pct(basic_cell)
-        return p, (basic_cell or {}).get("matches")
+        basic_cell = (
+            basic
+            if isinstance(basic, dict) and basic.get("matches") is not None
+            else (basic or {}).get(basic_key) if basic_key else None
+        )
+        p, sample = competition_evidence.record_rate(basic_cell)
+        return p, sample, basic_cell
     surf = payload.get("surface")
-    pa, na = _surf_pct(payload.get("rich_stats_a"), payload.get("surface_stats_a"), surf)
-    pb, nb = _surf_pct(payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf)
+    pa, na, source_a = _surf_pct(
+        payload.get("rich_stats_a"), payload.get("surface_stats_a"), surf
+    )
+    pb, nb, source_b = _surf_pct(
+        payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf
+    )
     _edge(pa, pb, "piso", amostra_a=na, amostra_b=nb)
+    competition_evidence.annotate_feature(
+        feats.get("piso"), [source_a, source_b],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     # Serviço — CARREIRA (últimos SERVE_RETURN_STATS_MATCHES=10 jogos) e
     # RECENTE (últimos 2 jogos) como fatores SEPARADOS, com pesos
@@ -861,17 +1065,22 @@ def _compute_features(payload: dict) -> dict:
     # H2H (global vs piso): não se mistura numa média manual, deixa-se o
     # motor pesar os dois de forma consistente com o resto.
     def _serve_metric(side_data):
-        """Devolve valor e amostra; n=0 torna a métrica indisponível."""
+        """Devolve a métrica ajustada quando existe proveniência compatível."""
         data = side_data or {}
-        value = data.get("avg_first_serve_won_pct")
-        sample = data.get("matches_used")
-        if sample is not None:
-            try:
-                sample = int(sample)
-            except (TypeError, ValueError):
-                return None, None
-            if sample <= 0:
+        evidence = data.get("competition_evidence")
+        if isinstance(evidence, dict):
+            if evidence.get("eligible_for_performance") is not True:
+                return None, data.get("weighted_matches_used")
+            value = data.get("weighted_avg_first_serve_won_pct")
+            sample = data.get("weighted_matches_used")
+        else:
+            value = data.get("avg_first_serve_won_pct")
+            sample = data.get("matches_used")
+        try:
+            if sample is None or float(sample) <= 0:
                 return None, sample
+        except (TypeError, ValueError):
+            return None, None
         return value, sample
 
     sa, nsa = _serve_metric(payload.get("serve_return_stats_a"))
@@ -879,12 +1088,22 @@ def _compute_features(payload: dict) -> dict:
     if sa is not None and sb is not None:
         _edge(sa * 100 if sa <= 1 else sa, sb * 100 if sb <= 1 else sb,
               "servico_carreira", amostra_a=nsa, amostra_b=nsb)
+    competition_evidence.annotate_feature(
+        feats.get("servico_carreira"),
+        [payload.get("serve_return_stats_a"), payload.get("serve_return_stats_b")],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     sa_r, nsa_r = _serve_metric(payload.get("serve_return_recent_a"))
     sb_r, nsb_r = _serve_metric(payload.get("serve_return_recent_b"))
     if sa_r is not None and sb_r is not None:
         _edge(sa_r * 100 if sa_r <= 1 else sa_r, sb_r * 100 if sb_r <= 1 else sb_r,
               "servico_recente", amostra_a=nsa_r, amostra_b=nsb_r)
+    competition_evidence.annotate_feature(
+        feats.get("servico_recente"),
+        [payload.get("serve_return_recent_a"), payload.get("serve_return_recent_b")],
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
 
     # Fadiga (menos jogos recentes = mais fresco) — sinal de frescura
     fa = payload.get("fatigue_signal_a") or {}
@@ -902,15 +1121,43 @@ def _compute_features(payload: dict) -> dict:
     # mas nunca era usado por ninguém — dado morto).
     h2h_obj = payload.get("h2h") or {}
     h2h = h2h_obj.get("overall") or {}
+    policy_active = bool(
+        (payload.get("competition_evidence_policy") or {}).get("active")
+    )
     if h2h.get("total_matches"):
-        aw, bw = h2h.get("a_wins", 0), h2h.get("b_wins", 0)
-        feats["h2h"] = {"lider": a if aw > bw else (b if bw > aw else "igual"),
-                        "a_wins": aw, "b_wins": bw, "total": h2h["total_matches"]}
+        if policy_active and isinstance(h2h.get("competition_evidence"), dict):
+            aw = h2h.get("weighted_a_wins")
+            bw = h2h.get("weighted_b_wins")
+            total = h2h.get("weighted_total_matches")
+        else:
+            aw, bw, total = (
+                h2h.get("a_wins", 0), h2h.get("b_wins", 0),
+                h2h.get("total_matches"),
+            )
+        if aw is not None and bw is not None and total:
+            feats["h2h"] = {
+                "lider": a if aw > bw else (b if bw > aw else "igual"),
+                "a_wins": aw, "b_wins": bw, "total": total,
+            }
+            competition_evidence.annotate_feature(
+                feats["h2h"], [h2h],
+                active=policy_active,
+            )
         # NOVO (22/08/2026, a pedido): expor também o H2H ponderado pela
         # recência (calculado em compute_h2h). "lider" ali vem como o nome
         # resolvido do jogador; traduz-se para os rótulos a/b deste
         # relatório. O motor decide o que fazer com isto (report_html.py).
-        _wr = h2h_obj.get("weighted_recency")
+        _h2h_evidence = h2h.get("competition_evidence") or {}
+        _h2h_has_affected_rows = bool(
+            _h2h_evidence.get("laver_excluded")
+            or _h2h_evidence.get("davis_weighted")
+            or _h2h_evidence.get("unresolved")
+        )
+        _wr = (
+            None
+            if policy_active and _h2h_has_affected_rows
+            else h2h_obj.get("weighted_recency")
+        )
         if isinstance(_wr, dict) and _wr.get("lider") not in (None, "igual"):
             # o líder ponderado vem como nome do jogador; mapear para a/b
             _lider_wr = a if _wr["lider"] == payload.get("player_a") else (
@@ -921,9 +1168,24 @@ def _compute_features(payload: dict) -> dict:
                 feats["h2h"]["b_share_pct"] = _wr.get("b_share_pct")
     h2h_surf = h2h_obj.get("on_surface") or {}
     if h2h_surf.get("total_matches"):
-        aw_s, bw_s = h2h_surf.get("a_wins", 0), h2h_surf.get("b_wins", 0)
-        feats["h2h_piso"] = {"lider": a if aw_s > bw_s else (b if bw_s > aw_s else "igual"),
-                             "a_wins": aw_s, "b_wins": bw_s, "total": h2h_surf["total_matches"]}
+        if policy_active and isinstance(h2h_surf.get("competition_evidence"), dict):
+            aw_s = h2h_surf.get("weighted_a_wins")
+            bw_s = h2h_surf.get("weighted_b_wins")
+            total_s = h2h_surf.get("weighted_total_matches")
+        else:
+            aw_s, bw_s, total_s = (
+                h2h_surf.get("a_wins", 0), h2h_surf.get("b_wins", 0),
+                h2h_surf.get("total_matches"),
+            )
+        if aw_s is not None and bw_s is not None and total_s:
+            feats["h2h_piso"] = {
+                "lider": a if aw_s > bw_s else (b if bw_s > aw_s else "igual"),
+                "a_wins": aw_s, "b_wins": bw_s, "total": total_s,
+            }
+            competition_evidence.annotate_feature(
+                feats["h2h_piso"], [h2h_surf],
+                active=policy_active,
+            )
 
     # NOVO (18/08/2026, a pedido): desempenho em rondas decisivas (QF+),
     # carreira toda — não condicionado à ronda de hoje (não temos o nome
@@ -1004,7 +1266,25 @@ def _compute_features(payload: dict) -> dict:
             "amostra_a": _amostra_nivel_a, "amostra_b": _amostra_nivel_b,
         }
 
-    return feats or None
+    policy = payload.get("competition_evidence_policy")
+    active = bool((policy or {}).get("active"))
+    direct_consumers = competition_evidence.direct_consumers_from_payload(payload)
+    guarded, blockers = competition_evidence.guard_features(
+        feats,
+        active=active,
+        tour=payload.get("tour"),
+        direct_consumers=direct_consumers,
+    )
+    if isinstance(policy, dict):
+        policy["feature_blockers"] = blockers
+        policy["factor_impact_matrix"] = competition_evidence.factor_impact_matrix(
+            guarded,
+            active=active,
+            tour=payload.get("tour"),
+            direct_consumers=direct_consumers,
+        )
+        policy["integral_laver_exclusion_claimed"] = False
+    return guarded or None
 
 
 def _factual_key_points(payload: dict) -> list:
@@ -1027,7 +1307,17 @@ def _factual_key_points(payload: dict) -> list:
 
     # Força geral: contar quantas dimensões correlacionadas cada um lidera
     dims = ["forma_recente", "piso", "servico_carreira"]
-    lideres = [f[d]["lider"] for d in dims if f.get(d) and f[d].get("lider") not in (None, "igual")]
+    policy_active = bool(
+        (payload.get("competition_evidence_policy") or {}).get("active")
+    )
+    lideres = [
+        f[d]["lider"] for d in dims
+        if f.get(d)
+        and f[d].get("lider") not in (None, "igual")
+        and competition_evidence.feature_is_eligible(
+            f[d], active=policy_active
+        )
+    ]
     if lideres:
         from collections import Counter
         cont = Counter(lideres)
@@ -1050,13 +1340,21 @@ def _factual_key_points(payload: dict) -> list:
     if fr and fr.get("mais_fresco") != "igual":
         pts.append(f"**{fr['mais_fresco']}** mais fresco ({fr['jogos_7d_a']} vs {fr['jogos_7d_b']} jogos nos últimos 7 dias).")
 
-    # Recuperação após 1º set (dado rico com valor de trading)
-    ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
-    rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
-    if ra.get("first_set_win_then_win_pct") is not None:
-        pts.append(f"{a} fecha {ra['first_set_win_then_win_pct']}% dos jogos após ganhar o 1º set.")
-    if rb.get("first_set_lose_then_win_pct") is not None:
-        pts.append(f"{b} recupera {rb['first_set_lose_then_win_pct']}% quando perde o 1º set.")
+    # Recuperação após 1º set: só é sugestão quando a origem está separável.
+    blockers = {
+        item.get("feature")
+        for item in (
+            (payload.get("competition_evidence_policy") or {}).get("feature_blockers")
+            or []
+        )
+    }
+    if not {"recuperacao_sets", "comeback_set1"}.intersection(blockers):
+        ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
+        rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+        if ra.get("first_set_win_then_win_pct") is not None:
+            pts.append(f"{a} fecha {ra['first_set_win_then_win_pct']}% dos jogos após ganhar o 1º set.")
+        if rb.get("first_set_lose_then_win_pct") is not None:
+            pts.append(f"{b} recupera {rb['first_set_lose_then_win_pct']}% quando perde o 1º set.")
 
     return pts[:6]  # limite
 
@@ -1312,6 +1610,9 @@ def _build_match_payload(match: dict) -> dict:
     tournament = match["tournament_name"]
     surface = match["surface"]
     start = _parse_utc(match["date"])
+    competition_policy = competition_evidence.activation_for_tour(
+        competition_evidence.activation_from_environment(), tour
+    )
 
     # DIAGNÓSTICO (15/08/2026, a pedido — muitos fatores "sem dados" em
     # jogos WTA que não deviam faltar). Se resolve_player_name falhar aqui,
@@ -1449,6 +1750,68 @@ def _build_match_payload(match: dict) -> dict:
         provider="RapidAPI",
         observed_at_utc=identity_observed_at,
     )
+    canonical_id = identity_result.get("canonical_match_instance_id")
+    persisted_snapshot = None
+    if competition_policy.get("active") is True and canonical_id:
+        persisted_snapshot = calibration_store.read_snapshots_by_key(
+            [str(canonical_id)]
+        ).get(str(canonical_id))
+    cutover_gate = competition_evidence.canonical_cutover_gate(
+        identity_result,
+        activation=competition_policy,
+        tour=tour,
+        tournament_id=match.get("tournamentId") or match.get("tournament_id"),
+        player_ids=(
+            match.get("player1Id") or (match.get("player1") or {}).get("id"),
+            match.get("player2Id") or (match.get("player2") or {}).get("id"),
+        ),
+        persisted_snapshot=persisted_snapshot,
+    )
+    if cutover_gate.get("fail_closed") is True:
+        raise RuntimeError(cutover_gate["reason_code"])
+    if cutover_gate.get("recover_frozen_delivery") is True:
+        recovery = copy.deepcopy(persisted_snapshot.get("delivery_recovery"))
+        if _frozen_delivery_complete(recovery):
+            return {
+                **identity_result,
+                "_competition_cutover_skip": True,
+                "competition_evidence_cutover": {
+                    **cutover_gate,
+                    "status": "FIRST_DELIVERY_ALREADY_COMPLETE",
+                    "reason_code": "FIRST_DELIVERY_ALREADY_COMPLETE",
+                },
+                "tour": tour,
+                "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
+                "player_a": player_a,
+                "player_b": player_b,
+            }
+        return {
+            **identity_result,
+            "_competition_delivery_recovery": recovery,
+            "competition_evidence_cutover": cutover_gate,
+            "tour": tour,
+            "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
+            "player_a": player_a,
+            "player_b": player_b,
+        }
+    if cutover_gate.get("skip_new_decision") is True:
+        return {
+            **identity_result,
+            "_competition_cutover_skip": True,
+            "competition_evidence_cutover": cutover_gate,
+            "tour": tour,
+            "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
+            "player_a": player_a,
+            "player_b": player_b,
+        }
+    if cutover_gate.get("apply_policy") is not True:
+        competition_policy = {
+            **competition_policy,
+            "active": False,
+            "status": cutover_gate.get("status") or "CANONICAL_IDENTITY_UNAVAILABLE",
+            "scope_reason_code": cutover_gate.get("reason_code"),
+        }
+
     match_for_ledger = dict(match)
     match_for_ledger.update(identity_result)
 
@@ -1551,32 +1914,61 @@ def _build_match_payload(match: dict) -> dict:
     # Dados básicos: do histórico (ATP, via TennisMyLife). Para WTA — ou
     # sempre que o histórico não tiver o jogador — usamos a RapidAPI, que
     # cobre ambos os tours e não depende do Sackmann (que anda partido p/ WTA).
-    h2h = fetch_data.compute_h2h(history, player_a, player_b, surface)
-    form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES,
-                                            window_days=RECENT_FORM_WINDOW_DAYS)
-    form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES,
-                                            window_days=RECENT_FORM_WINDOW_DAYS)
-    season_a = fetch_data.compute_current_season_record(history, player_a)
-    season_b = fetch_data.compute_current_season_record(history, player_b)
-    surface_a = fetch_data.compute_surface_stats(history, player_a)
-    surface_b = fetch_data.compute_surface_stats(history, player_b)
+    h2h = fetch_data.compute_h2h(
+        history, player_a, player_b, surface,
+        competition_policy=competition_policy,
+    )
+    form_a = fetch_data.compute_recent_form(
+        history, player_a, RECENT_FORM_MATCHES,
+        window_days=RECENT_FORM_WINDOW_DAYS,
+        competition_policy=competition_policy,
+    )
+    form_b = fetch_data.compute_recent_form(
+        history, player_b, RECENT_FORM_MATCHES,
+        window_days=RECENT_FORM_WINDOW_DAYS,
+        competition_policy=competition_policy,
+    )
+    season_a = fetch_data.compute_current_season_record(
+        history, player_a, competition_policy=competition_policy,
+    )
+    season_b = fetch_data.compute_current_season_record(
+        history, player_b, competition_policy=competition_policy,
+    )
+    surface_a = fetch_data.compute_surface_stats(
+        history, player_a, competition_policy=competition_policy,
+    )
+    surface_b = fetch_data.compute_surface_stats(
+        history, player_b, competition_policy=competition_policy,
+    )
     # NOVO (14/08/2026, a pedido): indoor vs outdoor
-    indoor_outdoor_a = fetch_data.compute_indoor_outdoor_stats(history, player_a)
-    indoor_outdoor_b = fetch_data.compute_indoor_outdoor_stats(history, player_b)
+    indoor_outdoor_a = fetch_data.compute_indoor_outdoor_stats(
+        history, player_a, competition_policy=competition_policy,
+    )
+    indoor_outdoor_b = fetch_data.compute_indoor_outdoor_stats(
+        history, player_b, competition_policy=competition_policy,
+    )
     # NOVO (14/08/2026, a pedido): taxa de vitória em tie-breaks
     tiebreak_a = fetch_data.compute_tiebreak_stats(history, player_a)
     tiebreak_b = fetch_data.compute_tiebreak_stats(history, player_b)
     # NOVO (14/08/2026, a pedido): padrão sazonal (mesma altura do ano, anos anteriores)
-    sazonal_a = fetch_data.compute_seasonal_form(history, player_a)
-    sazonal_b = fetch_data.compute_seasonal_form(history, player_b)
+    sazonal_a = fetch_data.compute_seasonal_form(
+        history, player_a, competition_policy=competition_policy,
+    )
+    sazonal_b = fetch_data.compute_seasonal_form(
+        history, player_b, competition_policy=competition_policy,
+    )
     # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (vs
     # top-10/20/50), gratuito (histórico local, sem chamadas API) — capta
     # um jogador "em explosão" que a forma recente (win/loss simples) não
     # mostra bem.
-    quality_a = fetch_data.compute_recent_quality_wins(history, player_a,
-                                                        window_days=RECENT_QUALITY_WINDOW_DAYS)
-    quality_b = fetch_data.compute_recent_quality_wins(history, player_b,
-                                                        window_days=RECENT_QUALITY_WINDOW_DAYS)
+    quality_a = fetch_data.compute_recent_quality_wins(
+        history, player_a, window_days=RECENT_QUALITY_WINDOW_DAYS,
+        competition_policy=competition_policy,
+    )
+    quality_b = fetch_data.compute_recent_quality_wins(
+        history, player_b, window_days=RECENT_QUALITY_WINDOW_DAYS,
+        competition_policy=competition_policy,
+    )
 
     # Guardar os valores do Sackmann ANTES de a RapidAPI os sobrepor, para
     # comparar as duas fontes e registar discrepâncias. A RapidAPI ganha
@@ -1613,7 +2005,10 @@ def _build_match_payload(match: dict) -> dict:
             h2h_history = _compact_match_history(
                 _h2h_matches, limit=10, tour=tour, resolve_tournaments=True,
             )
-            _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface, tour=tour)
+            _h2h_api = fetch_data.compute_h2h_from_api(
+                _h2h_matches, _pid_a, _pid_b, surface, tour=tour,
+                competition_policy=competition_policy,
+            )
             if _h2h_api:
                 h2h = _h2h_api
             # forma/época/piso via jogos recentes da API
@@ -1628,8 +2023,14 @@ def _build_match_payload(match: dict) -> dict:
             _recent_b_cache = fetch_data.fetch_player_recent_matches(
                 tour, _pid_b, force_refresh=True,
             )
-            _fa = fetch_data.compute_form_from_recent(_recent_a_cache, _pid_a, start, RECENT_FORM_MATCHES, surface)
-            _fb = fetch_data.compute_form_from_recent(_recent_b_cache, _pid_b, start, RECENT_FORM_MATCHES, surface)
+            _fa = fetch_data.compute_form_from_recent(
+                _recent_a_cache, _pid_a, start, RECENT_FORM_MATCHES, surface,
+                competition_policy=competition_policy,
+            )
+            _fb = fetch_data.compute_form_from_recent(
+                _recent_b_cache, _pid_b, start, RECENT_FORM_MATCHES, surface,
+                competition_policy=competition_policy,
+            )
             # PRIORIDADE À RAPIDAPI (fonte fiável). Só cai no valor anterior
             # (Sackmann) se a RapidAPI não tiver o dado. Antes era ao contrário
             # — e o Sackmann partido, por devolver valores errados mas não
@@ -1687,13 +2088,23 @@ def _build_match_payload(match: dict) -> dict:
             fatigue_b = _fb
     injury_a = fetch_data.compute_injury_signal(history, player_a, INJURY_SIGNAL_LOOKBACK_MATCHES)
     injury_b = fetch_data.compute_injury_signal(history, player_b, INJURY_SIGNAL_LOOKBACK_MATCHES)
-    serve_a = fetch_data.compute_serve_return_stats(history, player_a, SERVE_RETURN_STATS_MATCHES)
-    serve_b = fetch_data.compute_serve_return_stats(history, player_b, SERVE_RETURN_STATS_MATCHES)
+    serve_a = fetch_data.compute_serve_return_stats(
+        history, player_a, SERVE_RETURN_STATS_MATCHES,
+        competition_policy=competition_policy,
+    )
+    serve_b = fetch_data.compute_serve_return_stats(
+        history, player_b, SERVE_RETURN_STATS_MATCHES,
+        competition_policy=competition_policy,
+    )
     # NOVO (14/08/2026, a pedido): serviço nos ÚLTIMOS 2 JOGOS especificamente
     # — só funciona para ATP (precisa das colunas w_ace/w_df/etc, que a WTA
     # não tem localmente); fica "sem dados" nesse caso, sem inventar.
-    serve_recent_a = fetch_data.compute_serve_return_stats(history, player_a, 2)
-    serve_recent_b = fetch_data.compute_serve_return_stats(history, player_b, 2)
+    serve_recent_a = fetch_data.compute_serve_return_stats(
+        history, player_a, 2, competition_policy=competition_policy,
+    )
+    serve_recent_b = fetch_data.compute_serve_return_stats(
+        history, player_b, 2, competition_policy=competition_policy,
+    )
     # Ranking: preferir o oficial ao vivo (via matchstat, cache semanal),
     # que está sempre atualizado; cair para o derivado do histórico se o
     # jogador não estiver na lista oficial (ex: fora do ranking, ou nome
@@ -1742,8 +2153,14 @@ def _build_match_payload(match: dict) -> dict:
     # desempenho por superfície, sem velocidade inventada.
     _cpi_hoje = fetch_data.court_pace_context(tournament, start.year, surface)
     _cpi_bucket_hoje = _cpi_hoje.get("bucket") if _cpi_hoje.get("status") == "available" else None
-    court_speed_a = fetch_data.compute_court_speed_form(history, player_a, _cpi_bucket_hoje)
-    court_speed_b = fetch_data.compute_court_speed_form(history, player_b, _cpi_bucket_hoje)
+    court_speed_a = fetch_data.compute_court_speed_form(
+        history, player_a, _cpi_bucket_hoje,
+        competition_policy=competition_policy,
+    )
+    court_speed_b = fetch_data.compute_court_speed_form(
+        history, player_b, _cpi_bucket_hoje,
+        competition_policy=competition_policy,
+    )
 
     # Onda 2 (dados ricos por jogador): desempenho vs qualidade do
     # adversário (perf-breakdown) + métricas de resposta de carreira
@@ -1849,11 +2266,11 @@ def _build_match_payload(match: dict) -> dict:
         # -- Serviço/resposta --
         _srv_a = fetch_data.compute_serve_return_from_recent_stats(_rs_a) if _rs_a else None
         _srv_b = fetch_data.compute_serve_return_from_recent_stats(_rs_b) if _rs_b else None
-        if _srv_a:
+        if _srv_a and not competition_policy.get("active"):
             if serve_a and _fontes_divergem_serve(serve_a, _srv_a):
                 _discrepancias.append("serviço")
             serve_a = _srv_a
-        if _srv_b:
+        if _srv_b and not competition_policy.get("active"):
             serve_b = _srv_b
         # -- Sets decisivos --
         # O recent-stats não declara BO3/BO5. Mantemos a estatística local
@@ -1973,11 +2390,11 @@ def _build_match_payload(match: dict) -> dict:
         },
         "service_return": {
             "a": _coverage(
-                serve_a, "rapidapi_recent_stats" if _srv_a else "local_history",
+                serve_a, "rapidapi_recent_stats" if _srv_a and not competition_policy.get("active") else "local_history",
                 unavailable_reason="service_return_unavailable",
             ),
             "b": _coverage(
-                serve_b, "rapidapi_recent_stats" if _srv_b else "local_history",
+                serve_b, "rapidapi_recent_stats" if _srv_b and not competition_policy.get("active") else "local_history",
                 unavailable_reason="service_return_unavailable",
             ),
         },
@@ -2059,6 +2476,9 @@ def _build_match_payload(match: dict) -> dict:
         "data_coverage": data_coverage,
         "report_data_status": report_data_status,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
+        "competition_evidence_policy": competition_evidence.policy_metadata(
+            competition_policy
+        ),
         "h2h": h2h,
         "h2h_history": h2h_history,
         "recent_history_a": recent_history_a,
@@ -2136,6 +2556,17 @@ def _build_match_payload(match: dict) -> dict:
     # interpreta). Adiciona 'features' com quem lidera cada dimensão e a
     # magnitude — o Claude recebe as comparações prontas.
     payload["features"] = _compute_features(payload)
+    policy_blockers = (
+        payload.get("competition_evidence_policy") or {}
+    ).get("feature_blockers") or []
+    if competition_policy.get("active") is True and policy_blockers:
+        payload["report_data_status"] = "DEGRADED"
+        payload.setdefault("data_coverage", {})["competition_evidence"] = {
+            "status": "DEGRADED",
+            "source": "match_level_policy",
+            "reason": "competition_evidence_not_separable",
+            "blocked_features": len(policy_blockers),
+        }
     # Motor de divergência V3: calcula UMA vez aqui e partilha via payload
     # com o analyze (Claude escreve alinhado) e o report_html (mostra o mesmo).
     # Fonte única de verdade — bola, veredicto e Model vs Market coerentes.
@@ -2509,6 +2940,11 @@ def run() -> None:
         try:
             with fetch_data.rapidapi_call_context(match.get("tier")):
                 payload = _build_match_payload(match)
+            if payload.get("_competition_cutover_skip") is True:
+                return None, None, payload["competition_evidence_cutover"]
+            recovered = _recover_competition_delivery(payload)
+            if recovered is not None:
+                return recovered, None, None
             # Saltar a análise do Claude para SUPERFAVORITOS (odd <= 1.09):
             # a esse preço não há valor de mercado a observar, por isso gastar
             # tokens do Claude não se justifica. O jogo continua a sair no
@@ -2518,7 +2954,7 @@ def run() -> None:
             odds_vals = [v for v in odds.values() if isinstance(v, (int, float)) and v > 1]
             if odds_vals and min(odds_vals) <= SKIP_ANALYSIS_ODDS_THRESHOLD:
                 result = _factual_only_result(payload)
-                return (payload, result), None
+                return (payload, result), None, None
             stage = "analysis"
             result = analyze_match(payload)
             stage = "post_processing"
@@ -2526,7 +2962,7 @@ def run() -> None:
             # Opção B: os pontos-chave factuais são gerados pelo BOT (não pelo
             # Claude, que já não os escreve). Injetamos aqui a partir das features.
             result["key_points"] = _factual_key_points(payload)
-            return (payload, result), None
+            return (payload, result), None, None
         except Exception as exc:
             p1 = (match.get("player1") or {}).get("name", "?")
             p2 = (match.get("player2") or {}).get("name", "?")
@@ -2543,17 +2979,20 @@ def run() -> None:
                 "category": f"{stage}:{type(exc).__name__}",
                 "match": f"{p1} vs {p2}",
                 "message": str(exc)[:200],
-            }
+            }, None
 
     run_metrics.update_context(phase="analysis")
     analyses = []
     analysis_errors = []
+    cutover_skips = []
     with ThreadPoolExecutor(max_workers=MATCH_PROCESSING_WORKERS) as executor:
-        for res, error in executor.map(_process_one, process_targets):
+        for res, error, cutover_skip in executor.map(_process_one, process_targets):
             if res is not None:
                 analyses.append(res)
             if error is not None:
                 analysis_errors.append(error)
+            if cutover_skip is not None:
+                cutover_skips.append(cutover_skip)
 
     unresolved_players: dict[str, dict] = {}
     affected_matches = 0
@@ -2586,8 +3025,9 @@ def run() -> None:
     for error in analysis_errors:
         category = error["category"]
         error_counts[category] = error_counts.get(category, 0) + 1
+    decision_targets = len(process_targets) - len(cutover_skips)
     processing_status, processing_ratio = _classify_processing_status(
-        len(process_targets), len(analyses)
+        decision_targets, len(analyses)
     )
     processing_status = _apply_discovery_health_status(
         processing_status, discovery_diagnostics,
@@ -2595,6 +3035,7 @@ def run() -> None:
     run_metrics.update_context(
         processed=len(analyses),
         analysis_failed=len(analysis_errors),
+        competition_existing_decisions_preserved=len(cutover_skips),
         processing_ratio=round(processing_ratio, 4),
         analysis_error_counts=dict(sorted(error_counts.items())),
         analysis_error_samples=analysis_errors[:5],
@@ -2640,6 +3081,19 @@ def run() -> None:
             "parcial foi publicado. Consulta o contador nos logs."
         )
 
+    if not analyses and cutover_skips and not analysis_errors:
+        run_metrics.update_context(
+            status="success",
+            phase="complete",
+            reason="all_targets_already_have_canonical_pregame_snapshot",
+        )
+        fetch_data.persist_rapidapi_usage(status="success", matches=0)
+        print(
+            "[competition-evidence] decisões canónicas existentes preservadas; "
+            "nenhum relatório, snapshot ou PAPER substituído."
+        )
+        return
+
     if not analyses:
         # A3 da auditoria (28/07/2026): terminar "verde" sem qualquer
         # análise concluída esconderia uma falha total (ex: API da
@@ -2666,6 +3120,29 @@ def run() -> None:
             "foi publicado."
         )
 
+    # Congelar os agregados de apresentação antes do primeiro snapshot.
+    # Uma recuperação futura usa exatamente estes inputs, não o estado global
+    # de outro dia. O caminho legacy continua a calcular o contexto no ponto
+    # original, depois de PAPER.
+    try:
+        _frozen_system_accuracy = calibration_store.compute_system_accuracy()
+    except Exception:
+        _frozen_system_accuracy = None
+    try:
+        _frozen_paper_history = paper_trading.compute_history()
+    except Exception:
+        _frozen_paper_history = None
+    _frozen_green_history = _read_json_mapping(
+        green_strong_validation.DEFAULT_OUTPUT_PATH
+    )
+    for payload, _result in analyses:
+        _freeze_report_context(
+            payload,
+            system_accuracy=_frozen_system_accuracy,
+            paper_history=_frozen_paper_history,
+            green_strong_history=_frozen_green_history,
+        )
+
     # Guardar a fotografia factual antes do jogo para calibracao futura.
     # E feita apenas depois de a execucao atingir cobertura publicavel; uma
     # repeticao do bot nao reescreve a fotografia original.
@@ -2681,12 +3158,17 @@ def run() -> None:
             },
             payload.get("market_odds_decimal"),
         )
+        if payload.get("_competition_delivery_recovered") is True:
+            # A primeira fotografia pós-cutover já existe. A recuperação
+            # completa apenas escritores em falta a partir do bundle congelado.
+            continue
         if match_identity_v2.is_canonical(payload):
             snapshot = calibration_store.build_snapshot(payload, result)
             # A mesma identidade liga relatório, snapshot e carteira PAPER.
             payload["snapshot_key"] = snapshot["key"]
             payload["report_id"] = snapshot["report_id"]
             payload["analyzed_at_utc"] = snapshot["analyzed_at_utc"]
+            _freeze_competition_delivery(snapshot, payload, result)
             snapshots.append(snapshot)
         else:
             # O relatório factual continua disponível, sem fabricar um
@@ -2702,7 +3184,11 @@ def run() -> None:
     added_snapshots = calibration_store.upsert_snapshots(snapshots)
     print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
     persisted_snapshots = calibration_store.read_snapshots_by_key(
-        (snapshot["key"] for snapshot in snapshots)
+        (
+            str(payload.get("snapshot_key"))
+            for payload, _result in analyses
+            if payload.get("snapshot_key")
+        )
     )
     linkage_counts = {"linked": 0, "collisions": 0, "unlinked": 0}
     linkage_reasons: dict[str, int] = {}
@@ -2796,29 +3282,31 @@ def run() -> None:
         print(f"[aviso] falha a calcular histórico PAPER: {exc}")
         _paper_history = None
     for payload, result in analyses:
-        if _system_accuracy:
-            payload["system_accuracy"] = _system_accuracy
-        if _paper_history:
-            payload["paper_history"] = _paper_history
-        if green_report:
-            payload["green_strong_history"] = green_report
-        # Versão imutável: a identidade inclui o instante do snapshot. Uma
-        # nova execução cria outro relatório; nunca substitui o original.
-        slug = _slugify(
-            f"{payload['player_a']}-vs-{payload['player_b']}-{today_str}-{payload.get('report_id')}"
+        policy_active = bool(
+            (payload.get("competition_evidence_policy") or {}).get("active")
         )
-        filename = f"{slug}.html"
+        if not policy_active:
+            if _system_accuracy:
+                payload["system_accuracy"] = _system_accuracy
+            if _paper_history:
+                payload["paper_history"] = _paper_history
+            if green_report:
+                payload["green_strong_history"] = green_report
         try:
-            html_page = build_report_html(payload, result)
-            report_path = os.path.join(reports_dir, filename)
-            try:
-                with open(report_path, "x", encoding="utf-8") as f:
-                    f.write(html_page)
-            except FileExistsError:
-                print(f"[relatorio] versão imutável já existe: {filename}")
-            url = f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/{filename}"
-            report_artifacts.append({"url": url, "local_path": report_path})
-            generated_slugs.append((payload, result, slug))
+            artifact = _write_report_artifact(
+                payload, result, reports_dir, today_str
+            )
+            if artifact["already_complete"]:
+                print(
+                    "[relatorio] entrega congelada já concluída: "
+                    f"{artifact['report_filename']}"
+                )
+            url = artifact["url"]
+            report_artifacts.append({
+                "url": url,
+                "local_path": artifact["local_path"],
+            })
+            generated_slugs.append((payload, result, artifact["slug"]))
         except Exception as exc:
             print(f"[aviso] falha a gerar HTML para {payload['player_a']} vs {payload['player_b']}: {exc}")
             url = None

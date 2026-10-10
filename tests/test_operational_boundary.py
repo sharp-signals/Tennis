@@ -327,6 +327,40 @@ class OperationalBoundaryTests(unittest.TestCase):
                 stack.enter_context(patch.object(
                     main.calibration_store, "upsert_snapshots", return_value=9,
                 ))
+                # Keep this pipeline-boundary test independent of the growing
+                # immutable stores. Dedicated tests cover each store; here we
+                # only verify publication semantics and the processing status.
+                stack.enter_context(patch.object(
+                    main.incremental_runs, "record_processed",
+                ))
+                stack.enter_context(patch.object(
+                    main.calibration_store, "read_snapshots_by_key",
+                    return_value={},
+                ))
+                stack.enter_context(patch.object(
+                    main.paper_trading, "build_entries", return_value=[],
+                ))
+                stack.enter_context(patch.object(
+                    main.paper_trading, "append_entries", return_value=0,
+                ))
+                stack.enter_context(patch.object(
+                    main.market_memory_report, "build_and_write",
+                    return_value={"evaluation": {}},
+                ))
+                stack.enter_context(patch.object(
+                    main.green_strong_validation, "build_and_write",
+                    return_value={"metrics": {"sample_size": 0}},
+                ))
+                stack.enter_context(patch.object(
+                    main.market_ledger, "rotate_archives", return_value=[],
+                ))
+                stack.enter_context(patch.object(
+                    main.calibration_store, "compute_system_accuracy",
+                    return_value=None,
+                ))
+                stack.enter_context(patch.object(
+                    main.paper_trading, "compute_history", return_value=None,
+                ))
                 build_report = stack.enter_context(patch.object(
                     main, "build_report_html", return_value="<html></html>",
                 ))
