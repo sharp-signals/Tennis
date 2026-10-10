@@ -232,6 +232,28 @@ class ActiveRuntimeIntegrationTests(unittest.TestCase):
             "ranking_evolution_b": {"change_6m_pct": -4, "change_12m_pct": -2},
             "market_odds_decimal": {"Alpha": 2.05, "Beta": 1.80},
             "surface": "Hard",
+            "fatigue_signal_a": {
+                "fatigue_source": "api_recent",
+                "matches_last_7d": 1,
+                "sets_last_7d": 2,
+                "last_match_sets": 2,
+                "days_since_last_match": 5,
+            },
+            "fatigue_signal_b": {
+                "fatigue_source": "api_recent",
+                "matches_last_7d": 3,
+                "sets_last_7d": 7,
+                "last_match_sets": 3,
+                "days_since_last_match": 8,
+            },
+            "surface_transition_a": {
+                "em_transicao": False,
+                "piso_recente_dominante": "hard",
+            },
+            "surface_transition_b": {
+                "em_transicao": True,
+                "piso_recente_dominante": "clay",
+            },
             "recent_form_a": copy.deepcopy(strong),
             "recent_form_b": copy.deepcopy(weak),
             "recent_quality_a": quality_a,
