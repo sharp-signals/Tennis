@@ -89,6 +89,14 @@ class CompetitionClassificationTests(unittest.TestCase):
         self.assertIsNone(actual["weight"])
         self.assertEqual(actual["status"], "BLOCKED")
 
+    def test_ambiguous_top_level_name_does_not_misclassify_a_player(self):
+        actual = competition_evidence.classify_match({
+            "name": "Davis Smith vs Player B",
+            "match_winner": 101,
+        })
+        self.assertEqual(actual["competition"], "INDIVIDUAL_OR_OTHER")
+        self.assertEqual(actual["weight"], 1.0)
+
     def test_same_sample_is_selected_before_weights_and_raw_counts_remain_integer(self):
         records = [
             {"id": "individual", "tournament_name": "Vienna Open", "won": True},
