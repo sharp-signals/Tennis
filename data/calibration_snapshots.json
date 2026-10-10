@@ -593935,7 +593935,5223 @@
           }
         }
       }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-10T10:46:22+00:00",
+      "canonical_match_instance_id": "mi2_f66e2cd71d2f42968d3d7eb43638c346",
+      "commence_time_utc": "2026-10-12T02:00:00+00:00",
+      "entry_market_observation_id": "225239882e5ba2b1c10816e19b772b63388dcc636829135bc80f489f4648d96c",
+      "event_key": "mi2_f66e2cd71d2f42968d3d7eb43638c346",
+      "identity_evidence": {
+        "event_id": "1313",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "ecfa6fac63d639a3154b937b350b6eafd0befdd774a818f50316f6b703612c3f",
+        "match_id": "1313",
+        "orientation": {
+          "a": 61838,
+          "b": 99691
+        },
+        "provider": "RapidAPI",
+        "round_id": "6",
+        "scheduled_start_utc": "2026-10-12T02:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "61838",
+            "99691"
+          ],
+          "tour": "atp",
+          "tournament_id": "21356"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_f66e2cd71d2f42968d3d7eb43638c346",
+      "legacy_key": "atp:1313",
+      "market_memory_eligible": true,
+      "market_memory_status": "RECORDED",
+      "market_odds_decimal": {
+        "Jiri Lehecka": 1.9,
+        "Rafael Jodar": 1.91
+      },
+      "match_format": "BO3",
+      "match_id": 1313,
+      "metrics": {
+        "deciding_set_stats_a": {
+          "bo3": {
+            "matches_went_the_distance": 67,
+            "win_rate_pct": 52.2,
+            "wins": 35
+          },
+          "bo5": {
+            "matches_went_the_distance": 5,
+            "win_rate_pct": 80.0,
+            "wins": 4
+          }
+        },
+        "deciding_set_stats_b": {
+          "bo3": {
+            "matches_went_the_distance": 13,
+            "win_rate_pct": 69.2,
+            "wins": 9
+          },
+          "bo5": {
+            "matches_went_the_distance": 5,
+            "win_rate_pct": 100.0,
+            "wins": 5
+          }
+        },
+        "divergencia": {
+          "classificacao": {
+            "chave": "forte",
+            "nivel": 3,
+            "texto": "Divergência forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "resiliência em sets",
+              "Rafael Jodar"
+            ],
+            [
+              "recuperação pós-1º set",
+              "Rafael Jodar"
+            ],
+            [
+              "evolução de ranking",
+              "Rafael Jodar"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 45.0,
+              "amostra_a": 173,
+              "amostra_b": 45,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 6.333,
+              "valor_a": 24,
+              "valor_b": 29
+            },
+            "fadiga": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.75,
+              "peso_base_aplicado": 6.75,
+              "peso_base_configurado": 3.75,
+              "peso_efetivo": 3.661,
+              "valor_a": 2,
+              "valor_b": 1
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Jiri Lehecka",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.8,
+              "peso_antes_cap": 5.6,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 5.6,
+              "valor_a": 80.0,
+              "valor_b": 60.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": "amostra insuficiente (1 jogo)",
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "amostra": 1,
+              "confianca_amostra": 0.408,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.5,
+              "peso_antes_cap": 2.449,
+              "peso_base_aplicado": 12.0,
+              "peso_base_configurado": 12.0,
+              "peso_efetivo": 2.449,
+              "valor_a": 0,
+              "valor_b": 1
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 59.3,
+              "valor_b": 72.5
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 1,
+              "valor_b": 1
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.847,
+              "peso_antes_cap": 2.032,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.032,
+              "valor_a": 57.8,
+              "valor_b": 70.5
+            },
+            "mudanca_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "nenhum em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "disponivel": true,
+              "lider": "Jiri Lehecka",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 7,
+              "valor_a": 37.1,
+              "valor_b": 36.4
+            },
+            "piso": {
+              "amostra": 71,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.467,
+              "peso_antes_cap": 3.733,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 3.733,
+              "valor_a": 63.4,
+              "valor_b": 70.4
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 8.0,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 4.339,
+              "valor_a": 6,
+              "valor_b": 12
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.328,
+              "peso_antes_cap": 1.641,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 1.641,
+              "pontos_a": 2310,
+              "pontos_b": 2659,
+              "valor_a": 19.0,
+              "valor_b": 13.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.25,
+              "peso_base_aplicado": 6.25,
+              "peso_base_configurado": 6.25,
+              "peso_efetivo": 6.25,
+              "valor_a": -5.8,
+              "valor_b": 200.1
+            },
+            "recuperacao_sets": {
+              "amostra": 37,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Rafael Jodar",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 9.0,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 8.143,
+              "valor_a": 56,
+              "valor_b": 76
+            },
+            "sazonal": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "servico_carreira": {
+              "amostra": 33.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Jiri Lehecka",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.25,
+              "peso_base_aplicado": 3.25,
+              "peso_base_configurado": 3.25,
+              "peso_efetivo": 3.25,
+              "valor_a": 77.0,
+              "valor_b": 69.0
+            },
+            "servico_recente": {
+              "disponivel": true,
+              "lider": "Jiri Lehecka",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 5,
+              "valor_a": 80.5,
+              "valor_b": 78.8
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Jiri Lehecka",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.524,
+              "valor_a": 54.7,
+              "valor_b": 35.3
+            },
+            "velocidade_piso": {
+              "amostra_a": null,
+              "amostra_b": null,
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico hard comparável no perfil de velocidade",
+              "peso_base_configurado": 10,
+              "valor_a": null,
+              "valor_b": null
+            }
+          },
+          "favorecido": "Rafael Jodar",
+          "forca_indice": 27,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 23,
+          "inclinacao_modelo_b": 77,
+          "indice_evidencia_a": 23,
+          "indice_evidencia_b": 77,
+          "indice_favorece": "Rafael Jodar",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 57.955,
+          "mercado_favorece": "Jiri Lehecka",
+          "n_fatores": 13,
+          "player_a": "Jiri Lehecka",
+          "player_b": "Rafael Jodar",
+          "prob_mercado_a": 50,
+          "prob_mercado_b": 50,
+          "tipo": "direcao"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 173,
+            "amostra_b": 45,
+            "diff": -5,
+            "lider": "Rafael Jodar",
+            "valor_a": 24,
+            "valor_b": 29
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 20.0,
+            "lider": "Jiri Lehecka",
+            "unidade": "%",
+            "valor_a": 80.0,
+            "valor_b": 60.0
+          },
+          "frescura": {
+            "jogos_7d_a": 2,
+            "jogos_7d_b": 1,
+            "mais_fresco": "Rafael Jodar",
+            "sets_7d_a": 5,
+            "sets_7d_b": 3
+          },
+          "h2h": {
+            "a_wins": 0,
+            "b_wins": 1,
+            "lider": "Rafael Jodar",
+            "total": 1
+          },
+          "h2h_piso": {
+            "a_wins": 0,
+            "b_wins": 1,
+            "lider": "Rafael Jodar",
+            "total": 1
+          },
+          "indoor_outdoor": {
+            "amostra_a": 194,
+            "amostra_b": 51,
+            "diff": 13.3,
+            "lider": "Rafael Jodar",
+            "unidade": "%",
+            "valor_a": 59.3,
+            "valor_b": 72.5
+          },
+          "nivel_adversario": {
+            "amostra_a": 70,
+            "amostra_b": 11,
+            "diff": 0.7000000000000028,
+            "lider": "Jiri Lehecka",
+            "valor_a": 37.1,
+            "valor_b": 36.4
+          },
+          "piso": {
+            "amostra_a": 153,
+            "amostra_b": 71,
+            "diff": 7.0,
+            "lider": "Rafael Jodar",
+            "unidade": "%",
+            "valor_a": 63.4,
+            "valor_b": 70.4
+          },
+          "qualidade_vitorias": {
+            "lider": "Rafael Jodar",
+            "top10_a": 1,
+            "top10_b": 0,
+            "top20_a": 2,
+            "top20_b": 3,
+            "top50_a": 3,
+            "top50_b": 9,
+            "valor_a": 6,
+            "valor_b": 12
+          },
+          "ranking": {
+            "diff": 6.0,
+            "lider": "Rafael Jodar",
+            "pontos_a": 2310,
+            "pontos_b": 2659,
+            "valor_a": 19.0,
+            "valor_b": 13.0
+          },
+          "ranking_evolucao": {
+            "diff": -205.85,
+            "lider": "Rafael Jodar",
+            "valor_a": -5.8,
+            "valor_b": 200.1
+          },
+          "servico_carreira": {
+            "amostra_a": 33,
+            "amostra_b": 38,
+            "diff": 8.0,
+            "lider": "Jiri Lehecka",
+            "unidade": "%",
+            "valor_a": 77.0,
+            "valor_b": 69.0
+          },
+          "servico_recente": {
+            "amostra_a": 2,
+            "amostra_b": 2,
+            "diff": 1.7,
+            "lider": "Jiri Lehecka",
+            "unidade": "%",
+            "valor_a": 80.5,
+            "valor_b": 78.8
+          },
+          "tiebreak": {
+            "amostra_a": 106,
+            "amostra_b": 17,
+            "diff": 19.4,
+            "lider": "Jiri Lehecka",
+            "unidade": "%",
+            "valor_a": 54.7,
+            "valor_b": 35.3
+          },
+          "velocidade_piso": {
+            "lider": null,
+            "motivo_exclusao": "sem histórico hard comparável no perfil de velocidade"
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 42,
+          "coverage_pct": 62.0,
+          "excluded_missing_odds": 38,
+          "excluded_missing_odds_wins": 21,
+          "expected_wins": 37.34,
+          "matches": 62,
+          "odds_eligible_matches": 62,
+          "overall_wins": 63,
+          "performance_vs_market": 4.66,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 47,
+          "coverage_pct": 58.0,
+          "excluded_missing_odds": 42,
+          "excluded_missing_odds_wins": 30,
+          "expected_wins": 37.95,
+          "matches": 58,
+          "odds_eligible_matches": 58,
+          "overall_wins": 77,
+          "performance_vs_market": 9.05,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 64.07,
+          "matches": 59,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 63.19,
+          "matches": 57,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 17,
+            "available_weight": 111.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 77.1,
+            "weighted_ratio": 0.771231
+          },
+          "expected_edge_pct": 2.97,
+          "fenzobot_index": 77,
+          "market": {
+            "expected_edge_pct": 2.97,
+            "fair_odd": 1.855,
+            "line": null,
+            "market": "Moneyline Rafael Jodar",
+            "market_type": "Moneyline",
+            "odd": 1.91,
+            "player": "Rafael Jodar",
+            "sharp_estimate_pct": 53.91,
+            "side": "b"
+          },
+          "paper_eligible": true,
+          "paper_markets": [
+            {
+              "expected_edge_pct": 2.97,
+              "fair_odd": 1.855,
+              "line": null,
+              "market": "Moneyline Rafael Jodar",
+              "market_type": "Moneyline",
+              "odd": 1.91,
+              "player": "Rafael Jodar",
+              "sharp_estimate_pct": 53.91,
+              "side": "b"
+            }
+          ],
+          "player": "Rafael Jodar",
+          "reason": "edge positivo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 17,
+              "available_weight": 111.25,
+              "configured_factors": 22,
+              "configured_weight": 144.25,
+              "status": "reduzida",
+              "weighted_pct": 77.1,
+              "weighted_ratio": 0.771231
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.45,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "b",
+          "state": "EDGE_POSITIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 39.0,
+          "bp_saved_pct": 64.0,
+          "first_serve_won_pct": 77.0,
+          "matches": 33,
+          "opponent_first_serve_won_pct": 28.0,
+          "opponent_second_serve_won_pct": 45.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 54.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 44.0,
+          "bp_saved_pct": 64.0,
+          "first_serve_won_pct": 69.0,
+          "matches": 38,
+          "opponent_first_serve_won_pct": 34.0,
+          "opponent_second_serve_won_pct": 52.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 53.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 2310,
+          "rank": 19
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 2659,
+          "rank": 13
+        },
+        "recent_form_a": {
+          "losses": 2,
+          "matches": 10,
+          "wins": 8
+        },
+        "recent_form_b": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 17,
+            "available_weight": 111.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 77.1,
+            "weighted_ratio": 0.771231
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.45,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 39.0,
+          "avg_break_points_saved_pct": 64.0,
+          "avg_first_serve_in_pct": 63.6,
+          "avg_first_serve_won_pct": 77.0,
+          "avg_second_serve_won_pct": 54.0,
+          "matches_used": 33
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 44.0,
+          "avg_break_points_saved_pct": 64.0,
+          "avg_first_serve_in_pct": 61.8,
+          "avg_first_serve_won_pct": 69.0,
+          "avg_second_serve_won_pct": 53.0,
+          "matches_used": 38
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 21.2,
+            "matches_lost_set1": 85,
+            "matches_lost_set1_won_overall": 18
+          },
+          "bo5": {
+            "comeback_rate_pct": 30.4,
+            "matches_lost_set1": 23,
+            "matches_lost_set1_won_overall": 7
+          }
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 30.8,
+            "matches_lost_set1": 13,
+            "matches_lost_set1_won_overall": 4
+          },
+          "bo5": {
+            "comeback_rate_pct": 42.9,
+            "matches_lost_set1": 7,
+            "matches_lost_set1_won_overall": 3
+          }
+        },
+        "surface_momentum_a": {
+          "delta_pp": 2.7,
+          "recent_win_pct": 66.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": 1.7,
+          "recent_win_pct": 72.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": "GTbets",
+        "cache_age_seconds": 36,
+        "capture_kind": "provider_last_update_verified",
+        "captured_at_utc": "2026-10-10T10:44:34+00:00",
+        "endpoint": "https://api.the-odds-api.com/v4/sports/.../odds",
+        "event_id": "81fb9432657c7d0ee07960efc59890f2",
+        "freshness_status": "FRESH",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 6,
+          "coherent_bookmaker_count": 6,
+          "dispersion_pp": 0.7833,
+          "median_devig_probability_a": 0.5020528160236954,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v4",
+          "pricing_basis": "cross_bookmaker_consensus",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 6
+        },
+        "odds_contract_activation": {
+          "activation_commit": "502906b6d3ca4674444127bf5ef07491e11a738e",
+          "activation_observed_at_utc": "2026-10-10T10:44:34+00:00",
+          "activation_run_id": "38045914202",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": "2026-10-10T10:43:58Z",
+        "provider_timestamp_status": null,
+        "raw_payload_sha256": "fc888439ea9533b31834c6843ef71bdd6ffd55566816c6d09405eec567164dbe",
+        "source": "The Odds API / bookmaker market"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 61838,
+        "name": "Jiri Lehecka"
+      },
+      "player_b": {
+        "id": 99691,
+        "name": "Rafael Jodar"
+      },
+      "pricing": {
+        "adjustment_pp_a": -4.041995441911666,
+        "adjustment_pp_b": 4.041995441911666,
+        "available": true,
+        "candidate": true,
+        "candidate_label": "EDGE EXPERIMENTAL +3.0%",
+        "candidate_player": "Rafael Jodar",
+        "candidate_side": "b",
+        "candidate_status": "experimental_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 57.955,
+          "factor_count": 13,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 1.0,
+          "internal_quality": 1.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.12430447507611164,
+        "expected_edge_b": 0.029695551260722874,
+        "fair_odd_a": 2.169703904979005,
+        "fair_odd_b": 1.8549172108799183,
+        "market_odd_a": 1.9,
+        "market_odd_b": 1.91,
+        "market_overround_pct": 4.988,
+        "market_probability_a": 0.5013123359580053,
+        "market_probability_b": 0.49868766404199477,
+        "market_quote_mode": "operational",
+        "mathematical_edge_side": "b",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": -4.04,
+            "expected_edge_pct": -12.43,
+            "fair_odd": 2.17,
+            "market_odd": 1.9,
+            "market_probability_pct": 50.13,
+            "sharp_estimate_pct": 46.09
+          },
+          "b": {
+            "adjustment_pp": 4.04,
+            "expected_edge_pct": 2.97,
+            "fair_odd": 1.855,
+            "market_odd": 1.91,
+            "market_probability_pct": 49.87,
+            "sharp_estimate_pct": 53.91
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 1.0,
+        "residual_logit": -0.162,
+        "sharp_estimate_a": 0.4608923815388886,
+        "sharp_estimate_b": 0.5391076184611114,
+        "signed_strength": -0.54,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "d18d17d690baf74f4b8e",
+      "surface": "Hard",
+      "tier": "ATP Masters 1000",
+      "tour": "atp",
+      "tournament": "Shanghai Rolex Masters - Shanghai",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP Masters 1000"
+      },
+      "tournament_id": 21356,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-10T10:46:22+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": true,
+            "prospective": true,
+            "reason_codes": [],
+            "selected_player": "Rafael Jodar",
+            "selected_side": "b",
+            "source": {
+              "code_revision": "502906b6d3ca4674444127bf5ef07491e11a738e",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_POSITIVE",
+              "divergence_level": 3,
+              "divergence_type": "direcao",
+              "fenzobot_probabilities": {
+                "a": 0.46090000000000003,
+                "b": 0.5390999999999999
+              },
+              "github_run_id": "38045914202",
+              "market_probabilities": {
+                "a": 0.5013000000000001,
+                "b": 0.4987
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_f66e2cd71d2f42968d3d7eb43638c346"
+            },
+            "status": "ELIGIBLE",
+            "validation_id": "84ae7916b3fff0240bd2019b"
+          }
+        }
+      }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-10T10:46:22+00:00",
+      "canonical_match_instance_id": "mi2_ca2c159681544100b0d8f1648411c3a3",
+      "commence_time_utc": "2026-10-11T04:10:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "mi2_ca2c159681544100b0d8f1648411c3a3",
+      "identity_evidence": {
+        "event_id": "1057",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "0b0c2f8fda3527a78102ba0d08702703b3ae5de547074343d623d18967c56423",
+        "match_id": "1057",
+        "orientation": {
+          "a": 67639,
+          "b": 45072
+        },
+        "provider": "RapidAPI",
+        "round_id": "3",
+        "scheduled_start_utc": "2026-10-11T04:10:00.000Z",
+        "structure": {
+          "player_ids": [
+            "45072",
+            "67639"
+          ],
+          "tour": "wta",
+          "tournament_id": "16750"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_ca2c159681544100b0d8f1648411c3a3",
+      "legacy_key": "wta:1057",
+      "market_memory_eligible": false,
+      "market_memory_status": "PARTIAL",
+      "market_odds_decimal": {
+        "Han Shi": 2.72,
+        "Kamilla Rakhimova": 1.39
+      },
+      "match_format": "BO3",
+      "match_id": 1057,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "ligeira",
+            "nivel": 1,
+            "texto": "Divergência ligeira"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 3,
+            "structural_factors_available": [
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "recuperação pós-1º set",
+              "Han Shi"
+            ],
+            [
+              "indoor/outdoor",
+              "Kamilla Rakhimova"
+            ],
+            [
+              "tie-break",
+              "Kamilla Rakhimova"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 117.0,
+              "amostra_a": 117,
+              "amostra_b": 223,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Han Shi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 24,
+              "valor_b": 19
+            },
+            "fadiga": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Kamilla Rakhimova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.75,
+              "peso_base_aplicado": 6.75,
+              "peso_base_configurado": 3.75,
+              "peso_efetivo": 3.042,
+              "valor_a": 4,
+              "valor_b": 2
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Han Shi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 2.8,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 70.0,
+              "valor_b": 60.0
+            },
+            "h2h": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Kamilla Rakhimova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 33.3,
+              "valor_b": 39.5
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Kamilla Rakhimova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.4,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 0.0,
+              "valor_b": 31.8
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "B vem de outro piso sem rodagem",
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Han Shi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 2.254,
+              "valor_a": "hard",
+              "valor_b": "grass"
+            },
+            "nivel_adversario": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7
+            },
+            "piso": {
+              "amostra": 237,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Han Shi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.507,
+              "peso_antes_cap": 4.053,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 4.053,
+              "valor_a": 62.9,
+              "valor_b": 55.3
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Kamilla Rakhimova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.488,
+              "pontos_a": 335,
+              "pontos_b": 929,
+              "valor_a": 231.0,
+              "valor_b": 76.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Han Shi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.804,
+              "peso_antes_cap": 5.026,
+              "peso_base_aplicado": 6.25,
+              "peso_base_configurado": 6.25,
+              "peso_efetivo": 4.512,
+              "valor_a": 62.6,
+              "valor_b": 14.4
+            },
+            "recuperacao_sets": {
+              "amostra": 83,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Han Shi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.6,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 3.6,
+              "valor_a": 55,
+              "valor_b": 52
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Kamilla Rakhimova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.704,
+              "valor_a": 33.3,
+              "valor_b": 39.1
+            },
+            "servico_carreira": {
+              "amostra": 1.0,
+              "confianca_amostra": 0.316,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Han Shi",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 1.028,
+              "peso_base_aplicado": 3.25,
+              "peso_base_configurado": 3.25,
+              "peso_efetivo": 1.028,
+              "valor_a": 75.0,
+              "valor_b": 62.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Kamilla Rakhimova",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 0.0,
+              "valor_b": 38.9
+            },
+            "velocidade_piso": {
+              "amostra_a": null,
+              "amostra_b": null,
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio",
+              "peso_base_configurado": 10,
+              "valor_a": null,
+              "valor_b": null
+            }
+          },
+          "favorecido": "Han Shi",
+          "forca_indice": 2,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 52,
+          "inclinacao_modelo_b": 48,
+          "indice_evidencia_a": 52,
+          "indice_evidencia_b": 48,
+          "indice_favorece": "Han Shi",
+          "intensidade_indicadores": "neutra",
+          "intensidade_nivel": 0,
+          "massa_evidencia": 48.881,
+          "mercado_favorece": "Kamilla Rakhimova",
+          "n_fatores": 13,
+          "player_a": "Han Shi",
+          "player_b": "Kamilla Rakhimova",
+          "prob_mercado_a": 34,
+          "prob_mercado_b": 66,
+          "tipo": "direcao"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 117,
+            "amostra_b": 223,
+            "diff": 5,
+            "lider": "Han Shi",
+            "valor_a": 24,
+            "valor_b": 19
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 10.0,
+            "lider": "Han Shi",
+            "unidade": "%",
+            "valor_a": 70.0,
+            "valor_b": 60.0
+          },
+          "frescura": {
+            "jogos_7d_a": 4,
+            "jogos_7d_b": 2,
+            "mais_fresco": "Kamilla Rakhimova",
+            "sets_7d_a": 10,
+            "sets_7d_b": 4
+          },
+          "indoor_outdoor": {
+            "amostra_a": 6,
+            "amostra_b": 129,
+            "diff": 6.2,
+            "lider": "Kamilla Rakhimova",
+            "unidade": "%",
+            "valor_a": 33.3,
+            "valor_b": 39.5
+          },
+          "piso": {
+            "amostra_a": 256,
+            "amostra_b": 237,
+            "diff": 7.6,
+            "lider": "Han Shi",
+            "unidade": "%",
+            "valor_a": 62.9,
+            "valor_b": 55.3
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 0,
+            "top50_b": 0,
+            "valor_a": 0,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 155.0,
+            "lider": "Kamilla Rakhimova",
+            "pontos_a": 335,
+            "pontos_b": 929,
+            "valor_a": 231.0,
+            "valor_b": 76.0
+          },
+          "ranking_evolucao": {
+            "diff": 48.25,
+            "lider": "Han Shi",
+            "valor_a": 62.6,
+            "valor_b": 14.4
+          },
+          "sazonal": {
+            "amostra_a": 6,
+            "amostra_b": 23,
+            "diff": 5.8,
+            "lider": "Kamilla Rakhimova",
+            "unidade": "%",
+            "valor_a": 33.3,
+            "valor_b": 39.1
+          },
+          "servico_carreira": {
+            "amostra_a": 1,
+            "amostra_b": 23,
+            "diff": 13.0,
+            "lider": "Han Shi",
+            "unidade": "%",
+            "valor_a": 75.0,
+            "valor_b": 62.0
+          },
+          "tiebreak": {
+            "amostra_a": 2,
+            "amostra_b": 36,
+            "diff": 38.9,
+            "lider": "Kamilla Rakhimova",
+            "unidade": "%",
+            "valor_a": 0.0,
+            "valor_b": 38.9
+          },
+          "velocidade_piso": {
+            "lider": null,
+            "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio"
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 33,
+          "coverage_pct": 53.0,
+          "excluded_missing_odds": 47,
+          "excluded_missing_odds_wins": 32,
+          "expected_wins": 31.56,
+          "matches": 53,
+          "odds_eligible_matches": 53,
+          "overall_wins": 65,
+          "performance_vs_market": 1.44,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 25,
+          "coverage_pct": 53.0,
+          "excluded_missing_odds": 47,
+          "excluded_missing_odds_wins": 27,
+          "expected_wins": 22.9,
+          "matches": 53,
+          "odds_eligible_matches": 53,
+          "overall_wins": 52,
+          "performance_vs_market": 2.1,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 54.0,
+          "matches": 1,
+          "sample_status": "limitado"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 86.74,
+          "matches": 34,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 15,
+            "available_weight": 92.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 64.0,
+            "weighted_ratio": 0.639515
+          },
+          "expected_edge_pct": -8.01,
+          "fenzobot_index": 52,
+          "market": {
+            "expected_edge_pct": -8.01,
+            "fair_odd": 2.957,
+            "line": null,
+            "market": "Moneyline Han Shi",
+            "market_type": "Moneyline",
+            "odd": 2.72,
+            "player": "Han Shi",
+            "sharp_estimate_pct": 33.82,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Han Shi",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 15,
+              "available_weight": 92.25,
+              "configured_factors": 22,
+              "configured_weight": 144.25,
+              "status": "reduzida",
+              "weighted_pct": 64.0,
+              "weighted_ratio": 0.639515
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.45,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 38.0,
+          "bp_saved_pct": 43.0,
+          "first_serve_won_pct": 75.0,
+          "matches": 1,
+          "opponent_first_serve_won_pct": 29.0,
+          "opponent_second_serve_won_pct": 40.0,
+          "sample_status": "limitado",
+          "second_serve_won_pct": 34.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 51.0,
+          "bp_saved_pct": 51.0,
+          "first_serve_won_pct": 62.0,
+          "matches": 23,
+          "opponent_first_serve_won_pct": 36.0,
+          "opponent_second_serve_won_pct": 60.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 43.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 335,
+          "rank": 231
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 929,
+          "rank": 76
+        },
+        "recent_form_a": {
+          "losses": 3,
+          "matches": 10,
+          "wins": 7
+        },
+        "recent_form_b": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 15,
+            "available_weight": 92.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 64.0,
+            "weighted_ratio": 0.639515
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.45,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 38.0,
+          "avg_break_points_saved_pct": 43.0,
+          "avg_first_serve_in_pct": 55.8,
+          "avg_first_serve_won_pct": 75.0,
+          "avg_second_serve_won_pct": 34.0,
+          "matches_used": 1
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 51.0,
+          "avg_break_points_saved_pct": 51.0,
+          "avg_first_serve_in_pct": 56.9,
+          "avg_first_serve_won_pct": 62.0,
+          "avg_second_serve_won_pct": 43.0,
+          "matches_used": 23
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 0.0,
+            "matches_lost_set1": 4,
+            "matches_lost_set1_won_overall": 0
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 13.3,
+            "matches_lost_set1": 83,
+            "matches_lost_set1_won_overall": 11
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": 2.2,
+          "recent_win_pct": 65.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -11.4,
+          "recent_win_pct": 43.9,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": 0,
+        "capture_kind": "feed_observed_at_capture",
+        "captured_at_utc": "2026-10-10T10:44:15+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+        "event_id": 1057,
+        "freshness_status": "OBSERVED_AT_CAPTURE",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 1,
+          "coherent_bookmaker_count": 1,
+          "dispersion_pp": null,
+          "median_devig_probability_a": 0.3381995133819951,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v4",
+          "pricing_basis": "verified_provider_pre_match_feed",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 1
+        },
+        "odds_contract_activation": {
+          "activation_commit": "502906b6d3ca4674444127bf5ef07491e11a738e",
+          "activation_observed_at_utc": "2026-10-10T10:44:15+00:00",
+          "activation_run_id": "38045914202",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": null,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "raw_payload_sha256": "fc7ff9cbc62821249803bfe4dc0583bb296fc32678b9c3dd5d11701d73856b22",
+        "source": "RapidAPI Tennis API / pre-match match-winner feed"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 67639,
+        "name": "Han Shi"
+      },
+      "player_b": {
+        "id": 45072,
+        "name": "Kamilla Rakhimova"
+      },
+      "pricing": {
+        "adjustment_pp_a": 0.0,
+        "adjustment_pp_b": -0.0,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 48.881,
+          "factor_count": 13,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 0.0,
+          "internal_quality": 0.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.08009732360097321,
+        "expected_edge_b": -0.08009732360097321,
+        "fair_odd_a": 2.956834532374101,
+        "fair_odd_b": 1.5110294117647056,
+        "market_odd_a": 2.72,
+        "market_odd_b": 1.39,
+        "market_overround_pct": 8.707,
+        "market_probability_a": 0.3381995133819951,
+        "market_probability_b": 0.661800486618005,
+        "market_quote_mode": "operational",
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 0.0,
+            "expected_edge_pct": -8.01,
+            "fair_odd": 2.957,
+            "market_odd": 2.72,
+            "market_probability_pct": 33.82,
+            "sharp_estimate_pct": 33.82
+          },
+          "b": {
+            "adjustment_pp": -0.0,
+            "expected_edge_pct": -8.01,
+            "fair_odd": 1.511,
+            "market_odd": 1.39,
+            "market_probability_pct": 66.18,
+            "sharp_estimate_pct": 66.18
+          }
+        },
+        "quality_gate_passed": false,
+        "quality_score": 0.0,
+        "residual_logit": 0.0,
+        "sharp_estimate_a": 0.3381995133819951,
+        "sharp_estimate_b": 0.661800486618005,
+        "signed_strength": 0.04,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "cbfcac41a63fca441362",
+      "surface": "Hard",
+      "tier": "WTA 1000",
+      "tour": "wta",
+      "tournament": "Wuhan Open - Wuhan",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 1000"
+      },
+      "tournament_id": 16750,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-10T10:46:22+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Han Shi",
+            "selected_side": "a",
+            "source": {
+              "code_revision": "502906b6d3ca4674444127bf5ef07491e11a738e",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 1,
+              "divergence_type": "direcao",
+              "fenzobot_probabilities": {
+                "a": 0.3382,
+                "b": 0.6618
+              },
+              "github_run_id": "38045914202",
+              "market_probabilities": {
+                "a": 0.3382,
+                "b": 0.6618
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_ca2c159681544100b0d8f1648411c3a3"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "9677d92a6047787bfab77c81"
+          }
+        }
+      }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-10T10:46:22+00:00",
+      "canonical_match_instance_id": "mi2_c57a66c20a394c779c2330eb544196e2",
+      "commence_time_utc": "2026-10-11T03:00:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "mi2_c57a66c20a394c779c2330eb544196e2",
+      "identity_evidence": {
+        "event_id": "1042",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "f9341c90371cc9444e76d295099432426ca043e59c755a0ad5d8f9ae486a83a1",
+        "match_id": "1042",
+        "orientation": {
+          "a": 49991,
+          "b": 50943
+        },
+        "provider": "RapidAPI",
+        "round_id": "3",
+        "scheduled_start_utc": "2026-10-11T03:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "49991",
+            "50943"
+          ],
+          "tour": "wta",
+          "tournament_id": "16750"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_c57a66c20a394c779c2330eb544196e2",
+      "legacy_key": "wta:1042",
+      "market_memory_eligible": false,
+      "market_memory_status": "PARTIAL",
+      "market_odds_decimal": {
+        "Sinja Kraus": 2.26,
+        "Zeynep Sonmez": 1.55
+      },
+      "match_format": "BO3",
+      "match_id": 1042,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_forte",
+            "nivel": 0,
+            "texto": "Alinhamento forte"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 4,
+            "structural_factors_available": [
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "superfície",
+              "Zeynep Sonmez"
+            ],
+            [
+              "forma recente",
+              "Sinja Kraus"
+            ],
+            [
+              "indoor/outdoor",
+              "Zeynep Sonmez"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 194.0,
+              "disponivel": true,
+              "lider": "Sinja Kraus",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 7,
+              "valor_a": 24,
+              "valor_b": 25
+            },
+            "fadiga": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.75,
+              "peso_base_aplicado": 3.75,
+              "peso_base_configurado": 3.75,
+              "peso_efetivo": 1.379,
+              "valor_a": 1,
+              "valor_b": 3
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Sinja Kraus",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 6.829,
+              "valor_a": 40.0,
+              "valor_b": 70.0
+            },
+            "h2h": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 48.6,
+              "valor_b": 26.7
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.4,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.4,
+              "valor_a": 41.9,
+              "valor_b": 0.0
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "B vem de outro piso sem rodagem",
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 1.839,
+              "valor_a": "grass",
+              "valor_b": "grass"
+            },
+            "nivel_adversario": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.575,
+              "valor_a": 44.7,
+              "valor_b": 25.0
+            },
+            "piso": {
+              "amostra": 88,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.987,
+              "peso_antes_cap": 7.893,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 7.893,
+              "valor_a": 59.1,
+              "valor_b": 44.3
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.74,
+              "peso_antes_cap": 3.7,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 3.7,
+              "pontos_a": 1052,
+              "pontos_b": 817,
+              "valor_a": 58.0,
+              "valor_b": 95.0
+            },
+            "ranking_evolucao": {
+              "disponivel": true,
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": "abaixo do limiar (<15 p.p. de variação)",
+              "peso_base_configurado": 6.25,
+              "valor_a": 17.5,
+              "valor_b": 16.9
+            },
+            "recuperacao_sets": {
+              "amostra": 145,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Sinja Kraus",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.6,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 3.6,
+              "valor_a": 57,
+              "valor_b": 63
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 2.207,
+              "valor_a": 60.0,
+              "valor_b": 0.0
+            },
+            "servico_carreira": {
+              "amostra": 13.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.25,
+              "peso_base_aplicado": 3.25,
+              "peso_base_configurado": 3.25,
+              "peso_efetivo": 3.171,
+              "valor_a": 60.0,
+              "valor_b": 57.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Zeynep Sonmez",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 62.5,
+              "valor_b": 20.0
+            },
+            "velocidade_piso": {
+              "amostra_a": null,
+              "amostra_b": null,
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio",
+              "peso_base_configurado": 10,
+              "valor_a": null,
+              "valor_b": null
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 28,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 78,
+          "inclinacao_modelo_b": 22,
+          "indice_evidencia_a": 78,
+          "indice_evidencia_b": 22,
+          "indice_favorece": "Zeynep Sonmez",
+          "intensidade_indicadores": "forte",
+          "intensidade_nivel": 3,
+          "massa_evidencia": 46.593,
+          "mercado_favorece": "Zeynep Sonmez",
+          "n_fatores": 12,
+          "player_a": "Zeynep Sonmez",
+          "player_b": "Sinja Kraus",
+          "prob_mercado_a": 59,
+          "prob_mercado_b": 41,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 194,
+            "amostra_b": 220,
+            "diff": -1,
+            "lider": "Sinja Kraus",
+            "valor_a": 24,
+            "valor_b": 25
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 30.0,
+            "lider": "Sinja Kraus",
+            "unidade": "%",
+            "valor_a": 40.0,
+            "valor_b": 70.0
+          },
+          "frescura": {
+            "jogos_7d_a": 1,
+            "jogos_7d_b": 3,
+            "mais_fresco": "Zeynep Sonmez",
+            "sets_7d_a": 2,
+            "sets_7d_b": 7
+          },
+          "indoor_outdoor": {
+            "amostra_a": 72,
+            "amostra_b": 15,
+            "diff": 21.9,
+            "lider": "Zeynep Sonmez",
+            "unidade": "%",
+            "valor_a": 48.6,
+            "valor_b": 26.7
+          },
+          "nivel_adversario": {
+            "amostra_a": 76,
+            "amostra_b": 28,
+            "diff": 19.700000000000003,
+            "lider": "Zeynep Sonmez",
+            "valor_a": 44.7,
+            "valor_b": 25.0
+          },
+          "piso": {
+            "amostra_a": 164,
+            "amostra_b": 88,
+            "diff": 14.8,
+            "lider": "Zeynep Sonmez",
+            "unidade": "%",
+            "valor_a": 59.1,
+            "valor_b": 44.3
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 0,
+            "top50_b": 0,
+            "valor_a": 0,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 37.0,
+            "lider": "Zeynep Sonmez",
+            "pontos_a": 1052,
+            "pontos_b": 817,
+            "valor_a": 58.0,
+            "valor_b": 95.0
+          },
+          "ranking_evolucao": {
+            "diff": 0.6000000000000014,
+            "lider": "Zeynep Sonmez",
+            "valor_a": 17.5,
+            "valor_b": 16.9
+          },
+          "sazonal": {
+            "amostra_a": 10,
+            "amostra_b": 1,
+            "diff": 60.0,
+            "lider": "Zeynep Sonmez",
+            "unidade": "%",
+            "valor_a": 60.0,
+            "valor_b": 0.0
+          },
+          "servico_carreira": {
+            "amostra_a": 27,
+            "amostra_b": 13,
+            "diff": 3.0,
+            "lider": "Zeynep Sonmez",
+            "unidade": "%",
+            "valor_a": 60.0,
+            "valor_b": 57.0
+          },
+          "tiebreak": {
+            "amostra_a": 16,
+            "amostra_b": 5,
+            "diff": 42.5,
+            "lider": "Zeynep Sonmez",
+            "unidade": "%",
+            "valor_a": 62.5,
+            "valor_b": 20.0
+          },
+          "velocidade_piso": {
+            "lider": null,
+            "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio"
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 31,
+          "coverage_pct": 55.0,
+          "excluded_missing_odds": 45,
+          "excluded_missing_odds_wins": 23,
+          "expected_wins": 29.46,
+          "matches": 55,
+          "odds_eligible_matches": 55,
+          "overall_wins": 54,
+          "performance_vs_market": 1.54,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 23,
+          "coverage_pct": 44.0,
+          "excluded_missing_odds": 56,
+          "excluded_missing_odds_wins": 43,
+          "expected_wins": 23.22,
+          "matches": 44,
+          "odds_eligible_matches": 44,
+          "overall_wins": 66,
+          "performance_vs_market": -0.22,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 100.41,
+          "matches": 46,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 69.17,
+          "matches": 18,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.688042
+          },
+          "expected_edge_pct": -1.88,
+          "fenzobot_index": 78,
+          "market": {
+            "expected_edge_pct": -1.88,
+            "fair_odd": 1.58,
+            "line": null,
+            "market": "Moneyline Zeynep Sonmez",
+            "market_type": "Moneyline",
+            "odd": 1.55,
+            "player": "Zeynep Sonmez",
+            "sharp_estimate_pct": 63.3,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Zeynep Sonmez",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 16,
+              "available_weight": 99.25,
+              "configured_factors": 22,
+              "configured_weight": 144.25,
+              "status": "reduzida",
+              "weighted_pct": 68.8,
+              "weighted_ratio": 0.688042
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.45,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 46.0,
+          "bp_saved_pct": 53.0,
+          "first_serve_won_pct": 60.0,
+          "matches": 27,
+          "opponent_first_serve_won_pct": 37.0,
+          "opponent_second_serve_won_pct": 55.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 46.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 42.0,
+          "bp_saved_pct": 55.0,
+          "first_serve_won_pct": 57.0,
+          "matches": 13,
+          "opponent_first_serve_won_pct": 38.0,
+          "opponent_second_serve_won_pct": 49.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 46.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 1052,
+          "rank": 58
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 817,
+          "rank": 95
+        },
+        "recent_form_a": {
+          "losses": 6,
+          "matches": 10,
+          "wins": 4
+        },
+        "recent_form_b": {
+          "losses": 3,
+          "matches": 10,
+          "wins": 7
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 99.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 68.8,
+            "weighted_ratio": 0.688042
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.45,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 46.0,
+          "avg_break_points_saved_pct": 53.0,
+          "avg_first_serve_in_pct": 63.9,
+          "avg_first_serve_won_pct": 60.0,
+          "avg_second_serve_won_pct": 46.0,
+          "matches_used": 27
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 42.0,
+          "avg_break_points_saved_pct": 55.0,
+          "avg_first_serve_in_pct": 60.0,
+          "avg_first_serve_won_pct": 57.0,
+          "avg_second_serve_won_pct": 46.0,
+          "matches_used": 13
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 22.5,
+            "matches_lost_set1": 40,
+            "matches_lost_set1_won_overall": 9
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 12.5,
+            "matches_lost_set1": 16,
+            "matches_lost_set1_won_overall": 2
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": -10.8,
+          "recent_win_pct": 48.3,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": 5.7,
+          "recent_win_pct": 50.0,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": 0,
+        "capture_kind": "feed_observed_at_capture",
+        "captured_at_utc": "2026-10-10T10:44:15+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+        "event_id": 1042,
+        "freshness_status": "OBSERVED_AT_CAPTURE",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 1,
+          "coherent_bookmaker_count": 1,
+          "dispersion_pp": null,
+          "median_devig_probability_a": 0.5931758530183726,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v4",
+          "pricing_basis": "verified_provider_pre_match_feed",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 1
+        },
+        "odds_contract_activation": {
+          "activation_commit": "502906b6d3ca4674444127bf5ef07491e11a738e",
+          "activation_observed_at_utc": "2026-10-10T10:44:15+00:00",
+          "activation_run_id": "38045914202",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": null,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "raw_payload_sha256": "6fed4e48e39586c770a29933a5596559a9e85f8fe69d69595e7c39a73ebcbf42",
+        "source": "RapidAPI Tennis API / pre-match match-winner feed"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 49991,
+        "name": "Zeynep Sonmez"
+      },
+      "player_b": {
+        "id": 50943,
+        "name": "Sinja Kraus"
+      },
+      "pricing": {
+        "adjustment_pp_a": 3.982445090556086,
+        "adjustment_pp_b": -3.982445090556086,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 46.593,
+          "factor_count": 12,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 1.0,
+          "internal_quality": 1.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.018849528917903036,
+        "expected_edge_b": -0.1705806868680897,
+        "fair_odd_a": 1.5797780724607176,
+        "fair_odd_b": 2.724797896815517,
+        "market_odd_a": 1.55,
+        "market_odd_b": 2.26,
+        "market_overround_pct": 8.764,
+        "market_probability_a": 0.5931758530183726,
+        "market_probability_b": 0.4068241469816273,
+        "market_quote_mode": "operational",
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 3.98,
+            "expected_edge_pct": -1.88,
+            "fair_odd": 1.58,
+            "market_odd": 1.55,
+            "market_probability_pct": 59.32,
+            "sharp_estimate_pct": 63.3
+          },
+          "b": {
+            "adjustment_pp": -3.98,
+            "expected_edge_pct": -17.06,
+            "fair_odd": 2.725,
+            "market_odd": 2.26,
+            "market_probability_pct": 40.68,
+            "sharp_estimate_pct": 36.7
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 1.0,
+        "residual_logit": 0.168,
+        "sharp_estimate_a": 0.6330003039239335,
+        "sharp_estimate_b": 0.36699969607606653,
+        "signed_strength": 0.56,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "f86fc6826da7327e18b0",
+      "surface": "Hard",
+      "tier": "WTA 1000",
+      "tour": "wta",
+      "tournament": "Wuhan Open - Wuhan",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 1000"
+      },
+      "tournament_id": 16750,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-10T10:46:22+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Zeynep Sonmez",
+            "selected_side": "a",
+            "source": {
+              "code_revision": "502906b6d3ca4674444127bf5ef07491e11a738e",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 0,
+              "divergence_type": "alinhamento",
+              "fenzobot_probabilities": {
+                "a": 0.633,
+                "b": 0.36700000000000005
+              },
+              "github_run_id": "38045914202",
+              "market_probabilities": {
+                "a": 0.5932,
+                "b": 0.4068
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_c57a66c20a394c779c2330eb544196e2"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "d8f502dcd00d5e69c928bd9a"
+          }
+        }
+      }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-10T10:46:22+00:00",
+      "canonical_match_instance_id": "mi2_66051caf2b2f41dd805f7acaa1137f98",
+      "commence_time_utc": "2026-10-11T02:00:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "mi2_66051caf2b2f41dd805f7acaa1137f98",
+      "identity_evidence": {
+        "event_id": "1014",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "51b29405e34a4ef03300c4947dede429eb08fe5bb40c3b7547b2e1f36e1ac5ef",
+        "match_id": "1014",
+        "orientation": {
+          "a": 12390,
+          "b": 64343
+        },
+        "provider": "RapidAPI",
+        "round_id": "3",
+        "scheduled_start_utc": "2026-10-11T02:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "12390",
+            "64343"
+          ],
+          "tour": "wta",
+          "tournament_id": "16750"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_66051caf2b2f41dd805f7acaa1137f98",
+      "legacy_key": "wta:1014",
+      "market_memory_eligible": false,
+      "market_memory_status": "PARTIAL",
+      "market_odds_decimal": {
+        "Ashlyn Krueger": 1.727,
+        "Yulia Putintseva": 1.97
+      },
+      "match_format": "BO3",
+      "match_id": 1014,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "moderada",
+            "nivel": 2,
+            "texto": "Divergência moderada"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "historial",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 7,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 6,
+            "structural_factors_available": [
+              "h2h",
+              "h2h_piso",
+              "nivel_adversario",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "indoor/outdoor",
+              "Yulia Putintseva"
+            ],
+            [
+              "tie-break",
+              "Yulia Putintseva"
+            ],
+            [
+              "padrão sazonal",
+              "Yulia Putintseva"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 149.0,
+              "disponivel": true,
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 7,
+              "valor_a": 18,
+              "valor_b": 20
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 3.75
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 2.8,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 50.0,
+              "valor_b": 40.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": "amostra insuficiente (1 jogo)",
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "amostra": 1,
+              "confianca_amostra": 0.408,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.5,
+              "peso_antes_cap": 2.449,
+              "peso_base_aplicado": 12.0,
+              "peso_base_configurado": 12.0,
+              "peso_efetivo": 2.449,
+              "valor_a": 1,
+              "valor_b": 0
+            },
+            "historico_torneio": {
+              "amostra": "6/2 edições",
+              "confianca_amostra": 0.632,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "historial",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.795,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 3.795,
+              "valor_a": "61%",
+              "valor_b": "0%"
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 51.9,
+              "valor_b": 44.0
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.96,
+              "peso_antes_cap": 2.304,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 2.304,
+              "valor_a": 34.7,
+              "valor_b": 49.1
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "A vem de outro piso sem rodagem",
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 3.636,
+              "valor_a": "clay",
+              "valor_b": "grass"
+            },
+            "nivel_adversario": {
+              "disponivel": true,
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 7,
+              "valor_a": 46.0,
+              "valor_b": 44.0
+            },
+            "piso": {
+              "disponivel": true,
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 8,
+              "valor_a": 53.0,
+              "valor_b": 54.9
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.3,
+              "peso_antes_cap": 1.5,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 1.5,
+              "pontos_a": 904,
+              "pontos_b": 945,
+              "valor_a": 82.0,
+              "valor_b": 73.0
+            },
+            "ranking_evolucao": {
+              "disponivel": true,
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": "abaixo do limiar (<15 p.p. de variação)",
+              "peso_base_configurado": 6.25,
+              "valor_a": -4.5,
+              "valor_b": 0.4
+            },
+            "recuperacao_sets": {
+              "disponivel": true,
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 9
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.364,
+              "valor_a": 50.0,
+              "valor_b": 28.6
+            },
+            "servico_carreira": {
+              "amostra": 12.0,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Ashlyn Krueger",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 3.25,
+              "peso_base_aplicado": 3.25,
+              "peso_base_configurado": 3.25,
+              "peso_efetivo": 3.25,
+              "valor_a": 58.0,
+              "valor_b": 69.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Yulia Putintseva",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 50.9,
+              "valor_b": 44.1
+            },
+            "velocidade_piso": {
+              "amostra_a": null,
+              "amostra_b": null,
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio",
+              "peso_base_configurado": 10,
+              "valor_a": null,
+              "valor_b": null
+            }
+          },
+          "favorecido": "Yulia Putintseva",
+          "forca_indice": 20,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 70,
+          "inclinacao_modelo_b": 30,
+          "indice_evidencia_a": 70,
+          "indice_evidencia_b": 30,
+          "indice_favorece": "Yulia Putintseva",
+          "intensidade_indicadores": "moderada",
+          "intensidade_nivel": 2,
+          "massa_evidencia": 35.098,
+          "mercado_favorece": "Ashlyn Krueger",
+          "n_fatores": 10,
+          "player_a": "Yulia Putintseva",
+          "player_b": "Ashlyn Krueger",
+          "prob_mercado_a": 47,
+          "prob_mercado_b": 53,
+          "tipo": "direcao"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 395,
+            "amostra_b": 149,
+            "diff": -2,
+            "lider": "Ashlyn Krueger",
+            "valor_a": 18,
+            "valor_b": 20
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 10.0,
+            "lider": "Yulia Putintseva",
+            "unidade": "%",
+            "valor_a": 50.0,
+            "valor_b": 40.0
+          },
+          "frescura": {
+            "jogos_7d_a": 1,
+            "jogos_7d_b": 1,
+            "mais_fresco": "igual",
+            "sets_7d_a": 2,
+            "sets_7d_b": 2
+          },
+          "h2h": {
+            "a_wins": 1,
+            "b_wins": 0,
+            "lider": "Yulia Putintseva",
+            "total": 1
+          },
+          "h2h_piso": {
+            "a_wins": 1,
+            "b_wins": 0,
+            "lider": "Yulia Putintseva",
+            "total": 1
+          },
+          "indoor_outdoor": {
+            "amostra_a": 397,
+            "amostra_b": 125,
+            "diff": 7.9,
+            "lider": "Yulia Putintseva",
+            "unidade": "%",
+            "valor_a": 51.9,
+            "valor_b": 44.0
+          },
+          "nivel_adversario": {
+            "amostra_a": 491,
+            "amostra_b": 134,
+            "diff": 2.0,
+            "lider": "Yulia Putintseva",
+            "valor_a": 46.0,
+            "valor_b": 44.0
+          },
+          "piso": {
+            "amostra_a": 449,
+            "amostra_b": 213,
+            "diff": 1.9,
+            "lider": "Ashlyn Krueger",
+            "unidade": "%",
+            "valor_a": 53.0,
+            "valor_b": 54.9
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 0,
+            "top50_b": 0,
+            "valor_a": 0,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 9.0,
+            "lider": "Ashlyn Krueger",
+            "pontos_a": 904,
+            "pontos_b": 945,
+            "valor_a": 82.0,
+            "valor_b": 73.0
+          },
+          "ranking_evolucao": {
+            "diff": -4.999999999999999,
+            "lider": "Ashlyn Krueger",
+            "valor_a": -4.5,
+            "valor_b": 0.4
+          },
+          "sazonal": {
+            "amostra_a": 62,
+            "amostra_b": 14,
+            "diff": 21.4,
+            "lider": "Yulia Putintseva",
+            "unidade": "%",
+            "valor_a": 50.0,
+            "valor_b": 28.6
+          },
+          "servico_carreira": {
+            "amostra_a": 18,
+            "amostra_b": 12,
+            "diff": 11.0,
+            "lider": "Ashlyn Krueger",
+            "unidade": "%",
+            "valor_a": 58.0,
+            "valor_b": 69.0
+          },
+          "tiebreak": {
+            "amostra_a": 106,
+            "amostra_b": 34,
+            "diff": 6.8,
+            "lider": "Yulia Putintseva",
+            "unidade": "%",
+            "valor_a": 50.9,
+            "valor_b": 44.1
+          },
+          "velocidade_piso": {
+            "lider": null,
+            "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio"
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 30,
+          "coverage_pct": 54.0,
+          "excluded_missing_odds": 46,
+          "excluded_missing_odds_wins": 22,
+          "expected_wins": 29.28,
+          "matches": 54,
+          "odds_eligible_matches": 54,
+          "overall_wins": 52,
+          "performance_vs_market": 0.72,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 30,
+          "coverage_pct": 47.0,
+          "excluded_missing_odds": 53,
+          "excluded_missing_odds_wins": 23,
+          "expected_wins": 26.74,
+          "matches": 47,
+          "odds_eligible_matches": 47,
+          "overall_wins": 53,
+          "performance_vs_market": 3.26,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 98.74,
+          "matches": 39,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 85.79,
+          "matches": 28,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854419
+          },
+          "expected_edge_pct": -3.55,
+          "fenzobot_index": 70,
+          "market": {
+            "expected_edge_pct": -3.55,
+            "fair_odd": 2.043,
+            "line": null,
+            "market": "Moneyline Yulia Putintseva",
+            "market_type": "Moneyline",
+            "odd": 1.97,
+            "player": "Yulia Putintseva",
+            "sharp_estimate_pct": 48.96,
+            "side": "a"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Yulia Putintseva",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 19,
+              "available_weight": 123.25,
+              "configured_factors": 22,
+              "configured_weight": 144.25,
+              "status": "reduzida",
+              "weighted_pct": 85.4,
+              "weighted_ratio": 0.854419
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.45,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "a",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 45.0,
+          "bp_saved_pct": 49.0,
+          "first_serve_won_pct": 58.0,
+          "matches": 18,
+          "opponent_first_serve_won_pct": 38.0,
+          "opponent_second_serve_won_pct": 58.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 47.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 42.0,
+          "bp_saved_pct": 62.0,
+          "first_serve_won_pct": 69.0,
+          "matches": 12,
+          "opponent_first_serve_won_pct": 34.0,
+          "opponent_second_serve_won_pct": 49.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 41.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 904,
+          "rank": 82
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 945,
+          "rank": 73
+        },
+        "recent_form_a": {
+          "losses": 5,
+          "matches": 10,
+          "wins": 5
+        },
+        "recent_form_b": {
+          "losses": 6,
+          "matches": 10,
+          "wins": 4
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 19,
+            "available_weight": 123.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 85.4,
+            "weighted_ratio": 0.854419
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.45,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 45.0,
+          "avg_break_points_saved_pct": 49.0,
+          "avg_first_serve_in_pct": 68.0,
+          "avg_first_serve_won_pct": 58.0,
+          "avg_second_serve_won_pct": 47.0,
+          "matches_used": 18
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 42.0,
+          "avg_break_points_saved_pct": 62.0,
+          "avg_first_serve_in_pct": 61.1,
+          "avg_first_serve_won_pct": 69.0,
+          "avg_second_serve_won_pct": 41.0,
+          "matches_used": 12
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 18.5,
+            "matches_lost_set1": 195,
+            "matches_lost_set1_won_overall": 36
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 18.8,
+            "matches_lost_set1": 69,
+            "matches_lost_set1_won_overall": 13
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": -2.1,
+          "recent_win_pct": 50.9,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -6.8,
+          "recent_win_pct": 48.1,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": 0,
+        "capture_kind": "feed_observed_at_capture",
+        "captured_at_utc": "2026-10-10T10:44:15+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+        "event_id": 1014,
+        "freshness_status": "OBSERVED_AT_CAPTURE",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 1,
+          "coherent_bookmaker_count": 1,
+          "dispersion_pp": null,
+          "median_devig_probability_a": 0.4671355152826617,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v4",
+          "pricing_basis": "verified_provider_pre_match_feed",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 1
+        },
+        "odds_contract_activation": {
+          "activation_commit": "502906b6d3ca4674444127bf5ef07491e11a738e",
+          "activation_observed_at_utc": "2026-10-10T10:44:15+00:00",
+          "activation_run_id": "38045914202",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": null,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "raw_payload_sha256": "8e0e9da548eaf68bd1f684d1ee6ef80179d51497e4abf332a074a8ffd87a9ce8",
+        "source": "RapidAPI Tennis API / pre-match match-winner feed"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 12390,
+        "name": "Yulia Putintseva"
+      },
+      "player_b": {
+        "id": 64343,
+        "name": "Ashlyn Krueger"
+      },
+      "pricing": {
+        "adjustment_pp_a": 2.245405354854163,
+        "adjustment_pp_b": -2.245405354854163,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 35.098,
+          "factor_count": 10,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 0.75,
+          "internal_quality": 0.75,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.035508549402529455,
+        "expected_edge_b": -0.11852118537148804,
+        "fair_odd_a": 2.042527177176791,
+        "fair_odd_b": 1.9592076081009642,
+        "market_odd_a": 1.97,
+        "market_odd_b": 1.727,
+        "market_overround_pct": 8.665,
+        "market_probability_a": 0.4671355152826617,
+        "market_probability_b": 0.5328644847173385,
+        "market_quote_mode": "operational",
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 2.25,
+            "expected_edge_pct": -3.55,
+            "fair_odd": 2.043,
+            "market_odd": 1.97,
+            "market_probability_pct": 46.71,
+            "sharp_estimate_pct": 48.96
+          },
+          "b": {
+            "adjustment_pp": -2.25,
+            "expected_edge_pct": -11.85,
+            "fair_odd": 1.959,
+            "market_odd": 1.727,
+            "market_probability_pct": 53.29,
+            "sharp_estimate_pct": 51.04
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 0.75,
+        "residual_logit": 0.09,
+        "sharp_estimate_a": 0.4895895688312033,
+        "sharp_estimate_b": 0.5104104311687967,
+        "signed_strength": 0.4,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "0c7c05606ff9a4e86830",
+      "surface": "Hard",
+      "tier": "WTA 1000",
+      "tour": "wta",
+      "tournament": "Wuhan Open - Wuhan",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 1000"
+      },
+      "tournament_id": 16750,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-10T10:46:22+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Yulia Putintseva",
+            "selected_side": "a",
+            "source": {
+              "code_revision": "502906b6d3ca4674444127bf5ef07491e11a738e",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 2,
+              "divergence_type": "direcao",
+              "fenzobot_probabilities": {
+                "a": 0.48960000000000004,
+                "b": 0.5104
+              },
+              "github_run_id": "38045914202",
+              "market_probabilities": {
+                "a": 0.4671,
+                "b": 0.5329
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_66051caf2b2f41dd805f7acaa1137f98"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "ae711acd29eff3f8fd4072d5"
+          }
+        }
+      }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-10T10:46:22+00:00",
+      "canonical_match_instance_id": "mi2_caebb0a6ce514551bcdd506eba03a32a",
+      "commence_time_utc": "2026-10-11T02:00:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "mi2_caebb0a6ce514551bcdd506eba03a32a",
+      "identity_evidence": {
+        "event_id": "1017",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "e0b082fee476ba7c142c1109baacd455766ddbb23cadaaaff74c9bfc79ec630b",
+        "match_id": "1017",
+        "orientation": {
+          "a": 13839,
+          "b": 17503
+        },
+        "provider": "RapidAPI",
+        "round_id": "3",
+        "scheduled_start_utc": "2026-10-11T02:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "13839",
+            "17503"
+          ],
+          "tour": "wta",
+          "tournament_id": "16750"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_caebb0a6ce514551bcdd506eba03a32a",
+      "legacy_key": "wta:1017",
+      "market_memory_eligible": false,
+      "market_memory_status": "PARTIAL",
+      "market_odds_decimal": {
+        "Daria Kasatkina": 1.72,
+        "Sara Sorribes Tormo": 1.98
+      },
+      "match_format": "BO3",
+      "match_id": 1017,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "alinhamento_moderada",
+            "nivel": 0,
+            "texto": "Alinhamento moderada"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 4,
+            "structural_factors_available": [
+              "h2h",
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "recuperação pós-1º set",
+              "Daria Kasatkina"
+            ],
+            [
+              "indoor/outdoor",
+              "Daria Kasatkina"
+            ],
+            [
+              "forma recente",
+              "Sara Sorribes Tormo"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 304.0,
+              "amostra_a": 329,
+              "amostra_b": 304,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 7.0,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 7.0,
+              "valor_a": 19,
+              "valor_b": 27
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 3.75
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Sara Sorribes Tormo",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.8,
+              "peso_antes_cap": 5.6,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 5.6,
+              "valor_a": 60.0,
+              "valor_b": 40.0
+            },
+            "h2h": {
+              "disponivel": true,
+              "lider": "Sara Sorribes Tormo",
+              "motivo_exclusao": "amostra insuficiente (1 jogo)",
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 51.0,
+              "valor_b": 58.0
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 0.96,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 0.96,
+              "valor_a": 33.3,
+              "valor_b": 37.7
+            },
+            "mudanca_piso": {
+              "confianca_amostra": 1.0,
+              "detalhe": "A vem de outro piso sem rodagem",
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 3.636,
+              "valor_a": "grass",
+              "valor_b": "grass"
+            },
+            "nivel_adversario": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7
+            },
+            "piso": {
+              "amostra": 254,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.2,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 3.2,
+              "valor_a": 53.9,
+              "valor_b": 57.0
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": null,
+              "peso_base_configurado": 8,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 4.0,
+              "pontos_a": 409,
+              "pontos_b": 883,
+              "valor_a": 194.0,
+              "valor_b": 87.0
+            },
+            "ranking_evolucao": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Sara Sorribes Tormo",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.25,
+              "peso_base_aplicado": 6.25,
+              "peso_base_configurado": 6.25,
+              "peso_efetivo": 5.0,
+              "valor_a": 81.0,
+              "valor_b": -30.9
+            },
+            "recuperacao_sets": {
+              "amostra": 214,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.6,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 3.6,
+              "valor_a": 56,
+              "valor_b": 60
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 4.364,
+              "valor_a": 44.4,
+              "valor_b": 62.5
+            },
+            "servico_carreira": {
+              "amostra": 5.0,
+              "confianca_amostra": 0.707,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Daria Kasatkina",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.298,
+              "peso_base_aplicado": 3.25,
+              "peso_base_configurado": 3.25,
+              "peso_efetivo": 2.298,
+              "valor_a": 54.0,
+              "valor_b": 59.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Sara Sorribes Tormo",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "valor_a": 52.1,
+              "valor_b": 46.9
+            },
+            "velocidade_piso": {
+              "amostra_a": null,
+              "amostra_b": null,
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio",
+              "peso_base_configurado": 10,
+              "valor_a": null,
+              "valor_b": null
+            }
+          },
+          "favorecido": null,
+          "forca_indice": 19,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 31,
+          "inclinacao_modelo_b": 69,
+          "indice_evidencia_a": 31,
+          "indice_evidencia_b": 69,
+          "indice_favorece": "Daria Kasatkina",
+          "intensidade_indicadores": "moderada",
+          "intensidade_nivel": 2,
+          "massa_evidencia": 50.658,
+          "mercado_favorece": "Daria Kasatkina",
+          "n_fatores": 12,
+          "player_a": "Sara Sorribes Tormo",
+          "player_b": "Daria Kasatkina",
+          "prob_mercado_a": 46,
+          "prob_mercado_b": 54,
+          "tipo": "alinhamento"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 329,
+            "amostra_b": 304,
+            "diff": -8,
+            "lider": "Daria Kasatkina",
+            "valor_a": 19,
+            "valor_b": 27
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 20.0,
+            "lider": "Sara Sorribes Tormo",
+            "unidade": "%",
+            "valor_a": 60.0,
+            "valor_b": 40.0
+          },
+          "frescura": {
+            "jogos_7d_a": 1,
+            "jogos_7d_b": 1,
+            "mais_fresco": "igual",
+            "sets_7d_a": 2,
+            "sets_7d_b": 3
+          },
+          "h2h": {
+            "a_wins": 1,
+            "b_wins": 0,
+            "lider": "Sara Sorribes Tormo",
+            "total": 1
+          },
+          "indoor_outdoor": {
+            "amostra_a": 251,
+            "amostra_b": 438,
+            "diff": 7.0,
+            "lider": "Daria Kasatkina",
+            "unidade": "%",
+            "valor_a": 51.0,
+            "valor_b": 58.0
+          },
+          "piso": {
+            "amostra_a": 254,
+            "amostra_b": 335,
+            "diff": 3.1,
+            "lider": "Daria Kasatkina",
+            "unidade": "%",
+            "valor_a": 53.9,
+            "valor_b": 57.0
+          },
+          "qualidade_vitorias": {
+            "lider": "igual",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 0,
+            "top50_b": 0,
+            "valor_a": 0,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 107.0,
+            "lider": "Daria Kasatkina",
+            "pontos_a": 409,
+            "pontos_b": 883,
+            "valor_a": 194.0,
+            "valor_b": 87.0
+          },
+          "ranking_evolucao": {
+            "diff": 111.95,
+            "lider": "Sara Sorribes Tormo",
+            "valor_a": 81.0,
+            "valor_b": -30.9
+          },
+          "sazonal": {
+            "amostra_a": 27,
+            "amostra_b": 72,
+            "diff": 18.1,
+            "lider": "Daria Kasatkina",
+            "unidade": "%",
+            "valor_a": 44.4,
+            "valor_b": 62.5
+          },
+          "servico_carreira": {
+            "amostra_a": 5,
+            "amostra_b": 21,
+            "diff": 5.0,
+            "lider": "Daria Kasatkina",
+            "unidade": "%",
+            "valor_a": 54.0,
+            "valor_b": 59.0
+          },
+          "tiebreak": {
+            "amostra_a": 48,
+            "amostra_b": 98,
+            "diff": 5.1,
+            "lider": "Sara Sorribes Tormo",
+            "unidade": "%",
+            "valor_a": 52.1,
+            "valor_b": 46.9
+          },
+          "velocidade_piso": {
+            "lider": null,
+            "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio"
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 27,
+          "coverage_pct": 46.0,
+          "excluded_missing_odds": 54,
+          "excluded_missing_odds_wins": 28,
+          "expected_wins": 26.55,
+          "matches": 46,
+          "odds_eligible_matches": 46,
+          "overall_wins": 55,
+          "performance_vs_market": 0.45,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 29,
+          "coverage_pct": 53.0,
+          "excluded_missing_odds": 47,
+          "excluded_missing_odds_wins": 22,
+          "expected_wins": 30.01,
+          "matches": 53,
+          "odds_eligible_matches": 53,
+          "overall_wins": 51,
+          "performance_vs_market": -1.01,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 126.86,
+          "matches": 7,
+          "sample_status": "limitado"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 66.73,
+          "matches": 30,
+          "sample_status": "robusto"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 98.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 68.1,
+            "weighted_ratio": 0.681109
+          },
+          "expected_edge_pct": -4.31,
+          "fenzobot_index": 69,
+          "market": {
+            "expected_edge_pct": -4.31,
+            "fair_odd": 1.798,
+            "line": null,
+            "market": "Moneyline Daria Kasatkina",
+            "market_type": "Moneyline",
+            "odd": 1.72,
+            "player": "Daria Kasatkina",
+            "sharp_estimate_pct": 55.63,
+            "side": "b"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Daria Kasatkina",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 16,
+              "available_weight": 98.25,
+              "configured_factors": 22,
+              "configured_weight": 144.25,
+              "status": "reduzida",
+              "weighted_pct": 68.1,
+              "weighted_ratio": 0.681109
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.45,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "b",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 43.0,
+          "bp_saved_pct": 44.0,
+          "first_serve_won_pct": 54.0,
+          "matches": 5,
+          "opponent_first_serve_won_pct": 44.0,
+          "opponent_second_serve_won_pct": 54.0,
+          "sample_status": "limitado",
+          "second_serve_won_pct": 38.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 47.0,
+          "bp_saved_pct": 53.0,
+          "first_serve_won_pct": 59.0,
+          "matches": 21,
+          "opponent_first_serve_won_pct": 38.0,
+          "opponent_second_serve_won_pct": 56.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 38.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 409,
+          "rank": 194
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 883,
+          "rank": 87
+        },
+        "recent_form_a": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "recent_form_b": {
+          "losses": 6,
+          "matches": 10,
+          "wins": 4
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 16,
+            "available_weight": 98.25,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 68.1,
+            "weighted_ratio": 0.681109
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.45,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 43.0,
+          "avg_break_points_saved_pct": 44.0,
+          "avg_first_serve_in_pct": 70.7,
+          "avg_first_serve_won_pct": 54.0,
+          "avg_second_serve_won_pct": 38.0,
+          "matches_used": 5
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 47.0,
+          "avg_break_points_saved_pct": 53.0,
+          "avg_first_serve_in_pct": 69.7,
+          "avg_first_serve_won_pct": 59.0,
+          "avg_second_serve_won_pct": 38.0,
+          "matches_used": 21
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 12.9,
+            "matches_lost_set1": 124,
+            "matches_lost_set1_won_overall": 16
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 25.5,
+            "matches_lost_set1": 231,
+            "matches_lost_set1_won_overall": 59
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": -0.1,
+          "recent_win_pct": 53.8,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -10.7,
+          "recent_win_pct": 46.3,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": 0,
+        "capture_kind": "feed_observed_at_capture",
+        "captured_at_utc": "2026-10-10T10:44:15+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+        "event_id": 1017,
+        "freshness_status": "OBSERVED_AT_CAPTURE",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 1,
+          "coherent_bookmaker_count": 1,
+          "dispersion_pp": null,
+          "median_devig_probability_a": 0.4648648648648649,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v4",
+          "pricing_basis": "verified_provider_pre_match_feed",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 1
+        },
+        "odds_contract_activation": {
+          "activation_commit": "502906b6d3ca4674444127bf5ef07491e11a738e",
+          "activation_observed_at_utc": "2026-10-10T10:44:15+00:00",
+          "activation_run_id": "38045914202",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": null,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "raw_payload_sha256": "60778b0194fc696a6c11f3d413fbd86fa4e003606432bb31ff71cd549cc7c825",
+        "source": "RapidAPI Tennis API / pre-match match-winner feed"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 13839,
+        "name": "Sara Sorribes Tormo"
+      },
+      "player_b": {
+        "id": 17503,
+        "name": "Daria Kasatkina"
+      },
+      "pricing": {
+        "adjustment_pp_a": -2.119287873745501,
+        "adjustment_pp_b": 2.119287873745501,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 50.658,
+          "factor_count": 12,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 0.75,
+          "internal_quality": 0.75,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.12152946746772841,
+        "expected_edge_b": -0.04311581613914506,
+        "fair_odd_a": 2.2539173787565407,
+        "fair_odd_b": 1.797500710127855,
+        "market_odd_a": 1.98,
+        "market_odd_b": 1.72,
+        "market_overround_pct": 8.645,
+        "market_probability_a": 0.4648648648648649,
+        "market_probability_b": 0.5351351351351351,
+        "market_quote_mode": "operational",
+        "mathematical_edge_side": "b",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": -2.12,
+            "expected_edge_pct": -12.15,
+            "fair_odd": 2.254,
+            "market_odd": 1.98,
+            "market_probability_pct": 46.49,
+            "sharp_estimate_pct": 44.37
+          },
+          "b": {
+            "adjustment_pp": 2.12,
+            "expected_edge_pct": -4.31,
+            "fair_odd": 1.798,
+            "market_odd": 1.72,
+            "market_probability_pct": 53.51,
+            "sharp_estimate_pct": 55.63
+          }
+        },
+        "quality_gate_passed": true,
+        "quality_score": 0.75,
+        "residual_logit": -0.0855,
+        "sharp_estimate_a": 0.4436719861274099,
+        "sharp_estimate_b": 0.5563280138725901,
+        "signed_strength": -0.38,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "44bc44ba4300bba87a4a",
+      "surface": "Hard",
+      "tier": "WTA 1000",
+      "tour": "wta",
+      "tournament": "Wuhan Open - Wuhan",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 1000"
+      },
+      "tournament_id": 16750,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-10T10:46:22+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_TYPE_NOT_DIRECTION",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Daria Kasatkina",
+            "selected_side": "b",
+            "source": {
+              "code_revision": "502906b6d3ca4674444127bf5ef07491e11a738e",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 0,
+              "divergence_type": "alinhamento",
+              "fenzobot_probabilities": {
+                "a": 0.4437,
+                "b": 0.5563
+              },
+              "github_run_id": "38045914202",
+              "market_probabilities": {
+                "a": 0.46490000000000004,
+                "b": 0.5351
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_caebb0a6ce514551bcdd506eba03a32a"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "244f6ff4c830e990fbd5d2aa"
+          }
+        }
+      }
+    },
+    {
+      "analysis": {
+        "flag": "🟡",
+        "signal_strength": 0
+      },
+      "analyzed_at_utc": "2026-10-10T10:46:22+00:00",
+      "canonical_match_instance_id": "mi2_c55a2af3181a4288a760a437435fc8f4",
+      "commence_time_utc": "2026-10-11T02:00:00+00:00",
+      "entry_market_observation_id": null,
+      "event_key": "mi2_c55a2af3181a4288a760a437435fc8f4",
+      "identity_evidence": {
+        "event_id": "1025",
+        "event_id_bilaterally_validated": false,
+        "fingerprint": "cedaeb4af2848b02e843d17d9cc46c658a06a5a3ff0a58f8d9b2e22756e36c09",
+        "match_id": "1025",
+        "orientation": {
+          "a": 17155,
+          "b": 61481
+        },
+        "provider": "RapidAPI",
+        "round_id": "3",
+        "scheduled_start_utc": "2026-10-11T02:00:00.000Z",
+        "structure": {
+          "player_ids": [
+            "17155",
+            "61481"
+          ],
+          "tour": "wta",
+          "tournament_id": "16750"
+        }
+      },
+      "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+      "identity_schema_version": 2,
+      "identity_status": "CANONICAL_STRONG",
+      "key": "mi2_c55a2af3181a4288a760a437435fc8f4",
+      "legacy_key": "wta:1025",
+      "market_memory_eligible": false,
+      "market_memory_status": "PARTIAL",
+      "market_odds_decimal": {
+        "Aoi Ito": 2.72,
+        "Magdalena Frech": 1.39
+      },
+      "match_format": "BO3",
+      "match_id": 1025,
+      "metrics": {
+        "divergencia": {
+          "classificacao": {
+            "chave": "ligeira",
+            "nivel": 1,
+            "texto": "Divergência ligeira"
+          },
+          "evidence_coverage": {
+            "active_families": [
+              "contexto",
+              "forca_base",
+              "matchup",
+              "ranking_fam",
+              "resiliencia",
+              "superficie"
+            ],
+            "active_family_count": 6,
+            "coverage_quality": 1.0,
+            "limitation_reasons": [],
+            "limited": false,
+            "pricing_eligible": true,
+            "source_reliability": 1.0,
+            "structural_coverage_count": 3,
+            "structural_factors_available": [
+              "piso",
+              "qualidade_vitorias",
+              "ranking"
+            ]
+          },
+          "fatores_chave": [
+            [
+              "padrão sazonal",
+              "Aoi Ito"
+            ],
+            [
+              "ranking",
+              "Magdalena Frech"
+            ],
+            [
+              "superfície",
+              "Aoi Ito"
+            ]
+          ],
+          "fatores_status": {
+            "comeback_set1": {
+              "amostra": 127.0,
+              "disponivel": true,
+              "lider": "Aoi Ito",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 7,
+              "valor_a": 23,
+              "valor_b": 25
+            },
+            "fadiga": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "sem diferença nos jogos recentes",
+              "peso_base_configurado": 3.75
+            },
+            "forma_recente": {
+              "amostra": 10,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Magdalena Frech",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 2.8,
+              "peso_base_aplicado": 7.0,
+              "peso_base_configurado": 7.0,
+              "peso_efetivo": 2.8,
+              "valor_a": 60.0,
+              "valor_b": 50.0
+            },
+            "h2h": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "h2h_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 12
+            },
+            "historico_torneio": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "sem histórico suficiente no torneio (min. 2 edições cada)",
+              "peso_base_configurado": 6
+            },
+            "indoor_outdoor": {
+              "disponivel": true,
+              "lider": "Magdalena Frech",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 6,
+              "valor_a": 40.0,
+              "valor_b": 38.9
+            },
+            "lesao": {
+              "disponivel": true,
+              "lider": "igual",
+              "motivo_exclusao": "nenhum em regresso claro (<60 dias parado)",
+              "peso_base_configurado": 5,
+              "valor_a": 0,
+              "valor_b": 0
+            },
+            "matchup_maos": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "matchup",
+              "lider": "Magdalena Frech",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 0.96,
+              "peso_base_aplicado": 2.4,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 0.96,
+              "valor_a": 35.4,
+              "valor_b": 30.8
+            },
+            "mudanca_piso": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "nenhum em transição de piso",
+              "peso_base_configurado": 5
+            },
+            "nivel_adversario": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 7
+            },
+            "piso": {
+              "amostra": 238,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "superficie",
+              "lider": "Aoi Ito",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.62,
+              "peso_antes_cap": 4.96,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 4.96,
+              "valor_a": 56.7,
+              "valor_b": 66.0
+            },
+            "pressao_ronda": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6
+            },
+            "qualidade_vitorias": {
+              "confianca_amostra": 0.354,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Magdalena Frech",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 1.131,
+              "peso_base_aplicado": 8.0,
+              "peso_base_configurado": 8.0,
+              "peso_efetivo": 1.131,
+              "valor_a": 1,
+              "valor_b": 0
+            },
+            "ranking": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "ranking_fam",
+              "lider": "Magdalena Frech",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 5.0,
+              "peso_base_aplicado": 5.0,
+              "peso_base_configurado": 5.0,
+              "peso_efetivo": 5.0,
+              "pontos_a": 1120,
+              "pontos_b": 18500,
+              "valor_a": 48.0,
+              "valor_b": 361.0
+            },
+            "ranking_evolucao": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 6.25
+            },
+            "recuperacao_sets": {
+              "amostra": 99,
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "resiliencia",
+              "lider": "Aoi Ito",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 0.4,
+              "peso_antes_cap": 3.6,
+              "peso_base_aplicado": 9.0,
+              "peso_base_configurado": 9.0,
+              "peso_efetivo": 3.6,
+              "valor_a": 54,
+              "valor_b": 58
+            },
+            "sazonal": {
+              "confianca_amostra": 1.0,
+              "direcao_impacto": "b",
+              "disponivel": true,
+              "familia_peso": "contexto",
+              "lider": "Aoi Ito",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 6.0,
+              "peso_base_aplicado": 6.0,
+              "peso_base_configurado": 6.0,
+              "peso_efetivo": 6.0,
+              "valor_a": 42.9,
+              "valor_b": 60.0
+            },
+            "servico_carreira": {
+              "amostra": 5.0,
+              "confianca_amostra": 0.707,
+              "direcao_impacto": "a",
+              "disponivel": true,
+              "familia_peso": "forca_base",
+              "lider": "Magdalena Frech",
+              "motivo_exclusao": null,
+              "multiplicador_forca": 1.0,
+              "peso_antes_cap": 2.298,
+              "peso_base_aplicado": 3.25,
+              "peso_base_configurado": 3.25,
+              "peso_efetivo": 2.298,
+              "valor_a": 63.0,
+              "valor_b": 53.0
+            },
+            "servico_recente": {
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": null,
+              "peso_base_configurado": 5
+            },
+            "tiebreak": {
+              "disponivel": true,
+              "lider": "Magdalena Frech",
+              "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+              "peso_base_configurado": 5,
+              "valor_a": 51.9,
+              "valor_b": 50.0
+            },
+            "velocidade_piso": {
+              "amostra_a": null,
+              "amostra_b": null,
+              "disponivel": false,
+              "lider": null,
+              "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio",
+              "peso_base_configurado": 10,
+              "valor_a": null,
+              "valor_b": null
+            }
+          },
+          "favorecido": "Aoi Ito",
+          "forca_indice": 4,
+          "gap_pp": null,
+          "inclinacao_modelo_a": 46,
+          "inclinacao_modelo_b": 54,
+          "indice_evidencia_a": 46,
+          "indice_evidencia_b": 54,
+          "indice_favorece": "Aoi Ito",
+          "intensidade_indicadores": "neutra",
+          "intensidade_nivel": 0,
+          "massa_evidencia": 26.749,
+          "mercado_favorece": "Magdalena Frech",
+          "n_fatores": 8,
+          "player_a": "Magdalena Frech",
+          "player_b": "Aoi Ito",
+          "prob_mercado_a": 66,
+          "prob_mercado_b": 34,
+          "tipo": "direcao"
+        },
+        "features": {
+          "comeback_set1": {
+            "amostra_a": 379,
+            "amostra_b": 127,
+            "diff": -2,
+            "lider": "Aoi Ito",
+            "valor_a": 23,
+            "valor_b": 25
+          },
+          "forma_recente": {
+            "amostra_a": 10,
+            "amostra_b": 10,
+            "diff": 10.0,
+            "lider": "Magdalena Frech",
+            "unidade": "%",
+            "valor_a": 60.0,
+            "valor_b": 50.0
+          },
+          "frescura": {
+            "jogos_7d_a": 1,
+            "jogos_7d_b": 1,
+            "mais_fresco": "igual",
+            "sets_7d_a": 2,
+            "sets_7d_b": 2
+          },
+          "indoor_outdoor": {
+            "amostra_a": 210,
+            "amostra_b": 18,
+            "diff": 1.1,
+            "lider": "Magdalena Frech",
+            "unidade": "%",
+            "valor_a": 40.0,
+            "valor_b": 38.9
+          },
+          "piso": {
+            "amostra_a": 328,
+            "amostra_b": 238,
+            "diff": 9.3,
+            "lider": "Aoi Ito",
+            "unidade": "%",
+            "valor_a": 56.7,
+            "valor_b": 66.0
+          },
+          "qualidade_vitorias": {
+            "lider": "Magdalena Frech",
+            "top10_a": 0,
+            "top10_b": 0,
+            "top20_a": 0,
+            "top20_b": 0,
+            "top50_a": 1,
+            "top50_b": 0,
+            "valor_a": 1,
+            "valor_b": 0
+          },
+          "ranking": {
+            "diff": 313.0,
+            "lider": "Magdalena Frech",
+            "pontos_a": 1120,
+            "pontos_b": 18500,
+            "valor_a": 48.0,
+            "valor_b": 361.0
+          },
+          "sazonal": {
+            "amostra_a": 28,
+            "amostra_b": 5,
+            "diff": 17.1,
+            "lider": "Aoi Ito",
+            "unidade": "%",
+            "valor_a": 42.9,
+            "valor_b": 60.0
+          },
+          "servico_carreira": {
+            "amostra_a": 22,
+            "amostra_b": 5,
+            "diff": 10.0,
+            "lider": "Magdalena Frech",
+            "unidade": "%",
+            "valor_a": 63.0,
+            "valor_b": 53.0
+          },
+          "tiebreak": {
+            "amostra_a": 54,
+            "amostra_b": 4,
+            "diff": 1.9,
+            "lider": "Magdalena Frech",
+            "unidade": "%",
+            "valor_a": 51.9,
+            "valor_b": 50.0
+          },
+          "velocidade_piso": {
+            "lider": null,
+            "motivo_exclusao": "hard sem classificação factual de velocidade para este torneio"
+          }
+        },
+        "market_adjusted_form_a": {
+          "actual_wins": 28,
+          "coverage_pct": 57.0,
+          "excluded_missing_odds": 43,
+          "excluded_missing_odds_wins": 18,
+          "expected_wins": 27.19,
+          "matches": 57,
+          "odds_eligible_matches": 57,
+          "overall_wins": 46,
+          "performance_vs_market": 0.81,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "market_adjusted_form_b": {
+          "actual_wins": 29,
+          "coverage_pct": 49.0,
+          "excluded_missing_odds": 51,
+          "excluded_missing_odds_wins": 23,
+          "expected_wins": 26.99,
+          "matches": 49,
+          "odds_eligible_matches": 49,
+          "overall_wins": 52,
+          "performance_vs_market": 2.01,
+          "sample_status": "robusto",
+          "total_recent_matches": 100
+        },
+        "opposition_quality_a": {
+          "avg_opponent_rank": 82.47,
+          "matches": 38,
+          "sample_status": "robusto"
+        },
+        "opposition_quality_b": {
+          "avg_opponent_rank": 109.0,
+          "matches": 5,
+          "sample_status": "limitado"
+        },
+        "prelive_decision": {
+          "contract_version": "fenzobot-prelive-v1",
+          "coverage": {
+            "available_factors": 13,
+            "available_weight": 81.0,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 56.2,
+            "weighted_ratio": 0.561525
+          },
+          "expected_edge_pct": -8.01,
+          "fenzobot_index": 54,
+          "market": {
+            "expected_edge_pct": -8.01,
+            "fair_odd": 2.957,
+            "line": null,
+            "market": "Moneyline Aoi Ito",
+            "market_type": "Moneyline",
+            "odd": 2.72,
+            "player": "Aoi Ito",
+            "sharp_estimate_pct": 33.82,
+            "side": "b"
+          },
+          "paper_eligible": false,
+          "paper_markets": [],
+          "player": "Aoi Ito",
+          "reason": "edge negativo",
+          "report_assessment": {
+            "coverage": {
+              "available_factors": 13,
+              "available_weight": 81.0,
+              "configured_factors": 22,
+              "configured_weight": 144.25,
+              "status": "reduzida",
+              "weighted_pct": 56.2,
+              "weighted_ratio": 0.561525
+            },
+            "criteria_version": "prelive-validity-v3",
+            "essential_blocks": {
+              "action_map": true,
+              "ranking_bilateral": true,
+              "service_return_bilateral": true
+            },
+            "experimental_partial": false,
+            "minimum_weighted_coverage": 0.45,
+            "partial_reasons": [],
+            "primary_reason": null,
+            "reasons": [],
+            "report_null": false,
+            "status": "VALID"
+          },
+          "side": "b",
+          "state": "EDGE_NEGATIVE"
+        },
+        "pressure_profile_a": {
+          "bp_converted_pct": 42.0,
+          "bp_saved_pct": 56.0,
+          "first_serve_won_pct": 63.0,
+          "matches": 22,
+          "opponent_first_serve_won_pct": 35.0,
+          "opponent_second_serve_won_pct": 53.0,
+          "sample_status": "robusto",
+          "second_serve_won_pct": 45.0
+        },
+        "pressure_profile_b": {
+          "bp_converted_pct": 41.0,
+          "bp_saved_pct": 52.0,
+          "first_serve_won_pct": 53.0,
+          "matches": 5,
+          "opponent_first_serve_won_pct": 34.0,
+          "opponent_second_serve_won_pct": 47.0,
+          "sample_status": "limitado",
+          "second_serve_won_pct": 41.0
+        },
+        "ranking_a": {
+          "as_of": "oficial (ao vivo)",
+          "points": 1120,
+          "rank": 48
+        },
+        "ranking_b": {
+          "as_of": "oficial (ao vivo)",
+          "points": 18500,
+          "rank": 361
+        },
+        "recent_form_a": {
+          "losses": 4,
+          "matches": 10,
+          "wins": 6
+        },
+        "recent_form_b": {
+          "losses": 5,
+          "matches": 10,
+          "wins": 5
+        },
+        "report_assessment": {
+          "coverage": {
+            "available_factors": 13,
+            "available_weight": 81.0,
+            "configured_factors": 22,
+            "configured_weight": 144.25,
+            "status": "reduzida",
+            "weighted_pct": 56.2,
+            "weighted_ratio": 0.561525
+          },
+          "criteria_version": "prelive-validity-v3",
+          "essential_blocks": {
+            "action_map": true,
+            "ranking_bilateral": true,
+            "service_return_bilateral": true
+          },
+          "experimental_partial": false,
+          "minimum_weighted_coverage": 0.45,
+          "partial_reasons": [],
+          "primary_reason": null,
+          "reasons": [],
+          "report_null": false,
+          "status": "VALID"
+        },
+        "serve_return_stats_a": {
+          "avg_break_points_converted_pct": 42.0,
+          "avg_break_points_saved_pct": 56.0,
+          "avg_first_serve_in_pct": 61.0,
+          "avg_first_serve_won_pct": 63.0,
+          "avg_second_serve_won_pct": 45.0,
+          "matches_used": 22
+        },
+        "serve_return_stats_b": {
+          "avg_break_points_converted_pct": 41.0,
+          "avg_break_points_saved_pct": 52.0,
+          "avg_first_serve_in_pct": 64.6,
+          "avg_first_serve_won_pct": 53.0,
+          "avg_second_serve_won_pct": 41.0,
+          "matches_used": 5
+        },
+        "set1_comeback_stats_a": {
+          "bo3": {
+            "comeback_rate_pct": 14.7,
+            "matches_lost_set1": 129,
+            "matches_lost_set1_won_overall": 19
+          },
+          "bo5": null
+        },
+        "set1_comeback_stats_b": {
+          "bo3": {
+            "comeback_rate_pct": 18.2,
+            "matches_lost_set1": 11,
+            "matches_lost_set1_won_overall": 2
+          },
+          "bo5": null
+        },
+        "surface_momentum_a": {
+          "delta_pp": -9.3,
+          "recent_win_pct": 47.4,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        },
+        "surface_momentum_b": {
+          "delta_pp": -9.1,
+          "recent_win_pct": 56.9,
+          "sample_status": "robusto",
+          "years": [
+            2025,
+            2026
+          ]
+        }
+      },
+      "odds_provenance": {
+        "bookmaker": null,
+        "cache_age_seconds": 0,
+        "capture_kind": "feed_observed_at_capture",
+        "captured_at_utc": "2026-10-10T10:44:15+00:00",
+        "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+        "event_id": 1025,
+        "freshness_status": "OBSERVED_AT_CAPTURE",
+        "from_cache": false,
+        "market_integrity": {
+          "candidate_count": 1,
+          "coherent_bookmaker_count": 1,
+          "dispersion_pp": null,
+          "median_devig_probability_a": 0.661800486618005,
+          "minimum_operational_bookmakers": 1,
+          "policy_version": "market-quote-integrity-v4",
+          "pricing_basis": "verified_provider_pre_match_feed",
+          "reason_code": null,
+          "status": "AVAILABLE",
+          "valid_candidate_count": 1
+        },
+        "odds_contract_activation": {
+          "activation_commit": "502906b6d3ca4674444127bf5ef07491e11a738e",
+          "activation_observed_at_utc": "2026-10-10T10:44:15+00:00",
+          "activation_run_id": "38045914202",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "operational_pricing_eligible": true,
+        "provider_timestamp": null,
+        "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+        "raw_payload_sha256": "102f3175bb62aa9ef0ba6629156db4f84657ea6f289b59c1dab29df912210624",
+        "source": "RapidAPI Tennis API / pre-match match-winner feed"
+      },
+      "outcome": null,
+      "player_a": {
+        "id": 17155,
+        "name": "Magdalena Frech"
+      },
+      "player_b": {
+        "id": 61481,
+        "name": "Aoi Ito"
+      },
+      "pricing": {
+        "adjustment_pp_a": 0.0,
+        "adjustment_pp_b": -0.0,
+        "available": true,
+        "candidate": false,
+        "candidate_label": "SEM EDGE POSITIVO NO LADO FENZOBOT",
+        "candidate_player": null,
+        "candidate_side": null,
+        "candidate_status": "non_positive_fenzobot_edge",
+        "candidate_threshold_pct": 0.0,
+        "configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "disclaimer": "Estimativa experimental em desenvolvimento. Ainda não validada fora da amostra em dimensão suficiente. O expected edge é uma estimativa do modelo e não uma recomendação de aposta.",
+        "evidence_quality": {
+          "coverage_gate_passed": true,
+          "coverage_quality": 1.0,
+          "effective_mass": 26.749,
+          "factor_count": 8,
+          "factor_quality": 1.0,
+          "identity_resolution_warning": false,
+          "intensity_quality": 0.0,
+          "internal_quality": 0.0,
+          "mass_quality": 1.0,
+          "serious_data_quality_failure": false,
+          "source_gate_passed": true,
+          "source_reliability": 1.0
+        },
+        "expected_edge_a": -0.08009732360097321,
+        "expected_edge_b": -0.08009732360097344,
+        "fair_odd_a": 1.5110294117647056,
+        "fair_odd_b": 2.9568345323741014,
+        "market_odd_a": 1.39,
+        "market_odd_b": 2.72,
+        "market_overround_pct": 8.707,
+        "market_probability_a": 0.661800486618005,
+        "market_probability_b": 0.3381995133819951,
+        "market_quote_mode": "operational",
+        "mathematical_edge_side": "a",
+        "method": "logit(P_sharp) = logit(P_market_de_vig) + max_logit_shift × signed_strength × internal_quality × coverage × source_reliability",
+        "model_version": "market-residual-v0.3",
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "parameters": {
+          "full_quality_factors": 4,
+          "full_quality_mass": 18.0,
+          "max_logit_shift": 0.3,
+          "minimum_edge_pct": 5.0,
+          "minimum_factors": 2,
+          "minimum_quality": 0.45
+        },
+        "players": {
+          "a": {
+            "adjustment_pp": 0.0,
+            "expected_edge_pct": -8.01,
+            "fair_odd": 1.511,
+            "market_odd": 1.39,
+            "market_probability_pct": 66.18,
+            "sharp_estimate_pct": 66.18
+          },
+          "b": {
+            "adjustment_pp": -0.0,
+            "expected_edge_pct": -8.01,
+            "fair_odd": 2.957,
+            "market_odd": 2.72,
+            "market_probability_pct": 33.82,
+            "sharp_estimate_pct": 33.82
+          }
+        },
+        "quality_gate_passed": false,
+        "quality_score": 0.0,
+        "residual_logit": -0.0,
+        "sharp_estimate_a": 0.661800486618005,
+        "sharp_estimate_b": 0.33819951338199505,
+        "signed_strength": -0.08,
+        "status": "experimental",
+        "validation_status": "EXPERIMENTAL — EM VALIDAÇÃO"
+      },
+      "reference_market_observation_ids": [],
+      "report_id": "1a57c60bd32601e71bb6",
+      "surface": "Hard",
+      "tier": "WTA 1000",
+      "tour": "wta",
+      "tournament": "Wuhan Open - Wuhan",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 1000"
+      },
+      "tournament_id": 16750,
+      "validation": {
+        "cohorts": {
+          "GREEN_STRONG_V1": {
+            "classified_at_utc": "2026-10-10T10:46:22+00:00",
+            "contract_version": "green-strong-v1",
+            "eligible": false,
+            "prospective": true,
+            "reason_codes": [
+              "DECISION_STATE_NOT_EDGE_POSITIVE",
+              "PAPER_NOT_ELIGIBLE",
+              "DIVERGENCE_LEVEL_NOT_STRONG"
+            ],
+            "selected_player": "Aoi Ito",
+            "selected_side": "b",
+            "source": {
+              "code_revision": "502906b6d3ca4674444127bf5ef07491e11a738e",
+              "decision_contract_version": "fenzobot-prelive-v1",
+              "decision_state": "EDGE_NEGATIVE",
+              "divergence_level": 1,
+              "divergence_type": "direcao",
+              "fenzobot_probabilities": {
+                "a": 0.6618,
+                "b": 0.3382
+              },
+              "github_run_id": "38045914202",
+              "market_probabilities": {
+                "a": 0.6618,
+                "b": 0.3382
+              },
+              "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+              "pricing_model_version": "market-residual-v0.3",
+              "snapshot_key": "mi2_c55a2af3181a4288a760a437435fc8f4"
+            },
+            "status": "INELIGIBLE",
+            "validation_id": "2fd065fcd4d83882349cd163"
+          }
+        }
+      }
     }
   ],
-  "updated_at_utc": "2026-10-10T05:49:25+00:00"
+  "updated_at_utc": "2026-10-10T10:46:22+00:00"
 }
