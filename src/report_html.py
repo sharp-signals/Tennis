@@ -60,6 +60,9 @@ REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME = "fenzobot-snapshot-linkage-reason"
 REPORT_IDENTITY_SCHEMA_META_NAME = "fenzobot-identity-schema-version"
 REPORT_IDENTITY_STATUS_META_NAME = "fenzobot-identity-status"
 REPORT_IDENTITY_REASON_META_NAME = "fenzobot-identity-reason-code"
+REPORT_COMPETITION_POLICY_VERSION_META_NAME = "fenzobot-competition-evidence-version"
+REPORT_COMPETITION_POLICY_HASH_META_NAME = "fenzobot-competition-evidence-config-hash"
+REPORT_COMPETITION_POLICY_STATUS_META_NAME = "fenzobot-competition-evidence-status"
 REPORT_DECISION_PRESENTATION = {
     "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
     "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": (
@@ -1431,6 +1434,7 @@ def _calcular_divergencia(payload):
                                     # módulo "Fatores Detalhados" — 100% Python
         "gap_pp": None,  # compatibilidade: escalas distintas, não subtrair
         "player_a": a, "player_b": b,
+        "competition_evidence_policy": payload.get("competition_evidence_policy"),
     }
 
 
@@ -5995,6 +5999,29 @@ def _mod_at_glance_clean(payload):
     return f'<div class="section-title">O jogo num relance</div><div class="glance"><div class="glance-head"><span>{a}</span><span></span><span>{b}</span></div>{rendered}</div>'
 
 
+
+def _mod_competition_evidence_notice(payload):
+    """Visible provenance and honest coverage boundary for CHANGE-099."""
+    policy = payload.get("competition_evidence_policy")
+    if not isinstance(policy, dict) or policy.get("active") is not True:
+        return ""
+    blockers = policy.get("feature_blockers") or []
+    version = _esc(policy.get("version") or "N/D")
+    config_hash = _esc(policy.get("config_hash") or "N/D")
+    if blockers:
+        detail = (
+            f"{len(blockers)} fator(es) agregado(s) sem separação por competição "
+            "foram excluídos do índice; não é declarada exclusão integral da Laver."
+        )
+    else:
+        detail = "Todos os fatores ativos têm proveniência separável nesta execução."
+    return (
+        '<div class="parcial"><b>Política de evidência por competição</b> — '
+        'Davis competitiva 50%; Laver 0% nas fontes separáveis. '
+        f'{_esc(detail)} <span class="muted">versão {version} · config {config_hash}</span>'
+        '</div>'
+    )
+
 def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     """Monta a página V2 completa. Recebe a função do motor (índice de
     evidência) de fora, para reaproveitar o report_html original.
@@ -6086,6 +6113,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         if overview_content else ""
     )
     partes.append(_mod_data_quality_notice(payload))
+    partes.append(_mod_competition_evidence_notice(payload))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":
@@ -6222,6 +6250,17 @@ def _pagina(
         )
     identity = identity_metadata if isinstance(identity_metadata, dict) else {}
     identity_meta = ""
+    competition_meta = ""
+    competition_policy = identity.get("competition_evidence_policy")
+    if isinstance(competition_policy, dict):
+        competition_meta = (
+            f'<meta name="{REPORT_COMPETITION_POLICY_VERSION_META_NAME}" '
+            f'content="{_esc(competition_policy.get("version") or "")}">\n'
+            f'<meta name="{REPORT_COMPETITION_POLICY_HASH_META_NAME}" '
+            f'content="{_esc(competition_policy.get("config_hash") or "")}">\n'
+            f'<meta name="{REPORT_COMPETITION_POLICY_STATUS_META_NAME}" '
+            f'content="{_esc(competition_policy.get("status") or "")}">\n'
+        )
     if identity.get("identity_schema_version") == 2:
         identity_meta += (
             f'<meta name="{REPORT_IDENTITY_SCHEMA_META_NAME}" content="2">\n'
@@ -6239,7 +6278,7 @@ def _pagina(
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="{REPORT_COLOR_META_NAME}" content="{report_color}">
-{linkage_meta}{identity_meta}<title>{_esc(a)} vs {_esc(b)}</title>
+{linkage_meta}{identity_meta}{competition_meta}<title>{_esc(a)} vs {_esc(b)}</title>
 <style>{_css()}{_css_editorial()}</style></head>
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">

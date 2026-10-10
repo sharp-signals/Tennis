@@ -51,7 +51,7 @@ import pandas as pd
 import requests
 
 from .cache_store import JsonCacheStore
-from . import market_integrity
+from . import competition_evidence, market_integrity
 from .market_ledger import payload_sha256
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
@@ -3262,7 +3262,11 @@ def diagnose_player_name_resolution(history: pd.DataFrame, name: str,
 # --------------------------------------------------------------------- #
 # 3. Features derivadas do histórico (H2H, forma, piso, fadiga)
 # --------------------------------------------------------------------- #
-def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Optional[str] = None) -> Optional[dict]:
+def compute_h2h(
+    history: pd.DataFrame, player_a: str, player_b: str,
+    surface: Optional[str] = None, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
     """
     Devolve {'overall': {...} ou None, 'on_surface': {...} ou None,
     'surface': str} — SEMPRE os dois números separados (carreira toda e
@@ -3295,6 +3299,24 @@ def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Op
         }
 
     overall = _tally(subset)
+    policy_active = bool((competition_policy or {}).get("active"))
+
+    def _competition_tally(df: pd.DataFrame) -> dict:
+        record = competition_evidence.weighted_binary_record(
+            df.to_dict("records"),
+            lambda row: row.get("winner_name") == player_a,
+            active=policy_active,
+        )
+        if not policy_active:
+            return {}
+        return {
+            "weighted_a_wins": record.get("weighted_wins"),
+            "weighted_b_wins": record.get("weighted_losses"),
+            "weighted_total_matches": record.get("weighted_matches"),
+            "competition_evidence": record.get("competition_evidence"),
+        }
+
+    overall.update(_competition_tally(subset))
 
     # NOVO (22/08/2026, a pedido): H2H PONDERADO PELA RECÊNCIA. Um 3-0 de
     # há 5 anos diz muito menos sobre hoje do que um 2-1 dos últimos 18
@@ -3337,12 +3359,16 @@ def compute_h2h(history: pd.DataFrame, player_a: str, player_b: str, surface: Op
         subset_surface = subset[historical_families == surface_family]
         if not subset_surface.empty:
             on_surface = _tally(subset_surface)
+            on_surface.update(_competition_tally(subset_surface))
 
     return {"overall": overall, "on_surface": on_surface, "surface": surface,
             "surface_family": surface_family, "weighted_recency": weighted}
 
 
-def compute_current_season_record(history: pd.DataFrame, player: str) -> Optional[dict]:
+def compute_current_season_record(
+    history: pd.DataFrame, player: str, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
     """
     Jogos e vitórias do jogador na ÉPOCA ATUAL (ano corrente) — o dado que
     distingue um jogador em atividade de um ex-campeão que mal joga. Um
@@ -3365,9 +3391,12 @@ def compute_current_season_record(history: pd.DataFrame, player: str) -> Optiona
     current_year = datetime.now(timezone.utc).year
     this_season = played[played["_date"].dt.year == current_year]
 
-    matches = len(this_season)
-    wins = int((this_season["winner_name"] == player).sum()) if matches else 0
-    return {"season": current_year, "matches": matches, "wins": wins, "losses": matches - wins}
+    record = competition_evidence.weighted_binary_record(
+        this_season.to_dict("records"),
+        lambda row: row.get("winner_name") == player,
+        active=bool((competition_policy or {}).get("active")),
+    )
+    return {"season": current_year, **record}
 
 
 def compute_indoor_outdoor_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
@@ -3539,7 +3568,8 @@ def compute_surface_transition(history: pd.DataFrame, player: str, current_surfa
 
 
 def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
-                        window_days: Optional[int] = None) -> Optional[dict]:
+                        window_days: Optional[int] = None, *,
+                        competition_policy: Optional[dict] = None) -> Optional[dict]:
     """Forma recente do jogador (qualquer piso). None se não há dados.
 
     CORREÇÃO (14/08/2026, a pedido): antes usava sempre os últimos
@@ -3586,8 +3616,12 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
     else:
         played = played.tail(n_matches)
 
-    wins = int((played["winner_name"] == player).sum())
-    return {"matches": len(played), "wins": wins, "losses": len(played) - wins}
+    policy_active = bool((competition_policy or {}).get("active"))
+    return competition_evidence.weighted_binary_record(
+        played.to_dict("records"),
+        lambda row: row.get("winner_name") == player,
+        active=policy_active,
+    )
 
 
 def compute_recent_quality_wins(history: pd.DataFrame, player: str,
@@ -3650,7 +3684,10 @@ def compute_recent_quality_wins(history: pd.DataFrame, player: str,
             "top50_wins": top50, "matches": len(janela)}
 
 
-def compute_surface_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+def compute_surface_stats(
+    history: pd.DataFrame, player: str, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
     """
     Devolve o perfil completo do jogador em CADA piso (Hard/Clay/Grass),
     não só no piso do jogo que está a ser analisado — para o Claude poder
@@ -3676,8 +3713,11 @@ def compute_surface_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
         if subset.empty:
             result[surface_name] = None
         else:
-            wins = int((subset["winner_name"] == player).sum())
-            result[surface_name] = {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
+            result[surface_name] = competition_evidence.weighted_binary_record(
+                subset.to_dict("records"),
+                lambda row: row.get("winner_name") == player,
+                active=bool((competition_policy or {}).get("active")),
+            )
 
     return result
 
@@ -6070,7 +6110,8 @@ def compute_fatigue_from_recent(recent_matches: list, player_id: int,
 
 def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
                           current_surface: Optional[str] = None,
-                          tour: Optional[str] = None) -> Optional[dict]:
+                          tour: Optional[str] = None, *,
+                          competition_policy: Optional[dict] = None) -> Optional[dict]:
     """
     H2H calculado a partir da lista de confrontos da RapidAPI (fetch_h2h_matches),
     para não depender do histórico Sackmann (partido para WTA). Mesmo formato
@@ -6103,6 +6144,8 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
 
     a_wins = b_wins = 0
     a_surf = b_surf = 0
+    valid_matches = []
+    surface_matches = []
     _cur = _normalize_surface_family(current_surface) if current_surface else None
     for m in h2h_matches:
         if not isinstance(m, dict):
@@ -6117,23 +6160,51 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
         same_surface = bool(_cur and fam_confronto and fam_confronto == _cur)
         if winner == player_a_id:
             a_wins += 1
-            if same_surface: a_surf += 1
+            valid_matches.append(m)
+            if same_surface:
+                a_surf += 1
+                surface_matches.append(m)
         elif winner == player_b_id:
             b_wins += 1
-            if same_surface: b_surf += 1
+            valid_matches.append(m)
+            if same_surface:
+                b_surf += 1
+                surface_matches.append(m)
     total = a_wins + b_wins
     if total == 0:
         return None
+    policy_active = bool((competition_policy or {}).get("active"))
+
+    def _weighted(rows):
+        record = competition_evidence.weighted_binary_record(
+            rows,
+            lambda row: (
+                row.get("match_winner") or row.get("winnerId") or row.get("winner")
+            ) == player_a_id,
+            active=policy_active,
+        )
+        if not policy_active:
+            return {}
+        return {
+            "weighted_a_wins": record.get("weighted_wins"),
+            "weighted_b_wins": record.get("weighted_losses"),
+            "weighted_total_matches": record.get("weighted_matches"),
+            "competition_evidence": record.get("competition_evidence"),
+        }
+
     overall = {"a_wins": a_wins, "b_wins": b_wins, "total_matches": total}
+    overall.update(_weighted(valid_matches))
     on_surface = None
     if current_surface and (a_surf + b_surf) > 0:
         on_surface = {"a_wins": a_surf, "b_wins": b_surf, "total_matches": a_surf + b_surf}
+        on_surface.update(_weighted(surface_matches))
     return {"overall": overall, "on_surface": on_surface, "surface": current_surface}
 
 
 def compute_form_from_recent(recent_matches: list, player_id: int,
                               match_date: datetime, n_matches: int = 10,
-                              current_surface: Optional[str] = None) -> dict:
+                              current_surface: Optional[str] = None, *,
+                              competition_policy: Optional[dict] = None) -> dict:
     """
     Forma recente + época atual + piso, a partir dos jogos recentes da API
     (past-matches). Substitui compute_recent_form/current_season/surface_stats
@@ -6143,7 +6214,7 @@ def compute_form_from_recent(recent_matches: list, player_id: int,
     if not recent_matches:
         return out
 
-    jogos = []  # (data, ganhou_bool, piso)
+    jogos = []  # (data, ganhou_bool, piso, registo factual)
     for m in recent_matches:
         if not isinstance(m, dict):
             continue
@@ -6163,31 +6234,37 @@ def compute_form_from_recent(recent_matches: list, player_id: int,
         if ganhou is None:
             continue
         surf = str(m.get("court") or m.get("surface") or "").lower()
-        jogos.append((d, ganhou, surf))
+        jogos.append((d, ganhou, surf, m))
 
     if not jogos:
         return out
     jogos.sort(key=lambda x: x[0], reverse=True)
 
-    # forma: últimos n jogos
+    policy_active = bool((competition_policy or {}).get("active"))
+
+    def _record(rows):
+        return competition_evidence.weighted_binary_record(
+            [item[3] for item in rows],
+            lambda row: (row.get("match_winner") == player_id)
+            if row.get("match_winner") is not None
+            else (row.get("winnerId") == player_id),
+            active=policy_active,
+        )
+
+    # The sample is selected first; only then are competition weights applied.
     ult = jogos[:n_matches]
-    w = sum(1 for _, g, _ in ult if g)
-    out["form"] = {"wins": w, "losses": len(ult) - w, "matches": len(ult)}
+    out["form"] = _record(ult)
 
-    # época atual: jogos do ano do match_date
     ano = match_date.year
-    da_epoca = [(g) for d, g, _ in jogos if d.year == ano]
+    da_epoca = [item for item in jogos if item[0].year == ano]
     if da_epoca:
-        we = sum(1 for g in da_epoca if g)
-        out["season"] = {"wins": we, "losses": len(da_epoca) - we, "matches": len(da_epoca)}
+        out["season"] = _record(da_epoca)
 
-    # piso: jogos no piso atual (todos os recentes disponíveis)
     if current_surface:
         cs = current_surface.lower()
-        no_piso = [(g) for _, g, s in jogos if cs in s]
+        no_piso = [item for item in jogos if cs in item[2]]
         if no_piso:
-            wp = sum(1 for g in no_piso if g)
-            out["surface"] = {"wins": wp, "losses": len(no_piso) - wp, "matches": len(no_piso)}
+            out["surface"] = _record(no_piso)
     return out
 
 

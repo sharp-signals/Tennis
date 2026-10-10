@@ -54,6 +54,7 @@ from .config import (
     SERVE_RETURN_STATS_MATCHES,
     SKIP_ANALYSIS_ODDS_THRESHOLD,
 )
+from . import competition_evidence
 from . import fetch_data
 from . import forward_only
 from . import run_metrics
@@ -614,9 +615,8 @@ def _compute_features(payload: dict) -> dict:
     feats = {}
 
     def _pct(d):
-        if isinstance(d, dict) and d.get("matches"):
-            return 100.0 * d["wins"] / d["matches"]
-        return None
+        value, _sample = competition_evidence.record_rate(d)
+        return value
 
     def _edge(va, vb, nome, unidade="%", amostra_a=None, amostra_b=None):
         """Regista a vantagem (diferença) entre A e B numa métrica."""
@@ -684,10 +684,14 @@ def _compute_features(payload: dict) -> dict:
         }
 
     # Forma recente (win%)
-    _edge(_pct(payload.get("recent_form_a")), _pct(payload.get("recent_form_b")),
-          "forma_recente",
-          amostra_a=(payload.get("recent_form_a") or {}).get("matches"),
-          amostra_b=(payload.get("recent_form_b") or {}).get("matches"))
+    _form_a = payload.get("recent_form_a")
+    _form_b = payload.get("recent_form_b")
+    _form_pct_a, _form_sample_a = competition_evidence.record_rate(_form_a)
+    _form_pct_b, _form_sample_b = competition_evidence.record_rate(_form_b)
+    _edge(
+        _form_pct_a, _form_pct_b, "forma_recente",
+        amostra_a=_form_sample_a, amostra_b=_form_sample_b,
+    )
 
     # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (score
     # graduado vs top-10/20/50, ver compute_recent_quality_wins). Não usa
@@ -824,7 +828,11 @@ def _compute_features(payload: dict) -> dict:
 
     # Piso (win%) — preferir o rico by_surface, senão surface_stats
     def _surf_pct(rich, basic, surface):
-        bs = (rich or {}).get("by_surface") or {}
+        # Provider aggregates have no match-level competition provenance.
+        policy_active = bool(
+            (payload.get("competition_evidence_policy") or {}).get("active")
+        )
+        bs = {} if policy_active else ((rich or {}).get("by_surface") or {})
         skey = None
         s = (surface or "").lower()
         if "clay" in s: skey = "clay"
@@ -847,9 +855,13 @@ def _compute_features(payload: dict) -> dict:
         if "clay" in s: basic_key = "Clay"
         elif "grass" in s: basic_key = "Grass"
         elif "hard" in s: basic_key = "Hard"
-        basic_cell = (basic or {}).get(basic_key) if basic_key else None
-        p = _pct(basic_cell)
-        return p, (basic_cell or {}).get("matches")
+        basic_cell = (
+            basic
+            if isinstance(basic, dict) and basic.get("matches") is not None
+            else (basic or {}).get(basic_key) if basic_key else None
+        )
+        p, sample = competition_evidence.record_rate(basic_cell)
+        return p, sample
     surf = payload.get("surface")
     pa, na = _surf_pct(payload.get("rich_stats_a"), payload.get("surface_stats_a"), surf)
     pb, nb = _surf_pct(payload.get("rich_stats_b"), payload.get("surface_stats_b"), surf)
@@ -902,15 +914,29 @@ def _compute_features(payload: dict) -> dict:
     # mas nunca era usado por ninguém — dado morto).
     h2h_obj = payload.get("h2h") or {}
     h2h = h2h_obj.get("overall") or {}
+    policy_active = bool(
+        (payload.get("competition_evidence_policy") or {}).get("active")
+    )
     if h2h.get("total_matches"):
-        aw, bw = h2h.get("a_wins", 0), h2h.get("b_wins", 0)
-        feats["h2h"] = {"lider": a if aw > bw else (b if bw > aw else "igual"),
-                        "a_wins": aw, "b_wins": bw, "total": h2h["total_matches"]}
+        if policy_active and isinstance(h2h.get("competition_evidence"), dict):
+            aw = h2h.get("weighted_a_wins")
+            bw = h2h.get("weighted_b_wins")
+            total = h2h.get("weighted_total_matches")
+        else:
+            aw, bw, total = (
+                h2h.get("a_wins", 0), h2h.get("b_wins", 0),
+                h2h.get("total_matches"),
+            )
+        if aw is not None and bw is not None and total:
+            feats["h2h"] = {
+                "lider": a if aw > bw else (b if bw > aw else "igual"),
+                "a_wins": aw, "b_wins": bw, "total": total,
+            }
         # NOVO (22/08/2026, a pedido): expor também o H2H ponderado pela
         # recência (calculado em compute_h2h). "lider" ali vem como o nome
         # resolvido do jogador; traduz-se para os rótulos a/b deste
         # relatório. O motor decide o que fazer com isto (report_html.py).
-        _wr = h2h_obj.get("weighted_recency")
+        _wr = None if policy_active else h2h_obj.get("weighted_recency")
         if isinstance(_wr, dict) and _wr.get("lider") not in (None, "igual"):
             # o líder ponderado vem como nome do jogador; mapear para a/b
             _lider_wr = a if _wr["lider"] == payload.get("player_a") else (
@@ -921,9 +947,20 @@ def _compute_features(payload: dict) -> dict:
                 feats["h2h"]["b_share_pct"] = _wr.get("b_share_pct")
     h2h_surf = h2h_obj.get("on_surface") or {}
     if h2h_surf.get("total_matches"):
-        aw_s, bw_s = h2h_surf.get("a_wins", 0), h2h_surf.get("b_wins", 0)
-        feats["h2h_piso"] = {"lider": a if aw_s > bw_s else (b if bw_s > aw_s else "igual"),
-                             "a_wins": aw_s, "b_wins": bw_s, "total": h2h_surf["total_matches"]}
+        if policy_active and isinstance(h2h_surf.get("competition_evidence"), dict):
+            aw_s = h2h_surf.get("weighted_a_wins")
+            bw_s = h2h_surf.get("weighted_b_wins")
+            total_s = h2h_surf.get("weighted_total_matches")
+        else:
+            aw_s, bw_s, total_s = (
+                h2h_surf.get("a_wins", 0), h2h_surf.get("b_wins", 0),
+                h2h_surf.get("total_matches"),
+            )
+        if aw_s is not None and bw_s is not None and total_s:
+            feats["h2h_piso"] = {
+                "lider": a if aw_s > bw_s else (b if bw_s > aw_s else "igual"),
+                "a_wins": aw_s, "b_wins": bw_s, "total": total_s,
+            }
 
     # NOVO (18/08/2026, a pedido): desempenho em rondas decisivas (QF+),
     # carreira toda — não condicionado à ronda de hoje (não temos o nome
@@ -1004,7 +1041,15 @@ def _compute_features(payload: dict) -> dict:
             "amostra_a": _amostra_nivel_a, "amostra_b": _amostra_nivel_b,
         }
 
-    return feats or None
+    guarded, blockers = competition_evidence.guard_features(
+        feats,
+        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+    )
+    policy = payload.get("competition_evidence_policy")
+    if isinstance(policy, dict):
+        policy["feature_blockers"] = blockers
+        policy["integral_laver_exclusion_claimed"] = False
+    return guarded or None
 
 
 def _factual_key_points(payload: dict) -> list:
@@ -1312,6 +1357,7 @@ def _build_match_payload(match: dict) -> dict:
     tournament = match["tournament_name"]
     surface = match["surface"]
     start = _parse_utc(match["date"])
+    competition_policy = competition_evidence.activation_from_environment()
 
     # DIAGNÓSTICO (15/08/2026, a pedido — muitos fatores "sem dados" em
     # jogos WTA que não deviam faltar). Se resolve_player_name falhar aqui,
@@ -1551,15 +1597,32 @@ def _build_match_payload(match: dict) -> dict:
     # Dados básicos: do histórico (ATP, via TennisMyLife). Para WTA — ou
     # sempre que o histórico não tiver o jogador — usamos a RapidAPI, que
     # cobre ambos os tours e não depende do Sackmann (que anda partido p/ WTA).
-    h2h = fetch_data.compute_h2h(history, player_a, player_b, surface)
-    form_a = fetch_data.compute_recent_form(history, player_a, RECENT_FORM_MATCHES,
-                                            window_days=RECENT_FORM_WINDOW_DAYS)
-    form_b = fetch_data.compute_recent_form(history, player_b, RECENT_FORM_MATCHES,
-                                            window_days=RECENT_FORM_WINDOW_DAYS)
-    season_a = fetch_data.compute_current_season_record(history, player_a)
-    season_b = fetch_data.compute_current_season_record(history, player_b)
-    surface_a = fetch_data.compute_surface_stats(history, player_a)
-    surface_b = fetch_data.compute_surface_stats(history, player_b)
+    h2h = fetch_data.compute_h2h(
+        history, player_a, player_b, surface,
+        competition_policy=competition_policy,
+    )
+    form_a = fetch_data.compute_recent_form(
+        history, player_a, RECENT_FORM_MATCHES,
+        window_days=RECENT_FORM_WINDOW_DAYS,
+        competition_policy=competition_policy,
+    )
+    form_b = fetch_data.compute_recent_form(
+        history, player_b, RECENT_FORM_MATCHES,
+        window_days=RECENT_FORM_WINDOW_DAYS,
+        competition_policy=competition_policy,
+    )
+    season_a = fetch_data.compute_current_season_record(
+        history, player_a, competition_policy=competition_policy,
+    )
+    season_b = fetch_data.compute_current_season_record(
+        history, player_b, competition_policy=competition_policy,
+    )
+    surface_a = fetch_data.compute_surface_stats(
+        history, player_a, competition_policy=competition_policy,
+    )
+    surface_b = fetch_data.compute_surface_stats(
+        history, player_b, competition_policy=competition_policy,
+    )
     # NOVO (14/08/2026, a pedido): indoor vs outdoor
     indoor_outdoor_a = fetch_data.compute_indoor_outdoor_stats(history, player_a)
     indoor_outdoor_b = fetch_data.compute_indoor_outdoor_stats(history, player_b)
@@ -1613,7 +1676,10 @@ def _build_match_payload(match: dict) -> dict:
             h2h_history = _compact_match_history(
                 _h2h_matches, limit=10, tour=tour, resolve_tournaments=True,
             )
-            _h2h_api = fetch_data.compute_h2h_from_api(_h2h_matches, _pid_a, _pid_b, surface, tour=tour)
+            _h2h_api = fetch_data.compute_h2h_from_api(
+                _h2h_matches, _pid_a, _pid_b, surface, tour=tour,
+                competition_policy=competition_policy,
+            )
             if _h2h_api:
                 h2h = _h2h_api
             # forma/época/piso via jogos recentes da API
@@ -1628,8 +1694,14 @@ def _build_match_payload(match: dict) -> dict:
             _recent_b_cache = fetch_data.fetch_player_recent_matches(
                 tour, _pid_b, force_refresh=True,
             )
-            _fa = fetch_data.compute_form_from_recent(_recent_a_cache, _pid_a, start, RECENT_FORM_MATCHES, surface)
-            _fb = fetch_data.compute_form_from_recent(_recent_b_cache, _pid_b, start, RECENT_FORM_MATCHES, surface)
+            _fa = fetch_data.compute_form_from_recent(
+                _recent_a_cache, _pid_a, start, RECENT_FORM_MATCHES, surface,
+                competition_policy=competition_policy,
+            )
+            _fb = fetch_data.compute_form_from_recent(
+                _recent_b_cache, _pid_b, start, RECENT_FORM_MATCHES, surface,
+                competition_policy=competition_policy,
+            )
             # PRIORIDADE À RAPIDAPI (fonte fiável). Só cai no valor anterior
             # (Sackmann) se a RapidAPI não tiver o dado. Antes era ao contrário
             # — e o Sackmann partido, por devolver valores errados mas não
@@ -2059,6 +2131,9 @@ def _build_match_payload(match: dict) -> dict:
         "data_coverage": data_coverage,
         "report_data_status": report_data_status,
         "fontes_divergentes": _discrepancias,  # stats onde Sackmann≠RapidAPI (RapidAPI ganhou)
+        "competition_evidence_policy": competition_evidence.policy_metadata(
+            competition_policy
+        ),
         "h2h": h2h,
         "h2h_history": h2h_history,
         "recent_history_a": recent_history_a,
@@ -2136,6 +2211,17 @@ def _build_match_payload(match: dict) -> dict:
     # interpreta). Adiciona 'features' com quem lidera cada dimensão e a
     # magnitude — o Claude recebe as comparações prontas.
     payload["features"] = _compute_features(payload)
+    policy_blockers = (
+        payload.get("competition_evidence_policy") or {}
+    ).get("feature_blockers") or []
+    if competition_policy.get("active") is True and policy_blockers:
+        payload["report_data_status"] = "DEGRADED"
+        payload.setdefault("data_coverage", {})["competition_evidence"] = {
+            "status": "DEGRADED",
+            "source": "match_level_policy",
+            "reason": "competition_evidence_not_separable",
+            "blocked_features": len(policy_blockers),
+        }
     # Motor de divergência V3: calcula UMA vez aqui e partilha via payload
     # com o analyze (Claude escreve alinhado) e o report_html (mostra o mesmo).
     # Fonte única de verdade — bola, veredicto e Model vs Market coerentes.

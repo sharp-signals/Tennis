@@ -154,6 +154,9 @@ def build_entries(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             "tour": payload.get("tour"),
             "tournament_id": payload.get("tournament_id"),
             "tournament": payload.get("tournament"),
+            "competition_evidence_policy": copy.deepcopy(
+                payload.get("competition_evidence_policy")
+            ),
             "surface": payload.get("surface"),
             "commence_time_utc": payload.get("commence_time_utc"),
             "analyzed_at_utc": analyzed_at,
