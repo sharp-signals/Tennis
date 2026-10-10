@@ -5755,6 +5755,11 @@ def compute_serve_return_stats(
             result["weighted_matches_used"] = None
     return result
 
+# H2H rico via RapidAPI/matchstat (cache de 24h).
+_H2H_CACHE: dict = {}
+H2H_CACHE_MAX_AGE_HOURS = 24
+
+
 def _h2h_cache_key(tour: str, player1_id: int, player2_id: int) -> str:
     # ordem consistente independentemente de quem é "player1"/"player2"
     ids = sorted([int(player1_id), int(player2_id)])
