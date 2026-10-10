@@ -125,6 +125,45 @@ class CompetitionClassificationTests(unittest.TestCase):
                 self.assertIsNone(actual["weight"])
                 self.assertEqual(actual["reason_code"], reason)
 
+    def test_missing_sentinels_and_contradictory_known_id_fail_closed(self):
+        for value in (float("nan"), pd.NA, "  ", "Unknown", "N/D", "<NA>"):
+            with self.subTest(value=repr(value)):
+                actual = competition_evidence.classify_match(
+                    {"tournament_name": value}
+                )
+                self.assertIsNone(actual["weight"])
+                self.assertEqual(
+                    actual["reason_code"], "COMPETITION_IDENTITY_UNRESOLVED"
+                )
+        conflict = competition_evidence.classify_match({
+            "tournamentId": 21353,
+            "tournament_name": "Vienna Open",
+        })
+        self.assertIsNone(conflict["weight"])
+        self.assertEqual(
+            conflict["reason_code"], "COMPETITION_IDENTITY_CONFLICT"
+        )
+
+    def test_mixed_dataframe_values_never_promote_unknown_rows(self):
+        frame = pd.DataFrame([
+            {"tournament_name": "Vienna Open", "won": True},
+            {"tournament_name": float("nan"), "won": True},
+            {"tournament_name": pd.NA, "won": False},
+            {"tournament_name": "  unknown  ", "won": True},
+        ])
+        actual = competition_evidence.weighted_binary_record(
+            frame.to_dict("records"), lambda row: row["won"], active=True
+        )
+        self.assertEqual(actual["matches"], 4)
+        self.assertIsNone(actual["weighted_matches"])
+        self.assertEqual(
+            actual["competition_evidence"]["unresolved"], 3
+        )
+        self.assertEqual(
+            actual["competition_evidence"]["reason_counts"]["INDIVIDUAL_REFERENCE"],
+            1,
+        )
+
     def test_same_sample_is_selected_before_weights_and_raw_counts_remain_integer(self):
         records = [
             {"id": "individual", "tournament_name": "Vienna Open", "won": True},

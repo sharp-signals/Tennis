@@ -21,6 +21,7 @@ import math
 import re
 
 try:
+    from . import competition_evidence
     from .config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
     from .pricing import estimate_market_residual_pricing
     from .prelive_decision import assess_report, build_decision
@@ -28,6 +29,7 @@ except ImportError:
     # Alguns testes carregam este módulo sem o pacote "src" (sys.path
     # aponta direto para a pasta), o que quebra o import relativo — cai
     # para o import absoluto nesse caso.
+    import competition_evidence
     from config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
     from pricing import estimate_market_residual_pricing
     from prelive_decision import assess_report, build_decision
@@ -1578,11 +1580,18 @@ def _compute_fatores_decisivos(payload):
             bullets.append("Superfície sem vantagem relevante.")
         else:
             bullets.append(f"Superfície favorece {ps['lider']}.")
-    # Sets decisivos (peso alto) — dos rich_stats
+    # Sets decisivos (peso alto) — apenas se o consumidor for elegível.
+    policy_active = bool(
+        _d(payload.get("competition_evidence_policy")).get("active")
+    )
+    recovery_feature = _d(payload.get("features")).get("recuperacao_sets")
+    allow_recovery = competition_evidence.feature_is_eligible(
+        recovery_feature, active=policy_active
+    )
     ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
     rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
     da, db = ra.get("deciding_set_win_pct"), rb.get("deciding_set_win_pct")
-    if da is not None and db is not None and abs(da - db) >= 5:
+    if allow_recovery and da is not None and db is not None and abs(da - db) >= 5:
         quem = a if da > db else b
         bullets.append(f"Mais forte em sets decisivos: {quem}.")
     # Ranking (peso médio) — só se relevante
@@ -4832,6 +4841,14 @@ def _mod_action_map(payload, div, result):
     b = payload.get("player_b", "B")
     names = {"a": a, "b": b}
     actions = []
+    policy_active = bool(
+        _d(payload.get("competition_evidence_policy")).get("active")
+    )
+
+    def policy_factor_available(key):
+        return competition_evidence.feature_is_eligible(
+            _d(payload.get("features")).get(key), active=policy_active
+        )
 
     def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None,
             card_class="", visual=None):
@@ -4939,6 +4956,9 @@ def _mod_action_map(payload, div, result):
         }
 
     def moneyline_history_note(side):
+        if policy_active:
+            # Estes arquivos agregados não conservam competição por encontro.
+            return ""
         context = comparable_moneyline_history(side)
         notes = []
 
@@ -5130,6 +5150,13 @@ def _mod_action_map(payload, div, result):
         return round(100.0 / rate_pct, 2)
 
     def scenario(side, rate_key, count_key):
+        required_factor = (
+            "comeback_set1"
+            if rate_key == "first_set_lose_then_win_pct"
+            else "recuperacao_sets"
+        )
+        if policy_active and not policy_factor_available(required_factor):
+            return None, None
         # Dados ricos não separam BO3/BO5. Num encontro BO5, a única
         # evidência aceitável para cenários de sets é a série BO5 explícita.
         if match_format == "bo5":
@@ -5259,9 +5286,9 @@ def _mod_action_map(payload, div, result):
             "Carga acumulada")
 
     # Um único cartão de handicap, sempre no formato real da partida. O
-    # bloco legado de média BO3 foi removido: num BO5 era inválido e não
-    # respondia à pergunta operacional (que linhas cobriria de facto?).
-    if fav_side:
+    # agregado histórico não separa competição por encontro e, por isso,
+    # permanece apenas factual enquanto a política competitiva estiver ativa.
+    if fav_side and not policy_active:
         _fmt = match_format
         _profile = _d(_d(payload.get(f"game_differential_{fav_side}")).get(_fmt))
         _wins = _d(_profile.get("wins"))

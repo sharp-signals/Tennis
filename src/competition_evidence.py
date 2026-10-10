@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 from collections import Counter
@@ -137,6 +138,33 @@ def activation_for_tour(
     return scoped
 
 
+_MISSING_SENTINELS = frozenset({
+    "", "n/a", "na", "nan", "none", "null", "unknown", "unavailable",
+    "not available", "desconhecido", "nd", "n/d", "<na>",
+})
+
+
+def _clean_scalar(value: Any) -> Any:
+    """Normalize provider missing values without importing pandas here."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return None if cleaned.casefold() in _MISSING_SENTINELS else cleaned
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    # pandas.NA deliberately raises when coerced to bool; treat that as missing.
+    try:
+        equality = value == value
+        if isinstance(equality, bool) and not equality:
+            return None
+        if not isinstance(equality, bool):
+            bool(equality)
+    except (TypeError, ValueError):
+        return None
+    return value
+
+
 def _value(record: Mapping[str, Any], *paths: str) -> Any:
     for path in paths:
         current: Any = record
@@ -145,7 +173,8 @@ def _value(record: Mapping[str, Any], *paths: str) -> Any:
                 current = None
                 break
             current = current.get(part)
-        if current not in (None, ""):
+        current = _clean_scalar(current)
+        if current is not None:
             return current
     return None
 
@@ -219,7 +248,12 @@ def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
     laver_name = bool(_LAVER_RE.search(name))
     laver_id = tournament_id in LAVER_TOURNAMENT_IDS
 
-    if (davis_name and (laver_name or laver_id)) or (laver_name and davis_name):
+    # A known Laver id may stand alone, but may never override a
+    # contradictory factual competition name.
+    if (
+        (davis_name and (laver_name or laver_id))
+        or (laver_id and name and not laver_name)
+    ):
         return _blocked(
             "COMPETITION_IDENTITY_CONFLICT",
             tournament_id=tournament_id,
@@ -281,6 +315,56 @@ def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
         "status": "WEIGHTED",
         "reason_code": "INDIVIDUAL_REFERENCE",
         "tournament_id": tournament_id,
+    }
+
+
+def weighted_observations(
+    records: Iterable[Mapping[str, Any]], *, active: bool,
+) -> dict[str, Any]:
+    """Classify selected match rows once for other match-level aggregators."""
+    selected = [dict(record) for record in records if isinstance(record, Mapping)]
+    if not active:
+        return {
+            "records": [(record, 1.0) for record in selected],
+            "competition_evidence": None,
+        }
+    counts: Counter[str] = Counter()
+    blockers: Counter[str] = Counter()
+    weighted: list[tuple[dict[str, Any], float]] = []
+    source_ids: list[str] = []
+    for record in selected:
+        classification = classify_match(record)
+        reason = str(classification["reason_code"])
+        counts[reason] += 1
+        weight = classification.get("weight")
+        if weight is None:
+            blockers[reason] += 1
+        else:
+            weighted.append((record, float(weight)))
+        source_id = _value(
+            record, "id", "matchId", "match_id", "eventId", "event_id"
+        )
+        if source_id is not None:
+            source_ids.append(str(source_id))
+    blocked = bool(blockers)
+    weighted_matches = sum(weight for _record, weight in weighted)
+    evidence = {
+        "version": POLICY_VERSION,
+        "config_hash": CONFIG_HASH,
+        "status": "BLOCKED" if blocked else "APPLIED",
+        "eligible_for_performance": not blocked and weighted_matches > 0,
+        "raw_matches": len(selected),
+        "weighted_matches": None if blocked else round(weighted_matches, 3),
+        "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
+        "davis_weighted": counts["DAVIS_TIE_COMPETITIVE_PRE_MATCH"],
+        "unresolved": sum(blockers.values()),
+        "reason_counts": dict(sorted(counts.items())),
+        "blocker_reason_counts": dict(sorted(blockers.items())),
+        "source_match_ids": source_ids,
+    }
+    return {
+        "records": [] if blocked else weighted,
+        "competition_evidence": evidence,
     }
 
 
@@ -580,6 +664,22 @@ def canonical_cutover_gate(
         and str(tournament_id) == str(persisted_snapshot.get("tournament_id"))
     )
     if context_matches:
+        persisted_policy = persisted_snapshot.get("competition_evidence_policy")
+        recovery = persisted_snapshot.get("delivery_recovery")
+        same_policy = (
+            isinstance(persisted_policy, Mapping)
+            and persisted_policy.get("version") == POLICY_VERSION
+            and persisted_policy.get("config_hash") == CONFIG_HASH
+        )
+        if same_policy and isinstance(recovery, Mapping):
+            return {
+                "status": "RECOVER_FROZEN_FIRST_DELIVERY",
+                "apply_policy": False,
+                "recover_frozen_delivery": True,
+                "canonical_match_instance_id": canonical_id,
+                "persisted_report_id": persisted_snapshot.get("report_id"),
+                "reason_code": "POST_CUTOVER_DELIVERY_RECOVERY",
+            }
         return {
             "status": "PRESERVE_EXISTING_CANONICAL_DECISION",
             "apply_policy": False,

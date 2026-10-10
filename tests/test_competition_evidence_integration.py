@@ -12,6 +12,8 @@ from src import (
     calibration_store,
     competition_evidence,
     main,
+    match_identity_v2,
+    paper_trading,
     prelive_decision,
     pricing,
     report_html,
@@ -168,6 +170,188 @@ class ConsumptionBoundaryIntegrationTests(unittest.TestCase):
         self.assertEqual(service["report_factual_display"], "PRESERVED")
 
 
+class ActiveRuntimeIntegrationTests(unittest.TestCase):
+    @staticmethod
+    def _record(wins: int, matches: int, prefix: str) -> dict:
+        rows = [
+            {
+                "id": f"{prefix}-{index}",
+                "tournament_name": "Vienna Open",
+                "won": index < wins,
+            }
+            for index in range(matches)
+        ]
+        return competition_evidence.weighted_binary_record(
+            rows, lambda row: row["won"], active=True
+        )
+
+    def _payload(self, reverse_raw: bool = False) -> dict:
+        strong = self._record(8, 10, "strong")
+        weak = self._record(3, 10, "weak")
+        service_a = {
+            "matches_used": 10,
+            "avg_first_serve_won_pct": 0.68,
+            "weighted_matches_used": 10.0,
+            "weighted_avg_first_serve_won_pct": 0.68,
+            "competition_evidence": copy.deepcopy(
+                strong["competition_evidence"]
+            ),
+        }
+        service_b = {
+            "matches_used": 10,
+            "avg_first_serve_won_pct": 0.59,
+            "weighted_matches_used": 10.0,
+            "weighted_avg_first_serve_won_pct": 0.59,
+            "competition_evidence": copy.deepcopy(
+                weak["competition_evidence"]
+            ),
+        }
+        quality_a = {
+            "matches": 10, "score": 9, "weighted_score": 9.0,
+            "competition_evidence": copy.deepcopy(
+                strong["competition_evidence"]
+            ),
+        }
+        quality_b = {
+            "matches": 10, "score": 2, "weighted_score": 2.0,
+            "competition_evidence": copy.deepcopy(
+                weak["competition_evidence"]
+            ),
+        }
+        high, low = ((12, 91) if reverse_raw else (91, 12))
+        policy = competition_evidence.policy_metadata(ACTIVE)
+        return {
+            "tour": "atp",
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "player_a_id": 10,
+            "player_b_id": 20,
+            "ranking_a": {"rank": 10, "points": 3000},
+            "ranking_b": {"rank": 40, "points": 1100},
+            "ranking_evolution_a": {"change_6m_pct": 20, "change_12m_pct": 18},
+            "ranking_evolution_b": {"change_6m_pct": -4, "change_12m_pct": -2},
+            "market_odds_decimal": {"Alpha": 2.05, "Beta": 1.80},
+            "surface": "Hard",
+            "recent_form_a": copy.deepcopy(strong),
+            "recent_form_b": copy.deepcopy(weak),
+            "recent_quality_a": quality_a,
+            "recent_quality_b": quality_b,
+            "indoor_outdoor_a": {"outdoor": copy.deepcopy(strong)},
+            "indoor_outdoor_b": {"outdoor": copy.deepcopy(weak)},
+            "sazonal_a": copy.deepcopy(strong),
+            "sazonal_b": copy.deepcopy(weak),
+            "surface_stats_a": {"Hard": copy.deepcopy(strong)},
+            "surface_stats_b": {"Hard": copy.deepcopy(weak)},
+            "court_speed_hoje": {"status": "available"},
+            "court_speed_a": {
+                **copy.deepcopy(strong), "eligible_for_index": True,
+            },
+            "court_speed_b": {
+                **copy.deepcopy(weak), "eligible_for_index": True,
+            },
+            "serve_return_stats_a": service_a,
+            "serve_return_stats_b": service_b,
+            "serve_return_recent_a": copy.deepcopy(service_a),
+            "serve_return_recent_b": copy.deepcopy(service_b),
+            "h2h": {
+                "overall": {
+                    "a_wins": 3, "b_wins": 1, "total_matches": 4,
+                    "weighted_a_wins": 3.0, "weighted_b_wins": 1.0,
+                    "weighted_total_matches": 4.0,
+                    "competition_evidence": copy.deepcopy(
+                        strong["competition_evidence"]
+                    ),
+                },
+                "on_surface": {
+                    "a_wins": 2, "b_wins": 1, "total_matches": 3,
+                    "weighted_a_wins": 2.0, "weighted_b_wins": 1.0,
+                    "weighted_total_matches": 3.0,
+                    "competition_evidence": copy.deepcopy(
+                        strong["competition_evidence"]
+                    ),
+                },
+            },
+            "rich_stats_a": {"scenarios": {
+                "deciding_set_win_pct": high, "deciding_set_count": 30,
+                "first_set_lose_then_win_pct": high,
+                "first_set_lose_count": 20,
+            }},
+            "rich_stats_b": {"scenarios": {
+                "deciding_set_win_pct": low, "deciding_set_count": 30,
+                "first_set_lose_then_win_pct": low,
+                "first_set_lose_count": 20,
+            }},
+            "competition_evidence_policy": policy,
+        }
+
+    @staticmethod
+    def _pricing() -> dict:
+        return {
+            "available": True,
+            "players": {
+                "a": {
+                    "market_odd": 2.05, "fair_odd": 1.80,
+                    "sharp_estimate_pct": 55.6, "expected_edge_pct": 13.9,
+                },
+                "b": {
+                    "market_odd": 1.80, "fair_odd": 2.25,
+                    "sharp_estimate_pct": 44.4, "expected_edge_pct": -20.0,
+                },
+            },
+        }
+
+    def test_active_atp_reaches_report_and_paper_gates_with_real_consumers(self):
+        payload = self._payload()
+        payload["features"] = main._compute_features(payload)
+        divergence = report_html.calcular_divergencia_publico(payload)
+        assessment = prelive_decision.assess_report(payload, divergence)
+        decision = prelive_decision.build_decision(
+            payload, divergence, self._pricing(), assessment
+        )
+        payload.update({
+            "divergencia": divergence,
+            "report_assessment": assessment,
+            "prelive_decision": decision,
+            "pricing": self._pricing(),
+        })
+
+        self.assertFalse(assessment["report_null"])
+        self.assertGreaterEqual(assessment["coverage"]["weighted_ratio"], 0.60)
+        self.assertTrue(assessment["essential_blocks"]["service_return_bilateral"])
+        self.assertTrue(assessment["essential_blocks"]["action_map"])
+        self.assertTrue(decision["paper_eligible"])
+
+        html = report_html.build_report_html(payload, {"flag": "🟢"})
+        self.assertIn("Mapa de Ações", html)
+        self.assertNotIn("Recupera e ganha o jogo", html)
+        self.assertNotIn("se chegar ao set decisivo", html)
+
+    def test_blocked_action_sources_cannot_change_decision_or_action_html(self):
+        payloads = [self._payload(False), self._payload(True)]
+        outputs = []
+        for payload in payloads:
+            payload["features"] = main._compute_features(payload)
+            divergence = report_html.calcular_divergencia_publico(payload)
+            assessment = prelive_decision.assess_report(payload, divergence)
+            decision = prelive_decision.build_decision(
+                payload, divergence, self._pricing(), assessment
+            )
+            payload.update({
+                "divergencia": divergence,
+                "report_assessment": assessment,
+                "prelive_decision": decision,
+                "pricing": self._pricing(),
+            })
+            outputs.append((
+                divergence["indice_evidencia_a"],
+                decision,
+                report_html._mod_action_map(payload, divergence, {"flag": "🟢"}),
+            ))
+        self.assertEqual(outputs[0], outputs[1])
+        self.assertNotIn("Recupera e ganha o jogo", outputs[0][2])
+        self.assertNotIn("se chegar ao set decisivo", outputs[0][2])
+
+
 class CanonicalCutoverIntegrationTests(unittest.TestCase):
     def test_existing_canonical_snapshot_preserves_runtime_artifacts(self):
         identity = {
@@ -264,6 +448,178 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
         )
         self.assertTrue(gate["fail_closed"])
 
+
+    def test_partial_first_delivery_recovers_only_from_frozen_snapshot(self):
+        builder = ActiveRuntimeIntegrationTests()
+        payload = builder._payload()
+        payload.update({
+            "identity_schema_version": match_identity_v2.SCHEMA_VERSION,
+            "identity_status": match_identity_v2.CANONICAL_STRONG,
+            "identity_persisted": True,
+            "canonical_match_instance_id": "cmiv2:recover",
+            "match_id": 501,
+            "tournament_id": 77,
+            "tournament": "Vienna Open",
+            "tier": "ATP 500",
+            "commence_time_utc": "2026-10-20T12:00:00+00:00",
+        })
+        payload["features"] = main._compute_features(payload)
+        divergence = report_html.calcular_divergencia_publico(payload)
+        assessment = prelive_decision.assess_report(payload, divergence)
+        decision = prelive_decision.build_decision(
+            payload, divergence, builder._pricing(), assessment
+        )
+        payload.update({
+            "divergencia": divergence,
+            "report_assessment": assessment,
+            "prelive_decision": decision,
+            "pricing": builder._pricing(),
+        })
+        snapshot = calibration_store.build_snapshot(
+            payload, {"flag": "🟢"},
+            analyzed_at_utc="2026-10-10T12:00:00+00:00",
+        )
+        payload.update({
+            "snapshot_key": snapshot["key"],
+            "report_id": snapshot["report_id"],
+            "analyzed_at_utc": snapshot["analyzed_at_utc"],
+        })
+        main._freeze_competition_delivery(snapshot, payload, {"flag": "🟢"})
+        self.assertIn("delivery_recovery", snapshot)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot_path = root / "snapshots.json"
+            paper_path = root / "paper.json"
+            report_path = root / "report.html"
+            self.assertEqual(
+                calibration_store.upsert_snapshots(
+                    [snapshot], path=snapshot_path, max_entries=None
+                ),
+                1,
+            )
+            persisted = calibration_store.read_snapshots_by_key(
+                ["cmiv2:recover"], path=snapshot_path
+            )["cmiv2:recover"]
+            gate = competition_evidence.canonical_cutover_gate(
+                {
+                    "canonical_match_instance_id": "cmiv2:recover",
+                    "identity_persisted": True,
+                },
+                activation=ACTIVE,
+                tour="atp",
+                tournament_id=77,
+                player_ids=(20, 10),
+                persisted_snapshot=persisted,
+            )
+            self.assertTrue(gate["recover_frozen_delivery"])
+
+            # A second runner has only the durable snapshot. Changed schedule
+            # and odds never enter the recovered delivery.
+            carrier = {
+                "_competition_delivery_recovery": copy.deepcopy(
+                    persisted["delivery_recovery"]
+                ),
+                "competition_evidence_cutover": gate,
+                "commence_time_utc": "2026-10-20T15:00:00+00:00",
+                "market_odds_decimal": {"Alpha": 1.40, "Beta": 3.20},
+            }
+            recovered = main._recover_competition_delivery(carrier)
+            self.assertIsNotNone(recovered)
+            recovered_payload, recovered_result = recovered
+            self.assertEqual(
+                recovered_payload["market_odds_decimal"],
+                payload["market_odds_decimal"],
+            )
+            self.assertEqual(
+                recovered_payload["commence_time_utc"],
+                payload["commence_time_utc"],
+            )
+            calibration_store.apply_persisted_validation(
+                recovered_payload, persisted
+            )
+            with patch.object(
+                paper_trading.tournament_policy,
+                "paper_block_reason",
+                return_value=None,
+            ), patch.object(
+                paper_trading.market_integrity,
+                "is_operational_pricing_payload",
+                return_value=True,
+            ):
+                entries = paper_trading.build_entries(recovered_payload)
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(
+                paper_trading.append_entries(entries, path=paper_path), 1
+            )
+            html = report_html.build_report_html(
+                recovered_payload, recovered_result
+            )
+            report_path.write_text(html, encoding="utf-8")
+
+            # Idempotent retry: no new PAPER and identical real HTML.
+            second_payload, second_result = main._recover_competition_delivery(
+                carrier
+            )
+            calibration_store.apply_persisted_validation(
+                second_payload, persisted
+            )
+            with patch.object(
+                paper_trading.tournament_policy,
+                "paper_block_reason",
+                return_value=None,
+            ), patch.object(
+                paper_trading.market_integrity,
+                "is_operational_pricing_payload",
+                return_value=True,
+            ):
+                second_entries = paper_trading.build_entries(second_payload)
+            self.assertEqual(
+                paper_trading.append_entries(second_entries, path=paper_path), 0
+            )
+            self.assertEqual(
+                report_html.build_report_html(second_payload, second_result),
+                report_path.read_text(encoding="utf-8"),
+            )
+
+            # First-write-wins also preserves an already settled outcome.
+            settled = copy.deepcopy(persisted)
+            settled["outcome"] = {"winner": "Alpha"}
+            snapshot_path.write_text(
+                json.dumps({
+                    "schema_version": calibration_store.SCHEMA_VERSION,
+                    "snapshots": [settled],
+                }),
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                calibration_store.upsert_snapshots(
+                    [snapshot], path=snapshot_path, max_entries=None
+                ),
+                0,
+            )
+            self.assertEqual(
+                calibration_store.read_snapshots_by_key(
+                    ["cmiv2:recover"], path=snapshot_path
+                )["cmiv2:recover"]["outcome"],
+                {"winner": "Alpha"},
+            )
+
+    def test_identity_unavailable_disables_policy_and_never_recovers(self):
+        gate = competition_evidence.canonical_cutover_gate(
+            {
+                "canonical_match_instance_id": None,
+                "identity_persisted": False,
+            },
+            activation=ACTIVE,
+            tour="atp",
+            tournament_id=77,
+            player_ids=(10, 20),
+            persisted_snapshot=None,
+        )
+        self.assertFalse(gate["apply_policy"])
+        self.assertFalse(gate.get("recover_frozen_delivery", False))
+        self.assertEqual(gate["status"], "CANONICAL_IDENTITY_UNAVAILABLE")
 
 class ScopeAndUnknownCompetitionIntegrationTests(unittest.TestCase):
     def test_wta_and_inactive_controls_are_unchanged(self):

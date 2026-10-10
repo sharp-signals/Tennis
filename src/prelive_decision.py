@@ -58,8 +58,21 @@ def _is_experimental_tier(payload: Mapping[str, Any]) -> bool:
     )
 
 
-def _service_block_available(payload: Mapping[str, Any]) -> bool:
+def _factor_available(
+    divergence: Mapping[str, Any] | None, *factor_keys: str,
+) -> bool:
+    statuses = _mapping(_mapping(divergence).get("fatores_status"))
+    return any(bool(_mapping(statuses.get(key)).get("disponivel")) for key in factor_keys)
+
+
+def _service_block_available(
+    payload: Mapping[str, Any], divergence: Mapping[str, Any] | None = None,
+) -> bool:
     """Exige pelo menos uma comparacao bilateral sustentada por amostra."""
+    if _mapping(payload.get("competition_evidence_policy")).get("active") is True:
+        return _factor_available(
+            divergence, "servico_carreira", "servico_recente"
+        )
     for prefix, sample_key, metric_keys in (
         ("pressure_profile", "matches", (
             "first_serve_won_pct", "second_serve_won_pct",
@@ -84,12 +97,23 @@ def _scenario(payload: Mapping[str, Any], side: str, rate: str, count: str) -> b
     return scenarios.get(rate) is not None and _positive_number(scenarios.get(count))
 
 
-def _action_block_available(payload: Mapping[str, Any]) -> bool:
+def _action_block_available(
+    payload: Mapping[str, Any], divergence: Mapping[str, Any] | None = None,
+) -> bool:
     """Detecta se existe ao menos um bloco bilateral que possa gerar acao.
 
-    O criterio e deliberadamente minimo e transparente: zero blocos equivale
-    a "praticamente nenhuma informacao"; nao se criou um score paralelo.
+    Com a política competitiva ativa, agregados sem proveniência nunca
+    satisfazem este gate. O mapa pode abrir com mercado factual e ao menos
+    um fator ponderado elegível; cenários adicionais são filtrados no HTML.
     """
+    if _mapping(payload.get("competition_evidence_policy")).get("active") is True:
+        market = _mapping(payload.get("market_odds_decimal"))
+        return bool(market) and _factor_available(
+            divergence,
+            "forma_recente", "qualidade_vitorias", "indoor_outdoor",
+            "velocidade_piso", "sazonal", "piso", "h2h", "h2h_piso",
+            "servico_carreira", "servico_recente",
+        )
     if all(
         _scenario(payload, side, "first_set_lose_then_win_pct", "first_set_lose_count")
         for side in ("a", "b")
@@ -148,8 +172,8 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
     experimental = _is_experimental_tier(payload)
     essential = {
         "ranking_bilateral": _valid_rank(payload, "a") and _valid_rank(payload, "b"),
-        "service_return_bilateral": _service_block_available(payload),
-        "action_map": _action_block_available(payload),
+        "service_return_bilateral": _service_block_available(payload, divergence),
+        "action_map": _action_block_available(payload, divergence),
     }
     if not essential["ranking_bilateral"]:
         reasons.append("ranking ausente para pelo menos um jogador")
