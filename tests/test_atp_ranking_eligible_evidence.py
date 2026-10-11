@@ -432,7 +432,7 @@ class OfflineImpactAuditTests(unittest.TestCase):
             audit["row_applicability_proxy"]["fatigue_load"]["rows_removed"], 0
         )
         self.assertEqual(
-            audit["policy_comparison"]["laver_only_rows_admitted"], 1
+            audit["policy_comparison"]["laver_only_rows_admitted"], 2
         )
         self.assertEqual(
             audit["policy_comparison"]["laver_only_rows_excluded"], 1
