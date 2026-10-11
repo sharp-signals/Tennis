@@ -12,16 +12,50 @@ def _operational_odds_fields():
 
 
 class ReportStateTests(unittest.TestCase):
-    def test_handicap_historical_price_treats_push_as_void(self):
-        price = report_html._historical_price_reference(10, 5, 10)
+    def test_negative_handicap_price_combines_win_probability_and_win_cover(self):
+        price = report_html._contextual_handicap_price_reference(
+            0.80, (15, 0, 5), (0, 0, 10), -3.5,
+        )
 
-        self.assertEqual(price["fair_odd"], 2.0)
-        self.assertEqual(price["minimum_odd"], 2.01)
-        self.assertEqual(price["decisions"], 20)
-        self.assertEqual(price["pushes"], 5)
+        self.assertEqual(price["fair_odd"], 1.67)
+        self.assertEqual(price["minimum_odd"], 1.70)
+        self.assertEqual(price["estimated_cover_pct"], 60.0)
+        self.assertEqual(price["relevant_sample"], 20)
 
-    def test_handicap_historical_price_fails_closed_on_small_sample(self):
-        self.assertIsNone(report_html._historical_price_reference(8, 2, 6))
+    def test_positive_handicap_price_uses_loss_cover_and_void_neutrally(self):
+        price = report_html._contextual_handicap_price_reference(
+            0.40, (12, 0, 0), (8, 2, 10), 2.0,
+        )
+
+        self.assertEqual(price["fair_odd"], 1.47)
+        self.assertEqual(price["minimum_odd"], 1.70)
+        self.assertEqual(price["estimated_cover_pct"], 64.0)
+        self.assertEqual(price["estimated_push_pct"], 6.0)
+
+    def test_contextual_handicap_price_fails_closed_on_small_relevant_sample(self):
+        self.assertIsNone(report_html._contextual_handicap_price_reference(
+            0.75, (5, 1, 4), (0, 0, 10), -3.5,
+        ))
+
+    def test_contextual_price_does_not_reuse_blind_total_coverage(self):
+        price = report_html._contextual_handicap_price_reference(
+            0.75, (70, 0, 30), (0, 0, 100), -3.5,
+            min_relevant_sample=30,
+        )
+
+        # A taxa bruta seria 70/200=35% e produziria 2.86. O contexto atual
+        # estima 75% x 70%=52.5%, logo a referência correta é 1.90.
+        self.assertEqual(price["fair_odd"], 1.90)
+        self.assertEqual(price["minimum_odd"], 1.91)
+        self.assertEqual(price["estimated_cover_pct"], 52.5)
+
+    def test_margin_split_ignores_missing_instead_of_treating_it_as_zero(self):
+        wins, losses = report_html._split_margins_by_result(
+            [5, "3", None, "bad", 0, -2]
+        )
+
+        self.assertEqual(wins, [5.0, 3.0])
+        self.assertEqual(losses, [-2.0])
 
     def test_court_speed_reason_is_shown_instead_of_generic_missing_data(self):
         payload = {
@@ -207,8 +241,8 @@ class ReportRenderingTests(unittest.TestCase):
             },
             "prelive_decision": {"state": "EDGE_POSITIVE"},
             "game_differential_a": {"bo3": {
-                "wins": {"n": 20, "margins": [5] * 15 + [3] * 5},
-                "losses": {"n": 10, "margins": [-2] * 10},
+                "wins": {"n": 40, "margins": [5] * 30 + [3] * 10},
+                "losses": {"n": 20, "margins": [-2] * 20},
             }},
         }
 
@@ -218,8 +252,10 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("HANDICAP NEGATIVO · BO3", html)
         self.assertIn("A -3.5", html)
         self.assertIn("75.0% <span>cobre quando vence</span>", html)
-        self.assertIn("Total: 50.0% (15/30)", html)
-        self.assertIn("2.01–2.50", html)
+        self.assertIn("Total: 50.0% (30/60)", html)
+        self.assertIn("1.70–2.50", html)
+        self.assertIn("Prob. contextual de cobertura: 60.0%", html)
+        self.assertIn("probabilidade ML + cobertura condicional", html)
 
     def test_operational_entry_card_adds_positive_handicap_for_underdog(self):
         payload = {
