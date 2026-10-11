@@ -597,7 +597,7 @@ def classify_selected_match(
         RANKING_ELIGIBLE_V1_EFFECTIVE_FROM_UTC.replace("Z", "+00:00")
     )
     if is_ranking_eligible_v2(policy):
-        if effective_from <= v1_effective_from:
+        if effective_from < v1_effective_from:
             return _blocked(
                 "COMPETITION_POLICY_T1_NOT_AFTER_V1_T0",
                 temporal_scope="UNRESOLVED_T1",

@@ -489,13 +489,36 @@ class RankingEligibleV2Tests(unittest.TestCase):
         self.assertEqual(evidence["preserved_v1_interval"], 1)
         self.assertEqual(evidence["prospective_post_t1"], 1)
 
-    def test_v2_rejects_t1_that_would_reweight_the_v1_period(self):
-        unsafe = {
+    def test_v2_allows_same_t0_without_an_intermediate_v1_period(self):
+        same_t0 = {
             **V2_ACTIVE,
             "effective_from_utc": "2026-10-12T00:00:00+00:00",
         }
         result = competition_evidence.weighted_binary_record(
-            [{**row(313, 20261012, "Davis Cup"), "won": True}],
+            [
+                {**row(313, 20261011, "Davis Cup"), "won": True},
+                {**row(314, 20261012, "Davis Cup"), "won": True},
+            ],
+            lambda item: item["won"],
+            active=True,
+            policy=same_t0,
+        )
+        self.assertEqual(result["weighted_matches"], 1.5)
+        evidence = result["competition_evidence"]
+        self.assertEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertEqual(evidence["preserved_v1_interval"], 0)
+        self.assertEqual(evidence["prospective_post_t1"], 1)
+        self.assertEqual(
+            evidence["classification_counts"]["DAVIS_EXCEPTION"], 1
+        )
+
+    def test_v2_rejects_cutover_before_v1_t0(self):
+        unsafe = {
+            **V2_ACTIVE,
+            "effective_from_utc": "2026-10-11T00:00:00+00:00",
+        }
+        result = competition_evidence.weighted_binary_record(
+            [{**row(315, 20261012, "Davis Cup"), "won": True}],
             lambda item: item["won"],
             active=True,
             policy=unsafe,
