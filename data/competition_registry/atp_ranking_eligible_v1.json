@@ -1,6 +1,6 @@
 {
   "schema_version": "atp-competition-eligibility-registry-v1",
-  "registry_version": "2026-10-11.1",
+  "registry_version": "2026-10-11.2",
   "policy_version": "atp-ranking-eligible-performance-v1",
   "purpose": "Prospective ATP performance-sample eligibility. Exact factual evidence only; unresolved or conflicting evidence blocks.",
   "provenance": {
@@ -23,8 +23,7 @@
     "edition_overrides",
     "exact_tournament_ids",
     "exact_competition_names",
-    "explicit_category_fields",
-    "repository_history_scope"
+    "explicit_category_fields"
   ],
   "edition_overrides": [
     {
@@ -189,15 +188,19 @@
       "itf": "RANKING_ELIGIBLE"
     }
   },
-  "repository_history_scope": {
-    "main": "RANKING_ELIGIBLE",
-    "challenger": "RANKING_ELIGIBLE"
-  },
   "classification_weights": {
     "RANKING_ELIGIBLE": 1,
     "DAVIS_EXCEPTION": 1,
     "NEXT_GEN_EXCEPTION": 1,
     "OLYMPICS_EXCEPTION": 1,
     "NON_RANKING": 0
-  }
+  },
+  "classification_provenance": {
+    "RANKING_ELIGIBLE": "atp_rulebook",
+    "DAVIS_EXCEPTION": "governance_issue",
+    "NEXT_GEN_EXCEPTION": "governance_issue",
+    "OLYMPICS_EXCEPTION": "governance_issue",
+    "NON_RANKING": "governance_issue"
+  },
+  "history_scope_semantics": "TELEMETRY_ONLY_NOT_AUTHORIZATION"
 }
