@@ -24,21 +24,35 @@ O fingerprint é semântico: inclui os agregados e estados de linkage derivados,
 Challenger 125 apresentado pelo relatório, depois de confirmar o preço atual na
 22Bet. Não é PAPER técnico, GREEN ou REAL.
 
-Depois de atualizar o Apps Script, executar uma vez
-`installChallenger125TrackingColumns`. Acrescenta, sem alterar as colunas já
-existentes, `Challenger Índice Fenzobot`, `Challenger Cobertura %` e
-`Challenger Edge %`. Para cada registo manual Challenger preencher:
+`CHANGE-2026-10-11-104` reduz o edge mínimo prospetivo para **2%** e torna a
+separação operacional visível na própria Sheet. Depois de atualizar o Apps
+Script, executar uma vez `installChallengerPaperWorkspace`. Esta função:
 
-- `Selection Strategy`: `CHALLENGER_125_EXPERIMENTAL_V1`;
-- `Stake (u)`: exatamente `0,5`;
+- cria/atualiza a aba de registo `Challenger · Entradas`, fisicamente separada
+  de `Apostas`;
+- cria/atualiza a aba `Challenger · Gráficos`, com métricas e gráficos próprios;
+- fixa automaticamente `Tour = ATP`, `Nível = Challenger`, o timestamp de
+  seleção e a stake de `0,5u`;
+- mantém compatibilidade com antigas linhas Challenger eventualmente gravadas
+  em `Apostas`, mas exclui-as sempre dos totais principais.
+
+Para cada registo manual Challenger preencher ainda:
+
 - `Fenzobot Snapshot Key` e `Selected At UTC`;
-- as três métricas opcionais copiadas do relatório, quando disponíveis.
+- `Challenger Índice Fenzobot`, `Challenger Cobertura %` e
+  `Challenger Edge %`, copiadas do relatório;
+- resultado e lucro quando o encontro ficar liquidado.
+
+O registo só entra nas métricas Challenger quando mantém stake `0,5u`, tem
+snapshot/timestamp válidos e `Challenger Edge % >= 2`. Uma linha inválida fica
+fora das métricas e recebe um estado de validação explícito; nunca transborda
+para o universo normal.
 
 As linhas desta tag são excluídas dos totais PAPER 22Bet normais e publicadas
 apenas em `by_strategy.CHALLENGER_125_EXPERIMENTAL_V1`, segmentadas por
-mercado, perfil, índice Fenzobot, cobertura e edge. A Sheet
-**Histórico & Aprendizagem** mostra-as na aba separada
-`Challenger 125 · PAPER 0,5u`.
+mercado, perfil, índice Fenzobot, cobertura e edge. A Sheet PAPER apresenta
+esses segmentos na aba `Challenger · Gráficos`; a Sheet **Histórico &
+Aprendizagem** mantém a sua aba separada `Challenger 125 · PAPER 0,5u`.
 
 ### Simulação pública de stake fixa
 

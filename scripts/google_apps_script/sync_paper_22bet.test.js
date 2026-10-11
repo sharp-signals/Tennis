@@ -313,3 +313,93 @@ test('manual Challenger 125 has a separate 0.5u aggregate and never changes norm
   assert.equal(strategy.by_edge_band['4–4,9%'].total_entries, 1);
   assert.doesNotMatch(JSON.stringify(payload), /Private Player|Private Opponent|private:snapshot/);
 });
+
+test('selecting Challenger in Nível isolates the row even without a manually typed strategy', () => {
+  const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat([
+    'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
+    'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
+  ]);
+  const challenger = Array(headers.length).fill('');
+  challenger[0] = '2026-10-11'; challenger[1] = 'Alpha vs Beta'; challenger[3] = 'Challenger';
+  challenger[5] = 'Vencedor'; challenger[7] = 'Underdog'; challenger[9] = 2.1; challenger[10] = 0.5;
+  challenger[12] = 'GANHOU'; challenger[13] = 0.55; challenger[15] = 'snapshot:challenger';
+  challenger[17] = '2026-10-11T10:00:00Z'; challenger[21] = 74; challenger[22] = 0.58; challenger[23] = 2.0;
+  const standard = challenger.slice();
+  standard[1] = 'Gamma vs Delta'; standard[3] = '250'; standard[10] = 1; standard[13] = 1.1;
+  standard[15] = ''; standard[17] = ''; standard[21] = ''; standard[22] = ''; standard[23] = '';
+  const sheet = {
+    getLastRow: () => 7, getLastColumn: () => headers.length,
+    getRange: (sheetRow) => ({getValues: () => sheetRow === 5 ? [headers] : [challenger, standard], setValue: () => {}}),
+  };
+  context.SpreadsheetApp = {getActiveSpreadsheet: () => ({getSheetByName: () => sheet, getUrl: () => 'https://docs.google.com/spreadsheets/d/test'})};
+  context.Utilities = {DigestAlgorithm: {SHA_256: 'SHA_256'}, computeDigest: () => [0]};
+  context.fetchGreenStrongIndex_ = () => ({available: false, eligibleCount: null, byKey: {}});
+  const payload = context.buildPaperTradingPayload_('', '', 'main');
+  const strategy = payload.by_strategy.CHALLENGER_125_EXPERIMENTAL_V1;
+  assert.equal(payload.summary.total_entries, 1);
+  assert.equal(strategy.summary.total_entries, 1);
+  assert.equal(strategy.summary.units, 0.55);
+  assert.equal(strategy.by_edge_band['2–2,9%'].total_entries, 1);
+  assert.equal(strategy.validation.MANUAL_CHALLENGER_RECORDED, 1);
+});
+
+test('dedicated Challenger entry sheet feeds only the isolated aggregate', () => {
+  const mainHeaders = [
+    'Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und',
+    'Pré/Live', 'Casa', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas',
+  ];
+  const mainRow = Array(mainHeaders.length).fill('');
+  mainRow[0] = '2026-10-11'; mainRow[1] = 'ATP Alpha vs Beta'; mainRow[3] = '500';
+  mainRow[5] = 'Vencedor'; mainRow[7] = 'Favorito'; mainRow[10] = 1.8;
+  mainRow[11] = 1; mainRow[13] = 'GANHOU'; mainRow[14] = 0.8;
+  const challengerHeaders = mainHeaders.concat([
+    'Fenzobot Snapshot Key', 'Selected At UTC', 'Challenger Índice Fenzobot',
+    'Challenger Cobertura %', 'Challenger Edge %', 'Validation Status',
+  ]);
+  const challengerRow = Array(challengerHeaders.length).fill('');
+  challengerRow[0] = '2026-10-11'; challengerRow[1] = 'Challenger Alpha vs Beta';
+  challengerRow[2] = 'ATP'; challengerRow[3] = 'Challenger'; challengerRow[5] = 'Handicap games';
+  challengerRow[7] = 'Underdog'; challengerRow[10] = 2.1; challengerRow[11] = 0.5;
+  challengerRow[13] = 'GANHOU'; challengerRow[14] = 0.55;
+  challengerRow[16] = 'snapshot:dedicated'; challengerRow[17] = '2026-10-11T10:00:00Z';
+  challengerRow[18] = 82; challengerRow[19] = 0.61; challengerRow[20] = 2.4;
+  const sheetStub = (headers, rows) => ({
+    getLastRow: () => 5 + rows.length,
+    getLastColumn: () => headers.length,
+    getRange: (sheetRow) => ({
+      getValues: () => sheetRow === 5 ? [headers] : rows,
+      setValue: () => {},
+    }),
+  });
+  const mainSheet = sheetStub(mainHeaders, [mainRow]);
+  const challengerSheet = sheetStub(challengerHeaders, [challengerRow]);
+  context.SpreadsheetApp = {getActiveSpreadsheet: () => ({
+    getSheetByName: name => name === 'Apostas' ? mainSheet : challengerSheet,
+    getUrl: () => 'https://docs.google.com/spreadsheets/d/test',
+  })};
+  context.Utilities = {DigestAlgorithm: {SHA_256: 'SHA_256'}, computeDigest: () => [0]};
+  context.fetchGreenStrongIndex_ = () => ({available: false, eligibleCount: null, byKey: {}});
+  const payload = context.buildPaperTradingPayload_('', '', 'main');
+  const challenger = payload.by_strategy.CHALLENGER_125_EXPERIMENTAL_V1;
+  assert.equal(payload.summary.total_entries, 1);
+  assert.equal(payload.summary.units, 0.8);
+  assert.equal(challenger.summary.total_entries, 1);
+  assert.equal(challenger.summary.units, 0.55);
+  assert.equal(challenger.by_market['Handicap games'].total_entries, 1);
+  assert.equal(challenger.by_fenzobot_index_band['80–89'].total_entries, 1);
+  assert.equal(challenger.by_edge_band['2–2,9%'].total_entries, 1);
+  assert.equal(payload.source.challenger_entry_sheet, 'Challenger · Entradas');
+  assert.doesNotMatch(JSON.stringify(payload), /ATP Alpha|Challenger Alpha|snapshot:dedicated/);
+});
+
+test('Challenger row below two percent edge stays outside performance metrics', () => {
+  const tracking = {snapshot: 0, selectedAt: 1, stake: 2, challengerEdge: 3};
+  assert.equal(
+    context.validateManualChallengerSelection_(['snapshot', '2026-10-11T10:00:00Z', 0.5, 1.99], tracking),
+    'INVALID_CHALLENGER_EDGE',
+  );
+  assert.equal(
+    context.validateManualChallengerSelection_(['snapshot', '2026-10-11T10:00:00Z', 0.5, 2.0], tracking),
+    'MANUAL_CHALLENGER_RECORDED',
+  );
+});
