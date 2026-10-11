@@ -17,6 +17,8 @@ from typing import Any
 
 CHANGE_ID = "CHANGE-2026-10-10-099"
 POLICY_VERSION = "davis-laver-performance-v1"
+LAVER_ONLY_CHANGE_ID = "CHANGE-2026-10-11-100"
+LAVER_ONLY_POLICY_VERSION = "laver-only-performance-v1"
 ACTIVATION_VERSION_ENV = "FENZOBOT_COMPETITION_EVIDENCE_VERSION"
 ACTIVATION_UTC_ENV = "FENZOBOT_COMPETITION_EVIDENCE_EFFECTIVE_FROM_UTC"
 
@@ -39,6 +41,37 @@ CONFIG_HASH = hashlib.sha256(
         _POLICY_SPEC, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
 ).hexdigest()[:20]
+_LAVER_ONLY_POLICY_SPEC = {
+    "change_id": LAVER_ONLY_CHANGE_ID,
+    "version": LAVER_ONLY_POLICY_VERSION,
+    "individual_reference_weight": 1.0,
+    "davis_treatment": "PRESERVE_CURRENT_PRODUCTION",
+    "laver_weight": 0.0,
+    "selection_order": "select_sample_then_exclude_laver",
+    "fatigue_load": "raw_factual_unweighted",
+}
+LAVER_ONLY_CONFIG_HASH = hashlib.sha256(
+    json.dumps(_LAVER_ONLY_POLICY_SPEC, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+).hexdigest()[:20]
+
+
+def _policy_contract(policy: Mapping[str, Any] | None = None) -> tuple[str, str, str]:
+    version = str((policy or {}).get("version") or POLICY_VERSION)
+    if version == LAVER_ONLY_POLICY_VERSION:
+        return LAVER_ONLY_CHANGE_ID, LAVER_ONLY_POLICY_VERSION, LAVER_ONLY_CONFIG_HASH
+    return CHANGE_ID, POLICY_VERSION, CONFIG_HASH
+
+
+def policy_is_supported(policy: Mapping[str, Any] | None) -> bool:
+    if not isinstance(policy, Mapping):
+        return False
+    _change, version, config_hash = _policy_contract(policy)
+    return policy.get("version") == version and policy.get("config_hash") == config_hash
+
+
+def is_laver_only(policy: Mapping[str, Any] | None) -> bool:
+    return policy_is_supported(policy) and policy.get("version") == LAVER_ONLY_POLICY_VERSION
+
 
 _DAVIS_RE = re.compile(r"\bdavis(?:\s+cup)?\b", re.IGNORECASE)
 _LAVER_RE = re.compile(r"\blaver(?:\s+cup)?\b", re.IGNORECASE)
@@ -97,8 +130,11 @@ def activation_from_environment(
                 parsed_effective = parsed_effective.replace(tzinfo=timezone.utc)
         except ValueError:
             parsed_effective = None
+    supported_versions = {POLICY_VERSION, LAVER_ONLY_POLICY_VERSION}
+    selected = LAVER_ONLY_POLICY_VERSION if requested == LAVER_ONLY_POLICY_VERSION else POLICY_VERSION
+    selected_change, selected_version, selected_hash = _policy_contract({"version": selected})
     active = (
-        requested == POLICY_VERSION
+        requested in supported_versions
         and parsed_effective is not None
         and datetime.now(timezone.utc) >= parsed_effective.astimezone(timezone.utc)
     )
@@ -106,15 +142,15 @@ def activation_from_environment(
         "ACTIVE"
         if active
         else "ACTIVATION_EFFECTIVE_FROM_UTC_INVALID_OR_FUTURE"
-        if requested == POLICY_VERSION and effective_from
+        if requested in supported_versions and effective_from
         else "ACTIVATION_EFFECTIVE_FROM_UTC_MISSING"
-        if requested == POLICY_VERSION
+        if requested in supported_versions
         else "ACTIVATION_VERSION_NOT_SELECTED"
     )
     return {
-        "change_id": CHANGE_ID,
-        "version": POLICY_VERSION,
-        "config_hash": CONFIG_HASH,
+        "change_id": selected_change,
+        "version": selected_version,
+        "config_hash": selected_hash,
         "status": reason,
         "active": active,
         "effective_from_utc": effective_from or None,
@@ -183,7 +219,9 @@ def _tournament_text(record: Mapping[str, Any]) -> str:
     values = [
         _value(record, "tourney_name"),
         _value(record, "tournament_name"),
+        _value(record, "tournamentName"),
         _value(record, "competition_name"),
+        _value(record, "competitionName"),
         _value(record, "event_name"),
         _value(record, "tournament.name"),
     ]
@@ -240,7 +278,7 @@ def _blocked(
     }
 
 
-def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
+def classify_match(record: Mapping[str, Any], policy: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Classify one result without inventing identity or Davis tie state."""
     name = _tournament_text(record)
     tournament_id = _tournament_id(record)
@@ -267,6 +305,14 @@ def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
             "tournament_id": tournament_id,
         }
     if davis_name:
+        if is_laver_only(policy):
+            return {
+                "competition": "DAVIS_CUP",
+                "weight": 1.0,
+                "status": "PRESERVED",
+                "reason_code": "DAVIS_CURRENT_PRODUCTION_TREATMENT_PRESERVED",
+                "tournament_id": tournament_id,
+            }
         state = _explicit_davis_state(record)
         if state in _COMPETITIVE:
             return {
@@ -320,6 +366,7 @@ def classify_match(record: Mapping[str, Any]) -> dict[str, Any]:
 
 def weighted_observations(
     records: Iterable[Mapping[str, Any]], *, active: bool,
+    policy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Classify selected match rows once for other match-level aggregators."""
     selected = [dict(record) for record in records if isinstance(record, Mapping)]
@@ -328,12 +375,13 @@ def weighted_observations(
             "records": [(record, 1.0) for record in selected],
             "competition_evidence": None,
         }
+    _change, version, config_hash = _policy_contract(policy)
     counts: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
     weighted: list[tuple[dict[str, Any], float]] = []
     source_ids: list[str] = []
     for record in selected:
-        classification = classify_match(record)
+        classification = classify_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
         weight = classification.get("weight")
@@ -349,14 +397,15 @@ def weighted_observations(
     blocked = bool(blockers)
     weighted_matches = sum(weight for _record, weight in weighted)
     evidence = {
-        "version": POLICY_VERSION,
-        "config_hash": CONFIG_HASH,
+        "version": version,
+        "config_hash": config_hash,
         "status": "BLOCKED" if blocked else "APPLIED",
         "eligible_for_performance": not blocked and weighted_matches > 0,
         "raw_matches": len(selected),
         "weighted_matches": None if blocked else round(weighted_matches, 3),
         "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
         "davis_weighted": counts["DAVIS_TIE_COMPETITIVE_PRE_MATCH"],
+        "davis_preserved": counts["DAVIS_CURRENT_PRODUCTION_TREATMENT_PRESERVED"],
         "unresolved": sum(blockers.values()),
         "reason_counts": dict(sorted(counts.items())),
         "blocker_reason_counts": dict(sorted(blockers.items())),
@@ -373,6 +422,7 @@ def weighted_binary_record(
     won: Callable[[Mapping[str, Any]], bool],
     *,
     active: bool,
+    policy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Apply weights after sample selection, preserving raw factual counts."""
     selected = [dict(record) for record in records if isinstance(record, Mapping)]
@@ -386,13 +436,14 @@ def weighted_binary_record(
     if not active:
         return base
 
+    _change, version, config_hash = _policy_contract(policy)
     weighted_wins = 0.0
     weighted_losses = 0.0
     counts: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
     source_ids: list[str] = []
     for record in selected:
-        classification = classify_match(record)
+        classification = classify_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
         weight = classification.get("weight")
@@ -421,13 +472,14 @@ def weighted_binary_record(
             else round(100.0 * weighted_wins / weighted_matches, 1)
         ),
         "competition_evidence": {
-            "version": POLICY_VERSION,
-            "config_hash": CONFIG_HASH,
+            "version": version,
+            "config_hash": config_hash,
             "status": "BLOCKED" if blocked else "APPLIED",
             "eligible_for_performance": not blocked and weighted_matches > 0,
             "raw_matches": raw_matches,
             "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
             "davis_weighted": counts["DAVIS_TIE_COMPETITIVE_PRE_MATCH"],
+            "davis_preserved": counts["DAVIS_CURRENT_PRODUCTION_TREATMENT_PRESERVED"],
             "unresolved": sum(blockers.values()),
             "reason_counts": dict(sorted(counts.items())),
             "blocker_reason_counts": dict(sorted(blockers.items())),
@@ -457,12 +509,13 @@ def record_rate(
         return None, None
 
 
-def evidence_is_compatible(record: Mapping[str, Any] | None) -> bool:
+def evidence_is_compatible(record: Mapping[str, Any] | None, policy: Mapping[str, Any] | None = None) -> bool:
     evidence = record.get("competition_evidence") if isinstance(record, Mapping) else None
+    _change, version, config_hash = _policy_contract(policy)
     return (
         isinstance(evidence, Mapping)
-        and evidence.get("version") == POLICY_VERSION
-        and evidence.get("config_hash") == CONFIG_HASH
+        and evidence.get("version") == version
+        and evidence.get("config_hash") == config_hash
         and evidence.get("eligible_for_performance") is True
     )
 
@@ -472,17 +525,19 @@ def annotate_feature(
     sources: Iterable[Mapping[str, Any] | None],
     *,
     active: bool,
+    policy: Mapping[str, Any] | None = None,
 ) -> None:
     """Attach factor-local eligibility without removing factual feature data."""
     if not active or not isinstance(feature, dict):
         return
+    _change, version, config_hash = _policy_contract(policy)
     source_list = list(sources)
     eligible = bool(source_list) and all(
-        evidence_is_compatible(source) for source in source_list
+        evidence_is_compatible(source, policy) for source in source_list
     )
     feature["competition_evidence"] = {
-        "version": POLICY_VERSION,
-        "config_hash": CONFIG_HASH,
+        "version": version,
+        "config_hash": config_hash,
         "eligible_for_performance": eligible,
         "reason_code": (
             "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED"
@@ -492,14 +547,15 @@ def annotate_feature(
     }
 
 
-def feature_is_eligible(feature: Any, *, active: bool) -> bool:
+def feature_is_eligible(feature: Any, *, active: bool, policy: Mapping[str, Any] | None = None) -> bool:
     if not active:
         return True
     evidence = feature.get("competition_evidence") if isinstance(feature, Mapping) else None
+    _change, version, config_hash = _policy_contract(policy)
     return (
         isinstance(evidence, Mapping)
-        and evidence.get("version") == POLICY_VERSION
-        and evidence.get("config_hash") == CONFIG_HASH
+        and evidence.get("version") == version
+        and evidence.get("config_hash") == config_hash
         and evidence.get("eligible_for_performance") is True
     )
 
@@ -507,16 +563,25 @@ def feature_is_eligible(feature: Any, *, active: bool) -> bool:
 def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
     """Build immutable provenance copied to new payload/snapshot/PAPER."""
     result = dict(activation)
-    result["weights"] = {
-        "individual_reference": 1.0,
-        "davis_competitive": 0.5,
-        "laver": 0.0,
-        "davis_decided": None,
-        "davis_unknown": None,
-    }
+    if is_laver_only(result):
+        result["weights"] = {
+            "individual_reference": 1.0,
+            "davis_current_production_treatment": 1.0,
+            "laver": 0.0,
+        }
+        result["policy_mode"] = "LAVER_ONLY"
+    else:
+        result["weights"] = {
+            "individual_reference": 1.0,
+            "davis_competitive": 0.5,
+            "laver": 0.0,
+            "davis_decided": None,
+            "davis_unknown": None,
+        }
+        result["policy_mode"] = "DAVIS_LAVER"
     result["same_sample_before_weighting"] = True
     result["fatigue_load_unweighted"] = True
-    result["integral_laver_exclusion_claimed"] = False
+    result["integral_laver_exclusion_claimed"] = is_laver_only(result)
     result["known_blockers"] = list(INSEPARABLE_SOURCE_BLOCKERS)
     result["separability_contract"] = "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE"
     return result
@@ -554,6 +619,7 @@ def guard_features(
     active: bool,
     tour: str | None = None,
     direct_consumers: Iterable[str] = (),
+    policy: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Audit factor-local provenance while preserving all factual features."""
     output = dict(features)
@@ -565,7 +631,7 @@ def guard_features(
         | DIRECT_UNSEPARABLE_CONSUMERS.intersection(direct_consumers)
     )
     for key in sorted(audited_keys):
-        if not feature_is_eligible(output.get(key), active=True):
+        if not feature_is_eligible(output.get(key), active=True, policy=policy):
             blockers.append({
                 "feature": key,
                 "impact": "DECISION_FACTOR_BLOCKED",
@@ -580,6 +646,7 @@ def factor_impact_matrix(
     active: bool,
     tour: str | None,
     direct_consumers: Iterable[str] = (),
+    policy: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Return the auditable separability/impact matrix for this payload."""
     _, blockers = guard_features(
@@ -587,6 +654,7 @@ def factor_impact_matrix(
         active=active,
         tour=tour,
         direct_consumers=direct_consumers,
+        policy=policy,
     )
     blocked = {item["feature"]: item for item in blockers}
     matrix = []
@@ -666,10 +734,11 @@ def canonical_cutover_gate(
     if context_matches:
         persisted_policy = persisted_snapshot.get("competition_evidence_policy")
         recovery = persisted_snapshot.get("delivery_recovery")
+        _change, version, config_hash = _policy_contract(activation)
         same_policy = (
             isinstance(persisted_policy, Mapping)
-            and persisted_policy.get("version") == POLICY_VERSION
-            and persisted_policy.get("config_hash") == CONFIG_HASH
+            and persisted_policy.get("version") == version
+            and persisted_policy.get("config_hash") == config_hash
         )
         if same_policy and isinstance(recovery, Mapping):
             return {
@@ -702,5 +771,6 @@ def derived_cache_scope(
 ) -> str:
     """Version derived caches without invalidating raw factual caches."""
     if activation.get("active") is True:
-        return f"{base_key}:{POLICY_VERSION}:{CONFIG_HASH}"
+        _change, version, config_hash = _policy_contract(activation)
+        return f"{base_key}:{version}:{config_hash}"
     return base_key
