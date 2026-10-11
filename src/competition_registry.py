@@ -118,9 +118,9 @@ def _year(record: Mapping[str, Any]) -> int | None:
         if value is None:
             continue
         text = str(value).strip()
-        if re.fullmatch(r"(?:19|20)\\d{6}", text):
+        if re.fullmatch(r"(?:19|20)\d{6}", text):
             return int(text[:4])
-        match = re.search(r"(?<!\\d)((?:19|20)\\d{2})(?!\\d)", text)
+        match = re.search(r"(?<!\d)((?:19|20)\d{2})(?!\d)", text)
         if match:
             return int(match.group(1))
     return None
