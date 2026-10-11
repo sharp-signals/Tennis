@@ -75,7 +75,7 @@ class LaverOnlyPolicyTests(unittest.TestCase):
             {**row(1, 20260101, "Vienna Open", "Alpha", "Beta"), "won": True},
             {**row(2, 20260102, "Basel Open", "Gamma", "Alpha"), "won": False},
             {**row(3, 20260103, "Davis Cup", "Alpha", "Delta"), "won": True},
-            {**row(4, 20260104, "Laver Cup", "Alpha", "Epsilon", score="7-6(4) 4-6 6-2"), "won": True},
+            {**row(4, 20260104, "Laver Cup", "Alpha", "Epsilon", score="6-7(4) 6-4 6-2"), "won": True},
         ]
         actual = competition_evidence.weighted_binary_record(
             rows, lambda item: item["won"], active=True, policy=LAVER_ACTIVE
