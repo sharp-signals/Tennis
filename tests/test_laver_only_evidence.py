@@ -918,6 +918,10 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
                 103, 20260930, "Olympic Games",
                 "Olympic Opponent", "Alpha",
             ),
+            row(
+                104, 20260929, "Vienna Open",
+                "Beta", "Recent Beta Opponent",
+            ),
         ]).drop(columns=["winner_hand", "loser_hand"])
         for column in self.history.columns:
             if column not in additions.columns:
