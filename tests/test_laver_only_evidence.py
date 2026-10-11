@@ -558,11 +558,11 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
             stack.enter_context(patch.object(
                 fetch_data, "rapidapi_budget_exceeded", return_value=False
             ))
-            stack.enter_context(patch.object(
+            provider = stack.enter_context(patch.object(
                 fetch_data,
                 "fetch_tournament_record",
                 return_value=copy.deepcopy(legacy_record),
-            ) as provider)
+            ))
             stack.enter_context(patch.object(
                 fetch_data,
                 "court_pace_context",
