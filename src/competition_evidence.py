@@ -667,6 +667,18 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
             "laver": 0.0,
         }
         result["policy_mode"] = "LAVER_ONLY"
+    elif is_ranking_eligible(result):
+        result["weights"] = {
+            "ranking_eligible": 1.0,
+            "davis_exception": 1.0,
+            "next_gen_exception": 1.0,
+            "olympics_exception": 1.0,
+            "non_ranking": 0.0,
+            "unresolved": None,
+        }
+        result["policy_mode"] = "ATP_RANKING_ELIGIBLE"
+        result["registry_version"] = RANKING_REGISTRY_VERSION
+        result["registry_sha256"] = RANKING_REGISTRY_SHA256
     else:
         result["weights"] = {
             "individual_reference": 1.0,
@@ -678,7 +690,12 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
         result["policy_mode"] = "DAVIS_LAVER"
     result["same_sample_before_weighting"] = True
     result["fatigue_load_unweighted"] = True
-    result["integral_laver_exclusion_claimed"] = is_active_laver_only(result)
+    result["integral_laver_exclusion_claimed"] = (
+        is_active_laver_only(result) or is_active_ranking_eligible(result)
+    )
+    result["integral_non_ranking_exclusion_claimed"] = (
+        is_active_ranking_eligible(result)
+    )
     result["known_blockers"] = list(INSEPARABLE_SOURCE_BLOCKERS)
     result["separability_contract"] = "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE"
     return result
