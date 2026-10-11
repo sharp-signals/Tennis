@@ -126,7 +126,11 @@ que por si só crie uma entrada PAPER.
   falha fechada e o histórico anterior não recebe fingerprint retrospetiva.
 - **Históricos:** TennisMyLife, Sackmann e tennis-data.co.uk são usados como
   complemento/fallback consoante o tour e a métrica. Nunca se inventa um valor
-  quando uma fonte falha.
+  quando uma fonte falha. No ATP, relatórios do circuito principal continuam a
+  usar apenas o universo principal; Challenger 125 usa uma vista explicitamente
+  marcada e deduplicada que combina ATP principal com os ficheiros históricos
+  Challenger anuais e ongoing da TennisMyLife. Os restantes níveis Challenger,
+  Futures e ITF não são promovidos por esta regra.
 - **Caches:** fixtures e torneios são persistidos; os dados por jogador usam
   `JsonCacheStore` com TTL próprio. Caches corrompidas degradam para ausência de
   dado, sem bloquear a run.

@@ -1749,7 +1749,15 @@ def _experimental_tier_metrics(
 
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
-    history = fetch_data.get_history(tour)
+    history = fetch_data.get_history(tour, tier=match.get("tier"))
+    history_scope = fetch_data.history_scope_summary(history)
+    if str(match.get("tier") or "").strip() == "Challenger 125":
+        print(
+            "[diag:challenger-history] "
+            f"{history_scope.get('rows_challenger', 0)} jogos Challenger + "
+            f"{history_scope.get('rows_main', 0)} jogos ATP principal; "
+            f"modo={history_scope.get('mode')}"
+        )
     # Fonte separada, apenas para a comparação descritiva por faixa de odds.
     # No ATP, o histórico principal TennisMyLife não contém odds históricas.
     historical_odds_history = fetch_data.get_historical_odds_history(tour)
@@ -2698,6 +2706,7 @@ def _build_match_payload(match: dict) -> dict:
         "weather": weather,  # None para indoor ou se a geocodificação/previsão falhar
         "data_quality": {
             "history_rows": len(history),
+            "history_scope": history_scope,
             "issues": _data_quality_issues,
         },
     }

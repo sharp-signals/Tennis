@@ -3462,11 +3462,21 @@ def _mod_experimental_tier_notice(payload):
     policy = _d(payload.get("tournament_coverage"))
     if policy.get("mode") != "EXPERIMENTAL_REPORT_ONLY":
         return ""
+    history_scope = _d(_d(payload.get("data_quality")).get("history_scope"))
+    history_note = ""
+    if history_scope.get("rows_challenger"):
+        history_note = (
+            '<br><span class="muted">Base histórica usada: '
+            f'{_esc(history_scope.get("rows_challenger"))} jogos Challenger + '
+            f'{_esc(history_scope.get("rows_main"))} jogos ATP principal '
+            '(partidas repetidas excluídas).</span>'
+        )
     return (
         '<div class="experimental-tier-notice">'
         f'<b>{_esc(policy.get("label") or "COBERTURA EXPERIMENTAL")}</b> · '
         'Cobertura e pricing em avaliação. Este jogo não é promovido para '
         'PAPER ou GREEN nesta fase, mesmo quando existe edge experimental.'
+        f'{history_note}'
         '</div>'
     )
 
