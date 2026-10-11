@@ -21,6 +21,7 @@ import math
 import re
 
 try:
+    from . import competition_evidence
     from .config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
     from .pricing import estimate_market_residual_pricing
     from .prelive_decision import assess_report, build_decision
@@ -28,6 +29,7 @@ except ImportError:
     # Alguns testes carregam este módulo sem o pacote "src" (sys.path
     # aponta direto para a pasta), o que quebra o import relativo — cai
     # para o import absoluto nesse caso.
+    import competition_evidence
     from config import INVESTOR_PROFILE_ODDS_LOW, INVESTOR_PROFILE_ODDS_HIGH
     from pricing import estimate_market_residual_pricing
     from prelive_decision import assess_report, build_decision
@@ -60,6 +62,9 @@ REPORT_SNAPSHOT_LINKAGE_REASON_META_NAME = "fenzobot-snapshot-linkage-reason"
 REPORT_IDENTITY_SCHEMA_META_NAME = "fenzobot-identity-schema-version"
 REPORT_IDENTITY_STATUS_META_NAME = "fenzobot-identity-status"
 REPORT_IDENTITY_REASON_META_NAME = "fenzobot-identity-reason-code"
+REPORT_COMPETITION_POLICY_VERSION_META_NAME = "fenzobot-competition-evidence-version"
+REPORT_COMPETITION_POLICY_HASH_META_NAME = "fenzobot-competition-evidence-config-hash"
+REPORT_COMPETITION_POLICY_STATUS_META_NAME = "fenzobot-competition-evidence-status"
 REPORT_DECISION_PRESENTATION = {
     "EDGE_POSITIVE": ("EDGE POSITIVO — REGISTADO EM PAPER", "positive", "🟢", "GREEN"),
     "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": (
@@ -684,8 +689,23 @@ def _calcular_divergencia(payload):
     # os que não contribuíram (sem dados, empate, ou abaixo do limiar) —
     # 100% Python, o Claude nunca vê nem decide isto.
     status: dict = {}
+    policy_blockers = {
+        str(item.get("feature")): str(
+            item.get("reason_code") or "COMPETITION_EVIDENCE_NOT_SEPARABLE"
+        )
+        for item in (
+            (payload.get("competition_evidence_policy") or {}).get("feature_blockers")
+            or []
+        )
+        if isinstance(item, dict) and item.get("feature")
+    }
 
     def _reg_status(chave, disponivel, lider=None, motivo_exclusao=None, **extra):
+        if chave in policy_blockers:
+            disponivel = False
+            lider = None
+            motivo_exclusao = policy_blockers[chave]
+            extra["competition_evidence_eligible"] = False
         entry = {"disponivel": disponivel, "lider": lider, "motivo_exclusao": motivo_exclusao}
         entry.update(extra)
         status[chave] = entry
@@ -726,6 +746,10 @@ def _calcular_divergencia(payload):
         return min(sample_a, sample_b)
 
     def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
+        # Gate final no ponto real de consumo: dados factuais podem continuar
+        # no payload/HTML, mas uma origem não separável nunca inclina o índice.
+        if chave in policy_blockers:
+            return
         # peso efetivo = peso base × força da diferença × confiança da amostra
         base = peso_override if peso_override is not None else PESOS.get(chave, 0)
         peso = base * forca_rel * conf_amostra
@@ -1431,6 +1455,7 @@ def _calcular_divergencia(payload):
                                     # módulo "Fatores Detalhados" — 100% Python
         "gap_pp": None,  # compatibilidade: escalas distintas, não subtrair
         "player_a": a, "player_b": b,
+        "competition_evidence_policy": payload.get("competition_evidence_policy"),
     }
 
 
@@ -1555,11 +1580,18 @@ def _compute_fatores_decisivos(payload):
             bullets.append("Superfície sem vantagem relevante.")
         else:
             bullets.append(f"Superfície favorece {ps['lider']}.")
-    # Sets decisivos (peso alto) — dos rich_stats
+    # Sets decisivos (peso alto) — apenas se o consumidor for elegível.
+    policy_active = bool(
+        _d(payload.get("competition_evidence_policy")).get("active")
+    )
+    recovery_feature = _d(payload.get("features")).get("recuperacao_sets")
+    allow_recovery = competition_evidence.feature_is_eligible(
+        recovery_feature, active=policy_active
+    )
     ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
     rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
     da, db = ra.get("deciding_set_win_pct"), rb.get("deciding_set_win_pct")
-    if da is not None and db is not None and abs(da - db) >= 5:
+    if allow_recovery and da is not None and db is not None and abs(da - db) >= 5:
         quem = a if da > db else b
         bullets.append(f"Mais forte em sets decisivos: {quem}.")
     # Ranking (peso médio) — só se relevante
@@ -2394,6 +2426,14 @@ def _operational_entry_model(payload, div):
     if decision.get("state") == "REPORT_NULL":
         return {"status": "unavailable", "reason": "Relatório nulo: sem entrada operacional."}
     pricing = _d(payload.get("pricing"))
+    policy_active = bool(
+        _d(payload.get("competition_evidence_policy")).get("active")
+    )
+    # Margens históricas e perfis de diferencial não conservam atualmente
+    # competição por encontro. Com a política ativa continuam disponíveis
+    # nas secções factuais, mas nunca geram uma taxa, preço ou handicap
+    # acionável neste cartão. A Moneyline permanece baseada no pricing válido.
+    actionable_margin_history = not policy_active
     side = pricing.get("candidate_side") if pricing.get("candidate") else None
     if side not in {"a", "b"}:
         return {
@@ -2423,7 +2463,10 @@ def _operational_entry_model(payload, div):
     # Moneyline é a primeira via quando já está na janela operacional.
     if INVESTOR_PROFILE_ODDS_LOW <= odd <= INVESTOR_PROFILE_ODDS_HIGH:
         price = _moneyline_price_reference(player_pricing.get("fair_odd"))
-        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        history = (
+            _d(payload.get(f"historical_moneyline_margins_{side}"))
+            if actionable_margin_history else {}
+        )
         fmt = str(payload.get("match_format") or "bo3").casefold()
         comparable = None
         for band, raw in _d(history.get("buckets")).items():
@@ -2448,7 +2491,7 @@ def _operational_entry_model(payload, div):
     # Favorito barato -> handicap negativo. Underdog -> handicap positivo
     # como alternativa (ou via principal se a ML exceder o perfil).
     wants_handicap = odd < INVESTOR_PROFILE_ODDS_LOW or is_underdog
-    if wants_handicap:
+    if wants_handicap and actionable_margin_history:
         fmt = str(payload.get("match_format") or "bo3").casefold()
         reference_data = handicap_reference_for_player(payload, player, fmt)
         reference = _d(_d(reference_data).get("reference"))
@@ -4809,6 +4852,14 @@ def _mod_action_map(payload, div, result):
     b = payload.get("player_b", "B")
     names = {"a": a, "b": b}
     actions = []
+    policy_active = bool(
+        _d(payload.get("competition_evidence_policy")).get("active")
+    )
+
+    def policy_factor_available(key):
+        return competition_evidence.feature_is_eligible(
+            _d(payload.get("features")).get(key), active=policy_active
+        )
 
     def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None,
             card_class="", visual=None):
@@ -4916,6 +4967,9 @@ def _mod_action_map(payload, div, result):
         }
 
     def moneyline_history_note(side):
+        if policy_active:
+            # Estes arquivos agregados não conservam competição por encontro.
+            return ""
         context = comparable_moneyline_history(side)
         notes = []
 
@@ -5107,6 +5161,13 @@ def _mod_action_map(payload, div, result):
         return round(100.0 / rate_pct, 2)
 
     def scenario(side, rate_key, count_key):
+        required_factor = (
+            "comeback_set1"
+            if rate_key == "first_set_lose_then_win_pct"
+            else "recuperacao_sets"
+        )
+        if policy_active and not policy_factor_available(required_factor):
+            return None, None
         # Dados ricos não separam BO3/BO5. Num encontro BO5, a única
         # evidência aceitável para cenários de sets é a série BO5 explícita.
         if match_format == "bo5":
@@ -5236,9 +5297,9 @@ def _mod_action_map(payload, div, result):
             "Carga acumulada")
 
     # Um único cartão de handicap, sempre no formato real da partida. O
-    # bloco legado de média BO3 foi removido: num BO5 era inválido e não
-    # respondia à pergunta operacional (que linhas cobriria de facto?).
-    if fav_side:
+    # agregado histórico não separa competição por encontro e, por isso,
+    # permanece apenas factual enquanto a política competitiva estiver ativa.
+    if fav_side and not policy_active:
         _fmt = match_format
         _profile = _d(_d(payload.get(f"game_differential_{fav_side}")).get(_fmt))
         _wins = _d(_profile.get("wins"))
@@ -5995,6 +6056,29 @@ def _mod_at_glance_clean(payload):
     return f'<div class="section-title">O jogo num relance</div><div class="glance"><div class="glance-head"><span>{a}</span><span></span><span>{b}</span></div>{rendered}</div>'
 
 
+
+def _mod_competition_evidence_notice(payload):
+    """Visible provenance and honest coverage boundary for CHANGE-099."""
+    policy = payload.get("competition_evidence_policy")
+    if not isinstance(policy, dict) or policy.get("active") is not True:
+        return ""
+    blockers = policy.get("feature_blockers") or []
+    version = _esc(policy.get("version") or "N/D")
+    config_hash = _esc(policy.get("config_hash") or "N/D")
+    if blockers:
+        detail = (
+            f"{len(blockers)} fator(es) agregado(s) sem separação por competição "
+            "foram excluídos do índice; não é declarada exclusão integral da Laver."
+        )
+    else:
+        detail = "Todos os fatores ativos têm proveniência separável nesta execução."
+    return (
+        '<div class="parcial"><b>Política de evidência por competição</b> — '
+        'Davis competitiva 50%; Laver 0% nas fontes separáveis. '
+        f'{_esc(detail)} <span class="muted">versão {version} · config {config_hash}</span>'
+        '</div>'
+    )
+
 def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     """Monta a página V2 completa. Recebe a função do motor (índice de
     evidência) de fora, para reaproveitar o report_html original.
@@ -6086,6 +6170,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         if overview_content else ""
     )
     partes.append(_mod_data_quality_notice(payload))
+    partes.append(_mod_competition_evidence_notice(payload))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":
@@ -6222,6 +6307,17 @@ def _pagina(
         )
     identity = identity_metadata if isinstance(identity_metadata, dict) else {}
     identity_meta = ""
+    competition_meta = ""
+    competition_policy = identity.get("competition_evidence_policy")
+    if isinstance(competition_policy, dict):
+        competition_meta = (
+            f'<meta name="{REPORT_COMPETITION_POLICY_VERSION_META_NAME}" '
+            f'content="{_esc(competition_policy.get("version") or "")}">\n'
+            f'<meta name="{REPORT_COMPETITION_POLICY_HASH_META_NAME}" '
+            f'content="{_esc(competition_policy.get("config_hash") or "")}">\n'
+            f'<meta name="{REPORT_COMPETITION_POLICY_STATUS_META_NAME}" '
+            f'content="{_esc(competition_policy.get("status") or "")}">\n'
+        )
     if identity.get("identity_schema_version") == 2:
         identity_meta += (
             f'<meta name="{REPORT_IDENTITY_SCHEMA_META_NAME}" content="2">\n'
@@ -6239,7 +6335,7 @@ def _pagina(
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="{REPORT_COLOR_META_NAME}" content="{report_color}">
-{linkage_meta}{identity_meta}<title>{_esc(a)} vs {_esc(b)}</title>
+{linkage_meta}{identity_meta}{competition_meta}<title>{_esc(a)} vs {_esc(b)}</title>
 <style>{_css()}{_css_editorial()}</style></head>
 <body>
 <nav class="report-nav" aria-label="Navegação do relatório">
