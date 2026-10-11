@@ -827,6 +827,7 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
                 self.assertEqual(result["rank_bucket"], bucket)
 
         dirty = self.history.copy()
+        dirty["loser_rank"] = dirty["loser_rank"].astype("object")
         dirty.loc[dirty.index[:7], "loser_rank"] = [
             0, -1, True, float("nan"), pd.NA, float("inf"), -float("inf")
         ]
