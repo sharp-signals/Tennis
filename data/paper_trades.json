@@ -20591,7 +20591,23 @@
         "tournament": "Shanghai Rolex Masters - Shanghai",
         "tournament_id": 21356
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": "a576d3fa2dc1f0ab838009dc452fe0cdb6e850d29fd5c94f66b84d3023a52e0c",
+        "closing_odd": 1.33,
+        "clv_pct": 0.4414,
+        "clv_price_pct": 0.0,
+        "clv_probability_pp": 0.4414,
+        "entry_market_observation_id": "4390b85178d0bb10ab11e7a168a7e9a4c952347126e32e0bb6ce15ec243c3164",
+        "entry_market_probability": 0.72689938,
+        "last_valid_prestart_market_probability": 0.73131313,
+        "market_memory_error": null,
+        "market_memory_status": "AVAILABLE",
+        "match_result": "7-5 7-5",
+        "pnl_units": 0.33,
+        "result": "WIN",
+        "settled_at_utc": "2026-10-11T05:53:57+00:00",
+        "winner_id": 93452
+      }
     },
     {
       "key": "mi2_06a31f6d6377453a982943fcc49de6af:moneyline:a:na",
@@ -21495,7 +21511,23 @@
         "tournament": "Wuhan Open - Wuhan",
         "tournament_id": 16750
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": null,
+        "closing_odd": null,
+        "clv_pct": null,
+        "clv_price_pct": null,
+        "clv_probability_pp": null,
+        "entry_market_observation_id": null,
+        "entry_market_probability": null,
+        "last_valid_prestart_market_probability": null,
+        "market_memory_error": null,
+        "market_memory_status": "INELIGIBLE",
+        "match_result": "6-2 6-3",
+        "pnl_units": 0.39,
+        "result": "WIN",
+        "settled_at_utc": "2026-10-11T05:53:57+00:00",
+        "winner_id": 41569
+      }
     },
     {
       "key": "mi2_71c8980f61c2485aa95004b97326c013:moneyline:a:na",
@@ -22367,7 +22399,23 @@
         "tournament": "China Open - Beijing",
         "tournament_id": 16749
       },
-      "settlement": null
+      "settlement": {
+        "closing_market_observation_id": null,
+        "closing_odd": null,
+        "clv_pct": null,
+        "clv_price_pct": null,
+        "clv_probability_pp": null,
+        "entry_market_observation_id": "5f58c3a847cf3913d54a5e707cf640e96cbf024a1f0d28b404c82c6544ece646",
+        "entry_market_probability": null,
+        "last_valid_prestart_market_probability": null,
+        "market_memory_error": null,
+        "market_memory_status": "UNAVAILABLE",
+        "match_result": "7-5 6-2",
+        "pnl_units": 0.67,
+        "result": "WIN",
+        "settled_at_utc": "2026-10-11T05:54:00+00:00",
+        "winner_id": 53128
+      }
     },
     {
       "key": "mi2_ee5dada8ec2744ed993a4841b766d617:moneyline:b:na",
@@ -22998,8 +23046,113 @@
         "tournament_id": 16750
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_57c4365dbfb3444195cde4e3153eded1:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-11T05:37:52+00:00",
+        "canonical_match_instance_id": "mi2_57c4365dbfb3444195cde4e3153eded1",
+        "commence_time_utc": "2026-10-11T11:30:00+00:00",
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 123.25,
+          "configured_factors": 22,
+          "configured_weight": 144.25,
+          "status": "reduzida",
+          "weighted_pct": 85.4,
+          "weighted_ratio": 0.854419
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": "df7852f58a1e61b9bbdf5e9a39f7e43d4b8d06c38bbfa5529e888cbab17b1ca3",
+        "event_key": "mi2_57c4365dbfb3444195cde4e3153eded1",
+        "expected_edge_pct": 2.85,
+        "fair_odd": 1.556,
+        "fenzobot_index": 71,
+        "identity_reason_code": "ROUND_ID_STRUCTURAL_MATCH",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_RESOLVED",
+        "legacy_key": "wta:903",
+        "line": null,
+        "market": "Moneyline Mirra Andreeva",
+        "market_memory_eligible": true,
+        "market_memory_status": "RECORDED",
+        "market_odds_decimal": {
+          "Mirra Andreeva": 1.6,
+          "Qinwen Zheng": 2.62
+        },
+        "market_type": "Moneyline",
+        "match_id": 903,
+        "odd": 1.6,
+        "odds_contract_activation": {
+          "activation_commit": "86c85e191e0b6cd0411523a4227180553a1f5b5a",
+          "activation_observed_at_utc": "2026-10-11T05:36:46+00:00",
+          "activation_run_id": "38115134756",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": "Betfair",
+          "cache_age_seconds": 170,
+          "capture_kind": "provider_last_update_verified",
+          "captured_at_utc": "2026-10-11T05:36:46+00:00",
+          "endpoint": "https://api.the-odds-api.com/v4/sports/.../odds",
+          "event_id": "af644462075fd3ae1fea1527d4e7383e",
+          "freshness_status": "FRESH",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 20,
+            "coherent_bookmaker_count": 20,
+            "dispersion_pp": 2.8527,
+            "median_devig_probability_a": 0.3784354451877948,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "cross_bookmaker_consensus",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 20
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": "2026-10-11T05:33:56Z",
+          "provider_timestamp_status": null,
+          "source": "The Odds API / bookmaker market"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 53128,
+            "name": "Qinwen Zheng"
+          },
+          "b": {
+            "id": 77934,
+            "name": "Mirra Andreeva"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "9907ad8436e96526de48",
+        "selected_player": "Mirra Andreeva",
+        "selected_side": "b",
+        "sharp_estimate_pct": 64.28,
+        "snapshot_key": "mi2_57c4365dbfb3444195cde4e3153eded1",
+        "surface": "Hard",
+        "tour": "wta",
+        "tournament": "China Open - Beijing",
+        "tournament_id": 16749
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-10-10T17:56:20+00:00"
+  "updated_at_utc": "2026-10-11T05:54:00+00:00"
 }
