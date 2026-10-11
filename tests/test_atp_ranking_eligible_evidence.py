@@ -206,9 +206,11 @@ class RankingEligibleTransformTests(unittest.TestCase):
                 competition_evidence.evidence_is_compatible(family, ACTIVE),
                 family,
             )
-            self.assertIsNotNone(
-                competition_evidence.record_rate(family)[1]
-            )
+            rate, sample = competition_evidence.record_rate(family)
+            if sample:
+                self.assertIsNotNone(rate)
+            else:
+                self.assertIsNone(rate)
 
     def test_cpi_record_and_repository_scope_are_compatible(self):
         record = competition_evidence.weighted_binary_record(
