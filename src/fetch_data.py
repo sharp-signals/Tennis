@@ -2552,6 +2552,7 @@ def fetch_rapidapi_moneyline(match: dict) -> Optional[dict]:
 # 2. Histórico / H2H / forma / piso (TennisMyLife, com fallback Sackmann)
 # --------------------------------------------------------------------- #
 _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
+_HISTORY_CACHE_LOCK = threading.RLock()
 # O histórico principal ATP privilegia TennisMyLife porque traz mais contexto
 # desportivo. Essa fonte não inclui, porém, as odds históricas necessárias à
 # comparação por faixa de Moneyline. Mantemos uma cache independente para essa
@@ -2559,7 +2560,46 @@ _HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 _HISTORICAL_ODDS_HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 
 
-def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
+def _tennismylife_history_key(row: pd.Series) -> str:
+    """Chave estável para remover duplicados entre o anual e ``ongoing``."""
+    scope = str(row.get("_history_competition_scope") or "unknown")
+    tourney_id = row.get("tourney_id")
+    match_num = row.get("match_num")
+    if pd.notna(tourney_id) and pd.notna(match_num):
+        return f"id:{scope}:{tourney_id}:{match_num}"
+    parts = (
+        row.get("tourney_date"), row.get("tourney_name"),
+        row.get("winner_name"), row.get("loser_name"), row.get("score"),
+    )
+    return f"fallback:{scope}:" + "|".join(
+        _normalize_name(str(value)) if pd.notna(value) else ""
+        for value in parts
+    )
+
+
+def _deduplicate_tennismylife_history(history: pd.DataFrame) -> pd.DataFrame:
+    """Mantém a versão mais completa/recente de cada partida histórica."""
+    if history.empty:
+        return history
+    result = history.copy()
+    result["_history_completeness"] = result.notna().sum(axis=1)
+    result["_history_dedupe_key"] = result.apply(
+        _tennismylife_history_key, axis=1
+    )
+    # ``ongoing`` é carregado por último. Em igualdade de completude fica a
+    # versão mais recente; se a anual tiver mais campos preenchidos, prevalece.
+    result["_history_order"] = range(len(result))
+    result = result.sort_values(
+        ["_history_dedupe_key", "_history_completeness", "_history_order"]
+    ).drop_duplicates("_history_dedupe_key", keep="last")
+    return result.drop(
+        columns=["_history_completeness", "_history_dedupe_key", "_history_order"]
+    ).reset_index(drop=True)
+
+
+def _load_tennismylife(
+    tour: str, *, include_challenger: bool = False,
+) -> Optional[pd.DataFrame]:
     """
     A TennisMyLife é confirmadamente só ATP. Os jogos do QUADRO PRINCIPAL
     vêm em ficheiros simples por ano, ex: "2026.csv", SEM qualquer prefixo
@@ -2570,10 +2610,12 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
     o ano corrente. Cada ano em falta é ignorado com aviso — não impede
     os restantes de carregar.
 
-    Ficheiros a evitar mesmo que existam: "*_challenger.csv" (nível
-    Challenger, não é o que seguimos), "atp_quali/*" (qualifying),
-    "ATP_Database.csv" (não é histórico de jogos), "ongoing_tourneys.csv"
-    / "challenger_ongoing_tourneys.csv" (formato diferente, não jogos).
+    Para o ATP principal carrega apenas ``{ano}.csv``. Quando
+    ``include_challenger`` é verdadeiro, acrescenta ``{ano}_challenger.csv``
+    e ``challenger_ongoing_tourneys.csv``. Cada linha fica identificada pela
+    origem, para impedir que o universo Challenger contamine silenciosamente
+    análises do circuito principal. Qualifying e bases agregadas continuam
+    excluídos.
     """
     if tour != "atp":
         return None  # confirmado: sem WTA nesta fonte
@@ -2589,27 +2631,70 @@ def _load_tennismylife(tour: str) -> Optional[pd.DataFrame]:
 
     current_year = datetime.now(timezone.utc).year
     frames = []
+
+    def load_file(name: str, scope: str) -> bool:
+        metadata = by_name.get(name)
+        if not metadata or not metadata.get("url"):
+            return False
+        for attempt in (1, 2):
+            try:
+                csv_resp = requests.get(
+                    metadata["url"], headers=_BROWSER_HEADERS,
+                    timeout=REQUEST_TIMEOUT,
+                )
+                csv_resp.raise_for_status()
+                frame = pd.read_csv(io.StringIO(csv_resp.text))
+                if frame.empty or not {
+                    "winner_name", "loser_name"
+                }.issubset(frame.columns):
+                    raise ValueError("ficheiro sem linhas/colunas de partidas")
+                frame["_history_competition_scope"] = scope
+                frame["_history_source_file"] = name
+                frames.append(frame)
+                return True
+            except Exception as exc:
+                print(
+                    f"[aviso] falha a carregar TennisMyLife {name}, "
+                    f"tentativa {attempt}: {exc}"
+                )
+        return False
+
+    main_years = 0
+    challenger_years = 0
     for offset in range(HISTORY_YEARS_TO_LOAD):
         year = current_year - offset
         name = f"{year}.csv"
         if name not in by_name:
             print(f"[aviso] TennisMyLife não tem ficheiro para o ano {year} — a saltar.")
-            continue
-        for attempt in (1, 2):
-            try:
-                csv_resp = requests.get(by_name[name]["url"], headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
-                csv_resp.raise_for_status()
-                df_year = pd.read_csv(io.StringIO(csv_resp.text))
-                frames.append(df_year)
-                break
-            except Exception as exc:
-                print(f"[aviso] falha a carregar TennisMyLife {name}, tentativa {attempt}: {exc}")
+        elif load_file(name, "main"):
+            main_years += 1
+
+        if include_challenger:
+            challenger_name = f"{year}_challenger.csv"
+            if load_file(challenger_name, "challenger"):
+                challenger_years += 1
+
+    ongoing_loaded = False
+    if include_challenger:
+        ongoing_loaded = load_file(
+            "challenger_ongoing_tourneys.csv", "challenger"
+        )
 
     if not frames:
         return None
 
-    combined = pd.concat(frames, ignore_index=True)
-    print(f"[info] TennisMyLife: {len(frames)}/{HISTORY_YEARS_TO_LOAD} anos carregados, {len(combined)} jogos no total.")
+    combined = _deduplicate_tennismylife_history(
+        pd.concat(frames, ignore_index=True, sort=False)
+    )
+    combined.attrs["history_scope"] = (
+        "ATP_MAIN_PLUS_CHALLENGER" if include_challenger else "ATP_MAIN"
+    )
+    print(
+        f"[info] TennisMyLife: ATP principal {main_years}/"
+        f"{HISTORY_YEARS_TO_LOAD} anos; Challenger {challenger_years}/"
+        f"{HISTORY_YEARS_TO_LOAD} anos; ongoing Challenger "
+        f"{'sim' if ongoing_loaded else 'não'}; {len(combined)} jogos únicos."
+    )
     return combined
 
 
@@ -2773,49 +2858,107 @@ def _load_sackmann_multi_year(tour: str, years_to_load: int) -> Optional[pd.Data
     return combined
 
 
-def get_history(tour: str) -> pd.DataFrame:
+def _history_scope(tour: str, tier: Optional[str]) -> str:
+    if str(tour).strip().casefold() == "atp" and str(tier or "").strip() == "Challenger 125":
+        return "challenger_125"
+    return "main"
+
+
+def history_scope_summary(history: pd.DataFrame) -> dict:
+    """Telemetria auditável da composição do histórico usado no relatório."""
+    if history.empty:
+        return {
+            "mode": history.attrs.get("history_scope") or "EMPTY",
+            "rows_total": 0,
+            "rows_main": 0,
+            "rows_challenger": 0,
+        }
+    scope = history.get("_history_competition_scope")
+    counts = scope.value_counts().to_dict() if scope is not None else {}
+    return {
+        "mode": history.attrs.get("history_scope") or "LEGACY_UNTAGGED",
+        "rows_total": int(len(history)),
+        "rows_main": int(counts.get("main", 0)),
+        "rows_challenger": int(counts.get("challenger", 0)),
+    }
+
+
+def filter_history_scope(history: pd.DataFrame, scope: str) -> pd.DataFrame:
+    """Vista factual por circuito, sem alterar o DataFrame combinado."""
+    column = history.get("_history_competition_scope")
+    if history.empty or column is None:
+        return history.iloc[0:0].copy()
+    result = history[column == str(scope)].copy()
+    result.attrs["history_scope"] = str(scope).upper()
+    result.attrs["history_cache_key"] = (
+        history.attrs.get("history_cache_key"), str(scope)
+    )
+    return result
+
+
+def get_history(tour: str, tier: Optional[str] = None) -> pd.DataFrame:
     """
     Devolve o histórico de jogos disponível para o tour ('atp'/'wta'),
     tentando as fontes por ordem até uma funcionar. Cacheia em memória
     durante a execução do script (o workflow corre e termina, por isso
     não há necessidade de cache persistente).
     """
-    if tour in _HISTORY_CACHE:
-        return _HISTORY_CACHE[tour]
+    normalized_tour = str(tour).strip().casefold()
+    scope = _history_scope(normalized_tour, tier)
+    cache_key = f"{normalized_tour}:{scope}"
+    with _HISTORY_CACHE_LOCK:
+        if cache_key in _HISTORY_CACHE:
+            return _HISTORY_CACHE[cache_key]
 
-    year = datetime.now(timezone.utc).year
+        year = datetime.now(timezone.utc).year
 
-    if tour == "atp":
-        df = _load_tennismylife(tour)
-        source = "tennismylife"
-    else:
-        # (correção: repositório tennis_wta do Sackmann continua a devolver
-        # 404 para todos os anos, confirmado por logs reais — ver histórico
-        # do projeto. Deixámos de o tentar para o WTA: ia direto ao
-        # tennis-data.co.uk, que é fiável e já funciona bem como fonte.
-        # Poupa ~20 pedidos falhados por jogo WTA.)
-        df = None
-        source = "sackmann (desativado para wta)"
+        if normalized_tour == "atp":
+            df = _load_tennismylife(
+                normalized_tour, include_challenger=(scope == "challenger_125")
+            )
+            source = (
+                "tennismylife (ATP principal + Challenger)"
+                if scope == "challenger_125" else "tennismylife (ATP principal)"
+            )
+        else:
+            # (correção: repositório tennis_wta do Sackmann continua a devolver
+            # 404 para todos os anos, confirmado por logs reais — ver histórico
+            # do projeto. Deixámos de o tentar para o WTA: ia direto ao
+            # tennis-data.co.uk, que é fiável e já funciona bem como fonte.
+            # Poupa ~20 pedidos falhados por jogo WTA.)
+            df = None
+            source = "sackmann (desativado para wta)"
 
-    if df is None or df.empty:
-        if tour == "atp":
-            df = _load_sackmann(tour, year)
+        if df is None or df.empty:
+            if normalized_tour == "atp":
+                df = _load_sackmann(normalized_tour, year)
             source = "sackmann"
-        # para wta não tentamos o Sackmann de todo (ver nota acima) —
-        # passamos direto ao tennis-data.co.uk abaixo.
-    if df is None or df.empty:
-        df = _load_tennisdata_couk_multi_year(tour, HISTORY_YEARS_TO_LOAD)
-        source = "tennisdata.co.uk (multi-ano)"
-    if df is None:
-        print(f"[aviso] nenhuma fonte histórica disponível para {tour}.")
-        df = pd.DataFrame()
-        source = "nenhuma"
+            # para wta não tentamos o Sackmann de todo (ver nota acima) —
+            # passamos direto ao tennis-data.co.uk abaixo.
+        if df is None or df.empty:
+            df = _load_tennisdata_couk_multi_year(
+                normalized_tour, HISTORY_YEARS_TO_LOAD
+            )
+            source = "tennisdata.co.uk (multi-ano)"
+        if df is None:
+            print(f"[aviso] nenhuma fonte histórica disponível para {normalized_tour}.")
+            df = pd.DataFrame()
+            source = "nenhuma"
 
-    print(f"[info] histórico {tour} carregado de: {source} ({len(df)} linhas)")
-    if not df.empty:
-        print(f"[info] colunas disponíveis: {list(df.columns)}")
-    _HISTORY_CACHE[tour] = df
-    return df
+        if not df.attrs.get("history_scope"):
+            df.attrs["history_scope"] = (
+                "ATP_MAIN_PLUS_CHALLENGER_FALLBACK_UNAVAILABLE"
+                if scope == "challenger_125" else f"{normalized_tour.upper()}_MAIN"
+            )
+        df.attrs["history_cache_key"] = cache_key
+        print(
+            f"[info] histórico {normalized_tour}/{scope} carregado de: "
+            f"{source} ({len(df)} linhas)"
+        )
+        if not df.empty:
+            print(f"[info] colunas disponíveis: {list(df.columns)}")
+        _HISTORY_CACHE[cache_key] = df
+        return df
 
 
 def get_historical_odds_history(tour: str) -> pd.DataFrame:
@@ -2992,7 +3135,7 @@ def compute_canonical_snapshot_odds_context(
 # 2b. Correspondência de nomes com tolerância (acentos, maiúsculas, e
 #     pequenas variações de grafia entre o matchstat e o histórico)
 # --------------------------------------------------------------------- #
-_NAME_INDEX_CACHE: dict[tuple, dict[str, str]] = {}
+_NAME_INDEX_CACHE: dict[object, dict[str, str]] = {}
 
 
 def _normalize_name(name: str) -> str:
@@ -3166,7 +3309,9 @@ def _build_name_index(history: pd.DataFrame) -> dict[str, str]:
     o que só faz sentido com a cache "cruzada" entre tours. As colunas
     diferem sempre entre ATP (TennisMyLife) e WTA (tennis-data.co.uk),
     por isso usá-las na chave elimina a colisão."""
-    key = (len(history), tuple(history.columns))
+    key = history.attrs.get("history_cache_key") or (
+        len(history), tuple(history.columns), history.attrs.get("history_scope")
+    )
     if key in _NAME_INDEX_CACHE:
         return _NAME_INDEX_CACHE[key]
 
