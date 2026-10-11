@@ -28,6 +28,16 @@ DELTA_ACTIVE = {
     "effective_from_utc": "2026-10-12T00:00:00+00:00",
 }
 
+V2_ACTIVE = {
+    "active": True,
+    "change_id": competition_evidence.RANKING_ELIGIBLE_V2_CHANGE_ID,
+    "version": competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+    "config_hash": competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH,
+    "status": "ACTIVE",
+    "effective_from_utc": "2026-10-20T00:00:00+00:00",
+    "tour": "atp",
+}
+
 
 def row(match_id, date, tournament, winner="Alpha", loser="Beta", *,
         tier=None, score="4-6 7-6(4) 6-2"):
@@ -375,6 +385,228 @@ class RankingEligibleTransformTests(unittest.TestCase):
         self.assertIn("NON_RANKING", html)
         self.assertIn("UNRESOLVED", html)
         self.assertNotIn("Davis competitiva 50%", html)
+
+
+class RankingEligibleV2Tests(unittest.TestCase):
+    def test_v2_classification_weights_are_1_half_zero_and_fail_closed(self):
+        cases = (
+            ({"tournament_name": "Vienna Open", "tier": "ATP 500"},
+             "RANKING_ELIGIBLE", 1.0),
+            ({"tournament_name": "Davis Cup", "date": "2026-10-20"},
+             "DAVIS_EXCEPTION", 0.5),
+            ({"tournament_name": "Next Gen ATP Finals", "date": "2026-10-20"},
+             "NEXT_GEN_EXCEPTION", 0.5),
+            ({"tournament_name": "Olympic Games", "date": "2028-07-20"},
+             "OLYMPICS_EXCEPTION", 0.5),
+            ({"tournament_name": "Laver Cup", "date": "2026-10-20"},
+             "NON_RANKING", 0.0),
+        )
+        for record, expected_class, expected_weight in cases:
+            with self.subTest(record=record):
+                actual = competition_evidence.classify_match(record, V2_ACTIVE)
+                self.assertEqual(actual["classification"], expected_class)
+                self.assertEqual(actual["weight"], expected_weight)
+                self.assertEqual(
+                    actual["weight_policy_version"],
+                    competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+                )
+
+        for record in (
+            {"tournament_name": "Unknown Invitational"},
+            {"tournament_name": "Laver Cup", "tier": "ATP 500"},
+        ):
+            with self.subTest(record=record):
+                actual = competition_evidence.classify_match(record, V2_ACTIVE)
+                self.assertIsNone(actual["weight"])
+                self.assertEqual(actual["classification"], "UNRESOLVED")
+
+    def test_two_davis_wins_equal_one_effective_match(self):
+        result = competition_evidence.weighted_binary_record(
+            [
+                {**row(301, 20261020, "Davis Cup"), "won": True},
+                {**row(302, 20261021, "Davis Cup"), "won": True},
+            ],
+            lambda item: item["won"],
+            active=True,
+            policy=V2_ACTIVE,
+        )
+        self.assertEqual(result["wins"], 2)
+        self.assertEqual(result["weighted_wins"], 1.0)
+        self.assertEqual(result["weighted_losses"], 0.0)
+        self.assertEqual(result["weighted_matches"], 1.0)
+        self.assertEqual(result["weighted_win_rate_pct"], 100.0)
+
+    def test_davis_win_and_loss_have_half_contributions_and_fifty_percent(self):
+        result = competition_evidence.weighted_binary_record(
+            [
+                {**row(303, 20261020, "Davis Cup"), "won": True},
+                {**row(304, 20261021, "Davis Cup"), "won": False},
+            ],
+            lambda item: item["won"],
+            active=True,
+            policy=V2_ACTIVE,
+        )
+        self.assertEqual(result["weighted_wins"], 0.5)
+        self.assertEqual(result["weighted_losses"], 0.5)
+        self.assertEqual(result["weighted_matches"], 1.0)
+        self.assertEqual(result["weighted_win_rate_pct"], 50.0)
+
+    def test_mixed_normal_special_and_non_ranking_sample_is_weighted_in_place(self):
+        records = [
+            {**row(305, 20261020, "Vienna Open", tier="ATP 500"), "won": True},
+            {**row(306, 20261021, "Davis Cup"), "won": True},
+            {
+                **row(307, 20261022, "Next Gen ATP Finals"),
+                "won": False,
+            },
+            {**row(308, 20281023, "Olympic Games"), "won": True},
+            {**row(309, 20261024, "Laver Cup"), "won": True},
+        ]
+        result = competition_evidence.weighted_binary_record(
+            records, lambda item: item["won"], active=True, policy=V2_ACTIVE
+        )
+        self.assertEqual(result["matches"], 5)
+        self.assertEqual(result["weighted_wins"], 2.0)
+        self.assertEqual(result["weighted_losses"], 0.5)
+        self.assertEqual(result["weighted_matches"], 2.5)
+        self.assertEqual(result["weighted_win_rate_pct"], 80.0)
+        self.assertEqual(
+            result["competition_evidence"]["prospective_post_t1"], 5
+        )
+
+    def test_v2_preserves_laver_only_then_v1_before_future_t1(self):
+        records = [
+            {**row(310, 20261010, "Davis Cup"), "won": True},
+            {**row(311, 20261013, "Davis Cup"), "won": True},
+            {**row(312, 20261020, "Davis Cup"), "won": True},
+        ]
+        result = competition_evidence.weighted_binary_record(
+            records, lambda item: item["won"], active=True, policy=V2_ACTIVE
+        )
+        self.assertEqual(result["weighted_matches"], 2.5)
+        evidence = result["competition_evidence"]
+        self.assertEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertEqual(evidence["preserved_v1_interval"], 1)
+        self.assertEqual(evidence["prospective_post_t1"], 1)
+
+    def test_v2_allows_same_t0_without_an_intermediate_v1_period(self):
+        same_t0 = {
+            **V2_ACTIVE,
+            "effective_from_utc": "2026-10-12T00:00:00+00:00",
+        }
+        result = competition_evidence.weighted_binary_record(
+            [
+                {**row(313, 20261011, "Davis Cup"), "won": True},
+                {**row(314, 20261012, "Davis Cup"), "won": True},
+            ],
+            lambda item: item["won"],
+            active=True,
+            policy=same_t0,
+        )
+        self.assertEqual(result["weighted_matches"], 1.5)
+        evidence = result["competition_evidence"]
+        self.assertEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertEqual(evidence["preserved_v1_interval"], 0)
+        self.assertEqual(evidence["prospective_post_t1"], 1)
+        self.assertEqual(
+            evidence["classification_counts"]["DAVIS_EXCEPTION"], 1
+        )
+
+    def test_v2_rejects_cutover_before_v1_t0(self):
+        unsafe = {
+            **V2_ACTIVE,
+            "effective_from_utc": "2026-10-11T00:00:00+00:00",
+        }
+        result = competition_evidence.weighted_binary_record(
+            [{**row(315, 20261012, "Davis Cup"), "won": True}],
+            lambda item: item["won"],
+            active=True,
+            policy=unsafe,
+        )
+        self.assertIsNone(result["weighted_matches"])
+        self.assertEqual(
+            result["competition_evidence"]["blocker_reason_counts"],
+            {"COMPETITION_POLICY_T1_NOT_AFTER_V1_T0": 1},
+        )
+
+    def test_fatigue_load_and_wta_remain_raw(self):
+        start = datetime(2028, 8, 1, tzinfo=timezone.utc)
+        history = pd.DataFrame([
+            row(314, 20280725, "Davis Cup"),
+            row(315, 20280726, "Next Gen ATP Finals"),
+            row(316, 20280727, "Olympic Games"),
+            row(317, 20280728, "Laver Cup"),
+        ])
+        baseline = fetch_data.compute_fatigue(history, "Alpha", start)
+        after = fetch_data.compute_fatigue(history, "Alpha", start)
+        self.assertEqual(after, baseline)
+        self.assertEqual(after["matches_last_7d"], 4)
+        self.assertEqual(after["sets_played_last_7d"], 12)
+        self.assertNotIn("competition_evidence", after or {})
+
+        wta = competition_evidence.activation_for_tour(V2_ACTIVE, "wta")
+        self.assertFalse(wta["active"])
+        raw = competition_evidence.weighted_binary_record(
+            [{**row(318, 20281020, "Davis Cup"), "won": True}],
+            lambda item: item["won"],
+            active=wta["active"],
+            policy=wta,
+        )
+        self.assertEqual(raw, {"wins": 1, "losses": 0, "matches": 1})
+
+    def test_v2_metadata_and_html_expose_half_weights(self):
+        policy = competition_evidence.policy_metadata(V2_ACTIVE)
+        policy["feature_blockers"] = []
+        self.assertEqual(policy["weights"]["ranking_eligible"], 1.0)
+        self.assertEqual(policy["weights"]["davis_exception"], 0.5)
+        self.assertEqual(policy["weights"]["next_gen_exception"], 0.5)
+        self.assertEqual(policy["weights"]["olympics_exception"], 0.5)
+        self.assertEqual(policy["weights"]["non_ranking"], 0.0)
+        self.assertTrue(policy["registry_factual_taxonomy_reused"])
+        self.assertEqual(
+            policy["registry_version"],
+            competition_evidence.RANKING_REGISTRY_VERSION,
+        )
+        html = report_html._mod_competition_evidence_notice(
+            {"competition_evidence_policy": policy}
+        )
+        self.assertIn("Davis, Next Gen e Olympics a 50%", html)
+        self.assertIn("RANKING_ELIGIBLE a 100%", html)
+        self.assertIn("intervalo T0–T1", html)
+        self.assertIn(
+            competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION, html
+        )
+        self.assertIn(
+            competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH, html
+        )
+
+    def test_v2_is_available_but_off_without_explicit_future_t1(self):
+        self.assertEqual(
+            competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH,
+            "d8c2a674bb1b241e2a8c",
+        )
+        self.assertNotEqual(
+            competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH,
+            competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH,
+        )
+        inactive = competition_evidence.activation_from_environment({})
+        self.assertFalse(inactive["active"])
+        self.assertNotEqual(
+            inactive["version"],
+            competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+        )
+        future = competition_evidence.activation_from_environment({
+            competition_evidence.ACTIVATION_VERSION_ENV:
+                competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+            competition_evidence.ACTIVATION_UTC_ENV:
+                "2099-01-01T00:00:00Z",
+        })
+        self.assertFalse(future["active"])
+        self.assertEqual(
+            future["version"],
+            competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+        )
+        self.assertTrue(competition_evidence.policy_is_supported(future))
 
 
 class ProspectiveDeltaTests(unittest.TestCase):

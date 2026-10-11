@@ -43,6 +43,16 @@ RANKING_ACTIVE = {
     "tour": "atp",
 }
 
+RANKING_V2_ACTIVE = {
+    "active": True,
+    "change_id": competition_evidence.RANKING_ELIGIBLE_V2_CHANGE_ID,
+    "version": competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+    "config_hash": competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH,
+    "status": "ACTIVE",
+    "effective_from_utc": "2026-10-15T00:00:00+00:00",
+    "tour": "atp",
+}
+
 
 def row(
     match_id: int,
@@ -986,6 +996,83 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
         self.assertIn("state", decision)
         self.assertIn("ranking-eligible", html)
         self.assertNotIn("Davis competitiva 50%", html)
+
+    def test_change105_integrated_runtime_downweights_only_performance(self):
+        additions = pd.DataFrame([
+            row(111, 20261016, "Davis Cup", "Alpha", "Davis Opponent"),
+            row(
+                112, 20261017, "Next Gen ATP Finals",
+                "Alpha", "Next Gen Opponent",
+            ),
+            row(
+                113, 20261018, "Olympic Games",
+                "Olympic Opponent", "Alpha",
+            ),
+            row(
+                114, 20261019, "Laver Cup",
+                "Alpha", "Laver Opponent 2",
+            ),
+        ]).drop(columns=["winner_hand", "loser_hand"])
+        for column in self.history.columns:
+            if column not in additions.columns:
+                additions[column] = self.history[column].iloc[0]
+        self.history = pd.concat(
+            [self.history, additions[self.history.columns]],
+            ignore_index=True,
+        )
+
+        v1_payload, _ = self._build_payload(
+            RANKING_ACTIVE, blocked_provider_comeback=True
+        )
+        v2_payload, provider = self._build_payload(
+            RANKING_V2_ACTIVE, blocked_provider_comeback=True
+        )
+
+        policy = v2_payload["competition_evidence_policy"]
+        self.assertEqual(
+            policy["version"],
+            competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+        )
+        self.assertEqual(policy["weights"]["davis_exception"], 0.5)
+        self.assertEqual(policy["weights"]["next_gen_exception"], 0.5)
+        self.assertEqual(policy["weights"]["olympics_exception"], 0.5)
+        self.assertEqual(provider.call_count, 0)
+
+        v1_form = v1_payload["recent_form_a"]
+        v2_form = v2_payload["recent_form_a"]
+        self.assertEqual(v2_form["matches"], v1_form["matches"])
+        counts = v2_form["competition_evidence"]["classification_counts"]
+        special_count = sum(
+            counts.get(name, 0)
+            for name in (
+                "DAVIS_EXCEPTION",
+                "NEXT_GEN_EXCEPTION",
+                "OLYMPICS_EXCEPTION",
+            )
+        )
+        self.assertGreaterEqual(special_count, 3)
+        self.assertAlmostEqual(
+            v1_form["weighted_matches"] - v2_form["weighted_matches"],
+            special_count * 0.5,
+        )
+        self.assertGreaterEqual(
+            v2_form["competition_evidence"]["prospective_post_t1"], 4
+        )
+
+        divergence = v2_payload["divergencia"]
+        assessment = v2_payload["report_assessment"]
+        pricing_result = v2_payload["pricing"]
+        decision = v2_payload["prelive_decision"]
+        html = report_html.build_report_html(v2_payload, {"flag": "🟢"})
+        self.assertIn("fatores_status", divergence)
+        self.assertIn("coverage", assessment)
+        self.assertIn("available", pricing_result)
+        self.assertIn("state", decision)
+        self.assertIn("Davis, Next Gen e Olympics a 50%", html)
+        self.assertIn(
+            competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH, html
+        )
+
 
     def test_change102_pre_t0_unknown_is_grandfathered_in_runtime(self):
         target = self.history.index[0]
