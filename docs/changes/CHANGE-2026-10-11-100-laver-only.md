@@ -16,7 +16,7 @@ Main reconciliado: `db58189007bc3881c094945c87a4b187074c00a7`
 A alteração acrescenta um modo independente e exclusivamente prospetivo:
 
 - versão: `laver-only-performance-v1`;
-- hash: `competition_evidence.LAVER_ONLY_CONFIG_HASH`, derivado por SHA-256
+- hash: `adf3cb58a5bd89ec3d6a`, derivado por SHA-256
   de uma especificação JSON canónica e imutável;
 - âmbito: ATP;
 - Laver Cup: peso zero por encontro nas amostras de desempenho;
