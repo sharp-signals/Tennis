@@ -153,7 +153,11 @@ class RankingEligibleTransformTests(unittest.TestCase):
             self.history, "Alpha", "Beta", "Hard",
             competition_policy=ACTIVE,
         )
-        self.assertEqual(h2h["overall"]["weighted_matches"], 5)
+        self.assertEqual(
+            h2h["overall"]["weighted_a_wins"]
+            + h2h["overall"]["weighted_b_wins"],
+            5,
+        )
         self.assertEqual(
             h2h["overall"]["competition_evidence"]["non_ranking_excluded"], 2
         )
