@@ -79,11 +79,12 @@ EXPERIMENTAL_TIER_PAPER_REASON_CODE = "EXPERIMENTAL_TIER_CHALLENGER_125"
 CHALLENGER_EXPERIMENTAL_MIN_DATA_COVERAGE = 0.50
 CHALLENGER_EXPERIMENTAL_HIGH_CONFIDENCE_COVERAGE = 0.65
 CHALLENGER_EXPERIMENTAL_STRONG_EVIDENCE_COVERAGE = 0.75
-# CHANGE-2026-10-04-076: um candidato manual de 0,5u continua a exigir
-# evidência superior ao universo principal, mas os limites foram calibrados
-# para o universo Challenger, cuja cobertura raramente atinge a do ATP/WTA.
-CHALLENGER_EXPERIMENTAL_MIN_EDGE_PARTIAL_PCT = 4.0
-CHALLENGER_EXPERIMENTAL_MIN_EDGE_HIGH_CONFIDENCE_PCT = 3.0
+# CHANGE-2026-10-11-104: a amostra Challenger continua isolada, com stake
+# manual fixa de 0,5u e todos os restantes gates de evidência preservados.
+# O edge mínimo exploratório passa a 2% em ambas as bandas de cobertura para
+# aumentar a recolha prospetiva sem misturar este universo com ATP/WTA normal.
+CHALLENGER_EXPERIMENTAL_MIN_EDGE_PARTIAL_PCT = 2.0
+CHALLENGER_EXPERIMENTAL_MIN_EDGE_HIGH_CONFIDENCE_PCT = 2.0
 CHALLENGER_MANUAL_PAPER_MIN_FENZOBOT_INDEX = 70
 CHALLENGER_MANUAL_PAPER_MIN_RECENT_MATCHES = 10
 CHALLENGER_MANUAL_PAPER_STAKE_UNITS = 0.5

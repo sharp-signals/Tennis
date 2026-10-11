@@ -170,11 +170,11 @@ class Challenger125ExperimentTests(unittest.TestCase):
         )
         self.assertEqual(paper_trading.build_entries(payload), [])
 
-    def test_challenger_requires_stronger_edge_when_evidence_is_limited(self):
+    def test_challenger_uses_two_percent_edge_floor_in_both_coverage_bands(self):
         payload = self._base_payload()
         payload["prelive_decision"] = {
             "state": "EDGE_POSITIVE_COVERAGE_INSUFFICIENT",
-            "expected_edge_pct": 3.9,
+            "expected_edge_pct": 1.9,
             "coverage": {"weighted_ratio": 0.55, "weighted_pct": 55.0},
             "paper_eligible": False,
             "paper_markets": [],
@@ -185,14 +185,17 @@ class Challenger125ExperimentTests(unittest.TestCase):
             decision["state"], tournament_policy.EXPERIMENTAL_EDGE_BELOW_THRESHOLD_STATE
         )
         self.assertEqual(
-            decision["experimental_tier_gate"]["minimum_experimental_edge_pct"], 4.0
+            decision["experimental_tier_gate"]["minimum_experimental_edge_pct"], 2.0
         )
         self.assertFalse(decision["paper_eligible"])
 
-        decision.update({"state": "EDGE_POSITIVE", "expected_edge_pct": 3.0,
+        decision.update({"state": "EDGE_POSITIVE", "expected_edge_pct": 2.0,
                          "coverage": {"weighted_ratio": 0.65, "weighted_pct": 65.0}})
         tournament_policy.apply_experimental_paper_gate(payload)
         self.assertEqual(decision["state"], tournament_policy.EXPERIMENTAL_EDGE_STATE)
+        self.assertEqual(
+            decision["experimental_tier_gate"]["minimum_experimental_edge_pct"], 2.0
+        )
         self.assertEqual(
             decision["experimental_tier_gate"]["evidence_band"], "evidência suficiente"
         )
