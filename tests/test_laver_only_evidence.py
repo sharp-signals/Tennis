@@ -130,7 +130,7 @@ class LaverOnlyReconstructionTests(unittest.TestCase):
                 winner_rank=18, loser_rank=11,
             ),
             row(3, 20260103, "Davis Cup", "Alpha", "Delta"),
-            row(4, 20260104, "Laver Cup", "Alpha", "Epsilon", score="7-6(4) 4-6 6-2"),
+            row(4, 20260104, "Laver Cup", "Alpha", "Epsilon", score="6-7(4) 6-4 6-2"),
             row(5, 20250104, "Vienna Open", "Alpha", "Zeta"),
         ])
 
