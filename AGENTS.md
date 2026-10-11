@@ -15,13 +15,25 @@ Este ficheiro define as regras permanentes para qualquer agente/Codex que trabal
 
 O agente executa decisões e especificações do projeto. Não deve inventar silenciosamente regras de produto, alterar a metodologia ou expandir o scope por iniciativa própria.
 
-Antes de alterar código:
-1. ler `README.md`;
-2. ler os contratos/documentos diretamente relevantes para a tarefa;
-3. ler os testes existentes dos módulos afetados;
-4. confirmar o scope recebido e identificar conflitos com o comportamento atual.
+Antes de alterar código, trabalhar **delta-first**:
+
+1. numa primeira entrada no repo, alteração estrutural ou tarefa sem contexto, ler `README.md`;
+2. numa continuação de PR/CHANGE já compreendida, começar pela issue/brief, `git diff --name-only <base>...HEAD` e ficheiros efetivamente tocados — não reler o repo inteiro;
+3. ler contratos adicionais apenas quando o delta toca a respetiva fronteira;
+4. ler os testes diretamente associados aos módulos alterados;
+5. confirmar scope e conflitos com o comportamento atual.
+
+Usar `python scripts/plan_validation.py` para obter o plano proporcional de validação e, quando necessário, a política de main drift.
 
 Se existir um `CHANGE-ID`, preservá-lo em branch, commit e relatório final sempre que possível.
+
+### 1.1 Context budget
+
+- Não fazer scans amplos do repo por rotina depois de o CHANGE estar compreendido.
+- Não reler documentação estável a cada microcorreção.
+- Preferir `search -> ficheiro relevante -> teste relevante` a `ler tudo -> procurar depois`.
+- Se surgir uma dependência material nova, expandir contexto apenas para essa fronteira.
+- Em iterações de review, começar pelo delta desde o último head revisto.
 
 ## 2. Fonte de verdade e princípios do produto
 
@@ -79,40 +91,76 @@ Quando a seleção automática de modelo não estiver disponível, sinalizar no 
 - Não desenvolver diretamente em `main` para mudanças materiais.
 - Preferir uma branch por `CHANGE-ID`, por exemplo: `change/CHANGE-2026-09-04-025-canonical-identity-fenzobot`.
 - Evitar que dois agentes trabalhem simultaneamente na mesma alteração/branch.
+- Evitar edição concorrente dos mesmos hotspots; quando inevitável, sincronizar antes de continuar.
 - Commits devem ser pequenos, coerentes e descritivos.
 - Não apagar histórico operacional, snapshots ou PAPER ledger para “limpar” o repositório.
 
+### 6.1 Main drift
+
+Não reiniciar automaticamente o ciclo só porque `main` avançou.
+
+Avaliar primeiro o drift com `scripts/plan_validation.py`:
+
+- mesmo ficheiro ou mesmo domínio crítico -> `SYNC_NOW`;
+- apenas dados/artefactos gerados independentes -> `FINAL_SYNC_ONLY`;
+- código independente -> rever o delta uma vez e continuar, deixando o sync final para o checkpoint;
+- antes do merge, cumprir sempre a política de sincronização da PR/repo.
+
+Uma full CI verde só é invalidada por alteração posterior de código relevante, sync com impacto material ou mudança de contrato — não por drift independente já classificado.
+
 ## 7. Testes e validação
 
-Antes de concluir:
-- correr os testes diretamente relacionados com os módulos alterados;
-- correr a suite mais ampla quando a alteração tocar contratos partilhados, pricing, decisão pré-live, snapshots, PAPER, dados ou reporting;
-- verificar explicitamente regressões em contratos existentes;
-- não considerar “compila” ou “importa” como critério suficiente de conclusão.
+Usar uma **validation ladder** em duas fases.
 
-Comandos de referência atuais:
-- `python -m src.test_dry_run`
-- `python -m pytest -q`
+### Fase A — loop rápido
+
+Durante desenvolvimento:
+- correr apenas lint e testes diretamente ligados ao delta;
+- corrigir primeiro no teste mais próximo da mudança;
+- não correr a full suite depois de cada pequena edição;
+- usar o output de `python scripts/plan_validation.py --level <1|2|3> ...`.
+
+### Fase B — checkpoint final
+
+Quando o diff estabilizar:
+- fazer o sync necessário com `main`;
+- correr/aguardar a full PR CI uma vez quando o CHANGE, nível de risco ou hotspot o exigir;
+- Level 2/3 têm sempre full CI final;
+- alterações em módulos sensíveis têm sempre full CI final;
+- Level 1 docs/tests isolados podem usar validação proporcional, salvo requisito explícito do brief;
+- qualquer edição de código material depois do checkpoint exige nova validação final.
+
+A full CI final verifica o conjunto; o loop dirigido reduz latência e repetição.
+
+Continuam obrigatórias regressões explícitas nos contratos existentes. “Compila” ou “importa” nunca é critério suficiente.
 
 Se algum teste não puder ser executado por falta de credenciais, serviço externo ou ambiente, declarar isso claramente.
 
 ## 8. Módulos sensíveis
 
-Alterações em `src/fetch_data.py`, `src/config.py`, `src/report_html.py`, `src/prelive_decision.py`, `src/pricing.py`, `src/calibration_store.py`, `src/paper_trading.py` ou respetivos contratos/testes podem afetar simultaneamente decisão, reporting, PAPER e validação histórica.
+Alterações em `src/main.py`, `src/fetch_data.py`, `src/config.py`, `src/report_html.py`, `src/prelive_decision.py`, `src/pricing.py`, `src/calibration_store.py`, `src/paper_trading.py`, `src/competition_evidence.py`, `src/competition_registry.py` ou respetivos contratos/testes podem afetar simultaneamente decisão, reporting, PAPER e validação histórica.
 
-Tratar estes módulos como superfície de risco elevado e rever testes/contratos antes de editar.
+Tratar estes módulos como superfície de risco elevado. Usar testes dirigidos durante o loop e full CI no checkpoint final.
 
 ## 9. Output obrigatório no fim de cada tarefa
 
-Devolver um relatório curto com:
+Durante iterações intermédias, devolver apenas:
+- head atual;
+- ficheiros tocados;
+- targeted tests executados;
+- blocker concreto, se existir.
+
+No checkpoint final, devolver um relatório curto com:
 1. `CHANGE-ID` e objetivo;
-2. ficheiros alterados;
+2. base/head e ficheiros alterados;
 3. comportamento alterado;
 4. comportamento deliberadamente preservado;
-5. testes executados e resultados;
+5. targeted tests e full CI final, quando exigida;
 6. riscos, limitações ou ambiguidades restantes;
-7. commit/diff/PR, quando aplicável;
+7. commit/diff/PR;
 8. propostas fora do scope, separadas da implementação concluída.
+
+Não repetir o mesmo relatório longo a cada microciclo de review.
 
 ## 10. Regra final
 
