@@ -271,6 +271,18 @@ class RankingEligibleTransformTests(unittest.TestCase):
 
 
 class OfflineImpactAuditTests(unittest.TestCase):
+    def test_real_committed_cache_impact_audit(self):
+        audit = build_audit(Path("data/cache/players/atp"))
+        self.assertGreater(audit["cache_files"], 0)
+        self.assertGreater(audit["unique_matches"], 0)
+        self.assertEqual(
+            audit["factor_coverage"]["fatigue_load"]["rows_removed"], 0
+        )
+        print(
+            "[change102-impact-audit] "
+            + json.dumps(audit, ensure_ascii=False, sort_keys=True)
+        )
+
     def test_audit_deduplicates_and_reports_required_dimensions(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
