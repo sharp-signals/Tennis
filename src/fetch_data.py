@@ -4148,28 +4148,260 @@ def _game_differential_from_row(row: pd.Series, winner_is_player: bool) -> Optio
     return margin if winner_is_player else -margin
 
 
-def compute_game_differential_profile(history: pd.DataFrame, player: str) -> Optional[dict]:
+def _history_player_masks(
+    history: pd.DataFrame, player: str,
+) -> tuple[Optional[str], pd.Series, pd.Series]:
+    """Resolve um jogador sem perder variantes equivalentes do mesmo nome.
+
+    ``resolve_player_name`` devolve uma grafia representativa. Usar depois essa
+    string numa comparação literal excluía linhas como ``Alex de Minaur``
+    quando o índice tinha escolhido ``Alex De Minaur``. As máscaras continuam
+    conservadoras (igualdade após normalizar acentos, caixa e pontuação), mas
+    incluem todas as grafias equivalentes presentes na fonte.
+    """
+    empty = pd.Series(False, index=history.index, dtype=bool)
+    if history.empty or not {"winner_name", "loser_name"}.issubset(history.columns):
+        return None, empty, empty
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None, empty, empty
+    normalized = _normalize_name(resolved)
+    winner_mask = history["winner_name"].fillna("").map(_normalize_name) == normalized
+    loser_mask = history["loser_name"].fillna("").map(_normalize_name) == normalized
+    return resolved, winner_mask, loser_mask
+
+
+def _parse_history_date(value: object) -> Optional[str]:
+    """Data YYYY-MM-DD para deduplicar fontes, sem inventar uma hora."""
+    if value is None or pd.isna(value):
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if re.fullmatch(r"\d{8}(?:\.0)?", raw):
+        raw = raw[:8]
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+    try:
+        return pd.Timestamp(raw).date().isoformat()
+    except (TypeError, ValueError):
+        return None
+
+
+def _winner_oriented_score_key(score: object, *, reverse: bool = False) -> str:
+    """Score estável visto do lado do vencedor, para cruzar duas fontes."""
+    if not isinstance(score, str) or not score.strip():
+        return ""
+    parts = []
+    for token in score.strip().split():
+        parsed = re.fullmatch(r"(\d+)-(\d+)(\([^)]*\))?", token)
+        if not parsed:
+            return ""
+        left, right = parsed.group(1), parsed.group(2)
+        suffix = parsed.group(3) or ""
+        parts.append(
+            f"{right}-{left}{suffix}" if reverse else f"{left}-{right}{suffix}"
+        )
+    return " ".join(parts)
+
+
+def _winner_oriented_score_key_from_row(row: pd.Series) -> str:
+    score_key = _winner_oriented_score_key(row.get("score"))
+    if score_key:
+        return score_key
+    parts = []
+    for number in range(1, 6):
+        left, right = row.get(f"W{number}"), row.get(f"L{number}")
+        if pd.isna(left) and pd.isna(right):
+            continue
+        try:
+            parts.append(f"{int(float(left))}-{int(float(right))}")
+        except (TypeError, ValueError):
+            return ""
+    return " ".join(parts)
+
+
+def _game_differential_from_recent_match(
+    match: dict, player_id: int,
+) -> Optional[tuple[int, bool, int]]:
+    """Devolve ``(best_of, ganhou, margem)`` de um past-match completo.
+
+    Na RapidAPI o ``result`` está orientado para player1/player2, não para o
+    vencedor. O formato é inferido apenas quando o score completo o demonstra:
+    duas vitórias em sets = BO3; três = BO5. RET/W/O e match tie-breaks ficam
+    deliberadamente fora.
+    """
+    if not isinstance(match, dict):
+        return None
+    player1, player2 = match.get("player1Id"), match.get("player2Id")
+    if player_id not in (player1, player2):
+        return None
+    result_type = str(match.get("result_type") or "").strip().casefold()
+    score = str(match.get("result") or "").strip()
+    upper = score.upper()
+    if result_type and result_type != "completed":
+        return None
+    if not score or any(marker in upper for marker in ("RET", "W/O", " WO", "DEF", "ABD")):
+        return None
+
+    games1 = games2 = sets1 = sets2 = 0
+    for token in score.split():
+        parsed = re.fullmatch(r"(\d+)-(\d+)(?:\([^)]*\))?", token)
+        if not parsed:
+            return None
+        left, right = int(parsed.group(1)), int(parsed.group(2))
+        if ((left, right) == (1, 0) or max(left, right) < 6
+                or (abs(left - right) < 2 and max(left, right) < 7)):
+            return None
+        games1 += left
+        games2 += right
+        sets1 += int(left > right)
+        sets2 += int(right > left)
+
+    raw_best_of = match.get("bestOf") or match.get("best_of") or match.get("bestOfSets")
+    try:
+        best_of = int(float(raw_best_of))
+    except (TypeError, ValueError):
+        winning_sets = max(sets1, sets2)
+        best_of = 5 if winning_sets == 3 else 3 if winning_sets == 2 else 0
+    if best_of not in (3, 5):
+        return None
+    required_sets = 3 if best_of == 5 else 2
+    if max(sets1, sets2) != required_sets:
+        return None
+
+    winner_id = match.get("match_winner")
+    score_winner_id = player1 if sets1 > sets2 else player2
+    # A identidade do vencedor também protege contra scores/resultados ainda
+    # incompletos apesar de o provider os ter marcado como completed.
+    if winner_id not in (player1, player2) or winner_id != score_winner_id:
+        return None
+    won = winner_id == player_id
+    margin_player1 = games1 - games2
+    margin = margin_player1 if player_id == player1 else -margin_player1
+    return best_of, won, margin
+
+
+def compute_game_differential_profile(
+    history: pd.DataFrame,
+    player: str,
+    *,
+    recent_matches: Optional[list] = None,
+    player_id: Optional[int] = None,
+    before: object = None,
+) -> Optional[dict]:
     """Perfil descritivo de margem de games, separado por BO3/BO5.
 
     Não usa odds reconstruídas nem altera o Fenzobot; é exclusivamente
     contexto histórico factual para o relatório de handicap.
     """
-    if history.empty or "best_of" not in history.columns:
+    if (history.empty or "best_of" not in history.columns) and not recent_matches:
         return None
-    resolved = resolve_player_name(history, player)
     has_set_columns = {"W1", "L1"}.issubset(history.columns)
-    if resolved is None or ("score" not in history.columns and not has_set_columns):
-        return None
-    played = history[(history["winner_name"] == resolved) | (history["loser_name"] == resolved)].copy()
-    played["_bo"] = pd.to_numeric(played["best_of"], errors="coerce")
+    resolved, winner_mask, loser_mask = _history_player_masks(history, player)
+    played = history.iloc[0:0].copy()
+    if resolved is not None and ("score" in history.columns or has_set_columns):
+        played = history[winner_mask | loser_mask].copy()
+        played["_player_won"] = winner_mask[winner_mask | loser_mask].to_numpy()
+        played["_bo"] = pd.to_numeric(played["best_of"], errors="coerce")
+
+    observations: dict[tuple, tuple[int, bool, int, str]] = {}
+
+    # A fonte recente tem IDs fortes e inclui imediatamente a ronda anterior.
+    # Entra primeiro; o histórico longo só preenche o que ainda não existe.
+    cutoff = None
+    if before is not None:
+        try:
+            cutoff = pd.Timestamp(before)
+            if cutoff.tzinfo is None:
+                cutoff = cutoff.tz_localize("UTC")
+            else:
+                cutoff = cutoff.tz_convert("UTC")
+        except (TypeError, ValueError):
+            cutoff = None
+    if recent_matches and player_id is not None:
+        for match in recent_matches:
+            if not isinstance(match, dict):
+                continue
+            raw_date = match.get("date")
+            if cutoff is not None and raw_date:
+                try:
+                    observed = pd.Timestamp(raw_date)
+                    observed = observed.tz_localize("UTC") if observed.tzinfo is None else observed.tz_convert("UTC")
+                    if observed >= cutoff:
+                        continue
+                except (TypeError, ValueError):
+                    continue
+            parsed = _game_differential_from_recent_match(match, player_id)
+            if parsed is None:
+                continue
+            bo, won, margin = parsed
+            opponent = (
+                (match.get("player2") or {}).get("name")
+                if match.get("player1Id") == player_id
+                else (match.get("player1") or {}).get("name")
+            )
+            parsed_date = _parse_history_date(raw_date)
+            score_key = _winner_oriented_score_key(
+                str(match.get("result") or ""),
+                reverse=match.get("match_winner") == match.get("player2Id"),
+            )
+            key = (
+                "match",
+                parsed_date[:4] if parsed_date else "",
+                _normalize_name(str(opponent or "")),
+                score_key,
+            )
+            if not all(key[1:]):
+                key = ("rapidapi", str(match.get("id") or match.get("matchId") or id(match)))
+            observations[key] = (bo, won, margin, "recent_api")
+
+    for _, row in played.iterrows():
+        try:
+            bo = int(float(row.get("_bo")))
+        except (TypeError, ValueError):
+            continue
+        if bo not in (3, 5):
+            continue
+        won = bool(row.get("_player_won"))
+        margin = _game_differential_from_row(row, won)
+        if margin is None:
+            continue
+        opponent = row.get("loser_name") if won else row.get("winner_name")
+        history_date = next(
+            (
+                value for value in (
+                    row.get("tourney_date"), row.get("Date"), row.get("date")
+                )
+                if value is not None and not pd.isna(value) and str(value).strip()
+            ),
+            None,
+        )
+        parsed_date = _parse_history_date(history_date)
+        key = (
+            "match",
+            parsed_date[:4] if parsed_date else "",
+            _normalize_name(str(opponent or "")),
+            _winner_oriented_score_key_from_row(row),
+        )
+        if not all(key[1:]):
+            key = (
+                "history",
+                str(row.get("tourney_id") or ""),
+                str(row.get("match_num") or ""),
+                _normalize_name(str(opponent or "")),
+                str(row.get("score") or ""),
+            )
+        observations.setdefault(key, (bo, won, margin, "history"))
+
     result = {}
     for bo, label in ((3, "bo3"), (5, "bo5")):
         wins, losses = [], []
-        for _, row in played[played["_bo"] == bo].iterrows():
-            won = row.get("winner_name") == resolved
-            margin = _game_differential_from_row(row, won)
-            if margin is not None:
-                (wins if won else losses).append(margin)
+        source_counts = {"history": 0, "recent_api": 0}
+        for observed_bo, won, margin, source in observations.values():
+            if observed_bo != bo:
+                continue
+            (wins if won else losses).append(margin)
+            source_counts[source] += 1
         if not wins and not losses:
             continue
         def describe(values):
@@ -4182,8 +4414,12 @@ def compute_game_differential_profile(history: pd.DataFrame, player: str) -> Opt
                     "negative": sum(x < 0 for x in values),
                     "margins": list(values),
                     "cover_ge": {str(n): sum(x >= n for x in values) for n in range(2, 8)}}
-        result[label] = {"wins": describe(wins), "losses": describe(losses),
-                         "analyzable_matches": len(wins) + len(losses)}
+        result[label] = {
+            "wins": describe(wins),
+            "losses": describe(losses),
+            "analyzable_matches": len(wins) + len(losses),
+            "source_matches": source_counts,
+        }
     return result or None
 
 
@@ -4196,7 +4432,7 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
     has_set_columns = {"W1", "L1"}.issubset(history.columns)
     if history.empty or ("score" not in history.columns and not has_set_columns):
         return None
-    resolved = resolve_player_name(history, player)
+    resolved, winner_mask, loser_mask = _history_player_masks(history, player)
     if resolved is None:
         return None
     pairs = [("B365W", "B365L"), ("AvgW", "AvgL"), ("PSW", "PSL")]
@@ -4241,9 +4477,9 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
             format_cell["margins"].append(margin)
             format_cell["win_margins" if won else "loss_margins"].append(margin)
 
-    for _, row in history.iterrows():
-        won = row.get("winner_name") == resolved
-        lost = row.get("loser_name") == resolved
+    for index, row in history.iterrows():
+        won = bool(winner_mask.loc[index])
+        lost = bool(loser_mask.loc[index])
         if not (won or lost):
             continue
         try:
@@ -4311,12 +4547,13 @@ def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[di
     """
     if history.empty or "best_of" not in history.columns:
         return None
-    resolved = resolve_player_name(history, player)
+    resolved, winner_mask, loser_mask = _history_player_masks(history, player)
     if resolved is None:
         return None
-    player = resolved
-    played = history[((history["winner_name"] == player) | (history["loser_name"] == player))
-                      & (history["best_of"] == 3)]
+    best_of = pd.to_numeric(history["best_of"], errors="coerce")
+    played_mask = (winner_mask | loser_mask) & (best_of == 3)
+    played = history[played_mask].copy()
+    played["_player_won"] = winner_mask[played_mask].to_numpy()
     if played.empty:
         return None
 
@@ -4328,7 +4565,7 @@ def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[di
     margens_vitoria, margens_derrota = [], []
 
     for _, row in played.iterrows():
-        is_match_winner = row.get("winner_name") == player
+        is_match_winner = bool(row.get("_player_won"))
         games_jogador = games_adversario = 0
         valido = False
 
