@@ -84,7 +84,7 @@ def _value(record: Mapping[str, Any], path: str) -> Any:
 def _names(record: Mapping[str, Any]) -> set[str]:
     result: set[str] = set()
     for path in (
-        "tourney_name", "tournament_name", "tournamentName",
+        "tourney_name", "tournament_name", "tournamentName", "Tournament",
         "competition_name", "competitionName", "event_name",
         "tournament.name",
     ):
@@ -111,7 +111,7 @@ def _tournament_id(record: Mapping[str, Any]) -> str | None:
 
 def _year(record: Mapping[str, Any]) -> int | None:
     for path in (
-        "edition_year", "year", "tourney_date", "date",
+        "edition_year", "year", "tourney_date", "date", "Date",
         "start_time_utc", "scheduled_start_utc", "tournament.date",
     ):
         value = _value(record, path)
