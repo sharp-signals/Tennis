@@ -58,8 +58,21 @@ def _is_experimental_tier(payload: Mapping[str, Any]) -> bool:
     )
 
 
-def _service_block_available(payload: Mapping[str, Any]) -> bool:
+def _factor_available(
+    divergence: Mapping[str, Any] | None, *factor_keys: str,
+) -> bool:
+    statuses = _mapping(_mapping(divergence).get("fatores_status"))
+    return any(bool(_mapping(statuses.get(key)).get("disponivel")) for key in factor_keys)
+
+
+def _service_block_available(
+    payload: Mapping[str, Any], divergence: Mapping[str, Any] | None = None,
+) -> bool:
     """Exige pelo menos uma comparacao bilateral sustentada por amostra."""
+    if _mapping(payload.get("competition_evidence_policy")).get("active") is True:
+        return _factor_available(
+            divergence, "servico_carreira", "servico_recente"
+        )
     for prefix, sample_key, metric_keys in (
         ("pressure_profile", "matches", (
             "first_serve_won_pct", "second_serve_won_pct",
@@ -84,27 +97,39 @@ def _scenario(payload: Mapping[str, Any], side: str, rate: str, count: str) -> b
     return scenarios.get(rate) is not None and _positive_number(scenarios.get(count))
 
 
-def _action_block_available(payload: Mapping[str, Any]) -> bool:
-    """Detecta se existe ao menos um bloco bilateral que possa gerar acao.
+def _action_block_available(
+    payload: Mapping[str, Any], divergence: Mapping[str, Any] | None = None,
+) -> bool:
+    """Preserva o gate bilateral legado, filtrando só fontes inelegíveis.
 
-    O criterio e deliberadamente minimo e transparente: zero blocos equivale
-    a "praticamente nenhuma informacao"; nao se criou um score paralelo.
+    Carga/fadiga é factual e não ponderada, pelo que continua a satisfazer o
+    gate sem odds. Fontes result-derived apenas contam quando o fator
+    correspondente é elegível pela política competitiva.
     """
-    if all(
+    active = _mapping(
+        payload.get("competition_evidence_policy")
+    ).get("active") is True
+
+    def allowed(factor: str) -> bool:
+        return not active or _factor_available(divergence, factor)
+
+    if allowed("comeback_set1") and all(
         _scenario(payload, side, "first_set_lose_then_win_pct", "first_set_lose_count")
         for side in ("a", "b")
     ):
         return True
-    if all(
+    if allowed("recuperacao_sets") and all(
         _scenario(payload, side, "deciding_set_win_pct", "deciding_set_count")
         for side in ("a", "b")
     ):
         return True
-    for key, sample_key in (
-        ("deciding_set_stats", "deciding_set_count"),
-        ("game_margin", "matches"),
-        ("fatigue_signal", "matches_last_7d"),
+    for key, sample_key, factor in (
+        ("deciding_set_stats", "deciding_set_count", "recuperacao_sets"),
+        ("game_margin", "matches", "game_margin"),
+        ("fatigue_signal", "matches_last_7d", None),
     ):
+        if factor is not None and not allowed(factor):
+            continue
         left = _mapping(payload.get(f"{key}_a"))
         right = _mapping(payload.get(f"{key}_b"))
         if left.get(sample_key) is not None and right.get(sample_key) is not None:
@@ -148,8 +173,8 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
     experimental = _is_experimental_tier(payload)
     essential = {
         "ranking_bilateral": _valid_rank(payload, "a") and _valid_rank(payload, "b"),
-        "service_return_bilateral": _service_block_available(payload),
-        "action_map": _action_block_available(payload),
+        "service_return_bilateral": _service_block_available(payload, divergence),
+        "action_map": _action_block_available(payload, divergence),
     }
     if not essential["ranking_bilateral"]:
         reasons.append("ranking ausente para pelo menos um jogador")
