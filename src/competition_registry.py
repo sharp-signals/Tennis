@@ -30,6 +30,21 @@ def load_registry(path: Path = REGISTRY_PATH) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("schema_version") != "atp-competition-eligibility-registry-v1":
         raise ValueError("unsupported ATP competition registry schema")
+    provenance = payload.get("provenance") or {}
+    for key in (payload.get("classification_provenance") or {}).values():
+        if key not in provenance:
+            raise ValueError(f"unresolved competition provenance key: {key}")
+    for collection in ("edition_overrides",):
+        for rule in payload.get(collection) or []:
+            if rule.get("provenance") not in provenance:
+                raise ValueError(
+                    f"unresolved competition provenance key: {rule.get('provenance')}"
+                )
+    for rule in (payload.get("exact_tournament_ids") or {}).values():
+        if rule.get("provenance") not in provenance:
+            raise ValueError(
+                f"unresolved competition provenance key: {rule.get('provenance')}"
+            )
     return payload
 
 
@@ -131,14 +146,20 @@ def _signal(
     reason_code: str,
     matched_by: str,
     value: str,
-    provenance: str,
+    provenance_key: str,
 ) -> dict[str, str]:
+    provenance = REGISTRY.get("provenance", {}).get(provenance_key)
+    if not provenance:
+        raise ValueError(
+            f"unresolved competition provenance key: {provenance_key}"
+        )
     return {
         "classification": classification,
         "reason_code": reason_code,
         "matched_by": matched_by,
         "matched_value": value,
-        "provenance": provenance,
+        "provenance_key": provenance_key,
+        "provenance": str(provenance),
     }
 
 
@@ -207,7 +228,11 @@ def classify(record: Mapping[str, Any]) -> dict[str, Any]:
                     str(classification),
                     str(reason_codes.get(classification) or "EXACT_NAME_MATCH"),
                     "exact_competition_name", name,
-                    "registry_exact_competition_names",
+                    str(
+                        REGISTRY.get("classification_provenance", {}).get(
+                            classification
+                        )
+                    ),
                 ))
         for field, value_map in (
             REGISTRY.get("explicit_category_fields", {}).items()
@@ -222,30 +247,24 @@ def classify(record: Mapping[str, Any]) -> dict[str, Any]:
                     str(classification),
                     "EXPLICIT_CATEGORY_RANKING_STATUS",
                     f"category:{field}", normalized,
-                    "registry_explicit_category_fields",
+                    str(
+                        REGISTRY.get("classification_provenance", {}).get(
+                            classification
+                        )
+                    ),
                 ))
-        scope = normalize_exact_name(_value(
-            record, "_history_competition_scope"
-        ))
-        classification = (
-            REGISTRY.get("repository_history_scope", {}).get(scope)
-            if scope else None
-        )
-        if classification:
-            signals.append(_signal(
-                str(classification),
-                "REPOSITORY_HISTORY_SCOPE_RANKING_ELIGIBLE",
-                "repository_history_scope", scope,
-                "repository_source_scope",
-            ))
-
     classifications = {item["classification"] for item in signals}
+    history_scope = normalize_exact_name(
+        _value(record, "_history_competition_scope")
+    )
     base = {
         "registry_version": REGISTRY_VERSION,
         "registry_sha256": REGISTRY_SHA256,
         "tournament_id": tournament_id,
         "edition_year": year,
         "normalized_names": sorted(names),
+        "history_competition_scope": history_scope or None,
+        "history_scope_authoritative": False,
         "identity_evidence": signals,
     }
     if not signals:
