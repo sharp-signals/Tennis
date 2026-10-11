@@ -933,6 +933,18 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
                 paper_history={"PAPER": {"entries": 444}},
                 green_strong_history={"metrics": {"sample_size": 333}},
             )
+            self.assertEqual(
+                repaired_payload["system_accuracy"],
+                {"sample_size": 11},
+            )
+            self.assertEqual(
+                repaired_payload["paper_history"],
+                {"PAPER": {"entries": 7}},
+            )
+            self.assertNotIn("green_strong_history", repaired_payload)
+            calibration_store.apply_persisted_validation(
+                repaired_payload, persisted
+            )
             repaired = main._write_report_artifact(
                 repaired_payload, repaired_result, reports_dir, "2026-10-12"
             )
