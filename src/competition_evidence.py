@@ -79,6 +79,10 @@ _RANKING_ELIGIBLE_POLICY_SPEC = {
     "selection_order": "select_sample_then_apply_eligibility",
     "fatigue_load": "raw_factual_unweighted",
     "authorization": "exact_registry_no_fuzzy",
+    "temporal_application": "per_match_t0_delta",
+    "pre_t0_policy_version": LAVER_ONLY_POLICY_VERSION,
+    "post_t0_policy_version": RANKING_ELIGIBLE_POLICY_VERSION,
+    "missing_match_date": "BLOCK",
 }
 RANKING_ELIGIBLE_CONFIG_HASH = hashlib.sha256(
     json.dumps(
@@ -447,6 +451,102 @@ def classify_match(record: Mapping[str, Any], policy: Mapping[str, Any] | None =
     }
 
 
+def _policy_effective_from(
+    policy: Mapping[str, Any] | None,
+) -> datetime | None:
+    raw = _clean_scalar((policy or {}).get("effective_from_utc"))
+    if raw is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _match_datetime(record: Mapping[str, Any]) -> datetime | None:
+    raw = _value(
+        record,
+        "tourney_date", "match_date", "date", "start_time",
+        "startTime", "scheduled_start_utc", "scheduledStartUtc",
+    )
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        parsed = raw
+    else:
+        text = str(raw).strip()
+        try:
+            if re.fullmatch(r"\d{8}", text):
+                parsed = datetime.strptime(text, "%Y%m%d")
+            elif re.fullmatch(r"\d{10,13}(?:\.0+)?", text):
+                stamp = float(text)
+                if stamp >= 10_000_000_000:
+                    stamp /= 1000.0
+                parsed = datetime.fromtimestamp(stamp, tz=timezone.utc)
+            else:
+                parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except (OverflowError, TypeError, ValueError):
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def classify_selected_match(
+    record: Mapping[str, Any],
+    policy: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Apply CHANGE-102 only to the per-match delta at/after its T0.
+
+    Pre-T0 observations keep the policy that was already operational
+    (Laver-only). Rolling windows therefore age out naturally without any
+    retrospective reclassification or frozen aggregate baseline.
+    """
+    if not is_ranking_eligible(policy):
+        return classify_match(record, policy)
+    effective_from = _policy_effective_from(policy)
+    if effective_from is None:
+        return _blocked(
+            "COMPETITION_POLICY_T0_INVALID",
+            temporal_scope="UNRESOLVED_T0",
+            applied_policy_version=None,
+        )
+    match_at = _match_datetime(record)
+    if match_at is None:
+        return _blocked(
+            "COMPETITION_MATCH_DATE_UNRESOLVED",
+            temporal_scope="UNRESOLVED_MATCH_DATE",
+            applied_policy_version=None,
+            effective_from_utc=effective_from.isoformat(),
+        )
+    if match_at < effective_from:
+        legacy_policy = {
+            "version": LAVER_ONLY_POLICY_VERSION,
+            "config_hash": LAVER_ONLY_CONFIG_HASH,
+        }
+        classification = classify_match(record, legacy_policy)
+        return {
+            **classification,
+            "temporal_scope": "PRE_T0_GRANDFATHERED",
+            "applied_policy_version": LAVER_ONLY_POLICY_VERSION,
+            "prospective_policy_applied": False,
+            "match_at_utc": match_at.isoformat(),
+            "effective_from_utc": effective_from.isoformat(),
+        }
+    classification = classify_match(record, policy)
+    return {
+        **classification,
+        "temporal_scope": "POST_T0_CHANGE_102",
+        "applied_policy_version": RANKING_ELIGIBLE_POLICY_VERSION,
+        "prospective_policy_applied": True,
+        "match_at_utc": match_at.isoformat(),
+        "effective_from_utc": effective_from.isoformat(),
+    }
+
+
 def weighted_observations(
     records: Iterable[Mapping[str, Any]], *, active: bool,
     policy: Mapping[str, Any] | None = None,
@@ -462,10 +562,11 @@ def weighted_observations(
     counts: Counter[str] = Counter()
     classifications: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
+    temporal_scopes: Counter[str] = Counter()
     weighted: list[tuple[dict[str, Any], float]] = []
     source_ids: list[str] = []
     for record in selected:
-        classification = classify_match(record, policy)
+        classification = classify_selected_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
         classifications[str(
@@ -473,6 +574,9 @@ def weighted_observations(
             or classification.get("competition")
             or "UNRESOLVED"
         )] += 1
+        temporal_scope = classification.get("temporal_scope")
+        if temporal_scope:
+            temporal_scopes[str(temporal_scope)] += 1
         weight = classification.get("weight")
         if weight is None:
             blockers[reason] += 1
@@ -504,6 +608,9 @@ def weighted_observations(
         "unresolved": sum(blockers.values()),
         "reason_counts": dict(sorted(counts.items())),
         "blocker_reason_counts": dict(sorted(blockers.items())),
+        "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
+        "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
+        "prospective_post_t0": temporal_scopes["POST_T0_CHANGE_102"],
         "source_match_ids": source_ids,
     }
     return {
@@ -537,9 +644,10 @@ def weighted_binary_record(
     counts: Counter[str] = Counter()
     classifications: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
+    temporal_scopes: Counter[str] = Counter()
     source_ids: list[str] = []
     for record in selected:
-        classification = classify_match(record, policy)
+        classification = classify_selected_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
         classifications[str(
@@ -547,6 +655,9 @@ def weighted_binary_record(
             or classification.get("competition")
             or "UNRESOLVED"
         )] += 1
+        temporal_scope = classification.get("temporal_scope")
+        if temporal_scope:
+            temporal_scopes[str(temporal_scope)] += 1
         weight = classification.get("weight")
         if weight is None:
             blockers[reason] += 1
@@ -590,6 +701,9 @@ def weighted_binary_record(
             "unresolved": sum(blockers.values()),
             "reason_counts": dict(sorted(counts.items())),
             "blocker_reason_counts": dict(sorted(blockers.items())),
+            "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
+            "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
+            "prospective_post_t0": temporal_scopes["POST_T0_CHANGE_102"],
             "source_match_ids": source_ids,
         },
     }
@@ -689,6 +803,10 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
         result["policy_mode"] = "ATP_RANKING_ELIGIBLE"
         result["registry_version"] = RANKING_REGISTRY_VERSION
         result["registry_sha256"] = RANKING_REGISTRY_SHA256
+        result["temporal_application"] = "PER_MATCH_T0_DELTA"
+        result["pre_t0_policy_version"] = LAVER_ONLY_POLICY_VERSION
+        result["post_t0_policy_version"] = RANKING_ELIGIBLE_POLICY_VERSION
+        result["historical_reclassification"] = False
     else:
         result["weights"] = {
             "individual_reference": 1.0,

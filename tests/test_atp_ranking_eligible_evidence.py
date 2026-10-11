@@ -19,8 +19,13 @@ ACTIVE = {
     "version": competition_evidence.RANKING_ELIGIBLE_POLICY_VERSION,
     "config_hash": competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH,
     "status": "ACTIVE",
-    "effective_from_utc": "2026-10-12T00:00:00+00:00",
+    "effective_from_utc": "2020-01-01T00:00:00+00:00",
     "tour": "atp",
+}
+
+DELTA_ACTIVE = {
+    **ACTIVE,
+    "effective_from_utc": "2026-10-12T00:00:00+00:00",
 }
 
 
@@ -364,6 +369,94 @@ class RankingEligibleTransformTests(unittest.TestCase):
         self.assertNotIn("Davis competitiva 50%", html)
 
 
+class ProspectiveDeltaTests(unittest.TestCase):
+    def test_pre_t0_is_grandfathered_and_post_t0_uses_change102(self):
+        records = [
+            row(201, 20261010, "Unknown Invitational"),
+            row(202, 20261011, "Laver Cup"),
+            row(203, 20261012, "United Cup"),
+            row(204, 20261013, "Davis Cup"),
+        ]
+        result = competition_evidence.weighted_binary_record(
+            records,
+            lambda item: item["winner_name"] == "Alpha",
+            active=True,
+            policy=DELTA_ACTIVE,
+        )
+        self.assertEqual(result["matches"], 4)
+        self.assertEqual(result["weighted_matches"], 3)
+        evidence = result["competition_evidence"]
+        self.assertEqual(evidence["grandfathered_pre_t0"], 2)
+        self.assertEqual(evidence["prospective_post_t0"], 2)
+        self.assertEqual(
+            evidence["classification_counts"]["INDIVIDUAL_REFERENCE"], 1
+        )
+        self.assertEqual(evidence["classification_counts"]["LAVER_CUP"], 1)
+        self.assertEqual(
+            evidence["classification_counts"]["RANKING_ELIGIBLE"], 1
+        )
+        self.assertEqual(
+            evidence["classification_counts"]["DAVIS_EXCEPTION"], 1
+        )
+
+    def test_pre_t0_wimbledon_2022_is_not_reclassified(self):
+        historical = row(205, 20220627, "Wimbledon")
+        taxonomy = competition_evidence.classify_match(
+            historical,
+            DELTA_ACTIVE,
+        )
+        self.assertEqual(taxonomy["classification"], "NON_RANKING")
+        result = competition_evidence.weighted_binary_record(
+            [historical],
+            lambda _item: True,
+            active=True,
+            policy=DELTA_ACTIVE,
+        )
+        self.assertEqual(result["weighted_matches"], 1)
+        evidence = result["competition_evidence"]
+        self.assertEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertEqual(
+            evidence["classification_counts"]["INDIVIDUAL_REFERENCE"], 1
+        )
+
+    def test_post_t0_unknown_and_missing_date_fail_closed(self):
+        post_t0_unknown = row(206, 20261012, "Unknown Invitational")
+        post = competition_evidence.weighted_binary_record(
+            [post_t0_unknown],
+            lambda _item: True,
+            active=True,
+            policy=DELTA_ACTIVE,
+        )
+        self.assertIsNone(post["weighted_matches"])
+        self.assertEqual(
+            post["competition_evidence"]["blocker_reason_counts"],
+            {"COMPETITION_IDENTITY_UNRESOLVED": 1},
+        )
+
+        no_date = dict(post_t0_unknown)
+        no_date.pop("tourney_date")
+        missing = competition_evidence.weighted_binary_record(
+            [no_date],
+            lambda _item: True,
+            active=True,
+            policy=DELTA_ACTIVE,
+        )
+        self.assertIsNone(missing["weighted_matches"])
+        self.assertEqual(
+            missing["competition_evidence"]["blocker_reason_counts"],
+            {"COMPETITION_MATCH_DATE_UNRESOLVED": 1},
+        )
+
+    def test_policy_metadata_declares_per_match_delta_without_baseline(self):
+        metadata = competition_evidence.policy_metadata(DELTA_ACTIVE)
+        self.assertEqual(metadata["temporal_application"], "PER_MATCH_T0_DELTA")
+        self.assertEqual(
+            metadata["pre_t0_policy_version"],
+            competition_evidence.LAVER_ONLY_POLICY_VERSION,
+        )
+        self.assertFalse(metadata["historical_reclassification"])
+
+
 class OfflineImpactAuditTests(unittest.TestCase):
     def test_real_committed_cache_impact_audit(self):
         audit = build_audit(Path("data/cache/players/atp"))
@@ -371,6 +464,15 @@ class OfflineImpactAuditTests(unittest.TestCase):
         self.assertGreater(audit["unique_matches"], 0)
         self.assertEqual(
             audit["row_applicability_proxy"]["fatigue_load"]["rows_removed"], 0
+        )
+        self.assertEqual(
+            audit["application_semantics"]["mode"],
+            "PROSPECTIVE_DELTA_PER_MATCH",
+        )
+        self.assertFalse(
+            audit["application_semantics"][
+                "historical_registry_inventory_is_activation_gate"
+            ]
         )
         print(
             "[change102-impact-audit] "

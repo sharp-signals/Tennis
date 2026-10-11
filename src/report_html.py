@@ -6216,10 +6216,12 @@ def _mod_competition_evidence_notice(payload):
     else:
         detail = "Todos os fatores ativos têm proveniência separável nesta execução."
     if competition_evidence.is_ranking_eligible(policy):
+        t0 = _esc(policy.get("effective_from_utc") or "T0 N/D")
         rule = (
-            "Competições ranking-eligible e exceções Davis, Next Gen e "
-            "Olympics contam a 100%; NON_RANKING é excluído e identidade "
-            "UNRESOLVED bloqueia fail-closed."
+            "Histórico anterior a T0 mantém a política Laver-only já vigente; "
+            "apenas jogos em/após T0 usam ranking-eligible e exceções Davis, "
+            "Next Gen e Olympics a 100%, com NON_RANKING excluído e identidade "
+            f"UNRESOLVED bloqueada fail-closed. T0: {t0}."
         )
     elif competition_evidence.is_laver_only(policy):
         rule = "Laver 0% por encontro; Davis mantém o tratamento produtivo atual."

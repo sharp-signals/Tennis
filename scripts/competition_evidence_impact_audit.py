@@ -204,9 +204,21 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
         "policy_application": "NOT_APPLIED_RAW_FACTUAL",
     }
     return {
-        "audit_contract": "change-102-offline-cache-impact-v2",
+        "audit_contract": "change-102-offline-cache-impact-v3",
         "policy_version": competition_evidence.RANKING_ELIGIBLE_POLICY_VERSION,
         "config_hash": competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH,
+        "application_semantics": {
+            "mode": "PROSPECTIVE_DELTA_PER_MATCH",
+            "pre_t0_policy_version": (
+                competition_evidence.LAVER_ONLY_POLICY_VERSION
+            ),
+            "post_t0_policy_version": (
+                competition_evidence.RANKING_ELIGIBLE_POLICY_VERSION
+            ),
+            "historical_reclassification": False,
+            "historical_registry_inventory_is_activation_gate": False,
+            "requires_explicit_future_t0": True,
+        },
         "registry_version": competition_evidence.RANKING_REGISTRY_VERSION,
         "registry_sha256": competition_evidence.RANKING_REGISTRY_SHA256,
         "source": str(cache_dir),
@@ -232,6 +244,7 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
             "Opponent-rank and player-hand availability cannot be inferred when those fields are absent from a cached match row.",
             "Row applicability is a cache-field proxy, not a replay of production factor coverage.",
             "UNRESOLVED is reported, never promoted through loader scope, tournament.rank, rankId, odds or fuzzy names.",
+            "The full-history comparison is a registry capability inventory, not the activation effect: pre-T0 matches remain under Laver-only semantics.",
         ],
     }
 

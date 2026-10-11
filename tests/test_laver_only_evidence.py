@@ -909,18 +909,22 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
 
     def test_change102_real_runtime_path_uses_local_sources_and_new_copy(self):
         additions = pd.DataFrame([
-            row(101, 20261001, "Davis Cup", "Alpha", "Davis Opponent"),
+            row(101, 20261013, "Davis Cup", "Alpha", "Davis Opponent"),
             row(
-                102, 20261003, "Next Gen ATP Finals",
+                102, 20261014, "Next Gen ATP Finals",
                 "Alpha", "Next Gen Opponent",
             ),
             row(
-                103, 20260930, "Olympic Games",
+                103, 20261015, "Olympic Games",
                 "Olympic Opponent", "Alpha",
             ),
             row(
-                104, 20260929, "Vienna Open",
+                104, 20261016, "Vienna Open",
                 "Beta", "Recent Beta Opponent",
+            ),
+            row(
+                105, 20261017, "Laver Cup",
+                "Alpha", "Post T0 Laver Opponent",
             ),
         ]).drop(columns=["winner_hand", "loser_hand"])
         for column in self.history.columns:
@@ -960,6 +964,9 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
         self.assertGreaterEqual(classifications["NEXT_GEN_EXCEPTION"], 1)
         self.assertGreaterEqual(classifications["OLYMPICS_EXCEPTION"], 1)
         self.assertGreaterEqual(classifications["NON_RANKING"], 1)
+        evidence = payload["recent_form_a"]["competition_evidence"]
+        self.assertGreaterEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertGreaterEqual(evidence["prospective_post_t0"], 1)
 
         divergence = payload["divergencia"]
         assessment = payload["report_assessment"]
@@ -980,10 +987,28 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
         self.assertIn("ranking-eligible", html)
         self.assertNotIn("Davis competitiva 50%", html)
 
+    def test_change102_pre_t0_unknown_is_grandfathered_in_runtime(self):
+        target = self.history.index[0]
+        self.history.loc[target, "tourney_name"] = "Unknown Invitational"
+        payload, provider = self._build_payload(
+            RANKING_ACTIVE,
+            blocked_provider_comeback=True,
+        )
+
+        self.assertEqual(provider.call_count, 0)
+        policy = payload["competition_evidence_policy"]
+        self.assertFalse(policy["feature_blockers"])
+        evidence = payload["recent_form_a"]["competition_evidence"]
+        self.assertGreaterEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertEqual(evidence["prospective_post_t0"], 0)
+        self.assertTrue(payload["pricing"].get("available"))
+        self.assertIn("state", payload["prelive_decision"])
+
     def test_change102_unknown_conflict_fails_closed_without_provider_reentry(self):
         self.history["tier"] = None
         target = self.history.index[0]
         self.history.loc[target, "tourney_name"] = "Laver Cup"
+        self.history.loc[target, "tourney_date"] = 20261018
         self.history.loc[target, "tier"] = "ATP 500"
         payload, provider = self._build_payload(
             RANKING_ACTIVE, blocked_provider_comeback=True
