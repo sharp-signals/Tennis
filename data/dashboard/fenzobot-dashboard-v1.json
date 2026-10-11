@@ -153,6 +153,25 @@
           },
           "sample_size": 1
         },
+        "82f540172c376a8561a81b8ffeee7c5851c61a2a": {
+          "delta": {
+            "brier_score": -0.020131,
+            "log_loss": -0.04138
+          },
+          "fenzobot": {
+            "accuracy_pct": 100.0,
+            "brier_score": 0.164814,
+            "log_loss": 0.52083,
+            "sample_size": 1
+          },
+          "market": {
+            "accuracy_pct": 100.0,
+            "brier_score": 0.184945,
+            "log_loss": 0.56221,
+            "sample_size": 1
+          },
+          "sample_size": 1
+        },
         "UNAVAILABLE": {
           "delta": {
             "brier_score": -0.006463,
@@ -269,22 +288,22 @@
         },
         "e00a0010f7a1495646efd25d0ffa41a33773fae0": {
           "delta": {
-            "brier_score": -0.003336,
-            "log_loss": -0.013531
+            "brier_score": -0.004534,
+            "log_loss": -0.016491
           },
           "fenzobot": {
-            "accuracy_pct": 76.47,
-            "brier_score": 0.140897,
-            "log_loss": 0.437273,
-            "sample_size": 17
+            "accuracy_pct": 77.78,
+            "brier_score": 0.135829,
+            "log_loss": 0.426989,
+            "sample_size": 18
           },
           "market": {
-            "accuracy_pct": 76.47,
-            "brier_score": 0.144233,
-            "log_loss": 0.450804,
-            "sample_size": 17
+            "accuracy_pct": 77.78,
+            "brier_score": 0.140363,
+            "log_loss": 0.44348,
+            "sample_size": 18
           },
-          "sample_size": 17
+          "sample_size": 18
         },
         "fecf765ecf4f850ed8380b6f03d52b249126626c": {
           "delta": {
@@ -309,30 +328,30 @@
       "by_pricing_version": {
         "[\"market-residual-v0.3\", \"f46ec3e2aa6f92a9\"]": {
           "delta": {
-            "brier_score": -0.001067,
-            "log_loss": -0.00233
+            "brier_score": -0.001514,
+            "log_loss": -0.003408
           },
           "fenzobot": {
-            "accuracy_pct": 72.34,
-            "brier_score": 0.204456,
-            "log_loss": 0.595168,
-            "sample_size": 94
+            "accuracy_pct": 72.92,
+            "brier_score": 0.202431,
+            "log_loss": 0.590821,
+            "sample_size": 96
           },
           "market": {
-            "accuracy_pct": 70.21,
-            "brier_score": 0.205523,
-            "log_loss": 0.597498,
-            "sample_size": 94
+            "accuracy_pct": 70.83,
+            "brier_score": 0.203945,
+            "log_loss": 0.594229,
+            "sample_size": 96
           },
-          "sample_size": 94
+          "sample_size": 96
         }
       },
       "change_id": "CHANGE-2026-09-08-030",
       "claims": "EXPERIMENTAL_NOT_VALIDATED",
       "contract_version": "PAIRED_PRICING_MARKET_V1",
       "delta": {
-        "brier_score": -0.001067,
-        "log_loss": -0.00233
+        "brier_score": -0.001514,
+        "log_loss": -0.003408
       },
       "eligibility_hash": "7152548b9d6ed39e0d995e10d5aac4644667f10cdd32c0b03326b2d207fd41db",
       "eligible_forecasts": 118,
@@ -343,22 +362,22 @@
         "TEMPORAL_PROVENANCE_INVALID": 54
       },
       "fenzobot": {
-        "accuracy_pct": 72.34,
-        "brier_score": 0.204456,
-        "log_loss": 0.595168,
-        "sample_size": 94
+        "accuracy_pct": 72.92,
+        "brier_score": 0.202431,
+        "log_loss": 0.590821,
+        "sample_size": 96
       },
       "market": {
-        "accuracy_pct": 70.21,
-        "brier_score": 0.205523,
-        "log_loss": 0.597498,
-        "sample_size": 94
+        "accuracy_pct": 70.83,
+        "brier_score": 0.203945,
+        "log_loss": 0.594229,
+        "sample_size": 96
       },
       "mode": "RETROSPECTIVE_DESCRIPTIVE",
-      "pending_or_unresolved": 24,
+      "pending_or_unresolved": 22,
       "probability_basis": "FROZEN_PRICING_FULL_PRECISION",
-      "sample_size": 94,
-      "scored_snapshot_keys_hash": "1bde7028c11df60ea16c0a79a9c8652f2c9c2dcc4e593477154b264d9361f74d",
+      "sample_size": 96,
+      "scored_snapshot_keys_hash": "fb0b6f644eed03ab76d5d6e3ce56d298eca2f5168ea9078747847f5586f13eb8",
       "status": "AVAILABLE",
       "total_snapshots": 929
     },
@@ -86817,7 +86836,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-11T05:52:13+00:00",
+  "generated_at_utc": "2026-10-11T05:54:00+00:00",
   "global": {
     "distinct_matchups": 2580,
     "green_strong_candidates": 10,
@@ -86830,7 +86849,7 @@
       "UNAVAILABLE": 1402,
       "YELLOW": 319
     },
-    "settled_snapshots": 790,
+    "settled_snapshots": 795,
     "total_reports": 3685,
     "total_snapshots": 929
   },
@@ -86839,14 +86858,14 @@
       "Moneyline": {
         "eligible_entries": 213,
         "losses": 62,
-        "net_profit_eur": 48.27,
-        "pending_entries": 20,
-        "pending_exposure_eur": 200.0,
-        "resolved_entries": 193,
-        "resolved_stake_eur": 1930.0,
-        "roi_pct": 2.5,
+        "net_profit_eur": 62.17,
+        "pending_entries": 17,
+        "pending_exposure_eur": 170.0,
+        "resolved_entries": 196,
+        "resolved_stake_eur": 1960.0,
+        "roi_pct": 3.17,
         "void_entries": 0,
-        "wins": 131
+        "wins": 134
       }
     },
     "change_id": "CHANGE-2026-10-07-091",
@@ -86863,15 +86882,15 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-11T05:52:13+00:00",
+    "generated_at_utc": "2026-10-11T05:54:00+00:00",
     "losses": 62,
     "metric_id": "GREEN_MONETIZATION_V1",
-    "net_profit_eur": 48.27,
-    "pending_entries": 20,
-    "pending_exposure_eur": 200.0,
-    "resolved_entries": 193,
-    "resolved_stake_eur": 1930.0,
-    "roi_pct": 2.5,
+    "net_profit_eur": 62.17,
+    "pending_entries": 17,
+    "pending_exposure_eur": 170.0,
+    "resolved_entries": 196,
+    "resolved_stake_eur": 1960.0,
+    "roi_pct": 3.17,
     "schema_version": 1,
     "source": {
       "exclusion_manifests": [
@@ -86879,7 +86898,7 @@
         "data/validation/market-integrity-exclusions-v1.json",
         "data/validation/green-projection-exclusions-v1.json"
       ],
-      "fingerprint_sha256": "28ff53f02515efad7e686bdd98ae2075043a23b46da8335bbdb27443bf080f25",
+      "fingerprint_sha256": "10c0d8e68f1a47f8c87ae50d0ab16ee578051b170b727f200c0321ee079d5961",
       "paper_path": "data/paper_trades.json",
       "physical_entries": 224,
       "universe": "PAPER_TECHNICAL_EDGE_POSITIVE_BASELINE"
@@ -86892,7 +86911,7 @@
       "real": "NOT_INCLUDED"
     },
     "void_entries": 0,
-    "wins": 131
+    "wins": 134
   },
   "green_strong_v1": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
@@ -87406,7 +87425,7 @@
   "paper_results_comparison_v1": {
     "change_id": "CHANGE-2026-09-23-051",
     "disclaimer": "Amostras diferentes; comparação descritiva, não prova de desempenho futuro.",
-    "green_win_rate_pct": 67.876,
+    "green_win_rate_pct": 68.367,
     "guerra_win_rate_pct": 59.664,
     "profit_is_never_aggregated": true,
     "statement": "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do Guerra apresenta maior ROI e resultado acumulado, com menos apostas.",
@@ -87419,17 +87438,17 @@
       "Moneyline": {
         "average_odd": 1.577,
         "losses": 62,
-        "pending": 28,
+        "pending": 25,
         "pending_stake_units": null,
         "pushes": 0,
-        "roi_pct": 2.5,
-        "settled": 193,
+        "roi_pct": 3.17,
+        "settled": 196,
         "settled_stake_units": null,
         "total_entries": 221,
-        "units": 4.827,
-        "win_rate_pct": 67.88,
-        "wins": 131,
-        "yield_pct": 2.5
+        "units": 6.217,
+        "win_rate_pct": 68.37,
+        "wins": 134,
+        "yield_pct": 3.17
       }
     },
     "data_quality_exclusions_by_reason": {
@@ -87438,18 +87457,18 @@
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
     "losses": 62,
-    "pending": 28,
+    "pending": 25,
     "pending_stake_units": null,
     "pushes": 0,
-    "roi_pct": 2.5,
-    "settled": 193,
+    "roi_pct": 3.17,
+    "settled": 196,
     "settled_stake_units": null,
     "status": "AVAILABLE",
     "total_entries": 221,
-    "units": 4.827,
-    "win_rate_pct": 67.88,
-    "wins": 131,
-    "yield_pct": 2.5
+    "units": 6.217,
+    "win_rate_pct": 68.37,
+    "wins": 134,
+    "yield_pct": 3.17
   },
   "report_grouping": {
     "canonical_precedence": [
@@ -87467,32 +87486,32 @@
   },
   "report_history": {
     "alignment": {
-      "acertos": 348,
+      "acertos": 351,
       "intervalo_pct": [
-        66.1,
-        74.2
+        66.3,
+        74.3
       ],
       "odds_retorno": {
-        "average_odd": 1.406,
+        "average_odd": 1.407,
         "break_even_pct": 73.1,
         "losses": 147,
         "median_odd": 1.363,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": -20.685,
-        "odds_sample_size": 495,
-        "roi_pct": -4.18,
-        "stake_units": 495,
-        "win_pct": 70.3,
-        "wins": 348
+        "net_units": -19.305,
+        "odds_sample_size": 498,
+        "roi_pct": -3.88,
+        "stake_units": 498,
+        "win_pct": 70.5,
+        "wins": 351
       },
-      "taxa_pct": 70.3,
-      "total": 495
+      "taxa_pct": 70.5,
+      "total": 498
     },
     "alignment_min_odd": {
-      "acertos": 216,
+      "acertos": 219,
       "intervalo_pct": [
-        57.4,
-        67.5
+        57.7,
+        67.8
       ],
       "minimum_odd": 1.25,
       "odds_retorno": {
@@ -87501,46 +87520,46 @@
         "losses": 129,
         "median_odd": 1.5,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": -21.524,
-        "odds_sample_size": 345,
-        "roi_pct": -6.24,
-        "stake_units": 345,
-        "win_pct": 62.6,
-        "wins": 216
+        "net_units": -20.144,
+        "odds_sample_size": 348,
+        "roi_pct": -5.79,
+        "stake_units": 348,
+        "win_pct": 62.9,
+        "wins": 219
       },
-      "taxa_pct": 62.6,
-      "total": 345
+      "taxa_pct": 62.9,
+      "total": 348
     },
     "divergence": {
-      "acertos": 34,
+      "acertos": 36,
       "intervalo_pct": [
-        35.6,
-        57.9
+        37.1,
+        59.1
       ],
       "odds_retorno": {
-        "average_odd": 2.33,
-        "break_even_pct": 44.5,
+        "average_odd": 2.32,
+        "break_even_pct": 44.7,
         "losses": 39,
         "median_odd": 2.2,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": -0.271,
-        "odds_sample_size": 73,
-        "roi_pct": -0.37,
-        "stake_units": 73,
-        "win_pct": 46.6,
-        "wins": 34
+        "net_units": 1.579,
+        "odds_sample_size": 75,
+        "roi_pct": 2.11,
+        "stake_units": 75,
+        "win_pct": 48.0,
+        "wins": 36
       },
-      "taxa_pct": 46.6,
-      "total": 73
+      "taxa_pct": 48.0,
+      "total": 75
     },
     "snapshot_universe": {
-      "settled": 790,
+      "settled": 795,
       "total": 929
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "865004be6ac5d9790f3a62e136d0d0c0ecc7f6b49946ed29e69178fca361411e",
+  "semantic_fingerprint": "c9579c674ddda311add65b3095aa3c6d26164afc82b942e50cadf5f9f54824d7",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 254,
@@ -87551,7 +87570,7 @@
     },
     "change_id": "CHANGE-2026-09-21-047",
     "conversion": {
-      "created_to_settled_pct": 46.67,
+      "created_to_settled_pct": 49.44,
       "eligible_to_snapshot_pct": 0.29
     },
     "counts": {
@@ -87566,7 +87585,7 @@
       "self_described_versions": 484,
       "snapshot_identity_matches": 1,
       "snapshots_created": 180,
-      "snapshots_settled": 84
+      "snapshots_settled": 89
     },
     "integrity": {
       "eligible_identities_reconciled": true,
@@ -87608,7 +87627,7 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-11T05:37:54+00:00"
+      "updated_at_utc": "2026-10-11T05:54:00+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
@@ -87620,7 +87639,7 @@
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-11T05:37:53+00:00"
+      "updated_at_utc": "2026-10-11T05:53:53+00:00"
     }
   },
   "system_health": {
