@@ -1555,8 +1555,14 @@ def _compute_features(payload: dict) -> dict:
             direct_consumers=direct_consumers,
             policy=policy,
         )
+        match_level_policy = (
+            competition_evidence.uses_match_level_competition_evidence(policy)
+        )
         policy["integral_laver_exclusion_claimed"] = (
-            competition_evidence.is_active_laver_only(policy)
+            match_level_policy and not blockers
+        )
+        policy["integral_non_ranking_exclusion_claimed"] = (
+            competition_evidence.is_active_ranking_eligible(policy)
             and not blockers
         )
     return guarded or None
@@ -2584,7 +2590,7 @@ def _build_match_payload(match: dict) -> dict:
     # específico (tournament-record). Só se houver ID de jogador E do
     # torneio — sem isso, salta sem gastar chamada.
     tournament_record_a = tournament_record_b = None
-    if competition_evidence.is_active_laver_only(competition_policy):
+    if competition_evidence.uses_match_level_competition_evidence(competition_policy):
         tournament_record_a = fetch_data.compute_tournament_record_from_history(
             history, player_a, _tournament_id, tournament,
             competition_policy=competition_policy,
@@ -2822,7 +2828,7 @@ def _build_match_payload(match: dict) -> dict:
             "a": _coverage(
                 tournament_record_a, (
                     "local_history"
-                    if competition_evidence.is_active_laver_only(competition_policy)
+                    if competition_evidence.uses_match_level_competition_evidence(competition_policy)
                     else "rapidapi_tournament_record"
                 ),
                 unavailable_reason="tournament_record_unavailable",
@@ -2830,7 +2836,7 @@ def _build_match_payload(match: dict) -> dict:
             "b": _coverage(
                 tournament_record_b, (
                     "local_history"
-                    if competition_evidence.is_active_laver_only(competition_policy)
+                    if competition_evidence.uses_match_level_competition_evidence(competition_policy)
                     else "rapidapi_tournament_record"
                 ),
                 unavailable_reason="tournament_record_unavailable",
