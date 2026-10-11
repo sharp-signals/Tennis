@@ -841,29 +841,41 @@ def _calcular_divergencia(payload):
     # DUAS formas possíveis (plana da RapidAPI, ou bo3/bo5 do histórico),
     # por isso a extração trata as duas.
     def _deciding_set_signal(d):
-        """Devolve (win_pct, contagem) de set decisivo, aceitando tanto a
-        forma plana (RapidAPI recent-stats: deciding_set_win_pct/_count)
-        como a forma bo3/bo5 (Sackmann/histórico: combina as duas)."""
+        """Return a policy-aware deciding-set rate and its effective sample."""
         if not isinstance(d, dict):
             return None, None
         if d.get("deciding_set_win_pct") is not None and isinstance(d.get("deciding_set_count"), (int, float)) and d.get("deciding_set_count") > 0:
             return d["deciding_set_win_pct"], d.get("deciding_set_count")
-        wins = matches = 0
-        tem_dados = False
-        for label in ("bo3", "bo5"):
+        weighted_wins = weighted_matches = 0.0
+        found = False
+        labels = ("bo3", "bo5")
+        if policy_active:
+            labels = (
+                ("bo5",)
+                if str(payload.get("match_format") or "").casefold() == "bo5"
+                else ("bo3",)
+            )
+        for label in labels:
             cell = d.get(label)
-            if isinstance(cell, dict) and cell.get("matches_went_the_distance"):
-                tem_dados = True
-                matches += cell["matches_went_the_distance"]
-                wins += cell.get("wins", 0)
-        if not tem_dados or matches == 0:
+            if not isinstance(cell, dict):
+                continue
+            rate, sample = competition_evidence.record_rate(cell)
+            if rate is None or not sample:
+                continue
+            found = True
+            weighted_matches += float(sample)
+            weighted_wins += float(sample) * float(rate) / 100.0
+        if not found or weighted_matches <= 0:
             return None, None
-        return round(100 * wins / matches, 1), matches
+        return round(100 * weighted_wins / weighted_matches, 1), weighted_matches
 
+    policy_active = bool(_d(payload.get("competition_evidence_policy")).get("active"))
     ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
     rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
-    dec_a, dec_a_n = ra.get("deciding_set_win_pct"), ra.get("deciding_set_count")
-    dec_b, dec_b_n = rb.get("deciding_set_win_pct"), rb.get("deciding_set_count")
+    dec_a = None if policy_active else ra.get("deciding_set_win_pct")
+    dec_a_n = None if policy_active else ra.get("deciding_set_count")
+    dec_b = None if policy_active else rb.get("deciding_set_win_pct")
+    dec_b_n = None if policy_active else rb.get("deciding_set_count")
     if dec_a is None or not isinstance(dec_a_n, (int, float)) or dec_a_n <= 0:
         dec_a, dec_a_n = _deciding_set_signal(payload.get("deciding_set_stats_a"))
     if dec_b is None or not isinstance(dec_b_n, (int, float)) or dec_b_n <= 0:
@@ -1586,11 +1598,25 @@ def _compute_fatores_decisivos(payload):
     )
     recovery_feature = _d(payload.get("features")).get("recuperacao_sets")
     allow_recovery = competition_evidence.feature_is_eligible(
-        recovery_feature, active=policy_active
+        recovery_feature, active=policy_active,
+        policy=payload.get("competition_evidence_policy"),
     )
     ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
     rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
-    da, db = ra.get("deciding_set_win_pct"), rb.get("deciding_set_win_pct")
+    if policy_active:
+        deciding_format = (
+            "bo5"
+            if str(payload.get("match_format") or "").casefold() == "bo5"
+            else "bo3"
+        )
+        da, _ = competition_evidence.record_rate(
+            _d(payload.get("deciding_set_stats_a")).get(deciding_format)
+        )
+        db, _ = competition_evidence.record_rate(
+            _d(payload.get("deciding_set_stats_b")).get(deciding_format)
+        )
+    else:
+        da, db = ra.get("deciding_set_win_pct"), rb.get("deciding_set_win_pct")
     if allow_recovery and da is not None and db is not None and abs(da - db) >= 5:
         quem = a if da > db else b
         bullets.append(f"Mais forte em sets decisivos: {quem}.")
@@ -4958,7 +4984,9 @@ def _mod_action_map(payload, div, result):
 
     def policy_factor_available(key):
         return competition_evidence.feature_is_eligible(
-            _d(payload.get("features")).get(key), active=policy_active
+            _d(payload.get("features")).get(key),
+            active=policy_active,
+            policy=payload.get("competition_evidence_policy"),
         )
 
     def add(kind, title, text, source="", odd_justa=None, headline=None, n_amostra=None,
@@ -5273,20 +5301,31 @@ def _mod_action_map(payload, div, result):
         if match_format == "bo5":
             if rate_key == "first_set_lose_then_win_pct":
                 fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo5"))
-                return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+                return (
+                fallback.get("comeback_rate_pct"),
+                fallback.get("weighted_matches_lost_set1")
+                if policy_active else fallback.get("matches_lost_set1"),
+            )
             if rate_key == "deciding_set_win_pct":
                 fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo5"))
-                return fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
-        rich = _d(_d(payload.get(f"rich_stats_{side}")).get("scenarios"))
-        rate, count = rich.get(rate_key), rich.get(count_key)
-        if rate is not None:
-            return rate, count
+                return competition_evidence.record_rate(fallback)
+        if not policy_active:
+            rich = _d(_d(payload.get(f"rich_stats_{side}")).get("scenarios"))
+            rate, count = rich.get(rate_key), rich.get(count_key)
+            if rate is not None:
+                return rate, count
+        else:
+            rate, count = None, None
         if rate_key == "first_set_lose_then_win_pct":
             fallback = _d(_d(payload.get(f"set1_comeback_stats_{side}")).get("bo3"))
-            return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+            return (
+                fallback.get("comeback_rate_pct"),
+                fallback.get("weighted_matches_lost_set1")
+                if policy_active else fallback.get("matches_lost_set1"),
+            )
         if rate_key == "deciding_set_win_pct":
             fallback = _d(_d(payload.get(f"deciding_set_stats_{side}")).get("bo3"))
-            return fallback.get("win_rate_pct"), fallback.get("matches_went_the_distance")
+            return competition_evidence.record_rate(fallback)
         return rate, count
 
     # Recuperação depois do primeiro set: gatilho condicional live.
@@ -6172,9 +6211,14 @@ def _mod_competition_evidence_notice(payload):
         )
     else:
         detail = "Todos os fatores ativos têm proveniência separável nesta execução."
+    rule = (
+        "Laver 0% por encontro; Davis mantém o tratamento produtivo atual."
+        if competition_evidence.is_laver_only(policy)
+        else "Davis competitiva 50%; Laver 0% nas fontes separáveis."
+    )
     return (
         '<div class="parcial"><b>Política de evidência por competição</b> — '
-        'Davis competitiva 50%; Laver 0% nas fontes separáveis. '
+        f'{_esc(rule)} '
         f'{_esc(detail)} <span class="muted">versão {version} · config {config_hash}</span>'
         '</div>'
     )

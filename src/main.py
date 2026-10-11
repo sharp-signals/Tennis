@@ -27,6 +27,7 @@ import copy
 import hashlib
 import html
 import json
+import math
 import os
 import re
 import tempfile
@@ -370,8 +371,7 @@ def _freeze_competition_delivery(
     policy = payload.get("competition_evidence_policy") or {}
     if not (
         policy.get("active") is True
-        and policy.get("version") == competition_evidence.POLICY_VERSION
-        and policy.get("config_hash") == competition_evidence.CONFIG_HASH
+        and competition_evidence.policy_is_supported(policy)
     ):
         return
     report_date = str(
@@ -918,6 +918,7 @@ def _compute_features(payload: dict) -> dict:
     """
     a = payload.get("player_a", "A")
     b = payload.get("player_b", "B")
+    policy = payload.get("competition_evidence_policy") or {}
     feats = {}
 
     def _pct(d):
@@ -1000,7 +1001,8 @@ def _compute_features(payload: dict) -> dict:
     )
     competition_evidence.annotate_feature(
         feats.get("forma_recente"), [_form_a, _form_b],
-        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+        active=bool(policy.get("active")),
+        policy=policy,
     )
 
     # NOVO (14/08/2026, a pedido): qualidade das vitórias recentes (score
@@ -1024,7 +1026,8 @@ def _compute_features(payload: dict) -> dict:
             }
         competition_evidence.annotate_feature(
             feats.get("qualidade_vitorias"), [_qa, _qb],
-            active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+            active=bool(policy.get("active")),
+            policy=policy,
         )
 
     # REMOVIDO (14/08/2026, a pedido): "época atual" (ano civil inteiro)
@@ -1049,7 +1052,8 @@ def _compute_features(payload: dict) -> dict:
           amostra_b=competition_evidence.record_rate(_io_b)[1])
     competition_evidence.annotate_feature(
         feats.get("indoor_outdoor"), [_io_a, _io_b],
-        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+        active=bool(policy.get("active")),
+        policy=policy,
     )
 
     # Velocidade do piso: só hard com classificação factual do torneio e
@@ -1074,6 +1078,7 @@ def _compute_features(payload: dict) -> dict:
             competition_evidence.annotate_feature(
                 feats.get("velocidade_piso"), [_cs_a, _cs_b],
                 active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+                policy=policy,
             )
         else:
             _minimum = fetch_data.COURT_PACE_MIN_MATCHES
@@ -1092,8 +1097,16 @@ def _compute_features(payload: dict) -> dict:
     # NOVO (14/08/2026, a pedido): tie-break
     _tb_a = payload.get("tiebreak_a")
     _tb_b = payload.get("tiebreak_b")
-    _edge(_pct(_tb_a), _pct(_tb_b), "tiebreak",
-          amostra_a=(_tb_a or {}).get("matches"), amostra_b=(_tb_b or {}).get("matches"))
+    _edge(
+        _pct(_tb_a), _pct(_tb_b), "tiebreak",
+        amostra_a=competition_evidence.record_rate(_tb_a)[1],
+        amostra_b=competition_evidence.record_rate(_tb_b)[1],
+    )
+    competition_evidence.annotate_feature(
+        feats.get("tiebreak"), [_tb_a, _tb_b],
+        active=bool(policy.get("active")),
+        policy=policy,
+    )
 
     # NOVO (14/08/2026, a pedido): recuperação após perder o 1º set
     # Recuperação após perder o 1º set — usa a estatística já existente
@@ -1121,13 +1134,24 @@ def _compute_features(payload: dict) -> dict:
         # apenas o histórico explicitamente BO5; nunca misturar BO3 numa
         # variável que afeta o score pré-live.
         if _fmt_bo == "bo5":
-            return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
-        rich = (payload.get(f"rich_stats_{side}") or {}).get("scenarios") or {}
-        rate = rich.get("first_set_lose_then_win_pct")
-        amostra = rich.get("first_set_lose_count")
-        if rate is not None and isinstance(amostra, (int, float)) and amostra > 0:
-            return rate, amostra
-        return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+            return (
+                fallback.get("comeback_rate_pct"),
+                fallback.get("weighted_matches_lost_set1")
+                if policy.get("active")
+                else fallback.get("matches_lost_set1"),
+            )
+        if not policy.get("active"):
+            rich = (payload.get(f"rich_stats_{side}") or {}).get("scenarios") or {}
+            rate = rich.get("first_set_lose_then_win_pct")
+            amostra = rich.get("first_set_lose_count")
+            if rate is not None and isinstance(amostra, (int, float)) and amostra > 0:
+                return rate, amostra
+        return (
+            fallback.get("comeback_rate_pct"),
+            fallback.get("weighted_matches_lost_set1")
+            if policy.get("active")
+            else fallback.get("matches_lost_set1"),
+        )
 
     _pa, _amostra_a = _comeback_rate_amostra("a")
     _pb, _amostra_b = _comeback_rate_amostra("b")
@@ -1147,6 +1171,15 @@ def _compute_features(payload: dict) -> dict:
             "diff": _pa - _pb, "valor_a": _pa, "valor_b": _pb,
             "amostra_a": _amostra_a, "amostra_b": _amostra_b,
         }
+        competition_evidence.annotate_feature(
+            feats["comeback_set1"],
+            [
+                (payload.get("set1_comeback_stats_a") or {}).get(_fmt_bo),
+                (payload.get("set1_comeback_stats_b") or {}).get(_fmt_bo),
+            ],
+            active=bool(policy.get("active")),
+            policy=policy,
+        )
 
     # NOVO (14/08/2026, a pedido): padrão sazonal
     _saz_a = payload.get("sazonal_a")
@@ -1156,7 +1189,8 @@ def _compute_features(payload: dict) -> dict:
           amostra_b=competition_evidence.record_rate(_saz_b)[1])
     competition_evidence.annotate_feature(
         feats.get("sazonal"), [_saz_a, _saz_b],
-        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+        active=bool(policy.get("active")),
+        policy=policy,
     )
 
     # Piso (win%) — preferir o rico by_surface, senão surface_stats
@@ -1205,7 +1239,8 @@ def _compute_features(payload: dict) -> dict:
     _edge(pa, pb, "piso", amostra_a=na, amostra_b=nb)
     competition_evidence.annotate_feature(
         feats.get("piso"), [source_a, source_b],
-        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+        active=bool(policy.get("active")),
+        policy=policy,
     )
 
     # Serviço — CARREIRA (últimos SERVE_RETURN_STATS_MATCHES=10 jogos) e
@@ -1240,7 +1275,8 @@ def _compute_features(payload: dict) -> dict:
     competition_evidence.annotate_feature(
         feats.get("servico_carreira"),
         [payload.get("serve_return_stats_a"), payload.get("serve_return_stats_b")],
-        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+        active=bool(policy.get("active")),
+        policy=policy,
     )
 
     sa_r, nsa_r = _serve_metric(payload.get("serve_return_recent_a"))
@@ -1251,7 +1287,8 @@ def _compute_features(payload: dict) -> dict:
     competition_evidence.annotate_feature(
         feats.get("servico_recente"),
         [payload.get("serve_return_recent_a"), payload.get("serve_return_recent_b")],
-        active=bool((payload.get("competition_evidence_policy") or {}).get("active")),
+        active=bool(policy.get("active")),
+        policy=policy,
     )
 
     # Fadiga (menos jogos recentes = mais fresco) — sinal de frescura
@@ -1291,22 +1328,15 @@ def _compute_features(payload: dict) -> dict:
             competition_evidence.annotate_feature(
                 feats["h2h"], [h2h],
                 active=policy_active,
+                policy=policy,
             )
         # NOVO (22/08/2026, a pedido): expor também o H2H ponderado pela
         # recência (calculado em compute_h2h). "lider" ali vem como o nome
         # resolvido do jogador; traduz-se para os rótulos a/b deste
         # relatório. O motor decide o que fazer com isto (report_html.py).
-        _h2h_evidence = h2h.get("competition_evidence") or {}
-        _h2h_has_affected_rows = bool(
-            _h2h_evidence.get("laver_excluded")
-            or _h2h_evidence.get("davis_weighted")
-            or _h2h_evidence.get("unresolved")
-        )
-        _wr = (
-            None
-            if policy_active and _h2h_has_affected_rows
-            else h2h_obj.get("weighted_recency")
-        )
+        # ``compute_h2h`` recalculates this view on the same eligible sample.
+        # Raw recency remains available separately for factual audit.
+        _wr = h2h_obj.get("weighted_recency")
         if isinstance(_wr, dict) and _wr.get("lider") not in (None, "igual"):
             # o líder ponderado vem como nome do jogador; mapear para a/b
             _lider_wr = a if _wr["lider"] == payload.get("player_a") else (
@@ -1334,6 +1364,7 @@ def _compute_features(payload: dict) -> dict:
             competition_evidence.annotate_feature(
                 feats["h2h_piso"], [h2h_surf],
                 active=policy_active,
+                policy=policy,
             )
 
     # NOVO (18/08/2026, a pedido): desempenho em rondas decisivas (QF+),
@@ -1345,6 +1376,9 @@ def _compute_features(payload: dict) -> dict:
     _RONDAS_DECISIVAS = {"F", "SF", "QF", "FINAL", "SEMIFINAL", "QUARTERFINAL"}
 
     def _pressao_ronda(side):
+        if policy.get("active"):
+            cell = (payload.get(f"round_stage_stats_{side}") or {}).get("late_rounds")
+            return competition_evidence.record_rate(cell)
         by_round = (payload.get(f"rich_stats_{side}") or {}).get("by_round") or {}
         wins = losses = 0
         for rnd, cell in by_round.items():
@@ -1364,6 +1398,15 @@ def _compute_features(payload: dict) -> dict:
             "diff": _pra - _prb, "valor_a": _pra, "valor_b": _prb,
             "amostra_a": _amostra_ronda_a, "amostra_b": _amostra_ronda_b,
         }
+        competition_evidence.annotate_feature(
+            feats["pressao_ronda"],
+            [
+                (payload.get("round_stage_stats_a") or {}).get("late_rounds"),
+                (payload.get("round_stage_stats_b") or {}).get("late_rounds"),
+            ],
+            active=bool(policy.get("active")),
+            policy=policy,
+        )
 
     # NOVO (18/08/2026, a pedido): desempenho vs o NÍVEL do adversário de
     # HOJE (top10/20/50/100), carreira toda. Fonte: vs_rank_level dos
@@ -1402,6 +1445,10 @@ def _compute_features(payload: dict) -> dict:
     def _nivel_adversario(side, bucket):
         if bucket is None:
             return None, None
+        if policy.get("active"):
+            return competition_evidence.record_rate(
+                payload.get(f"opponent_level_stats_{side}")
+            )
         vs_rank = (payload.get(f"rich_stats_{side}") or {}).get("vs_rank_level") or {}
         cell = vs_rank.get(bucket) or {}
         return cell.get("win_pct"), cell.get("matches")
@@ -1414,15 +1461,90 @@ def _compute_features(payload: dict) -> dict:
             "diff": _nva - _nvb, "valor_a": _nva, "valor_b": _nvb,
             "amostra_a": _amostra_nivel_a, "amostra_b": _amostra_nivel_b,
         }
+        competition_evidence.annotate_feature(
+            feats["nivel_adversario"],
+            [
+                payload.get("opponent_level_stats_a"),
+                payload.get("opponent_level_stats_b"),
+            ],
+            active=bool(policy.get("active")),
+            policy=policy,
+        )
 
-    policy = payload.get("competition_evidence_policy")
-    active = bool((policy or {}).get("active"))
+    policy = payload.get("competition_evidence_policy") or {}
+
+    # Direct consumers used by the scoring engine also receive factor-local
+    # provenance, so reconstructed Laver-free records remain usable instead of
+    # being disabled as an entire family.
+    _hm_a = payload.get("handedness_matchup_a") or {}
+    _hm_b = payload.get("handedness_matchup_b") or {}
+    if _hm_a.get("win_pct") is not None and _hm_b.get("win_pct") is not None:
+        feats["matchup_maos"] = {
+            "lider": a if _hm_a["win_pct"] > _hm_b["win_pct"] else (
+                b if _hm_b["win_pct"] > _hm_a["win_pct"] else "igual"
+            ),
+            "valor_a": _hm_a["win_pct"],
+            "valor_b": _hm_b["win_pct"],
+        }
+        competition_evidence.annotate_feature(
+            feats["matchup_maos"], [_hm_a, _hm_b],
+            active=bool(policy.get("active")),
+            policy=policy,
+        )
+
+    def _deciding_record(side):
+        stats = payload.get(f"deciding_set_stats_{side}") or {}
+        fmt = "bo5" if str(payload.get("match_format") or "").casefold() == "bo5" else "bo3"
+        return stats.get(fmt) if isinstance(stats, dict) else None
+
+    _ds_a, _ds_b = _deciding_record("a"), _deciding_record("b")
+    _ds_rate_a, _ds_sample_a = competition_evidence.record_rate(_ds_a)
+    _ds_rate_b, _ds_sample_b = competition_evidence.record_rate(_ds_b)
+    if _ds_rate_a is not None and _ds_rate_b is not None:
+        feats["recuperacao_sets"] = {
+            "lider": a if _ds_rate_a > _ds_rate_b else (
+                b if _ds_rate_b > _ds_rate_a else "igual"
+            ),
+            "valor_a": _ds_rate_a,
+            "valor_b": _ds_rate_b,
+            "amostra_a": _ds_sample_a,
+            "amostra_b": _ds_sample_b,
+        }
+        competition_evidence.annotate_feature(
+            feats["recuperacao_sets"], [_ds_a, _ds_b],
+            active=bool(policy.get("active")),
+            policy=policy,
+        )
+
+    _tr_a = payload.get("tournament_record_a")
+    _tr_b = payload.get("tournament_record_b")
+    if isinstance(_tr_a, dict) and isinstance(_tr_b, dict):
+        _tr_rate_a, _tr_sample_a = competition_evidence.record_rate(_tr_a)
+        _tr_rate_b, _tr_sample_b = competition_evidence.record_rate(_tr_b)
+        if _tr_rate_a is not None and _tr_rate_b is not None:
+            feats["historico_torneio"] = {
+                "lider": a if _tr_rate_a > _tr_rate_b else (
+                    b if _tr_rate_b > _tr_rate_a else "igual"
+                ),
+                "valor_a": _tr_rate_a,
+                "valor_b": _tr_rate_b,
+                "amostra_a": _tr_sample_a,
+                "amostra_b": _tr_sample_b,
+            }
+            competition_evidence.annotate_feature(
+                feats["historico_torneio"], [_tr_a, _tr_b],
+                active=bool(policy.get("active")),
+                policy=policy,
+            )
+
+    active = bool(policy.get("active"))
     direct_consumers = competition_evidence.direct_consumers_from_payload(payload)
     guarded, blockers = competition_evidence.guard_features(
         feats,
         active=active,
         tour=payload.get("tour"),
         direct_consumers=direct_consumers,
+        policy=policy,
     )
     if isinstance(policy, dict):
         policy["feature_blockers"] = blockers
@@ -1431,8 +1553,12 @@ def _compute_features(payload: dict) -> dict:
             active=active,
             tour=payload.get("tour"),
             direct_consumers=direct_consumers,
+            policy=policy,
         )
-        policy["integral_laver_exclusion_claimed"] = False
+        policy["integral_laver_exclusion_claimed"] = (
+            competition_evidence.is_active_laver_only(policy)
+            and not blockers
+        )
     return guarded or None
 
 
@@ -1464,7 +1590,9 @@ def _factual_key_points(payload: dict) -> list:
         if f.get(d)
         and f[d].get("lider") not in (None, "igual")
         and competition_evidence.feature_is_eligible(
-            f[d], active=policy_active
+            f[d],
+            active=policy_active,
+            policy=payload.get("competition_evidence_policy"),
         )
     ]
     if lideres:
@@ -1498,12 +1626,21 @@ def _factual_key_points(payload: dict) -> list:
         )
     }
     if not {"recuperacao_sets", "comeback_set1"}.intersection(blockers):
-        ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
-        rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
-        if ra.get("first_set_win_then_win_pct") is not None:
-            pts.append(f"{a} fecha {ra['first_set_win_then_win_pct']}% dos jogos após ganhar o 1º set.")
-        if rb.get("first_set_lose_then_win_pct") is not None:
-            pts.append(f"{b} recupera {rb['first_set_lose_then_win_pct']}% quando perde o 1º set.")
+        if policy_active:
+            fmt = "bo5" if str(payload.get("match_format") or "").casefold() == "bo5" else "bo3"
+            ra = (payload.get("set1_comeback_stats_a") or {}).get(fmt) or {}
+            rb = (payload.get("set1_comeback_stats_b") or {}).get(fmt) or {}
+            if ra.get("comeback_rate_pct") is not None:
+                pts.append(f"{a} recupera {ra['comeback_rate_pct']}% quando perde o 1.º set.")
+            if rb.get("comeback_rate_pct") is not None:
+                pts.append(f"{b} recupera {rb['comeback_rate_pct']}% quando perde o 1.º set.")
+        else:
+            ra = (payload.get("rich_stats_a") or {}).get("scenarios") or {}
+            rb = (payload.get("rich_stats_b") or {}).get("scenarios") or {}
+            if ra.get("first_set_win_then_win_pct") is not None:
+                pts.append(f"{a} fecha {ra['first_set_win_then_win_pct']}% dos jogos após ganhar o 1º set.")
+            if rb.get("first_set_lose_then_win_pct") is not None:
+                pts.append(f"{b} recupera {rb['first_set_lose_then_win_pct']}% quando perde o 1º set.")
 
     return pts[:6]  # limite
 
@@ -1747,6 +1884,73 @@ def _experimental_tier_metrics(
     }
 
 
+def _select_set1_comeback_source(
+    local_stats: object,
+    provider_stats: object,
+    *,
+    expected_best_of: int,
+    policy: Mapping[str, object],
+) -> tuple[dict | None, dict]:
+    """Select a usable format cell without letting blocked data replace it."""
+    format_key = f"bo{expected_best_of}"
+    active = bool(policy.get("active"))
+    rejected = []
+
+    def _inspect(source_name: str, candidate: object) -> tuple[bool, str | None]:
+        if not isinstance(candidate, dict):
+            return False, "SOURCE_UNAVAILABLE"
+        cell = candidate.get(format_key)
+        if not isinstance(cell, dict):
+            return False, "FORMAT_CELL_UNAVAILABLE"
+        if active and not competition_evidence.evidence_is_compatible(
+            cell, policy
+        ):
+            return False, "COMPETITION_EVIDENCE_BLOCKED"
+        rate = cell.get("comeback_rate_pct")
+        sample = (
+            cell.get("weighted_matches_lost_set1")
+            if active
+            else cell.get("matches_lost_set1")
+        )
+        try:
+            parsed_rate = float(rate)
+            parsed_sample = float(sample)
+        except (TypeError, ValueError):
+            return False, "RATE_OR_SAMPLE_UNAVAILABLE"
+        if (
+            not math.isfinite(parsed_rate)
+            or not 0 <= parsed_rate <= 100
+            or not math.isfinite(parsed_sample)
+            or parsed_sample <= 0
+        ):
+            return False, "RATE_OR_SAMPLE_INVALID"
+        return True, None
+
+    # Preserve the established provider-first hierarchy only when the exact
+    # format cell is usable. The two windows remain explicitly non-equivalent.
+    for source_name, candidate in (
+        ("rapidapi_past_matches", provider_stats),
+        ("local_history", local_stats),
+    ):
+        usable, reason = _inspect(source_name, candidate)
+        if usable:
+            return candidate, {
+                "selected_source": source_name,
+                "selected_format": format_key,
+                "windows_equivalent": False,
+                "rejected_sources": rejected,
+            }
+        rejected.append({"source": source_name, "reason_code": reason})
+
+    return None, {
+        "selected_source": None,
+        "selected_format": format_key,
+        "windows_equivalent": False,
+        "rejected_sources": rejected,
+        "reason_code": "NO_USABLE_SET1_COMEBACK_SOURCE",
+    }
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour, tier=match.get("tier"))
@@ -1961,7 +2165,10 @@ def _build_match_payload(match: dict) -> dict:
             "player_a": player_a,
             "player_b": player_b,
         }
-    if cutover_gate.get("apply_policy") is not True:
+    if (
+        competition_policy.get("active") is True
+        and cutover_gate.get("apply_policy") is not True
+    ):
         competition_policy = {
             **competition_policy,
             "active": False,
@@ -2105,8 +2312,12 @@ def _build_match_payload(match: dict) -> dict:
         history, player_b, competition_policy=competition_policy,
     )
     # NOVO (14/08/2026, a pedido): taxa de vitória em tie-breaks
-    tiebreak_a = fetch_data.compute_tiebreak_stats(history, player_a)
-    tiebreak_b = fetch_data.compute_tiebreak_stats(history, player_b)
+    tiebreak_a = fetch_data.compute_tiebreak_stats(
+        history, player_a, competition_policy=competition_policy
+    )
+    tiebreak_b = fetch_data.compute_tiebreak_stats(
+        history, player_b, competition_policy=competition_policy
+    )
     # NOVO (14/08/2026, a pedido): padrão sazonal (mesma altura do ano, anos anteriores)
     sazonal_a = fetch_data.compute_seasonal_form(
         history, player_a, competition_policy=competition_policy,
@@ -2144,6 +2355,7 @@ def _build_match_payload(match: dict) -> dict:
     _surface_api_a = _surface_api_b = None
     _rs_a = _rs_b = None
     _srv_a = _srv_b = None
+    _sc_a = _sc_b = None
     h2h_history = recent_history_a = recent_history_b = None
     market_form_a = market_form_b = None
     opposition_quality_a = opposition_quality_b = None
@@ -2304,6 +2516,14 @@ def _build_match_payload(match: dict) -> dict:
     # NOVO (14/08/2026, a pedido): evolução de ranking (pontos, 6m/12m)
     ranking_evo_a = fetch_data.compute_ranking_evolution(history, player_a, (rank_a or {}).get("points"))
     ranking_evo_b = fetch_data.compute_ranking_evolution(history, player_b, (rank_b or {}).get("points"))
+    opponent_level_stats_a = fetch_data.compute_opponent_level_stats(
+        history, player_a, (rank_b or {}).get("rank"),
+        competition_policy=competition_policy,
+    )
+    opponent_level_stats_b = fetch_data.compute_opponent_level_stats(
+        history, player_b, (rank_a or {}).get("rank"),
+        competition_policy=competition_policy,
+    )
 
     # Velocidade do piso: apenas em hard e apenas com uma classificação CPI
     # factual do torneio. Terra/relva mantêm-se deliberadamente no fator de
@@ -2329,10 +2549,10 @@ def _build_match_payload(match: dict) -> dict:
     rich_b = _get_rich_player_data(tour, player_b, official, player_id=_pid_b)
 
     set1_comeback_a, _comeback_diag_a = fetch_data.compute_set1_comeback_with_diagnostics(
-        history, player_a
+        history, player_a, competition_policy=competition_policy
     )
     set1_comeback_b, _comeback_diag_b = fetch_data.compute_set1_comeback_with_diagnostics(
-        history, player_b
+        history, player_b, competition_policy=competition_policy
     )
     # NOVO (21/08/2026, a pedido): margem média de jogos ganhos/perdidos
     # (bo3), para avaliar cobertura de handicap negativo mesmo em derrota.
@@ -2364,7 +2584,16 @@ def _build_match_payload(match: dict) -> dict:
     # específico (tournament-record). Só se houver ID de jogador E do
     # torneio — sem isso, salta sem gastar chamada.
     tournament_record_a = tournament_record_b = None
-    if _tournament_id is not None:
+    if competition_evidence.is_active_laver_only(competition_policy):
+        tournament_record_a = fetch_data.compute_tournament_record_from_history(
+            history, player_a, _tournament_id, tournament,
+            competition_policy=competition_policy,
+        )
+        tournament_record_b = fetch_data.compute_tournament_record_from_history(
+            history, player_b, _tournament_id, tournament,
+            competition_policy=competition_policy,
+        )
+    elif _tournament_id is not None:
         if _pid_a is not None:
             tournament_record_a = fetch_data.fetch_tournament_record(tour, _pid_a, _tournament_id)
         if _pid_b is not None:
@@ -2400,14 +2629,26 @@ def _build_match_payload(match: dict) -> dict:
                 "players": relevant,
                 "message": "Recuperação após perder o 1.º set sem dados legíveis",
             })
-    handedness_a = fetch_data.compute_handedness_matchup_stats(history, player_a, tour=tour)
-    handedness_b = fetch_data.compute_handedness_matchup_stats(history, player_b, tour=tour)
+    handedness_a = fetch_data.compute_handedness_matchup_stats(
+        history, player_a, tour=tour, competition_policy=competition_policy
+    )
+    handedness_b = fetch_data.compute_handedness_matchup_stats(
+        history, player_b, tour=tour, competition_policy=competition_policy
+    )
     layoff_return_a = fetch_data.compute_return_from_layoff_stats(history, player_a)
     layoff_return_b = fetch_data.compute_return_from_layoff_stats(history, player_b)
-    deciding_set_a = fetch_data.compute_deciding_set_stats(history, player_a)
-    deciding_set_b = fetch_data.compute_deciding_set_stats(history, player_b)
-    round_stage_a = fetch_data.compute_round_stage_stats(history, player_a)
-    round_stage_b = fetch_data.compute_round_stage_stats(history, player_b)
+    deciding_set_a = fetch_data.compute_deciding_set_stats(
+        history, player_a, competition_policy=competition_policy
+    )
+    deciding_set_b = fetch_data.compute_deciding_set_stats(
+        history, player_b, competition_policy=competition_policy
+    )
+    round_stage_a = fetch_data.compute_round_stage_stats(
+        history, player_a, competition_policy=competition_policy
+    )
+    round_stage_b = fetch_data.compute_round_stage_stats(
+        history, player_b, competition_policy=competition_policy
+    )
 
     # ===== FASE 2: RapidAPI como fonte PRINCIPAL destas stats =====
     # (serviço, sets decisivos, mão, recuperação 1º set, lesão). O Sackmann
@@ -2447,14 +2688,12 @@ def _build_match_payload(match: dict) -> dict:
         _expected_best_of = 5 if _match_format(match) == "bo5" else 3
         _sc_a = fetch_data.compute_scenarios_from_past_matches(
             _pm_a, _pid_a, expected_best_of=_expected_best_of,
+            competition_policy=competition_policy,
         ) if _pm_a else None
         _sc_b = fetch_data.compute_scenarios_from_past_matches(
             _pm_b, _pid_b, expected_best_of=_expected_best_of,
+            competition_policy=competition_policy,
         ) if _pm_b else None
-        if _sc_a:
-            set1_comeback_a = _sc_a
-        if _sc_b:
-            set1_comeback_b = _sc_b
         # -- Regresso de lesão --
         _lay_a = fetch_data.compute_layoff_from_past_matches(_pm_a, _pid_a, start) if _pm_a else None
         _lay_b = fetch_data.compute_layoff_from_past_matches(_pm_b, _pid_b, start) if _pm_b else None
@@ -2493,6 +2732,20 @@ def _build_match_payload(match: dict) -> dict:
             print(f"[fontes] {player_a} vs {player_b} | serviço divergiu Sackmann≠RapidAPI (usada RapidAPI)")
     else:
         payload_hands = None
+
+    _expected_best_of = 5 if _match_format(match) == "bo5" else 3
+    set1_comeback_a, _comeback_source_diag_a = _select_set1_comeback_source(
+        set1_comeback_a,
+        _sc_a,
+        expected_best_of=_expected_best_of,
+        policy=competition_policy,
+    )
+    set1_comeback_b, _comeback_source_diag_b = _select_set1_comeback_source(
+        set1_comeback_b,
+        _sc_b,
+        expected_best_of=_expected_best_of,
+        policy=competition_policy,
+    )
 
     weather = _get_weather_for_match(match, start)
     surface_momentum_a = fetch_data.compute_surface_momentum(rich_a, surface, start.year)
@@ -2567,11 +2820,19 @@ def _build_match_payload(match: dict) -> dict:
         },
         "tournament_record": {
             "a": _coverage(
-                tournament_record_a, "rapidapi_tournament_record",
+                tournament_record_a, (
+                    "local_history"
+                    if competition_evidence.is_active_laver_only(competition_policy)
+                    else "rapidapi_tournament_record"
+                ),
                 unavailable_reason="tournament_record_unavailable",
             ),
             "b": _coverage(
-                tournament_record_b, "rapidapi_tournament_record",
+                tournament_record_b, (
+                    "local_history"
+                    if competition_evidence.is_active_laver_only(competition_policy)
+                    else "rapidapi_tournament_record"
+                ),
                 unavailable_reason="tournament_record_unavailable",
             ),
         },
@@ -2651,6 +2912,8 @@ def _build_match_payload(match: dict) -> dict:
         "opposition_quality_b": opposition_quality_b,
         "pressure_profile_a": pressure_profile_a,
         "pressure_profile_b": pressure_profile_b,
+        "opponent_level_stats_a": opponent_level_stats_a,
+        "opponent_level_stats_b": opponent_level_stats_b,
         "surface_momentum_a": surface_momentum_a,
         "surface_momentum_b": surface_momentum_b,
         "recent_quality_a": quality_a,  # NOVO: pontuação de vitórias vs top-10/20/50 recentes
@@ -2682,6 +2945,10 @@ def _build_match_payload(match: dict) -> dict:
         "court_speed_hoje": _cpi_hoje,  # {"cpi","bucket","ano_usado"} ou None
         "set1_comeback_stats_a": set1_comeback_a,  # para aplicares em live: taxa histórica de reviravolta após perder o 1º set
         "set1_comeback_stats_b": set1_comeback_b,
+        "set1_comeback_source_diagnostics": {
+            "a": _comeback_source_diag_a,
+            "b": _comeback_source_diag_b,
+        },
         "game_margin_a": game_margin_a,  # NOVO: margem média de jogos ganhos/perdidos (bo3)
         "game_margin_b": game_margin_b,
         "game_differential_a": game_differential_a,

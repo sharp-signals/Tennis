@@ -36,6 +36,7 @@ from __future__ import annotations
 import difflib
 import io
 import json
+import math
 import os
 import re
 import threading
@@ -3451,6 +3452,7 @@ def compute_h2h(
             df.to_dict("records"),
             lambda row: row.get("winner_name") == player_a,
             active=policy_active,
+            policy=competition_policy,
         )
         if not policy_active:
             return {}
@@ -3471,31 +3473,68 @@ def compute_h2h(
     # for. Decaimento exponencial suave: meia-vida de ~2 anos (um jogo de
     # há 2 anos pesa metade de um de agora), nunca zero (o passado conta
     # sempre alguma coisa). Só se calcula se houver datas utilizáveis.
-    weighted = None
-    if "tourney_date" in subset.columns:
-        dates = pd.to_datetime(subset["tourney_date"], format="%Y%m%d", errors="coerce")
-        if dates.notna().any():
-            mais_recente = dates.max()
-            HALF_LIFE_DIAS = 730.0  # ~2 anos
-            wa = wb = 0.0
-            for idx, row in subset.iterrows():
-                data = dates.get(idx)
-                if pd.isna(data):
-                    peso = 0.5  # sem data -> peso neutro reduzido
-                else:
-                    idade_dias = (mais_recente - data).days
-                    peso = 0.5 ** (idade_dias / HALF_LIFE_DIAS)
-                if row["winner_name"] == player_a:
-                    wa += peso
-                elif row["winner_name"] == player_b:
-                    wb += peso
-            total_peso = wa + wb
-            if total_peso > 0:
-                weighted = {
-                    "a_share_pct": round(100.0 * wa / total_peso, 1),
-                    "b_share_pct": round(100.0 * wb / total_peso, 1),
-                    "lider": player_a if wa > wb else (player_b if wb > wa else "igual"),
-                }
+    def _recency_view(
+        rows: pd.DataFrame, *, competition_weight_column: str | None = None,
+    ) -> Optional[dict]:
+        if rows.empty or "tourney_date" not in rows.columns:
+            return None
+        dates = pd.to_datetime(
+            rows["tourney_date"], format="%Y%m%d", errors="coerce"
+        )
+        if not dates.notna().any():
+            return None
+        newest = dates.max()
+        half_life_days = 730.0
+        wa = wb = 0.0
+        for idx, row in rows.iterrows():
+            match_date = dates.get(idx)
+            recency_weight = (
+                0.5
+                if pd.isna(match_date)
+                else 0.5 ** ((newest - match_date).days / half_life_days)
+            )
+            competition_weight = (
+                float(row.get(competition_weight_column, 0.0))
+                if competition_weight_column
+                else 1.0
+            )
+            weight = recency_weight * competition_weight
+            if row.get("winner_name") == player_a:
+                wa += weight
+            elif row.get("winner_name") == player_b:
+                wb += weight
+        total_weight = wa + wb
+        if total_weight <= 0:
+            return None
+        return {
+            "a_share_pct": round(100.0 * wa / total_weight, 1),
+            "b_share_pct": round(100.0 * wb / total_weight, 1),
+            "lider": player_a if wa > wb else (
+                player_b if wb > wa else "igual"
+            ),
+        }
+
+    raw_weighted_recency = _recency_view(subset)
+    weighted = raw_weighted_recency
+    if policy_active:
+        observations = competition_evidence.weighted_observations(
+            subset.to_dict("records"),
+            active=True,
+            policy=competition_policy,
+        )
+        evidence = observations.get("competition_evidence") or {}
+        if evidence.get("eligible_for_performance") is True:
+            eligible_rows = pd.DataFrame([
+                {**record, "_competition_weight": weight}
+                for record, weight in observations.get("records", [])
+                if weight > 0
+            ])
+            weighted = _recency_view(
+                eligible_rows,
+                competition_weight_column="_competition_weight",
+            )
+        else:
+            weighted = None
 
     on_surface = None
     surface_family = _normalize_surface_family(surface)
@@ -3507,7 +3546,8 @@ def compute_h2h(
             on_surface.update(_competition_tally(subset_surface))
 
     return {"overall": overall, "on_surface": on_surface, "surface": surface,
-            "surface_family": surface_family, "weighted_recency": weighted}
+            "surface_family": surface_family, "weighted_recency": weighted,
+            "raw_weighted_recency": raw_weighted_recency}
 
 
 def compute_current_season_record(
@@ -3540,6 +3580,7 @@ def compute_current_season_record(
         this_season.to_dict("records"),
         lambda row: row.get("winner_name") == player,
         active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
     )
     return {"season": current_year, **record}
 
@@ -3611,6 +3652,7 @@ def compute_indoor_outdoor_stats(
                 subset.to_dict("records"),
                 lambda row: row.get("winner_name") == player,
                 active=policy_active,
+                policy=competition_policy,
             )
         )
     return result if any(result.values()) else None
@@ -3744,6 +3786,7 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
         played.to_dict("records"),
         lambda row: row.get("winner_name") == player,
         active=policy_active,
+        policy=competition_policy,
     )
 
 
@@ -3806,6 +3849,7 @@ def compute_recent_quality_wins(
     observations = competition_evidence.weighted_observations(
         window.to_dict("records"),
         active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
     )
     evidence = observations.get("competition_evidence")
     if evidence is not None:
@@ -3854,6 +3898,7 @@ def compute_surface_stats(
                 subset.to_dict("records"),
                 lambda row: row.get("winner_name") == player,
                 active=bool((competition_policy or {}).get("active")),
+                policy=competition_policy,
             )
 
     return result
@@ -3990,18 +4035,13 @@ def _first_set_winner_from_cols(w1, l1) -> Optional[bool]:
     return w1 > l1
 
 
-def _analyse_set1_comeback(history: pd.DataFrame, player: str) -> tuple[Optional[dict], dict]:
-    """
-    Entre os jogos em que o jogador PERDEU o 1º set, em quantos ainda
-    assim ganhou o jogo? Separado por melhor-de-3 (Masters/500) e
-    melhor-de-5 (Slams), porque a taxa de recuperação é estruturalmente
-    diferente nos dois formatos. None se não houver dados suficientes.
-
-    CORREÇÃO (14/08/2026, a pedido): antes exigia a coluna 'score'
-    (só existe no formato ATP/TennisMyLife) — para WTA (tennis-data.co.uk,
-    sem 'score', só W1/L1/W2/L2/W3/L3) devolvia sempre None. Passa a
-    suportar as duas formas.
-    """
+def _analyse_set1_comeback(
+    history: pd.DataFrame,
+    player: str,
+    *,
+    competition_policy: Optional[dict] = None,
+) -> tuple[Optional[dict], dict]:
+    """Compute first-set recovery from match rows with competition provenance."""
     diagnostics = {
         "player": player, "resolved_name": None, "matches": 0,
         "parseable_first_sets": 0, "best_of_values": [], "by_format": {},
@@ -4014,36 +4054,39 @@ def _analyse_set1_comeback(history: pd.DataFrame, player: str) -> tuple[Optional
     if not usa_score and not usa_w1l1:
         diagnostics["reason"] = "resultado_por_set_indisponivel"
         return None, diagnostics
-
     resolved = resolve_player_name(history, player)
     if resolved is None:
         diagnostics["reason"] = "jogador_nao_resolvido"
         return None, diagnostics
     player = resolved
     diagnostics["resolved_name"] = resolved
-
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    played = history[
+        (history["winner_name"] == player) | (history["loser_name"] == player)
+    ].copy()
     if played.empty:
         diagnostics["reason"] = "sem_jogos"
         return None, diagnostics
     diagnostics["matches"] = len(played)
-    diagnostics["best_of_values"] = [str(value) for value in played["best_of"].dropna().unique()[:8]]
-    played["_best_of_normalized"] = pd.to_numeric(played["best_of"], errors="coerce")
-
+    diagnostics["best_of_values"] = [
+        str(value) for value in played["best_of"].dropna().unique()[:8]
+    ]
+    played["_best_of_normalized"] = pd.to_numeric(
+        played["best_of"], errors="coerce"
+    )
+    active = bool((competition_policy or {}).get("active"))
     result: dict = {}
     for best_of, label in ((3, "bo3"), (5, "bo5")):
         subset = played[played["_best_of_normalized"] == best_of]
-        lost_set1 = 0
-        lost_set1_won_match = 0
-
+        lost_rows = []
         for _, row in subset.iterrows():
-            set1_winner_is_match_winner = None
-            if usa_score:
-                set1_winner_is_match_winner = _first_set_winner_is_match_winner(row.get("score"))
-            # DataFrames combinados podem ter a coluna score vazia numa fonte
-            # e W1/L1 preenchido noutra; a decisão tem de ser feita por linha.
+            set1_winner_is_match_winner = (
+                _first_set_winner_is_match_winner(row.get("score"))
+                if usa_score else None
+            )
             if set1_winner_is_match_winner is None and usa_w1l1:
-                set1_winner_is_match_winner = _first_set_winner_from_cols(row.get("W1"), row.get("L1"))
+                set1_winner_is_match_winner = _first_set_winner_from_cols(
+                    row.get("W1"), row.get("L1")
+                )
             if set1_winner_is_match_winner is None:
                 continue
             diagnostics["parseable_first_sets"] += 1
@@ -4053,26 +4096,40 @@ def _analyse_set1_comeback(history: pd.DataFrame, player: str) -> tuple[Optional
                 or (not is_match_winner and set1_winner_is_match_winner)
             )
             if player_lost_set1:
-                lost_set1 += 1
-                if is_match_winner:
-                    lost_set1_won_match += 1
-
-        if lost_set1 > 0:
-            result[label] = {
-                "matches_lost_set1": lost_set1,
-                "matches_lost_set1_won_overall": lost_set1_won_match,
-                "comeback_rate_pct": round(100 * lost_set1_won_match / lost_set1, 1),
+                lost_rows.append(row.to_dict())
+        raw_matches = len(lost_rows)
+        raw_wins = sum(row.get("winner_name") == player for row in lost_rows)
+        if raw_matches:
+            cell = {
+                "matches_lost_set1": raw_matches,
+                "matches_lost_set1_won_overall": raw_wins,
+                "comeback_rate_pct": round(100 * raw_wins / raw_matches, 1),
             }
+            if active:
+                weighted = competition_evidence.weighted_binary_record(
+                    lost_rows,
+                    lambda row: row.get("winner_name") == player,
+                    active=True,
+                    policy=competition_policy,
+                )
+                cell.update({
+                    "raw_comeback_rate_pct": cell["comeback_rate_pct"],
+                    "comeback_rate_pct": weighted.get("weighted_win_rate_pct"),
+                    "weighted_matches_lost_set1": weighted.get("weighted_matches"),
+                    "competition_evidence": weighted.get("competition_evidence"),
+                })
+            result[label] = cell
         else:
             result[label] = None
         diagnostics["by_format"][label] = {
-            "rows": len(subset), "lost_first_set": lost_set1,
-            "comebacks": lost_set1_won_match,
+            "rows": len(subset),
+            "lost_first_set": raw_matches,
+            "comebacks": raw_wins,
         }
-
     if result.get("bo3") is None and result.get("bo5") is None:
         diagnostics["reason"] = (
-            "primeiro_set_ilegivel" if diagnostics["parseable_first_sets"] == 0
+            "primeiro_set_ilegivel"
+            if diagnostics["parseable_first_sets"] == 0
             else "sem_derrotas_no_primeiro_set"
         )
         return None, diagnostics
@@ -4390,15 +4447,25 @@ def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[di
     return result
 
 
-def compute_set1_comeback_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
+def compute_set1_comeback_stats(
+    history: pd.DataFrame, player: str, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
     """Estatística pública; aceita best_of numérico ou textual e dois esquemas de sets."""
-    result, _ = _analyse_set1_comeback(history, player)
+    result, _ = _analyse_set1_comeback(
+        history, player, competition_policy=competition_policy
+    )
     return result
 
 
-def compute_set1_comeback_with_diagnostics(history: pd.DataFrame, player: str) -> tuple[Optional[dict], dict]:
+def compute_set1_comeback_with_diagnostics(
+    history: pd.DataFrame, player: str, *,
+    competition_policy: Optional[dict] = None,
+) -> tuple[Optional[dict], dict]:
     """Calcula a estatística e o diagnóstico numa só passagem pelo histórico."""
-    return _analyse_set1_comeback(history, player)
+    return _analyse_set1_comeback(
+        history, player, competition_policy=competition_policy
+    )
 
 
 def diagnose_set1_comeback(history: pd.DataFrame, player: str) -> dict:
@@ -4824,118 +4891,123 @@ def _get_cached_hand_by_name(tour: str, player_name: str) -> Optional[str]:
     return hand
 
 
-def compute_handedness_matchup_stats_via_profiles(history: pd.DataFrame, player: str, tour: str) -> Optional[dict]:
-    """
-    Alternativa a compute_handedness_matchup_stats para quando o histórico
-    NÃO tem colunas winner_hand/loser_hand — o caso do WTA: a única fonte
-    (tennis-data.co.uk) nunca teve essas colunas, e o repositório
-    JeffSackmann/tennis_wta desapareceu POR COMPLETO (confirmado 13/08/2026,
-    404 no repositório inteiro, não só nos ficheiros por ano).
-
-    Em vez de pedir "mão do adversário em cada jogo" a uma API limitada
-    (past-matches só devolve ~10 jogos, sem paginação — confirmado na
-    Playground), usa o HISTÓRICO COMPLETO multi-ano que já temos, e resolve
-    a mão de cada ADVERSÁRIA por nome via fetch_player_profile — com cache
-    PERMANENTE (ver _get_cached_hand_by_name), por isso o custo tende a
-    zero com o tempo. Limitado a MAX_JOGOS_RECONSTRUCAO_MAO jogos mais
-    recentes por precaução (picos de custo na primeira execução).
-    """
+def compute_handedness_matchup_stats_via_profiles(
+    history: pd.DataFrame, player: str, tour: str, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Reconstruct handedness splits from selected match rows and cached profiles."""
     if history.empty:
         return None
     resolved = resolve_player_name(history, player)
     if resolved is None:
         return None
-    played = history[(history["winner_name"] == resolved) | (history["loser_name"] == resolved)].copy()
+    played = history[
+        (history["winner_name"] == resolved) | (history["loser_name"] == resolved)
+    ].copy()
     if played.empty:
         return None
     if "tourney_date" in played.columns:
-        # CORREÇÃO CRÍTICA (21/08/2026, log real — 2ª ocorrência do mesmo
-        # bug, desta vez em compute_handedness_matchup_stats_via_profiles):
-        # mesma causa de sempre, "tourney_date" com tipos misturados na
-        # fonte WTA rebentava o sort_values direto. A pesquisa anterior por
-        # este padrão não apanhou esta ocorrência porque tinha um argumento
-        # extra (ascending=False) que o texto procurado não previa —
-        # converte para data antes de ordenar, como as outras já seguras.
-        played["_sort_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
+        played["_sort_date"] = pd.to_datetime(
+            played["tourney_date"], format="%Y%m%d", errors="coerce"
+        )
         played = played.sort_values("_sort_date", ascending=False)
     played = played.head(MAX_JOGOS_RECONSTRUCAO_MAO)
-
-    played["_opponent_name"] = played.apply(
-        lambda row: row["loser_name"] if row["winner_name"] == resolved else row["winner_name"], axis=1
+    weighted = competition_evidence.weighted_observations(
+        played.to_dict("records"),
+        active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
     )
-
-    tally = {"L": {"wins": 0, "matches": 0}, "R": {"wins": 0, "matches": 0}}
-    _tentados = 0
-    _resolvidos = 0
-    for _, row in played.iterrows():
+    evidence = weighted.get("competition_evidence")
+    if evidence is not None and evidence.get("eligible_for_performance") is not True:
+        return {"competition_evidence": evidence}
+    selected = [(row, weight) for row, weight in weighted["records"] if weight > 0]
+    tally = {"L": {"wins": 0.0, "matches": 0.0}, "R": {"wins": 0.0, "matches": 0.0}}
+    attempted = resolved_count = 0
+    for row, weight in selected:
         if rapidapi_budget_exceeded():
-            break  # circuit breaker: para a reconstrução, devolve o que já tem
-        _tentados += 1
-        hand = _get_cached_hand_by_name(tour, row["_opponent_name"])
+            break
+        opponent = row.get("loser_name") if row.get("winner_name") == resolved else row.get("winner_name")
+        attempted += 1
+        hand = _get_cached_hand_by_name(tour, opponent)
         if hand not in ("L", "R"):
             continue
-        _resolvidos += 1
-        tally[hand]["matches"] += 1
-        if row["winner_name"] == resolved:
-            tally[hand]["wins"] += 1
-
-    # DIAGNÓSTICO (15/08/2026, a pedido — matchup de mão continua a falhar
-    # muito no WTA mesmo depois da tradução via ranking). Mostra um nome
-    # real que foi tentado e falhou, para ver exatamente o formato.
-    if _tentados > 0 and _resolvidos == 0:
-        _exemplo = played["_opponent_name"].iloc[0] if not played.empty else None
-        print(f"[diag:mao-detalhe] {player} ({tour}): {_tentados} adversárias "
-              f"tentadas, 0 resolvidas — exemplo de nome tentado: {_exemplo!r}")
-
+        resolved_count += 1
+        tally[hand]["matches"] += weight
+        if row.get("winner_name") == resolved:
+            tally[hand]["wins"] += weight
+    if attempted and not resolved_count:
+        print(f"[diag:mao-detalhe] {player} ({tour}): {attempted} adversários tentados, 0 resolvidos")
     result: dict = {}
     for hand_code, label in (("L", "vs_left_handed"), ("R", "vs_right_handed")):
-        m = tally[hand_code]["matches"]
-        result[label] = ({"matches": m, "wins": tally[hand_code]["wins"], "losses": m - tally[hand_code]["wins"]}
-                         if m > 0 else None)
+        matches = tally[hand_code]["matches"]
+        result[label] = (
+            {
+                "matches": matches,
+                "wins": tally[hand_code]["wins"],
+                "losses": matches - tally[hand_code]["wins"],
+                "eligible_matches": matches,
+                "weighted_matches": matches,
+                "weighted_wins": tally[hand_code]["wins"],
+                "weighted_losses": matches - tally[hand_code]["wins"],
+                "weighted_win_rate_pct": round(
+                    100.0 * tally[hand_code]["wins"] / matches, 1
+                ),
+                **({"competition_evidence": evidence} if evidence is not None else {}),
+            }
+            if matches > 0 else None
+        )
+    result["profile_resolution"] = {
+        "selected_rows": len(selected),
+        "attempted_profiles": attempted,
+        "resolved_profiles": resolved_count,
+        "unresolved_profiles": attempted - resolved_count,
+    }
+    if evidence is not None:
+        result["competition_evidence"] = evidence
     if result.get("vs_left_handed") is None and result.get("vs_right_handed") is None:
-        return None
+        return {"competition_evidence": evidence} if evidence is not None else None
     return result
 
 
-def compute_handedness_matchup_stats(history: pd.DataFrame, player: str, tour: Optional[str] = None) -> Optional[dict]:
-    """
-    Taxa de vitória do jogador especificamente contra adversários canhotos
-    vs destros — alguns jogadores têm dificuldade estilística real contra
-    canhotos, independentemente do nível geral. Usa as colunas
-    'winner_hand'/'loser_hand' já presentes no histórico ('L'/'R'/'U').
-
-    Se o histórico não tiver essas colunas (caso do WTA) e `tour` for
-    passado, cai automaticamente na reconstrução via perfis
-    (compute_handedness_matchup_stats_via_profiles) — ver essa função.
-    """
+def compute_handedness_matchup_stats(
+    history: pd.DataFrame, player: str, tour: Optional[str] = None, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Win rate against each opponent hand, reconstructed at match level."""
     required_cols = {"winner_hand", "loser_hand"}
     if history.empty or not required_cols.issubset(history.columns):
         if tour:
-            return compute_handedness_matchup_stats_via_profiles(history, player, tour)
+            return compute_handedness_matchup_stats_via_profiles(
+                history, player, tour, competition_policy=competition_policy
+            )
         return None
-
     resolved = resolve_player_name(history, player)
     if resolved is None:
         return None
     player = resolved
-
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    played = history[
+        (history["winner_name"] == player) | (history["loser_name"] == player)
+    ].copy()
     if played.empty:
         return None
-
     played["_opponent_hand"] = played.apply(
-        lambda row: row["loser_hand"] if row["winner_name"] == player else row["winner_hand"], axis=1
+        lambda row: row["loser_hand"] if row["winner_name"] == player else row["winner_hand"],
+        axis=1,
     )
-
+    active = bool((competition_policy or {}).get("active"))
     result: dict = {}
     for hand_code, label in (("L", "vs_left_handed"), ("R", "vs_right_handed")):
         subset = played[played["_opponent_hand"] == hand_code]
-        if subset.empty:
-            result[label] = None
-            continue
-        wins = int((subset["winner_name"] == player).sum())
-        result[label] = {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
-
+        result[label] = (
+            None
+            if subset.empty
+            else competition_evidence.weighted_binary_record(
+                subset.to_dict("records"),
+                lambda row: row.get("winner_name") == player,
+                active=active,
+                policy=competition_policy,
+            )
+        )
     if result.get("vs_left_handed") is None and result.get("vs_right_handed") is None:
         return None
     return result
@@ -5005,118 +5077,104 @@ def _count_completed_sets(score) -> int:
     return count
 
 
-def compute_deciding_set_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
-    """
-    De entre os jogos que foram até ao set decisivo (3º em melhor-de-3,
-    5º em melhor-de-5), em quantos o jogador venceu? Identifica quem é
-    forte "na hora da verdade" vs quem tende a desmoronar em sets longos.
-    """
+def compute_deciding_set_stats(
+    history: pd.DataFrame, player: str, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Performance in deciding sets, reconstructed from match-level rows."""
     required_cols = {"score", "best_of"}
     if history.empty or not required_cols.issubset(history.columns):
         return None
-
     resolved = resolve_player_name(history, player)
     if resolved is None:
         return None
     player = resolved
-
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
+    played = history[
+        (history["winner_name"] == player) | (history["loser_name"] == player)
+    ].copy()
     if played.empty:
         return None
-    played["_best_of_normalized"] = pd.to_numeric(played["best_of"], errors="coerce")
-
+    played["_best_of_normalized"] = pd.to_numeric(
+        played["best_of"], errors="coerce"
+    )
+    active = bool((competition_policy or {}).get("active"))
     result: dict = {}
     for best_of, label in ((3, "bo3"), (5, "bo5")):
-        subset = played[played["_best_of_normalized"] == best_of]
-        deciding_matches = 0
-        deciding_wins = 0
-        for _, row in subset.iterrows():
-            if _count_completed_sets(row.get("score")) == best_of:
-                deciding_matches += 1
-                if row.get("winner_name") == player:
-                    deciding_wins += 1
-
-        if deciding_matches > 0:
-            result[label] = {
-                "matches_went_the_distance": deciding_matches,
-                "wins": deciding_wins,
-                "win_rate_pct": round(100 * deciding_wins / deciding_matches, 1),
-            }
-        else:
+        rows = [
+            row.to_dict()
+            for _, row in played[played["_best_of_normalized"] == best_of].iterrows()
+            if _count_completed_sets(row.get("score")) == best_of
+        ]
+        if not rows:
             result[label] = None
-
+            continue
+        record = competition_evidence.weighted_binary_record(
+            rows,
+            lambda row: row.get("winner_name") == player,
+            active=active,
+            policy=competition_policy,
+        )
+        rate, sample = competition_evidence.record_rate(record)
+        result[label] = {
+            **record,
+            "matches_went_the_distance": record["matches"],
+            "win_rate_pct": rate,
+            "decision_sample": sample,
+        }
     if result.get("bo3") is None and result.get("bo5") is None:
         return None
     return result
 
 
-def compute_tiebreak_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
-    """
-    NOVO (14/08/2026, a pedido): taxa de vitória em TIE-BREAKS especificamente
-    — competência à parte da resiliência em sets decisivos (essa mede o set
-    inteiro; esta mede só o desempate de 7 pontos, uma habilidade mais
-    estreita e distinta). Suporta as duas formas do histórico:
-    - 'score' combinado (TennisMyLife/ATP, ex: '7-6(3) 4-6 6-4').
-    - colunas separadas por set (tennis-data.co.uk/WTA: W1/L1/W2/L2/W3/L3).
-    Um set só conta como tie-break se o resultado for 7-6 ou 6-7 (não conta
-    super-tiebreaks de 3º set tipo "1-0(10)", que têm regras diferentes).
-    """
+def compute_tiebreak_stats(
+    history: pd.DataFrame, player: str, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Tie-break record with every set linked to its source match."""
     if history.empty:
         return None
     resolved = resolve_player_name(history, player)
     if resolved is None:
         return None
     player = resolved
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    played = history[
+        (history["winner_name"] == player) | (history["loser_name"] == player)
+    ]
     if played.empty:
         return None
-
-    tb_won = tb_played = 0
-
-    if "score" in played.columns:
-        for _, row in played.iterrows():
-            is_winner = row.get("winner_name") == player
-            score = row.get("score")
-            if not isinstance(score, str):
-                continue
+    observations = []
+    for _, row in played.iterrows():
+        is_winner = row.get("winner_name") == player
+        set_pairs = []
+        score = row.get("score")
+        if isinstance(score, str):
             for token in score.strip().split():
-                base = token.split("(")[0]
-                parts = base.split("-")
-                if len(parts) != 2:
-                    continue
-                try:
-                    gw, gl = int(parts[0]), int(parts[1])
-                except ValueError:
-                    continue
-                if {gw, gl} != {6, 7}:
-                    continue
-                tb_played += 1
-                jogo_venceu_tb = (gw == 7)
-                if is_winner == jogo_venceu_tb:
-                    tb_won += 1
-    elif {"W1", "L1", "W2", "L2", "W3", "L3"}.issubset(played.columns):
-        for _, row in played.iterrows():
-            is_winner = row.get("winner_name") == player
+                parts = token.split("(")[0].split("-")
+                if len(parts) == 2:
+                    try:
+                        set_pairs.append((int(parts[0]), int(parts[1])))
+                    except ValueError:
+                        pass
+        elif {"W1", "L1", "W2", "L2", "W3", "L3"}.issubset(played.columns):
             for wc, lc in (("W1", "L1"), ("W2", "L2"), ("W3", "L3")):
-                gw, gl = row.get(wc), row.get(lc)
-                if pd.isna(gw) or pd.isna(gl):
-                    continue
                 try:
-                    gw, gl = int(gw), int(gl)
+                    if not pd.isna(row.get(wc)) and not pd.isna(row.get(lc)):
+                        set_pairs.append((int(row.get(wc)), int(row.get(lc))))
                 except (ValueError, TypeError):
-                    continue
-                if {gw, gl} != {6, 7}:
-                    continue
-                tb_played += 1
-                jogo_venceu_tb = (gw == 7)
-                if is_winner == jogo_venceu_tb:
-                    tb_won += 1
-    else:
+                    pass
+        for games_winner, games_loser in set_pairs:
+            if {games_winner, games_loser} != {6, 7}:
+                continue
+            won_tiebreak = is_winner == (games_winner == 7)
+            observations.append({**row.to_dict(), "_won_tiebreak": won_tiebreak})
+    if not observations:
         return None
-
-    if tb_played == 0:
-        return None
-    return {"matches": tb_played, "wins": tb_won, "losses": tb_played - tb_won}
+    return competition_evidence.weighted_binary_record(
+        observations,
+        lambda row: bool(row.get("_won_tiebreak")),
+        active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
+    )
 
 
 def compute_seasonal_form(
@@ -5164,6 +5222,7 @@ def compute_seasonal_form(
         subset.to_dict("records"),
         lambda row: row.get("winner_name") == player,
         active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
     )
 
 def compute_ranking_evolution(history: pd.DataFrame, player: str,
@@ -5460,6 +5519,7 @@ def compute_court_speed_form(
         selected,
         lambda row: row.get("winner_name") == player,
         active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
     )
     sample = (
         result.get("weighted_matches")
@@ -5475,39 +5535,192 @@ def compute_court_speed_form(
         ),
     }
 
-def compute_round_stage_stats(history: pd.DataFrame, player: str) -> Optional[dict]:
-    """
-    Compara a taxa de vitória em rondas iniciais (R128/R64/R32/R16) vs
-    rondas finais (QF/SF/F) — identifica jogadores inconsistentes cedo
-    mas fortes "quando é a sério", ou o inverso.
-    """
+def compute_round_stage_stats(
+    history: pd.DataFrame, player: str, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Early/late-round records reconstructed from match-level history."""
     if history.empty or "round" not in history.columns:
         return None
-
     resolved = resolve_player_name(history, player)
     if resolved is None:
         return None
     player = resolved
-
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)]
+    played = history[
+        (history["winner_name"] == player) | (history["loser_name"] == player)
+    ]
     if played.empty:
         return None
-
-    early_rounds = {"R128", "R64", "R32", "R16"}
-    late_rounds = {"QF", "SF", "F"}
-
+    active = bool((competition_policy or {}).get("active"))
     result: dict = {}
-    for round_set, label in ((early_rounds, "early_rounds"), (late_rounds, "late_rounds")):
+    for round_set, label in (
+        ({"R128", "R64", "R32", "R16"}, "early_rounds"),
+        ({"QF", "SF", "F"}, "late_rounds"),
+    ):
         subset = played[played["round"].isin(round_set)]
-        if subset.empty:
-            result[label] = None
-            continue
-        wins = int((subset["winner_name"] == player).sum())
-        result[label] = {"matches": len(subset), "wins": wins, "losses": len(subset) - wins}
+        result[label] = (
+            None
+            if subset.empty
+            else competition_evidence.weighted_binary_record(
+                subset.to_dict("records"),
+                lambda row: row.get("winner_name") == player,
+                active=active,
+                policy=competition_policy,
+            )
+        )
+    return result if any(result.values()) else None
 
-    if result.get("early_rounds") is None and result.get("late_rounds") is None:
+
+def _parse_positive_finite_rank(value: object) -> tuple[Optional[float], str | None]:
+    """Validate factual ranking scalars without accepting bools or sentinels."""
+    if isinstance(value, bool) or type(value).__name__ in {"bool_", "boolean"}:
+        return None, "BOOLEAN_RANK"
+    if value is None:
+        return None, "MISSING_RANK"
+    if isinstance(value, str) and value.strip().casefold() in {
+        "", "nan", "none", "null", "n/a", "na", "n/d", "unknown", "<na>",
+    }:
+        return None, "MISSING_RANK"
+    try:
+        missing = pd.isna(value)
+        if isinstance(missing, bool) and missing:
+            return None, "MISSING_RANK"
+        if not isinstance(missing, bool) and bool(missing):
+            return None, "MISSING_RANK"
+    except (TypeError, ValueError):
+        return None, "NON_SCALAR_RANK"
+    try:
+        rank = float(value)
+    except (TypeError, ValueError):
+        return None, "NON_NUMERIC_RANK"
+    if not math.isfinite(rank):
+        return None, "NON_FINITE_RANK"
+    if rank <= 0:
+        return None, "NON_POSITIVE_RANK"
+    return rank, None
+
+
+def compute_opponent_level_stats(
+    history: pd.DataFrame, player: str, opponent_rank: object, *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Rebuild performance against today's valid opponent rank band."""
+    rank, _target_reason = _parse_positive_finite_rank(opponent_rank)
+    if rank is None:
         return None
+    limit = (
+        10 if rank <= 10 else
+        20 if rank <= 20 else
+        50 if rank <= 50 else
+        100 if rank <= 100 else
+        None
+    )
+    if limit is None or history.empty:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    played = history[
+        (history["winner_name"] == resolved)
+        | (history["loser_name"] == resolved)
+    ]
+    rows = []
+    exclusions: dict[str, int] = {}
+    for _, row in played.iterrows():
+        opponent_value = (
+            row.get("loser_rank")
+            if row.get("winner_name") == resolved
+            else row.get("winner_rank")
+        )
+        parsed, reason = _parse_positive_finite_rank(opponent_value)
+        if parsed is None:
+            key = reason or "INVALID_RANK"
+            exclusions[key] = exclusions.get(key, 0) + 1
+            continue
+        if parsed <= limit:
+            rows.append(row.to_dict())
+        else:
+            exclusions["OUTSIDE_RANK_BUCKET"] = (
+                exclusions.get("OUTSIDE_RANK_BUCKET", 0) + 1
+            )
+    if not rows:
+        return None
+    result = competition_evidence.weighted_binary_record(
+        rows,
+        lambda row: row.get("winner_name") == resolved,
+        active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
+    )
+    result.update({
+        "rank_bucket": f"top{limit}",
+        "ranking_sample_quality": {
+            "target_rank_raw": opponent_rank,
+            "target_rank": rank,
+            "raw_rows": len(played),
+            "eligible_rows": len(rows),
+            "excluded_rows": len(played) - len(rows),
+            "exclusion_reason_counts": dict(sorted(exclusions.items())),
+        },
+    })
     return result
+
+
+def compute_tournament_record_from_history(
+    history: pd.DataFrame,
+    player: str,
+    tournament_id: object,
+    tournament_name: str,
+    *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Rebuild an exact tournament record without provider aggregates."""
+    if history.empty:
+        return None
+    resolved = resolve_player_name(history, player)
+    if resolved is None:
+        return None
+    played = history[
+        (history["winner_name"] == resolved) | (history["loser_name"] == resolved)
+    ].copy()
+    id_cols = [name for name in ("tourney_id", "tournament_id", "tournamentId") if name in played.columns]
+    name_cols = [name for name in ("tourney_name", "tournament_name") if name in played.columns]
+    mask = pd.Series(False, index=played.index)
+    factual_basis = None
+    if tournament_id not in (None, "") and id_cols:
+        target = str(tournament_id)
+        for column in id_cols:
+            mask |= played[column].astype(str) == target
+        factual_basis = "TOURNAMENT_ID"
+    if not mask.any() and tournament_name and name_cols:
+        target_name = _normalize_name(tournament_name)
+        for column in name_cols:
+            mask |= played[column].map(_normalize_name) == target_name
+        factual_basis = "EXACT_NORMALIZED_TOURNAMENT_NAME"
+    selected = played[mask]
+    if selected.empty:
+        return None
+    record = competition_evidence.weighted_binary_record(
+        selected.to_dict("records"),
+        lambda row: row.get("winner_name") == resolved,
+        active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
+    )
+    rate, _sample = competition_evidence.record_rate(record)
+    if "tourney_date" in selected.columns:
+        years = pd.to_datetime(
+            selected["tourney_date"], format="%Y%m%d", errors="coerce"
+        ).dt.year.dropna().unique()
+        editions = len(years)
+    else:
+        editions = 0
+    record.update({
+        "factual_match_basis": factual_basis,
+        "edicoes": editions,
+        "win_pct_cru": round(100 * record["wins"] / record["matches"], 1)
+        if record.get("matches") else None,
+        "win_pct_ponderado": rate,
+    })
+    return record
 
 
 def compute_injury_signal(history: pd.DataFrame, player: str, lookback_matches: int = 5) -> Optional[dict]:
@@ -5680,91 +5893,88 @@ def compute_hand_from_profile(profile: dict) -> Optional[str]:
     return _extract_hand(info.get("plays") or d.get("plays"))
 
 
-def resolve_handedness_matchup(handedness_stats: Optional[dict], opponent_hand: Optional[str]) -> Optional[dict]:
-    """
-    CORREÇÃO (11/08/2026): o motor de divergência lê
-    `handedness_matchup_X.get("win_pct")`, mas compute_handedness_matchup_stats
-    nunca devolveu essa chave — só devolve {'vs_left_handed', 'vs_right_handed'}
-    aninhados, cada um com {'matches','wins','losses'}. Resultado: wa/wb no
-    motor eram SEMPRE None, e o fator "matchup de mão" (peso 8) nunca
-    contribuiu, em nenhum jogo, desde sempre.
-
-    Esta função resolve o par (stats do jogador, mão REAL do adversário
-    NESTE jogo — de `player_hands`, via perfil RapidAPI) para a taxa de
-    vitória específica contra essa mão, no formato que o motor espera.
-    None se faltar a mão do adversário ou não houver amostra nesse lado.
-    """
+def resolve_handedness_matchup(
+    handedness_stats: Optional[dict], opponent_hand: Optional[str]
+) -> Optional[dict]:
+    """Resolve the selected opponent hand using the policy-aware record."""
     if not isinstance(handedness_stats, dict) or opponent_hand not in ("L", "R"):
         return None
     key = "vs_left_handed" if opponent_hand == "L" else "vs_right_handed"
     sub = handedness_stats.get(key)
-    if not isinstance(sub, dict) or not sub.get("matches"):
+    rate, sample = competition_evidence.record_rate(sub)
+    if rate is None or not sample:
         return None
-    return {
-        "win_pct": round(100 * sub["wins"] / sub["matches"], 1),
-        "matches": sub["matches"],
+    result = {
+        "win_pct": round(rate, 1),
+        "matches": sample,
         "opponent_hand": opponent_hand,
     }
+    if isinstance(sub, dict) and isinstance(sub.get("competition_evidence"), dict):
+        result["competition_evidence"] = sub["competition_evidence"]
+    return result
 
 
 def compute_scenarios_from_past_matches(
-    past_matches: list, player_id: int, expected_best_of: Optional[int] = None,
+    past_matches: list, player_id: int, expected_best_of: Optional[int] = None, *,
+    competition_policy: Optional[dict] = None,
 ) -> Optional[dict]:
-    """Recuperação de 1º set a partir do score set-a-set ('result').
-
-    Quando ``expected_best_of`` é indicado, só usa partidas cujo formato vem
-    explicitamente identificado pela fonte. Isto impede que um cenário BO5
-    use recuperação genérica/BO3 por falta de metadados suficientes.
-    """
+    """First-set scenarios reconstructed from match rows with source provenance."""
     if not past_matches:
         return None
-    fsl_win = fsl_tot = fsw_win = fsw_tot = 0
-    for m in past_matches:
-        if not isinstance(m, dict):
+    lost_rows = []
+    won_rows = []
+    for match in past_matches:
+        if not isinstance(match, dict):
             continue
         if expected_best_of is not None:
-            raw_best_of = m.get("bestOf") or m.get("best_of") or m.get("bestOfSets")
+            raw_best_of = match.get("bestOf") or match.get("best_of") or match.get("bestOfSets")
             try:
-                best_of = int(float(raw_best_of))
+                if int(float(raw_best_of)) != expected_best_of:
+                    continue
             except (TypeError, ValueError):
                 continue
-            if best_of != expected_best_of:
-                continue
-        result = m.get("result")
-        winner = m.get("match_winner")
-        p1, p2 = m.get("player1Id"), m.get("player2Id")
+        result = match.get("result")
+        winner = match.get("match_winner")
+        p1, p2 = match.get("player1Id"), match.get("player2Id")
         if not result or winner is None or player_id not in (p1, p2):
             continue
         sets = []
         for token in str(result).split():
-            base = token.split("(")[0]
-            if "-" in base:
-                try:
-                    a, b = base.split("-")
-                    sets.append((int(a), int(b)))
-                except ValueError:
-                    continue
+            try:
+                left, right = token.split("(")[0].split("-")
+                sets.append((int(left), int(right)))
+            except (ValueError, TypeError):
+                continue
         if not sets:
             continue
-        sou_p1 = (player_id == p1)
-        s1a, s1b = sets[0]
-        ganhou_1set = (s1a > s1b) if sou_p1 else (s1b > s1a)
-        ganhou_jogo = (winner == player_id)
-        if ganhou_1set:
-            fsw_tot += 1
-            if ganhou_jogo:
-                fsw_win += 1
-        else:
-            fsl_tot += 1
-            if ganhou_jogo:
-                fsl_win += 1
+        player_is_p1 = player_id == p1
+        first = sets[0]
+        won_first = (first[0] > first[1]) if player_is_p1 else (first[1] > first[0])
+        row = {**match, "_player_won": winner == player_id}
+        (won_rows if won_first else lost_rows).append(row)
     out = {}
-    if fsl_tot:
-        out["first_set_lose_then_win_pct"] = round(100 * fsl_win / fsl_tot)
-        out["first_set_lose_count"] = fsl_tot
-    if fsw_tot:
-        out["first_set_win_then_win_pct"] = round(100 * fsw_win / fsw_tot)
-        out["first_set_win_count"] = fsw_tot
+    active = bool((competition_policy or {}).get("active"))
+    for rows, prefix in ((lost_rows, "first_set_lose"), (won_rows, "first_set_win")):
+        if not rows:
+            continue
+        record = competition_evidence.weighted_binary_record(
+            rows,
+            lambda row: bool(row.get("_player_won")),
+            active=active,
+            policy=competition_policy,
+        )
+        rate, sample = competition_evidence.record_rate(record)
+        out[f"{prefix}_then_win_pct"] = round(rate) if rate is not None else None
+        out[f"{prefix}_count"] = sample
+        out[f"{prefix}_record"] = record
+    if expected_best_of in (3, 5) and "first_set_lose_record" in out:
+        lost_record = out["first_set_lose_record"]
+        out[f"bo{expected_best_of}"] = {
+            "matches_lost_set1": len(lost_rows),
+            "weighted_matches_lost_set1": out.get("first_set_lose_count"),
+            "comeback_rate_pct": out.get("first_set_lose_then_win_pct"),
+            "competition_evidence": lost_record.get("competition_evidence"),
+        }
     return out or None
 
 
@@ -5876,6 +6086,7 @@ def compute_serve_return_stats(
     weighted = competition_evidence.weighted_observations(
         [item["record"] for item in observations],
         active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
     )
     evidence = weighted.get("competition_evidence")
     if evidence is not None:
@@ -6353,6 +6564,7 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
                 row.get("match_winner") or row.get("winnerId") or row.get("winner")
             ) == player_a_id,
             active=policy_active,
+                policy=competition_policy,
         )
         if not policy_active:
             return {}
@@ -6420,6 +6632,7 @@ def compute_form_from_recent(recent_matches: list, player_id: int,
             if row.get("match_winner") is not None
             else (row.get("winnerId") == player_id),
             active=policy_active,
+                policy=competition_policy,
         )
 
     # The sample is selected first; only then are competition weights applied.
