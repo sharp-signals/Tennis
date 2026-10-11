@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.competition_evidence_impact_audit import build_audit
-from src import competition_evidence, fetch_data, report_html
+from src import competition_evidence, competition_registry, fetch_data, report_html
 
 
 ACTIVE = {
@@ -141,6 +141,61 @@ class RegistryClassificationTests(unittest.TestCase):
         self.assertEqual(wta["status"], "OUT_OF_SCOPE_TOUR")
 
 
+    def test_loader_scope_is_telemetry_only_and_exact_identity_wins(self):
+        expected = {
+            "Laver Cup": "NON_RANKING",
+            "Davis Cup": "DAVIS_EXCEPTION",
+            "Next Gen ATP Finals": "NEXT_GEN_EXCEPTION",
+            "Olympic Games": "OLYMPICS_EXCEPTION",
+        }
+        for name, classification in expected.items():
+            result = competition_evidence.classify_match(
+                {
+                    "tournament_name": name,
+                    "_history_competition_scope": "main",
+                },
+                ACTIVE,
+            )
+            self.assertEqual(result["classification"], classification)
+            self.assertEqual(result["history_competition_scope"], "main")
+            self.assertFalse(result["history_scope_authoritative"])
+            self.assertTrue(all(
+                item["matched_by"] != "repository_history_scope"
+                for item in result["identity_evidence"]
+            ))
+        unresolved = competition_evidence.classify_match(
+            {
+                "tournament_name": "Unknown Source Event",
+                "_history_competition_scope": "main",
+            },
+            ACTIVE,
+        )
+        self.assertEqual(unresolved["classification"], "UNRESOLVED")
+        self.assertIsNone(unresolved["weight"])
+
+    def test_every_authorizing_signal_has_resolved_provenance(self):
+        cases = (
+            {"tournament_name": "Laver Cup"},
+            {"tournament_name": "Davis Cup"},
+            {"tournament_name": "Next Gen ATP Finals"},
+            {"tournament_name": "Olympic Games"},
+            {"tournament_name": "Vienna Open"},
+            {"tournament_name": "Any ATP 500", "tier": "ATP 500"},
+            {"tourney_name": "Wimbledon", "tourney_date": 20220627},
+            {"tournamentId": 21353},
+        )
+        provenance = competition_registry.REGISTRY["provenance"]
+        for record in cases:
+            result = competition_evidence.classify_match(record, ACTIVE)
+            self.assertTrue(result["identity_evidence"], record)
+            for signal in result["identity_evidence"]:
+                key = signal["provenance_key"]
+                self.assertIn(key, provenance)
+                self.assertEqual(signal["provenance"], provenance[key])
+                self.assertTrue(signal["provenance"].startswith("https://"))
+
+
+
 class RankingEligibleTransformTests(unittest.TestCase):
     def setUp(self):
         self.history = pd.DataFrame([
@@ -212,11 +267,15 @@ class RankingEligibleTransformTests(unittest.TestCase):
             else:
                 self.assertIsNone(rate)
 
-    def test_cpi_record_and_repository_scope_are_compatible(self):
+    def test_cpi_record_uses_explicit_competition_evidence(self):
         record = competition_evidence.weighted_binary_record(
             [
-                {"tournament_name": "Exact Source Event",
-                 "_history_competition_scope": "main", "won": True},
+                {
+                    "tournament_name": "Exact Source Event",
+                    "tier": "ATP 500",
+                    "_history_competition_scope": "main",
+                    "won": True,
+                },
                 {"tournament_name": "Laver Cup", "won": False},
             ],
             lambda item: item["won"], active=True, policy=ACTIVE,
@@ -226,10 +285,15 @@ class RankingEligibleTransformTests(unittest.TestCase):
             competition_evidence.evidence_is_compatible(record, ACTIVE)
         )
         blocked = competition_evidence.classify_match(
-            {"tournament_name": "Unknown", "tournament": {"rankId": 3}},
+            {
+                "tournament_name": "Unknown",
+                "_history_competition_scope": "main",
+                "tournament": {"rankId": 3},
+            },
             ACTIVE,
         )
         self.assertIsNone(blocked["weight"])
+
 
     def test_fatigue_load_remains_raw_for_non_ranking_matches(self):
         start = datetime(2026, 1, 10, tzinfo=timezone.utc)
@@ -293,6 +357,11 @@ class RankingEligibleTransformTests(unittest.TestCase):
         self.assertIn(
             competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH, html
         )
+        self.assertIn("ranking-eligible", html)
+        self.assertIn("Davis, Next Gen e Olympics contam a 100%", html)
+        self.assertIn("NON_RANKING", html)
+        self.assertIn("UNRESOLVED", html)
+        self.assertNotIn("Davis competitiva 50%", html)
 
 
 class OfflineImpactAuditTests(unittest.TestCase):
@@ -301,7 +370,7 @@ class OfflineImpactAuditTests(unittest.TestCase):
         self.assertGreater(audit["cache_files"], 0)
         self.assertGreater(audit["unique_matches"], 0)
         self.assertEqual(
-            audit["factor_coverage"]["fatigue_load"]["rows_removed"], 0
+            audit["row_applicability_proxy"]["fatigue_load"]["rows_removed"], 0
         )
         print(
             "[change102-impact-audit] "
@@ -360,7 +429,21 @@ class OfflineImpactAuditTests(unittest.TestCase):
             audit["classification_distribution"]["UNRESOLVED"], 1
         )
         self.assertEqual(
-            audit["factor_coverage"]["fatigue_load"]["rows_removed"], 0
+            audit["row_applicability_proxy"]["fatigue_load"]["rows_removed"], 0
+        )
+        self.assertEqual(
+            audit["policy_comparison"]["laver_only_rows_admitted"], 1
+        )
+        self.assertEqual(
+            audit["policy_comparison"]["laver_only_rows_excluded"], 1
+        )
+        self.assertEqual(
+            audit["row_applicability_proxy"]["tiebreak"]["laver_only_admitted"],
+            0,
+        )
+        self.assertEqual(
+            audit["row_applicability_proxy"]["tiebreak"]["laver_only_excluded"],
+            1,
         )
 
 
