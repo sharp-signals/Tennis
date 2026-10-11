@@ -2,7 +2,8 @@
 
 Estado: IMPLEMENTED / AWAITING BRAIN REVIEW  
 Issue: #223  
-Base: `8ba904a4c4704e9a750be7985068896965a44c03`
+Base inicial: `8ba904a4c4704e9a750be7985068896965a44c03`  
+Main reconciliado: `db58189007bc3881c094945c87a4b187074c00a7`
 
 > Nota de governação: o identificador CHANGE-2026-10-11-100 já foi usado no
 > `main` pelo trabalho Challenger 125 integrado através da PR #222. Este
