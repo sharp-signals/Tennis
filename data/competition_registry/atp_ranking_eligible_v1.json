@@ -1,0 +1,193 @@
+{
+  "schema_version": "atp-competition-eligibility-registry-v1",
+  "registry_version": "2026-10-11.1",
+  "policy_version": "atp-ranking-eligible-performance-v1",
+  "purpose": "Prospective ATP performance-sample eligibility. Exact factual evidence only; unresolved or conflicting evidence blocks.",
+  "provenance": {
+    "governance_issue": "https://github.com/sharp-signals/Tennis/issues/228",
+    "governance_comment": "https://github.com/sharp-signals/Tennis/issues/228#issuecomment-6109861752",
+    "atp_rulebook": "https://www.atptour.com/en/corporate/rulebook",
+    "atp_rankings_faq": "https://www.atptour.com/en/rankings/rankings-faq",
+    "wimbledon_2022_decision": "https://www.atptour.com/en/news/atp-response-to-wimbledon-decision-regarding-player-entry",
+    "repository_source_scope": "src/fetch_data.py::_load_tennismylife"
+  },
+  "non_authoritative_fields": [
+    "tournament.rank",
+    "tournament.rankId",
+    "rank",
+    "rankId",
+    "odd1",
+    "odd2"
+  ],
+  "precedence": [
+    "edition_overrides",
+    "exact_tournament_ids",
+    "exact_competition_names",
+    "explicit_category_fields",
+    "repository_history_scope"
+  ],
+  "edition_overrides": [
+    {
+      "normalized_names": [
+        "wimbledon",
+        "the championships wimbledon",
+        "wimbledon london"
+      ],
+      "year": 2022,
+      "classification": "NON_RANKING",
+      "reason_code": "WIMBLEDON_2022_RANKING_POINTS_REMOVED",
+      "provenance": "wimbledon_2022_decision"
+    },
+    {
+      "normalized_names": [
+        "atp cup"
+      ],
+      "year_from": 2020,
+      "year_to": 2022,
+      "classification": "RANKING_ELIGIBLE",
+      "reason_code": "ATP_CUP_RANKING_ELIGIBLE_EDITION",
+      "provenance": "atp_rulebook"
+    }
+  ],
+  "exact_tournament_ids": {
+    "19409": {
+      "classification": "NON_RANKING",
+      "reason_code": "LAVER_CUP_NON_RANKING",
+      "provenance": "governance_issue"
+    },
+    "20363": {
+      "classification": "NON_RANKING",
+      "reason_code": "LAVER_CUP_NON_RANKING",
+      "provenance": "governance_issue"
+    },
+    "21353": {
+      "classification": "NON_RANKING",
+      "reason_code": "LAVER_CUP_NON_RANKING",
+      "provenance": "governance_issue"
+    }
+  },
+  "exact_competition_names": {
+    "NON_RANKING": [
+      "laver cup",
+      "laver cup berlin",
+      "laver cup san francisco",
+      "laver cup vancouver",
+      "laver cup london",
+      "laver cup boston",
+      "laver cup geneva",
+      "laver cup chicago",
+      "laver cup prague"
+    ],
+    "DAVIS_EXCEPTION": [
+      "davis cup",
+      "davis cup finals",
+      "davis cup world group",
+      "davis cup qualifiers",
+      "davis cup group i",
+      "davis cup group ii"
+    ],
+    "NEXT_GEN_EXCEPTION": [
+      "next gen atp finals",
+      "next gen finals",
+      "next gen atp finals jeddah",
+      "next gen atp finals milan"
+    ],
+    "OLYMPICS_EXCEPTION": [
+      "olympics",
+      "olympic games",
+      "olympic tennis event",
+      "paris olympics",
+      "tokyo olympics",
+      "rio olympics",
+      "london olympics"
+    ],
+    "RANKING_ELIGIBLE": [
+      "united cup",
+      "nitto atp finals",
+      "atp finals",
+      "tour finals",
+      "australian open",
+      "roland garros",
+      "french open",
+      "wimbledon",
+      "the championships wimbledon",
+      "us open",
+      "indian wells masters",
+      "bnpparibas open indian wells",
+      "miami open",
+      "monte carlo masters",
+      "madrid open",
+      "italian open",
+      "rome masters",
+      "canadian open",
+      "national bank open",
+      "cincinnati open",
+      "shanghai masters",
+      "shanghai rolex masters shanghai",
+      "paris masters",
+      "vienna open",
+      "basel open",
+      "japan open",
+      "china open"
+    ]
+  },
+  "exact_name_reason_codes": {
+    "NON_RANKING": "EXACT_NON_RANKING_COMPETITION",
+    "DAVIS_EXCEPTION": "DAVIS_EXCEPTION_INCLUDED",
+    "NEXT_GEN_EXCEPTION": "NEXT_GEN_EXCEPTION_INCLUDED",
+    "OLYMPICS_EXCEPTION": "OLYMPICS_EXCEPTION_INCLUDED",
+    "RANKING_ELIGIBLE": "EXACT_RANKING_ELIGIBLE_COMPETITION"
+  },
+  "explicit_category_fields": {
+    "tier": {
+      "atp 250": "RANKING_ELIGIBLE",
+      "atp 500": "RANKING_ELIGIBLE",
+      "atp masters 1000": "RANKING_ELIGIBLE",
+      "masters 1000": "RANKING_ELIGIBLE",
+      "grand slam": "RANKING_ELIGIBLE",
+      "challenger": "RANKING_ELIGIBLE",
+      "challenger 50": "RANKING_ELIGIBLE",
+      "challenger 75": "RANKING_ELIGIBLE",
+      "challenger 100": "RANKING_ELIGIBLE",
+      "challenger 125": "RANKING_ELIGIBLE",
+      "challenger 175": "RANKING_ELIGIBLE",
+      "itf": "RANKING_ELIGIBLE",
+      "itf m15": "RANKING_ELIGIBLE",
+      "itf m25": "RANKING_ELIGIBLE",
+      "davis cup": "DAVIS_EXCEPTION",
+      "next gen atp finals": "NEXT_GEN_EXCEPTION",
+      "olympics": "OLYMPICS_EXCEPTION",
+      "laver cup": "NON_RANKING"
+    },
+    "tourney_level": {
+      "a": "RANKING_ELIGIBLE",
+      "m": "RANKING_ELIGIBLE",
+      "g": "RANKING_ELIGIBLE",
+      "c": "RANKING_ELIGIBLE",
+      "f": "RANKING_ELIGIBLE",
+      "d": "DAVIS_EXCEPTION",
+      "o": "OLYMPICS_EXCEPTION"
+    },
+    "series": {
+      "atp250": "RANKING_ELIGIBLE",
+      "atp 250": "RANKING_ELIGIBLE",
+      "atp500": "RANKING_ELIGIBLE",
+      "atp 500": "RANKING_ELIGIBLE",
+      "masters 1000": "RANKING_ELIGIBLE",
+      "grand slam": "RANKING_ELIGIBLE",
+      "challenger": "RANKING_ELIGIBLE",
+      "itf": "RANKING_ELIGIBLE"
+    }
+  },
+  "repository_history_scope": {
+    "main": "RANKING_ELIGIBLE",
+    "challenger": "RANKING_ELIGIBLE"
+  },
+  "classification_weights": {
+    "RANKING_ELIGIBLE": 1,
+    "DAVIS_EXCEPTION": 1,
+    "NEXT_GEN_EXCEPTION": 1,
+    "OLYMPICS_EXCEPTION": 1,
+    "NON_RANKING": 0
+  }
+}
