@@ -15,11 +15,20 @@ from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime, timezone
 from typing import Any
 
+try:
+    from . import competition_registry
+except ImportError:  # pragma: no cover - legacy direct-module test path
+    import competition_registry
+
 CHANGE_ID = "CHANGE-2026-10-10-099"
 POLICY_VERSION = "davis-laver-performance-v1"
 LAVER_ONLY_CHANGE_ID = "CHANGE-2026-10-11-101"
 LAVER_ONLY_ORIGINAL_ALIAS = "CHANGE-2026-10-11-100"
 LAVER_ONLY_POLICY_VERSION = "laver-only-performance-v1"
+RANKING_ELIGIBLE_CHANGE_ID = "CHANGE-2026-10-11-102"
+RANKING_ELIGIBLE_POLICY_VERSION = "atp-ranking-eligible-performance-v1"
+RANKING_REGISTRY_VERSION = competition_registry.REGISTRY_VERSION
+RANKING_REGISTRY_SHA256 = competition_registry.REGISTRY_SHA256
 ACTIVATION_VERSION_ENV = "FENZOBOT_COMPETITION_EVIDENCE_VERSION"
 ACTIVATION_UTC_ENV = "FENZOBOT_COMPETITION_EVIDENCE_EFFECTIVE_FROM_UTC"
 
@@ -54,12 +63,47 @@ _LAVER_ONLY_POLICY_SPEC = {
 LAVER_ONLY_CONFIG_HASH = hashlib.sha256(
     json.dumps(_LAVER_ONLY_POLICY_SPEC, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 ).hexdigest()[:20]
+_RANKING_ELIGIBLE_POLICY_SPEC = {
+    "change_id": RANKING_ELIGIBLE_CHANGE_ID,
+    "version": RANKING_ELIGIBLE_POLICY_VERSION,
+    "registry_version": RANKING_REGISTRY_VERSION,
+    "registry_sha256": RANKING_REGISTRY_SHA256,
+    "included": [
+        "RANKING_ELIGIBLE", "DAVIS_EXCEPTION",
+        "NEXT_GEN_EXCEPTION", "OLYMPICS_EXCEPTION",
+    ],
+    "excluded": ["NON_RANKING"],
+    "blocked": ["UNRESOLVED", "CONFLICT"],
+    "included_weight": 1.0,
+    "non_ranking_weight": 0.0,
+    "selection_order": "select_sample_then_apply_eligibility",
+    "fatigue_load": "raw_factual_unweighted",
+    "authorization": "exact_registry_no_fuzzy",
+    "temporal_application": "per_match_t0_delta",
+    "pre_t0_policy_version": LAVER_ONLY_POLICY_VERSION,
+    "post_t0_policy_version": RANKING_ELIGIBLE_POLICY_VERSION,
+    "missing_match_date": "BLOCK",
+}
+RANKING_ELIGIBLE_CONFIG_HASH = hashlib.sha256(
+    json.dumps(
+        _RANKING_ELIGIBLE_POLICY_SPEC,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+).hexdigest()[:20]
 
 
 def _policy_contract(policy: Mapping[str, Any] | None = None) -> tuple[str, str, str]:
     version = str((policy or {}).get("version") or POLICY_VERSION)
     if version == LAVER_ONLY_POLICY_VERSION:
         return LAVER_ONLY_CHANGE_ID, LAVER_ONLY_POLICY_VERSION, LAVER_ONLY_CONFIG_HASH
+    if version == RANKING_ELIGIBLE_POLICY_VERSION:
+        return (
+            RANKING_ELIGIBLE_CHANGE_ID,
+            RANKING_ELIGIBLE_POLICY_VERSION,
+            RANKING_ELIGIBLE_CONFIG_HASH,
+        )
     return CHANGE_ID, POLICY_VERSION, CONFIG_HASH
 
 
@@ -82,6 +126,30 @@ def is_active_laver_only(policy: Mapping[str, Any] | None) -> bool:
         and policy.get("active") is True
         and str(policy.get("tour") or "").strip().casefold() == "atp"
     )
+
+
+def is_ranking_eligible(policy: Mapping[str, Any] | None) -> bool:
+    """Recognize CHANGE-102 independently of runtime activation."""
+    return (
+        policy_is_supported(policy)
+        and policy.get("version") == RANKING_ELIGIBLE_POLICY_VERSION
+    )
+
+
+def is_active_ranking_eligible(policy: Mapping[str, Any] | None) -> bool:
+    """Authorize CHANGE-102 only inside its explicit prospective ATP scope."""
+    return (
+        is_ranking_eligible(policy)
+        and policy.get("active") is True
+        and str(policy.get("tour") or "").strip().casefold() == "atp"
+    )
+
+
+def uses_match_level_competition_evidence(
+    policy: Mapping[str, Any] | None,
+) -> bool:
+    """Require reconstructed match-level sources for active ATP policies."""
+    return is_active_laver_only(policy) or is_active_ranking_eligible(policy)
 
 
 _DAVIS_RE = re.compile(r"\bdavis(?:\s+cup)?\b", re.IGNORECASE)
@@ -141,8 +209,14 @@ def activation_from_environment(
                 parsed_effective = parsed_effective.replace(tzinfo=timezone.utc)
         except ValueError:
             parsed_effective = None
-    supported_versions = {POLICY_VERSION, LAVER_ONLY_POLICY_VERSION}
-    selected = LAVER_ONLY_POLICY_VERSION if requested == LAVER_ONLY_POLICY_VERSION else POLICY_VERSION
+    supported_versions = {
+        POLICY_VERSION,
+        LAVER_ONLY_POLICY_VERSION,
+        RANKING_ELIGIBLE_POLICY_VERSION,
+    }
+    selected = (
+        requested if requested in supported_versions else POLICY_VERSION
+    )
     selected_change, selected_version, selected_hash = _policy_contract({"version": selected})
     active = (
         requested in supported_versions
@@ -291,6 +365,8 @@ def _blocked(
 
 def classify_match(record: Mapping[str, Any], policy: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Classify one result without inventing identity or Davis tie state."""
+    if is_ranking_eligible(policy):
+        return competition_registry.classify(record)
     name = _tournament_text(record)
     tournament_id = _tournament_id(record)
     davis_name = bool(_DAVIS_RE.search(name))
@@ -375,6 +451,102 @@ def classify_match(record: Mapping[str, Any], policy: Mapping[str, Any] | None =
     }
 
 
+def _policy_effective_from(
+    policy: Mapping[str, Any] | None,
+) -> datetime | None:
+    raw = _clean_scalar((policy or {}).get("effective_from_utc"))
+    if raw is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _match_datetime(record: Mapping[str, Any]) -> datetime | None:
+    raw = _value(
+        record,
+        "tourney_date", "match_date", "date", "start_time",
+        "startTime", "scheduled_start_utc", "scheduledStartUtc",
+    )
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        parsed = raw
+    else:
+        text = str(raw).strip()
+        try:
+            if re.fullmatch(r"\d{8}", text):
+                parsed = datetime.strptime(text, "%Y%m%d")
+            elif re.fullmatch(r"\d{10,13}(?:\.0+)?", text):
+                stamp = float(text)
+                if stamp >= 10_000_000_000:
+                    stamp /= 1000.0
+                parsed = datetime.fromtimestamp(stamp, tz=timezone.utc)
+            else:
+                parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except (OverflowError, TypeError, ValueError):
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def classify_selected_match(
+    record: Mapping[str, Any],
+    policy: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Apply CHANGE-102 only to the per-match delta at/after its T0.
+
+    Pre-T0 observations keep the policy that was already operational
+    (Laver-only). Rolling windows therefore age out naturally without any
+    retrospective reclassification or frozen aggregate baseline.
+    """
+    if not is_ranking_eligible(policy):
+        return classify_match(record, policy)
+    effective_from = _policy_effective_from(policy)
+    if effective_from is None:
+        return _blocked(
+            "COMPETITION_POLICY_T0_INVALID",
+            temporal_scope="UNRESOLVED_T0",
+            applied_policy_version=None,
+        )
+    match_at = _match_datetime(record)
+    if match_at is None:
+        return _blocked(
+            "COMPETITION_MATCH_DATE_UNRESOLVED",
+            temporal_scope="UNRESOLVED_MATCH_DATE",
+            applied_policy_version=None,
+            effective_from_utc=effective_from.isoformat(),
+        )
+    if match_at < effective_from:
+        legacy_policy = {
+            "version": LAVER_ONLY_POLICY_VERSION,
+            "config_hash": LAVER_ONLY_CONFIG_HASH,
+        }
+        classification = classify_match(record, legacy_policy)
+        return {
+            **classification,
+            "temporal_scope": "PRE_T0_GRANDFATHERED",
+            "applied_policy_version": LAVER_ONLY_POLICY_VERSION,
+            "prospective_policy_applied": False,
+            "match_at_utc": match_at.isoformat(),
+            "effective_from_utc": effective_from.isoformat(),
+        }
+    classification = classify_match(record, policy)
+    return {
+        **classification,
+        "temporal_scope": "POST_T0_CHANGE_102",
+        "applied_policy_version": RANKING_ELIGIBLE_POLICY_VERSION,
+        "prospective_policy_applied": True,
+        "match_at_utc": match_at.isoformat(),
+        "effective_from_utc": effective_from.isoformat(),
+    }
+
+
 def weighted_observations(
     records: Iterable[Mapping[str, Any]], *, active: bool,
     policy: Mapping[str, Any] | None = None,
@@ -388,13 +560,23 @@ def weighted_observations(
         }
     _change, version, config_hash = _policy_contract(policy)
     counts: Counter[str] = Counter()
+    classifications: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
+    temporal_scopes: Counter[str] = Counter()
     weighted: list[tuple[dict[str, Any], float]] = []
     source_ids: list[str] = []
     for record in selected:
-        classification = classify_match(record, policy)
+        classification = classify_selected_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
+        classifications[str(
+            classification.get("classification")
+            or classification.get("competition")
+            or "UNRESOLVED"
+        )] += 1
+        temporal_scope = classification.get("temporal_scope")
+        if temporal_scope:
+            temporal_scopes[str(temporal_scope)] += 1
         weight = classification.get("weight")
         if weight is None:
             blockers[reason] += 1
@@ -417,9 +599,18 @@ def weighted_observations(
         "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
         "davis_weighted": counts["DAVIS_TIE_COMPETITIVE_PRE_MATCH"],
         "davis_preserved": counts["DAVIS_CURRENT_PRODUCTION_TREATMENT_PRESERVED"],
+        "non_ranking_excluded": classifications["NON_RANKING"],
+        "ranking_eligible_included": classifications["RANKING_ELIGIBLE"],
+        "davis_exception_included": classifications["DAVIS_EXCEPTION"],
+        "next_gen_exception_included": classifications["NEXT_GEN_EXCEPTION"],
+        "olympics_exception_included": classifications["OLYMPICS_EXCEPTION"],
+        "classification_counts": dict(sorted(classifications.items())),
         "unresolved": sum(blockers.values()),
         "reason_counts": dict(sorted(counts.items())),
         "blocker_reason_counts": dict(sorted(blockers.items())),
+        "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
+        "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
+        "prospective_post_t0": temporal_scopes["POST_T0_CHANGE_102"],
         "source_match_ids": source_ids,
     }
     return {
@@ -451,12 +642,22 @@ def weighted_binary_record(
     weighted_wins = 0.0
     weighted_losses = 0.0
     counts: Counter[str] = Counter()
+    classifications: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
+    temporal_scopes: Counter[str] = Counter()
     source_ids: list[str] = []
     for record in selected:
-        classification = classify_match(record, policy)
+        classification = classify_selected_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
+        classifications[str(
+            classification.get("classification")
+            or classification.get("competition")
+            or "UNRESOLVED"
+        )] += 1
+        temporal_scope = classification.get("temporal_scope")
+        if temporal_scope:
+            temporal_scopes[str(temporal_scope)] += 1
         weight = classification.get("weight")
         if weight is None:
             blockers[reason] += 1
@@ -491,9 +692,18 @@ def weighted_binary_record(
             "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
             "davis_weighted": counts["DAVIS_TIE_COMPETITIVE_PRE_MATCH"],
             "davis_preserved": counts["DAVIS_CURRENT_PRODUCTION_TREATMENT_PRESERVED"],
+            "non_ranking_excluded": classifications["NON_RANKING"],
+            "ranking_eligible_included": classifications["RANKING_ELIGIBLE"],
+            "davis_exception_included": classifications["DAVIS_EXCEPTION"],
+            "next_gen_exception_included": classifications["NEXT_GEN_EXCEPTION"],
+            "olympics_exception_included": classifications["OLYMPICS_EXCEPTION"],
+            "classification_counts": dict(sorted(classifications.items())),
             "unresolved": sum(blockers.values()),
             "reason_counts": dict(sorted(counts.items())),
             "blocker_reason_counts": dict(sorted(blockers.items())),
+            "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
+            "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
+            "prospective_post_t0": temporal_scopes["POST_T0_CHANGE_102"],
             "source_match_ids": source_ids,
         },
     }
@@ -581,6 +791,22 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
             "laver": 0.0,
         }
         result["policy_mode"] = "LAVER_ONLY"
+    elif is_ranking_eligible(result):
+        result["weights"] = {
+            "ranking_eligible": 1.0,
+            "davis_exception": 1.0,
+            "next_gen_exception": 1.0,
+            "olympics_exception": 1.0,
+            "non_ranking": 0.0,
+            "unresolved": None,
+        }
+        result["policy_mode"] = "ATP_RANKING_ELIGIBLE"
+        result["registry_version"] = RANKING_REGISTRY_VERSION
+        result["registry_sha256"] = RANKING_REGISTRY_SHA256
+        result["temporal_application"] = "PER_MATCH_T0_DELTA"
+        result["pre_t0_policy_version"] = LAVER_ONLY_POLICY_VERSION
+        result["post_t0_policy_version"] = RANKING_ELIGIBLE_POLICY_VERSION
+        result["historical_reclassification"] = False
     else:
         result["weights"] = {
             "individual_reference": 1.0,
@@ -592,7 +818,12 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
         result["policy_mode"] = "DAVIS_LAVER"
     result["same_sample_before_weighting"] = True
     result["fatigue_load_unweighted"] = True
-    result["integral_laver_exclusion_claimed"] = is_active_laver_only(result)
+    result["integral_laver_exclusion_claimed"] = (
+        is_active_laver_only(result) or is_active_ranking_eligible(result)
+    )
+    result["integral_non_ranking_exclusion_claimed"] = (
+        is_active_ranking_eligible(result)
+    )
     result["known_blockers"] = list(INSEPARABLE_SOURCE_BLOCKERS)
     result["separability_contract"] = "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE"
     return result

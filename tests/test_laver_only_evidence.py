@@ -33,6 +33,17 @@ LAVER_ACTIVE = {
 }
 
 
+RANKING_ACTIVE = {
+    "active": True,
+    "change_id": competition_evidence.RANKING_ELIGIBLE_CHANGE_ID,
+    "version": competition_evidence.RANKING_ELIGIBLE_POLICY_VERSION,
+    "config_hash": competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH,
+    "status": "ACTIVE",
+    "effective_from_utc": "2026-10-12T00:00:00+00:00",
+    "tour": "atp",
+}
+
+
 def row(
     match_id: int,
     date: int,
@@ -894,6 +905,150 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
             matrix["LAVER_ONLY"]["comeback_source"], "local_history"
         )
         self.assertFalse(matrix["LAVER_ONLY"]["report_null"])
+
+
+    def test_change102_real_runtime_path_uses_local_sources_and_new_copy(self):
+        additions = pd.DataFrame([
+            row(101, 20261013, "Davis Cup", "Alpha", "Davis Opponent"),
+            row(
+                102, 20261014, "Next Gen ATP Finals",
+                "Alpha", "Next Gen Opponent",
+            ),
+            row(
+                103, 20261015, "Olympic Games",
+                "Olympic Opponent", "Alpha",
+            ),
+            row(
+                104, 20261016, "Vienna Open",
+                "Beta", "Recent Beta Opponent",
+            ),
+            row(
+                105, 20261017, "Laver Cup",
+                "Alpha", "Post T0 Laver Opponent",
+            ),
+        ]).drop(columns=["winner_hand", "loser_hand"])
+        for column in self.history.columns:
+            if column not in additions.columns:
+                additions[column] = self.history[column].iloc[0]
+        self.history = pd.concat(
+            [self.history, additions[self.history.columns]],
+            ignore_index=True,
+        )
+        payload, provider = self._build_payload(
+            RANKING_ACTIVE, blocked_provider_comeback=True
+        )
+
+        policy = payload["competition_evidence_policy"]
+        self.assertEqual(
+            policy["version"],
+            competition_evidence.RANKING_ELIGIBLE_POLICY_VERSION,
+        )
+        self.assertEqual(provider.call_count, 0)
+        self.assertEqual(
+            payload["data_coverage"]["tournament_record"]["a"]["source"],
+            "local_history",
+        )
+        self.assertEqual(
+            payload["set1_comeback_source_diagnostics"]["a"][
+                "selected_source"
+            ],
+            "local_history",
+        )
+        self.assertFalse(policy["feature_blockers"])
+        self.assertTrue(policy["integral_laver_exclusion_claimed"])
+        self.assertTrue(policy["integral_non_ranking_exclusion_claimed"])
+        classifications = payload["recent_form_a"]["competition_evidence"][
+            "classification_counts"
+        ]
+        self.assertGreaterEqual(classifications["DAVIS_EXCEPTION"], 1)
+        self.assertGreaterEqual(classifications["NEXT_GEN_EXCEPTION"], 1)
+        self.assertGreaterEqual(classifications["OLYMPICS_EXCEPTION"], 1)
+        self.assertGreaterEqual(classifications["NON_RANKING"], 1)
+        evidence = payload["recent_form_a"]["competition_evidence"]
+        self.assertGreaterEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertGreaterEqual(evidence["prospective_post_t0"], 1)
+
+        divergence = payload["divergencia"]
+        assessment = payload["report_assessment"]
+        decision = payload["prelive_decision"]
+        html = report_html.build_report_html(payload, {"flag": "🟢"})
+        self.assertTrue(
+            divergence["fatores_status"]["velocidade_piso"]["disponivel"]
+        )
+        self.assertFalse(
+            divergence["fatores_status"]["h2h"]["disponivel"]
+        )
+        self.assertTrue(
+            divergence["fatores_status"]["matchup_maos"]["disponivel"]
+        )
+        self.assertFalse(assessment["report_null"])
+        self.assertTrue(payload["pricing"].get("available"))
+        self.assertIn("state", decision)
+        self.assertIn("ranking-eligible", html)
+        self.assertNotIn("Davis competitiva 50%", html)
+
+    def test_change102_pre_t0_unknown_is_grandfathered_in_runtime(self):
+        target = self.history.index[0]
+        self.history.loc[target, "tourney_name"] = "Unknown Invitational"
+        payload, provider = self._build_payload(
+            RANKING_ACTIVE,
+            blocked_provider_comeback=True,
+        )
+
+        self.assertEqual(provider.call_count, 0)
+        policy = payload["competition_evidence_policy"]
+        self.assertFalse(policy["feature_blockers"])
+        evidence = payload["recent_form_a"]["competition_evidence"]
+        self.assertGreaterEqual(evidence["grandfathered_pre_t0"], 1)
+        self.assertEqual(evidence["prospective_post_t0"], 0)
+        self.assertTrue(payload["pricing"].get("available"))
+        self.assertIn("state", payload["prelive_decision"])
+
+    def test_change102_unknown_conflict_fails_closed_without_provider_reentry(self):
+        self.history["tier"] = None
+        target = self.history.index[0]
+        self.history.loc[target, "tourney_name"] = "Laver Cup"
+        self.history.loc[target, "tourney_date"] = 20261018
+        self.history.loc[target, "tier"] = "ATP 500"
+        payload, provider = self._build_payload(
+            RANKING_ACTIVE, blocked_provider_comeback=True
+        )
+
+        policy = payload["competition_evidence_policy"]
+        self.assertEqual(provider.call_count, 0)
+        self.assertTrue(policy["feature_blockers"])
+        self.assertFalse(policy["integral_laver_exclusion_claimed"])
+        self.assertFalse(policy["integral_non_ranking_exclusion_claimed"])
+        self.assertEqual(payload["report_data_status"], "DEGRADED")
+        self.assertTrue(payload["report_assessment"]["report_null"])
+        self.assertFalse(
+            payload["prelive_decision"].get("paper_eligible") is True
+        )
+
+    def test_change102_wta_and_laver_only_controls_remain_unchanged(self):
+        wta_payload, wta_provider = self._build_payload(
+            RANKING_ACTIVE, tour="wta"
+        )
+        self.assertFalse(wta_payload["competition_evidence_policy"]["active"])
+        self.assertEqual(wta_provider.call_count, 2)
+        laver_payload, laver_provider = self._build_payload(
+            LAVER_ACTIVE, blocked_provider_comeback=True
+        )
+        self.assertEqual(
+            laver_payload["competition_evidence_policy"]["version"],
+            competition_evidence.LAVER_ONLY_POLICY_VERSION,
+        )
+        self.assertEqual(laver_provider.call_count, 0)
+        self.assertTrue(
+            laver_payload["competition_evidence_policy"][
+                "integral_laver_exclusion_claimed"
+            ]
+        )
+        self.assertFalse(
+            laver_payload["competition_evidence_policy"].get(
+                "integral_non_ranking_exclusion_claimed", False
+            )
+        )
 
 
 class LaverOnlyR7R8RegressionTests(unittest.TestCase):
