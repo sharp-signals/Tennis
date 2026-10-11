@@ -2558,8 +2558,25 @@ def _build_match_payload(match: dict) -> dict:
     # (bo3), para avaliar cobertura de handicap negativo mesmo em derrota.
     game_margin_a = fetch_data.compute_game_margin_stats(history, player_a)
     game_margin_b = fetch_data.compute_game_margin_stats(history, player_b)
-    game_differential_a = fetch_data.compute_game_differential_profile(history, player_a)
-    game_differential_b = fetch_data.compute_game_differential_profile(history, player_b)
+    # Handicap: combinar o histórico longo com os past-matches já obtidos por
+    # ID. A fonte recente cobre imediatamente a ronda anterior; a deduplicação
+    # dentro da transformação impede contar duas vezes jogos presentes nas duas
+    # fontes. Antes, este bloco ignorava dezenas de partidas que o próprio
+    # relatório já mostrava na forma recente (caso Alex De Minaur, n=3).
+    game_differential_a = fetch_data.compute_game_differential_profile(
+        history,
+        player_a,
+        recent_matches=_recent_a_cache,
+        player_id=_pid_a,
+        before=start,
+    )
+    game_differential_b = fetch_data.compute_game_differential_profile(
+        history,
+        player_b,
+        recent_matches=_recent_b_cache,
+        player_id=_pid_b,
+        before=start,
+    )
     historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(
         historical_odds_history, player_a
     )

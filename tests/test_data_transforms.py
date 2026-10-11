@@ -1032,6 +1032,84 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(profile["bo3"]["losses"]["positive"], 1)
         self.assertEqual(profile["bo3"]["losses"]["mean"], 4.0)
 
+    def test_game_differential_keeps_all_equivalent_name_variants(self):
+        history = pd.DataFrame([
+            {"winner_name": "Alex de Minaur", "loser_name": "Player B",
+             "best_of": 3, "score": "6-4 6-4", "B365W": 1.70, "B365L": 2.20},
+            {"winner_name": "Player C", "loser_name": "Alex De Minaur",
+             "best_of": 3, "score": "6-4 6-4", "B365W": 1.70, "B365L": 2.20},
+            {"winner_name": "Álex de Minaur", "loser_name": "Player D",
+             "best_of": 3, "score": "6-3 6-3", "B365W": 1.70, "B365L": 2.20},
+        ])
+
+        profile = fetch_data.compute_game_differential_profile(
+            history, "Alex De Minaur",
+        )
+
+        self.assertEqual(profile["bo3"]["analyzable_matches"], 3)
+        self.assertEqual(profile["bo3"]["wins"]["n"], 2)
+        self.assertEqual(profile["bo3"]["losses"]["n"], 1)
+        odds_profile = fetch_data.compute_historical_moneyline_margins(
+            history, "Alex De Minaur",
+        )
+        self.assertEqual(odds_profile["buckets"]["1.61-1.80"]["n"], 2)
+        self.assertEqual(odds_profile["buckets"]["2.10-2.30"]["n"], 1)
+        margin_profile = fetch_data.compute_game_margin_stats(
+            history, "Alex De Minaur",
+        )
+        self.assertEqual(margin_profile["n_vitorias"], 2)
+        self.assertEqual(margin_profile["n_derrotas"], 1)
+
+    def test_game_differential_combines_recent_by_id_and_deduplicates_history(self):
+        history = pd.DataFrame([
+            {"winner_name": "Alex de Minaur", "loser_name": "Player B",
+             "best_of": 3, "score": "6-4 6-4", "tourney_date": 20261001},
+            {"winner_name": "Player C", "loser_name": "Alex De Minaur",
+             "best_of": 3, "score": "6-4 6-4", "tourney_date": 20261002},
+        ])
+        recent = [
+            {"id": "duplicate", "date": "2026-10-01T12:00:00Z",
+             "player1Id": 39309, "player2Id": 2,
+             "player1": {"name": "Alex De Minaur"},
+             "player2": {"name": "Player B"},
+             "match_winner": 39309, "result": "6-4 6-4",
+             "result_type": "completed"},
+            {"id": "new", "date": "2026-10-03T12:00:00Z",
+             "player1Id": 4, "player2Id": 39309,
+             "player1": {"name": "Player D"},
+             "player2": {"name": "Alex De Minaur"},
+             "match_winner": 39309, "result": "4-6 4-6",
+             "result_type": "completed"},
+            {"id": "retired", "date": "2026-10-04T12:00:00Z",
+             "player1Id": 39309, "player2Id": 5,
+             "player1": {"name": "Alex De Minaur"},
+             "player2": {"name": "Player E"},
+             "match_winner": 39309, "result": "6-4 2-1 ret.",
+             "result_type": "retired"},
+            {"id": "future", "date": "2026-10-06T12:00:00Z",
+             "player1Id": 39309, "player2Id": 6,
+             "player1": {"name": "Alex De Minaur"},
+             "player2": {"name": "Player F"},
+             "match_winner": 39309, "result": "6-4 6-4",
+             "result_type": "completed"},
+        ]
+
+        profile = fetch_data.compute_game_differential_profile(
+            history,
+            "Alex De Minaur",
+            recent_matches=recent,
+            player_id=39309,
+            before="2026-10-05T00:00:00Z",
+        )
+
+        self.assertEqual(profile["bo3"]["analyzable_matches"], 3)
+        self.assertEqual(profile["bo3"]["wins"]["n"], 2)
+        self.assertEqual(profile["bo3"]["losses"]["n"], 1)
+        self.assertEqual(
+            profile["bo3"]["source_matches"],
+            {"history": 1, "recent_api": 2},
+        )
+
     def test_recent_stats_are_normalized_and_require_first_serve_metric(self):
         stats = {
             "recentStats": {
