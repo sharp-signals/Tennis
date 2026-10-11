@@ -909,13 +909,13 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
 
     def test_change102_real_runtime_path_uses_local_sources_and_new_copy(self):
         additions = pd.DataFrame([
-            row(101, 20260201, "Davis Cup", "Alpha", "Davis Opponent"),
+            row(101, 20261001, "Davis Cup", "Alpha", "Davis Opponent"),
             row(
-                102, 20261201, "Next Gen ATP Finals",
+                102, 20261003, "Next Gen ATP Finals",
                 "Alpha", "Next Gen Opponent",
             ),
             row(
-                103, 20240727, "Olympic Games",
+                103, 20260930, "Olympic Games",
                 "Olympic Opponent", "Alpha",
             ),
         ]).drop(columns=["winner_hand", "loser_hand"])
