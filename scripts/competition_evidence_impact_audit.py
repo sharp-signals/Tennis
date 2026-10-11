@@ -175,7 +175,18 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
         removed_rows_by_sample += sum(item.get("weight") != 1.0 for item in classes)
 
     factors: dict[str, dict[str, Any]] = {}
+    counter_keys = (
+        "raw_applicable",
+        "laver_only_admitted",
+        "laver_only_excluded",
+        "laver_only_blocked",
+        "ranking_policy_admitted",
+        "ranking_policy_excluded",
+        "ranking_policy_blocked",
+    )
     for factor, counts in factor_counts.items():
+        for key in counter_keys:
+            counts.setdefault(key, 0)
         before = counts["laver_only_admitted"]
         after = counts["ranking_policy_admitted"]
         factors[factor] = {
