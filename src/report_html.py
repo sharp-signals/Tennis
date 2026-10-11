@@ -6207,15 +6207,21 @@ def _mod_competition_evidence_notice(payload):
     if blockers:
         detail = (
             f"{len(blockers)} fator(es) agregado(s) sem separação por competição "
-            "foram excluídos do índice; não é declarada exclusão integral da Laver."
+            "foram excluídos do índice; não é declarada exclusão integral de "
+            "NON_RANKING/UNRESOLVED."
         )
     else:
         detail = "Todos os fatores ativos têm proveniência separável nesta execução."
-    rule = (
-        "Laver 0% por encontro; Davis mantém o tratamento produtivo atual."
-        if competition_evidence.is_laver_only(policy)
-        else "Davis competitiva 50%; Laver 0% nas fontes separáveis."
-    )
+    if competition_evidence.is_ranking_eligible(policy):
+        rule = (
+            "Competições ranking-eligible e exceções Davis, Next Gen e "
+            "Olympics contam a 100%; NON_RANKING é excluído e identidade "
+            "UNRESOLVED bloqueia fail-closed."
+        )
+    elif competition_evidence.is_laver_only(policy):
+        rule = "Laver 0% por encontro; Davis mantém o tratamento produtivo atual."
+    else:
+        rule = "Davis competitiva 50%; Laver 0% nas fontes separáveis."
     return (
         '<div class="parcial"><b>Política de evidência por competição</b> — '
         f'{_esc(rule)} '
