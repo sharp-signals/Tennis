@@ -15,7 +15,10 @@ from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime, timezone
 from typing import Any
 
-from . import competition_registry
+try:
+    from . import competition_registry
+except ImportError:  # pragma: no cover - legacy direct-module test path
+    import competition_registry
 
 CHANGE_ID = "CHANGE-2026-10-10-099"
 POLICY_VERSION = "davis-laver-performance-v1"
