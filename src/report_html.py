@@ -2333,21 +2333,77 @@ def handicap_settlement_counts(margins, line):
     return cover, push, miss
 
 
-def _historical_price_reference(cover, push, miss, *, min_decisions=15):
-    """Preço de equilíbrio factual para um handicap, com void neutro.
+def _split_margins_by_result(margins):
+    """Separa margens válidas por vitória/derrota sem transformar missing em zero."""
+    wins, losses = [], []
+    for margin in margins or ():
+        try:
+            value = float(margin)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            wins.append(value)
+        elif value < 0:
+            losses.append(value)
+    return wins, losses
 
-    A referência usa apenas decisões (win/loss): ``1 + perdas/vitórias``.
-    Não é uma odd capturada nem uma previsão. A função fecha quando a amostra
-    é pequena, evitando transformar meia dúzia de scores numa faixa de valor.
+
+def _contextual_handicap_price_reference(
+    win_probability,
+    win_counts,
+    loss_counts,
+    line,
+    *,
+    min_relevant_sample=15,
+):
+    """Estima o preço do handicap no contexto probabilístico do jogo atual.
+
+    A probabilidade de cobertura combina a probabilidade ML experimental do
+    Fenzobot com as taxas condicionais de cobertura quando o jogador vence e
+    quando perde. Num handicap negativo, perder implica falhar a linha; num
+    handicap positivo, vencer implica cobri-la. Assim só a condição não
+    estrutural exige amostra histórica. Push continua neutro.
     """
     try:
-        cover, push, miss = int(cover), int(push), int(miss)
+        win_probability = float(win_probability)
+        line = float(line)
+        win_cover, win_push, win_miss = (int(value) for value in win_counts)
+        loss_cover, loss_push, loss_miss = (int(value) for value in loss_counts)
     except (TypeError, ValueError):
         return None
-    decisions = cover + miss
-    if cover <= 0 or decisions < min_decisions:
+    if not math.isfinite(win_probability) or not 0 < win_probability < 1 or line == 0:
         return None
-    fair = 1.0 + (miss / cover)
+
+    win_total = win_cover + win_push + win_miss
+    loss_total = loss_cover + loss_push + loss_miss
+    if line < 0:
+        if win_total < min_relevant_sample:
+            return None
+        win_cover_rate = win_cover / win_total
+        win_push_rate = win_push / win_total
+        loss_cover_rate = loss_push_rate = 0.0
+        relevant_sample = win_total
+    else:
+        if loss_total < min_relevant_sample:
+            return None
+        win_cover_rate, win_push_rate = 1.0, 0.0
+        loss_cover_rate = loss_cover / loss_total
+        loss_push_rate = loss_push / loss_total
+        relevant_sample = loss_total
+
+    loss_probability = 1.0 - win_probability
+    cover_probability = (
+        win_probability * win_cover_rate
+        + loss_probability * loss_cover_rate
+    )
+    push_probability = (
+        win_probability * win_push_rate
+        + loss_probability * loss_push_rate
+    )
+    miss_probability = max(0.0, 1.0 - cover_probability - push_probability)
+    if cover_probability <= 0:
+        return None
+    fair = 1.0 + (miss_probability / cover_probability)
     # Um cêntimo acima do equilíbrio: a fronteira inferior nunca é vendida
     # como tendo valor quando a expectativa histórica seria exatamente zero.
     minimum = math.floor((fair + 0.010000001) * 100) / 100
@@ -2355,12 +2411,16 @@ def _historical_price_reference(cover, push, miss, *, min_decisions=15):
     if minimum > INVESTOR_PROFILE_ODDS_HIGH:
         return {
             "fair_odd": round(fair, 2), "minimum_odd": None,
-            "decisions": decisions, "pushes": push,
+            "estimated_cover_pct": round(cover_probability * 100.0, 1),
+            "estimated_push_pct": round(push_probability * 100.0, 1),
+            "relevant_sample": relevant_sample,
         }
     return {
         "fair_odd": round(fair, 2), "minimum_odd": round(minimum, 2),
         "maximum_odd": round(INVESTOR_PROFILE_ODDS_HIGH, 2),
-        "decisions": decisions, "pushes": push,
+        "estimated_cover_pct": round(cover_probability * 100.0, 1),
+        "estimated_push_pct": round(push_probability * 100.0, 1),
+        "relevant_sample": relevant_sample,
     }
 
 
@@ -2385,10 +2445,10 @@ def _moneyline_price_reference(fair_odd):
 def _operational_entry_model(payload, div):
     """Constrói a leitura manual do cabeçalho sem criar uma aposta.
 
-    Moneyline usa o pricing residual já calculado. Handicap usa resultados
-    factuais: prefere a faixa comparável de Moneyline com n>=15 e só recorre
-    ao histórico geral com n>=30. A cobertura quando vence é explicativa;
-    o preço de equilíbrio usa sempre todas as decisões, incluindo derrotas.
+    Moneyline usa o pricing residual já calculado. Handicap combina a
+    probabilidade ML do pricing com cobertura condicional a vitória/derrota:
+    prefere uma faixa comparável com amostra relevante >=15 e só recorre ao
+    histórico geral com amostra relevante >=30.
     """
     decision = _d(payload.get("prelive_decision"))
     if decision.get("state") == "REPORT_NULL":
@@ -2453,8 +2513,12 @@ def _operational_entry_model(payload, div):
         reference_data = handicap_reference_for_player(payload, player, fmt)
         reference = _d(_d(reference_data).get("reference"))
         profile = _d(_d(payload.get(f"game_differential_{side}")).get(fmt))
-        wins_margins = list(_d(profile.get("wins")).get("margins") or [])
-        losses_margins = list(_d(profile.get("losses")).get("margins") or [])
+        wins_margins, _ = _split_margins_by_result(
+            _d(profile.get("wins")).get("margins")
+        )
+        _, losses_margins = _split_margins_by_result(
+            _d(profile.get("losses")).get("margins")
+        )
         all_margins = wins_margins + losses_margins
         lines = list(reference.get("handicap") or ())
         if reference.get("tipo") == "favorito" and lines:
@@ -2475,14 +2539,25 @@ def _operational_entry_model(payload, div):
             stats = _d(_d(raw).get("by_format")).get(fmt) if _d(raw).get("by_format") else raw
             stats = _d(stats)
             margins = list(stats.get("margins") or [])
-            if low <= odd <= high and len(margins) >= 15:
-                band_margins, band_label = margins, str(band)
+            band_wins, band_losses = _split_margins_by_result(margins)
+            relevant = band_wins if reference.get("tipo") == "favorito" else band_losses
+            if low <= odd <= high and len(relevant) >= 15:
+                band_margins, band_label = band_wins + band_losses, str(band)
                 break
-        pricing_margins = band_margins or (all_margins if len(all_margins) >= 30 else [])
+        general_relevant = wins_margins if reference.get("tipo") == "favorito" else losses_margins
+        pricing_margins = band_margins or (all_margins if len(general_relevant) >= 30 else [])
         pricing_source = (
             f"faixa comparável {band_label}" if band_margins
             else "histórico geral" if pricing_margins else None
         )
+        try:
+            win_probability = float(player_pricing.get("sharp_estimate_pct")) / 100.0
+        except (TypeError, ValueError):
+            try:
+                win_probability = 1.0 / float(player_pricing.get("fair_odd"))
+            except (TypeError, ValueError, ZeroDivisionError):
+                win_probability = None
+        pricing_wins, pricing_losses = _split_margins_by_result(pricing_margins)
         line_models = []
         for raw_line in lines:
             try:
@@ -2491,14 +2566,20 @@ def _operational_entry_model(payload, div):
                 continue
             cover, push, miss = handicap_settlement_counts(all_margins, line)
             win_cover, _, _ = handicap_settlement_counts(wins_margins, line)
-            price_counts = handicap_settlement_counts(pricing_margins, line)
+            price = _contextual_handicap_price_reference(
+                win_probability,
+                handicap_settlement_counts(pricing_wins, line),
+                handicap_settlement_counts(pricing_losses, line),
+                line,
+                min_relevant_sample=15 if band_margins else 30,
+            ) if pricing_margins else None
             line_models.append({
                 "line": f"{line:+g}", "cover": cover, "push": push, "miss": miss,
                 "total": len(all_margins),
                 "cover_pct": (100 * cover / len(all_margins)) if all_margins else None,
                 "win_cover": win_cover, "win_total": len(wins_margins),
                 "win_cover_pct": (100 * win_cover / len(wins_margins)) if wins_margins else None,
-                "price": _historical_price_reference(*price_counts),
+                "price": price,
                 "price_source": pricing_source,
             })
         if line_models:
@@ -2583,6 +2664,15 @@ def _mod_operational_entry_card(payload, div):
             source = (
                 f' · { _esc(line["price_source"]) }' if line.get("price_source") else ""
             )
+            price = _d(line.get("price"))
+            if isinstance(price.get("estimated_cover_pct"), (int, float)):
+                contextual = (
+                    f'Prob. contextual de cobertura: '
+                    f'{float(price["estimated_cover_pct"]):.1f}% · '
+                    f'probabilidade ML + cobertura condicional{source}'
+                )
+            else:
+                contextual = "Amostra condicional insuficiente para validar intervalo"
             line_cards.append(
                 '<div class="entry-line">'
                 f'<div class="entry-line-name">{_esc(model["player"])} {_esc(line["line"])}</div>'
@@ -2590,7 +2680,7 @@ def _mod_operational_entry_card(payload, div):
                 f'<div class="entry-line-secondary">{_esc(secondary)}</div>'
                 f'<div class="entry-zone-label">ODD PARA CONSIDERAR</div>'
                 f'<div class="entry-line-zone">{_esc(_format_entry_price_zone(line.get("price")))}</div>'
-                f'<div class="entry-line-source">Referência por cobertura total{source}</div>'
+                f'<div class="entry-line-source">{_esc(contextual)}</div>'
                 '</div>'
             )
         market_cards.append(
