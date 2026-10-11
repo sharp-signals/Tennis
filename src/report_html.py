@@ -6205,10 +6205,13 @@ def _mod_competition_evidence_notice(payload):
     version = _esc(policy.get("version") or "N/D")
     config_hash = _esc(policy.get("config_hash") or "N/D")
     if blockers:
+        if competition_evidence.is_ranking_eligible(policy):
+            boundary = "NON_RANKING/UNRESOLVED"
+        else:
+            boundary = "da Laver"
         detail = (
             f"{len(blockers)} fator(es) agregado(s) sem separação por competição "
-            "foram excluídos do índice; não é declarada exclusão integral de "
-            "NON_RANKING/UNRESOLVED."
+            f"foram excluídos do índice; não é declarada exclusão integral {boundary}."
         )
     else:
         detail = "Todos os fatores ativos têm proveniência separável nesta execução."
