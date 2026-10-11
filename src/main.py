@@ -1134,7 +1134,12 @@ def _compute_features(payload: dict) -> dict:
         # apenas o histórico explicitamente BO5; nunca misturar BO3 numa
         # variável que afeta o score pré-live.
         if _fmt_bo == "bo5":
-            return fallback.get("comeback_rate_pct"), fallback.get("matches_lost_set1")
+            return (
+                fallback.get("comeback_rate_pct"),
+                fallback.get("weighted_matches_lost_set1")
+                if policy.get("active")
+                else fallback.get("matches_lost_set1"),
+            )
         if not policy.get("active"):
             rich = (payload.get(f"rich_stats_{side}") or {}).get("scenarios") or {}
             rate = rich.get("first_set_lose_then_win_pct")

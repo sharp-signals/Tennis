@@ -848,7 +848,14 @@ def _calcular_divergencia(payload):
             return d["deciding_set_win_pct"], d.get("deciding_set_count")
         weighted_wins = weighted_matches = 0.0
         found = False
-        for label in ("bo3", "bo5"):
+        labels = ("bo3", "bo5")
+        if policy_active:
+            labels = (
+                ("bo5",)
+                if str(payload.get("match_format") or "").casefold() == "bo5"
+                else ("bo3",)
+            )
+        for label in labels:
             cell = d.get(label)
             if not isinstance(cell, dict):
                 continue
@@ -1597,11 +1604,16 @@ def _compute_fatores_decisivos(payload):
     ra = (payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_a") if isinstance(payload.get("rich_stats_a"), dict) else {}).get("scenarios"), dict) else {}
     rb = (payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios") if isinstance((payload.get("rich_stats_b") if isinstance(payload.get("rich_stats_b"), dict) else {}).get("scenarios"), dict) else {}
     if policy_active:
+        deciding_format = (
+            "bo5"
+            if str(payload.get("match_format") or "").casefold() == "bo5"
+            else "bo3"
+        )
         da, _ = competition_evidence.record_rate(
-            _d(payload.get("deciding_set_stats_a")).get("bo3")
+            _d(payload.get("deciding_set_stats_a")).get(deciding_format)
         )
         db, _ = competition_evidence.record_rate(
-            _d(payload.get("deciding_set_stats_b")).get("bo3")
+            _d(payload.get("deciding_set_stats_b")).get(deciding_format)
         )
     else:
         da, db = ra.get("deciding_set_win_pct"), rb.get("deciding_set_win_pct")

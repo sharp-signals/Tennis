@@ -896,6 +896,170 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
         self.assertFalse(matrix["LAVER_ONLY"]["report_null"])
 
 
+class LaverOnlyR7R8RegressionTests(unittest.TestCase):
+    @staticmethod
+    def _weighted_record(wins: int, matches: int) -> dict:
+        return competition_evidence.weighted_binary_record(
+            [
+                {"tournament_name": "Vienna Open", "won": index < wins}
+                for index in range(matches)
+            ],
+            lambda item: item["won"],
+            active=True,
+            policy=LAVER_ACTIVE,
+        )
+
+    def test_r7_bo5_comeback_uses_effective_sample_and_matches_manual_oracle(self):
+        history = pd.DataFrame([
+            {**row(1, 20260101, "Vienna Open", "Alpha", "A1",
+                   score="4-6 6-3 6-4 6-2"), "best_of": 5},
+            {**row(2, 20260102, "Vienna Open", "Alpha", "A2",
+                   score="4-6 6-2 6-4 6-3"), "best_of": 5},
+            {**row(3, 20260103, "Vienna Open", "A3", "Alpha",
+                   score="6-4 4-6 6-3 6-2"), "best_of": 5},
+            {**row(4, 20260104, "Laver Cup", "Alpha", "A4",
+                   score="4-6 6-3 6-4 6-2"), "best_of": 5},
+            {**row(5, 20260105, "Vienna Open", "Beta", "B1",
+                   score="4-6 6-3 6-4 6-2"), "best_of": 5},
+            {**row(6, 20260106, "Vienna Open", "B2", "Beta",
+                   score="6-4 4-6 6-3 6-2"), "best_of": 5},
+            {**row(7, 20260107, "Vienna Open", "B3", "Beta",
+                   score="6-4 4-6 6-3 6-2"), "best_of": 5},
+        ])
+        without_laver = history[
+            history["tourney_name"].str.casefold() != "laver cup"
+        ]
+        actual_a = fetch_data.compute_set1_comeback_stats(
+            history, "Alpha", competition_policy=LAVER_ACTIVE
+        )
+        actual_b = fetch_data.compute_set1_comeback_stats(
+            history, "Beta", competition_policy=LAVER_ACTIVE
+        )
+        oracle_a = fetch_data.compute_set1_comeback_stats(
+            without_laver, "Alpha", competition_policy=LAVER_ACTIVE
+        )
+        oracle_b = fetch_data.compute_set1_comeback_stats(
+            without_laver, "Beta", competition_policy=LAVER_ACTIVE
+        )
+
+        self.assertEqual(actual_a["bo5"]["matches_lost_set1"], 4)
+        self.assertEqual(actual_a["bo5"]["weighted_matches_lost_set1"], 3)
+        self.assertEqual(
+            actual_a["bo5"]["comeback_rate_pct"],
+            oracle_a["bo5"]["comeback_rate_pct"],
+        )
+
+        def measured(stats_a, stats_b):
+            payload = {
+                "player_a": "Alpha",
+                "player_b": "Beta",
+                "tour": "atp",
+                "match_format": "bo5",
+                "competition_evidence_policy":
+                    competition_evidence.policy_metadata(LAVER_ACTIVE),
+                "set1_comeback_stats_a": stats_a,
+                "set1_comeback_stats_b": stats_b,
+            }
+            payload["features"] = main._compute_features(payload)
+            divergence = report_html.calcular_divergencia_publico(payload)
+            return payload["features"]["comeback_set1"], divergence[
+                "fatores_status"
+            ]["comeback_set1"]
+
+        actual_feature, actual_status = measured(actual_a, actual_b)
+        oracle_feature, oracle_status = measured(oracle_a, oracle_b)
+        self.assertEqual(actual_feature["valor_a"], oracle_feature["valor_a"])
+        self.assertEqual(actual_feature["amostra_a"], 3)
+        self.assertEqual(
+            actual_feature["amostra_a"], oracle_feature["amostra_a"]
+        )
+        self.assertEqual(
+            actual_status["confianca_amostra"],
+            oracle_status["confianca_amostra"],
+        )
+        self.assertEqual(
+            actual_status["peso_efetivo"], oracle_status["peso_efetivo"]
+        )
+
+    def test_r8_bo5_leader_is_shared_by_feature_motor_and_html_consumers(self):
+        stats_a = {
+            "bo3": self._weighted_record(9, 10),
+            "bo5": self._weighted_record(3, 10),
+        }
+        stats_b = {
+            "bo3": self._weighted_record(2, 10),
+            "bo5": self._weighted_record(8, 10),
+        }
+        payload = {
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "tour": "atp",
+            "match_format": "bo5",
+            "competition_evidence_policy":
+                competition_evidence.policy_metadata(LAVER_ACTIVE),
+            "deciding_set_stats_a": stats_a,
+            "deciding_set_stats_b": stats_b,
+            "rich_stats_a": {
+                "scenarios": {
+                    "deciding_set_win_pct": 95,
+                    "deciding_set_count": 30,
+                }
+            },
+            "rich_stats_b": {
+                "scenarios": {
+                    "deciding_set_win_pct": 5,
+                    "deciding_set_count": 30,
+                }
+            },
+            "prelive_decision": {"state": "NO_EDGE"},
+            "pricing": {},
+        }
+        payload["features"] = main._compute_features(payload)
+        self.assertEqual(
+            payload["features"]["recuperacao_sets"]["lider"], "Beta"
+        )
+
+        divergence = report_html.calcular_divergencia_publico(payload)
+        payload["divergencia"] = divergence
+        motor = divergence["fatores_status"]["recuperacao_sets"]
+        self.assertEqual(motor["lider"], "Beta")
+        self.assertEqual(motor["valor_a"], 30.0)
+        self.assertEqual(motor["valor_b"], 80.0)
+
+        decisive = report_html._compute_fatores_decisivos(payload)
+        self.assertIn("Mais forte em sets decisivos: Beta.", decisive)
+        self.assertNotIn("Mais forte em sets decisivos: Alpha.", decisive)
+
+        action_html = report_html._mod_action_map(payload, divergence, {})
+        self.assertIn("Beta · se chegar ao set decisivo", action_html)
+        self.assertNotIn("Alpha · se chegar ao set decisivo", action_html)
+
+    def test_r8_policy_off_keeps_legacy_rich_stats_presentation(self):
+        off = {**LAVER_ACTIVE, "active": False, "status": "OFF"}
+        payload = {
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "match_format": "bo5",
+            "competition_evidence_policy": off,
+            "features": {
+                "recuperacao_sets": {
+                    "lider": "Beta",
+                    "valor_a": 30.0,
+                    "valor_b": 80.0,
+                }
+            },
+            "rich_stats_a": {
+                "scenarios": {"deciding_set_win_pct": 90}
+            },
+            "rich_stats_b": {
+                "scenarios": {"deciding_set_win_pct": 20}
+            },
+        }
+        decisive = report_html._compute_fatores_decisivos(payload)
+        self.assertIn("Mais forte em sets decisivos: Alpha.", decisive)
+        self.assertNotIn("Mais forte em sets decisivos: Beta.", decisive)
+
+
 class LaverOnlyGovernanceTests(unittest.TestCase):
     def test_change_id_is_unique_and_original_alias_is_preserved(self):
         self.assertEqual(
