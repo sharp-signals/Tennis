@@ -117,7 +117,10 @@ def _year(record: Mapping[str, Any]) -> int | None:
         value = _value(record, path)
         if value is None:
             continue
-        match = re.search(r"(?<!\d)((?:19|20)\d{2})(?!\d)", str(value))
+        match = re.search(
+            r"(?<!\\d)((?:19|20)\\d{2})(?:\\d{4})?(?!\\d)",
+            str(value),
+        )
         if match:
             return int(match.group(1))
     return None
