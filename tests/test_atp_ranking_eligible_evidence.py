@@ -76,6 +76,25 @@ class RegistryClassificationTests(unittest.TestCase):
                 self.assertEqual(actual["classification"], expected_class)
                 self.assertEqual(actual["weight"], expected_weight)
 
+    def test_tennis_data_exact_field_names_are_supported(self):
+        result = competition_evidence.classify_match(
+            {
+                "Tournament": "Winston Salem",
+                "Date": "2026-08-22",
+                "Series": "ATP250",
+            },
+            ACTIVE,
+        )
+        self.assertEqual(result["classification"], "RANKING_ELIGIBLE")
+        self.assertEqual(result["weight"], 1.0)
+        self.assertIn(
+            "category:Series",
+            {
+                signal["matched_by"]
+                for signal in result["identity_evidence"]
+            },
+        )
+
     def test_unknown_conflict_rank_fields_odds_and_fuzzy_names_fail_closed(self):
         cases = (
             {},
