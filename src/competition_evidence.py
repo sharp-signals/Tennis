@@ -27,6 +27,9 @@ LAVER_ONLY_ORIGINAL_ALIAS = "CHANGE-2026-10-11-100"
 LAVER_ONLY_POLICY_VERSION = "laver-only-performance-v1"
 RANKING_ELIGIBLE_CHANGE_ID = "CHANGE-2026-10-11-102"
 RANKING_ELIGIBLE_POLICY_VERSION = "atp-ranking-eligible-performance-v1"
+RANKING_ELIGIBLE_V2_CHANGE_ID = "CHANGE-2026-10-11-105"
+RANKING_ELIGIBLE_V2_POLICY_VERSION = "atp-ranking-eligible-performance-v2"
+RANKING_ELIGIBLE_V1_EFFECTIVE_FROM_UTC = "2026-10-12T00:00:00Z"
 RANKING_REGISTRY_VERSION = competition_registry.REGISTRY_VERSION
 RANKING_REGISTRY_SHA256 = competition_registry.REGISTRY_SHA256
 ACTIVATION_VERSION_ENV = "FENZOBOT_COMPETITION_EVIDENCE_VERSION"
@@ -92,6 +95,39 @@ RANKING_ELIGIBLE_CONFIG_HASH = hashlib.sha256(
         separators=(",", ":"),
     ).encode("utf-8")
 ).hexdigest()[:20]
+_RANKING_ELIGIBLE_V2_WEIGHTS = {
+    "RANKING_ELIGIBLE": 1.0,
+    "DAVIS_EXCEPTION": 0.5,
+    "NEXT_GEN_EXCEPTION": 0.5,
+    "OLYMPICS_EXCEPTION": 0.5,
+    "NON_RANKING": 0.0,
+}
+_RANKING_ELIGIBLE_V2_POLICY_SPEC = {
+    "change_id": RANKING_ELIGIBLE_V2_CHANGE_ID,
+    "version": RANKING_ELIGIBLE_V2_POLICY_VERSION,
+    "registry_version": RANKING_REGISTRY_VERSION,
+    "registry_sha256": RANKING_REGISTRY_SHA256,
+    "classification_weights": _RANKING_ELIGIBLE_V2_WEIGHTS,
+    "blocked": ["UNRESOLVED", "CONFLICT"],
+    "selection_order": "select_sample_then_apply_eligibility",
+    "fatigue_load": "raw_factual_unweighted",
+    "authorization": "exact_registry_no_fuzzy",
+    "temporal_application": "per_match_t1_delta",
+    "pre_t0_policy_version": LAVER_ONLY_POLICY_VERSION,
+    "intermediate_policy_version": RANKING_ELIGIBLE_POLICY_VERSION,
+    "post_t1_policy_version": RANKING_ELIGIBLE_V2_POLICY_VERSION,
+    "v1_effective_from_utc": RANKING_ELIGIBLE_V1_EFFECTIVE_FROM_UTC,
+    "missing_match_date": "BLOCK",
+    "registry_factual_taxonomy_reused": True,
+}
+RANKING_ELIGIBLE_V2_CONFIG_HASH = hashlib.sha256(
+    json.dumps(
+        _RANKING_ELIGIBLE_V2_POLICY_SPEC,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+).hexdigest()[:20]
 
 
 def _policy_contract(policy: Mapping[str, Any] | None = None) -> tuple[str, str, str]:
@@ -103,6 +139,12 @@ def _policy_contract(policy: Mapping[str, Any] | None = None) -> tuple[str, str,
             RANKING_ELIGIBLE_CHANGE_ID,
             RANKING_ELIGIBLE_POLICY_VERSION,
             RANKING_ELIGIBLE_CONFIG_HASH,
+        )
+    if version == RANKING_ELIGIBLE_V2_POLICY_VERSION:
+        return (
+            RANKING_ELIGIBLE_V2_CHANGE_ID,
+            RANKING_ELIGIBLE_V2_POLICY_VERSION,
+            RANKING_ELIGIBLE_V2_CONFIG_HASH,
         )
     return CHANGE_ID, POLICY_VERSION, CONFIG_HASH
 
@@ -129,10 +171,21 @@ def is_active_laver_only(policy: Mapping[str, Any] | None) -> bool:
 
 
 def is_ranking_eligible(policy: Mapping[str, Any] | None) -> bool:
-    """Recognize CHANGE-102 independently of runtime activation."""
+    """Recognize the CHANGE-102/105 family independently of activation."""
     return (
         policy_is_supported(policy)
-        and policy.get("version") == RANKING_ELIGIBLE_POLICY_VERSION
+        and policy.get("version") in {
+            RANKING_ELIGIBLE_POLICY_VERSION,
+            RANKING_ELIGIBLE_V2_POLICY_VERSION,
+        }
+    )
+
+
+def is_ranking_eligible_v2(policy: Mapping[str, Any] | None) -> bool:
+    """Recognize CHANGE-105 without treating v1 metadata as v2."""
+    return (
+        policy_is_supported(policy)
+        and policy.get("version") == RANKING_ELIGIBLE_V2_POLICY_VERSION
     )
 
 
@@ -213,6 +266,7 @@ def activation_from_environment(
         POLICY_VERSION,
         LAVER_ONLY_POLICY_VERSION,
         RANKING_ELIGIBLE_POLICY_VERSION,
+        RANKING_ELIGIBLE_V2_POLICY_VERSION,
     }
     selected = (
         requested if requested in supported_versions else POLICY_VERSION
@@ -366,7 +420,20 @@ def _blocked(
 def classify_match(record: Mapping[str, Any], policy: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Classify one result without inventing identity or Davis tie state."""
     if is_ranking_eligible(policy):
-        return competition_registry.classify(record)
+        classification = competition_registry.classify(record)
+        if not is_ranking_eligible_v2(policy):
+            return classification
+        factual_class = str(classification.get("classification") or "")
+        if factual_class not in _RANKING_ELIGIBLE_V2_WEIGHTS:
+            return classification
+        weight = _RANKING_ELIGIBLE_V2_WEIGHTS[factual_class]
+        return {
+            **classification,
+            "weight": weight,
+            "status": "EXCLUDED" if weight == 0.0 else "INCLUDED",
+            "factual_registry_weight": classification.get("weight"),
+            "weight_policy_version": RANKING_ELIGIBLE_V2_POLICY_VERSION,
+        }
     name = _tournament_text(record)
     tournament_id = _tournament_id(record)
     davis_name = bool(_DAVIS_RE.search(name))
@@ -499,19 +566,22 @@ def classify_selected_match(
     record: Mapping[str, Any],
     policy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Apply CHANGE-102 only to the per-match delta at/after its T0.
-
-    Pre-T0 observations keep the policy that was already operational
-    (Laver-only). Rolling windows therefore age out naturally without any
-    retrospective reclassification or frozen aggregate baseline.
-    """
+    """Apply ranking policies per match without reweighting an earlier era."""
     if not is_ranking_eligible(policy):
         return classify_match(record, policy)
     effective_from = _policy_effective_from(policy)
     if effective_from is None:
         return _blocked(
-            "COMPETITION_POLICY_T0_INVALID",
-            temporal_scope="UNRESOLVED_T0",
+            (
+                "COMPETITION_POLICY_T1_INVALID"
+                if is_ranking_eligible_v2(policy)
+                else "COMPETITION_POLICY_T0_INVALID"
+            ),
+            temporal_scope=(
+                "UNRESOLVED_T1"
+                if is_ranking_eligible_v2(policy)
+                else "UNRESOLVED_T0"
+            ),
             applied_policy_version=None,
         )
     match_at = _match_datetime(record)
@@ -522,6 +592,48 @@ def classify_selected_match(
             applied_policy_version=None,
             effective_from_utc=effective_from.isoformat(),
         )
+
+    v1_effective_from = datetime.fromisoformat(
+        RANKING_ELIGIBLE_V1_EFFECTIVE_FROM_UTC.replace("Z", "+00:00")
+    )
+    if is_ranking_eligible_v2(policy):
+        if effective_from <= v1_effective_from:
+            return _blocked(
+                "COMPETITION_POLICY_T1_NOT_AFTER_V1_T0",
+                temporal_scope="UNRESOLVED_T1",
+                applied_policy_version=None,
+                effective_from_utc=effective_from.isoformat(),
+                v1_effective_from_utc=v1_effective_from.isoformat(),
+            )
+        if match_at < v1_effective_from:
+            applied_policy = {
+                "version": LAVER_ONLY_POLICY_VERSION,
+                "config_hash": LAVER_ONLY_CONFIG_HASH,
+            }
+            temporal_scope = "PRE_T0_GRANDFATHERED"
+            prospective = False
+        elif match_at < effective_from:
+            applied_policy = {
+                "version": RANKING_ELIGIBLE_POLICY_VERSION,
+                "config_hash": RANKING_ELIGIBLE_CONFIG_HASH,
+            }
+            temporal_scope = "V1_INTERVAL_CHANGE_102"
+            prospective = False
+        else:
+            applied_policy = policy
+            temporal_scope = "POST_T1_CHANGE_105"
+            prospective = True
+        classification = classify_match(record, applied_policy)
+        return {
+            **classification,
+            "temporal_scope": temporal_scope,
+            "applied_policy_version": applied_policy["version"],
+            "prospective_policy_applied": prospective,
+            "match_at_utc": match_at.isoformat(),
+            "effective_from_utc": effective_from.isoformat(),
+            "v1_effective_from_utc": v1_effective_from.isoformat(),
+        }
+
     if match_at < effective_from:
         legacy_policy = {
             "version": LAVER_ONLY_POLICY_VERSION,
@@ -610,7 +722,9 @@ def weighted_observations(
         "blocker_reason_counts": dict(sorted(blockers.items())),
         "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
         "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
+        "preserved_v1_interval": temporal_scopes["V1_INTERVAL_CHANGE_102"],
         "prospective_post_t0": temporal_scopes["POST_T0_CHANGE_102"],
+        "prospective_post_t1": temporal_scopes["POST_T1_CHANGE_105"],
         "source_match_ids": source_ids,
     }
     return {
@@ -703,7 +817,9 @@ def weighted_binary_record(
             "blocker_reason_counts": dict(sorted(blockers.items())),
             "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
             "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
+            "preserved_v1_interval": temporal_scopes["V1_INTERVAL_CHANGE_102"],
             "prospective_post_t0": temporal_scopes["POST_T0_CHANGE_102"],
+            "prospective_post_t1": temporal_scopes["POST_T1_CHANGE_105"],
             "source_match_ids": source_ids,
         },
     }
@@ -791,6 +907,25 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
             "laver": 0.0,
         }
         result["policy_mode"] = "LAVER_ONLY"
+    elif is_ranking_eligible_v2(result):
+        result["weights"] = {
+            "ranking_eligible": 1.0,
+            "davis_exception": 0.5,
+            "next_gen_exception": 0.5,
+            "olympics_exception": 0.5,
+            "non_ranking": 0.0,
+            "unresolved": None,
+        }
+        result["policy_mode"] = "ATP_RANKING_ELIGIBLE_50"
+        result["registry_version"] = RANKING_REGISTRY_VERSION
+        result["registry_sha256"] = RANKING_REGISTRY_SHA256
+        result["registry_factual_taxonomy_reused"] = True
+        result["temporal_application"] = "PER_MATCH_T1_DELTA"
+        result["pre_t0_policy_version"] = LAVER_ONLY_POLICY_VERSION
+        result["intermediate_policy_version"] = RANKING_ELIGIBLE_POLICY_VERSION
+        result["post_t1_policy_version"] = RANKING_ELIGIBLE_V2_POLICY_VERSION
+        result["v1_effective_from_utc"] = RANKING_ELIGIBLE_V1_EFFECTIVE_FROM_UTC
+        result["historical_reclassification"] = False
     elif is_ranking_eligible(result):
         result["weights"] = {
             "ranking_eligible": 1.0,
