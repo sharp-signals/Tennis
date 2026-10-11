@@ -36,6 +36,7 @@ from __future__ import annotations
 import difflib
 import io
 import json
+import math
 import os
 import re
 import threading
@@ -3472,31 +3473,68 @@ def compute_h2h(
     # for. Decaimento exponencial suave: meia-vida de ~2 anos (um jogo de
     # há 2 anos pesa metade de um de agora), nunca zero (o passado conta
     # sempre alguma coisa). Só se calcula se houver datas utilizáveis.
-    weighted = None
-    if "tourney_date" in subset.columns:
-        dates = pd.to_datetime(subset["tourney_date"], format="%Y%m%d", errors="coerce")
-        if dates.notna().any():
-            mais_recente = dates.max()
-            HALF_LIFE_DIAS = 730.0  # ~2 anos
-            wa = wb = 0.0
-            for idx, row in subset.iterrows():
-                data = dates.get(idx)
-                if pd.isna(data):
-                    peso = 0.5  # sem data -> peso neutro reduzido
-                else:
-                    idade_dias = (mais_recente - data).days
-                    peso = 0.5 ** (idade_dias / HALF_LIFE_DIAS)
-                if row["winner_name"] == player_a:
-                    wa += peso
-                elif row["winner_name"] == player_b:
-                    wb += peso
-            total_peso = wa + wb
-            if total_peso > 0:
-                weighted = {
-                    "a_share_pct": round(100.0 * wa / total_peso, 1),
-                    "b_share_pct": round(100.0 * wb / total_peso, 1),
-                    "lider": player_a if wa > wb else (player_b if wb > wa else "igual"),
-                }
+    def _recency_view(
+        rows: pd.DataFrame, *, competition_weight_column: str | None = None,
+    ) -> Optional[dict]:
+        if rows.empty or "tourney_date" not in rows.columns:
+            return None
+        dates = pd.to_datetime(
+            rows["tourney_date"], format="%Y%m%d", errors="coerce"
+        )
+        if not dates.notna().any():
+            return None
+        newest = dates.max()
+        half_life_days = 730.0
+        wa = wb = 0.0
+        for idx, row in rows.iterrows():
+            match_date = dates.get(idx)
+            recency_weight = (
+                0.5
+                if pd.isna(match_date)
+                else 0.5 ** ((newest - match_date).days / half_life_days)
+            )
+            competition_weight = (
+                float(row.get(competition_weight_column, 0.0))
+                if competition_weight_column
+                else 1.0
+            )
+            weight = recency_weight * competition_weight
+            if row.get("winner_name") == player_a:
+                wa += weight
+            elif row.get("winner_name") == player_b:
+                wb += weight
+        total_weight = wa + wb
+        if total_weight <= 0:
+            return None
+        return {
+            "a_share_pct": round(100.0 * wa / total_weight, 1),
+            "b_share_pct": round(100.0 * wb / total_weight, 1),
+            "lider": player_a if wa > wb else (
+                player_b if wb > wa else "igual"
+            ),
+        }
+
+    raw_weighted_recency = _recency_view(subset)
+    weighted = raw_weighted_recency
+    if policy_active:
+        observations = competition_evidence.weighted_observations(
+            subset.to_dict("records"),
+            active=True,
+            policy=competition_policy,
+        )
+        evidence = observations.get("competition_evidence") or {}
+        if evidence.get("eligible_for_performance") is True:
+            eligible_rows = pd.DataFrame([
+                {**record, "_competition_weight": weight}
+                for record, weight in observations.get("records", [])
+                if weight > 0
+            ])
+            weighted = _recency_view(
+                eligible_rows,
+                competition_weight_column="_competition_weight",
+            )
+        else:
+            weighted = None
 
     on_surface = None
     surface_family = _normalize_surface_family(surface)
@@ -3508,7 +3546,8 @@ def compute_h2h(
             on_surface.update(_competition_tally(subset_surface))
 
     return {"overall": overall, "on_surface": on_surface, "surface": surface,
-            "surface_family": surface_family, "weighted_recency": weighted}
+            "surface_family": surface_family, "weighted_recency": weighted,
+            "raw_weighted_recency": raw_weighted_recency}
 
 
 def compute_current_season_record(
@@ -4906,10 +4945,23 @@ def compute_handedness_matchup_stats_via_profiles(
                 "matches": matches,
                 "wins": tally[hand_code]["wins"],
                 "losses": matches - tally[hand_code]["wins"],
+                "eligible_matches": matches,
+                "weighted_matches": matches,
+                "weighted_wins": tally[hand_code]["wins"],
+                "weighted_losses": matches - tally[hand_code]["wins"],
+                "weighted_win_rate_pct": round(
+                    100.0 * tally[hand_code]["wins"] / matches, 1
+                ),
                 **({"competition_evidence": evidence} if evidence is not None else {}),
             }
             if matches > 0 else None
         )
+    result["profile_resolution"] = {
+        "selected_rows": len(selected),
+        "attempted_profiles": attempted,
+        "resolved_profiles": resolved_count,
+        "unresolved_profiles": attempted - resolved_count,
+    }
     if evidence is not None:
         result["competition_evidence"] = evidence
     if result.get("vs_left_handed") is None and result.get("vs_right_handed") is None:
@@ -5519,35 +5571,78 @@ def compute_round_stage_stats(
     return result if any(result.values()) else None
 
 
+def _parse_positive_finite_rank(value: object) -> tuple[Optional[float], str | None]:
+    """Validate factual ranking scalars without accepting bools or sentinels."""
+    if isinstance(value, bool) or type(value).__name__ in {"bool_", "boolean"}:
+        return None, "BOOLEAN_RANK"
+    if value is None:
+        return None, "MISSING_RANK"
+    if isinstance(value, str) and value.strip().casefold() in {
+        "", "nan", "none", "null", "n/a", "na", "n/d", "unknown", "<na>",
+    }:
+        return None, "MISSING_RANK"
+    try:
+        missing = pd.isna(value)
+        if isinstance(missing, bool) and missing:
+            return None, "MISSING_RANK"
+        if not isinstance(missing, bool) and bool(missing):
+            return None, "MISSING_RANK"
+    except (TypeError, ValueError):
+        return None, "NON_SCALAR_RANK"
+    try:
+        rank = float(value)
+    except (TypeError, ValueError):
+        return None, "NON_NUMERIC_RANK"
+    if not math.isfinite(rank):
+        return None, "NON_FINITE_RANK"
+    if rank <= 0:
+        return None, "NON_POSITIVE_RANK"
+    return rank, None
+
+
 def compute_opponent_level_stats(
     history: pd.DataFrame, player: str, opponent_rank: object, *,
     competition_policy: Optional[dict] = None,
 ) -> Optional[dict]:
-    """Rebuild performance against today's opponent rank band from match rows."""
-    try:
-        rank = float(opponent_rank)
-    except (TypeError, ValueError):
+    """Rebuild performance against today's valid opponent rank band."""
+    rank, _target_reason = _parse_positive_finite_rank(opponent_rank)
+    if rank is None:
         return None
-    limit = 10 if rank <= 10 else 20 if rank <= 20 else 50 if rank <= 50 else 100 if rank <= 100 else None
+    limit = (
+        10 if rank <= 10 else
+        20 if rank <= 20 else
+        50 if rank <= 50 else
+        100 if rank <= 100 else
+        None
+    )
     if limit is None or history.empty:
         return None
     resolved = resolve_player_name(history, player)
     if resolved is None:
         return None
+    played = history[
+        (history["winner_name"] == resolved)
+        | (history["loser_name"] == resolved)
+    ]
     rows = []
-    for _, row in history[
-        (history["winner_name"] == resolved) | (history["loser_name"] == resolved)
-    ].iterrows():
+    exclusions: dict[str, int] = {}
+    for _, row in played.iterrows():
         opponent_value = (
             row.get("loser_rank")
             if row.get("winner_name") == resolved
             else row.get("winner_rank")
         )
-        try:
-            if float(opponent_value) <= limit:
-                rows.append(row.to_dict())
-        except (TypeError, ValueError):
+        parsed, reason = _parse_positive_finite_rank(opponent_value)
+        if parsed is None:
+            key = reason or "INVALID_RANK"
+            exclusions[key] = exclusions.get(key, 0) + 1
             continue
+        if parsed <= limit:
+            rows.append(row.to_dict())
+        else:
+            exclusions["OUTSIDE_RANK_BUCKET"] = (
+                exclusions.get("OUTSIDE_RANK_BUCKET", 0) + 1
+            )
     if not rows:
         return None
     result = competition_evidence.weighted_binary_record(
@@ -5556,7 +5651,17 @@ def compute_opponent_level_stats(
         active=bool((competition_policy or {}).get("active")),
         policy=competition_policy,
     )
-    result["rank_bucket"] = f"top{limit}"
+    result.update({
+        "rank_bucket": f"top{limit}",
+        "ranking_sample_quality": {
+            "target_rank_raw": opponent_rank,
+            "target_rank": rank,
+            "raw_rows": len(played),
+            "eligible_rows": len(rows),
+            "excluded_rows": len(played) - len(rows),
+            "exclusion_reason_counts": dict(sorted(exclusions.items())),
+        },
+    })
     return result
 
 
