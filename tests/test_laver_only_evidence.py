@@ -905,9 +905,9 @@ class LaverOnlyGovernanceTests(unittest.TestCase):
             competition_evidence.LAVER_ONLY_ORIGINAL_ALIAS,
             "CHANGE-2026-10-11-100",
         )
-        self.assertNotEqual(
+        self.assertEqual(
             competition_evidence.LAVER_ONLY_CONFIG_HASH,
-            "adf3cb58a5bd89ec3d6a",
+            "a9d90d11e28721421b33",
         )
 
 
