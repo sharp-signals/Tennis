@@ -67,7 +67,7 @@ jobs:
           ALLOW_PAID_LLM: "0"
           # CHANGE-2026-10-11-102: delta prospetivo por encontro.
           # Pré-T0 mantém Laver-only; em/após T0 aplica ranking-eligible.
-          FENZOBOT_COMPETITION_EVIDENCE_VERSION: atp-ranking-eligible-performance-v1
+          FENZOBOT_COMPETITION_EVIDENCE_VERSION: atp-ranking-eligible-performance-v2
           FENZOBOT_COMPETITION_EVIDENCE_EFFECTIVE_FROM_UTC: "2026-10-12T00:00:00Z"
           FENZOBOT_TRIGGER_SLOT: ${{ inputs.trigger_slot || 'manual' }}
           FENZOBOT_TRIGGER_SOURCE: ${{ inputs.trigger_source || 'manual' }}
