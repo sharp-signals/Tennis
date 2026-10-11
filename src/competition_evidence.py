@@ -17,7 +17,8 @@ from typing import Any
 
 CHANGE_ID = "CHANGE-2026-10-10-099"
 POLICY_VERSION = "davis-laver-performance-v1"
-LAVER_ONLY_CHANGE_ID = "CHANGE-2026-10-11-100"
+LAVER_ONLY_CHANGE_ID = "CHANGE-2026-10-11-101"
+LAVER_ONLY_ORIGINAL_ALIAS = "CHANGE-2026-10-11-100"
 LAVER_ONLY_POLICY_VERSION = "laver-only-performance-v1"
 ACTIVATION_VERSION_ENV = "FENZOBOT_COMPETITION_EVIDENCE_VERSION"
 ACTIVATION_UTC_ENV = "FENZOBOT_COMPETITION_EVIDENCE_EFFECTIVE_FROM_UTC"
@@ -70,7 +71,17 @@ def policy_is_supported(policy: Mapping[str, Any] | None) -> bool:
 
 
 def is_laver_only(policy: Mapping[str, Any] | None) -> bool:
+    """Recognize the Laver-only contract independently of runtime activation."""
     return policy_is_supported(policy) and policy.get("version") == LAVER_ONLY_POLICY_VERSION
+
+
+def is_active_laver_only(policy: Mapping[str, Any] | None) -> bool:
+    """Authorize Laver-only behaviour only inside its active ATP scope."""
+    return (
+        is_laver_only(policy)
+        and policy.get("active") is True
+        and str(policy.get("tour") or "").strip().casefold() == "atp"
+    )
 
 
 _DAVIS_RE = re.compile(r"\bdavis(?:\s+cup)?\b", re.IGNORECASE)
@@ -581,7 +592,7 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
         result["policy_mode"] = "DAVIS_LAVER"
     result["same_sample_before_weighting"] = True
     result["fatigue_load_unweighted"] = True
-    result["integral_laver_exclusion_claimed"] = is_laver_only(result)
+    result["integral_laver_exclusion_claimed"] = is_active_laver_only(result)
     result["known_blockers"] = list(INSEPARABLE_SOURCE_BLOCKERS)
     result["separability_contract"] = "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE"
     return result
