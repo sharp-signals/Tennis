@@ -141,6 +141,13 @@ def is_active_ranking_eligible(policy: Mapping[str, Any] | None) -> bool:
     )
 
 
+def uses_match_level_competition_evidence(
+    policy: Mapping[str, Any] | None,
+) -> bool:
+    """Require reconstructed match-level sources for active ATP policies."""
+    return is_active_laver_only(policy) or is_active_ranking_eligible(policy)
+
+
 _DAVIS_RE = re.compile(r"\bdavis(?:\s+cup)?\b", re.IGNORECASE)
 _LAVER_RE = re.compile(r"\blaver(?:\s+cup)?\b", re.IGNORECASE)
 _GENERIC_CUP_RE = re.compile(r"\bcup\b", re.IGNORECASE)
