@@ -279,9 +279,14 @@ class RankingEligibleTransformTests(unittest.TestCase):
                     "tournament_name": "Exact Source Event",
                     "tier": "ATP 500",
                     "_history_competition_scope": "main",
+                    "tourney_date": 20260106,
                     "won": True,
                 },
-                {"tournament_name": "Laver Cup", "won": False},
+                {
+                    "tournament_name": "Laver Cup",
+                    "tourney_date": 20260107,
+                    "won": False,
+                },
             ],
             lambda item: item["won"], active=True, policy=ACTIVE,
         )
@@ -363,7 +368,10 @@ class RankingEligibleTransformTests(unittest.TestCase):
             competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH, html
         )
         self.assertIn("ranking-eligible", html)
-        self.assertIn("Davis, Next Gen e Olympics contam a 100%", html)
+        self.assertIn(
+            "apenas jogos em/após T0 usam ranking-eligible", html
+        )
+        self.assertIn("Next Gen e Olympics a 100%", html)
         self.assertIn("NON_RANKING", html)
         self.assertIn("UNRESOLVED", html)
         self.assertNotIn("Davis competitiva 50%", html)
@@ -430,7 +438,7 @@ class ProspectiveDeltaTests(unittest.TestCase):
         self.assertIsNone(post["weighted_matches"])
         self.assertEqual(
             post["competition_evidence"]["blocker_reason_counts"],
-            {"COMPETITION_IDENTITY_UNRESOLVED": 1},
+            {"ATP_RANKING_ELIGIBILITY_UNRESOLVED": 1},
         )
 
         no_date = dict(post_t0_unknown)
