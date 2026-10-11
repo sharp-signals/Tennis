@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,16 @@ def _recent_rows(path: Path) -> list[dict[str, Any]]:
     entry = ((payload.get("entries") or {}).get("recent_matches") or {})
     rows = entry.get("data") or []
     return [row for row in rows if isinstance(row, dict)]
+
+
+def _positive_finite_weight(result: dict[str, Any]) -> bool:
+    weight = result.get("weight")
+    return (
+        isinstance(weight, (int, float))
+        and not isinstance(weight, bool)
+        and math.isfinite(float(weight))
+        and float(weight) > 0.0
+    )
 
 
 def _factor_applicable(factor: str, row: dict[str, Any]) -> bool:
@@ -103,8 +114,12 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
         if classification == "UNRESOLVED":
             unresolved[identity] += 1
 
-        if current.get("weight") is not None:
+        if _positive_finite_weight(current):
             comparison["laver_only_rows_admitted"] += 1
+        elif current.get("weight") == 0.0:
+            comparison["laver_only_rows_excluded"] += 1
+        else:
+            comparison["laver_only_rows_blocked"] += 1
         if new.get("weight") == 1.0:
             comparison["ranking_policy_rows_admitted"] += 1
         elif new.get("weight") == 0.0:
@@ -116,8 +131,12 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
             if not _factor_applicable(factor, row):
                 continue
             factor_counts[factor]["raw_applicable"] += 1
-            if current.get("weight") is not None:
+            if _positive_finite_weight(current):
                 factor_counts[factor]["laver_only_admitted"] += 1
+            elif current.get("weight") == 0.0:
+                factor_counts[factor]["laver_only_excluded"] += 1
+            else:
+                factor_counts[factor]["laver_only_blocked"] += 1
             if new.get("weight") == 1.0:
                 factor_counts[factor]["ranking_policy_admitted"] += 1
             elif new.get("weight") == 0.0:
@@ -132,9 +151,9 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
         crossings = 0
         for rows in per_player.values():
             current_count = sum(
-                competition_evidence.classify_match(
-                    row, CURRENT_POLICY
-                ).get("weight") is not None
+                _positive_finite_weight(
+                    competition_evidence.classify_match(row, CURRENT_POLICY)
+                )
                 for row in rows
             )
             classes = [
@@ -174,7 +193,7 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
         "policy_application": "NOT_APPLIED_RAW_FACTUAL",
     }
     return {
-        "audit_contract": "change-102-offline-cache-impact-v1",
+        "audit_contract": "change-102-offline-cache-impact-v2",
         "policy_version": competition_evidence.RANKING_ELIGIBLE_POLICY_VERSION,
         "config_hash": competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH,
         "registry_version": competition_evidence.RANKING_REGISTRY_VERSION,
@@ -193,14 +212,15 @@ def build_audit(cache_dir: Path) -> dict[str, Any]:
             for key, value in sorted(unresolved.items())
         ],
         "policy_comparison": dict(comparison),
-        "factor_coverage": factors,
+        "row_applicability_proxy": factors,
         "rows_removed_across_player_samples": removed_rows_by_sample,
         "player_samples_blocked_by_unresolved": blocked_samples,
         "samples_falling_below_existing_gates": threshold_crossings,
         "limitations": [
             "The committed ATP player cache is provider recent-match evidence, not a complete tour archive.",
             "Opponent-rank and player-hand availability cannot be inferred when those fields are absent from a cached match row.",
-            "UNRESOLVED is reported, never promoted through tournament.rank, rankId, odds or fuzzy names.",
+            "Row applicability is a cache-field proxy, not a replay of production factor coverage.",
+            "UNRESOLVED is reported, never promoted through loader scope, tournament.rank, rankId, odds or fuzzy names.",
         ],
     }
 
