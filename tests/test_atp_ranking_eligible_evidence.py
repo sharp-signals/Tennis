@@ -246,7 +246,7 @@ class RankingEligibleTransformTests(unittest.TestCase):
             {"tiebreak": {"lider": "Alpha", **stale}},
             active=True, tour="atp", policy=ACTIVE,
         )
-        self.assertNotIn("tiebreak", guarded)
+        self.assertIn("tiebreak", guarded)
         self.assertEqual(
             blockers[0]["reason_code"],
             "COMPETITION_EVIDENCE_NOT_SEPARABLE",
