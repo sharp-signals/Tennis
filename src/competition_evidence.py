@@ -15,11 +15,17 @@ from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime, timezone
 from typing import Any
 
+from . import competition_registry
+
 CHANGE_ID = "CHANGE-2026-10-10-099"
 POLICY_VERSION = "davis-laver-performance-v1"
 LAVER_ONLY_CHANGE_ID = "CHANGE-2026-10-11-101"
 LAVER_ONLY_ORIGINAL_ALIAS = "CHANGE-2026-10-11-100"
 LAVER_ONLY_POLICY_VERSION = "laver-only-performance-v1"
+RANKING_ELIGIBLE_CHANGE_ID = "CHANGE-2026-10-11-102"
+RANKING_ELIGIBLE_POLICY_VERSION = "atp-ranking-eligible-performance-v1"
+RANKING_REGISTRY_VERSION = competition_registry.REGISTRY_VERSION
+RANKING_REGISTRY_SHA256 = competition_registry.REGISTRY_SHA256
 ACTIVATION_VERSION_ENV = "FENZOBOT_COMPETITION_EVIDENCE_VERSION"
 ACTIVATION_UTC_ENV = "FENZOBOT_COMPETITION_EVIDENCE_EFFECTIVE_FROM_UTC"
 
@@ -54,12 +60,43 @@ _LAVER_ONLY_POLICY_SPEC = {
 LAVER_ONLY_CONFIG_HASH = hashlib.sha256(
     json.dumps(_LAVER_ONLY_POLICY_SPEC, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 ).hexdigest()[:20]
+_RANKING_ELIGIBLE_POLICY_SPEC = {
+    "change_id": RANKING_ELIGIBLE_CHANGE_ID,
+    "version": RANKING_ELIGIBLE_POLICY_VERSION,
+    "registry_version": RANKING_REGISTRY_VERSION,
+    "registry_sha256": RANKING_REGISTRY_SHA256,
+    "included": [
+        "RANKING_ELIGIBLE", "DAVIS_EXCEPTION",
+        "NEXT_GEN_EXCEPTION", "OLYMPICS_EXCEPTION",
+    ],
+    "excluded": ["NON_RANKING"],
+    "blocked": ["UNRESOLVED", "CONFLICT"],
+    "included_weight": 1.0,
+    "non_ranking_weight": 0.0,
+    "selection_order": "select_sample_then_apply_eligibility",
+    "fatigue_load": "raw_factual_unweighted",
+    "authorization": "exact_registry_no_fuzzy",
+}
+RANKING_ELIGIBLE_CONFIG_HASH = hashlib.sha256(
+    json.dumps(
+        _RANKING_ELIGIBLE_POLICY_SPEC,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+).hexdigest()[:20]
 
 
 def _policy_contract(policy: Mapping[str, Any] | None = None) -> tuple[str, str, str]:
     version = str((policy or {}).get("version") or POLICY_VERSION)
     if version == LAVER_ONLY_POLICY_VERSION:
         return LAVER_ONLY_CHANGE_ID, LAVER_ONLY_POLICY_VERSION, LAVER_ONLY_CONFIG_HASH
+    if version == RANKING_ELIGIBLE_POLICY_VERSION:
+        return (
+            RANKING_ELIGIBLE_CHANGE_ID,
+            RANKING_ELIGIBLE_POLICY_VERSION,
+            RANKING_ELIGIBLE_CONFIG_HASH,
+        )
     return CHANGE_ID, POLICY_VERSION, CONFIG_HASH
 
 
@@ -79,6 +116,23 @@ def is_active_laver_only(policy: Mapping[str, Any] | None) -> bool:
     """Authorize Laver-only behaviour only inside its active ATP scope."""
     return (
         is_laver_only(policy)
+        and policy.get("active") is True
+        and str(policy.get("tour") or "").strip().casefold() == "atp"
+    )
+
+
+def is_ranking_eligible(policy: Mapping[str, Any] | None) -> bool:
+    """Recognize CHANGE-102 independently of runtime activation."""
+    return (
+        policy_is_supported(policy)
+        and policy.get("version") == RANKING_ELIGIBLE_POLICY_VERSION
+    )
+
+
+def is_active_ranking_eligible(policy: Mapping[str, Any] | None) -> bool:
+    """Authorize CHANGE-102 only inside its explicit prospective ATP scope."""
+    return (
+        is_ranking_eligible(policy)
         and policy.get("active") is True
         and str(policy.get("tour") or "").strip().casefold() == "atp"
     )
@@ -141,8 +195,14 @@ def activation_from_environment(
                 parsed_effective = parsed_effective.replace(tzinfo=timezone.utc)
         except ValueError:
             parsed_effective = None
-    supported_versions = {POLICY_VERSION, LAVER_ONLY_POLICY_VERSION}
-    selected = LAVER_ONLY_POLICY_VERSION if requested == LAVER_ONLY_POLICY_VERSION else POLICY_VERSION
+    supported_versions = {
+        POLICY_VERSION,
+        LAVER_ONLY_POLICY_VERSION,
+        RANKING_ELIGIBLE_POLICY_VERSION,
+    }
+    selected = (
+        requested if requested in supported_versions else POLICY_VERSION
+    )
     selected_change, selected_version, selected_hash = _policy_contract({"version": selected})
     active = (
         requested in supported_versions
@@ -291,6 +351,8 @@ def _blocked(
 
 def classify_match(record: Mapping[str, Any], policy: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Classify one result without inventing identity or Davis tie state."""
+    if is_ranking_eligible(policy):
+        return competition_registry.classify(record)
     name = _tournament_text(record)
     tournament_id = _tournament_id(record)
     davis_name = bool(_DAVIS_RE.search(name))
@@ -388,6 +450,7 @@ def weighted_observations(
         }
     _change, version, config_hash = _policy_contract(policy)
     counts: Counter[str] = Counter()
+    classifications: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
     weighted: list[tuple[dict[str, Any], float]] = []
     source_ids: list[str] = []
@@ -395,6 +458,11 @@ def weighted_observations(
         classification = classify_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
+        classifications[str(
+            classification.get("classification")
+            or classification.get("competition")
+            or "UNRESOLVED"
+        )] += 1
         weight = classification.get("weight")
         if weight is None:
             blockers[reason] += 1
@@ -417,6 +485,12 @@ def weighted_observations(
         "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
         "davis_weighted": counts["DAVIS_TIE_COMPETITIVE_PRE_MATCH"],
         "davis_preserved": counts["DAVIS_CURRENT_PRODUCTION_TREATMENT_PRESERVED"],
+        "non_ranking_excluded": classifications["NON_RANKING"],
+        "ranking_eligible_included": classifications["RANKING_ELIGIBLE"],
+        "davis_exception_included": classifications["DAVIS_EXCEPTION"],
+        "next_gen_exception_included": classifications["NEXT_GEN_EXCEPTION"],
+        "olympics_exception_included": classifications["OLYMPICS_EXCEPTION"],
+        "classification_counts": dict(sorted(classifications.items())),
         "unresolved": sum(blockers.values()),
         "reason_counts": dict(sorted(counts.items())),
         "blocker_reason_counts": dict(sorted(blockers.items())),
@@ -451,12 +525,18 @@ def weighted_binary_record(
     weighted_wins = 0.0
     weighted_losses = 0.0
     counts: Counter[str] = Counter()
+    classifications: Counter[str] = Counter()
     blockers: Counter[str] = Counter()
     source_ids: list[str] = []
     for record in selected:
         classification = classify_match(record, policy)
         reason = str(classification["reason_code"])
         counts[reason] += 1
+        classifications[str(
+            classification.get("classification")
+            or classification.get("competition")
+            or "UNRESOLVED"
+        )] += 1
         weight = classification.get("weight")
         if weight is None:
             blockers[reason] += 1
@@ -491,6 +571,12 @@ def weighted_binary_record(
             "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
             "davis_weighted": counts["DAVIS_TIE_COMPETITIVE_PRE_MATCH"],
             "davis_preserved": counts["DAVIS_CURRENT_PRODUCTION_TREATMENT_PRESERVED"],
+            "non_ranking_excluded": classifications["NON_RANKING"],
+            "ranking_eligible_included": classifications["RANKING_ELIGIBLE"],
+            "davis_exception_included": classifications["DAVIS_EXCEPTION"],
+            "next_gen_exception_included": classifications["NEXT_GEN_EXCEPTION"],
+            "olympics_exception_included": classifications["OLYMPICS_EXCEPTION"],
+            "classification_counts": dict(sorted(classifications.items())),
             "unresolved": sum(blockers.values()),
             "reason_counts": dict(sorted(counts.items())),
             "blocker_reason_counts": dict(sorted(blockers.items())),
