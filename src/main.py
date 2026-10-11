@@ -1897,6 +1897,10 @@ def _select_set1_comeback_source(
         cell = candidate.get(format_key)
         if not isinstance(cell, dict):
             return False, "FORMAT_CELL_UNAVAILABLE"
+        if active and not competition_evidence.evidence_is_compatible(
+            cell, policy
+        ):
+            return False, "COMPETITION_EVIDENCE_BLOCKED"
         rate = cell.get("comeback_rate_pct")
         sample = (
             cell.get("weighted_matches_lost_set1")
@@ -1915,10 +1919,6 @@ def _select_set1_comeback_source(
             or parsed_sample <= 0
         ):
             return False, "RATE_OR_SAMPLE_INVALID"
-        if active and not competition_evidence.evidence_is_compatible(
-            cell, policy
-        ):
-            return False, "COMPETITION_EVIDENCE_BLOCKED"
         return True, None
 
     # Preserve the established provider-first hierarchy only when the exact
@@ -2160,7 +2160,10 @@ def _build_match_payload(match: dict) -> dict:
             "player_a": player_a,
             "player_b": player_b,
         }
-    if cutover_gate.get("apply_policy") is not True:
+    if (
+        competition_policy.get("active") is True
+        and cutover_gate.get("apply_policy") is not True
+    ):
         competition_policy = {
             **competition_policy,
             "active": False,
