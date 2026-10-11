@@ -24,10 +24,12 @@ nada — não faz sentido mandar uma mensagem vazia.
 from __future__ import annotations
 
 import copy
+import hashlib
 import html
 import json
 import os
 import re
+import tempfile
 import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -132,15 +134,112 @@ def _competition_delivery_identity(
         filename = Path(str(filename)).name
         slug = filename[:-5] if filename.endswith(".html") else filename
     return {
-        "schema_version": "competition-delivery-identity-v1",
+        "schema_version": "competition-delivery-identity-v2",
         "report_date_utc": report_date,
         "report_filename": filename,
+        "report_id": str(delivery.get("report_id") or payload.get("report_id") or ""),
         "slug": slug,
+        "delivery_fingerprint": str(
+            delivery.get("delivery_fingerprint") or ""
+        ),
     }
 
 
+def _competition_delivery_fingerprint(
+    payload: Mapping, result: Mapping, delivery: Mapping,
+) -> str:
+    frozen_payload = copy.deepcopy(dict(payload))
+    frozen_payload.pop("_competition_delivery", None)
+    frozen_payload.pop("_competition_delivery_recovered", None)
+    material = {
+        "delivery": {
+            "report_date_utc": delivery.get("report_date_utc"),
+            "report_filename": delivery.get("report_filename"),
+            "report_id": delivery.get("report_id"),
+        },
+        "payload": frozen_payload,
+        "result": copy.deepcopy(dict(result)),
+    }
+    encoded = json.dumps(
+        material,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _completion_manifest_path(report_path: Path) -> Path:
+    return report_path.with_name(f"{report_path.name}.delivery.json")
+
+
+def _html_document_complete(content: str) -> bool:
+    normalized = content.strip().casefold()
+    return (
+        len(content.encode("utf-8")) >= 1024
+        and ("<!doctype html" in normalized or "<html" in normalized)
+        and "</body>" in normalized
+        and normalized.endswith("</html>")
+    )
+
+
+def _atomic_write_bytes(path: Path, content: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    _atomic_write_bytes(path, content.encode("utf-8"))
+
+
+def _delivery_artifact_valid(report_path: Path, identity: Mapping) -> bool:
+    fingerprint = str(identity.get("delivery_fingerprint") or "")
+    if not fingerprint or not report_path.is_file():
+        return False
+    manifest_path = _completion_manifest_path(report_path)
+    try:
+        html_bytes = report_path.read_bytes()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        html_text = html_bytes.decode("utf-8")
+    except (OSError, UnicodeDecodeError, ValueError):
+        return False
+    if not isinstance(manifest, Mapping):
+        return False
+    return (
+        manifest.get("schema_version") == "competition-delivery-completion-v1"
+        and manifest.get("completed") is True
+        and manifest.get("report_filename") == identity.get("report_filename")
+        and str(manifest.get("report_id") or "") == str(identity.get("report_id") or "")
+        and manifest.get("delivery_fingerprint") == fingerprint
+        and manifest.get("html_bytes") == len(html_bytes)
+        and manifest.get("html_sha256") == hashlib.sha256(html_bytes).hexdigest()
+        and _html_document_complete(html_text)
+    )
+
+
 def _frozen_delivery_complete(recovery: Mapping | None) -> bool:
-    """A persisted HTML proves the ordered snapshot -> PAPER -> HTML delivery."""
+    """Require durable identity, integrity and completion proof."""
     if not isinstance(recovery, Mapping):
         return False
     frozen = recovery.get("payload")
@@ -158,7 +257,7 @@ def _frozen_delivery_complete(recovery: Mapping | None) -> bool:
         / SITE_REPORTS_SUBDIR
         / identity["report_filename"]
     )
-    return report_path.is_file()
+    return _delivery_artifact_valid(report_path, identity)
 
 
 def _write_report_artifact(
@@ -167,18 +266,42 @@ def _write_report_artifact(
     reports_dir: str | Path,
     fallback_date: str,
 ) -> dict:
-    """Writer used by run(); recovery keeps one path across UTC days."""
+    """Atomically publish and verify the immutable first-delivery HTML."""
     identity = _competition_delivery_identity(payload, fallback_date)
     report_path = Path(reports_dir) / identity["report_filename"]
-    existed = report_path.is_file()
-    if not existed:
+    strict_delivery = bool(identity.get("delivery_fingerprint"))
+    complete = (
+        _delivery_artifact_valid(report_path, identity)
+        if strict_delivery else report_path.is_file()
+    )
+    if not complete:
         html_page = build_report_html(payload, result)
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with report_path.open("x", encoding="utf-8") as handle:
-                handle.write(html_page)
-        except FileExistsError:
-            existed = True
+        if strict_delivery and not _html_document_complete(html_page):
+            raise RuntimeError("COMPETITION_DELIVERY_HTML_INCOMPLETE")
+        _atomic_write_text(report_path, html_page)
+        if strict_delivery:
+            html_bytes = html_page.encode("utf-8")
+            completion = {
+                "schema_version": "competition-delivery-completion-v1",
+                "completed": True,
+                "report_filename": identity["report_filename"],
+                "report_id": identity["report_id"],
+                "delivery_fingerprint": identity["delivery_fingerprint"],
+                "html_bytes": len(html_bytes),
+                "html_sha256": hashlib.sha256(html_bytes).hexdigest(),
+            }
+            _atomic_write_text(
+                _completion_manifest_path(report_path),
+                json.dumps(
+                    completion,
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+            )
+            if not _delivery_artifact_valid(report_path, identity):
+                raise RuntimeError("COMPETITION_DELIVERY_INTEGRITY_UNCONFIRMED")
     return {
         **identity,
         "local_path": str(report_path),
@@ -186,8 +309,8 @@ def _write_report_artifact(
             f"{SITE_BASE_URL}/{SITE_REPORTS_SUBDIR}/"
             f"{identity['report_filename']}"
         ),
-        "created": not existed,
-        "already_complete": existed,
+        "created": not complete,
+        "already_complete": complete,
     }
 
 
@@ -198,9 +321,12 @@ def _freeze_report_context(
     paper_history: Mapping | None,
     green_strong_history: Mapping | None,
 ) -> None:
-    """Freeze every mutable report-only aggregate before first snapshot."""
+    """Freeze mutable report context only for a genuinely new delivery."""
     policy = payload.get("competition_evidence_policy") or {}
-    if policy.get("active") is not True:
+    if (
+        policy.get("active") is not True
+        or payload.get("_competition_delivery_recovered") is True
+    ):
         return
     for key, value in (
         ("system_accuracy", system_accuracy),
@@ -209,6 +335,23 @@ def _freeze_report_context(
     ):
         if value:
             payload[key] = copy.deepcopy(value)
+
+
+def _apply_report_context_phase(
+    analyses: list[tuple[dict, dict]],
+    *,
+    system_accuracy: Mapping | None,
+    paper_history: Mapping | None,
+    green_strong_history: Mapping | None,
+) -> None:
+    """The exact context phase used by run(), including recovery protection."""
+    for payload, _result in analyses:
+        _freeze_report_context(
+            payload,
+            system_accuracy=system_accuracy,
+            paper_history=paper_history,
+            green_strong_history=green_strong_history,
+        )
 
 
 def _read_json_mapping(path: Path) -> dict | None:
@@ -238,11 +381,17 @@ def _freeze_competition_delivery(
         or ""
     )[:10]
     delivery = _competition_delivery_identity(payload, report_date)
+    delivery["report_id"] = str(payload.get("report_id") or "")
     payload["_competition_delivery"] = copy.deepcopy(delivery)
     frozen_payload = copy.deepcopy(payload)
     frozen_payload.pop("_competition_delivery_recovered", None)
+    delivery["delivery_fingerprint"] = _competition_delivery_fingerprint(
+        frozen_payload, result, delivery
+    )
+    payload["_competition_delivery"] = copy.deepcopy(delivery)
+    frozen_payload["_competition_delivery"] = copy.deepcopy(delivery)
     snapshot["delivery_recovery"] = {
-        "schema_version": "competition-delivery-recovery-v2",
+        "schema_version": "competition-delivery-recovery-v3",
         "delivery": copy.deepcopy(delivery),
         "payload": frozen_payload,
         "result": copy.deepcopy(result),
@@ -3135,13 +3284,12 @@ def run() -> None:
     _frozen_green_history = _read_json_mapping(
         green_strong_validation.DEFAULT_OUTPUT_PATH
     )
-    for payload, _result in analyses:
-        _freeze_report_context(
-            payload,
-            system_accuracy=_frozen_system_accuracy,
-            paper_history=_frozen_paper_history,
-            green_strong_history=_frozen_green_history,
-        )
+    _apply_report_context_phase(
+        analyses,
+        system_accuracy=_frozen_system_accuracy,
+        paper_history=_frozen_paper_history,
+        green_strong_history=_frozen_green_history,
+    )
 
     # Guardar a fotografia factual antes do jogo para calibracao futura.
     # E feita apenas depois de a execucao atingir cobertura publicavel; uma

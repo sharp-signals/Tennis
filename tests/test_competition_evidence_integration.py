@@ -724,7 +724,7 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
             payload,
             system_accuracy={"sample_size": 11},
             paper_history={"PAPER": {"entries": 7}},
-            green_strong_history={"metrics": {"sample_size": 3}},
+            green_strong_history=None,
         )
         snapshot = calibration_store.build_snapshot(
             payload, {"flag": "🟢"},
@@ -738,7 +738,7 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
         main._freeze_competition_delivery(snapshot, payload, {"flag": "🟢"})
         self.assertEqual(
             snapshot["delivery_recovery"]["schema_version"],
-            "competition-delivery-recovery-v2",
+            "competition-delivery-recovery-v3",
         )
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -787,6 +787,31 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
                 recovered_payload["system_accuracy"],
                 {"sample_size": 11},
             )
+            self.assertEqual(
+                recovered_payload["paper_history"],
+                {"PAPER": {"entries": 7}},
+            )
+            self.assertNotIn("green_strong_history", recovered_payload)
+
+            # Reproduce run(): recovery is followed by the context phase.
+            # Changed globals must not overwrite a recovered first photograph,
+            # and an aggregate absent from that photograph must stay absent.
+            main._apply_report_context_phase(
+                [(recovered_payload, recovered_result)],
+                system_accuracy={"sample_size": 999},
+                paper_history={"PAPER": {"entries": 888}},
+                green_strong_history={"metrics": {"sample_size": 777}},
+            )
+            self.assertEqual(
+                recovered_payload["system_accuracy"],
+                {"sample_size": 11},
+            )
+            self.assertEqual(
+                recovered_payload["paper_history"],
+                {"PAPER": {"entries": 7}},
+            )
+            self.assertNotIn("green_strong_history", recovered_payload)
+
             calibration_store.apply_persisted_validation(
                 recovered_payload, persisted
             )
@@ -808,9 +833,14 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
             )
             self.assertFalse(reports_dir.exists())
 
-            # Failure after PAPER: next-day retry reuses the frozen report date.
             next_payload, next_result = main._recover_competition_delivery(
                 carrier
+            )
+            main._apply_report_context_phase(
+                [(next_payload, next_result)],
+                system_accuracy={"sample_size": 999},
+                paper_history={"PAPER": {"entries": 888}},
+                green_strong_history={"metrics": {"sample_size": 777}},
             )
             calibration_store.apply_persisted_validation(
                 next_payload, persisted
@@ -831,16 +861,96 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
                     ),
                     0,
                 )
+
+            # Simulate interruption before the atomic replace. No partial final
+            # artifact or false completion proof may survive.
+            with patch.object(
+                main.os, "fsync", side_effect=OSError("interrupted write")
+            ):
+                with self.assertRaisesRegex(OSError, "interrupted write"):
+                    main._write_report_artifact(
+                        next_payload, next_result, reports_dir, "2026-10-11"
+                    )
+            identity = main._competition_delivery_identity(
+                next_payload, "2026-10-11"
+            )
+            report_path = reports_dir / identity["report_filename"]
+            self.assertFalse(report_path.exists())
+            self.assertFalse(
+                main._completion_manifest_path(report_path).exists()
+            )
+            self.assertFalse(
+                any(reports_dir.glob("*.tmp")) if reports_dir.exists() else False
+            )
+
+            # A legacy zero-byte or truncated final path is never complete.
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            report_path.write_bytes(b"")
+            with patch.object(
+                main, "build_report_html", return_value="<html>truncated"
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError, "COMPETITION_DELIVERY_HTML_INCOMPLETE"
+                ):
+                    main._write_report_artifact(
+                        next_payload, next_result, reports_dir, "2026-10-11"
+                    )
+            self.assertFalse(
+                main._delivery_artifact_valid(report_path, identity)
+            )
+
+            # Next-day retry repairs from the frozen bundle and does not create
+            # a new filename or duplicate PAPER.
             artifact = main._write_report_artifact(
                 next_payload, next_result, reports_dir, "2026-10-11"
             )
             self.assertTrue(artifact["created"])
             self.assertIn("2026-10-10", artifact["report_filename"])
-            report_path = Path(artifact["local_path"])
+            self.assertEqual(report_path, Path(artifact["local_path"]))
+            self.assertTrue(
+                main._delivery_artifact_valid(report_path, identity)
+            )
             first_hash = hashlib.sha256(report_path.read_bytes()).hexdigest()
+            self.assertEqual(
+                paper_trading.append_entries(entries, path=paper_path), 0
+            )
 
-            # Failure after HTML: a later runner neither renders nor creates
-            # a second path, even when its current UTC date has changed.
+            # A truncated artifact plus stale manifest also fails integrity and
+            # is repaired at the same frozen path across another UTC day.
+            report_path.write_text(
+                "<html><body>truncated",
+                encoding="utf-8",
+            )
+            self.assertFalse(
+                main._delivery_artifact_valid(report_path, identity)
+            )
+            repaired_payload, repaired_result = (
+                main._recover_competition_delivery(carrier)
+            )
+            main._apply_report_context_phase(
+                [(repaired_payload, repaired_result)],
+                system_accuracy={"sample_size": 555},
+                paper_history={"PAPER": {"entries": 444}},
+                green_strong_history={"metrics": {"sample_size": 333}},
+            )
+            repaired = main._write_report_artifact(
+                repaired_payload, repaired_result, reports_dir, "2026-10-12"
+            )
+            self.assertTrue(repaired["created"])
+            self.assertEqual(
+                repaired["report_filename"], artifact["report_filename"]
+            )
+            self.assertTrue(
+                main._delivery_artifact_valid(report_path, identity)
+            )
+            repaired_hash = hashlib.sha256(report_path.read_bytes()).hexdigest()
+            self.assertEqual(repaired_hash, first_hash)
+            self.assertEqual(
+                paper_trading.append_entries(entries, path=paper_path), 0
+            )
+
+            # Once valid, a later runner preserves the artifact byte-for-byte
+            # and does not invoke the renderer.
             last_payload, last_result = main._recover_competition_delivery(
                 carrier
             )
@@ -849,7 +959,7 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
                 side_effect=AssertionError("completed delivery re-rendered"),
             ) as renderer:
                 repeated = main._write_report_artifact(
-                    last_payload, last_result, reports_dir, "2026-10-12"
+                    last_payload, last_result, reports_dir, "2026-10-13"
                 )
             renderer.assert_not_called()
             self.assertTrue(repeated["already_complete"])
@@ -858,7 +968,7 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
             )
             self.assertEqual(
                 hashlib.sha256(report_path.read_bytes()).hexdigest(),
-                first_hash,
+                repaired_hash,
             )
             with patch.object(main, "SITE_OUTPUT_DIR", str(root)), patch.object(
                 main, "SITE_REPORTS_SUBDIR", "reports"
