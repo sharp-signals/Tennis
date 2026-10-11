@@ -1,12 +1,25 @@
 from __future__ import annotations
 
 import copy
+import json
 import unittest
+from contextlib import ExitStack
+from unittest.mock import patch
 from datetime import datetime, timezone
 
 import pandas as pd
 
-from src import competition_evidence, fetch_data, main, report_html
+from src import (
+    competition_evidence,
+    fetch_data,
+    main,
+    market_ledger,
+    match_identity_v2,
+    player_images,
+    prelive_decision,
+    pricing,
+    report_html,
+)
 
 
 LAVER_ACTIVE = {
@@ -282,6 +295,620 @@ class LaverOnlyReconstructionTests(unittest.TestCase):
         after = fetch_data.compute_fatigue(self.history, "Alpha", start)
         self.assertEqual(before, after)
         self.assertNotIn("competition_evidence", after or {})
+
+
+class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
+    def setUp(self):
+        rows = []
+        for index in range(1, 13):
+            winner = "Alpha" if index <= 10 else f"Opponent A{index}"
+            loser = f"Opponent A{index}" if index <= 10 else "Alpha"
+            rows.append(row(
+                index,
+                20260000 + 100 + index,
+                "Vienna Open",
+                winner,
+                loser,
+                score="4-6 6-3 6-2" if index == 1 else "6-3 6-4",
+                round_name="QF" if index % 2 else "R32",
+                loser_rank=40 + index,
+                winner_rank=8,
+            ))
+        for index in range(13, 25):
+            winner = f"Opponent B{index}" if index <= 22 else "Beta"
+            loser = "Beta" if index <= 22 else f"Opponent B{index}"
+            rows.append(row(
+                index,
+                20260000 + 100 + index,
+                "Vienna Open",
+                winner,
+                loser,
+                score="6-3 4-6 4-6" if index == 23 else "6-3 6-4",
+                round_name="QF" if index % 2 else "R32",
+                loser_rank=80,
+                winner_rank=12 + index,
+            ))
+        rows.append(row(
+            90, 20260920, "Laver Cup", "Alpha", "Laver Opponent",
+            score="4-6 6-3 6-2",
+        ))
+        self.history = pd.DataFrame(rows).drop(
+            columns=["winner_hand", "loser_hand"]
+        )
+        service = {
+            "w_ace": 8, "w_df": 2, "w_svpt": 60, "w_1stIn": 38,
+            "w_1stWon": 28, "w_2ndWon": 12, "w_bpSaved": 4,
+            "w_bpFaced": 6, "l_ace": 4, "l_df": 4, "l_svpt": 58,
+            "l_1stIn": 34, "l_1stWon": 18, "l_2ndWon": 8,
+            "l_bpSaved": 2, "l_bpFaced": 7,
+        }
+        for key, value in service.items():
+            self.history[key] = value
+
+    @staticmethod
+    def _match(tour="atp"):
+        return {
+            "id": 700,
+            "_tour": tour,
+            "player1Id": 1,
+            "player2Id": 2,
+            "player1": {"id": 1, "name": "Alpha", "countryAcr": "POR"},
+            "player2": {"id": 2, "name": "Beta", "countryAcr": "ESP"},
+            "tournamentId": 55,
+            "tournament_name": "Vienna Open",
+            "surface": "Hard",
+            "tier": "ATP 500" if tour == "atp" else "WTA 500",
+            "date": "2026-10-20T12:00:00Z",
+            "roundId": 4,
+        }
+
+    @staticmethod
+    def _blocked_recent(player_id: int) -> list[dict]:
+        other = 91 if player_id == 1 else 92
+        return [{
+            "id": 800 + player_id,
+            "player1Id": player_id,
+            "player2Id": other,
+            "match_winner": player_id,
+            "bestOf": 3,
+            "result": "4-6 6-3 6-2",
+            "date": "2026-10-01T12:00:00Z",
+            "tournamentId": 999999,
+        }]
+
+    def _build_payload(
+        self,
+        activation: dict,
+        *,
+        tour: str = "atp",
+        blocked_provider_comeback: bool = False,
+    ) -> tuple[dict, object]:
+        recent = {
+            1: self._blocked_recent(1) if blocked_provider_comeback else [],
+            2: self._blocked_recent(2) if blocked_provider_comeback else [],
+        }
+        legacy_record = {
+            "provider": "rapidapi_tournament_record",
+            "wins": 7,
+            "losses": 3,
+            "matches": 10,
+            "win_pct_ponderado": 70.0,
+        }
+
+        def ranking(_official, _name, player_id):
+            return (
+                {
+                    "rank": 8 if player_id == 1 else 80,
+                    "points": 4000 if player_id == 1 else 700,
+                },
+                "mocked_official",
+            )
+
+        def cached_hand(_tour, opponent):
+            return "L" if "A" in str(opponent) else "R"
+
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(
+                main.competition_evidence,
+                "activation_from_environment",
+                return_value=copy.deepcopy(activation),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "get_history", return_value=self.history.copy()
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "history_scope_summary", return_value={"mode": "mocked"}
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "get_historical_odds_history",
+                return_value=pd.DataFrame(),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_rapidapi_upcoming_operational_moneyline_with_provenance",
+                return_value=(None, {}),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_the_odds_moneyline_with_provenance",
+                return_value=(
+                    {"Alpha": 4.0, "Beta": 1.25},
+                    {
+                        "source": "mocked_bookmaker",
+                        "captured_at_utc": "2026-10-11T11:00:00+00:00",
+                        "event_id": "mock-event",
+                        "capture_kind": "PRELIVE",
+                    },
+                ),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_rapidapi_recent_moneyline_with_provenance",
+                return_value=(None, {}),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_rapidapi_embedded_moneyline_with_provenance",
+                return_value=(None, {}),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "record_market_odds_observation", return_value=None
+            ))
+            stack.enter_context(patch.object(
+                main.market_integrity,
+                "is_operational_pricing_provenance",
+                return_value=True,
+            ))
+            stack.enter_context(patch.object(
+                pricing.market_integrity,
+                "is_operational_pricing_payload",
+                return_value=True,
+            ))
+            stack.enter_context(patch.object(
+                market_ledger,
+                "record_market_batch_best_effort",
+                return_value={
+                    "status": "RECORDED",
+                    "errors": [],
+                    "observation_ids": [],
+                    "entry_memory_eligible": True,
+                },
+            ))
+            stack.enter_context(patch.object(
+                market_ledger, "event_key", return_value="mock:event"
+            ))
+            stack.enter_context(patch.object(
+                match_identity_v2,
+                "resolve_observation",
+                return_value={
+                    "identity_schema_version": match_identity_v2.SCHEMA_VERSION,
+                    "identity_status": match_identity_v2.CANONICAL_STRONG,
+                    "identity_persisted": True,
+                    "canonical_match_instance_id": "cmiv2:laver-review",
+                },
+            ))
+            stack.enter_context(patch.object(
+                match_identity_v2,
+                "event_id_is_strong_identity_evidence",
+                return_value=True,
+            ))
+            stack.enter_context(patch.object(
+                main.calibration_store, "read_snapshots_by_key", return_value={}
+            ))
+            stack.enter_context(patch.object(
+                main.calibration_store,
+                "estimate_indicative_odds",
+                return_value=None,
+            ))
+            stack.enter_context(patch.object(
+                player_images, "load_registry", return_value={}
+            ))
+            stack.enter_context(patch.object(
+                player_images, "find_player_image", return_value="mocked.png"
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "fetch_h2h_matches", return_value=[]
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_h2h_stats_with_coverage",
+                return_value=(
+                    None,
+                    {
+                        "status": "UNAVAILABLE",
+                        "source": "mocked",
+                        "endpoint_family": f"{tour}/h2h/stats",
+                        "reason": "mocked_unavailable",
+                    },
+                ),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_player_recent_matches",
+                side_effect=lambda _tour, player_id, **_kwargs: copy.deepcopy(
+                    recent[player_id]
+                ),
+            ))
+            if blocked_provider_comeback:
+                stack.enter_context(patch.object(
+                    fetch_data,
+                    "compute_form_from_recent",
+                    return_value={"form": None, "season": None, "surface": None},
+                ))
+            stack.enter_context(patch.object(
+                fetch_data, "fetch_recent_stats", return_value=None
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "fetch_official_ranking", return_value=[]
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "resolve_official_ranking", side_effect=ranking
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_player_hand",
+                side_effect=lambda _tour, player_id, _name: (
+                    "R" if player_id == 1 else "L"
+                ),
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "_get_cached_hand_by_name", side_effect=cached_hand
+            ))
+            stack.enter_context(patch.object(
+                fetch_data, "rapidapi_budget_exceeded", return_value=False
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "fetch_tournament_record",
+                return_value=copy.deepcopy(legacy_record),
+            ) as provider)
+            stack.enter_context(patch.object(
+                fetch_data,
+                "court_pace_context",
+                return_value={
+                    "status": "available",
+                    "bucket": "medium",
+                    "cpi": 35,
+                    "year_used": 2026,
+                },
+            ))
+            stack.enter_context(patch.object(
+                fetch_data,
+                "lookup_court_pace",
+                return_value={"bucket": "medium", "cpi": 35},
+            ))
+            stack.enter_context(patch.object(
+                main, "_get_rich_player_data", return_value=None
+            ))
+            stack.enter_context(patch.object(
+                main, "_get_weather_for_match", return_value=None
+            ))
+            payload = main._build_match_payload(self._match(tour))
+        return payload, provider
+
+    def test_r1_future_t0_and_wta_keep_legacy_tournament_provider(self):
+        future = {
+            **LAVER_ACTIVE,
+            "active": False,
+            "status": "ACTIVATION_EFFECTIVE_FROM_UTC_INVALID_OR_FUTURE",
+            "tour": None,
+        }
+        future_payload, future_provider = self._build_payload(future)
+        self.assertFalse(future_payload["competition_evidence_policy"]["active"])
+        self.assertEqual(
+            future_payload["tournament_record_a"]["provider"],
+            "rapidapi_tournament_record",
+        )
+        self.assertEqual(future_provider.call_count, 2)
+
+        wta_payload, wta_provider = self._build_payload(LAVER_ACTIVE, tour="wta")
+        self.assertFalse(wta_payload["competition_evidence_policy"]["active"])
+        self.assertEqual(
+            wta_payload["competition_evidence_policy"]["status"],
+            "OUT_OF_SCOPE_TOUR",
+        )
+        self.assertEqual(
+            wta_payload["tournament_record_b"]["provider"],
+            "rapidapi_tournament_record",
+        )
+        self.assertEqual(wta_provider.call_count, 2)
+
+    def test_r2_cpi_uses_laver_only_provenance_through_motor_and_assessment(self):
+        strong = competition_evidence.weighted_binary_record(
+            [
+                {"tournament_name": "Vienna Open", "won": index < 8}
+                for index in range(10)
+            ],
+            lambda item: item["won"],
+            active=True,
+            policy=LAVER_ACTIVE,
+        )
+        weak = competition_evidence.weighted_binary_record(
+            [
+                {"tournament_name": "Vienna Open", "won": index < 3}
+                for index in range(10)
+            ],
+            lambda item: item["won"],
+            active=True,
+            policy=LAVER_ACTIVE,
+        )
+        payload = {
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "tour": "atp",
+            "surface": "Hard",
+            "competition_evidence_policy": competition_evidence.policy_metadata(
+                LAVER_ACTIVE
+            ),
+            "court_speed_hoje": {"status": "available"},
+            "court_speed_a": {**strong, "eligible_for_index": True},
+            "court_speed_b": {**weak, "eligible_for_index": True},
+        }
+        payload["features"] = main._compute_features(payload)
+        feature = payload["features"]["velocidade_piso"]
+        self.assertTrue(
+            feature["competition_evidence"]["eligible_for_performance"]
+        )
+        divergence = report_html.calcular_divergencia_publico(payload)
+        assessment = prelive_decision.assess_report(payload, divergence)
+        self.assertTrue(
+            divergence["fatores_status"]["velocidade_piso"]["disponivel"]
+        )
+        self.assertIn(
+            "velocidade_piso",
+            {
+                item["feature"]
+                for item in payload["competition_evidence_policy"][
+                    "factor_impact_matrix"
+                ]
+                if item["impact"] != "DECISION_FACTOR_BLOCKED"
+            },
+        )
+        self.assertIn("coverage", assessment)
+
+    def test_r3_profile_hands_reach_matchup_factor(self):
+        with patch.object(
+            fetch_data, "rapidapi_budget_exceeded", return_value=False
+        ), patch.object(
+            fetch_data,
+            "_get_cached_hand_by_name",
+            side_effect=lambda _tour, name: "L" if "A" in name else "R",
+        ):
+            stats_a = fetch_data.compute_handedness_matchup_stats(
+                self.history,
+                "Alpha",
+                tour="atp",
+                competition_policy=LAVER_ACTIVE,
+            )
+            stats_b = fetch_data.compute_handedness_matchup_stats(
+                self.history,
+                "Beta",
+                tour="atp",
+                competition_policy=LAVER_ACTIVE,
+            )
+        resolved_a = fetch_data.resolve_handedness_matchup(stats_a, "L")
+        resolved_b = fetch_data.resolve_handedness_matchup(stats_b, "R")
+        self.assertIsNotNone(resolved_a)
+        self.assertIsNotNone(resolved_b)
+        self.assertGreater(resolved_a["matches"], 0)
+        self.assertIn("weighted_win_rate_pct", stats_a["vs_left_handed"])
+        self.assertGreater(stats_a["profile_resolution"]["resolved_profiles"], 0)
+
+        payload = {
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "tour": "atp",
+            "competition_evidence_policy": competition_evidence.policy_metadata(
+                LAVER_ACTIVE
+            ),
+            "handedness_matchup_a": resolved_a,
+            "handedness_matchup_b": resolved_b,
+        }
+        payload["features"] = main._compute_features(payload)
+        divergence = report_html.calcular_divergencia_publico(payload)
+        self.assertIn("matchup_maos", payload["features"])
+        self.assertTrue(
+            divergence["fatores_status"]["matchup_maos"]["disponivel"]
+        )
+
+    def test_r4_h2h_recency_matches_manual_laver_removal_and_keeps_davis(self):
+        history = pd.DataFrame([
+            row(1, 20180101, "Vienna Open", "Alpha", "Beta"),
+            row(2, 20190101, "Vienna Open", "Alpha", "Beta"),
+            row(3, 20200101, "Vienna Open", "Alpha", "Beta"),
+            row(4, 20250101, "Davis Cup", "Beta", "Alpha"),
+            row(5, 20260101, "Vienna Open", "Beta", "Alpha"),
+            row(6, 20261001, "Laver Cup", "Alpha", "Beta"),
+        ])
+        actual = fetch_data.compute_h2h(
+            history, "Alpha", "Beta", "Hard",
+            competition_policy=LAVER_ACTIVE,
+        )
+        manual = fetch_data.compute_h2h(
+            history[history["tourney_name"] != "Laver Cup"],
+            "Alpha",
+            "Beta",
+            "Hard",
+        )
+        self.assertEqual(
+            actual["weighted_recency"], manual["weighted_recency"]
+        )
+        self.assertNotEqual(
+            actual["raw_weighted_recency"], actual["weighted_recency"]
+        )
+        self.assertEqual(actual["overall"]["weighted_a_wins"], 3)
+        self.assertEqual(actual["overall"]["weighted_b_wins"], 2)
+        self.assertEqual(
+            actual["overall"]["competition_evidence"]["davis_preserved"], 1
+        )
+        self.assertEqual(actual["weighted_recency"]["lider"], "Beta")
+
+    def test_r5_blocked_provider_does_not_replace_eligible_local_comeback(self):
+        eligible = {
+            "bo3": {
+                "matches_lost_set1": 5,
+                "weighted_matches_lost_set1": 4,
+                "comeback_rate_pct": 50,
+                "competition_evidence": {
+                    "version": competition_evidence.LAVER_ONLY_POLICY_VERSION,
+                    "config_hash": competition_evidence.LAVER_ONLY_CONFIG_HASH,
+                    "eligible_for_performance": True,
+                },
+            }
+        }
+        blocked = copy.deepcopy(eligible)
+        blocked["bo3"]["competition_evidence"]["eligible_for_performance"] = False
+        blocked["bo3"]["competition_evidence"]["status"] = "BLOCKED"
+        selected, diagnostics = main._select_set1_comeback_source(
+            eligible,
+            blocked,
+            expected_best_of=3,
+            policy=LAVER_ACTIVE,
+        )
+        self.assertIs(selected, eligible)
+        self.assertEqual(diagnostics["selected_source"], "local_history")
+        self.assertEqual(
+            diagnostics["rejected_sources"][0]["reason_code"],
+            "COMPETITION_EVIDENCE_BLOCKED",
+        )
+        none_selected, none_diagnostics = main._select_set1_comeback_source(
+            None,
+            blocked,
+            expected_best_of=3,
+            policy=LAVER_ACTIVE,
+        )
+        self.assertIsNone(none_selected)
+        self.assertEqual(
+            none_diagnostics["reason_code"],
+            "NO_USABLE_SET1_COMEBACK_SOURCE",
+        )
+
+        payload, _provider = self._build_payload(
+            LAVER_ACTIVE, blocked_provider_comeback=True
+        )
+        self.assertEqual(
+            payload["set1_comeback_source_diagnostics"]["a"][
+                "selected_source"
+            ],
+            "local_history",
+        )
+        self.assertEqual(
+            payload["set1_comeback_source_diagnostics"]["a"][
+                "rejected_sources"
+            ][0]["reason_code"],
+            "COMPETITION_EVIDENCE_BLOCKED",
+        )
+
+    def test_r6_rank_validation_and_exclusion_telemetry(self):
+        invalid = [0, -1, True, float("nan"), pd.NA, float("inf"), -float("inf")]
+        for value in invalid:
+            with self.subTest(value=value):
+                parsed, reason = fetch_data._parse_positive_finite_rank(value)
+                self.assertIsNone(parsed)
+                self.assertIsNotNone(reason)
+                self.assertIsNone(
+                    fetch_data.compute_opponent_level_stats(
+                        self.history,
+                        "Alpha",
+                        value,
+                        competition_policy=LAVER_ACTIVE,
+                    )
+                )
+
+        for value, bucket in ((10, "top10"), (20, "top20"), (50, "top50"), (100, "top100")):
+            with self.subTest(value=value):
+                result = fetch_data.compute_opponent_level_stats(
+                    self.history,
+                    "Alpha",
+                    value,
+                    competition_policy=LAVER_ACTIVE,
+                )
+                self.assertEqual(result["rank_bucket"], bucket)
+
+        dirty = self.history.copy()
+        dirty.loc[dirty.index[:7], "loser_rank"] = [
+            0, -1, True, float("nan"), pd.NA, float("inf"), -float("inf")
+        ]
+        result = fetch_data.compute_opponent_level_stats(
+            dirty,
+            "Alpha",
+            100,
+            competition_policy=LAVER_ACTIVE,
+        )
+        quality = result["ranking_sample_quality"]
+        self.assertEqual(quality["raw_rows"], 13)
+        self.assertGreaterEqual(quality["excluded_rows"], 7)
+        self.assertIn("BOOLEAN_RANK", quality["exclusion_reason_counts"])
+        self.assertIn("NON_FINITE_RANK", quality["exclusion_reason_counts"])
+
+    def test_off_and_laver_only_matrix_on_identical_mocked_inputs(self):
+        off = {**LAVER_ACTIVE, "active": False, "status": "OFF"}
+        off_payload, _ = self._build_payload(off)
+        active_payload, _ = self._build_payload(
+            LAVER_ACTIVE, blocked_provider_comeback=True
+        )
+
+        def measured(payload):
+            divergence = payload["divergencia"]
+            assessment = payload["report_assessment"]
+            decision = payload["prelive_decision"]
+            html = report_html.build_report_html(payload, {"flag": "🟢"})
+            return {
+                "policy_active": payload["competition_evidence_policy"]["active"],
+                "coverage": assessment["coverage"]["weighted_ratio"],
+                "report_null": assessment["report_null"],
+                "cpi_available": divergence["fatores_status"][
+                    "velocidade_piso"
+                ]["disponivel"],
+                "h2h_available": divergence["fatores_status"]["h2h"][
+                    "disponivel"
+                ],
+                "hands_available": divergence["fatores_status"][
+                    "matchup_maos"
+                ]["disponivel"],
+                "comeback_source": payload[
+                    "set1_comeback_source_diagnostics"
+                ]["a"]["selected_source"],
+                "pricing_available": payload["pricing"].get("available") is True,
+                "candidate": payload["pricing"].get("candidate") is True,
+                "decision_state": decision.get("state"),
+                "paper_eligible": decision.get("paper_eligible") is True,
+                "html_map": "Mapa de Forças" in html,
+            }
+
+        matrix = {
+            "OFF": measured(off_payload),
+            "LAVER_ONLY": measured(active_payload),
+        }
+        print("[laver-only-matrix] " + json.dumps(matrix, sort_keys=True))
+        for mode in ("OFF", "LAVER_ONLY"):
+            self.assertTrue(matrix[mode]["cpi_available"])
+            self.assertFalse(matrix[mode]["h2h_available"])
+            self.assertTrue(matrix[mode]["hands_available"])
+            self.assertTrue(matrix[mode]["pricing_available"])
+            self.assertTrue(matrix[mode]["candidate"])
+            self.assertTrue(matrix[mode]["html_map"])
+        self.assertEqual(
+            matrix["LAVER_ONLY"]["comeback_source"], "local_history"
+        )
+        self.assertFalse(matrix["LAVER_ONLY"]["report_null"])
+
+
+class LaverOnlyGovernanceTests(unittest.TestCase):
+    def test_change_id_is_unique_and_original_alias_is_preserved(self):
+        self.assertEqual(
+            competition_evidence.LAVER_ONLY_CHANGE_ID,
+            "CHANGE-2026-10-11-101",
+        )
+        self.assertEqual(
+            competition_evidence.LAVER_ONLY_ORIGINAL_ALIAS,
+            "CHANGE-2026-10-11-100",
+        )
+        self.assertNotEqual(
+            competition_evidence.LAVER_ONLY_CONFIG_HASH,
+            "adf3cb58a5bd89ec3d6a",
+        )
 
 
 if __name__ == "__main__":
