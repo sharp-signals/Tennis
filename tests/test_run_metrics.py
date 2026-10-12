@@ -93,13 +93,26 @@ class RunMetricsTests(unittest.TestCase):
     def test_health_alerts_cover_cost_fallbacks_and_failures(self) -> None:
         alerts = run_metrics.health_alerts({
             "status": "failed", "phase": "analysis", "rapidapi_calls": 700,
-            "llm_calls": 10, "llm_fallbacks": 3, "reports_failed": 1,
+            "llm_calls": 10, "llm_external_requests": 10,
+            "llm_fallbacks": 3, "reports_failed": 1,
             "eligible": 10, "analysis_failed": 2,
             "llm_estimated_cost_usd": 2.0,
         })
         self.assertEqual(len(alerts), 6)
         self.assertTrue(any("RapidAPI" in alert for alert in alerts))
         self.assertTrue(any("2/10" in alert for alert in alerts))
+
+    def test_disabled_llm_validation_fallback_does_not_raise_external_alert(self) -> None:
+        alerts = run_metrics.health_alerts({
+            "status": "success",
+            "llm_mode": "disabled",
+            "llm_calls": 20,
+            "llm_external_requests": 0,
+            "llm_fallbacks": 4,
+            "llm_validation_fallbacks": 4,
+        })
+
+        self.assertFalse(any("fallback LLM" in alert for alert in alerts))
 
     def test_cache_failures_are_visible_in_health_alerts(self) -> None:
         alerts = run_metrics.health_alerts({

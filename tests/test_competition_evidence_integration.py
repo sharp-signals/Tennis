@@ -673,6 +673,60 @@ class CanonicalCutoverIntegrationTests(unittest.TestCase):
         self.assertTrue(gate["apply_policy"])
         self.assertEqual(gate["status"], "NEW_CANONICAL_MATCH")
 
+    def test_repeat_report_identity_keeps_canonical_snapshot_link(self):
+        payload = {
+            "identity_schema_version": match_identity_v2.SCHEMA_VERSION,
+            "identity_status": match_identity_v2.CANONICAL_STRONG,
+            "identity_persisted": True,
+            "canonical_match_instance_id": "cmiv2:repeat",
+            "_competition_existing_decision_refresh": True,
+            "tour": "atp",
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "player_a_id": 10,
+            "player_b_id": 20,
+            "market_odds_decimal": {"Alpha": 1.95, "Beta": 1.90},
+        }
+        payload["snapshot_key"] = payload["canonical_match_instance_id"]
+        payload.update(
+            calibration_store.report_identity(
+                payload, analyzed_at_utc="2026-10-12T08:00:00+00:00"
+            )
+        )
+
+        self.assertEqual(payload["snapshot_key"], "cmiv2:repeat")
+        self.assertTrue(payload["report_id"])
+
+    def test_repeat_report_preserves_snapshot_policy_without_reclassification(self):
+        current = {
+            **ACTIVE,
+            "active": True,
+            "tour": "atp",
+        }
+        frozen = {
+            **ACTIVE,
+            "active": True,
+            "tour": "atp",
+            "status": "ACTIVE_AT_FIRST_DECISION",
+        }
+
+        restored = main._competition_policy_for_existing_decision_refresh(
+            current,
+            {"competition_evidence_policy": frozen},
+        )
+        self.assertEqual(restored, frozen)
+        self.assertIsNot(restored, frozen)
+
+        legacy = main._competition_policy_for_existing_decision_refresh(
+            current,
+            {},
+        )
+        self.assertFalse(legacy["active"])
+        self.assertEqual(
+            legacy["scope_reason_code"],
+            "LEGACY_SNAPSHOT_POLICY_PRESERVED",
+        )
+
     def test_context_collision_fails_closed(self):
         gate = competition_evidence.canonical_cutover_gate(
             {

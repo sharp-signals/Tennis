@@ -261,6 +261,26 @@ def _frozen_delivery_complete(recovery: Mapping | None) -> bool:
     return _delivery_artifact_valid(report_path, identity)
 
 
+def _competition_policy_for_existing_decision_refresh(
+    current_policy: Mapping,
+    persisted_snapshot: Mapping | None,
+) -> dict:
+    """Preserve the factual policy used by the immutable first decision."""
+    persisted_policy = (
+        persisted_snapshot.get("competition_evidence_policy")
+        if isinstance(persisted_snapshot, Mapping)
+        else None
+    )
+    if competition_evidence.policy_is_supported(persisted_policy):
+        return copy.deepcopy(dict(persisted_policy))
+    return {
+        **dict(current_policy),
+        "active": False,
+        "status": "PRESERVE_EXISTING_CANONICAL_DECISION",
+        "scope_reason_code": "LEGACY_SNAPSHOT_POLICY_PRESERVED",
+    }
+
+
 def _write_report_artifact(
     payload: dict,
     result: dict,
@@ -2136,44 +2156,46 @@ def _build_match_payload(match: dict) -> dict:
     )
     if cutover_gate.get("fail_closed") is True:
         raise RuntimeError(cutover_gate["reason_code"])
+    competition_existing_decision_refresh = False
     if cutover_gate.get("recover_frozen_delivery") is True:
         recovery = copy.deepcopy(persisted_snapshot.get("delivery_recovery"))
         if _frozen_delivery_complete(recovery):
+            competition_existing_decision_refresh = True
+            cutover_gate = {
+                **cutover_gate,
+                "status": "REFRESH_EXISTING_CANONICAL_REPORT",
+                "reason_code": "FIRST_DELIVERY_ALREADY_COMPLETE",
+            }
+        else:
             return {
                 **identity_result,
-                "_competition_cutover_skip": True,
-                "competition_evidence_cutover": {
-                    **cutover_gate,
-                    "status": "FIRST_DELIVERY_ALREADY_COMPLETE",
-                    "reason_code": "FIRST_DELIVERY_ALREADY_COMPLETE",
-                },
+                "_competition_delivery_recovery": recovery,
+                "competition_evidence_cutover": cutover_gate,
                 "tour": tour,
                 "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
                 "player_a": player_a,
                 "player_b": player_b,
             }
-        return {
-            **identity_result,
-            "_competition_delivery_recovery": recovery,
-            "competition_evidence_cutover": cutover_gate,
-            "tour": tour,
-            "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
-            "player_a": player_a,
-            "player_b": player_b,
-        }
     if cutover_gate.get("skip_new_decision") is True:
-        return {
-            **identity_result,
-            "_competition_cutover_skip": True,
-            "competition_evidence_cutover": cutover_gate,
-            "tour": tour,
-            "tournament_id": match.get("tournamentId") or match.get("tournament_id"),
-            "player_a": player_a,
-            "player_b": player_b,
+        competition_existing_decision_refresh = True
+        cutover_gate = {
+            **cutover_gate,
+            "status": "REFRESH_EXISTING_CANONICAL_REPORT",
+            "reason_code": "CANONICAL_MATCH_ALREADY_HAS_PREGAME_SNAPSHOT",
         }
+    if competition_existing_decision_refresh:
+        # A primeira decisão continua congelada, mas uma execução seguinte
+        # precisa de reconstruir a apresentação com a quote observada agora.
+        # Reutilizar a política factual do snapshot impede que o refresh
+        # reclassifique retrospetivamente os inputs dessa decisão.
+        competition_policy = _competition_policy_for_existing_decision_refresh(
+            competition_policy,
+            persisted_snapshot,
+        )
     if (
         competition_policy.get("active") is True
         and cutover_gate.get("apply_policy") is not True
+        and not competition_existing_decision_refresh
     ):
         competition_policy = {
             **competition_policy,
@@ -2920,6 +2942,10 @@ def _build_match_payload(match: dict) -> dict:
         "competition_evidence_policy": competition_evidence.policy_metadata(
             competition_policy
         ),
+        "competition_evidence_cutover": cutover_gate,
+        "_competition_existing_decision_refresh": (
+            competition_existing_decision_refresh
+        ),
         "h2h": h2h,
         "h2h_history": h2h_history,
         "recent_history_a": recent_history_a,
@@ -3484,6 +3510,11 @@ def run() -> None:
         processed=len(analyses),
         analysis_failed=len(analysis_errors),
         competition_existing_decisions_preserved=len(cutover_skips),
+        competition_existing_decisions_refreshed=sum(
+            1
+            for payload, _result in analyses
+            if payload.get("_competition_existing_decision_refresh") is True
+        ),
         processing_ratio=round(processing_ratio, 4),
         analysis_error_counts=dict(sorted(error_counts.items())),
         analysis_error_samples=analysis_errors[:5],
@@ -3609,6 +3640,12 @@ def run() -> None:
             # A primeira fotografia pós-cutover já existe. A recuperação
             # completa apenas escritores em falta a partir do bundle congelado.
             continue
+        if payload.get("_competition_existing_decision_refresh") is True:
+            # O relatório desta execução recebe identidade própria, mas liga à
+            # primeira fotografia canónica. Não se cria/regrava snapshot.
+            payload["snapshot_key"] = payload.get("canonical_match_instance_id")
+            payload.update(calibration_store.report_identity(payload))
+            continue
         if match_identity_v2.is_canonical(payload):
             snapshot = calibration_store.build_snapshot(payload, result)
             # A mesma identidade liga relatório, snapshot e carteira PAPER.
@@ -3667,7 +3704,10 @@ def run() -> None:
     })
 
     paper_entries = [
-        entry for payload, _ in analyses for entry in paper_trading.build_entries(payload)
+        entry
+        for payload, _ in analyses
+        if payload.get("_competition_existing_decision_refresh") is not True
+        for entry in paper_trading.build_entries(payload)
     ]
     added_paper = paper_trading.append_entries(paper_entries)
     print(f"[paper] {added_paper} entrada(s) PAPER nova(s) guardada(s).")
@@ -3896,14 +3936,15 @@ def run() -> None:
     reports_ok = sum(1 for _, _, url in match_reports if url)
     run_metrics.update_context(
         status=processing_status, phase="complete", processed=len(analyses),
-        analysis_failed=len(process_targets) - len(analyses), reports_ok=reports_ok,
+        analysis_failed=len(analysis_errors), reports_ok=reports_ok,
         reports_failed=len(match_reports) - reports_ok,
         telegram_chunks=len(notification_chunks),
     )
     print(
         "[run_summary] "
         f"eligible={len(eligible)} targets={len(process_targets)} processed={len(analyses)} "
-        f"analysis_failed={len(process_targets) - len(analyses)} "
+        f"analysis_failed={len(analysis_errors)} "
+        f"existing_decision_refresh={sum(1 for payload, _ in analyses if payload.get('_competition_existing_decision_refresh') is True)} "
         f"status={processing_status} processing_ratio={processing_ratio:.1%} "
         f"reports_ok={reports_ok} reports_failed={len(match_reports) - reports_ok} "
         f"telegram_chunks={len(chunks)}"
