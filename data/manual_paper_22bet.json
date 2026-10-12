@@ -4,71 +4,99 @@
     "label": "Track Record PAPER Trading — 22Bet",
     "url": "https://docs.google.com/spreadsheets/d/1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U/edit",
     "reference_bookmaker": "22Bet",
-    "synced_at_utc": "2026-10-12T11:25:46.536Z"
+    "synced_at_utc": "2026-10-12T11:31:22.236Z",
+    "sync_contract_version": 4,
+    "operational_columns": {
+      "market": 6,
+      "side": 8,
+      "odd": 11,
+      "stake": 12,
+      "result": 14,
+      "profit": 15
+    },
+    "challenger_entry_sheet": "Challenger · Entradas",
+    "challenger_operational_columns": {
+      "market": 6,
+      "side": 8,
+      "odd": 11,
+      "stake": 12,
+      "result": 14,
+      "profit": 15
+    }
   },
-  "data_fingerprint": "b21432b53f9644c07bdd09728896e44e75c71362e617d7a259bb0392461f077e",
+  "data_fingerprint": "2ce844c174dcf46d6ac0543c23dc57d14f0819d160505b1634073c5f6856ec1c",
   "summary": {
     "total_entries": 133,
-    "settled": 0,
-    "pending": 133,
-    "wins": 0,
-    "losses": 0,
-    "pushes": 0,
-    "win_rate_pct": null,
-    "units": 0,
-    "roi_pct": null,
-    "average_odd": null
+    "settled": 126,
+    "pending": 5,
+    "wins": 74,
+    "losses": 52,
+    "pushes": 2,
+    "win_rate_pct": 58.73,
+    "units": 17.648,
+    "settled_stake_units": 123.5,
+    "pending_stake_units": 5,
+    "roi_pct": 14.29,
+    "average_odd": 1.945
   },
   "by_market": {
     "Moneyline": {
       "total_entries": 34,
-      "settled": 0,
-      "pending": 34,
-      "wins": 0,
-      "losses": 0,
+      "settled": 31,
+      "pending": 3,
+      "wins": 20,
+      "losses": 11,
       "pushes": 0,
-      "win_rate_pct": null,
-      "units": 0,
-      "roi_pct": null,
-      "average_odd": null
+      "win_rate_pct": 64.516,
+      "units": 11.628,
+      "settled_stake_units": 31,
+      "pending_stake_units": 3,
+      "roi_pct": 37.511,
+      "average_odd": 2.154
     },
     "Handicap games": {
       "total_entries": 99,
-      "settled": 0,
-      "pending": 99,
-      "wins": 0,
-      "losses": 0,
-      "pushes": 0,
-      "win_rate_pct": null,
-      "units": 0,
-      "roi_pct": null,
-      "average_odd": null
+      "settled": 95,
+      "pending": 2,
+      "wins": 54,
+      "losses": 41,
+      "pushes": 2,
+      "win_rate_pct": 56.842,
+      "units": 6.02,
+      "settled_stake_units": 92.5,
+      "pending_stake_units": 2,
+      "roi_pct": 6.508,
+      "average_odd": 1.873
     }
   },
   "by_side": {
     "Underdog": {
       "total_entries": 43,
-      "settled": 0,
-      "pending": 43,
-      "wins": 0,
-      "losses": 0,
+      "settled": 40,
+      "pending": 3,
+      "wins": 27,
+      "losses": 13,
       "pushes": 0,
-      "win_rate_pct": null,
-      "units": 0,
-      "roi_pct": null,
-      "average_odd": null
+      "win_rate_pct": 67.5,
+      "units": 15.572,
+      "settled_stake_units": 40,
+      "pending_stake_units": 3,
+      "roi_pct": 38.93,
+      "average_odd": 2.091
     },
     "Favorito": {
       "total_entries": 90,
-      "settled": 0,
-      "pending": 90,
-      "wins": 0,
-      "losses": 0,
-      "pushes": 0,
-      "win_rate_pct": null,
-      "units": 0,
-      "roi_pct": null,
-      "average_odd": null
+      "settled": 86,
+      "pending": 2,
+      "wins": 47,
+      "losses": 39,
+      "pushes": 2,
+      "win_rate_pct": 54.651,
+      "units": 2.076,
+      "settled_stake_units": 83.5,
+      "pending_stake_units": 2,
+      "roi_pct": 2.486,
+      "average_odd": 1.875
     }
   },
   "by_strategy": {
@@ -82,6 +110,8 @@
         "pushes": 0,
         "win_rate_pct": null,
         "units": 0,
+        "settled_stake_units": 0,
+        "pending_stake_units": 0,
         "roi_pct": null,
         "average_odd": null
       },
@@ -121,6 +151,37 @@
         "roi_pct": null,
         "exclusion_reasons": {}
       }
+    },
+    "CHALLENGER_125_EXPERIMENTAL_V1": {
+      "summary": {
+        "total_entries": 0,
+        "settled": 0,
+        "pending": 0,
+        "wins": 0,
+        "losses": 0,
+        "pushes": 0,
+        "win_rate_pct": null,
+        "units": 0,
+        "settled_stake_units": 0,
+        "pending_stake_units": 0,
+        "roi_pct": null,
+        "average_odd": null
+      },
+      "paper_entries": 0,
+      "fixed_stake_units": 0.5,
+      "by_market": {},
+      "by_side": {},
+      "by_fenzobot_index_band": {},
+      "by_coverage_band": {},
+      "by_edge_band": {},
+      "validation": {
+        "MANUAL_CHALLENGER_RECORDED": 0,
+        "MISSING_SNAPSHOT_KEY": 2,
+        "MISSING_SELECTION_TIMESTAMP": 0,
+        "INVALID_CHALLENGER_STAKE": 0,
+        "INVALID_CHALLENGER_EDGE": 0
+      },
+      "status": "UNAVAILABLE"
     }
   }
 }
