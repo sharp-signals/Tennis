@@ -57,7 +57,11 @@ class GeneratedPublicationContractTests(unittest.TestCase):
         contracts = {
             "tennis-bot.yml": {
                 "profiles": ("bot",),
-                "outputs": ("docs/relatorios/example.html", "data/cache/example.json"),
+                "outputs": (
+                    "docs/relatorios/example.html",
+                    "data/cache/example.json",
+                    "data/history_cache/atp_tdcouk_2025.csv",
+                ),
             },
             "odds-monitor.yml": {
                 "profiles": ("odds-source", "odds-derived", "odds"),

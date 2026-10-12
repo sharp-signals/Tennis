@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
@@ -42,6 +44,77 @@ class CourtPaceEvidenceTests(unittest.TestCase):
 
 
 class MatchInputTests(unittest.TestCase):
+    def test_tennisdata_download_discovery_supports_atp_and_wta_versioned_paths(self):
+        response = Mock()
+        response.text = """
+            <a href="token-v2/2026/2026.xlsx">ATP</a>
+            <a href='token-v2/2026w/2026.xlsx'>WTA</a>
+        """
+        response.raise_for_status.return_value = None
+
+        with patch.object(fetch_data, "_TENNISDATA_DOWNLOAD_INDEX", None), \
+             patch.object(fetch_data.requests, "get", return_value=response) as request:
+            atp_url = fetch_data._tennisdata_couk_download_url("atp", 2026)
+            wta_url = fetch_data._tennisdata_couk_download_url("wta", 2026)
+
+        self.assertEqual(
+            atp_url,
+            "https://www.tennis-data.co.uk/token-v2/2026/2026.xlsx",
+        )
+        self.assertEqual(
+            wta_url,
+            "https://www.tennis-data.co.uk/token-v2/2026w/2026.xlsx",
+        )
+        request.assert_called_once()
+
+    def test_tennisdata_year_uses_discovered_url_and_referer(self):
+        response = Mock(content=b"xlsx")
+        response.raise_for_status.return_value = None
+        normalized = pd.DataFrame([{"winner_name": "A", "loser_name": "B"}])
+
+        with patch.object(
+            fetch_data,
+            "_tennisdata_couk_download_url",
+            return_value="https://www.tennis-data.co.uk/token/2025/2025.xlsx",
+        ), patch.object(fetch_data.requests, "get", return_value=response) as request, \
+             patch.object(fetch_data.pd, "read_excel", return_value=normalized):
+            result = fetch_data._load_tennisdata_couk("atp", 2025)
+
+        self.assertEqual(len(result), 1)
+        _args, kwargs = request.call_args
+        self.assertEqual(
+            kwargs["headers"]["Referer"],
+            "https://www.tennis-data.co.uk/data.php",
+        )
+
+    def test_atp_historical_odds_fall_back_to_the_persisted_year_cache(self):
+        year = datetime.now(timezone.utc).year
+        cached = pd.DataFrame([
+            {
+                "winner_name": "Alex De Minaur",
+                "loser_name": "Opponent",
+                "B365W": 1.70,
+                "B365L": 2.20,
+            }
+        ])
+        original_cwd = os.getcwd()
+        with tempfile.TemporaryDirectory(dir=os.getcwd()) as temp_dir:
+            try:
+                os.chdir(temp_dir)
+                os.makedirs("data/history_cache", exist_ok=True)
+                cached.to_csv(
+                    f"data/history_cache/atp_tdcouk_{year}.csv", index=False
+                )
+                with patch.object(
+                    fetch_data, "_load_tennisdata_couk", return_value=None
+                ):
+                    result = fetch_data._load_tennisdata_couk_multi_year("atp", 1)
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.iloc[0]["winner_name"], "Alex De Minaur")
+
     def test_official_ranking_prefers_fixture_player_id_and_never_invents_low_rank(self):
         ranking = {
             "different spelling": {
