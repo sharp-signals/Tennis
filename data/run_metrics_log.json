@@ -86122,15 +86122,15 @@
     "status": "success",
     "phase": "complete",
     "email_delivery": {
-      "status": "NOT_ATTEMPTED",
+      "status": "SENT",
       "kind": "REPORTS"
     },
     "report_publication": {
-      "status": "PENDING",
+      "status": "READY",
       "expected": 42,
-      "ready": 0
+      "ready": 42
     },
-    "report_notification_status": "REPORTS_DEFERRED",
+    "report_notification_status": "REPORTS_SENT",
     "trigger_slot": "manual",
     "trigger_source": "manual",
     "trigger_local_date": "manual",
@@ -87243,6 +87243,98 @@
     "llm_provider_invocations": 41,
     "llm_validation_fallbacks": 4,
     "duration_seconds": 1179.199,
-    "llm_estimated_cost_usd": 0.0
+    "llm_estimated_cost_usd": 0.0,
+    "report_notification_delivery": {
+      "github_run_id": "38227540420",
+      "notification_fingerprint": "6f2ed05ef7fe8dd6d4d2b0c46ae031a339faba5890ac0c0dea90a9dfb0c7a168",
+      "telegram_chunks_sent": 3,
+      "email_delivery": {
+        "status": "SENT",
+        "kind": "REPORTS"
+      }
+    },
+    "settlement_maintenance": {
+      "schema_version": 1,
+      "change_id": "CHANGE-2026-09-30-067",
+      "status": "TIMED_OUT",
+      "started_at_utc": "2026-10-12T09:26:02+00:00",
+      "supervisor": {
+        "status": "TERMINATED",
+        "timeout_seconds": 270.0
+      },
+      "phases": {
+        "dashboard_after_settlement": {
+          "duration_seconds": 16.8273,
+          "status": "COMPLETED"
+        },
+        "market_memory": {
+          "started_at_utc": "2026-10-12T09:26:36+00:00",
+          "status": "IN_PROGRESS"
+        },
+        "paper_settlement": {
+          "activation_status": "EXTERNAL_ACTIVATION_PENDING",
+          "blocked": {},
+          "deadline_reached": false,
+          "duration_seconds": 3.138,
+          "eligible_candidates": 27,
+          "examined": 27,
+          "last_examined_key": "mi2_4179d46488424bd9940d76df20af06ee:moneyline:b:na",
+          "pending_no_result": 26,
+          "settled": 1,
+          "status": "COMPLETED"
+        },
+        "read_local_cache": {
+          "duration_seconds": 0.4999,
+          "status": "COMPLETED"
+        },
+        "result_recovery": {
+          "duration_seconds": 11.0839,
+          "eligible_players": 177,
+          "last_player_key": "atp:11517",
+          "queried_players": 48,
+          "recovered_matches": 4363,
+          "status": "COMPLETED",
+          "unavailable_players": 0
+        },
+        "snapshot_settlement": {
+          "activation_status": "EXTERNAL_ACTIVATION_PENDING",
+          "blocked": {},
+          "deadline_reached": false,
+          "duration_seconds": 2.5125,
+          "eligible_candidates": 130,
+          "examined": 130,
+          "last_examined_key": "mi2_dd4056950aba43f28c3dbff20f920ea7",
+          "pending_no_result": 127,
+          "settled": 3,
+          "status": "COMPLETED"
+        }
+      },
+      "activation_status": "EXTERNAL_ACTIVATION_PENDING",
+      "cached_matches": 34492,
+      "candidates": {
+        "paper": {
+          "batch_size": 30,
+          "eligible_pending": 30,
+          "examined": 27,
+          "pending_no_result": 26,
+          "remaining_unexamined": 3
+        },
+        "snapshots": {
+          "batch_size": 130,
+          "eligible_pending": 130,
+          "examined": 130,
+          "pending_no_result": 127,
+          "remaining_unexamined": 0
+        }
+      },
+      "result_recovery_matches": 4363,
+      "work": {
+        "examined": 157,
+        "pending_no_result": 153,
+        "remaining_unexamined": 3
+      },
+      "finished_at_utc": "2026-10-12T09:30:31+00:00",
+      "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT"
+    }
   }
 ]
