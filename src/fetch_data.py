@@ -4394,6 +4394,60 @@ def _game_differential_from_recent_match(
     return best_of, won, margin
 
 
+def _operational_competition_row_allowed(
+    record: dict,
+    competition_policy: Optional[dict],
+    counters: dict[str, int],
+) -> bool:
+    """Keep only full-weight rows in operational handicap samples.
+
+    Handicap cover counts are integer observations. A 0.5 competition
+    coefficient cannot be represented honestly by duplicating or rounding a
+    match, so partial-weight rows are excluded from this operational view.
+    Unresolved and zero-weight rows also fail closed, while ordinary eligible
+    matches remain usable instead of disabling the whole ATP sample.
+    """
+    if not bool((competition_policy or {}).get("active")):
+        return True
+    counters["raw_matches"] = counters.get("raw_matches", 0) + 1
+    classified = competition_evidence.classify_selected_match(
+        record, competition_policy
+    )
+    weight = classified.get("weight")
+    if weight is None:
+        counters["unresolved_excluded"] = (
+            counters.get("unresolved_excluded", 0) + 1
+        )
+        return False
+    if float(weight) != 1.0:
+        key = (
+            "partial_weight_excluded"
+            if float(weight) > 0
+            else "zero_weight_excluded"
+        )
+        counters[key] = counters.get(key, 0) + 1
+        return False
+    counters["full_weight_matches"] = counters.get("full_weight_matches", 0) + 1
+    return True
+
+
+def _operational_competition_evidence(
+    competition_policy: Optional[dict], counters: dict[str, int]
+) -> Optional[dict]:
+    if not bool((competition_policy or {}).get("active")):
+        return None
+    metadata = competition_evidence.policy_metadata(competition_policy or {})
+    usable = int(counters.get("full_weight_matches", 0))
+    return {
+        "version": metadata.get("version"),
+        "config_hash": metadata.get("config_hash"),
+        "status": "APPLIED" if usable else "BLOCKED",
+        "eligible_for_performance": usable > 0,
+        "operational_full_weight_only": True,
+        **counters,
+    }
+
+
 def compute_game_differential_profile(
     history: pd.DataFrame,
     player: str,
@@ -4401,6 +4455,7 @@ def compute_game_differential_profile(
     recent_matches: Optional[list] = None,
     player_id: Optional[int] = None,
     before: object = None,
+    competition_policy: Optional[dict] = None,
 ) -> Optional[dict]:
     """Perfil descritivo de margem de games, separado por BO3/BO5.
 
@@ -4418,6 +4473,7 @@ def compute_game_differential_profile(
         played["_bo"] = pd.to_numeric(played["best_of"], errors="coerce")
 
     observations: dict[tuple, tuple[int, bool, int, str]] = {}
+    competition_counts: dict[str, int] = {}
 
     # A fonte recente tem IDs fortes e inclui imediatamente a ronda anterior.
     # Entra primeiro; o histórico longo só preenche o que ainda não existe.
@@ -4446,6 +4502,10 @@ def compute_game_differential_profile(
                     continue
             parsed = _game_differential_from_recent_match(match, player_id)
             if parsed is None:
+                continue
+            if not _operational_competition_row_allowed(
+                match, competition_policy, competition_counts
+            ):
                 continue
             bo, won, margin = parsed
             opponent = (
@@ -4478,6 +4538,10 @@ def compute_game_differential_profile(
         won = bool(row.get("_player_won"))
         margin = _game_differential_from_row(row, won)
         if margin is None:
+            continue
+        if not _operational_competition_row_allowed(
+            row.to_dict(), competition_policy, competition_counts
+        ):
             continue
         opponent = row.get("loser_name") if won else row.get("winner_name")
         history_date = next(
@@ -4533,10 +4597,21 @@ def compute_game_differential_profile(
             "analyzable_matches": len(wins) + len(losses),
             "source_matches": source_counts,
         }
+    if result:
+        evidence = _operational_competition_evidence(
+            competition_policy, competition_counts
+        )
+        if evidence is not None:
+            result["competition_evidence"] = evidence
     return result or None
 
 
-def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> Optional[dict]:
+def compute_historical_moneyline_margins(
+    history: pd.DataFrame,
+    player: str,
+    *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
     """Cruza odds históricas realmente presentes com margem factual.
 
     Aceita apenas pares de odds de vencedor/perdedor já existentes no dataset;
@@ -4590,6 +4665,7 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
             format_cell["margins"].append(margin)
             format_cell["win_margins" if won else "loss_margins"].append(margin)
 
+    competition_counts: dict[str, int] = {}
     for index, row in history.iterrows():
         won = bool(winner_mask.loc[index])
         lost = bool(loser_mask.loc[index])
@@ -4601,6 +4677,10 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
             continue
         margin = _game_differential_from_row(row, won)
         if margin is None:
+            continue
+        if not _operational_competition_row_allowed(
+            row.to_dict(), competition_policy, competition_counts
+        ):
             continue
         if odd > 2.0:
             append_observation(underdog, won, margin, row)
@@ -4643,7 +4723,19 @@ def compute_historical_moneyline_margins(history: pd.DataFrame, player: str) -> 
             for fmt, format_cell in underdog.get("by_format", {}).items()
             if format_cell.get("n")
         }
-    return {"odds_columns": cols, "buckets": result, "underdog": underdog_result} if result or underdog_result else None
+    if not (result or underdog_result):
+        return None
+    output_result = {
+        "odds_columns": cols,
+        "buckets": result,
+        "underdog": underdog_result,
+    }
+    evidence = _operational_competition_evidence(
+        competition_policy, competition_counts
+    )
+    if evidence is not None:
+        output_result["competition_evidence"] = evidence
+    return output_result
 
 
 def compute_game_margin_stats(history: pd.DataFrame, player: str) -> Optional[dict]:

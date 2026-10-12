@@ -424,7 +424,7 @@ class CompetitionContractTests(unittest.TestCase):
             competition_evidence.POLICY_VERSION,
         )
 
-    def test_report_exposes_version_hash_and_partial_limitation(self):
+    def test_report_hides_competition_policy_notice(self):
         policy = competition_evidence.policy_metadata(ACTIVE)
         policy["feature_blockers"] = [{
             "feature": "servico_carreira",
@@ -436,9 +436,8 @@ class CompetitionContractTests(unittest.TestCase):
             ),
             identity_metadata={"competition_evidence_policy": policy},
         )
-        self.assertIn(competition_evidence.POLICY_VERSION, html)
-        self.assertIn(competition_evidence.CONFIG_HASH, html)
-        self.assertIn("não é declarada exclusão integral da Laver", html)
+        self.assertNotIn("Política de evidência por competição", html)
+        self.assertNotIn("não é declarada exclusão integral da Laver", html)
 
 
 if __name__ == "__main__":

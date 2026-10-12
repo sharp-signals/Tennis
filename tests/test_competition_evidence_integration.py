@@ -452,6 +452,42 @@ class ActiveRuntimeIntegrationTests(unittest.TestCase):
             [market["type"] for market in model["markets"]],
         )
 
+    def test_operational_header_uses_policy_compatible_handicap_history(self):
+        payload = self._payload()
+        payload["market_odds_decimal"] = {"Alpha": 1.47, "Beta": 2.70}
+        metadata = competition_evidence.policy_metadata(ACTIVE)
+        evidence = {
+            "version": metadata["version"],
+            "config_hash": metadata["config_hash"],
+            "eligible_for_performance": True,
+        }
+        payload["game_differential_a"] = {
+            "bo3": {
+                "wins": {"margins": [9] * 40},
+                "losses": {"margins": [-1] * 40},
+            },
+            "competition_evidence": evidence,
+        }
+        payload["historical_moneyline_margins_a"] = {
+            "buckets": {
+                "1.41-1.50": {
+                    "n": 40,
+                    "wins": 36,
+                    "margins": [8] * 40,
+                }
+            },
+            "competition_evidence": evidence,
+        }
+        payload.update({
+            "prelive_decision": {"state": "EDGE_POSITIVE"},
+            "pricing": self._pricing(),
+        })
+        model = report_html._operational_entry_model(payload, {})
+        self.assertIn(
+            "negative_handicap",
+            [market["type"] for market in model["markets"]],
+        )
+
     def test_action_gate_preserves_legacy_bilateral_semantics(self):
         divergence = {
             "fatores_status": {

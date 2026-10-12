@@ -2597,6 +2597,7 @@ def _build_match_payload(match: dict) -> dict:
         recent_matches=_recent_a_cache,
         player_id=_pid_a,
         before=start,
+        competition_policy=competition_policy,
     )
     game_differential_b = fetch_data.compute_game_differential_profile(
         history,
@@ -2604,12 +2605,15 @@ def _build_match_payload(match: dict) -> dict:
         recent_matches=_recent_b_cache,
         player_id=_pid_b,
         before=start,
+        competition_policy=competition_policy,
     )
     historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(
-        historical_odds_history, player_a
+        historical_odds_history, player_a,
+        competition_policy=competition_policy,
     )
     historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(
-        historical_odds_history, player_b
+        historical_odds_history, player_b,
+        competition_policy=competition_policy,
     )
     # O Excel ``Fenzobot_Historico_do_Sistema`` é uma vista do arquivo
     # canónico de snapshots. Esta leitura usa exatamente esse arquivo local
