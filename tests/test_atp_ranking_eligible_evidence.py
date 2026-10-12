@@ -361,7 +361,7 @@ class RankingEligibleTransformTests(unittest.TestCase):
             "COMPETITION_EVIDENCE_NOT_SEPARABLE",
         )
 
-    def test_html_carries_new_version_and_hash(self):
+    def test_html_keeps_policy_metadata_but_hides_visual_notice(self):
         policy = competition_evidence.policy_metadata(ACTIVE)
         policy["feature_blockers"] = []
         html = report_html._pagina(
@@ -377,17 +377,41 @@ class RankingEligibleTransformTests(unittest.TestCase):
         self.assertIn(
             competition_evidence.RANKING_ELIGIBLE_CONFIG_HASH, html
         )
-        self.assertIn("ranking-eligible", html)
-        self.assertIn(
-            "apenas jogos em/após T0 usam ranking-eligible", html
-        )
-        self.assertIn("Next Gen e Olympics a 100%", html)
-        self.assertIn("NON_RANKING", html)
-        self.assertIn("UNRESOLVED", html)
-        self.assertNotIn("Davis competitiva 50%", html)
+        self.assertNotIn("Política de evidência por competição", html)
+        self.assertNotIn("apenas jogos em/após T0", html)
 
 
 class RankingEligibleV2Tests(unittest.TestCase):
+    def test_operational_handicap_history_keeps_only_full_weight_matches(self):
+        records = [
+            {**row(290, 20261021, "Vienna Open", tier="ATP 500"),
+             "B365W": 1.47, "B365L": 2.70},
+            {**row(291, 20261022, "Davis Cup"),
+             "B365W": 1.47, "B365L": 2.70},
+            {**row(292, 20261023, "Laver Cup"),
+             "B365W": 1.47, "B365L": 2.70},
+            {**row(293, 20261024, "Unknown Invitational"),
+             "B365W": 1.47, "B365L": 2.70},
+        ]
+        history = pd.DataFrame(records)
+
+        differential = fetch_data.compute_game_differential_profile(
+            history, "Alpha", competition_policy=V2_ACTIVE
+        )
+        odds_margins = fetch_data.compute_historical_moneyline_margins(
+            history, "Alpha", competition_policy=V2_ACTIVE
+        )
+
+        self.assertEqual(differential["bo3"]["analyzable_matches"], 1)
+        self.assertEqual(odds_margins["buckets"]["1.41-1.50"]["n"], 1)
+        for profile in (differential, odds_margins):
+            evidence = profile["competition_evidence"]
+            self.assertTrue(evidence["eligible_for_performance"])
+            self.assertEqual(evidence["full_weight_matches"], 1)
+            self.assertEqual(evidence["partial_weight_excluded"], 1)
+            self.assertEqual(evidence["zero_weight_excluded"], 1)
+            self.assertEqual(evidence["unresolved_excluded"], 1)
+
     def test_v2_classification_weights_are_1_half_zero_and_fail_closed(self):
         cases = (
             ({"tournament_name": "Vienna Open", "tier": "ATP 500"},
@@ -554,7 +578,7 @@ class RankingEligibleV2Tests(unittest.TestCase):
         )
         self.assertEqual(raw, {"wins": 1, "losses": 0, "matches": 1})
 
-    def test_v2_metadata_and_html_expose_half_weights(self):
+    def test_v2_metadata_keeps_half_weights_without_visual_notice(self):
         policy = competition_evidence.policy_metadata(V2_ACTIVE)
         policy["feature_blockers"] = []
         self.assertEqual(policy["weights"]["ranking_eligible"], 1.0)
@@ -570,15 +594,7 @@ class RankingEligibleV2Tests(unittest.TestCase):
         html = report_html._mod_competition_evidence_notice(
             {"competition_evidence_policy": policy}
         )
-        self.assertIn("Davis, Next Gen e Olympics a 50%", html)
-        self.assertIn("RANKING_ELIGIBLE a 100%", html)
-        self.assertIn("intervalo T0–T1", html)
-        self.assertIn(
-            competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION, html
-        )
-        self.assertIn(
-            competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH, html
-        )
+        self.assertEqual(html, "")
 
     def test_v2_is_available_but_off_without_explicit_future_t1(self):
         self.assertEqual(

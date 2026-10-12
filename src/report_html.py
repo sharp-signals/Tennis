@@ -2512,20 +2512,30 @@ def _operational_entry_model(payload, div):
     if decision.get("state") == "REPORT_NULL":
         return {"status": "unavailable", "reason": "Relatório nulo: sem entrada operacional."}
     pricing = _d(payload.get("pricing"))
-    policy_active = bool(
-        _d(payload.get("competition_evidence_policy")).get("active")
-    )
-    # Margens históricas e perfis de diferencial não conservam atualmente
-    # competição por encontro. Com a política ativa continuam disponíveis
-    # nas secções factuais, mas nunca geram uma taxa, preço ou handicap
-    # acionável neste cartão. A Moneyline permanece baseada no pricing válido.
-    actionable_margin_history = not policy_active
     side = pricing.get("candidate_side") if pricing.get("candidate") else None
     if side not in {"a", "b"}:
         return {
             "status": "withheld",
             "reason": "Sem edge positivo calculável no lado Fenzobot; não formular entrada.",
         }
+    competition_policy = _d(payload.get("competition_evidence_policy"))
+    policy_active = bool(competition_policy.get("active"))
+    differential_profile = _d(payload.get(f"game_differential_{side}"))
+    actionable_margin_history = (
+        not policy_active
+        or competition_evidence.evidence_is_compatible(
+            differential_profile, competition_policy
+        )
+    )
+    historical_margin_profile = _d(
+        payload.get(f"historical_moneyline_margins_{side}")
+    )
+    actionable_odds_margin_history = (
+        not policy_active
+        or competition_evidence.evidence_is_compatible(
+            historical_margin_profile, competition_policy
+        )
+    )
     player = payload.get(f"player_{side}")
     market = _d(payload.get("market_odds_decimal"))
     try:
@@ -2549,10 +2559,7 @@ def _operational_entry_model(payload, div):
     # Moneyline é a primeira via quando já está na janela operacional.
     if INVESTOR_PROFILE_ODDS_LOW <= odd <= INVESTOR_PROFILE_ODDS_HIGH:
         price = _moneyline_price_reference(player_pricing.get("fair_odd"))
-        history = (
-            _d(payload.get(f"historical_moneyline_margins_{side}"))
-            if actionable_margin_history else {}
-        )
+        history = historical_margin_profile if actionable_odds_margin_history else {}
         fmt = str(payload.get("match_format") or "bo3").casefold()
         comparable = None
         for band, raw in _d(history.get("buckets")).items():
@@ -2599,7 +2606,7 @@ def _operational_entry_model(payload, div):
 
         band_margins = []
         band_label = None
-        history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        history = historical_margin_profile if actionable_odds_margin_history else {}
         for band, raw in _d(history.get("buckets")).items():
             try:
                 low, high = (float(value) for value in str(band).split("-", 1))
@@ -6197,51 +6204,8 @@ def _mod_at_glance_clean(payload):
 
 
 def _mod_competition_evidence_notice(payload):
-    """Visible provenance and honest coverage boundary for CHANGE-099."""
-    policy = payload.get("competition_evidence_policy")
-    if not isinstance(policy, dict) or policy.get("active") is not True:
-        return ""
-    blockers = policy.get("feature_blockers") or []
-    version = _esc(policy.get("version") or "N/D")
-    config_hash = _esc(policy.get("config_hash") or "N/D")
-    if blockers:
-        if competition_evidence.is_ranking_eligible(policy):
-            boundary = "NON_RANKING/UNRESOLVED"
-        else:
-            boundary = "da Laver"
-        detail = (
-            f"{len(blockers)} fator(es) agregado(s) sem separação por competição "
-            f"foram excluídos do índice; não é declarada exclusão integral {boundary}."
-        )
-    else:
-        detail = "Todos os fatores ativos têm proveniência separável nesta execução."
-    if competition_evidence.is_ranking_eligible_v2(policy):
-        t1 = _esc(policy.get("effective_from_utc") or "T1 N/D")
-        rule = (
-            "Histórico anterior ao T0 mantém Laver-only e o intervalo T0–T1 "
-            "mantém ranking-eligible v1; apenas jogos em/após T1 usam "
-            "RANKING_ELIGIBLE a 100% e Davis, Next Gen e Olympics a 50%, "
-            "com NON_RANKING excluído e identidade UNRESOLVED bloqueada "
-            f"fail-closed. T1: {t1}."
-        )
-    elif competition_evidence.is_ranking_eligible(policy):
-        t0 = _esc(policy.get("effective_from_utc") or "T0 N/D")
-        rule = (
-            "Histórico anterior a T0 mantém a política Laver-only já vigente; "
-            "apenas jogos em/após T0 usam ranking-eligible e exceções Davis, "
-            "Next Gen e Olympics a 100%, com NON_RANKING excluído e identidade "
-            f"UNRESOLVED bloqueada fail-closed. T0: {t0}."
-        )
-    elif competition_evidence.is_laver_only(policy):
-        rule = "Laver 0% por encontro; Davis mantém o tratamento produtivo atual."
-    else:
-        rule = "Davis competitiva 50%; Laver 0% nas fontes separáveis."
-    return (
-        '<div class="parcial"><b>Política de evidência por competição</b> — '
-        f'{_esc(rule)} '
-        f'{_esc(detail)} <span class="muted">versão {version} · config {config_hash}</span>'
-        '</div>'
-    )
+    """Competition provenance remains machine-readable, not a report box."""
+    return ""
 
 def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
     """Monta a página V2 completa. Recebe a função do motor (índice de
@@ -6334,7 +6298,6 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         if overview_content else ""
     )
     partes.append(_mod_data_quality_notice(payload))
-    partes.append(_mod_competition_evidence_notice(payload))
 
     # ESTADO PARCIAL/ERRO: layout reduzido (auditoria #17)
     if chave == "erro":

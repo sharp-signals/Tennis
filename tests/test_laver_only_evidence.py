@@ -1068,7 +1068,8 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
         self.assertIn("coverage", assessment)
         self.assertIn("available", pricing_result)
         self.assertIn("state", decision)
-        self.assertIn("Davis, Next Gen e Olympics a 50%", html)
+        self.assertNotIn("Política de evidência por competição", html)
+        self.assertNotIn("Davis, Next Gen e Olympics a 50%", html)
         self.assertIn(
             competition_evidence.RANKING_ELIGIBLE_V2_CONFIG_HASH, html
         )
