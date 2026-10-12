@@ -35,3 +35,14 @@ test('Challenger history projection is rectangular', () => {
   assert.ok(written);
   assert.deepEqual([...new Set(written.map(row => row.length))], [10]);
 });
+
+test('an optional existing filter never blocks the history sync', () => {
+  const sheet = {
+    getFilter() { return null; },
+    getName() { return 'Atribuição — fatores'; },
+  };
+  const range = {
+    createFilter() { throw new Error('Não é possível criar um filtro numa página que já tem um filtro.'); },
+  };
+  assert.equal(context.createSystemFilterBestEffort_(sheet, range), false);
+});
