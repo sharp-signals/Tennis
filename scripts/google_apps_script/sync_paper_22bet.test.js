@@ -41,9 +41,66 @@ test('1.75 is inclusive and there is no 1.90 ceiling', () => {
 });
 
 test('tracking column installation is idempotent', () => {
-  const all = ['Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status'];
+  const all = [
+    'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
+    '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
+    'Fenzobot Report Match Key', 'Fenzobot Report URL', 'Selection Time Precision',
+    'Fenzobot Commence Time UTC',
+  ];
   assert.deepEqual(Array.from(context.missingTrackingHeaders_([])), all);
   assert.deepEqual(Array.from(context.missingTrackingHeaders_(all)), []);
+});
+
+test('historical report linkage handles abbreviated names and the Safiullin typo', () => {
+  const records = [{
+    report_date: '2026-09-29',
+    player_a: 'Roman Safiullin',
+    player_b: 'Flavio Cobolli',
+    report_match_key: 'fallback:one',
+    snapshot_key: null,
+  }];
+  const match = context.findPaperReportLink_('2026-09-29', 'Saffiulin x Cobolli', records);
+  assert.equal(match.report_match_key, 'fallback:one');
+});
+
+test('date-only history is linked but never presented as exact ex-ante timing', () => {
+  const extended = {
+    complete: true, snapshot: 15, strategy: 16, selectedAt: 17,
+    reviewOdd: 18, handicapLine: 19, status: 20,
+    reportMatchKey: 21, reportUrl: 22, timePrecision: 23,
+    commenceTime: 24,
+  };
+  const values = Array(25).fill('');
+  values[15] = 'snapshot:one';
+  values[21] = 'canonical:one';
+  values[23] = 'DATE_ONLY_RETROSPECTIVE';
+  assert.equal(
+    context.validateGuerraSelection_(values, extended, {}, false),
+    'LINKED_RETROSPECTIVE_CANONICAL',
+  );
+  values[15] = '';
+  assert.equal(
+    context.validateGuerraSelection_(values, extended, {}, false),
+    'LINKED_RETROSPECTIVE_LEGACY',
+  );
+});
+
+test('future exact selections use the linked report start even outside GREEN_STRONG', () => {
+  const extended = {
+    complete: true, snapshot: 15, strategy: 16, selectedAt: 17,
+    reviewOdd: 18, handicapLine: 19, status: 20,
+    reportMatchKey: 21, reportUrl: 22, timePrecision: 23,
+    commenceTime: 24,
+  };
+  const values = Array(25).fill('');
+  values[17] = '2026-10-12T10:00:00Z';
+  values[21] = 'report:future';
+  values[23] = 'EXACT_TIMESTAMP';
+  values[24] = '2026-10-12T12:00:00Z';
+  assert.equal(
+    context.validateGuerraSelection_(values, extended, {}, false),
+    'LINKED_EX_ANTE',
+  );
 });
 
 test('GitHub content is Base64-encoded from UTF-8 bytes', () => {

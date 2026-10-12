@@ -21,9 +21,12 @@ const PAPER_22BET_SYNC = {
   defaultBranch: 'main',
   defaultSpreadsheetId: '1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U',
   validationPath: 'data/validation/green-strong-v1.json',
+  reportLinkagePath: 'data/validation/manual-paper-linkage-index-v1.json',
   trackingHeaders: [
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
     '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
+    'Fenzobot Report Match Key', 'Fenzobot Report URL', 'Selection Time Precision',
+    'Fenzobot Commence Time UTC',
   ],
   challengerTrackingHeaders: [
     'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
@@ -47,6 +50,7 @@ function onOpen() {
     .createMenu('Fenzobot')
     .addItem('Sincronizar métricas PAPER 22Bet', 'syncPaperTradingToGitHub')
     .addItem('Instalar colunas GREEN_STRONG_V1', 'installGreenStrongTrackingColumns')
+    .addItem('Recuperar ligações Guerra aos relatórios', 'backfillGuerraReportLinks')
     .addItem('Preparar área Challenger · 0,5u', 'installChallengerPaperWorkspace')
     .addItem('Ativar sincronização automática', 'installPaperTradingSync')
     .addToUi();
@@ -60,6 +64,9 @@ function syncPaperTradingToGitHub() {
   const repository = properties.getProperty('GITHUB_REPOSITORY') || PAPER_22BET_SYNC.defaultRepository;
   const branch = properties.getProperty('GITHUB_BRANCH') || PAPER_22BET_SYNC.defaultBranch;
   const spreadsheet = paperTradingSpreadsheet_();
+  ensureGuerraTrackingColumns_(spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName));
+  const reportIndex = fetchReportLinkageIndex_(token, repository, branch);
+  recoverGuerraReportLinks_(spreadsheet, reportIndex);
   const payload = buildPaperTradingPayload_(token, repository, branch);
   refreshChallengerPaperDashboard_(
     spreadsheet,
@@ -125,6 +132,12 @@ function githubContentBase64_(text) {
 function installGreenStrongTrackingColumns() {
   const sheet = paperTradingSpreadsheet_().getSheetByName(PAPER_22BET_SYNC.sheetName);
   if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
+  ensureGuerraTrackingColumns_(sheet);
+  return 'Colunas de ligação Fenzobot instaladas sem alterar as colunas operacionais existentes.';
+}
+
+function ensureGuerraTrackingColumns_(sheet) {
+  if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
   const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, PAPER_22BET_SYNC.firstColumn, 1, width).getValues()[0];
   let next = headers.length;
@@ -135,7 +148,21 @@ function installGreenStrongTrackingColumns() {
       next += 1;
     }
   });
-  return 'Colunas GREEN_STRONG_V1 instaladas sem alterar as 15 colunas existentes.';
+}
+
+function backfillGuerraReportLinks() {
+  const properties = PropertiesService.getScriptProperties();
+  const token = properties.getProperty('GITHUB_TOKEN');
+  if (!token) throw new Error('Falta GITHUB_TOKEN nas Propriedades do script.');
+  const repository = properties.getProperty('GITHUB_REPOSITORY') || PAPER_22BET_SYNC.defaultRepository;
+  const branch = properties.getProperty('GITHUB_BRANCH') || PAPER_22BET_SYNC.defaultBranch;
+  const spreadsheet = paperTradingSpreadsheet_();
+  ensureGuerraTrackingColumns_(spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName));
+  const result = recoverGuerraReportLinks_(
+    spreadsheet,
+    fetchReportLinkageIndex_(token, repository, branch),
+  );
+  return 'Ligações recuperadas: ' + result.linked + ' · por rever: ' + result.unmatched + '.';
 }
 
 function missingTrackingHeaders_(headers) {
@@ -246,6 +273,171 @@ function normalisedTrackingColumn_(map, expected) {
   return null;
 }
 
+function paperDateIso_(value, timeZone) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !Number.isNaN(value.getTime())) {
+    return Utilities.formatDate(value, timeZone || 'Europe/Lisbon', 'yyyy-MM-dd');
+  }
+  const text = String(value || '').trim().toLowerCase();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+  const months = {jan: '01', fev: '02', mar: '03', abr: '04', mai: '05', jun: '06', jul: '07', ago: '08', set: '09', out: '10', nov: '11', dez: '12'};
+  const pt = text.match(/^(\d{1,2})-([a-zç]+)\.?-(\d{4})$/);
+  if (!pt || !months[pt[2].slice(0, 3)]) return '';
+  return pt[3] + '-' + months[pt[2].slice(0, 3)] + '-' + ('0' + pt[1]).slice(-2);
+}
+
+function paperName_(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function paperEditDistance_(a, b) {
+  const previous = Array.from({length: b.length + 1}, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    for (let j = 0; j < current.length; j += 1) previous[j] = current[j];
+  }
+  return previous[b.length];
+}
+
+function paperPlayerMatches_(abbreviated, fullName) {
+  const aliases = {saffiulin: 'safiullin'};
+  const query = paperName_(abbreviated).split(' ').filter(Boolean).map(token => aliases[token] || token);
+  const full = paperName_(fullName).split(' ').filter(Boolean);
+  if (!query.length || !full.length) return false;
+  const significant = query.filter(token => token.length >= 3);
+  const tokens = significant.length ? significant : query;
+  return tokens.every(token => full.some(candidate => (
+    candidate === token ||
+    (token.length >= 5 && candidate.length >= 5 && paperEditDistance_(token, candidate) <= 1)
+  )));
+}
+
+function paperPairMatches_(game, record) {
+  const players = String(game || '').split(/\s+x\s+/i);
+  if (players.length !== 2) return false;
+  return (
+    paperPlayerMatches_(players[0], record.player_a) && paperPlayerMatches_(players[1], record.player_b)
+  ) || (
+    paperPlayerMatches_(players[0], record.player_b) && paperPlayerMatches_(players[1], record.player_a)
+  );
+}
+
+function paperDayDifference_(leftIso, rightIso) {
+  const left = new Date(String(leftIso) + 'T00:00:00Z');
+  const right = new Date(String(rightIso) + 'T00:00:00Z');
+  if (Number.isNaN(left.getTime()) || Number.isNaN(right.getTime())) return null;
+  return Math.round((right.getTime() - left.getTime()) / 86400000);
+}
+
+function findPaperReportLink_(dateIso, game, records) {
+  const candidates = (records || []).filter(record => {
+    const delta = paperDayDifference_(dateIso, record.report_date);
+    return delta !== null && delta >= -1 && delta <= 3 && paperPairMatches_(game, record);
+  }).map(record => Object.assign({}, record, {
+    _delta: paperDayDifference_(dateIso, record.report_date),
+  }));
+  if (!candidates.length) return null;
+  const distance = Math.min.apply(null, candidates.map(record => Math.abs(record._delta)));
+  const nearest = candidates.filter(record => Math.abs(record._delta) === distance);
+  nearest.sort((a, b) => {
+    const canonicalA = a.snapshot_key ? 0 : 1;
+    const canonicalB = b.snapshot_key ? 0 : 1;
+    return canonicalA - canonicalB || String(a.report_match_key).localeCompare(String(b.report_match_key));
+  });
+  const identities = {};
+  nearest.forEach(record => {
+    identities[paperName_(record.player_a) + '|' + paperName_(record.player_b)] = true;
+  });
+  return Object.keys(identities).length === 1 ? nearest[0] : null;
+}
+
+function fetchReportLinkageIndex_(token, repository, branch) {
+  if (!token || !repository) return {available: false, records: []};
+  const url = 'https://api.github.com/repos/' + repository + '/contents/' + PAPER_22BET_SYNC.reportLinkagePath + '?ref=' + encodeURIComponent(branch);
+  const response = UrlFetchApp.fetch(url, {method: 'get', headers: {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json'}, muteHttpExceptions: true});
+  if (response.getResponseCode() !== 200) return {available: false, records: []};
+  try {
+    const body = JSON.parse(response.getContentText());
+    let document;
+    if (body.content) {
+      document = JSON.parse(Utilities.newBlob(
+        Utilities.base64Decode(String(body.content).replace(/\s/g, '')),
+      ).getDataAsString());
+    } else if (body.download_url) {
+      // GitHub deixa de devolver conteúdo inline quando o índice ultrapassa
+      // 1 MB. O download_url mantém a recuperação funcional à medida que o
+      // histórico cresce.
+      const download = UrlFetchApp.fetch(body.download_url, {
+        method: 'get', headers: {Authorization: 'Bearer ' + token}, muteHttpExceptions: true,
+      });
+      if (download.getResponseCode() !== 200) return {available: false, records: []};
+      document = JSON.parse(download.getContentText());
+    } else {
+      return {available: false, records: []};
+    }
+    return {available: true, records: document.records || []};
+  } catch (error) {
+    return {available: false, records: []};
+  }
+}
+
+function recoverGuerraReportLinks_(spreadsheet, reportIndex) {
+  const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName);
+  if (!sheet || !reportIndex || reportIndex.available !== true) return {linked: 0, unmatched: 0};
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, width).getValues()[0];
+  const tracking = trackingIndexes_(headers);
+  const map = trackingColumnMap_(sheet);
+  const rowCount = Math.max(0, sheet.getLastRow() - PAPER_22BET_SYNC.headerRow);
+  if (!rowCount) return {linked: 0, unmatched: 0};
+  const rows = sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, 1, rowCount, width).getValues();
+  const timeZone = spreadsheet.getSpreadsheetTimeZone ? spreadsheet.getSpreadsheetTimeZone() : 'Europe/Lisbon';
+  let linked = 0;
+  let unmatched = 0;
+  rows.forEach(row => {
+    if (!(row[0] && row[1] && row[tracking.market]) || isChallengerManualRow_(row, tracking)) return;
+    row[tracking.strategy] = 'GUERRA_SELECTION_V1';
+    let link = null;
+    if (!String(row[tracking.reportMatchKey] || '').trim()) {
+      link = findPaperReportLink_(paperDateIso_(row[0], timeZone), row[1], reportIndex.records);
+      if (!link) {
+        unmatched += 1;
+        return;
+      }
+      row[tracking.snapshot] = link.snapshot_key || '';
+      row[tracking.reportMatchKey] = link.report_match_key || '';
+      row[tracking.reportUrl] = link.report_url || '';
+      row[tracking.commenceTime] = link.commence_time_utc || '';
+    }
+    row[tracking.timePrecision] = row[tracking.selectedAt]
+      ? 'EXACT_TIMESTAMP'
+      : 'DATE_ONLY_RETROSPECTIVE';
+    if (!row[tracking.handicapLine] && normalisedHeader_(marketName_(row, tracking)).indexOf('handicap') >= 0) {
+      const line = String(row[6] || '').replace(',', '.').match(/([+-]\s*\d+(?:\.\d+)?)\s*$/);
+      if (line) row[tracking.handicapLine] = Number(line[1].replace(/\s/g, ''));
+    }
+    linked += 1;
+  });
+  [
+    tracking.snapshot, tracking.strategy, tracking.selectedAt, tracking.reviewOdd,
+    tracking.handicapLine, tracking.status, tracking.reportMatchKey,
+    tracking.reportUrl, tracking.timePrecision, tracking.commenceTime,
+  ].filter(index => Number.isInteger(index) && index >= 0).forEach(index => {
+    sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, index + 1, rowCount, 1)
+      .setValues(rows.map(row => [row[index]]));
+  });
+  return {linked: linked, unmatched: unmatched};
+}
+
 function isChallengerLevel_(value) {
   return normalisedHeader_(value).indexOf('challenger') === 0;
 }
@@ -278,7 +470,7 @@ function onEdit(e) {
     editedSheetName !== PAPER_22BET_SYNC.sheetName &&
     editedSheetName !== PAPER_22BET_SYNC.challengerEntrySheetName
   ) return;
-  if (e.range.getRow() <= PAPER_22BET_SYNC.headerRow || !e.value) return;
+  if (e.range.getRow() <= PAPER_22BET_SYNC.headerRow) return;
   const sheet = editedSheet;
   const map = trackingColumnMap_(sheet);
   if (editedSheetName === PAPER_22BET_SYNC.challengerEntrySheetName) {
@@ -290,11 +482,31 @@ function onEdit(e) {
     applyChallengerRowDefaults_(sheet, e.range.getRow(), map, e.value);
     return;
   }
-  if (map['Fenzobot Snapshot Key'] !== e.range.getColumn()) return;
+  const resultColumn = normalisedTrackingColumn_(map, 'Resultado');
+  const profitColumn = normalisedTrackingColumn_(map, 'Lucro (u)');
+  const notesColumn = normalisedTrackingColumn_(map, 'Notas');
+  if ([resultColumn, profitColumn, notesColumn].indexOf(e.range.getColumn()) >= 0) return;
+  const strategyColumn = map['Selection Strategy'];
   const stampColumn = map['Selected At UTC'];
-  if (!stampColumn) return;
+  const precisionColumn = map['Selection Time Precision'];
+  if (!stampColumn || !strategyColumn) return;
+  const rowValues = sheet.getRange(e.range.getRow(), 1, 1, Math.max(sheet.getLastColumn(), 16)).getValues()[0];
+  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, Math.max(sheet.getLastColumn(), 16)).getValues()[0];
+  const tracking = trackingIndexes_(headers);
+  if (!(rowValues[0] && rowValues[1] && rowValues[tracking.market])) return;
+  sheet.getRange(e.range.getRow(), strategyColumn).setValue('GUERRA_SELECTION_V1');
   const stampCell = sheet.getRange(e.range.getRow(), stampColumn);
-  if (!stampCell.getValue()) stampCell.setValue(new Date().toISOString());
+  if (!stampCell.getValue()) {
+    stampCell.setValue(new Date().toISOString());
+    if (precisionColumn) sheet.getRange(e.range.getRow(), precisionColumn).setValue('EXACT_TIMESTAMP');
+  }
+}
+
+// O projeto oficial é autónomo (não bound à Sheet). Um simple trigger onEdit
+// não recebe eventos nesse contexto, por isso o instalador cria este trigger
+// explícito para carimbar o momento real das escolhas futuras.
+function onPaperTradingEdit_(e) {
+  onEdit(e);
 }
 
 function applyChallengerEntryDefaults_(sheet, rowNumber, map) {
@@ -315,10 +527,16 @@ function applyChallengerEntryDefaults_(sheet, rowNumber, map) {
 
 function installPaperTradingSync() {
   ScriptApp.getProjectTriggers()
-    .filter(trigger => trigger.getHandlerFunction() === 'syncPaperTradingToGitHub')
+    .filter(trigger => [
+      'syncPaperTradingToGitHub', 'onPaperTradingEdit_',
+    ].indexOf(trigger.getHandlerFunction()) >= 0)
     .forEach(trigger => ScriptApp.deleteTrigger(trigger));
   ScriptApp.newTrigger('syncPaperTradingToGitHub').timeBased().everyMinutes(30).create();
-  return 'Sincronização automática ativada: verifica a Sheet a cada 30 minutos e só publica se houver alterações.';
+  ScriptApp.newTrigger('onPaperTradingEdit_')
+    .forSpreadsheet(paperTradingSpreadsheet_())
+    .onEdit()
+    .create();
+  return 'Sincronização automática ativada: verifica a Sheet a cada 30 minutos e carimba novas escolhas no momento da edição.';
 }
 
 /**
@@ -389,7 +607,16 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const flatStakeSimulation = newFlatStakeSimulation_();
   const selectedSnapshotKeys = {};
   const underdogPairs = {};
-  const linkage = {LINKED_EX_ANTE: 0, SNAPSHOT_NOT_FOUND: 0, NOT_GREEN_STRONG: 0, SELECTION_AFTER_START: 0, MISSING_SELECTION_TIMESTAMP: 0, UNAVAILABLE: 0};
+  const linkage = {
+    LINKED_EX_ANTE: 0,
+    LINKED_RETROSPECTIVE_CANONICAL: 0,
+    LINKED_RETROSPECTIVE_LEGACY: 0,
+    REPORT_LINK_NOT_FOUND: 0,
+    SELECTION_AFTER_START: 0,
+    MISSING_SELECTION_TIMESTAMP: 0,
+    UNAVAILABLE: 0,
+  };
+  const selectedGreenSnapshotKeys = {};
   const challengerStats = newStats_();
   const challengerByMarket = {};
   const challengerBySide = {};
@@ -428,10 +655,14 @@ function buildPaperTradingPayload_(token, repository, branch) {
     const status = validateGuerraSelection_(row, tracking, green.byKey, green.available);
     linkage[status] = (linkage[status] || 0) + 1;
     sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(status);
-    if (status !== 'LINKED_EX_ANTE') return;
+    if (!isLinkedGuerraStatus_(status)) return;
     const snapshotKey = String(row[tracking.snapshot]).trim();
     const cohort = green.byKey[snapshotKey] || {};
-    selectedSnapshotKeys[snapshotKey] = true;
+    const reportMatchKey = String(row[tracking.reportMatchKey] || '').trim();
+    const candidateKey = snapshotKey || reportMatchKey;
+    if (!candidateKey) return;
+    selectedSnapshotKeys[candidateKey] = true;
+    if (snapshotKey && cohort.eligible === true) selectedGreenSnapshotKeys[snapshotKey] = true;
     const market = marketName_(row, tracking);
     const side = sideName_(row, tracking);
     const route = moneylineReviewRoute_(row[tracking.reviewOdd]);
@@ -442,11 +673,11 @@ function buildPaperTradingPayload_(token, repository, branch) {
     addRowToStats_(guerraByMarket[market], row, tracking);
     addRowToStats_(guerraBySide[side], row, tracking);
     guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
-    if (cohort.selected_side_market_position === 'UNDERDOG') {
-      if (!underdogPairs[snapshotKey]) underdogPairs[snapshotKey] = {moneyline: false, positiveHandicap: false};
+    if (normalisedHeader_(sideName_(row, tracking)) === 'underdog') {
+      if (!underdogPairs[candidateKey]) underdogPairs[candidateKey] = {moneyline: false, positiveHandicap: false};
       const leg = manualLegType_(row, tracking);
-      if (leg === 'MONEYLINE') underdogPairs[snapshotKey].moneyline = true;
-      if (leg === 'POSITIVE_HANDICAP_GAMES') underdogPairs[snapshotKey].positiveHandicap = true;
+      if (leg === 'MONEYLINE') underdogPairs[candidateKey].moneyline = true;
+      if (leg === 'POSITIVE_HANDICAP_GAMES') underdogPairs[candidateKey].positiveHandicap = true;
     }
   });
   challengerSource.rows.forEach((row, offset) => {
@@ -479,11 +710,15 @@ function buildPaperTradingPayload_(token, repository, branch) {
     underdog_pair_completeness: pairCompleteness,
     linkage: linkage,
     eligible_green_strong: green.eligibleCount,
-    selection_rate_pct: green.eligibleCount ? Math.round(10000 * selectedCandidates / green.eligibleCount) / 100 : null,
-    status: tracking.complete && green.available ? 'AVAILABLE' : 'UNAVAILABLE',
+    selected_green_strong_candidates: Object.keys(selectedGreenSnapshotKeys).length,
+    selection_rate_pct: green.eligibleCount
+      ? Math.round(10000 * Object.keys(selectedGreenSnapshotKeys).length / green.eligibleCount) / 100
+      : null,
+    temporal_claims: 'RETROSPECTIVE_DATE_ONLY_SEPARATED_FROM_EXACT_TIMESTAMP',
+    status: tracking.complete ? 'AVAILABLE' : 'UNAVAILABLE',
     flat_stake_simulation: finishFlatStakeSimulation_(
       flatStakeSimulation,
-      tracking.complete && green.available,
+      tracking.complete,
     ),
   };
   const challengerAggregate = {
@@ -587,6 +822,10 @@ function trackingIndexes_(headers) {
     selectedAt: indexes['Selected At UTC'], reviewOdd: indexes['22Bet Moneyline Review Odd'],
     handicapLine: indexes['22Bet Handicap Games Line'],
     status: indexes['Validation Status'],
+    reportMatchKey: indexes['Fenzobot Report Match Key'],
+    reportUrl: indexes['Fenzobot Report URL'],
+    timePrecision: indexes['Selection Time Precision'],
+    commenceTime: indexes['Fenzobot Commence Time UTC'],
     challengerIndex: headerIndex_(headers, 'Challenger Índice Fenzobot'),
     challengerCoverage: headerIndex_(headers, 'Challenger Cobertura %'),
     challengerEdge: headerIndex_(headers, 'Challenger Edge %'),
@@ -597,7 +836,8 @@ function trackingIndexes_(headers) {
     stake: operationalIndex_(headers, 'Stake (u)', 'stake'),
     result: operationalIndex_(headers, 'Resultado', 'result'),
     profit: operationalIndex_(headers, 'Lucro (u)', 'profit'),
-    complete: PAPER_22BET_SYNC.trackingHeaders.every(header => indexes[header] >= 0),
+    complete: PAPER_22BET_SYNC.trackingHeaders.slice(0, 6).every(header => indexes[header] >= 0),
+    reportComplete: PAPER_22BET_SYNC.trackingHeaders.every(header => indexes[header] >= 0),
   };
 }
 
@@ -749,16 +989,42 @@ function trackingColumnMap_(sheet) {
 
 function validateGuerraSelection_(row, tracking, byKey, indexAvailable) {
   if (!tracking.complete) return 'UNAVAILABLE';
-  if (indexAvailable === false) return 'UNAVAILABLE';
   const key = String(row[tracking.snapshot] || '').trim();
-  if (!key || !Object.prototype.hasOwnProperty.call(byKey, key)) return 'SNAPSHOT_NOT_FOUND';
-  const cohort = byKey[key];
-  if (!cohort.eligible) return 'NOT_GREEN_STRONG';
+  const supportsReportLinkage = Number.isInteger(tracking.reportMatchKey) && tracking.reportMatchKey >= 0;
+  if (!supportsReportLinkage) {
+    if (indexAvailable === false) return 'UNAVAILABLE';
+    if (!key || !Object.prototype.hasOwnProperty.call(byKey, key)) return 'SNAPSHOT_NOT_FOUND';
+    const legacyCohort = byKey[key];
+    if (!legacyCohort.eligible) return 'NOT_GREEN_STRONG';
+    const legacySelectedAt = new Date(row[tracking.selectedAt]);
+    if (!row[tracking.selectedAt] || Number.isNaN(legacySelectedAt.getTime())) return 'MISSING_SELECTION_TIMESTAMP';
+    const legacyStart = new Date(legacyCohort.commence_time_utc);
+    if (Number.isNaN(legacyStart.getTime())) return 'UNAVAILABLE';
+    return legacySelectedAt.getTime() < legacyStart.getTime() ? 'LINKED_EX_ANTE' : 'SELECTION_AFTER_START';
+  }
+  const reportMatchKey = String(row[tracking.reportMatchKey] || '').trim();
+  if (!reportMatchKey) return 'REPORT_LINK_NOT_FOUND';
+  const precision = String(row[tracking.timePrecision] || '').trim();
+  if (precision === 'DATE_ONLY_RETROSPECTIVE') {
+    return key ? 'LINKED_RETROSPECTIVE_CANONICAL' : 'LINKED_RETROSPECTIVE_LEGACY';
+  }
   const selectedAt = new Date(row[tracking.selectedAt]);
   if (!row[tracking.selectedAt] || Number.isNaN(selectedAt.getTime())) return 'MISSING_SELECTION_TIMESTAMP';
-  const start = new Date(cohort.commence_time_utc);
+  const cohort = (byKey || {})[key] || {};
+  const linkedCommenceTime = Number.isInteger(tracking.commenceTime)
+    ? row[tracking.commenceTime]
+    : null;
+  const start = new Date(linkedCommenceTime || cohort.commence_time_utc);
   if (Number.isNaN(start.getTime())) return 'UNAVAILABLE';
   return selectedAt.getTime() < start.getTime() ? 'LINKED_EX_ANTE' : 'SELECTION_AFTER_START';
+}
+
+function isLinkedGuerraStatus_(status) {
+  return [
+    'LINKED_EX_ANTE',
+    'LINKED_RETROSPECTIVE_CANONICAL',
+    'LINKED_RETROSPECTIVE_LEGACY',
+  ].indexOf(status) >= 0;
 }
 
 function moneylineReviewRoute_(rawOdd) {
