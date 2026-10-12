@@ -2676,7 +2676,18 @@ def _operational_entry_model(payload, div):
 def _format_entry_price_zone(price):
     price = _d(price)
     if price.get("minimum_odd") is None:
-        return "Sem intervalo validado"
+        try:
+            fair = float(price.get("fair_odd"))
+        except (TypeError, ValueError):
+            fair = None
+        if fair is not None and math.isfinite(fair):
+            required = math.floor((fair + 0.010000001) * 100) / 100
+            if required > INVESTOR_PROFILE_ODDS_HIGH:
+                return (
+                    f"Mínima estimada {required:.2f} · acima da janela "
+                    f"(máx. {INVESTOR_PROFILE_ODDS_HIGH:.2f})"
+                )
+        return "Amostra insuficiente"
     return f"{float(price['minimum_odd']):.2f}–{float(price['maximum_odd']):.2f}"
 
 
