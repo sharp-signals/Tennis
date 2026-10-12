@@ -22,7 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
-  projectionSchemaVersion: '2026-10-09-factor-attribution-v1',
+  projectionSchemaVersion: '2026-10-12-guerra-audit-v1',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 
@@ -55,6 +55,9 @@ function syncSystemHistoryToSheet() {
   const attributionSheetsMissing = [
     'Atribuição — fatores',
     'Atribuição — força do peso',
+    'GUERRA — fatores',
+    'GUERRA — segmentos',
+    'GUERRA — qualidade',
   ].some(name => {
     const sheet = spreadsheet.getSheetByName(name);
     return !sheet || sheet.getLastRow() < 2;
@@ -77,6 +80,7 @@ function syncSystemHistoryToSheet() {
   const currentOperational = continuity && continuity.operational_current || (payload.operational || {});
   writeFactorAttributionSheets_(spreadsheet, currentOperational.factor_attribution || {});
   writeChallengerManualPaperSheet_(spreadsheet, manualPaper || {});
+  writeGuerraAuditSheets_(spreadsheet, manualPaper || {});
   properties.setProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty, fingerprint);
   return 'Histórico & Aprendizagem atualizado com sucesso.';
 }
@@ -174,6 +178,48 @@ function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
       sheet.getRange(row + 1, 1, 1, 10).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold');
     }
   }
+}
+
+function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
+  const strategy = ((manualPaper || {}).by_strategy || {}).GUERRA_SELECTION_V1 || {};
+  const audit = strategy.audit_v1 || {};
+  const factors = Array.isArray(audit.factors) ? audit.factors : [];
+  const segments = Array.isArray(audit.segments) ? audit.segments : [];
+  const quality = audit.quality || {};
+
+  upsertSystemSheet_(spreadsheet, 'GUERRA — fatores', rowsWithHeaders_(
+    ['Universo', 'Fator', 'Relação com seleção', 'Entradas', 'Liquidadas', 'Pendentes', 'Vitórias', 'Derrotas', '% acerto', 'Unidades', 'ROI', 'Odd média', 'Break-even', 'Margem vs break-even (p.p.)', 'Peso efetivo médio', 'Leitura da amostra'],
+    factors,
+    ['scope', 'factor', 'relation', 'total_entries', 'settled', 'pending', 'wins', 'losses', 'win_rate_pct', 'units', 'roi_pct', 'average_odd', 'break_even_pct', 'hit_vs_break_even_pp', 'average_effective_weight', 'sample_status'],
+  ), {headerRow: 1, widths: [14, 24, 22, 12, 12, 12, 12, 12, 14, 14, 14, 14, 16, 24, 20, 26], percentageColumns: [9, 11, 13], marginColumn: 14});
+
+  upsertSystemSheet_(spreadsheet, 'GUERRA — segmentos', rowsWithHeaders_(
+    ['Dimensão', 'Grupo', 'Entradas', 'Liquidadas', 'Pendentes', 'Vitórias', 'Derrotas', 'Void', '% acerto', 'Unidades', 'ROI', 'Odd média', 'Break-even', 'Margem vs break-even (p.p.)', 'Leitura da amostra'],
+    segments,
+    ['dimension', 'group', 'total_entries', 'settled', 'pending', 'wins', 'losses', 'pushes', 'win_rate_pct', 'units', 'roi_pct', 'average_odd', 'break_even_pct', 'hit_vs_break_even_pp', 'sample_status'],
+  ), {headerRow: 1, widths: [22, 30, 12, 12, 12, 12, 12, 10, 14, 14, 14, 14, 16, 24, 26], percentageColumns: [9, 11, 13], marginColumn: 14});
+
+  const qualityRows = [
+    ['Auditoria GUERRA_SELECTION', 'Valor'],
+    ['Estado', audit.status || 'UNAVAILABLE'],
+    ['Contrato de privacidade', audit.privacy_contract || 'N/D'],
+    ['Entradas ligadas a relatório', quality.linked_entries || 0],
+    ['Entradas com snapshot canónico', quality.canonical_entries || 0],
+    ['Entradas ligadas apenas a relatório legacy', quality.legacy_entries || 0],
+    ['Ligações ex ante com hora exata', quality.exact_timestamp_entries || 0],
+    ['Ligações retrospetivas por data', quality.retrospective_entries || 0],
+    ['Snapshots encontrados no índice de fatores', quality.factor_index_matches || 0],
+    ['Entradas elegíveis para auditoria de fatores', quality.factor_audit_eligible_entries || 0],
+    ['Lado selecionado não resolvido', quality.selected_side_unresolved || 0],
+    ['Snapshot ausente do índice de fatores', quality.factor_index_missing || 0],
+    ['Possíveis legs exatas duplicadas', quality.duplicate_exact_legs || 0],
+    ['Snapshots públicos no índice', audit.factor_index_records == null ? 'N/D' : audit.factor_index_records],
+    ['Regra de amostra', '<20 informativo · 20–39 tendência · ≥40 candidato a revisão; alterações máximas de peso ±0,5 por ciclo.'],
+    ['Limite', 'Auditoria descritiva. Não altera pesos, PAPER, pricing ou decisões automaticamente. Challenger mantém universo próprio.'],
+  ];
+  upsertSystemSheet_(spreadsheet, 'GUERRA — qualidade', qualityRows, {
+    headerRow: 1, widths: [48, 105], preserveCharts: false,
+  });
 }
 
 function writeSystemHistoryWorkbook_(spreadsheet, payload) {

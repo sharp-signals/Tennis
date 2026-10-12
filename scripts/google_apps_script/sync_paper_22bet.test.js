@@ -40,6 +40,46 @@ test('1.75 is inclusive and there is no 1.90 ceiling', () => {
   assert.equal(context.moneylineReviewRoute_(2.50), 'MONEYLINE_MANUAL_REVIEW');
 });
 
+test('Guerra audit relates factor direction to the selected side and real ROI', () => {
+  const rowTracking = {
+    snapshot: 15, selection: 6, tour: 2, surface: 4, market: 5,
+    handicapLine: 19, side: 7, odd: 9, stake: 10, result: 12, profit: 13,
+  };
+  const values = Array(25).fill('');
+  values[2] = 'ATP'; values[4] = 'Hard'; values[5] = 'Handicap games';
+  values[6] = 'Alpha -2.5'; values[7] = 'Favorito'; values[9] = 1.85;
+  values[10] = 1; values[12] = 'GANHOU'; values[13] = 0.85;
+  values[15] = 'snapshot:one'; values[19] = -2.5;
+  const snapshot = {
+    t: 'ATP', s: 'Hard', a: 'Alpha', b: 'Beta', m: 'a', ia: 78, ib: 22,
+    f: [['forma_recente', 'a', 4], ['fadiga', 'b', 2]],
+  };
+  const factors = {}, segments = {}, seen = {};
+  const quality = {
+    linked_entries: 0, canonical_entries: 0, legacy_entries: 0,
+    exact_timestamp_entries: 0, retrospective_entries: 0,
+    factor_index_matches: 0, factor_audit_eligible_entries: 0,
+    selected_side_unresolved: 0, factor_index_missing: 0,
+    duplicate_exact_legs: 0,
+  };
+  context.addGuerraAuditRow_(
+    factors, segments, quality, seen, values, rowTracking,
+    'LINKED_EX_ANTE', snapshot, 'match:one',
+  );
+  const rows = context.finishGuerraFactorAudit_(factors);
+  const form = rows.find(item => item.scope === 'ATP' && item.factor === 'forma_recente');
+  const fatigue = rows.find(item => item.scope === 'ATP' && item.factor === 'fadiga');
+  assert.equal(form.relation, 'Alinha com seleção');
+  assert.equal(fatigue.relation, 'Contraria seleção');
+  assert.equal(form.roi_pct, 85);
+  assert.equal(form.sample_status, 'Informativo');
+  assert.equal(quality.factor_audit_eligible_entries, 1);
+  const market = context.finishGuerraSegmentAudit_(segments)
+    .find(item => item.dimension === 'Mercado');
+  assert.equal(market.group, 'Handicap negativo');
+  assert.equal(market.units, 0.85);
+});
+
 test('Challenger profit is locale-independent and applies Betfair commission', () => {
   assert.equal(context.challengerProfitValue_('Betfair', 2.10, 0.5, 'GANHOU'), 0.5225);
   assert.equal(context.challengerProfitValue_('22Bet', 1.83, 0.5, 'GANHOU'), 0.415);

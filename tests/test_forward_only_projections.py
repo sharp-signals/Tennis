@@ -454,8 +454,13 @@ class ForwardOnlyProjectionTests(unittest.TestCase):
     def test_google_sync_routes_active_payload_only_to_post_t0_sheets(self):
         source = (Path(__file__).parents[1] / "scripts/google_apps_script/sync_system_history.gs").read_text(encoding="utf-8")
         self.assertIn("writeProspectiveSystemHistory_", source)
+        self.assertIn("writeGuerraAuditSheets_(spreadsheet, manualPaper || {});", source)
+        self.assertIn("GUERRA — fatores", source)
+        self.assertIn("GUERRA — segmentos", source)
+        self.assertIn("GUERRA — qualidade", source)
         function = source[source.index("function writeProspectiveSystemHistory_"):source.index("function installSystemHistorySync")]
         self.assertNotIn("writeSystemHistoryWorkbook_(", function)
+        self.assertNotIn("writeGuerraAuditSheets_(", function)
         self.assertIn("Pós-T0 - Resumo", function)
         self.assertIn("Pós-T0 - Partidas", function)
 

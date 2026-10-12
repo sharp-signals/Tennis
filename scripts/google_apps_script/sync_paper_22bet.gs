@@ -22,6 +22,7 @@ const PAPER_22BET_SYNC = {
   defaultSpreadsheetId: '1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U',
   validationPath: 'data/validation/green-strong-v1.json',
   reportLinkagePath: 'data/validation/manual-paper-linkage-index-v1.json',
+  factorIndexPath: 'data/validation/manual-paper-factor-index-v1.json',
   trackingHeaders: [
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
     '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
@@ -37,11 +38,12 @@ const PAPER_22BET_SYNC = {
   challengerManualStrategy: 'CHALLENGER_125_EXPERIMENTAL_V1',
   challengerManualStakeUnits: 0.5,
   challengerManualMinimumEdgePct: 2.0,
-  syncContractVersion: 4,
+  syncContractVersion: 5,
   // Índices legacy (A:O) usados exclusivamente como compatibilidade para
   // versões antigas da Sheet sem cabeçalhos reconhecíveis.
   legacyOperationalIndexes: {
-    market: 5, side: 7, odd: 9, stake: 10, result: 12, profit: 13,
+    tour: 2, level: 3, surface: 4, market: 5, selection: 6,
+    side: 7, odd: 9, stake: 10, result: 12, profit: 13,
   },
 };
 
@@ -628,6 +630,9 @@ function buildPaperTradingPayload_(token, repository, branch) {
   });
 
   const green = tracking.complete ? fetchGreenStrongIndex_(token, repository, branch) : {byKey: {}, eligibleCount: null, available: false};
+  const factorIndex = tracking.complete
+    ? fetchManualFactorIndex_(token, repository, branch)
+    : {byKey: {}, recordCount: null, available: false};
   const guerraStats = newStats_();
   const guerraByMarket = {};
   const guerraBySide = {};
@@ -645,6 +650,21 @@ function buildPaperTradingPayload_(token, repository, branch) {
     UNAVAILABLE: 0,
   };
   const selectedGreenSnapshotKeys = {};
+  const guerraFactorGroups = {};
+  const guerraSegmentGroups = {};
+  const guerraAuditLegs = {};
+  const guerraAuditQuality = {
+    linked_entries: 0,
+    canonical_entries: 0,
+    legacy_entries: 0,
+    exact_timestamp_entries: 0,
+    retrospective_entries: 0,
+    factor_index_matches: 0,
+    factor_audit_eligible_entries: 0,
+    selected_side_unresolved: 0,
+    factor_index_missing: 0,
+    duplicate_exact_legs: 0,
+  };
   const challengerStats = newStats_();
   const challengerByMarket = {};
   const challengerBySide = {};
@@ -701,6 +721,17 @@ function buildPaperTradingPayload_(token, repository, branch) {
     addRowToStats_(guerraByMarket[market], row, tracking);
     addRowToStats_(guerraBySide[side], row, tracking);
     guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
+    addGuerraAuditRow_(
+      guerraFactorGroups,
+      guerraSegmentGroups,
+      guerraAuditQuality,
+      guerraAuditLegs,
+      row,
+      tracking,
+      status,
+      factorIndex.byKey[snapshotKey] || null,
+      candidateKey,
+    );
     if (normalisedHeader_(sideName_(row, tracking)) === 'underdog') {
       if (!underdogPairs[candidateKey]) underdogPairs[candidateKey] = {moneyline: false, positiveHandicap: false};
       const leg = manualLegType_(row, tracking);
@@ -748,6 +779,22 @@ function buildPaperTradingPayload_(token, repository, branch) {
       flatStakeSimulation,
       tracking.complete,
     ),
+    audit_v1: {
+      status: tracking.complete && factorIndex.available ? 'AVAILABLE' : 'DEGRADED',
+      privacy_contract: 'AGGREGATES_ONLY_NO_INDIVIDUAL_SELECTIONS',
+      factor_index_status: factorIndex.available ? 'AVAILABLE' : 'UNAVAILABLE',
+      factor_index_records: factorIndex.recordCount,
+      quality: guerraAuditQuality,
+      factors: finishGuerraFactorAudit_(guerraFactorGroups),
+      segments: finishGuerraSegmentAudit_(guerraSegmentGroups),
+      sample_policy: {
+        informative_below: 20,
+        directional_from: 20,
+        weight_review_from: 40,
+        maximum_weight_change_per_cycle: 0.5,
+      },
+      claims: 'DESCRIPTIVE_ONLY_NO_AUTOMATIC_WEIGHT_CHANGE',
+    },
   };
   const challengerAggregate = {
     summary: finishStats_(challengerStats),
@@ -857,8 +904,11 @@ function trackingIndexes_(headers) {
     challengerIndex: headerIndex_(headers, 'Challenger Índice Fenzobot'),
     challengerCoverage: headerIndex_(headers, 'Challenger Cobertura %'),
     challengerEdge: headerIndex_(headers, 'Challenger Edge %'),
+    tour: operationalIndex_(headers, 'Tour', 'tour'),
     level: operationalIndex_(headers, 'Nível', 'level'),
+    surface: operationalIndex_(headers, 'Piso', 'surface'),
     market: operationalIndex_(headers, 'Tipo de mercado', 'market'),
+    selection: operationalIndex_(headers, 'Seleção', 'selection'),
     side: operationalIndex_(headers, 'Fav/Und', 'side'),
     odd: operationalIndex_(headers, 'Odd aposta', 'odd'),
     stake: operationalIndex_(headers, 'Stake (u)', 'stake'),
@@ -891,8 +941,11 @@ function assertOperationalTracking_(tracking, headers) {
 
 function operationalIndex_(headers, header, legacyKey) {
   const aliases = {
+    tour: ['Tour', 'Circuito'],
     level: ['Nível', 'Nivel', 'Circuito'],
+    surface: ['Piso', 'Superfície', 'Superficie'],
     market: ['Tipo de mercado', 'Mercado'],
+    selection: ['Seleção', 'Selecao', 'Pick'],
     side: ['Fav/Und', 'Favorito/Underdog'],
     odd: ['Odd aposta', 'Odd 22Bet', 'Odd 22bet', 'Odd'],
     stake: ['Stake (u)', 'Stake', 'Unidades'],
@@ -1003,6 +1056,194 @@ function manualLegType_(row, tracking) {
   return 'UNAVAILABLE';
 }
 
+function auditSelectionSide_(row, tracking, snapshot) {
+  if (!snapshot) return null;
+  const raw = tracking.selection >= 0 ? row[tracking.selection] : '';
+  const selection = normalisedHeader_(raw)
+    .replace(/[+\-−]\s*\d+(?:[.,]\d+)?/g, ' ')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const playerA = normalisedHeader_(snapshot.a).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const playerB = normalisedHeader_(snapshot.b).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const matches = player => player && (
+    selection === player || selection.indexOf(player + ' ') === 0 ||
+    player.indexOf(selection + ' ') === 0
+  );
+  const matchesA = matches(playerA);
+  const matchesB = matches(playerB);
+  if (matchesA === matchesB) return null;
+  return matchesA ? 'a' : 'b';
+}
+
+function auditMarketType_(row, tracking) {
+  const market = normalisedHeader_(marketName_(row, tracking));
+  if (market === 'moneyline') return 'Moneyline';
+  if (market.indexOf('handicap') < 0) return marketName_(row, tracking) || 'N/D';
+  let line = Number(row[tracking.handicapLine]);
+  if (!Number.isFinite(line) && tracking.selection >= 0) {
+    const match = String(row[tracking.selection] || '').match(/([+\-−])\s*(\d+(?:[.,]\d+)?)/);
+    if (match) line = Number(match[2].replace(',', '.')) * (match[1] === '+' ? 1 : -1);
+  }
+  if (!Number.isFinite(line)) return 'Handicap · linha N/D';
+  if (line > 0) return 'Handicap positivo';
+  if (line < 0) return 'Handicap negativo';
+  return 'Handicap zero';
+}
+
+function auditOddsBand_(rawOdd) {
+  const odd = Number(rawOdd);
+  if (!Number.isFinite(odd) || odd <= 1) return 'N/D';
+  if (odd < 1.70) return '<1,70';
+  if (odd < 1.90) return '1,70–1,89';
+  if (odd < 2.10) return '1,90–2,09';
+  if (odd <= 2.30) return '2,10–2,30';
+  if (odd <= 2.50) return '2,31–2,50';
+  return '>2,50';
+}
+
+function auditIndexBand_(rawIndex) {
+  const value = Number(rawIndex);
+  if (!Number.isFinite(value)) return 'N/D';
+  if (value >= 90) return '90–100';
+  if (value >= 80) return '80–89';
+  if (value >= 70) return '70–79';
+  if (value >= 60) return '60–69';
+  if (value >= 50) return '50–59';
+  return '<50';
+}
+
+function addAuditStats_(collection, key, row, tracking) {
+  const label = String(key || 'N/D');
+  if (!collection[label]) collection[label] = newStats_();
+  addRowToAuditStats_(collection[label], row, tracking);
+}
+
+function addRowToAuditStats_(stats, row, tracking) {
+  addRowToStats_(stats, row, tracking);
+  const result = String(row[tracking.result] || '').trim().toUpperCase();
+  const odd = Number(row[tracking.odd]);
+  if ((result === 'GANHOU' || result === 'PERDEU') && Number.isFinite(odd) && odd > 1) {
+    if (!stats.resolvedOdds) stats.resolvedOdds = [];
+    stats.resolvedOdds.push(odd);
+  }
+}
+
+function finishAuditStats_(stats) {
+  const result = finishStats_(stats);
+  result.average_odd = stats.resolvedOdds && stats.resolvedOdds.length
+    ? Math.round(1000 * stats.resolvedOdds.reduce((total, odd) => total + odd, 0) / stats.resolvedOdds.length) / 1000
+    : null;
+  return result;
+}
+
+function addGuerraAuditRow_(factorGroups, segmentGroups, quality, seenLegs, row, tracking, status, snapshot, candidateKey) {
+  quality.linked_entries += 1;
+  const canonical = !!String(row[tracking.snapshot] || '').trim();
+  quality[canonical ? 'canonical_entries' : 'legacy_entries'] += 1;
+  const retrospective = String(status).indexOf('RETROSPECTIVE') >= 0;
+  quality[retrospective ? 'retrospective_entries' : 'exact_timestamp_entries'] += 1;
+
+  const marketType = auditMarketType_(row, tracking);
+  const legKey = [candidateKey, marketType, normalisedHeader_(row[tracking.selection]), row[tracking.handicapLine]].join('|');
+  if (seenLegs[legKey]) quality.duplicate_exact_legs += 1;
+  seenLegs[legKey] = true;
+
+  const tour = snapshot && snapshot.t || (tracking.tour >= 0 ? row[tracking.tour] : '') || 'N/D';
+  const surface = snapshot && snapshot.s || (tracking.surface >= 0 ? row[tracking.surface] : '') || 'N/D';
+  const selectedSide = auditSelectionSide_(row, tracking, snapshot);
+  const selectedIndex = snapshot && selectedSide ? snapshot[selectedSide === 'a' ? 'ia' : 'ib'] : null;
+  const alignment = snapshot && selectedSide && snapshot.m
+    ? (snapshot.m === selectedSide ? 'Alinhado com Fenzobot' : 'Divergente do Fenzobot')
+    : 'N/D';
+  const dimensions = {
+    'Circuito': String(tour || 'N/D').toUpperCase(),
+    'Mercado': marketType,
+    'Perfil': sideName_(row, tracking),
+    'Faixa de odd': auditOddsBand_(row[tracking.odd]),
+    'Janela operacional': Number(row[tracking.odd]) >= 1.70 && Number(row[tracking.odd]) <= 2.50
+      ? 'Dentro 1,70–2,50' : 'Fora 1,70–2,50',
+    'Piso': surface,
+    'Índice Fenzobot': auditIndexBand_(selectedIndex),
+    'Alinhamento': alignment,
+    'Tipo de ligação': retrospective ? 'Retrospetiva' : 'Ex ante',
+  };
+  Object.keys(dimensions).forEach(dimension => {
+    if (!segmentGroups[dimension]) segmentGroups[dimension] = {};
+    addAuditStats_(segmentGroups[dimension], dimensions[dimension], row, tracking);
+  });
+
+  if (!snapshot) {
+    if (canonical) quality.factor_index_missing += 1;
+    return;
+  }
+  quality.factor_index_matches += 1;
+  if (!selectedSide) {
+    quality.selected_side_unresolved += 1;
+    return;
+  }
+  quality.factor_audit_eligible_entries += 1;
+  (snapshot.f || []).forEach(factor => {
+    const factorName = String(factor[0] || '').trim();
+    const direction = String(factor[1] || '').trim().toLowerCase();
+    const weight = Number(factor[2]);
+    if (!factorName || ['a', 'b'].indexOf(direction) < 0 || !Number.isFinite(weight) || weight <= 0) return;
+    const relation = direction === selectedSide ? 'Alinha com seleção' : 'Contraria seleção';
+    ['GLOBAL', String(tour || 'N/D').toUpperCase()].forEach(scope => {
+      const key = [scope, factorName, relation].join('|');
+      if (!factorGroups[key]) {
+        factorGroups[key] = {scope: scope, factor: factorName, relation: relation, stats: newStats_(), weightSum: 0};
+      }
+      addRowToAuditStats_(factorGroups[key].stats, row, tracking);
+      factorGroups[key].weightSum += weight;
+    });
+  });
+}
+
+function auditSampleStatus_(settled) {
+  if (settled >= 40) return 'Candidato a revisão de peso';
+  if (settled >= 20) return 'Tendência';
+  return 'Informativo';
+}
+
+function finishGuerraFactorAudit_(groups) {
+  return Object.keys(groups).sort().map(key => {
+    const item = groups[key];
+    const stats = finishAuditStats_(item.stats);
+    const breakEven = stats.average_odd ? Math.round(1000 * 100 / stats.average_odd) / 10 : null;
+    return Object.assign({
+      scope: item.scope,
+      factor: item.factor,
+      relation: item.relation,
+      average_effective_weight: item.stats.total_entries
+        ? Math.round(1000 * item.weightSum / item.stats.total_entries) / 1000 : null,
+      break_even_pct: breakEven,
+      hit_vs_break_even_pp: stats.win_rate_pct == null || breakEven == null
+        ? null : Math.round(10 * (stats.win_rate_pct - breakEven)) / 10,
+      sample_status: auditSampleStatus_(stats.settled),
+    }, stats);
+  });
+}
+
+function finishGuerraSegmentAudit_(dimensions) {
+  const rows = [];
+  Object.keys(dimensions).sort().forEach(dimension => {
+    Object.keys(dimensions[dimension]).sort().forEach(group => {
+      const stats = finishAuditStats_(dimensions[dimension][group]);
+      const breakEven = stats.average_odd ? Math.round(1000 * 100 / stats.average_odd) / 10 : null;
+      rows.push(Object.assign({
+        dimension: dimension,
+        group: group,
+        break_even_pct: breakEven,
+        hit_vs_break_even_pp: stats.win_rate_pct == null || breakEven == null
+          ? null : Math.round(10 * (stats.win_rate_pct - breakEven)) / 10,
+        sample_status: auditSampleStatus_(stats.settled),
+      }, stats));
+    });
+  });
+  return rows;
+}
+
 function semanticFingerprintMaterial_(rowsWithoutValidationStatus, publicAggregates) {
   return JSON.stringify({sheet_rows: rowsWithoutValidationStatus, aggregates: publicAggregates});
 }
@@ -1079,6 +1320,34 @@ function fetchGreenStrongIndex_(token, repository, branch) {
     return {byKey: byKey, eligibleCount: rows.filter(row => row.eligible === true).length, available: true};
   } catch (error) {
     return {byKey: {}, eligibleCount: null, available: false};
+  }
+}
+
+function fetchManualFactorIndex_(token, repository, branch) {
+  if (!token || !repository || typeof UrlFetchApp === 'undefined') {
+    return {byKey: {}, recordCount: null, available: false};
+  }
+  const url = 'https://api.github.com/repos/' + repository + '/contents/' + PAPER_22BET_SYNC.factorIndexPath + '?ref=' + encodeURIComponent(branch);
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json'},
+    muteHttpExceptions: true,
+  });
+  if (response.getResponseCode() !== 200) return {byKey: {}, recordCount: null, available: false};
+  try {
+    const body = JSON.parse(response.getContentText());
+    const document = JSON.parse(
+      Utilities.newBlob(
+        Utilities.base64Decode(String(body.content || '').replace(/\s/g, '')),
+      ).getDataAsString(),
+    );
+    return {
+      byKey: document.records || {},
+      recordCount: Number(document.record_count || 0),
+      available: document.privacy_contract === 'PUBLIC_REPORT_FACTS_ONLY_NO_MANUAL_SELECTIONS',
+    };
+  } catch (error) {
+    return {byKey: {}, recordCount: null, available: false};
   }
 }
 

@@ -6,7 +6,7 @@
 de os usar como métrica operacional prospetiva. Não preencher nem reconstruir
 `GREEN_MONETIZATION_V1` a partir destas rows manuais.
 
-O menu `Instalar colunas GREEN_STRONG_V1` acrescenta seis colunas opcionais sem modificar as 15 existentes: snapshot key, estratégia, timestamp, odd Moneyline de revisão, linha real de Handicap games e estado. É idempotente; o timestamp é gravado uma única vez ao introduzir um novo key.
+O menu `Instalar colunas GREEN_STRONG_V1` acrescenta colunas técnicas opcionais sem modificar as colunas operacionais existentes: snapshot key, estratégia, timestamp, odd Moneyline de revisão, linha real de Handicap games, estado, chave e URL do relatório, precisão temporal e início do encontro. É idempotente; o timestamp é gravado uma única vez ao introduzir um novo key.
 
 Uma linha só entra no agregado da estratégia com correspondência exata a uma tag prospetiva e timestamp anterior ao início. Estados: `LINKED_EX_ANTE`, `SNAPSHOT_NOT_FOUND`, `NOT_GREEN_STRONG`, `SELECTION_AFTER_START`, `MISSING_SELECTION_TIMESTAMP` e `UNAVAILABLE`. Não há associação aproximada.
 
@@ -16,6 +16,29 @@ notas ou linhas. Ver [GREEN_STRONG_VALIDATION.md](GREEN_STRONG_VALIDATION.md).
 Quando o selecionado é underdog, a metodologia usa duas rows com o mesmo key: Moneyline e Handicap games positivo. `selection_rate_pct` usa candidatos/keys únicos, enquanto `paper_entries` mostra as legs. `underdog_pair_completeness` separa pares completos, Moneyline-only, handicap-only e casos não reconhecidos, sem publicar os keys.
 
 O fingerprint é semântico: inclui os agregados e estados de linkage derivados, mas exclui o timestamp de sincronização e a coluna `Validation Status` escrita pelo próprio script. Assim, uma alteração do índice GREEN_STRONG volta a publicar o resumo mesmo que as rows privadas não tenham mudado.
+
+### Auditoria das seleções GUERRA
+
+`CHANGE-2026-10-12-110` cruza, dentro da Sheet privada, as linhas já ligadas
+com um índice compacto de factos públicos dos snapshots. O resultado publicado
+continua a conter apenas agregados. Não publica jogos, jogadores, seleções,
+notas ou snapshot keys.
+
+A Sheet **Histórico & Aprendizagem** recebe três vistas terminais:
+
+- `GUERRA — fatores`: acerto, unidades, ROI, odd, break-even e peso efetivo
+  quando cada fator alinha ou contraria a seleção manual;
+- `GUERRA — segmentos`: ATP/WTA, mercado, perfil, janela `1,70–2,50`, piso,
+  índice Fenzobot, alinhamento e tipo de ligação;
+- `GUERRA — qualidade`: cobertura canónica/legacy, resolução do lado,
+  snapshots ausentes e possíveis legs exatas duplicadas.
+
+Só ligações canónicas com lado selecionado resolvido entram na atribuição por
+fator. Ligações legacy continuam úteis nos segmentos, mas nunca recebem
+fatores reconstruídos. Challenger conserva o seu universo próprio. A leitura é
+descritiva: menos de 20 liquidadas é informativo, 20–39 é tendência e 40 ou
+mais pode justificar revisão humana. Nenhum peso muda automaticamente e uma
+eventual alteração continua limitada a `±0,5` por ciclo.
 
 ## Challenger 125 — PAPER manual 0,5u
 
@@ -90,7 +113,7 @@ projeto associado à folha não abre ou foi eliminado.
 
 Após uma alteração na Sheet, a cadeia esperada é: **Apps Script → resumo
 agregado no GitHub → promoção validada → dashboard**. O Apps Script atual
-publica a posição das seis colunas operacionais juntamente com os agregados.
+publica a posição das colunas operacionais juntamente com os agregados.
 Se uma coluna for movida ou o layout deixar de ser reconhecível, a execução
 falha antes de publicar — o dashboard conserva o último resumo validado, em
 vez de converter apostas liquidadas em pendentes.
