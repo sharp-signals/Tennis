@@ -40,6 +40,14 @@ test('1.75 is inclusive and there is no 1.90 ceiling', () => {
   assert.equal(context.moneylineReviewRoute_(2.50), 'MONEYLINE_MANUAL_REVIEW');
 });
 
+test('Challenger profit is locale-independent and applies Betfair commission', () => {
+  assert.equal(context.challengerProfitValue_('Betfair', 2.10, 0.5, 'GANHOU'), 0.5225);
+  assert.equal(context.challengerProfitValue_('22Bet', 1.83, 0.5, 'GANHOU'), 0.415);
+  assert.equal(context.challengerProfitValue_('Betfair', 2.10, 0.5, 'PERDEU'), -0.5);
+  assert.equal(context.challengerProfitValue_('Betfair', 2.10, 0.5, 'VOID'), 0);
+  assert.equal(context.challengerProfitValue_('Betfair', 2.10, 0.5, ''), '');
+});
+
 test('tracking column installation is idempotent', () => {
   const all = [
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
