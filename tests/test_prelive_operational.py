@@ -88,6 +88,14 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(decision["state"], EDGE_POSITIVE)
         self.assertTrue(decision["paper_eligible"])
 
+    def test_existing_decision_refresh_never_creates_new_paper(self):
+        payload = self.payload()
+        payload["prelive_decision"] = self.decision(0.1)
+        self.assertEqual(len(paper_trading.build_entries(payload)), 1)
+
+        payload["_competition_existing_decision_refresh"] = True
+        self.assertEqual(paper_trading.build_entries(payload), [])
+
     def test_positive_edge_below_paper_coverage_gate_is_visible_but_excluded(self):
         assessment = {"report_null": False, "coverage": {"weighted_pct": 46.5, "status": "reduzida"}}
         decision = build_decision(self.payload(), self.divergence(), self.pricing(1.0), assessment)

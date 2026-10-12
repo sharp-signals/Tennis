@@ -114,8 +114,15 @@ def health_alerts(entry: dict) -> list[str]:
         )
     if calls >= _env_number("ALERT_RAPIDAPI_CALLS", 600):
         alerts.append(f"consumo RapidAPI elevado: {calls} chamadas")
-    if llm_calls and fallbacks / llm_calls >= _env_number("ALERT_LLM_FALLBACK_RATE", 0.2):
-        alerts.append(f"fallback LLM elevado: {fallbacks}/{llm_calls}")
+    external_requests = _as_int(entry.get("llm_external_requests"))
+    if (
+        external_requests
+        and fallbacks / external_requests
+        >= _env_number("ALERT_LLM_FALLBACK_RATE", 0.2)
+    ):
+        alerts.append(
+            f"fallback LLM elevado: {fallbacks}/{external_requests} pedidos externos"
+        )
     if _as_int(entry.get("reports_failed")):
         alerts.append(f"relatórios falhados: {entry['reports_failed']}")
     analysis_failed = _as_int(entry.get("analysis_failed"))
