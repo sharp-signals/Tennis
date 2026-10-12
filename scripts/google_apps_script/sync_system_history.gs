@@ -149,7 +149,7 @@ function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
     return [key, stat.total_entries || 0, stat.settled || 0, stat.wins || 0, stat.losses || 0, stat.pushes || 0, stat.pending || 0, stat.units == null ? 'N/D' : stat.units, stat.roi_pct == null ? 'N/D' : stat.roi_pct, stat.average_odd == null ? 'N/D' : stat.average_odd];
   });
   const section = (title, rows) => [[title, '', '', '', '', '', '', '', '', ''], ['Grupo', 'Entradas', 'Liquidadas', 'Vitórias', 'Derrotas', 'Void', 'Pendentes', 'Unidades', 'ROI', 'Odd média']].concat(rows.length ? rows : [['Sem amostra', '', '', '', '', '', '', '', '', '']]);
-  const values = [
+  const rawValues = [
     ['Challenger 125 — PAPER manual 0,5u', '', '', '', '', '', '', '', '', ''],
     ['Universo separado do PAPER normal. Só entram linhas registadas com a estratégia CHALLENGER_125_EXPERIMENTAL_V1, stake de 0,5u, Snapshot Key e data de seleção.', '', '', '', '', '', '', '', '', ''],
     ['', '', '', '', '', '', '', '', '', ''],
@@ -170,6 +170,12 @@ function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
     section('Por cobertura', statsRows(strategy.by_coverage_band)), [['', '', '', '', '', '', '', '', '', '']],
     section('Por edge experimental', statsRows(strategy.by_edge_band)),
   );
+  // A secção resumo teve historicamente rows com uma célula vazia a mais.
+  // Normalizar aqui mantém o contrato retangular exigido por setValues() e
+  // impede que uma aba Challenger bloqueie toda a sincronização do histórico.
+  const values = rawValues.map(row => Array.from({length: 10}, (_, index) => (
+    index < row.length ? row[index] : ''
+  )));
   upsertSystemSheet_(spreadsheet, 'Challenger 125 · PAPER 0,5u', values, { titleRows: 2, headerRow: 4, widths: [38, 16, 14, 12, 12, 12, 14, 14, 14, 14] });
   const sheet = spreadsheet.getSheetByName('Challenger 125 · PAPER 0,5u');
   for (let row = 14; row <= values.length; row += 1) {
