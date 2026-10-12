@@ -29,6 +29,7 @@ from . import (
     forward_only,
     forward_only_projections,
     green_monetization,
+    manual_paper_linkage,
     match_identity_v2,
     paper_trading,
     report_html,
@@ -1558,6 +1559,16 @@ def build_and_write(
     json_content = json.dumps(dashboard, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     _atomic_write_text(output, json_content)
     _atomic_write_text(page, render_dashboard_html(dashboard))
+    snapshots_doc, _ = _read_json(root / "data/calibration_snapshots.json")
+    snapshots = [
+        row
+        for row in _list(_mapping(snapshots_doc).get("snapshots"))
+        if isinstance(row, Mapping)
+    ]
+    manual_paper_linkage.write_index(
+        manual_paper_linkage.build_index(dashboard, snapshots),
+        root / manual_paper_linkage.DEFAULT_OUTPUT_PATH,
+    )
     return dashboard
 
 
