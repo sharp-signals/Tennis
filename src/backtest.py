@@ -159,9 +159,13 @@ def _fetch_tennisdata_year(year: int):
     Formato real confirmado (27/07/2026): ficheiro Excel, não CSV —
     "{year}/{year}.xlsx" para o ATP.
     """
-    url = f"http://www.tennis-data.co.uk/{year}/{year}.xlsx"
     try:
-        resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
+        url = fetch_data._tennisdata_couk_download_url("atp", year)
+        headers = {
+            **_BROWSER_HEADERS,
+            "Referer": fetch_data._TENNISDATA_INDEX_URL,
+        }
+        resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         df = pd.read_excel(io.BytesIO(resp.content))
         return df

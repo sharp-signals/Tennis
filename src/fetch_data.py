@@ -43,7 +43,7 @@ import threading
 import time
 import unicodedata
 from contextlib import contextmanager
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urljoin, urlparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -2559,6 +2559,9 @@ _HISTORY_CACHE_LOCK = threading.RLock()
 # comparação por faixa de Moneyline. Mantemos uma cache independente para essa
 # única leitura, em vez de trocar ou misturar o histórico usado pelo motor.
 _HISTORICAL_ODDS_HISTORY_CACHE: dict[str, pd.DataFrame] = {}
+_TENNISDATA_DOWNLOAD_INDEX: Optional[dict[tuple[str, int], str]] = None
+_TENNISDATA_DOWNLOAD_INDEX_LOCK = threading.Lock()
+_TENNISDATA_INDEX_URL = "https://www.tennis-data.co.uk/data.php"
 
 
 def _tennismylife_history_key(row: pd.Series) -> str:
@@ -2749,6 +2752,59 @@ def _normalize_tennisdata_couk(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _discover_tennisdata_couk_downloads() -> dict[tuple[str, int], str]:
+    """Descobre os downloads anuais publicados na página oficial.
+
+    O fornecedor deixou de servir de forma estável os antigos caminhos diretos
+    ``/{ano}/{ano}.xlsx`` e passou a publicar caminhos versionados na página de
+    dados. Descobrir os ``href`` oficiais evita fixar o token atual no código e
+    mantém ATP e WTA sob o mesmo contrato.
+    """
+    global _TENNISDATA_DOWNLOAD_INDEX
+    with _TENNISDATA_DOWNLOAD_INDEX_LOCK:
+        if _TENNISDATA_DOWNLOAD_INDEX is not None:
+            return _TENNISDATA_DOWNLOAD_INDEX
+
+        resp = requests.get(
+            _TENNISDATA_INDEX_URL,
+            headers=_BROWSER_HEADERS,
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        index: dict[tuple[str, int], str] = {}
+        hrefs = re.findall(
+            r"href\s*=\s*['\"]([^'\"]+\.xlsx(?:\?[^'\"]*)?)['\"]",
+            resp.text,
+            flags=re.IGNORECASE,
+        )
+        for href in hrefs:
+            path = urlparse(href).path.rstrip("/")
+            match = re.search(r"/(\d{4})(w?)/(\d{4})\.xlsx$", path, re.IGNORECASE)
+            if not match or match.group(1) != match.group(3):
+                continue
+            year = int(match.group(1))
+            tour = "wta" if match.group(2).lower() == "w" else "atp"
+            index[(tour, year)] = urljoin(_TENNISDATA_INDEX_URL, href)
+
+        if not index:
+            raise ValueError("página oficial sem links anuais ATP/WTA reconhecíveis")
+        _TENNISDATA_DOWNLOAD_INDEX = index
+        return index
+
+
+def _tennisdata_couk_download_url(tour: str, year: int) -> str:
+    normalized_tour = str(tour).strip().lower()
+    if normalized_tour not in {"atp", "wta"}:
+        raise ValueError(f"tour tennis-data inválido: {tour!r}")
+    index = _discover_tennisdata_couk_downloads()
+    url = index.get((normalized_tour, int(year)))
+    if not url:
+        raise LookupError(
+            f"download tennis-data não publicado para {normalized_tour} {year}"
+        )
+    return url
+
+
 def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
     """
     Terceira fonte de cruzamento: ficheiro Excel (não CSV!) anual com
@@ -2756,10 +2812,10 @@ def _load_tennisdata_couk(tour: str, year: int) -> Optional[pd.DataFrame]:
     ATP fica em "{year}/{year}.xlsx" e o WTA em "{year}w/{year}.xlsx" —
     nada de "atp.csv"/"wta.csv" (isso era um palpite errado anterior).
     """
-    folder = str(year) if tour == "atp" else f"{year}w"
-    url = f"http://www.tennis-data.co.uk/{folder}/{year}.xlsx"
     try:
-        resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
+        url = _tennisdata_couk_download_url(tour, year)
+        headers = {**_BROWSER_HEADERS, "Referer": _TENNISDATA_INDEX_URL}
+        resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         df = pd.read_excel(io.BytesIO(resp.content))
         return _normalize_tennisdata_couk(df)

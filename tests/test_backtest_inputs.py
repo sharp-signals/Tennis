@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 
@@ -8,6 +8,28 @@ from src import backtest
 
 
 class BacktestInputTests(unittest.TestCase):
+    def test_fetch_year_uses_the_officially_discovered_atp_download(self):
+        response = Mock(content=b"xlsx")
+        response.raise_for_status.return_value = None
+        expected = pd.DataFrame({"Winner": ["A"]})
+        with patch.object(
+            backtest.fetch_data,
+            "_tennisdata_couk_download_url",
+            return_value="https://www.tennis-data.co.uk/token/2025/2025.xlsx",
+        ), patch.object(backtest.requests, "get", return_value=response) as request, \
+             patch.object(backtest.pd, "read_excel", return_value=expected):
+            actual = backtest._fetch_tennisdata_year(2025)
+
+        self.assertIs(actual, expected)
+        args, kwargs = request.call_args
+        self.assertEqual(
+            args[0], "https://www.tennis-data.co.uk/token/2025/2025.xlsx"
+        )
+        self.assertEqual(
+            kwargs["headers"]["Referer"],
+            "https://www.tennis-data.co.uk/data.php",
+        )
+
     def test_surname_index_resolves_unique_name_and_rejects_ambiguity(self):
         history = pd.DataFrame(
             {
