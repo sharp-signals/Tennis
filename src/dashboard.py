@@ -1569,6 +1569,10 @@ def build_and_write(
         manual_paper_linkage.build_index(dashboard, snapshots),
         root / manual_paper_linkage.DEFAULT_OUTPUT_PATH,
     )
+    manual_paper_linkage.write_index(
+        manual_paper_linkage.build_factor_index(snapshots),
+        root / manual_paper_linkage.DEFAULT_FACTOR_OUTPUT_PATH,
+    )
     return dashboard
 
 

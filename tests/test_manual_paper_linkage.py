@@ -35,6 +35,37 @@ class ManualPaperLinkageIndexTests(unittest.TestCase):
             manual_paper_linkage.write_index({"records": []}, path)
             self.assertTrue(path.exists())
 
+    def test_factor_index_contains_public_snapshot_facts_without_outcomes(self):
+        snapshots = [{
+            "key": "snapshot:1",
+            "analyzed_at_utc": "2026-10-12T08:00:00Z",
+            "tour": "atp",
+            "tier": "500",
+            "surface": "Hard",
+            "player_a": {"name": "A"},
+            "player_b": {"name": "B"},
+            "outcome": {"winner_side": "a"},
+            "metrics": {"divergencia": {
+                "indice_favorece": "A",
+                "indice_evidencia_a": 72,
+                "indice_evidencia_b": 28,
+                "fatores_status": {
+                    "forma_recente": {
+                        "disponivel": True,
+                        "direcao_impacto": "a",
+                        "peso_efetivo": 4.1254,
+                    },
+                    "h2h": {"disponivel": False},
+                },
+            }},
+        }]
+        result = manual_paper_linkage.build_factor_index(snapshots)
+        self.assertEqual(result["record_count"], 1)
+        self.assertEqual(result["records"]["snapshot:1"]["f"], [["forma_recente", "a", 4.125]])
+        self.assertEqual(result["records"]["snapshot:1"]["m"], "a")
+        self.assertNotIn("outcome", str(result).lower())
+        self.assertNotIn("winner", str(result).lower())
+
 
 if __name__ == "__main__":
     unittest.main()

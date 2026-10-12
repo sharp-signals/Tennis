@@ -7,6 +7,7 @@ semantic fingerprint has not changed.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from io import BytesIO
@@ -30,6 +31,7 @@ SNAPSHOTS = ROOT / "data" / "calibration_snapshots.json"
 HISTORY_CACHE = ROOT / "data" / "history_cache"
 REPORTS_DIR = ROOT / "docs" / "relatorios"
 ANALYTICS_JSON = ROOT / "data" / "dashboard" / "system_history_analytics.json"
+MANUAL_PAPER_JSON = ROOT / "data" / "manual_paper_22bet_authoritative.json"
 WORKBOOK_PATH = ROOT / "docs" / "dashboard" / "Fenzobot_Historico_do_Sistema.xlsx"
 
 NAVY = "17365D"
@@ -179,6 +181,74 @@ def _write_factor_attribution_sheets(wb: Workbook, attribution: Mapping[str, Any
     )
     _percent_columns(factor_weights, 6, last, [7, 10])
     _widths(factor_weights, [14, 24, 18, 12, 12, 12, 14, 22, 18, 20, 24])
+
+
+def _write_guerra_audit_sheets(wb: Workbook, manual_paper: Mapping[str, Any]) -> None:
+    """Append the private-Sheet-derived aggregate audit; never individual rows."""
+    for name in ("GUERRA — fatores", "GUERRA — segmentos", "GUERRA — qualidade"):
+        if name in wb.sheetnames:
+            del wb[name]
+    strategy = ((manual_paper.get("by_strategy") or {}).get("GUERRA_SELECTION_V1") or {})
+    audit = strategy.get("audit_v1") or {}
+
+    factors = wb.create_sheet("GUERRA — fatores")
+    _title(
+        factors,
+        "Seleções GUERRA por fator",
+        "Agregados da Sheet privada ligados a snapshots canónicos. ROI e unidades usam o registo manual; nenhuma seleção individual é publicada.",
+    )
+    last = _write_rows(
+        factors, 5,
+        ["Universo", "Fator", "Relação com seleção", "Entradas", "Liquidadas", "Pendentes", "Vitórias", "Derrotas", "% acerto", "Unidades", "ROI", "Odd média", "Break-even", "Margem vs break-even (p.p.)", "Peso efetivo médio", "Leitura da amostra"],
+        audit.get("factors") or [],
+        ["scope", "factor", "relation", "total_entries", "settled", "pending", "wins", "losses", "win_rate_pct", "units", "roi_pct", "average_odd", "break_even_pct", "hit_vs_break_even_pp", "average_effective_weight", "sample_status"],
+    )
+    _percent_columns(factors, 6, last, [9, 11, 13])
+    _widths(factors, [14, 24, 22, 12, 12, 12, 12, 12, 14, 14, 14, 14, 16, 24, 20, 26])
+
+    segments = wb.create_sheet("GUERRA — segmentos")
+    _title(
+        segments,
+        "Seleções GUERRA por segmento",
+        "ATP, WTA, mercado, perfil, odds, piso, índice, alinhamento e tipo de ligação. Challenger permanece num universo próprio.",
+    )
+    last = _write_rows(
+        segments, 5,
+        ["Dimensão", "Grupo", "Entradas", "Liquidadas", "Pendentes", "Vitórias", "Derrotas", "Void", "% acerto", "Unidades", "ROI", "Odd média", "Break-even", "Margem vs break-even (p.p.)", "Leitura da amostra"],
+        audit.get("segments") or [],
+        ["dimension", "group", "total_entries", "settled", "pending", "wins", "losses", "pushes", "win_rate_pct", "units", "roi_pct", "average_odd", "break_even_pct", "hit_vs_break_even_pp", "sample_status"],
+    )
+    _percent_columns(segments, 6, last, [9, 11, 13])
+    _widths(segments, [22, 30, 12, 12, 12, 12, 12, 10, 14, 14, 14, 14, 16, 24, 26])
+
+    quality = wb.create_sheet("GUERRA — qualidade")
+    _title(
+        quality,
+        "Qualidade da ligação GUERRA",
+        "Controlo terminal de cobertura e privacidade. Não alimenta decisões, pesos ou pricing.",
+    )
+    _header(quality, 5, ["Indicador", "Valor"])
+    values = audit.get("quality") or {}
+    rows = [
+        ("Estado", audit.get("status") or "UNAVAILABLE"),
+        ("Contrato de privacidade", audit.get("privacy_contract") or "N/D"),
+        ("Entradas ligadas a relatório", values.get("linked_entries", 0)),
+        ("Entradas com snapshot canónico", values.get("canonical_entries", 0)),
+        ("Entradas apenas com relatório legacy", values.get("legacy_entries", 0)),
+        ("Ligações ex ante com hora exata", values.get("exact_timestamp_entries", 0)),
+        ("Ligações retrospetivas por data", values.get("retrospective_entries", 0)),
+        ("Snapshots encontrados no índice", values.get("factor_index_matches", 0)),
+        ("Entradas elegíveis para fatores", values.get("factor_audit_eligible_entries", 0)),
+        ("Lado selecionado não resolvido", values.get("selected_side_unresolved", 0)),
+        ("Snapshot ausente do índice", values.get("factor_index_missing", 0)),
+        ("Possíveis legs exatas duplicadas", values.get("duplicate_exact_legs", 0)),
+        ("Regra de amostra", "<20 informativo · 20–39 tendência · ≥40 candidato a revisão; peso no máximo ±0,5 por ciclo."),
+        ("Limite", "Descritivo; não altera pesos automaticamente. Challenger mantém universo próprio."),
+    ]
+    for row, (label, value) in enumerate(rows, 6):
+        quality.cell(row, 1, label).font = Font(name="Arial", bold=True, color="243B53")
+        quality.cell(row, 2, value).alignment = Alignment(wrap_text=True, vertical="top")
+    _widths(quality, [48, 105])
 
 
 def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> Workbook:
@@ -362,6 +432,7 @@ def _prospective_workbook(baseline: bytes, payload: Mapping[str, Any]) -> Workbo
         workbook,
         (payload.get("operational") or {}).get("factor_attribution") or {},
     )
+    _write_guerra_audit_sheets(workbook, _read_json(MANUAL_PAPER_JSON))
     return workbook
 
 
@@ -387,6 +458,7 @@ def _prospective_history(
 
 def main() -> int:
     snapshots = _read_json(SNAPSHOTS)
+    manual_paper = _read_json(MANUAL_PAPER_JSON)
     raw_wta = load_local_wta_history(HISTORY_CACHE)
     report_files = [path.name for path in REPORTS_DIR.glob("*.html")]
     payload = build_system_history(snapshots, raw_wta, report_files)
@@ -408,6 +480,14 @@ def main() -> int:
             },
             root=ROOT,
         )
+    # The manual audit is an aggregate external projection.  Include only its
+    # semantic fingerprint so a Sheet refresh rebuilds the three GUERRA tabs
+    # even when canonical snapshots themselves did not change.
+    history_fingerprint = str(payload.get("input_fingerprint_sha256") or "")
+    manual_fingerprint = str(manual_paper.get("data_fingerprint") or "manual-paper-unavailable")
+    payload["input_fingerprint_sha256"] = hashlib.sha256(
+        f"{history_fingerprint}:{manual_fingerprint}:guerra-audit-v1".encode("utf-8")
+    ).hexdigest()
     if boundary.active:
         serialized = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         try:
@@ -430,6 +510,7 @@ def main() -> int:
         wb = _prospective_workbook(baseline, prospective)
     else:
         wb = _workbook(payload, raw_wta)
+        _write_guerra_audit_sheets(wb, manual_paper)
     wb.save(WORKBOOK_PATH)
     print(f"[info] histórico canónico atualizado: {WORKBOOK_PATH}")
     return 0

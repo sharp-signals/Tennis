@@ -16,6 +16,8 @@ from urllib.parse import urljoin
 
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_PATH = Path("data/validation/manual-paper-linkage-index-v1.json")
+FACTOR_INDEX_SCHEMA_VERSION = 1
+DEFAULT_FACTOR_OUTPUT_PATH = Path("data/validation/manual-paper-factor-index-v1.json")
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -107,3 +109,67 @@ def write_index(document: Mapping[str, Any], path: Path) -> None:
         document, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ) + "\n"
     path.write_text(content, encoding="utf-8")
+
+
+def build_factor_index(snapshots: list[Mapping[str, Any]] | None = None) -> dict[str, Any]:
+    """Build a compact, public lookup for private Sheet-side aggregation.
+
+    The Google Sheet already knows which report/snapshot belongs to each
+    manual PAPER row.  This lookup exposes only facts already present in the
+    public report: players, tour, surface, Fenzobot side/index and active
+    factor directions/weights.  Apps Script joins those facts privately and
+    publishes aggregates only; individual manual selections never enter this
+    document or the repository.
+    """
+    records: dict[str, dict[str, Any]] = {}
+    ordered = sorted(
+        (row for row in (snapshots or []) if isinstance(row, Mapping)),
+        key=lambda row: str(row.get("analyzed_at_utc") or ""),
+    )
+    for snapshot in ordered:
+        key = str(snapshot.get("key") or "").strip()
+        if not key or key in records:
+            continue
+        metrics = _mapping(snapshot.get("metrics"))
+        divergence = _mapping(metrics.get("divergencia"))
+        statuses = _mapping(divergence.get("fatores_status"))
+        if not statuses:
+            continue
+        factors: list[list[Any]] = []
+        for factor, raw_status in sorted(statuses.items()):
+            status = _mapping(raw_status)
+            direction = str(status.get("direcao_impacto") or "").strip().casefold()
+            try:
+                weight = float(status.get("peso_efetivo") or 0)
+            except (TypeError, ValueError):
+                weight = 0.0
+            if direction not in {"a", "b"} or weight <= 0:
+                continue
+            factors.append([str(factor), direction, round(weight, 3)])
+        player_a = _mapping(snapshot.get("player_a"))
+        player_b = _mapping(snapshot.get("player_b"))
+        name_a = str(player_a.get("name") or "").strip()
+        name_b = str(player_b.get("name") or "").strip()
+        favoured = str(divergence.get("indice_favorece") or "").strip().casefold()
+        model_side = "a" if favoured == name_a.casefold() else "b" if favoured == name_b.casefold() else None
+        records[key] = {
+            # Short field names keep the GitHub Contents response comfortably
+            # below its inline-content boundary without reducing semantics.
+            "t": str(snapshot.get("tour") or "").strip().upper() or None,
+            "l": str(snapshot.get("tier") or "").strip() or None,
+            "s": str(snapshot.get("surface") or "").strip() or None,
+            "a": name_a or None,
+            "b": name_b or None,
+            "m": model_side,
+            "ia": divergence.get("indice_evidencia_a"),
+            "ib": divergence.get("indice_evidencia_b"),
+            "f": factors,
+        }
+    material = json.dumps(records, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return {
+        "schema_version": FACTOR_INDEX_SCHEMA_VERSION,
+        "privacy_contract": "PUBLIC_REPORT_FACTS_ONLY_NO_MANUAL_SELECTIONS",
+        "record_count": len(records),
+        "fingerprint_sha256": hashlib.sha256(material.encode("utf-8")).hexdigest(),
+        "records": records,
+    }
