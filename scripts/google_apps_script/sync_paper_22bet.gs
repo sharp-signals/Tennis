@@ -244,7 +244,10 @@ function ensureChallengerPaperEntryOption_(spreadsheet) {
   const populatedRows = Math.max(0, sheet.getLastRow() - PAPER_22BET_SYNC.headerRow);
   if (populatedRows) {
     sheet.getRange(firstDataRow, 12, populatedRows, 1).setValue(PAPER_22BET_SYNC.challengerManualStakeUnits);
-    sheet.getRange(firstDataRow, 15, populatedRows, 1).setFormulaR1C1(challengerProfitFormulaR1C1_());
+    const settlementInputs = sheet.getRange(firstDataRow, 10, populatedRows, 5).getValues();
+    sheet.getRange(firstDataRow, 15, populatedRows, 1).setValues(
+      settlementInputs.map(row => [challengerProfitValue_(row[0], row[1], row[2], row[4])]),
+    );
   }
   sheet.getRange(firstDataRow, 1, rows, 14).setBackground('#FFF7D6');
   sheet.getRange(firstDataRow, 15, rows, 1).setBackground('#E6F4EA');
@@ -260,8 +263,17 @@ function challengerListValidation_(values, helpText) {
     .build();
 }
 
-function challengerProfitFormulaR1C1_() {
-  return '=IF(RC[-1]="GANHOU",RC[-3]*(RC[-4]-1)*IF(RC[-5]="Betfair",0.95,1),IF(RC[-1]="PERDEU",-RC[-3],IF(RC[-1]="VOID",0,"")))';
+function challengerProfitValue_(house, oddRaw, stakeRaw, resultRaw) {
+  const result = String(resultRaw || '').trim().toUpperCase();
+  const odd = Number(oddRaw);
+  const stake = Number(stakeRaw);
+  if (!result) return '';
+  if (result === 'VOID') return 0;
+  if (!Number.isFinite(stake) || stake <= 0) return '';
+  if (result === 'PERDEU') return -stake;
+  if (result !== 'GANHOU' || !Number.isFinite(odd) || odd <= 1) return '';
+  const commissionFactor = normalisedHeader_(house) === 'betfair' ? 0.95 : 1;
+  return Math.round(stake * (odd - 1) * commissionFactor * 10000) / 10000;
 }
 
 function normalisedTrackingColumn_(map, expected) {
@@ -518,7 +530,23 @@ function applyChallengerEntryDefaults_(sheet, rowNumber, map) {
   if (tourColumn) sheet.getRange(rowNumber, tourColumn).setValue('ATP');
   if (levelColumn) sheet.getRange(rowNumber, levelColumn).setValue(PAPER_22BET_SYNC.challengerLevelLabel);
   if (stakeColumn) sheet.getRange(rowNumber, stakeColumn).setValue(PAPER_22BET_SYNC.challengerManualStakeUnits);
-  if (profitColumn) sheet.getRange(rowNumber, profitColumn).setFormulaR1C1(challengerProfitFormulaR1C1_());
+  if (profitColumn) {
+    const houseColumn = normalisedTrackingColumn_(map, 'Casa');
+    const oddColumn = normalisedTrackingColumn_(map, 'Odd aposta');
+    const resultColumn = normalisedTrackingColumn_(map, 'Resultado');
+    const stake = stakeColumn
+      ? sheet.getRange(rowNumber, stakeColumn).getValue()
+      : PAPER_22BET_SYNC.challengerManualStakeUnits;
+    const profit = challengerProfitValue_(
+      houseColumn ? sheet.getRange(rowNumber, houseColumn).getValue() : '',
+      oddColumn ? sheet.getRange(rowNumber, oddColumn).getValue() : '',
+      stake,
+      resultColumn ? sheet.getRange(rowNumber, resultColumn).getValue() : '',
+    );
+    const profitCell = sheet.getRange(rowNumber, profitColumn);
+    if (profit === '') profitCell.clearContent();
+    else profitCell.setValue(profit);
+  }
   if (selectedAtColumn) {
     const selectedAt = sheet.getRange(rowNumber, selectedAtColumn);
     if (!selectedAt.getValue()) selectedAt.setValue(new Date().toISOString());
