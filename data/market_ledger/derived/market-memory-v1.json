@@ -9,16 +9,16 @@
   },
   "evaluation": {
     "market_only": {
-      "accuracy_pct": 69.4,
-      "brier_score": 0.193252,
-      "log_loss": 0.567496,
-      "sample_size": 232
+      "accuracy_pct": 69.1,
+      "brier_score": 0.194115,
+      "log_loss": 0.569305,
+      "sample_size": 233
     },
     "market_plus_sharp": {
-      "accuracy_pct": 68.72,
-      "brier_score": 0.205525,
-      "log_loss": 0.596723,
-      "sample_size": 358
+      "accuracy_pct": 68.42,
+      "brier_score": 0.206014,
+      "log_loss": 0.597716,
+      "sample_size": 361
     }
   },
   "evaluation_by_cohort": {
@@ -93,16 +93,16 @@
     },
     "market-residual-v0.3:f46ec3e2aa6f92a9": {
       "market_only": {
-        "accuracy_pct": 69.4,
-        "brier_score": 0.193252,
-        "log_loss": 0.567496,
-        "sample_size": 232
+        "accuracy_pct": 69.1,
+        "brier_score": 0.194115,
+        "log_loss": 0.569305,
+        "sample_size": 233
       },
       "market_plus_sharp": {
-        "accuracy_pct": 70.15,
-        "brier_score": 0.20236,
-        "log_loss": 0.589905,
-        "sample_size": 325
+        "accuracy_pct": 69.82,
+        "brier_score": 0.202927,
+        "log_loss": 0.59106,
+        "sample_size": 328
       },
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3"
@@ -65229,7 +65229,7 @@
       },
       "match_format": "BO3",
       "match_id": 1018,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [],
       "players": {
         "a": {
@@ -67137,7 +67137,7 @@
       },
       "match_format": "BO3",
       "match_id": 903,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [
         {
           "closing_market_observation_id": null,
@@ -71775,7 +71775,7 @@
       },
       "match_format": "BO3",
       "match_id": 858,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -72036,9 +72036,9 @@
       "sample_size": 106
     }
   },
-  "generated_at_utc": "2026-10-12T09:24:42+00:00",
+  "generated_at_utc": "2026-10-12T10:05:15+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 18779,
+  "observation_count": 18784,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
