@@ -446,6 +446,22 @@ function rowsWithHeaders_(headers, objects, fields) {
   return [headers].concat(objects.map(item => fields.map(field => item && item[field] != null ? item[field] : '')));
 }
 
+function createSystemFilterBestEffort_(sheet, range) {
+  try {
+    // Revalidar imediatamente antes de criar: uma execução anterior ou uma
+    // alteração manual pode ter deixado um filtro entre o clear() e este ponto.
+    const existingFilter = sheet.getFilter();
+    if (existingFilter) existingFilter.remove();
+    range.createFilter();
+    return true;
+  } catch (error) {
+    // O filtro é apenas uma ajuda visual. Nunca pode invalidar os dados nem
+    // bloquear a atualização das restantes abas.
+    console.warn('Filtro não recriado em ' + sheet.getName() + ': ' + String(error && error.message || error));
+    return false;
+  }
+}
+
 function upsertSystemSheet_(spreadsheet, name, values, options) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
   const existingFilter = sheet.getFilter();
@@ -490,5 +506,8 @@ function upsertSystemSheet_(spreadsheet, name, values, options) {
       });
     }
   }
-  sheet.getRange(headerRow, 1, values.length - headerRow + 1, values[0].length).createFilter();
+  createSystemFilterBestEffort_(
+    sheet,
+    sheet.getRange(headerRow, 1, values.length - headerRow + 1, values[0].length),
+  );
 }
