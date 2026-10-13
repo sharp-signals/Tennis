@@ -1184,14 +1184,38 @@ function auditSelectionSide_(row, tracking, snapshot) {
     .trim();
   const playerA = normalisedHeader_(snapshot.a).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const playerB = normalisedHeader_(snapshot.b).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-  const matches = player => player && (
-    selection === player || selection.indexOf(player + ' ') === 0 ||
-    player.indexOf(selection + ' ') === 0
-  );
-  const matchesA = matches(playerA);
-  const matchesB = matches(playerB);
+  const matchesA = auditPlayerNameMatches_(selection, playerA);
+  const matchesB = auditPlayerNameMatches_(selection, playerB);
   if (matchesA === matchesB) return null;
   return matchesA ? 'a' : 'b';
+}
+
+/**
+ * A folha manual usa frequentemente apenas o apelido ("Medvedev -4"), um
+ * apelido composto ("De Minaur") ou inicial + apelido ("M. Damm"). O índice
+ * factual conserva o nome completo. Aceitamos essas formas apenas quando o
+ * resultado é inequívoco entre os dois jogadores; auditSelectionSide_ mantém
+ * o fail-closed se ambos ou nenhum coincidirem.
+ */
+function auditPlayerNameMatches_(selection, player) {
+  if (!selection || !player) return false;
+  if (selection === player || selection.indexOf(player + ' ') === 0 || player.indexOf(selection + ' ') === 0) {
+    return true;
+  }
+  const selectedTokens = selection.split(' ').filter(Boolean);
+  const playerTokens = player.split(' ').filter(Boolean);
+  if (!selectedTokens.length || !playerTokens.length || selectedTokens.length > playerTokens.length) return false;
+
+  const suffix = playerTokens.slice(playerTokens.length - selectedTokens.length);
+  if (selectedTokens.every((token, index) => token === suffix[index])) return true;
+
+  if (selectedTokens.length >= 2 && selectedTokens[0].length === 1) {
+    const surnameTokens = selectedTokens.slice(1);
+    const playerSurname = playerTokens.slice(playerTokens.length - surnameTokens.length);
+    return playerTokens[0].indexOf(selectedTokens[0]) === 0 &&
+      surnameTokens.every((token, index) => token === playerSurname[index]);
+  }
+  return false;
 }
 
 function auditMarketType_(row, tracking) {

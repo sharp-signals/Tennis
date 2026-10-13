@@ -82,6 +82,39 @@ test('Guerra audit relates factor direction to the selected side and real ROI', 
   assert.equal(market.units, 0.85);
 });
 
+test('Guerra audit resolves surname, compound surname and initial plus surname selections', () => {
+  const rowTracking = {selection: 6};
+  const selected = value => {
+    const values = Array(7).fill('');
+    values[6] = value;
+    return values;
+  };
+  assert.equal(context.auditSelectionSide_(
+    selected('Medvedev -4'), rowTracking,
+    {a: 'Daniil Medvedev', b: 'Valentin Royer'},
+  ), 'a');
+  assert.equal(context.auditSelectionSide_(
+    selected('De Minaur -1,5'), rowTracking,
+    {a: 'Alex De Minaur', b: 'Karen Khachanov'},
+  ), 'a');
+  assert.equal(context.auditSelectionSide_(
+    selected('M. Damm -2,5'), rowTracking,
+    {a: 'Martin Damm', b: 'Shintaro Mochizuki'},
+  ), 'a');
+  assert.equal(context.auditSelectionSide_(
+    selected('Rublev -3,5'), rowTracking,
+    {a: 'Kyrian Jacquet', b: 'Andrey Rublev'},
+  ), 'b');
+});
+
+test('Guerra audit keeps ambiguous surname-only selections unresolved', () => {
+  const values = Array(7).fill('');
+  values[6] = 'Williams +2,5';
+  assert.equal(context.auditSelectionSide_(
+    values, {selection: 6}, {a: 'Serena Williams', b: 'Venus Williams'},
+  ), null);
+});
+
 test('executed edge uses frozen probability, actual odd and Betfair commission', () => {
   const rowTracking = {
     selection: 6, market: 5, odd: 9, house: 10, handicapLine: 19,
