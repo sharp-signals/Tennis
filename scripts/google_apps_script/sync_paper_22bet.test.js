@@ -115,6 +115,13 @@ test('Guerra audit keeps ambiguous surname-only selections unresolved', () => {
   ), null);
 });
 
+test('Challenger charts render data stored in hidden support columns', () => {
+  assert.match(
+    source,
+    /setHiddenDimensionStrategy\(Charts\.ChartHiddenDimensionStrategy\.SHOW_BOTH\)/,
+  );
+});
+
 test('executed edge uses frozen probability, actual odd and Betfair commission', () => {
   const rowTracking = {
     selection: 6, market: 5, odd: 9, house: 10, handicapLine: 19,
