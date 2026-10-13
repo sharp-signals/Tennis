@@ -75,3 +75,11 @@ test('history projection repairs legacy GUERRA break-even scale defensively', ()
   assert.equal(rows[0].break_even_pct, 52.9);
   assert.equal(rows[0].hit_vs_break_even_pp, 7.1);
 });
+
+test('weight panel clears legacy validation before writing the new projection', () => {
+  const start = source.indexOf('function writeWeightDecisionPanel_');
+  const end = source.indexOf('function writeProspectiveSystemHistory_', start);
+  const body = source.slice(start, end);
+  assert.ok(body.indexOf('clearDataValidations()') >= 0);
+  assert.ok(body.indexOf('clearDataValidations()') < body.indexOf('setValues(rows)'));
+});
