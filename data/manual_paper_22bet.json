@@ -4,7 +4,7 @@
     "label": "Track Record PAPER Trading — 22Bet",
     "url": "https://docs.google.com/spreadsheets/d/1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U/edit",
     "reference_bookmaker": "22Bet",
-    "synced_at_utc": "2026-10-13T13:13:08.868Z",
+    "synced_at_utc": "2026-10-13T14:13:14.468Z",
     "sync_contract_version": 5,
     "operational_columns": {
       "market": 6,
@@ -24,7 +24,7 @@
       "profit": 15
     }
   },
-  "data_fingerprint": "4e4570205420d4ce2e95299bc24941c2762c06919fcaf76405658e336906be92",
+  "data_fingerprint": "c17532711578ae5ab75f4a74d965d6c8a5fc5b1e7c4aad19eef268de9d3ce5f6",
   "summary": {
     "total_entries": 142,
     "settled": 136,
@@ -1326,40 +1326,49 @@
           }
         ],
         "executed_edge_v1": {
-          "status": "UNAVAILABLE",
+          "status": "AVAILABLE",
           "claims": "DESCRIPTIVE_ONLY_FROZEN_FENZOBOT_PROBABILITY_X_EXECUTED_ODD",
           "formula": "100 * (frozen_fenzobot_probability * effective_executed_odd - 1)",
           "commission_policy": "BETFAIR_5_PERCENT_ON_NET_WINNINGS_OTHER_BOOKMAKERS_RAW_ODD",
           "market_scope": "MONEYLINE_ONLY_HANDICAP_REQUIRES_EXACT_LINE_PROBABILITY",
           "all_linked": {
-            "sample_size": 0,
-            "average_pct": null,
-            "median_pct": null,
-            "positive_pct": null,
-            "minimum_pct": null,
-            "maximum_pct": null
+            "sample_size": 2,
+            "average_pct": 4.4264,
+            "median_pct": 4.4264,
+            "positive_pct": 100,
+            "minimum_pct": 3.8589,
+            "maximum_pct": 4.994
           },
           "exact_timestamp": {
-            "sample_size": 0,
-            "average_pct": null,
-            "median_pct": null,
-            "positive_pct": null,
-            "minimum_pct": null,
-            "maximum_pct": null
+            "sample_size": 1,
+            "average_pct": 4.994,
+            "median_pct": 4.994,
+            "positive_pct": 100,
+            "minimum_pct": 4.994,
+            "maximum_pct": 4.994
           },
           "retrospective_date_only": {
-            "sample_size": 0,
-            "average_pct": null,
-            "median_pct": null,
-            "positive_pct": null,
-            "minimum_pct": null,
-            "maximum_pct": null
+            "sample_size": 1,
+            "average_pct": 3.8589,
+            "median_pct": 3.8589,
+            "positive_pct": 100,
+            "minimum_pct": 3.8589,
+            "maximum_pct": 3.8589
           },
-          "by_house": {},
+          "by_house": {
+            "22Bet": {
+              "sample_size": 2,
+              "average_pct": 4.4264,
+              "median_pct": 4.4264,
+              "positive_pct": 100,
+              "minimum_pct": 3.8589,
+              "maximum_pct": 4.994
+            }
+          },
           "unavailable": {
             "NON_MONEYLINE_OR_LINE_INCOMPATIBLE": 0,
             "SELECTION_SIDE_UNRESOLVED": 137,
-            "FROZEN_PROBABILITY_UNAVAILABLE": 2,
+            "FROZEN_PROBABILITY_UNAVAILABLE": 0,
             "EXECUTED_ODD_UNAVAILABLE": 0
           }
         },
