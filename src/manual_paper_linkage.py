@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_PATH = Path("data/validation/manual-paper-linkage-index-v1.json")
-FACTOR_INDEX_SCHEMA_VERSION = 1
+FACTOR_INDEX_SCHEMA_VERSION = 2
 DEFAULT_FACTOR_OUTPUT_PATH = Path("data/validation/manual-paper-factor-index-v1.json")
 
 
@@ -111,7 +111,10 @@ def write_index(document: Mapping[str, Any], path: Path) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def build_factor_index(snapshots: list[Mapping[str, Any]] | None = None) -> dict[str, Any]:
+def build_factor_index(
+    snapshots: list[Mapping[str, Any]] | None = None,
+    market_memory: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Build a compact, public lookup for private Sheet-side aggregation.
 
     The Google Sheet already knows which report/snapshot belongs to each
@@ -121,6 +124,11 @@ def build_factor_index(snapshots: list[Mapping[str, Any]] | None = None) -> dict
     publishes aggregates only; individual manual selections never enter this
     document or the repository.
     """
+    market_by_snapshot = {
+        str(row.get("snapshot_key")): row
+        for row in (market_memory or {}).get("events") or []
+        if isinstance(row, Mapping) and row.get("snapshot_key")
+    }
     records: dict[str, dict[str, Any]] = {}
     ordered = sorted(
         (row for row in (snapshots or []) if isinstance(row, Mapping)),
@@ -152,6 +160,26 @@ def build_factor_index(snapshots: list[Mapping[str, Any]] | None = None) -> dict
         name_b = str(player_b.get("name") or "").strip()
         favoured = str(divergence.get("indice_favorece") or "").strip().casefold()
         model_side = "a" if favoured == name_a.casefold() else "b" if favoured == name_b.casefold() else None
+        pricing = _mapping(snapshot.get("pricing"))
+        sharp = {
+            side: pricing.get(f"sharp_estimate_{side}")
+            for side in ("a", "b")
+        }
+        market_row = _mapping(market_by_snapshot.get(key))
+        entry_market = _mapping(market_row.get("entry_market_probabilities"))
+        closing_market = _mapping(
+            market_row.get("last_valid_prestart_market_probabilities")
+        )
+
+        def probability_pair(values: Mapping[str, Any]) -> list[float] | None:
+            try:
+                pair = [float(values["a"]), float(values["b"])]
+            except (KeyError, TypeError, ValueError):
+                return None
+            if not all(0 < value < 1 for value in pair):
+                return None
+            return [round(value, 8) for value in pair]
+
         records[key] = {
             # Short field names keep the GitHub Contents response comfortably
             # below its inline-content boundary without reducing semantics.
@@ -163,6 +191,14 @@ def build_factor_index(snapshots: list[Mapping[str, Any]] | None = None) -> dict
             "m": model_side,
             "ia": divergence.get("indice_evidencia_a"),
             "ib": divergence.get("indice_evidencia_b"),
+            # Probabilidades congeladas no snapshot. Permitem calcular na
+            # Sheet o edge da odd realmente executada, sem publicar a aposta.
+            "p": probability_pair(sharp),
+            # Entry/closing do mercado de referência já validados pelo ledger
+            # como comparáveis. Não representam necessariamente a casa usada
+            # na execução manual e, por isso, nunca são rotulados como CLV.
+            "me": probability_pair(entry_market),
+            "mc": probability_pair(closing_market),
             "f": factors,
         }
     material = json.dumps(records, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

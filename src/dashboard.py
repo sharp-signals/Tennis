@@ -740,6 +740,8 @@ def _guerra_selection(green: Mapping[str, Any] | None) -> dict[str, Any]:
             "by_market": {},
             "underdog_pair_completeness": {},
             "flat_stake_simulation": flat_simulation,
+            "executed_edge_v1": {},
+            "reference_market_movement_v1": {},
         }
     pair = _mapping(source.get("underdog_pair_completeness"))
     pair_fields = (
@@ -760,6 +762,16 @@ def _guerra_selection(green: Mapping[str, Any] | None) -> dict[str, Any]:
         "by_side": _copy_summary_collection(source.get("by_side")),
         "underdog_pair_completeness": {field: _finite_number(pair.get(field)) for field in pair_fields},
         "flat_stake_simulation": flat_simulation,
+        "executed_edge_v1": dict(
+            _mapping(_mapping(source.get("audit_v1")).get("executed_edge_v1"))
+        ),
+        "reference_market_movement_v1": dict(
+            _mapping(
+                _mapping(source.get("audit_v1")).get(
+                    "reference_market_movement_v1"
+                )
+            )
+        ),
     }
 
 
@@ -1352,7 +1364,7 @@ out+=panel('Histórico dos relatórios','REPORT_HISTORY · universo de snapshots
 const regimeReturn=regime=>{{const odds=regime?.odds_retorno;if(!odds)return'<div class="empty">N/D — não há odds pré-jogo congeladas suficientes.</div>';return `<div class="metrics">${{metric('Odd média regime',odds.average_odd)}}${{metric('ROI 1u regime',odds.roi_pct,'%')}}${{metric('N odds',odds.odds_sample_size)}}${{metric('Break-even médio',odds.break_even_pct,'%')}}${{metric('Resultado 1u',odds.net_units,' u')}}</div>`}};
 out+=panel('Odds e retorno por regime','REPORT_HISTORY · odds pré-jogo congeladas · stake plana 1u',`<div class="split"><div><h3>Divergência</h3>${{regimeReturn(h.divergence)}}</div><div><h3>Alinhamento</h3>${{regimeReturn(h.alignment)}}</div></div>${{h.alignment_min_odd?`<h3>Alinhamento operacional · odd ≥ ${{val(h.alignment_min_odd.minimum_odd)}}</h3><div class="metrics">${{metric('Taxa',h.alignment_min_odd.taxa_pct,'%')}}${{metric('N',h.alignment_min_odd.total)}}${{metric('Intervalo',h.alignment_min_odd.intervalo_pct?.join('–')||null,'%')}}</div>${{regimeReturn(h.alignment_min_odd)}}`:'<div class="empty">N/D — ainda não há amostra mínima para alinhamento com odd ≥ 1,25.</div>'}}<p class="audit-caption">ROI descritivo: 1u no lado avaliado em cada snapshot com odd pré-jogo congelada. Não é PAPER manual, GREEN nem REAL; N odds pode ser inferior ao N da taxa.</p>`,'wide','REPORT_HISTORY');
 const zero=gs.sample.candidates===0;out+=panel('Validação prospetiva','GREEN_STRONG_V1 · coorte SHADOW',`${{zero?'<div class="note warning">N=0 — acumulação prospetiva iniciada. Sem conclusão possível.</div>':''}}<div class="metrics">${{metric('Candidatos',gs.sample.candidates)}}${{metric('Liquidados',gs.sample.settled)}}${{metric('Pendentes',gs.sample.pending)}}${{metric('Mercado médio',gs.forecast.average_market_probability==null?null:100*gs.forecast.average_market_probability,'%')}}${{metric('Fenzobot médio',gs.forecast.average_fenzobot_probability==null?null:100*gs.forecast.average_fenzobot_probability,'%')}}${{metric('Win rate observado',gs.forecast.observed_win_rate_pct,'%')}}</div><h3>Proper scoring</h3><div class="metrics">${{metric('Market Brier',gs.proper_scoring.market_brier,'',`N=${{val(gs.proper_scoring.market_n)}}`)}}${{metric('Fenzobot Brier',gs.proper_scoring.fenzobot_brier,'',`N=${{val(gs.proper_scoring.fenzobot_n)}}`)}}${{metric('Δ Brier',gs.proper_scoring.delta_brier)}}${{metric('Market Log Loss',gs.proper_scoring.market_log_loss)}}${{metric('Fenzobot Log Loss',gs.proper_scoring.fenzobot_log_loss)}}${{metric('Δ Log Loss',gs.proper_scoring.delta_log_loss)}}</div><h3>Movimento do mercado</h3><div class="metrics">${{metric('Closing comparável N',gs.market_movement.comparable_closing_n)}}${{metric('Movimento médio',gs.market_movement.average_probability_pp,' p.p.')}}${{metric('Mediana',gs.market_movement.median_probability_pp,' p.p.')}}${{metric('Na direção Fenzobot',gs.market_movement.positive_direction_pct,'%')}}</div>`, 'wide feature','GREEN_STRONG_V1');
-out+=panel('Seleção manual Guerra','GUERRA_SELECTION_V1 · PAPER manual',`${{gu.status!=='AVAILABLE'?'<div class="note">N/D — agregado público ainda indisponível.</div>':''}}<div class="metrics">${{metric('GS elegíveis',gu.eligible_green_strong)}}${{metric('Candidatos selecionados',gu.selected_candidates)}}${{metric('Taxa de seleção',gu.selection_rate_pct,'%')}}${{metric('Entradas / legs',gu.paper_entries)}}</div>${{summaryRows(gu.summary)}}<h3>Completude underdog</h3><div class="metrics">${{metric('Underdogs selecionados',gu.underdog_pair_completeness.underdog_selected_candidates)}}${{metric('Pares completos',gu.underdog_pair_completeness.complete_moneyline_positive_handicap_pairs)}}${{metric('Só Moneyline',gu.underdog_pair_completeness.moneyline_only)}}${{metric('Só handicap +',gu.underdog_pair_completeness.positive_handicap_only)}}${{metric('Incompleto / N/D',gu.underdog_pair_completeness.incomplete_or_unrecognized)}}</div>`,'','GUERRA_SELECTION_V1');
+const xe=gu.executed_edge_v1||{{}},xm=gu.reference_market_movement_v1||{{}},xea=xe.all_linked||{{}},xme=xm.exact_timestamp||{{}};out+=panel('Seleção manual Guerra','GUERRA_SELECTION_V1 · PAPER manual',`${{gu.status!=='AVAILABLE'?'<div class="note">N/D — agregado público ainda indisponível.</div>':''}}<div class="metrics">${{metric('GS elegíveis',gu.eligible_green_strong)}}${{metric('Candidatos selecionados',gu.selected_candidates)}}${{metric('Taxa de seleção',gu.selection_rate_pct,'%')}}${{metric('Entradas / legs',gu.paper_entries)}}</div>${{summaryRows(gu.summary)}}<h3>Edge da odd executada · Moneyline</h3><div class="metrics">${{metric('Amostra calculável',xea.sample_size)}}${{metric('Edge executado médio',xea.average_pct,'%')}}${{metric('Mediana',xea.median_pct,'%')}}${{metric('Edge positivo',xea.positive_pct,'%')}}</div><p class="audit-caption">Usa a probabilidade Fenzobot congelada e a odd realmente registada. Betfair desconta 5% sobre o lucro. Handicaps ficam N/D sem probabilidade da linha exata.</p><h3>Mercado de referência · seleções ex ante</h3><div class="metrics">${{metric('Amostra comparável',xme.sample_size)}}${{metric('Movimento médio',xme.average_pct,' p.p.')}}${{metric('Mediana',xme.median_pct,' p.p.')}}${{metric('Encurtou',xme.positive_pct,'%')}}</div><p class="audit-caption">Não é CLV da aposta: compara o mesmo feed/bookmaker de referência do ledger, não necessariamente 22Bet ou Betfair.</p><h3>Completude underdog</h3><div class="metrics">${{metric('Underdogs selecionados',gu.underdog_pair_completeness.underdog_selected_candidates)}}${{metric('Pares completos',gu.underdog_pair_completeness.complete_moneyline_positive_handicap_pairs)}}${{metric('Só Moneyline',gu.underdog_pair_completeness.moneyline_only)}}${{metric('Só handicap +',gu.underdog_pair_completeness.positive_handicap_only)}}${{metric('Incompleto / N/D',gu.underdog_pair_completeness.incomplete_or_unrecognized)}}</div>`,'','GUERRA_SELECTION_V1');
 const bars=mm.observations_by_day||[];const max=Math.max(1,...bars.map(x=>x.observations));out+=panel('Histórico do mercado','MARKET_MEMORY · experimental · não validado',`<div class="metrics">${{metric('Observações',mm.total_observations)}}${{metric('Eventos distintos',mm.distinct_events)}}${{metric('Com entry market',mm.events_with_entry_market)}}${{metric('Closing comparável',mm.events_with_comparable_closing)}}${{metric('Cobertura closing',mm.closing_coverage_pct,'%')}}${{metric('Market-only N',mm.market_only.sample_size)}}${{metric('Market + Fenzobot N',mm.market_plus_fenzobot.sample_size)}}</div><div class="split"><div><h3>Só mercado</h3>${{metric('Brier',mm.market_only.brier_score)}}${{metric('Log Loss',mm.market_only.log_loss)}}</div><div><h3>Mercado + Fenzobot</h3>${{metric('Brier',mm.market_plus_fenzobot.brier_score)}}${{metric('Log Loss',mm.market_plus_fenzobot.log_loss)}}</div></div><h3>Observações por dia · últimos 30 dias</h3><div class="chart" aria-label="Observações de mercado por dia">${{bars.map(x=>`<i class="bar" style="height:${{Math.max(2,100*x.observations/max)}}%" title="${{esc(x.date)}}: ${{x.observations}}"></i>`).join('')}}</div>`,'wide','MARKET_MEMORY');
 out+=panel('PAPER técnico','Universo PAPER automático',summaryRows(pt),'','PAPER_TECHNICAL');out+=panel('PAPER manual 22Bet','Agregados públicos apenas',`${{summaryRows(p22)}}<div class="note">Fonte 22Bet sincronizada em: ${{fmtTime(p22.synced_at_utc)}}</div><h3>Mercados</h3><div class="rows">${{Object.entries(p22.by_market||{{}}).map(([k,v])=>`<div class="row"><span>${{esc(k)}}</span><b>${{val(v.total_entries)}} entradas</b></div>`).join('')||'<div class="empty">N/D</div>'}}</div>`,'','PAPER_22BET');
 out+=panel('Identidade canónica','MATCH_INSTANCE_ID_V2 · prospetivo · agregado público',`<div class="metrics">${{metric('Observações v2',iv.v2_observations)}}${{metric('Instâncias canónicas',iv.canonical_instances)}}${{metric('Aliases ativos',iv.aliases.ACTIVE)}}${{metric('Aliases em conflito',iv.aliases.CONFLICTED)}}${{metric('Snapshots canónicos',iv.canonical_snapshots)}}${{metric('Cobertura snapshot',iv.canonical_snapshot_coverage_pct,'%')}}${{metric('PAPER canónico',iv.canonical_paper_entries)}}</div><div class="note">IDs canónicos são internos e nunca são publicados nesta vista. Estados observados: ${{esc(Object.entries(iv.observations_by_state||{{}}).map(([k,v])=>`${{k}}=${{v}}`).join(' · ')||'N/D')}}.</div>`,'wide','MATCH_IDENTITY_V2');
@@ -1565,12 +1577,17 @@ def build_and_write(
         for row in _list(_mapping(snapshots_doc).get("snapshots"))
         if isinstance(row, Mapping)
     ]
+    market_memory_doc, _ = _read_json(
+        root / "data/market_ledger/derived/market-memory-v1.json"
+    )
     manual_paper_linkage.write_index(
         manual_paper_linkage.build_index(dashboard, snapshots),
         root / manual_paper_linkage.DEFAULT_OUTPUT_PATH,
     )
     manual_paper_linkage.write_index(
-        manual_paper_linkage.build_factor_index(snapshots),
+        manual_paper_linkage.build_factor_index(
+            snapshots, _mapping(market_memory_doc)
+        ),
         root / manual_paper_linkage.DEFAULT_FACTOR_OUTPUT_PATH,
     )
     return dashboard

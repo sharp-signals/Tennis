@@ -80,6 +80,53 @@ test('Guerra audit relates factor direction to the selected side and real ROI', 
   assert.equal(market.units, 0.85);
 });
 
+test('executed edge uses frozen probability, actual odd and Betfair commission', () => {
+  const rowTracking = {
+    selection: 6, market: 5, odd: 9, house: 10, handicapLine: 19,
+  };
+  const values = Array(22).fill('');
+  values[5] = 'Vencedor'; values[6] = 'Alpha'; values[9] = 2.00;
+  values[10] = 'Betfair';
+  const snapshot = {
+    a: 'Alpha', b: 'Beta', p: [0.55, 0.45],
+    me: [0.50, 0.50], mc: [0.57, 0.43],
+  };
+  const edge = context.newExecutedEdgeAudit_();
+  const movement = context.newReferenceMovementAudit_();
+  context.addGuerraExecutionAudit_(
+    edge, movement, values, rowTracking, 'LINKED_EX_ANTE', snapshot,
+  );
+  const executed = context.finishExecutedEdgeAudit_(edge);
+  const reference = context.finishReferenceMovementAudit_(movement);
+  assert.equal(executed.all_linked.sample_size, 1);
+  assert.equal(executed.all_linked.average_pct, 7.25);
+  assert.equal(executed.exact_timestamp.sample_size, 1);
+  assert.equal(executed.by_house.Betfair.average_pct, 7.25);
+  assert.equal(reference.all_linked.average_pct, 7);
+  assert.equal(reference.label, 'MOVIMENTO_DO_MERCADO_DE_REFERENCIA_NAO_CLV_DA_APOSTA');
+});
+
+test('handicap executed edge fails closed without exact line probability', () => {
+  const rowTracking = {
+    selection: 6, market: 5, odd: 9, house: 10, handicapLine: 19,
+  };
+  const values = Array(22).fill('');
+  values[5] = 'Handicap games'; values[6] = 'Alpha -2.5';
+  values[9] = 1.85; values[10] = '22Bet'; values[19] = -2.5;
+  const snapshot = {
+    a: 'Alpha', b: 'Beta', p: [0.60, 0.40], me: [0.55, 0.45], mc: [0.56, 0.44],
+  };
+  const edge = context.newExecutedEdgeAudit_();
+  const movement = context.newReferenceMovementAudit_();
+  context.addGuerraExecutionAudit_(
+    edge, movement, values, rowTracking, 'LINKED_RETROSPECTIVE_CANONICAL', snapshot,
+  );
+  const executed = context.finishExecutedEdgeAudit_(edge);
+  assert.equal(executed.status, 'UNAVAILABLE');
+  assert.equal(executed.unavailable.NON_MONEYLINE_OR_LINE_INCOMPATIBLE, 1);
+  assert.equal(context.finishReferenceMovementAudit_(movement).retrospective_date_only.sample_size, 1);
+});
+
 test('Challenger profit is locale-independent and applies Betfair commission', () => {
   assert.equal(context.challengerProfitValue_('Betfair', 2.10, 0.5, 'GANHOU'), 0.5225);
   assert.equal(context.challengerProfitValue_('22Bet', 1.83, 0.5, 'GANHOU'), 0.415);
