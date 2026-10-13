@@ -216,7 +216,12 @@ function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
   const existingFilter = sheet.getFilter();
   if (existingFilter) existingFilter.remove();
-  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
+  const fullSheetRange = sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns());
+  fullSheetRange.breakApart();
+  // clear() não remove necessariamente validações antigas. O painel anterior
+  // tinha dropdowns na coluna de ação; sem esta limpeza, valores legítimos da
+  // nova projeção podem falhar com DATA_VALIDATION_ERROR (por exemplo J40).
+  fullSheetRange.clearDataValidations();
   sheet.clear({contentsOnly: false});
   sheet.clearConditionalFormatRules();
   sheet.getCharts().forEach(chart => sheet.removeChart(chart));
