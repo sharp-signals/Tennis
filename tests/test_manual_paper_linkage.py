@@ -58,11 +58,20 @@ class ManualPaperLinkageIndexTests(unittest.TestCase):
                     "h2h": {"disponivel": False},
                 },
             }},
+            "pricing": {"sharp_estimate_a": 0.58, "sharp_estimate_b": 0.42},
         }]
-        result = manual_paper_linkage.build_factor_index(snapshots)
+        market_memory = {"events": [{
+            "snapshot_key": "snapshot:1",
+            "entry_market_probabilities": {"a": 0.55, "b": 0.45},
+            "last_valid_prestart_market_probabilities": {"a": 0.60, "b": 0.40},
+        }]}
+        result = manual_paper_linkage.build_factor_index(snapshots, market_memory)
         self.assertEqual(result["record_count"], 1)
         self.assertEqual(result["records"]["snapshot:1"]["f"], [["forma_recente", "a", 4.125]])
         self.assertEqual(result["records"]["snapshot:1"]["m"], "a")
+        self.assertEqual(result["records"]["snapshot:1"]["p"], [0.58, 0.42])
+        self.assertEqual(result["records"]["snapshot:1"]["me"], [0.55, 0.45])
+        self.assertEqual(result["records"]["snapshot:1"]["mc"], [0.60, 0.40])
         self.assertNotIn("outcome", str(result).lower())
         self.assertNotIn("winner", str(result).lower())
 

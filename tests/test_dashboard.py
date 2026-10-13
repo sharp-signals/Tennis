@@ -327,6 +327,16 @@ class DashboardTests(unittest.TestCase):
                 "pending_exposure_eur": 10, "net_profit_eur": 9,
                 "roi_pct": 45, "exclusion_reasons": {},
             },
+            "audit_v1": {
+                "executed_edge_v1": {
+                    "status": "AVAILABLE",
+                    "all_linked": {"sample_size": 2, "average_pct": 3.4},
+                },
+                "reference_market_movement_v1": {
+                    "status": "AVAILABLE",
+                    "exact_timestamp": {"sample_size": 1, "average_pct": 1.2},
+                },
+            },
             "snapshot_keys": ["PRIVATE-KEY"], "names": ["PRIVATE-NAME"], "notes": "PRIVATE-NOTE",
         }
         write_json(path, value)
@@ -334,6 +344,11 @@ class DashboardTests(unittest.TestCase):
         serialized = json.dumps(result)
         self.assertEqual(result["guerra_selection_v1"]["selected_candidates"], 2)
         self.assertEqual(result["guerra_selection_v1"]["flat_stake_simulation"]["net_profit_eur"], 9)
+        self.assertEqual(
+            result["guerra_selection_v1"]["executed_edge_v1"]["all_linked"]["average_pct"],
+            3.4,
+        )
+        self.assertIn("Edge da odd executada", dashboard.render_dashboard_html(result))
         self.assertNotIn("PRIVATE-KEY", serialized)
         self.assertNotIn("PRIVATE-NAME", serialized)
         self.assertNotIn("PRIVATE-NOTE", serialized)

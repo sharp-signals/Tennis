@@ -653,6 +653,8 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const guerraFactorGroups = {};
   const guerraSegmentGroups = {};
   const guerraAuditLegs = {};
+  const guerraExecutedEdge = newExecutedEdgeAudit_();
+  const guerraReferenceMovement = newReferenceMovementAudit_();
   const guerraAuditQuality = {
     linked_entries: 0,
     canonical_entries: 0,
@@ -732,6 +734,14 @@ function buildPaperTradingPayload_(token, repository, branch) {
       factorIndex.byKey[snapshotKey] || null,
       candidateKey,
     );
+    addGuerraExecutionAudit_(
+      guerraExecutedEdge,
+      guerraReferenceMovement,
+      row,
+      tracking,
+      status,
+      factorIndex.byKey[snapshotKey] || null,
+    );
     if (normalisedHeader_(sideName_(row, tracking)) === 'underdog') {
       if (!underdogPairs[candidateKey]) underdogPairs[candidateKey] = {moneyline: false, positiveHandicap: false};
       const leg = manualLegType_(row, tracking);
@@ -787,6 +797,10 @@ function buildPaperTradingPayload_(token, repository, branch) {
       quality: guerraAuditQuality,
       factors: finishGuerraFactorAudit_(guerraFactorGroups),
       segments: finishGuerraSegmentAudit_(guerraSegmentGroups),
+      executed_edge_v1: finishExecutedEdgeAudit_(guerraExecutedEdge),
+      reference_market_movement_v1: finishReferenceMovementAudit_(
+        guerraReferenceMovement,
+      ),
       sample_policy: {
         informative_below: 20,
         directional_from: 20,
@@ -907,6 +921,7 @@ function trackingIndexes_(headers) {
     tour: operationalIndex_(headers, 'Tour', 'tour'),
     level: operationalIndex_(headers, 'Nível', 'level'),
     surface: operationalIndex_(headers, 'Piso', 'surface'),
+    house: operationalIndex_(headers, 'Casa', 'house'),
     market: operationalIndex_(headers, 'Tipo de mercado', 'market'),
     selection: operationalIndex_(headers, 'Seleção', 'selection'),
     side: operationalIndex_(headers, 'Fav/Und', 'side'),
@@ -944,6 +959,7 @@ function operationalIndex_(headers, header, legacyKey) {
     tour: ['Tour', 'Circuito'],
     level: ['Nível', 'Nivel', 'Circuito'],
     surface: ['Piso', 'Superfície', 'Superficie'],
+    house: ['Casa', 'Bookmaker'],
     market: ['Tipo de mercado', 'Mercado'],
     selection: ['Seleção', 'Selecao', 'Pick'],
     side: ['Fav/Und', 'Favorito/Underdog'],
@@ -1242,6 +1258,138 @@ function finishGuerraSegmentAudit_(dimensions) {
     });
   });
   return rows;
+}
+
+function auditBucket_() {
+  return {values: []};
+}
+
+function auditDistribution_(bucket) {
+  const values = (bucket && bucket.values || []).slice().sort((a, b) => a - b);
+  const count = values.length;
+  const median = count
+    ? (count % 2 ? values[(count - 1) / 2] : (values[count / 2 - 1] + values[count / 2]) / 2)
+    : null;
+  const round = value => value == null ? null : Math.round(value * 10000) / 10000;
+  return {
+    sample_size: count,
+    average_pct: count ? round(values.reduce((sum, value) => sum + value, 0) / count) : null,
+    median_pct: round(median),
+    positive_pct: count ? Math.round(10000 * values.filter(value => value > 0).length / count) / 100 : null,
+    minimum_pct: count ? round(values[0]) : null,
+    maximum_pct: count ? round(values[count - 1]) : null,
+  };
+}
+
+function newExecutedEdgeAudit_() {
+  return {
+    all: auditBucket_(), exact: auditBucket_(), retrospective: auditBucket_(),
+    byHouse: {}, unavailable: {
+      NON_MONEYLINE_OR_LINE_INCOMPATIBLE: 0,
+      SELECTION_SIDE_UNRESOLVED: 0,
+      FROZEN_PROBABILITY_UNAVAILABLE: 0,
+      EXECUTED_ODD_UNAVAILABLE: 0,
+    },
+  };
+}
+
+function newReferenceMovementAudit_() {
+  return {
+    all: auditBucket_(), exact: auditBucket_(), retrospective: auditBucket_(),
+    unavailable: {
+      SELECTION_SIDE_UNRESOLVED: 0,
+      REFERENCE_ENTRY_OR_CLOSING_UNAVAILABLE: 0,
+    },
+  };
+}
+
+function effectiveExecutedOdd_(row, tracking) {
+  const rawOdd = Number(row[tracking.odd]);
+  if (!Number.isFinite(rawOdd) || rawOdd <= 1) return null;
+  const house = tracking.house >= 0 ? String(row[tracking.house] || '').trim() : '';
+  const effective = normalisedHeader_(house).indexOf('betfair') >= 0
+    ? 1 + (rawOdd - 1) * 0.95
+    : rawOdd;
+  return {house: house || 'N/D', raw_odd: rawOdd, effective_odd: effective};
+}
+
+function snapshotProbabilityForSide_(snapshot, field, side) {
+  const values = snapshot && snapshot[field];
+  const index = side === 'a' ? 0 : side === 'b' ? 1 : -1;
+  const probability = index >= 0 && Array.isArray(values) ? Number(values[index]) : NaN;
+  return Number.isFinite(probability) && probability > 0 && probability < 1
+    ? probability : null;
+}
+
+function addAuditValue_(audit, value, status) {
+  audit.all.values.push(value);
+  (status === 'LINKED_EX_ANTE' ? audit.exact : audit.retrospective).values.push(value);
+}
+
+function addGuerraExecutionAudit_(edgeAudit, movementAudit, row, tracking, status, snapshot) {
+  const selectedSide = auditSelectionSide_(row, tracking, snapshot);
+  if (!selectedSide) {
+    edgeAudit.unavailable.SELECTION_SIDE_UNRESOLVED += 1;
+    movementAudit.unavailable.SELECTION_SIDE_UNRESOLVED += 1;
+    return;
+  }
+
+  if (auditMarketType_(row, tracking) !== 'Moneyline') {
+    edgeAudit.unavailable.NON_MONEYLINE_OR_LINE_INCOMPATIBLE += 1;
+  } else {
+    const probability = snapshotProbabilityForSide_(snapshot, 'p', selectedSide);
+    const executed = effectiveExecutedOdd_(row, tracking);
+    if (probability == null) {
+      edgeAudit.unavailable.FROZEN_PROBABILITY_UNAVAILABLE += 1;
+    } else if (!executed) {
+      edgeAudit.unavailable.EXECUTED_ODD_UNAVAILABLE += 1;
+    } else {
+      const edgePct = 100 * (probability * executed.effective_odd - 1);
+      addAuditValue_(edgeAudit, edgePct, status);
+      if (!edgeAudit.byHouse[executed.house]) edgeAudit.byHouse[executed.house] = auditBucket_();
+      edgeAudit.byHouse[executed.house].values.push(edgePct);
+    }
+  }
+
+  const entry = snapshotProbabilityForSide_(snapshot, 'me', selectedSide);
+  const closing = snapshotProbabilityForSide_(snapshot, 'mc', selectedSide);
+  if (entry == null || closing == null) {
+    movementAudit.unavailable.REFERENCE_ENTRY_OR_CLOSING_UNAVAILABLE += 1;
+    return;
+  }
+  addAuditValue_(movementAudit, 100 * (closing - entry), status);
+}
+
+function finishExecutedEdgeAudit_(audit) {
+  const byHouse = {};
+  Object.keys(audit.byHouse).sort().forEach(house => {
+    byHouse[house] = auditDistribution_(audit.byHouse[house]);
+  });
+  return {
+    status: audit.all.values.length ? 'AVAILABLE' : 'UNAVAILABLE',
+    claims: 'DESCRIPTIVE_ONLY_FROZEN_FENZOBOT_PROBABILITY_X_EXECUTED_ODD',
+    formula: '100 * (frozen_fenzobot_probability * effective_executed_odd - 1)',
+    commission_policy: 'BETFAIR_5_PERCENT_ON_NET_WINNINGS_OTHER_BOOKMAKERS_RAW_ODD',
+    market_scope: 'MONEYLINE_ONLY_HANDICAP_REQUIRES_EXACT_LINE_PROBABILITY',
+    all_linked: auditDistribution_(audit.all),
+    exact_timestamp: auditDistribution_(audit.exact),
+    retrospective_date_only: auditDistribution_(audit.retrospective),
+    by_house: byHouse,
+    unavailable: audit.unavailable,
+  };
+}
+
+function finishReferenceMovementAudit_(audit) {
+  return {
+    status: audit.all.values.length ? 'AVAILABLE' : 'UNAVAILABLE',
+    label: 'MOVIMENTO_DO_MERCADO_DE_REFERENCIA_NAO_CLV_DA_APOSTA',
+    comparison_contract: 'SAME_LEDGER_PROVIDER_ENDPOINT_BOOKMAKER_AND_EVENT_NOT_EXECUTION_BOOK',
+    direction: 'POSITIVE_MEANS_SELECTED_SIDE_SHORTENED',
+    all_linked: auditDistribution_(audit.all),
+    exact_timestamp: auditDistribution_(audit.exact),
+    retrospective_date_only: auditDistribution_(audit.retrospective),
+    unavailable: audit.unavailable,
+  };
 }
 
 function semanticFingerprintMaterial_(rowsWithoutValidationStatus, publicAggregates) {

@@ -192,6 +192,12 @@ function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
   const factors = Array.isArray(audit.factors) ? audit.factors : [];
   const segments = Array.isArray(audit.segments) ? audit.segments : [];
   const quality = audit.quality || {};
+  const executedEdge = audit.executed_edge_v1 || {};
+  const executedAll = executedEdge.all_linked || {};
+  const executedExact = executedEdge.exact_timestamp || {};
+  const referenceMovement = audit.reference_market_movement_v1 || {};
+  const movementAll = referenceMovement.all_linked || {};
+  const movementExact = referenceMovement.exact_timestamp || {};
 
   upsertSystemSheet_(spreadsheet, 'GUERRA — fatores', rowsWithHeaders_(
     ['Universo', 'Fator', 'Relação com seleção', 'Entradas', 'Liquidadas', 'Pendentes', 'Vitórias', 'Derrotas', '% acerto', 'Unidades', 'ROI', 'Odd média', 'Break-even', 'Margem vs break-even (p.p.)', 'Peso efetivo médio', 'Leitura da amostra'],
@@ -220,6 +226,19 @@ function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
     ['Snapshot ausente do índice de fatores', quality.factor_index_missing || 0],
     ['Possíveis legs exatas duplicadas', quality.duplicate_exact_legs || 0],
     ['Snapshots públicos no índice', audit.factor_index_records == null ? 'N/D' : audit.factor_index_records],
+    ['', ''],
+    ['Edge executado Moneyline — amostra calculável', executedAll.sample_size || 0],
+    ['Edge executado Moneyline — média', executedAll.average_pct == null ? 'N/D' : executedAll.average_pct + '%'],
+    ['Edge executado Moneyline — mediana', executedAll.median_pct == null ? 'N/D' : executedAll.median_pct + '%'],
+    ['Edge executado Moneyline — % positivo', executedAll.positive_pct == null ? 'N/D' : executedAll.positive_pct + '%'],
+    ['Edge executado ex ante — amostra', executedExact.sample_size || 0],
+    ['Edge executado — regra', 'Probabilidade Fenzobot congelada × odd realmente executada. Betfair desconta 5% sobre lucro. Handicap fica N/D sem probabilidade da linha exata.'],
+    ['', ''],
+    ['Movimento de referência — amostra calculável', movementAll.sample_size || 0],
+    ['Movimento de referência — média', movementAll.average_pct == null ? 'N/D' : movementAll.average_pct + ' p.p.'],
+    ['Movimento de referência — % encurtou', movementAll.positive_pct == null ? 'N/D' : movementAll.positive_pct + '%'],
+    ['Movimento de referência ex ante — amostra', movementExact.sample_size || 0],
+    ['Movimento de referência — limite', 'Não é CLV da aposta. Compara o mesmo feed/bookmaker do ledger, que pode não ser 22Bet ou Betfair.'],
     ['Regra de amostra', '<20 informativo · 20–39 tendência · ≥40 candidato a revisão; alterações máximas de peso ±0,5 por ciclo.'],
     ['Limite', 'Auditoria descritiva. Não altera pesos, PAPER, pricing ou decisões automaticamente. Challenger mantém universo próprio.'],
   ];
