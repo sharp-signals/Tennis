@@ -1785,6 +1785,7 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
     {title: 'Performance por índice Fenzobot', collection: aggregate.by_fenzobot_index_band || {}, row: 24, column: 7},
     {title: 'Performance por cobertura factual', collection: aggregate.by_coverage_band || {}, row: 40, column: 1, width: 1100},
   ];
+  const chartJobs = [];
   charts.forEach(spec => {
     const table = challengerChartRows_(spec.collection);
     if (table.length <= 1) {
@@ -1799,7 +1800,7 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
       .setBackground('#E2E8F0')
       .setFontColor('#0F172A')
       .setFontWeight('bold');
-    addChallengerPerformanceChart_(sheet, range, spec.title, spec.row, spec.column, spec.width || 540);
+    chartJobs.push({range: range, spec: spec});
     supportRow += table.length + 2;
   });
   sheet.getRange(198, 1, 1, 3).merge()
@@ -1807,6 +1808,16 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
     .setBackground('#0F172A')
     .setFontColor('#FFFFFF')
     .setFontWeight('bold');
+
+  // setValues() é assíncrono dentro do Apps Script. Se o gráfico for criado
+  // imediatamente, pode ficar preso ao estado vazio apesar de a tabela surgir
+  // segundos depois. O flush garante que todas as séries existem antes da
+  // criação dos objetos gráficos.
+  SpreadsheetApp.flush();
+  chartJobs.forEach(job => {
+    const spec = job.spec;
+    addChallengerPerformanceChart_(sheet, job.range, spec.title, spec.row, spec.column, spec.width || 540);
+  });
 }
 
 function formatDashboardPct_(value) {

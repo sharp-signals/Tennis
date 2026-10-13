@@ -123,6 +123,7 @@ test('Challenger charts use visible support data and a professional combo layout
   assert.match(source, /let supportRow = 200/);
   assert.match(source, /\.asComboChart\(\)/);
   assert.doesNotMatch(source, /sheet\.hideColumns\(17, 5\)/);
+  assert.match(source, /SpreadsheetApp\.flush\(\);\s*chartJobs\.forEach/);
 });
 
 test('executed edge uses frozen probability, actual odd and Betfair commission', () => {
