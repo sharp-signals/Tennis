@@ -128,6 +128,9 @@ test('Challenger charts use visible support data and a stable column layout', ()
   assert.doesNotMatch(source, /sheet\.hideColumns\(17, 5\)/);
   assert.doesNotMatch(source, /getCharts\(\)\.forEach\(chart => sheet\.removeChart\(chart\)\)/);
   assert.match(source, /const existingCharts = sheet\.getCharts\(\)/);
+  assert.doesNotMatch(source, /sheet\.clear\(\)/);
+  assert.match(source, /getRange\(1, 1, 198, sheet\.getMaxColumns\(\)\)\.clear\(\)/);
+  assert.match(source, /sourceRange\.setValues\(paddedTable\)/);
   assert.match(source, /if \(!existingCharts\.length\) \{\s*SpreadsheetApp\.flush\(\);\s*chartJobs\.forEach/);
 });
 
