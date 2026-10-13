@@ -72,6 +72,8 @@ test('Guerra audit relates factor direction to the selected side and real ROI', 
   assert.equal(form.relation, 'Alinha com seleção');
   assert.equal(fatigue.relation, 'Contraria seleção');
   assert.equal(form.roi_pct, 85);
+  assert.equal(form.break_even_pct, 54.1);
+  assert.equal(form.hit_vs_break_even_pp, 45.9);
   assert.equal(form.sample_status, 'Informativo');
   assert.equal(quality.factor_audit_eligible_entries, 1);
   const market = context.finishGuerraSegmentAudit_(segments)
@@ -156,6 +158,44 @@ test('historical report linkage handles abbreviated names and the Safiullin typo
   }];
   const match = context.findPaperReportLink_('2026-09-29', 'Saffiulin x Cobolli', records);
   assert.equal(match.report_match_key, 'fallback:one');
+});
+
+test('Challenger linkage prefers an older canonical snapshot over a same-day fallback report', () => {
+  const records = [
+    {
+      report_date: '2026-10-13', player_a: 'Jan Kumstat', player_b: 'Edas Butvilas',
+      report_match_key: 'fallback:same-day', snapshot_key: null,
+    },
+    {
+      report_date: '2026-10-11', player_a: 'Jan Kumstat', player_b: 'Edas Butvilas',
+      report_match_key: 'canonical:older', snapshot_key: 'mi2:canonical',
+      report_url: 'https://example.test/report', commence_time_utc: '2026-10-13T09:00:00Z',
+    },
+  ];
+  const match = context.findPaperReportLink_('2026-10-13', 'J. Kumstat x E. Butvilas', records);
+  assert.equal(match.snapshot_key, 'mi2:canonical');
+  assert.equal(match.report_match_key, 'canonical:older');
+});
+
+test('Challenger linkage fills snapshot, selected Fenzobot index and legacy EDGE safely', () => {
+  const headers = [
+    'Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und',
+    'Pré/Live', 'Casa', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas',
+    'Fenzobot Snapshot Key', 'Selected At UTC', 'Challenger Índice Fenzobot',
+    'Challenger Cobertura %', 'Challenger Edge %', 'Validation Status',
+  ];
+  const row = Array(headers.length).fill('');
+  row[6] = 'Jan Kumstat'; row[12] = 0.053; row[17] = '2026-10-13T08:30:00Z';
+  const tracking = context.trackingIndexes_(headers);
+  const linked = context.enrichChallengerRow_(row, tracking, {
+    snapshot_key: 'mi2:canonical', report_match_key: 'canonical:older',
+  }, {
+    'mi2:canonical': {a: 'Jan Kumstat', b: 'Edas Butvilas', ia: 86, ib: 14, m: 'a'},
+  });
+  assert.equal(linked, true);
+  assert.equal(row[tracking.snapshot], 'mi2:canonical');
+  assert.equal(row[tracking.challengerIndex], 86);
+  assert.equal(row[tracking.challengerEdge], 5.3);
 });
 
 test('date-only history is linked but never presented as exact ex-ante timing', () => {

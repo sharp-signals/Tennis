@@ -68,7 +68,9 @@ function syncPaperTradingToGitHub() {
   const spreadsheet = paperTradingSpreadsheet_();
   ensureGuerraTrackingColumns_(spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName));
   const reportIndex = fetchReportLinkageIndex_(token, repository, branch);
+  const factorIndex = fetchManualFactorIndex_(token, repository, branch);
   recoverGuerraReportLinks_(spreadsheet, reportIndex);
+  recoverChallengerReportLinks_(spreadsheet, reportIndex, factorIndex);
   const payload = buildPaperTradingPayload_(token, repository, branch);
   refreshChallengerPaperDashboard_(
     spreadsheet,
@@ -354,14 +356,28 @@ function paperDayDifference_(leftIso, rightIso) {
 
 function findPaperReportLink_(dateIso, game, records) {
   const candidates = (records || []).filter(record => {
-    const delta = paperDayDifference_(dateIso, record.report_date);
-    return delta !== null && delta >= -1 && delta <= 3 && paperPairMatches_(game, record);
+    const reportDelta = paperDayDifference_(dateIso, record.report_date);
+    const commenceDate = String(record.commence_time_utc || '').slice(0, 10);
+    const commenceDelta = commenceDate ? paperDayDifference_(dateIso, commenceDate) : null;
+    const dateMatches = (
+      commenceDelta !== null && Math.abs(commenceDelta) <= 1
+    ) || (
+      reportDelta !== null && reportDelta >= -3 && reportDelta <= 3
+    );
+    return dateMatches && paperPairMatches_(game, record);
   }).map(record => Object.assign({}, record, {
-    _delta: paperDayDifference_(dateIso, record.report_date),
+    _delta: String(record.commence_time_utc || '').slice(0, 10)
+      ? paperDayDifference_(dateIso, String(record.commence_time_utc).slice(0, 10))
+      : paperDayDifference_(dateIso, record.report_date),
   }));
   if (!candidates.length) return null;
-  const distance = Math.min.apply(null, candidates.map(record => Math.abs(record._delta)));
-  const nearest = candidates.filter(record => Math.abs(record._delta) === distance);
+  // Uma versão repetida no dia da aposta pode ser apenas um relatório
+  // self-described sem snapshot. Quando existe uma versão canónica da mesma
+  // partida na janela segura, ela é a única capaz de sustentar o linkage.
+  const canonical = candidates.filter(record => String(record.snapshot_key || '').trim());
+  const preferred = canonical.length ? canonical : candidates;
+  const distance = Math.min.apply(null, preferred.map(record => Math.abs(record._delta)));
+  const nearest = preferred.filter(record => Math.abs(record._delta) === distance);
   nearest.sort((a, b) => {
     const canonicalA = a.snapshot_key ? 0 : 1;
     const canonicalB = b.snapshot_key ? 0 : 1;
@@ -369,7 +385,7 @@ function findPaperReportLink_(dateIso, game, records) {
   });
   const identities = {};
   nearest.forEach(record => {
-    identities[paperName_(record.player_a) + '|' + paperName_(record.player_b)] = true;
+    identities[[paperName_(record.player_a), paperName_(record.player_b)].sort().join('|')] = true;
   });
   return Object.keys(identities).length === 1 ? nearest[0] : null;
 }
@@ -450,6 +466,91 @@ function recoverGuerraReportLinks_(spreadsheet, reportIndex) {
       .setValues(rows.map(row => [row[index]]));
   });
   return {linked: linked, unmatched: unmatched};
+}
+
+function challengerEdgePct_(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return numeric > 0 && numeric <= 1 ? numeric * 100 : numeric;
+}
+
+function enrichChallengerRow_(row, tracking, link, factorByKey) {
+  if (!link || !String(link.snapshot_key || '').trim()) return false;
+  if (tracking.snapshot >= 0) row[tracking.snapshot] = link.snapshot_key;
+  if (tracking.strategy >= 0) row[tracking.strategy] = PAPER_22BET_SYNC.challengerManualStrategy;
+  if (tracking.reportMatchKey >= 0 && link.report_match_key) row[tracking.reportMatchKey] = link.report_match_key;
+  if (tracking.reportUrl >= 0 && link.report_url) row[tracking.reportUrl] = link.report_url;
+  if (tracking.commenceTime >= 0 && link.commence_time_utc) row[tracking.commenceTime] = link.commence_time_utc;
+  if (tracking.timePrecision >= 0) {
+    row[tracking.timePrecision] = row[tracking.selectedAt]
+      ? 'EXACT_TIMESTAMP'
+      : 'DATE_ONLY_RETROSPECTIVE';
+  }
+  const snapshot = (factorByKey || {})[String(link.snapshot_key)] || null;
+  const selectedSide = auditSelectionSide_(row, tracking, snapshot);
+  const selectedIndex = snapshot && selectedSide
+    ? Number(snapshot[selectedSide === 'a' ? 'ia' : 'ib'])
+    : null;
+  if (tracking.challengerIndex >= 0 && !String(row[tracking.challengerIndex] || '').trim() && Number.isFinite(selectedIndex)) {
+    row[tracking.challengerIndex] = selectedIndex;
+  }
+  const sourceEdge = tracking.sourceEdge >= 0 ? challengerEdgePct_(row[tracking.sourceEdge]) : null;
+  if (tracking.challengerEdge >= 0 && !String(row[tracking.challengerEdge] || '').trim() && sourceEdge !== null) {
+    row[tracking.challengerEdge] = sourceEdge;
+  }
+  return true;
+}
+
+function recoverChallengerSheetLinks_(spreadsheet, sheet, reportIndex, factorIndex, mainSheet) {
+  if (!sheet || !reportIndex || reportIndex.available !== true) return {linked: 0, unmatched: 0};
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, width).getValues()[0];
+  const tracking = trackingIndexes_(headers);
+  const rowCount = Math.max(0, sheet.getLastRow() - PAPER_22BET_SYNC.headerRow);
+  if (!rowCount) return {linked: 0, unmatched: 0};
+  const rows = sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, 1, rowCount, width).getValues();
+  const timeZone = spreadsheet.getSpreadsheetTimeZone ? spreadsheet.getSpreadsheetTimeZone() : 'Europe/Lisbon';
+  let linked = 0;
+  let unmatched = 0;
+  rows.forEach(row => {
+    if (!(row[0] && row[1] && tracking.market >= 0 && row[tracking.market])) return;
+    if (sheet === mainSheet && !isChallengerManualRow_(row, tracking)) return;
+    let link = null;
+    const existingKey = tracking.snapshot >= 0 ? String(row[tracking.snapshot] || '').trim() : '';
+    if (existingKey) {
+      link = {snapshot_key: existingKey};
+    } else {
+      link = findPaperReportLink_(paperDateIso_(row[0], timeZone), row[1], reportIndex.records);
+    }
+    if (!enrichChallengerRow_(row, tracking, link, (factorIndex || {}).byKey || {})) {
+      unmatched += 1;
+      return;
+    }
+    linked += 1;
+  });
+  const writable = [
+    tracking.snapshot, tracking.strategy, tracking.reportMatchKey, tracking.reportUrl,
+    tracking.timePrecision, tracking.commenceTime, tracking.challengerIndex,
+    tracking.challengerEdge,
+  ].filter((index, position, indexes) => Number.isInteger(index) && index >= 0 && indexes.indexOf(index) === position);
+  writable.forEach(index => {
+    sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, index + 1, rowCount, 1)
+      .setValues(rows.map(row => [row[index]]));
+  });
+  return {linked: linked, unmatched: unmatched};
+}
+
+function recoverChallengerReportLinks_(spreadsheet, reportIndex, factorIndex) {
+  const mainSheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName);
+  const dedicated = spreadsheet.getSheetByName(PAPER_22BET_SYNC.challengerEntrySheetName);
+  const main = recoverChallengerSheetLinks_(spreadsheet, mainSheet, reportIndex, factorIndex, mainSheet);
+  const separate = dedicated && dedicated !== mainSheet
+    ? recoverChallengerSheetLinks_(spreadsheet, dedicated, reportIndex, factorIndex, mainSheet)
+    : {linked: 0, unmatched: 0};
+  return {
+    linked: main.linked + separate.linked,
+    unmatched: main.unmatched + separate.unmatched,
+  };
 }
 
 function isChallengerLevel_(value) {
@@ -918,6 +1019,7 @@ function trackingIndexes_(headers) {
     challengerIndex: headerIndex_(headers, 'Challenger Índice Fenzobot'),
     challengerCoverage: headerIndex_(headers, 'Challenger Cobertura %'),
     challengerEdge: headerIndex_(headers, 'Challenger Edge %'),
+    sourceEdge: headerIndex_(headers, 'EDGE'),
     tour: operationalIndex_(headers, 'Tour', 'tour'),
     level: operationalIndex_(headers, 'Nível', 'level'),
     surface: operationalIndex_(headers, 'Piso', 'surface'),
@@ -1226,7 +1328,7 @@ function finishGuerraFactorAudit_(groups) {
   return Object.keys(groups).sort().map(key => {
     const item = groups[key];
     const stats = finishAuditStats_(item.stats);
-    const breakEven = stats.average_odd ? Math.round(1000 * 100 / stats.average_odd) / 10 : null;
+    const breakEven = stats.average_odd ? Math.round(1000 / stats.average_odd) / 10 : null;
     return Object.assign({
       scope: item.scope,
       factor: item.factor,
@@ -1246,7 +1348,7 @@ function finishGuerraSegmentAudit_(dimensions) {
   Object.keys(dimensions).sort().forEach(dimension => {
     Object.keys(dimensions[dimension]).sort().forEach(group => {
       const stats = finishAuditStats_(dimensions[dimension][group]);
-      const breakEven = stats.average_odd ? Math.round(1000 * 100 / stats.average_odd) / 10 : null;
+      const breakEven = stats.average_odd ? Math.round(1000 / stats.average_odd) / 10 : null;
       rows.push(Object.assign({
         dimension: dimension,
         group: group,
