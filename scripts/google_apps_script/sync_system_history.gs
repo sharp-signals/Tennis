@@ -22,7 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
-  projectionSchemaVersion: '2026-10-12-guerra-audit-v1',
+  projectionSchemaVersion: '2026-10-13-weight-decision-panel-v2',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 
@@ -81,8 +81,214 @@ function syncSystemHistoryToSheet() {
   writeFactorAttributionSheets_(spreadsheet, currentOperational.factor_attribution || {});
   writeChallengerManualPaperSheet_(spreadsheet, manualPaper || {});
   writeGuerraAuditSheets_(spreadsheet, manualPaper || {});
+  writeWeightDecisionPanel_(spreadsheet, currentOperational.factor_attribution || {}, manualPaper || {});
   properties.setProperty(SYSTEM_HISTORY_SYNC.fingerprintProperty, fingerprint);
   return 'Histórico & Aprendizagem atualizado com sucesso.';
+}
+
+function factorLabel_(value) {
+  const labels = {
+    comeback_set1: 'Recuperação após perder o 1.º set',
+    fadiga: 'Fadiga',
+    forma_recente: 'Forma recente',
+    h2h: 'Confronto direto',
+    h2h_piso: 'Confronto direto no piso',
+    historico_torneio: 'Histórico no torneio',
+    indoor_outdoor: 'Indoor / outdoor',
+    lesao: 'Lesão / condição física',
+    matchup_maos: 'Matchup de lateralidade',
+    mudanca_piso: 'Mudança de piso',
+    nivel_adversario: 'Nível dos adversários',
+    piso: 'Desempenho no piso',
+    pressao_ronda: 'Pressão da ronda',
+    qualidade_vitorias: 'Qualidade das vitórias',
+    ranking: 'Ranking',
+    ranking_evolucao: 'Evolução do ranking',
+    recuperacao_sets: 'Recuperação entre sets',
+    sazonal: 'Forma sazonal',
+    servico_carreira: 'Serviço na carreira',
+    servico_recente: 'Serviço recente',
+    tiebreak: 'Tiebreaks',
+    velocidade_piso: 'Velocidade do piso',
+  };
+  return labels[String(value || '')] || String(value || '').replace(/_/g, ' ');
+}
+
+function buildWeightDecisionPanelModel_(attribution, manualPaper) {
+  const summary = Array.isArray((attribution || {}).summary) ? attribution.summary : [];
+  const global = summary.filter(row => String(row.scope || '').toUpperCase() === 'GLOBAL');
+  const byScope = {};
+  summary.forEach(row => {
+    byScope[String(row.scope || '').toUpperCase() + '|' + String(row.factor || '')] = row;
+  });
+  const strategy = (((manualPaper || {}).by_strategy || {}).GUERRA_SELECTION_V1 || {});
+  const audit = strategy.audit_v1 || {};
+  const quality = audit.quality || {};
+  const linked = Number(quality.linked_entries || 0);
+  const canonical = Number(quality.canonical_entries || 0);
+  const eligible = Number(quality.factor_audit_eligible_entries || 0);
+  const unresolved = Number(quality.selected_side_unresolved || 0);
+  const minimumTrend = 20;
+  const minimumReview = 40;
+
+  const rows = global.map(row => {
+    const factor = String(row.factor || '');
+    const atp = byScope['ATP|' + factor] || {};
+    const wta = byScope['WTA|' + factor] || {};
+    const matches = Number(row.active_matches || 0);
+    const coverage = Number(row.coverage_pct || 0);
+    const residual = typeof row.market_residual_pp === 'number' ? row.market_residual_pp : null;
+    const atpResidual = typeof atp.market_residual_pp === 'number' ? atp.market_residual_pp : null;
+    const wtaResidual = typeof wta.market_residual_pp === 'number' ? wta.market_residual_pp : null;
+    const strongSample = matches >= 100 && coverage >= 20;
+    const tourConflict = atpResidual !== null && wtaResidual !== null
+      && Math.sign(atpResidual) !== Math.sign(wtaResidual)
+      && Math.abs(atpResidual - wtaResidual) >= 4;
+    let signal = 'Manter em observação';
+    let reason = 'Sem diferença material face à expectativa do mercado.';
+    if (!strongSample) {
+      signal = 'Recolher mais dados';
+      reason = 'Cobertura ou amostra estrutural ainda curta.';
+    } else if (tourConflict) {
+      signal = 'Separar ATP / WTA';
+      reason = 'O efeito muda materialmente entre circuitos.';
+    } else if (residual !== null && residual >= 3) {
+      signal = 'Sinal positivo a validar';
+      reason = 'Residual estrutural positivo; só rever peso após validação PAPER.';
+    } else if (residual !== null && residual <= -2.5) {
+      signal = 'Sinal negativo a validar';
+      reason = 'Residual estrutural negativo; só rever peso após validação PAPER.';
+    }
+    return {
+      factor: factor,
+      label: factorLabel_(factor),
+      matches: matches,
+      coverage_pct: row.coverage_pct,
+      hit_pct: row.hit_pct,
+      market_expected_pct: row.market_expected_pct,
+      residual_pp: residual,
+      average_effective_weight: row.average_effective_weight,
+      atp_residual_pp: atpResidual,
+      wta_residual_pp: wtaResidual,
+      signal: signal,
+      reason: reason,
+    };
+  }).sort((left, right) => {
+    const priority = {'Sinal negativo a validar': 0, 'Sinal positivo a validar': 1, 'Separar ATP / WTA': 2, 'Recolher mais dados': 3, 'Manter em observação': 4};
+    const leftPriority = Object.prototype.hasOwnProperty.call(priority, left.signal) ? priority[left.signal] : 9;
+    const rightPriority = Object.prototype.hasOwnProperty.call(priority, right.signal) ? priority[right.signal] : 9;
+    return leftPriority - rightPriority
+      || Math.abs(Number(right.residual_pp || 0)) - Math.abs(Number(left.residual_pp || 0));
+  });
+
+  const positive = rows.filter(row => row.signal === 'Sinal positivo a validar').slice(0, 3);
+  const negative = rows.filter(row => row.signal === 'Sinal negativo a validar').slice(0, 3);
+  const conflicts = rows.filter(row => row.signal === 'Separar ATP / WTA').slice(0, 3);
+  const overallStatus = eligible < minimumTrend ? 'MANTER PESOS — AMOSTRA PAPER INSUFICIENTE'
+    : eligible < minimumReview ? 'OBSERVAR — TENDÊNCIA AINDA NÃO CONFIRMADA'
+      : 'REVISÃO MANUAL DE PESOS JÁ É PERMITIDA';
+  const headline = eligible < minimumTrend
+    ? 'Só ' + eligible + ' entrada(s) GUERRA permite(m) atribuir o resultado aos fatores. Faltam ' + (minimumTrend - eligible) + ' para a primeira leitura de tendência.'
+    : eligible < minimumReview
+      ? 'A amostra GUERRA já permite observar tendências, mas faltam ' + (minimumReview - eligible) + ' entradas para rever pesos.'
+      : 'A amostra mínima para revisão foi atingida; começar por ±0,25, nunca exceder ±0,5 por ciclo e exigir validação humana.';
+  const list = values => values.length ? values.map(item => item.label).join(', ') : 'nenhum com evidência suficiente';
+  return {
+    status: overallStatus,
+    headline: headline,
+    linked: linked,
+    canonical: canonical,
+    eligible: eligible,
+    unresolved: unresolved,
+    structural_snapshots: global.reduce((maximum, row) => Math.max(maximum, Number(row.seen_snapshots || 0)), 0),
+    factor_count: global.length,
+    positive_text: 'Sinais positivos estruturais: ' + list(positive) + '.',
+    negative_text: 'Sinais negativos estruturais: ' + list(negative) + '.',
+    conflict_text: 'Diferenças ATP/WTA a estudar: ' + list(conflicts) + '.',
+    rule_text: 'Regra: <20 PAPER elegíveis = não mexer; 20–39 = tendência; ≥40 = revisão manual. Começar por ±0,25 e nunca exceder ±0,5 por ciclo.',
+    rows: rows,
+  };
+}
+
+function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
+  const model = buildWeightDecisionPanelModel_(attribution, manualPaper);
+  const name = 'Painel — Pesos';
+  const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
+  const existingFilter = sheet.getFilter();
+  if (existingFilter) existingFilter.remove();
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
+  sheet.clear({contentsOnly: false});
+  sheet.clearConditionalFormatRules();
+  sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  sheet.setHiddenGridlines(true);
+  sheet.setFrozenRows(11);
+
+  sheet.getRange('A1:L1').merge().setValue('FENZOBOT — DECISÃO SOBRE PESOS')
+    .setBackground('#0B1726').setFontColor('#FFFFFF').setFontFamily('Arial')
+    .setFontSize(18).setFontWeight('bold').setHorizontalAlignment('left');
+  sheet.getRange('A2:L2').merge().setValue('O painel separa evidência estrutural do motor da validação PAPER de Guerra. Atualiza automaticamente; não altera o modelo.')
+    .setBackground('#EAF2F8').setFontColor('#35546F').setFontFamily('Arial').setFontSize(10);
+
+  const cards = [
+    ['A4:C4', 'A5:C6', 'SNAPSHOTS ESTRUTURAIS', model.structural_snapshots],
+    ['D4:F4', 'D5:F6', 'FATORES ANALISADOS', model.factor_count],
+    ['G4:I4', 'G5:I6', 'GUERRA LIGADAS', model.linked],
+    ['J4:L4', 'J5:L6', 'GUERRA ELEGÍVEIS', model.eligible],
+  ];
+  cards.forEach(card => {
+    sheet.getRange(card[0]).merge().setValue(card[2]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center');
+    sheet.getRange(card[1]).merge().setValue(card[3]).setBackground('#F3F7FA').setFontColor('#17365D').setFontSize(19).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  });
+
+  const safe = model.eligible < 20;
+  sheet.getRange('A8:L8').merge().setValue(model.status)
+    .setBackground(safe ? '#FFF3CD' : '#DFF3E7').setFontColor(safe ? '#7A4F01' : '#166534')
+    .setFontSize(13).setFontWeight('bold');
+  sheet.getRange('A9:L9').merge().setValue(model.headline).setBackground('#FFFDF5').setFontColor('#3C4652').setWrap(true);
+  sheet.getRange('A10:L10').merge().setValue('Qualidade do linkage: ' + model.canonical + ' canónicas · ' + model.unresolved + ' sem lado selecionado resolvido.')
+    .setBackground('#FFFDF5').setFontColor('#3C4652');
+
+  sheet.getRange('A12:L12').merge().setValue('CONCLUSÕES AUTOMÁTICAS — O QUE FAZER AGORA')
+    .setBackground('#0F766E').setFontColor('#FFFFFF').setFontWeight('bold');
+  const conclusions = [model.positive_text, model.negative_text, model.conflict_text, model.rule_text];
+  sheet.getRange(13, 1, conclusions.length, 12).setBackground('#F3F7FA');
+  conclusions.forEach((value, index) => sheet.getRange(13 + index, 1, 1, 12).merge().setValue('• ' + value).setWrap(true));
+
+  const headerRow = 19;
+  const headers = ['Fator', 'Amostra', 'Cobertura', 'Acerto', 'Mercado', 'Residual', 'Peso médio', 'ATP residual', 'WTA residual', 'Leitura', 'Justificação'];
+  sheet.getRange(headerRow - 1, 1, 1, 12).merge().setValue('DETALHE DOS FATORES — ORDENADO POR PRIORIDADE DE REVISÃO')
+    .setBackground('#0F766E').setFontColor('#FFFFFF').setFontWeight('bold');
+  sheet.getRange(headerRow, 1, 1, 11).setValues([headers]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center').setWrap(true);
+  const rows = model.rows.map(row => [
+    row.label, row.matches, row.coverage_pct == null ? '' : row.coverage_pct / 100,
+    row.hit_pct == null ? '' : row.hit_pct / 100,
+    row.market_expected_pct == null ? '' : row.market_expected_pct / 100,
+    row.residual_pp, row.average_effective_weight,
+    row.atp_residual_pp, row.wta_residual_pp, row.signal, row.reason,
+  ]);
+  if (rows.length) {
+    sheet.getRange(headerRow + 1, 1, rows.length, 11).setValues(rows).setVerticalAlignment('top').setWrap(true);
+    sheet.getRange(headerRow + 1, 3, rows.length, 3).setNumberFormat('0.0%');
+    sheet.getRange(headerRow + 1, 6, rows.length, 1).setNumberFormat('0.0 "p.p."');
+    sheet.getRange(headerRow + 1, 8, rows.length, 2).setNumberFormat('0.0 "p.p."');
+    sheet.getRange(headerRow + 1, 2, rows.length, 1).setNumberFormat('0');
+    const rules = [
+      SpreadsheetApp.newConditionalFormatRule().whenTextContains('positivo').setBackground('#DFF3E7').setFontColor('#166534').setRanges([sheet.getRange(headerRow + 1, 10, rows.length, 1)]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenTextContains('negativo').setBackground('#FDECEC').setFontColor('#B42318').setRanges([sheet.getRange(headerRow + 1, 10, rows.length, 1)]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenTextContains('Separar').setBackground('#FFF3CD').setFontColor('#7A4F01').setRanges([sheet.getRange(headerRow + 1, 10, rows.length, 1)]).build(),
+    ];
+    sheet.setConditionalFormatRules(rules);
+  }
+  [34, 12, 14, 14, 14, 14, 14, 16, 16, 26, 54, 4].forEach((width, index) => sheet.setColumnWidth(index + 1, width * 7));
+  sheet.setRowHeight(1, 34);
+  sheet.setRowHeights(4, 3, 25);
+  sheet.setRowHeights(8, 3, 28);
+  try {
+    spreadsheet.setActiveSheet(sheet);
+    spreadsheet.moveActiveSheet(2);
+  } catch (error) {
+    console.warn('Painel de pesos não foi movido: ' + String(error && error.message || error));
+  }
 }
 
 function writeProspectiveSystemHistory_(spreadsheet, payload) {
@@ -189,8 +395,8 @@ function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
 function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
   const strategy = ((manualPaper || {}).by_strategy || {}).GUERRA_SELECTION_V1 || {};
   const audit = strategy.audit_v1 || {};
-  const factors = Array.isArray(audit.factors) ? audit.factors : [];
-  const segments = Array.isArray(audit.segments) ? audit.segments : [];
+  const factors = normaliseGuerraAuditRows_(audit.factors);
+  const segments = normaliseGuerraAuditRows_(audit.segments);
   const quality = audit.quality || {};
   const executedEdge = audit.executed_edge_v1 || {};
   const executedAll = executedEdge.all_linked || {};
@@ -244,6 +450,24 @@ function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
   ];
   upsertSystemSheet_(spreadsheet, 'GUERRA — qualidade', qualityRows, {
     headerRow: 1, widths: [48, 105], preserveCharts: false,
+  });
+}
+
+function normaliseGuerraAuditRows_(rows) {
+  return (Array.isArray(rows) ? rows : []).map(source => {
+    const row = Object.assign({}, source || {});
+    const odd = Number(row.average_odd);
+    if (Number.isFinite(odd) && odd > 1) {
+      const breakEven = Math.round(1000 / odd) / 10;
+      row.break_even_pct = breakEven;
+      row.hit_vs_break_even_pp = typeof row.win_rate_pct === 'number'
+        ? Math.round(10 * (row.win_rate_pct - breakEven)) / 10
+        : null;
+    } else {
+      row.break_even_pct = null;
+      row.hit_vs_break_even_pp = null;
+    }
+    return row;
   });
 }
 
