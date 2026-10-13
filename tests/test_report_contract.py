@@ -204,6 +204,23 @@ class ReportStateTests(unittest.TestCase):
 
 
 class ReportRenderingTests(unittest.TestCase):
+    def test_handicap_price_message_distinguishes_sample_from_price_above_window(self):
+        insufficient = report_html._format_entry_price_zone(None)
+        above_window = report_html._contextual_handicap_price_reference(
+            0.766,
+            (20, 0, 20),
+            (0, 0, 20),
+            -4.5,
+            min_relevant_sample=30,
+        )
+
+        self.assertEqual(insufficient, "Amostra insuficiente")
+        self.assertEqual(above_window["minimum_odd"], None)
+        self.assertEqual(
+            report_html._format_entry_price_zone(above_window),
+            "Mínima estimada 2.62 · acima da janela (máx. 2.50)",
+        )
+
     def test_operational_entry_card_prioritises_moneyline_inside_profile(self):
         payload = {
             "player_a": "A", "player_b": "B", "match_format": "bo3",
