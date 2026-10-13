@@ -222,7 +222,9 @@ function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
   // tinha dropdowns na coluna de ação; sem esta limpeza, valores legítimos da
   // nova projeção podem falhar com DATA_VALIDATION_ERROR (por exemplo J40).
   fullSheetRange.clearDataValidations();
-  sheet.clear({contentsOnly: false});
+  // clear({contentsOnly:false}) não é equivalente a uma limpeza integral no
+  // Apps Script e deixou células da versão anterior entre os novos blocos.
+  sheet.clear();
   sheet.clearConditionalFormatRules();
   sheet.getCharts().forEach(chart => sheet.removeChart(chart));
   sheet.setHiddenGridlines(true);
