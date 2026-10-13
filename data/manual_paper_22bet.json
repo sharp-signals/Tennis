@@ -4,7 +4,7 @@
     "label": "Track Record PAPER Trading — 22Bet",
     "url": "https://docs.google.com/spreadsheets/d/1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U/edit",
     "reference_bookmaker": "22Bet",
-    "synced_at_utc": "2026-10-13T09:43:20.790Z",
+    "synced_at_utc": "2026-10-13T09:52:54.768Z",
     "sync_contract_version": 5,
     "operational_columns": {
       "market": 6,
@@ -24,7 +24,7 @@
       "profit": 15
     }
   },
-  "data_fingerprint": "fcafaaa6477aba873fb6146b13bc59171c312565d73943a0e30ea218c8eda139",
+  "data_fingerprint": "e402e5b05679b727e4bbf707a52533c19613c1fe6d5acfba2731ec4b479ad02a",
   "summary": {
     "total_entries": 142,
     "settled": 127,
@@ -1325,6 +1325,78 @@
             "average_odd": 1.94
           }
         ],
+        "executed_edge_v1": {
+          "status": "UNAVAILABLE",
+          "claims": "DESCRIPTIVE_ONLY_FROZEN_FENZOBOT_PROBABILITY_X_EXECUTED_ODD",
+          "formula": "100 * (frozen_fenzobot_probability * effective_executed_odd - 1)",
+          "commission_policy": "BETFAIR_5_PERCENT_ON_NET_WINNINGS_OTHER_BOOKMAKERS_RAW_ODD",
+          "market_scope": "MONEYLINE_ONLY_HANDICAP_REQUIRES_EXACT_LINE_PROBABILITY",
+          "all_linked": {
+            "sample_size": 0,
+            "average_pct": null,
+            "median_pct": null,
+            "positive_pct": null,
+            "minimum_pct": null,
+            "maximum_pct": null
+          },
+          "exact_timestamp": {
+            "sample_size": 0,
+            "average_pct": null,
+            "median_pct": null,
+            "positive_pct": null,
+            "minimum_pct": null,
+            "maximum_pct": null
+          },
+          "retrospective_date_only": {
+            "sample_size": 0,
+            "average_pct": null,
+            "median_pct": null,
+            "positive_pct": null,
+            "minimum_pct": null,
+            "maximum_pct": null
+          },
+          "by_house": {},
+          "unavailable": {
+            "NON_MONEYLINE_OR_LINE_INCOMPATIBLE": 0,
+            "SELECTION_SIDE_UNRESOLVED": 137,
+            "FROZEN_PROBABILITY_UNAVAILABLE": 2,
+            "EXECUTED_ODD_UNAVAILABLE": 0
+          }
+        },
+        "reference_market_movement_v1": {
+          "status": "UNAVAILABLE",
+          "label": "MOVIMENTO_DO_MERCADO_DE_REFERENCIA_NAO_CLV_DA_APOSTA",
+          "comparison_contract": "SAME_LEDGER_PROVIDER_ENDPOINT_BOOKMAKER_AND_EVENT_NOT_EXECUTION_BOOK",
+          "direction": "POSITIVE_MEANS_SELECTED_SIDE_SHORTENED",
+          "all_linked": {
+            "sample_size": 0,
+            "average_pct": null,
+            "median_pct": null,
+            "positive_pct": null,
+            "minimum_pct": null,
+            "maximum_pct": null
+          },
+          "exact_timestamp": {
+            "sample_size": 0,
+            "average_pct": null,
+            "median_pct": null,
+            "positive_pct": null,
+            "minimum_pct": null,
+            "maximum_pct": null
+          },
+          "retrospective_date_only": {
+            "sample_size": 0,
+            "average_pct": null,
+            "median_pct": null,
+            "positive_pct": null,
+            "minimum_pct": null,
+            "maximum_pct": null
+          },
+          "unavailable": {
+            "SELECTION_SIDE_UNRESOLVED": 137,
+            "REFERENCE_ENTRY_OR_CLOSING_UNAVAILABLE": 2
+          }
+        },
         "sample_policy": {
           "informative_below": 20,
           "directional_from": 20,
