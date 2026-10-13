@@ -82,4 +82,6 @@ test('weight panel clears legacy validation before writing the new projection', 
   const body = source.slice(start, end);
   assert.ok(body.indexOf('clearDataValidations()') >= 0);
   assert.ok(body.indexOf('clearDataValidations()') < body.indexOf('setValues(rows)'));
+  assert.match(body, /sheet\.clear\(\);/);
+  assert.doesNotMatch(body, /sheet\.clear\(\{contentsOnly:\s*false\}\);/);
 });
