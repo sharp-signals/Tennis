@@ -1746,7 +1746,11 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
   if (sheet.getMaxRows() < 58) sheet.insertRowsAfter(sheet.getMaxRows(), 58 - sheet.getMaxRows());
   if (sheet.getMaxColumns() < 21) sheet.insertColumnsAfter(sheet.getMaxColumns(), 21 - sheet.getMaxColumns());
-  sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  // Os gráficos válidos são objetos persistentes. Removê-los em cada sync e
+  // reconstruí-los pelo ChartBuilder do Apps Script pode criar apenas molduras
+  // vazias. Preservamos os objetos existentes e atualizamos unicamente as
+  // tabelas-fonte estáveis às quais estão ligados.
+  const existingCharts = sheet.getCharts();
   sheet.getDataRange().breakApart();
   sheet.clear();
   sheet.showColumns(1, sheet.getMaxColumns());
@@ -1777,13 +1781,13 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
   // ignorá-las apesar da estratégia SHOW_BOTH. Mantemos as tabelas-fonte numa
   // zona técnica visível, muito abaixo do painel, para os gráficos continuarem
   // preenchidos e atualizáveis em todas as execuções.
-  let supportRow = 200;
+  const chartSourceBlockRows = 14;
   const charts = [
-    {title: 'Performance por mercado', collection: aggregate.by_market || {}, row: 8, column: 1},
-    {title: 'Performance por favorito / underdog', collection: aggregate.by_side || {}, row: 8, column: 7},
-    {title: 'Performance por faixa de edge', collection: aggregate.by_edge_band || {}, row: 24, column: 1},
-    {title: 'Performance por índice Fenzobot', collection: aggregate.by_fenzobot_index_band || {}, row: 24, column: 7},
-    {title: 'Performance por cobertura factual', collection: aggregate.by_coverage_band || {}, row: 40, column: 1, width: 1100},
+    {title: 'Performance por mercado', collection: aggregate.by_market || {}, row: 8, column: 1, supportRow: 200},
+    {title: 'Performance por favorito / underdog', collection: aggregate.by_side || {}, row: 8, column: 7, supportRow: 216},
+    {title: 'Performance por faixa de edge', collection: aggregate.by_edge_band || {}, row: 24, column: 1, supportRow: 232},
+    {title: 'Performance por índice Fenzobot', collection: aggregate.by_fenzobot_index_band || {}, row: 24, column: 7, supportRow: 248},
+    {title: 'Performance por cobertura factual', collection: aggregate.by_coverage_band || {}, row: 40, column: 1, width: 1100, supportRow: 264},
   ];
   const chartJobs = [];
   charts.forEach(spec => {
@@ -1793,15 +1797,15 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
         .setBackground('#F1F5F9').setFontColor('#64748B').setFontStyle('italic');
       return;
     }
-    const range = sheet.getRange(supportRow, 1, table.length, 3);
-    range.setValues(table);
-    range.setFontSize(9).setFontColor('#64748B');
-    range.offset(0, 0, 1, 3)
+    const sourceRange = sheet.getRange(spec.supportRow, 1, chartSourceBlockRows, 3);
+    const dataRange = sheet.getRange(spec.supportRow, 1, table.length, 3);
+    dataRange.setValues(table);
+    dataRange.setFontSize(9).setFontColor('#64748B');
+    dataRange.offset(0, 0, 1, 3)
       .setBackground('#E2E8F0')
       .setFontColor('#0F172A')
       .setFontWeight('bold');
-    chartJobs.push({range: range, spec: spec});
-    supportRow += table.length + 2;
+    chartJobs.push({range: sourceRange, spec: spec});
   });
   sheet.getRange(198, 1, 1, 3).merge()
     .setValue('DADOS TÉCNICOS DOS GRÁFICOS · atualização automática')
@@ -1813,11 +1817,13 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
   // imediatamente, pode ficar preso ao estado vazio apesar de a tabela surgir
   // segundos depois. O flush garante que todas as séries existem antes da
   // criação dos objetos gráficos.
-  SpreadsheetApp.flush();
-  chartJobs.forEach(job => {
-    const spec = job.spec;
-    addChallengerPerformanceChart_(sheet, job.range, spec.title, spec.row, spec.column, spec.width || 540);
-  });
+  if (!existingCharts.length) {
+    SpreadsheetApp.flush();
+    chartJobs.forEach(job => {
+      const spec = job.spec;
+      addChallengerPerformanceChart_(sheet, job.range, spec.title, spec.row, spec.column, spec.width || 540);
+    });
+  }
 }
 
 function formatDashboardPct_(value) {

@@ -120,11 +120,15 @@ test('Challenger charts use visible support data and a stable column layout', ()
     source,
     /setHiddenDimensionStrategy\(Charts\.ChartHiddenDimensionStrategy\.SHOW_BOTH\)/,
   );
-  assert.match(source, /let supportRow = 200/);
+  assert.match(source, /const chartSourceBlockRows = 14/);
+  assert.match(source, /supportRow: 200/);
+  assert.match(source, /supportRow: 264/);
   assert.match(source, /\.asColumnChart\(\)/);
   assert.doesNotMatch(source, /\.asComboChart\(\)/);
   assert.doesNotMatch(source, /sheet\.hideColumns\(17, 5\)/);
-  assert.match(source, /SpreadsheetApp\.flush\(\);\s*chartJobs\.forEach/);
+  assert.doesNotMatch(source, /getCharts\(\)\.forEach\(chart => sheet\.removeChart\(chart\)\)/);
+  assert.match(source, /const existingCharts = sheet\.getCharts\(\)/);
+  assert.match(source, /if \(!existingCharts\.length\) \{\s*SpreadsheetApp\.flush\(\);\s*chartJobs\.forEach/);
 });
 
 test('executed edge uses frozen probability, actual odd and Betfair commission', () => {
