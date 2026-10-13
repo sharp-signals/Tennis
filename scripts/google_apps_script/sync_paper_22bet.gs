@@ -1752,7 +1752,10 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
   // tabelas-fonte estáveis às quais estão ligados.
   const existingCharts = sheet.getCharts();
   sheet.getDataRange().breakApart();
-  sheet.clear();
+  // Não limpar a folha inteira: apagar momentaneamente as células-fonte faz o
+  // Google Sheets prender os gráficos ao estado "sem séries". Limpamos apenas
+  // a zona visual; os blocos técnicos são substituídos atomicamente abaixo.
+  sheet.getRange(1, 1, 198, sheet.getMaxColumns()).clear();
   sheet.showColumns(1, sheet.getMaxColumns());
   sheet.setConditionalFormatRules([]);
   sheet.setFrozenRows(3);
@@ -1799,7 +1802,10 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
     }
     const sourceRange = sheet.getRange(spec.supportRow, 1, chartSourceBlockRows, 3);
     const dataRange = sheet.getRange(spec.supportRow, 1, table.length, 3);
-    dataRange.setValues(table);
+    const paddedTable = table.concat(
+      Array.from({length: chartSourceBlockRows - table.length}, () => ['', '', '']),
+    );
+    sourceRange.setValues(paddedTable);
     dataRange.setFontSize(9).setFontColor('#64748B');
     dataRange.offset(0, 0, 1, 3)
       .setBackground('#E2E8F0')
