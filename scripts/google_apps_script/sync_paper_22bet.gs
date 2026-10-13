@@ -1773,7 +1773,11 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
   sheet.setRowHeight(1, 34);
   sheet.setRowHeight(2, 28);
 
-  let supportRow = 1;
+  // Os gráficos não podem depender de colunas ocultas: o Google Sheets pode
+  // ignorá-las apesar da estratégia SHOW_BOTH. Mantemos as tabelas-fonte numa
+  // zona técnica visível, muito abaixo do painel, para os gráficos continuarem
+  // preenchidos e atualizáveis em todas as execuções.
+  let supportRow = 200;
   const charts = [
     {title: 'Performance por mercado', collection: aggregate.by_market || {}, row: 8, column: 1},
     {title: 'Performance por favorito / underdog', collection: aggregate.by_side || {}, row: 8, column: 7},
@@ -1788,12 +1792,21 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
         .setBackground('#F1F5F9').setFontColor('#64748B').setFontStyle('italic');
       return;
     }
-    const range = sheet.getRange(supportRow, 17, table.length, 3);
+    const range = sheet.getRange(supportRow, 1, table.length, 3);
     range.setValues(table);
+    range.setFontSize(9).setFontColor('#64748B');
+    range.offset(0, 0, 1, 3)
+      .setBackground('#E2E8F0')
+      .setFontColor('#0F172A')
+      .setFontWeight('bold');
     addChallengerPerformanceChart_(sheet, range, spec.title, spec.row, spec.column, spec.width || 540);
     supportRow += table.length + 2;
   });
-  sheet.hideColumns(17, 5);
+  sheet.getRange(198, 1, 1, 3).merge()
+    .setValue('DADOS TÉCNICOS DOS GRÁFICOS · atualização automática')
+    .setBackground('#0F172A')
+    .setFontColor('#FFFFFF')
+    .setFontWeight('bold');
 }
 
 function formatDashboardPct_(value) {
@@ -1820,21 +1833,30 @@ function challengerChartRows_(collection) {
 
 function addChallengerPerformanceChart_(sheet, range, title, row, column, width) {
   const chart = sheet.newChart()
-    .asColumnChart()
+    .asComboChart()
     .addRange(range)
     .setNumHeaders(1)
     .setHiddenDimensionStrategy(Charts.ChartHiddenDimensionStrategy.SHOW_BOTH)
     .setPosition(row, column, 0, 0)
     .setOption('title', title)
-    .setOption('titleTextStyle', {color: '#0F172A', fontSize: 14, bold: true})
-    .setOption('legend', {position: 'bottom', textStyle: {color: '#475569'}})
-    .setOption('series', {0: {color: '#2563EB'}, 1: {color: '#7C3AED'}})
+    .setOption('titleTextStyle', {color: '#0F172A', fontSize: 16, bold: true})
+    .setOption('fontName', 'Arial')
+    .setOption('legend', {position: 'bottom', alignment: 'center', textStyle: {color: '#475569', fontSize: 11}})
+    .setOption('seriesType', 'bars')
+    .setOption('series', {
+      0: {type: 'bars', targetAxisIndex: 0, color: '#2563EB', dataLabel: 'value'},
+      1: {type: 'line', targetAxisIndex: 1, color: '#0F766E', lineWidth: 3, pointSize: 7, dataLabel: 'value'},
+    })
     .setOption('backgroundColor', '#FFFFFF')
-    .setOption('chartArea', {left: 65, top: 50, width: '76%', height: '62%'})
-    .setOption('vAxis', {title: 'Percentagem', format: '0.0', gridlines: {color: '#E2E8F0'}})
-    .setOption('hAxis', {slantedText: true, slantedTextAngle: 25, textStyle: {fontSize: 10}})
+    .setOption('chartArea', {left: 72, top: 58, width: '72%', height: '58%'})
+    .setOption('vAxes', {
+      0: {title: 'Acerto (%)', format: '0.0', viewWindow: {min: 0, max: 100}, gridlines: {color: '#E2E8F0'}, textStyle: {color: '#475569'}},
+      1: {title: 'ROI (%)', format: '0.0', gridlines: {color: 'transparent'}, textStyle: {color: '#0F766E'}},
+    })
+    .setOption('hAxis', {slantedText: true, slantedTextAngle: 25, textStyle: {fontSize: 10, color: '#334155'}})
+    .setOption('bar', {groupWidth: '55%'})
     .setOption('width', width)
-    .setOption('height', 285)
+    .setOption('height', 310)
     .build();
   sheet.insertChart(chart);
 }

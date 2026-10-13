@@ -115,11 +115,14 @@ test('Guerra audit keeps ambiguous surname-only selections unresolved', () => {
   ), null);
 });
 
-test('Challenger charts render data stored in hidden support columns', () => {
+test('Challenger charts use visible support data and a professional combo layout', () => {
   assert.match(
     source,
     /setHiddenDimensionStrategy\(Charts\.ChartHiddenDimensionStrategy\.SHOW_BOTH\)/,
   );
+  assert.match(source, /let supportRow = 200/);
+  assert.match(source, /\.asComboChart\(\)/);
+  assert.doesNotMatch(source, /sheet\.hideColumns\(17, 5\)/);
 });
 
 test('executed edge uses frozen probability, actual odd and Betfair commission', () => {
