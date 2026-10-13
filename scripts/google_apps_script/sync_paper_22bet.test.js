@@ -115,13 +115,14 @@ test('Guerra audit keeps ambiguous surname-only selections unresolved', () => {
   ), null);
 });
 
-test('Challenger charts use visible support data and a professional combo layout', () => {
+test('Challenger charts use visible support data and a stable column layout', () => {
   assert.match(
     source,
     /setHiddenDimensionStrategy\(Charts\.ChartHiddenDimensionStrategy\.SHOW_BOTH\)/,
   );
   assert.match(source, /let supportRow = 200/);
-  assert.match(source, /\.asComboChart\(\)/);
+  assert.match(source, /\.asColumnChart\(\)/);
+  assert.doesNotMatch(source, /\.asComboChart\(\)/);
   assert.doesNotMatch(source, /sheet\.hideColumns\(17, 5\)/);
   assert.match(source, /SpreadsheetApp\.flush\(\);\s*chartJobs\.forEach/);
 });

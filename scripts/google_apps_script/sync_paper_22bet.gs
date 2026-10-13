@@ -1844,7 +1844,11 @@ function challengerChartRows_(collection) {
 
 function addChallengerPerformanceChart_(sheet, range, title, row, column, width) {
   const chart = sheet.newChart()
-    .asComboChart()
+    // O builder COMBO do Apps Script pode guardar apenas a moldura/título e
+    // deixar as séries em branco, mesmo com o intervalo já materializado. O
+    // COLUMN usa o mesmo dataset percentual e é renderizado de forma estável
+    // pelo Google Sheets, incluindo depois de novas sincronizações.
+    .asColumnChart()
     .addRange(range)
     .setNumHeaders(1)
     .setHiddenDimensionStrategy(Charts.ChartHiddenDimensionStrategy.SHOW_BOTH)
@@ -1853,10 +1857,9 @@ function addChallengerPerformanceChart_(sheet, range, title, row, column, width)
     .setOption('titleTextStyle', {color: '#0F172A', fontSize: 16, bold: true})
     .setOption('fontName', 'Arial')
     .setOption('legend', {position: 'bottom', alignment: 'center', textStyle: {color: '#475569', fontSize: 11}})
-    .setOption('seriesType', 'bars')
     .setOption('series', {
-      0: {type: 'bars', targetAxisIndex: 0, color: '#2563EB', dataLabel: 'value'},
-      1: {type: 'line', targetAxisIndex: 1, color: '#0F766E', lineWidth: 3, pointSize: 7, dataLabel: 'value'},
+      0: {color: '#2563EB', targetAxisIndex: 0},
+      1: {color: '#0F766E', targetAxisIndex: 1},
     })
     .setOption('backgroundColor', '#FFFFFF')
     .setOption('chartArea', {left: 72, top: 58, width: '72%', height: '58%'})
