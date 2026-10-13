@@ -27,7 +27,7 @@
       "total_snapshots": 1011
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-13T16:29:23+00:00",
+      "attempted_at_utc": "2026-10-13T18:03:44+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
@@ -94413,7 +94413,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-13T17:59:00+00:00",
+  "generated_at_utc": "2026-10-13T18:22:09+00:00",
   "global": {
     "distinct_matchups": 2751,
     "green_strong_candidates": 14,
@@ -94459,7 +94459,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-13T17:59:00+00:00",
+    "generated_at_utc": "2026-10-13T18:22:09+00:00",
     "losses": 67,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": 70.77,
@@ -94501,9 +94501,9 @@
     "forecast": {
       "average_fenzobot_probability": 0.479529,
       "average_market_probability": 0.43225,
-      "observed_win_rate_pct": 57.14
+      "observed_win_rate_pct": 62.5
     },
-    "generated_at_utc": "2026-10-13T17:56:51+00:00",
+    "generated_at_utc": "2026-10-13T18:22:09+00:00",
     "market_movement": {
       "average_probability_pp": -1.4342,
       "comparable_closing_n": 3,
@@ -94511,19 +94511,19 @@
       "positive_direction_pct": 0
     },
     "proper_scoring": {
-      "delta_brier": -0.01416,
-      "delta_log_loss": -0.027826,
-      "fenzobot_brier": 0.23247,
-      "fenzobot_log_loss": 0.657905,
-      "fenzobot_n": 7,
-      "market_brier": 0.24663,
-      "market_log_loss": 0.685731,
-      "market_n": 7
+      "delta_brier": -0.017249,
+      "delta_log_loss": -0.034084,
+      "fenzobot_brier": 0.229965,
+      "fenzobot_log_loss": 0.652899,
+      "fenzobot_n": 8,
+      "market_brier": 0.247214,
+      "market_log_loss": 0.686983,
+      "market_n": 8
     },
     "sample": {
       "candidates": 14,
-      "pending": 7,
-      "settled": 7
+      "pending": 6,
+      "settled": 8
     },
     "status": "AVAILABLE"
   },
@@ -94595,49 +94595,57 @@
     "eligible_green_strong": 13,
     "executed_edge_v1": {
       "all_linked": {
-        "average_pct": 4.4264,
-        "maximum_pct": 4.994,
-        "median_pct": 4.4264,
-        "minimum_pct": 3.8589,
-        "positive_pct": 100,
-        "sample_size": 2
+        "average_pct": 6.7181,
+        "maximum_pct": 15.2234,
+        "median_pct": 6.6387,
+        "minimum_pct": -2.0945,
+        "positive_pct": 93.33,
+        "sample_size": 15
       },
       "by_house": {
         "22Bet": {
-          "average_pct": 4.4264,
-          "maximum_pct": 4.994,
-          "median_pct": 4.4264,
-          "minimum_pct": 3.8589,
+          "average_pct": 5.2851,
+          "maximum_pct": 10.7451,
+          "median_pct": 6.2812,
+          "minimum_pct": -2.0945,
+          "positive_pct": 88.89,
+          "sample_size": 9
+        },
+        "Betfair": {
+          "average_pct": 8.8675,
+          "maximum_pct": 15.2234,
+          "median_pct": 10.0423,
+          "minimum_pct": 2.7714,
           "positive_pct": 100,
-          "sample_size": 2
+          "sample_size": 6
         }
       },
       "claims": "DESCRIPTIVE_ONLY_FROZEN_FENZOBOT_PROBABILITY_X_EXECUTED_ODD",
       "commission_policy": "BETFAIR_5_PERCENT_ON_NET_WINNINGS_OTHER_BOOKMAKERS_RAW_ODD",
       "exact_timestamp": {
-        "average_pct": 4.994,
+        "average_pct": 4.9252,
         "maximum_pct": 4.994,
-        "median_pct": 4.994,
-        "minimum_pct": 4.994,
+        "median_pct": 4.9252,
+        "minimum_pct": 4.8564,
         "positive_pct": 100,
-        "sample_size": 1
+        "sample_size": 2
       },
       "formula": "100 * (frozen_fenzobot_probability * effective_executed_odd - 1)",
       "market_scope": "MONEYLINE_ONLY_HANDICAP_REQUIRES_EXACT_LINE_PROBABILITY",
       "retrospective_date_only": {
-        "average_pct": 3.8589,
-        "maximum_pct": 3.8589,
-        "median_pct": 3.8589,
-        "minimum_pct": 3.8589,
-        "positive_pct": 100,
-        "sample_size": 1
+        "average_pct": 6.9939,
+        "maximum_pct": 15.2234,
+        "median_pct": 6.7049,
+        "minimum_pct": -2.0945,
+        "positive_pct": 92.31,
+        "sample_size": 13
       },
       "status": "AVAILABLE",
       "unavailable": {
         "EXECUTED_ODD_UNAVAILABLE": 0,
         "FROZEN_PROBABILITY_UNAVAILABLE": 0,
-        "NON_MONEYLINE_OR_LINE_INCOMPATIBLE": 0,
-        "SELECTION_SIDE_UNRESOLVED": 137
+        "NON_MONEYLINE_OR_LINE_INCOMPATIBLE": 47,
+        "SELECTION_SIDE_UNRESOLVED": 77
       }
     },
     "flat_stake_simulation": {
@@ -94656,36 +94664,36 @@
     "paper_entries": 139,
     "reference_market_movement_v1": {
       "all_linked": {
-        "average_pct": null,
-        "maximum_pct": null,
-        "median_pct": null,
-        "minimum_pct": null,
-        "positive_pct": null,
-        "sample_size": 0
+        "average_pct": -0.3092,
+        "maximum_pct": 2.7737,
+        "median_pct": 0,
+        "minimum_pct": -4.2958,
+        "positive_pct": 23.08,
+        "sample_size": 26
       },
       "comparison_contract": "SAME_LEDGER_PROVIDER_ENDPOINT_BOOKMAKER_AND_EVENT_NOT_EXECUTION_BOOK",
       "direction": "POSITIVE_MEANS_SELECTED_SIDE_SHORTENED",
       "exact_timestamp": {
-        "average_pct": null,
-        "maximum_pct": null,
-        "median_pct": null,
-        "minimum_pct": null,
-        "positive_pct": null,
-        "sample_size": 0
+        "average_pct": 0.6095,
+        "maximum_pct": 2.7603,
+        "median_pct": 0,
+        "minimum_pct": -0.2851,
+        "positive_pct": 40,
+        "sample_size": 5
       },
       "label": "MOVIMENTO_DO_MERCADO_DE_REFERENCIA_NAO_CLV_DA_APOSTA",
       "retrospective_date_only": {
-        "average_pct": null,
-        "maximum_pct": null,
-        "median_pct": null,
-        "minimum_pct": null,
-        "positive_pct": null,
-        "sample_size": 0
+        "average_pct": -0.528,
+        "maximum_pct": 2.7737,
+        "median_pct": 0,
+        "minimum_pct": -4.2958,
+        "positive_pct": 19.05,
+        "sample_size": 21
       },
-      "status": "UNAVAILABLE",
+      "status": "AVAILABLE",
       "unavailable": {
-        "REFERENCE_ENTRY_OR_CLOSING_UNAVAILABLE": 2,
-        "SELECTION_SIDE_UNRESOLVED": 137
+        "REFERENCE_ENTRY_OR_CLOSING_UNAVAILABLE": 36,
+        "SELECTION_SIDE_UNRESOLVED": 77
       }
     },
     "selected_candidates": 126,
@@ -94887,18 +94895,18 @@
     "distinct_events": 1011,
     "events_with_comparable_closing": 88,
     "events_with_entry_market": 344,
-    "generated_at_utc": "2026-10-13T17:56:51+00:00",
+    "generated_at_utc": "2026-10-13T18:22:09+00:00",
     "market_only": {
-      "accuracy_pct": 68.33,
-      "brier_score": 0.198324,
-      "log_loss": 0.580191,
-      "sample_size": 240
+      "accuracy_pct": 67.77,
+      "brier_score": 0.199345,
+      "log_loss": 0.582341,
+      "sample_size": 242
     },
     "market_plus_fenzobot": {
-      "accuracy_pct": 67.93,
-      "brier_score": 0.208739,
-      "log_loss": 0.605177,
-      "sample_size": 368
+      "accuracy_pct": 67.84,
+      "brier_score": 0.209199,
+      "log_loss": 0.606139,
+      "sample_size": 370
     },
     "observations_by_day": [
       {
@@ -95142,7 +95150,7 @@
     "settled": 136,
     "settled_stake_units": 133.5,
     "status": "AVAILABLE",
-    "synced_at_utc": "2026-10-13T15:25:54.139Z",
+    "synced_at_utc": "2026-10-13T17:52:12.550Z",
     "total_entries": 142,
     "units": 19.451,
     "win_rate_pct": 58.824,
@@ -95286,7 +95294,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "ce690b38902151c8173c602abdeb70c669a8228e3f2443be05f8cc74ab9ba88d",
+  "semantic_fingerprint": "5af3bea98fbbb246743e72b702154ed2f4ddcc5a0e69ef571628656a113a2a04",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 385,
@@ -95332,7 +95340,7 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-13T17:56:51+00:00"
+      "updated_at_utc": "2026-10-13T18:22:09+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
@@ -95341,7 +95349,7 @@
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-13T17:56:51+00:00"
+      "updated_at_utc": "2026-10-13T18:22:09+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
@@ -95349,7 +95357,7 @@
     },
     "paper_22bet": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-13T15:25:54.139Z"
+      "updated_at_utc": "2026-10-13T17:52:12.550Z"
     },
     "paper_technical": {
       "status": "AVAILABLE",
@@ -95369,7 +95377,9 @@
     }
   },
   "system_health": {
-    "alerts": [],
+    "alerts": [
+      "manutenção de resultados: TIMED_OUT"
+    ],
     "latest": {
       "analysis_failed": 0,
       "duration_seconds": 1401.337,
@@ -95461,10 +95471,10 @@
         "timestamp": "2026-10-13T05:55:02+00:00"
       },
       {
-        "status": "HEALTHY",
+        "status": "DEGRADED",
         "timestamp": "2026-10-13T17:56:52+00:00"
       }
     ],
-    "status": "HEALTHY"
+    "status": "DEGRADED"
   }
 }
