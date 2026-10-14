@@ -273,6 +273,59 @@ class LaverOnlyReconstructionTests(unittest.TestCase):
         self.assertNotIn("pressao_ronda", blockers)
         self.assertNotIn("nivel_adversario", blockers)
 
+    def test_wta_round_labels_use_local_history_before_provider_aggregate(self):
+        history = pd.DataFrame([
+            {**row(1, 20260101, "WTA Event", "Alpha", "Gamma"), "Round": "Quarterfinals"},
+            {**row(2, 20260102, "WTA Event", "Delta", "Alpha"), "Round": "Semifinals"},
+            {**row(3, 20260103, "WTA Event", "Beta", "Gamma"), "Round": "The Final"},
+            {**row(4, 20260104, "WTA Event", "Beta", "Delta"), "Round": "1st Round"},
+        ]).drop(columns=["round"])
+        round_a = fetch_data.compute_round_stage_stats(history, "Alpha")
+        round_b = fetch_data.compute_round_stage_stats(history, "Beta")
+        self.assertEqual(round_a["late_rounds"]["matches"], 2)
+        self.assertEqual(
+            competition_evidence.record_rate(round_a["late_rounds"])[0], 50.0
+        )
+        self.assertEqual(
+            competition_evidence.record_rate(round_b["late_rounds"])[0], 100.0
+        )
+        self.assertEqual(round_b["early_rounds"]["matches"], 1)
+
+        features = main._compute_features({
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "tour": "wta",
+            "match_format": "bo3",
+            "competition_evidence_policy": {"active": False},
+            "round_stage_stats_a": round_a,
+            "round_stage_stats_b": round_b,
+            "rich_stats_a": {"by_round": {"QF": {"wins": 99, "losses": 0}}},
+            "rich_stats_b": {"by_round": {"QF": {"wins": 0, "losses": 99}}},
+        })
+        self.assertEqual(features["pressao_ronda"]["valor_a"], 50.0)
+        self.assertEqual(features["pressao_ronda"]["valor_b"], 100.0)
+
+    def test_round_pressure_records_explicit_missing_side(self):
+        history = pd.DataFrame([
+            row(1, 20260101, "Vienna Open", "Alpha", "Gamma", round_name="QF"),
+        ])
+        round_a = fetch_data.compute_round_stage_stats(history, "Alpha")
+        features = main._compute_features({
+            "player_a": "Alpha",
+            "player_b": "Beta",
+            "tour": "atp",
+            "match_format": "bo3",
+            "competition_evidence_policy": competition_evidence.policy_metadata(
+                LAVER_ACTIVE
+            ),
+            "round_stage_stats_a": round_a,
+            "round_stage_stats_b": None,
+        })
+        pressure = features["pressao_ronda"]
+        self.assertIsNone(pressure["lider"])
+        self.assertEqual(pressure["valor_a"], 100.0)
+        self.assertIn("Beta: sem histórico local elegível em QF/SF/F", pressure["motivo_exclusao"])
+
     def test_action_map_does_not_reenter_rich_scenarios(self):
         evidence = {
             "version": competition_evidence.LAVER_ONLY_POLICY_VERSION,
