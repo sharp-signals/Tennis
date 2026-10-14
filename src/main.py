@@ -824,6 +824,7 @@ def _get_rich_player_data(
             domination["opp_winners"] = opp["winners"]
 
     rich = {
+        "career_service": fetch_data.compute_serve_return_from_career_stats(career),
         "response_stats": response or None,
         "vs_rank_level": (perf or {}).get("vs_rank_level"),
         "by_surface": (perf or {}).get("by_surface"),
@@ -1263,8 +1264,7 @@ def _compute_features(payload: dict) -> dict:
         policy=policy,
     )
 
-    # Serviço — CARREIRA (últimos SERVE_RETURN_STATS_MATCHES=10 jogos) e
-    # RECENTE (últimos 2 jogos) como fatores SEPARADOS, com pesos
+    # Serviço — BASE HISTÓRICA e RECENTE como fatores SEPARADOS, com pesos
     # diferentes (14/08/2026, a pedido) — mesma arquitetura já usada no
     # H2H (global vs piso): não se mistura numa média manual, deixa-se o
     # motor pesar os dois de forma consistente com o resto.
@@ -2548,9 +2548,9 @@ def _build_match_payload(match: dict) -> dict:
         history, player_b, SERVE_RETURN_STATS_MATCHES,
         competition_policy=competition_policy,
     )
-    # NOVO (14/08/2026, a pedido): serviço nos ÚLTIMOS 2 JOGOS especificamente
-    # — só funciona para ATP (precisa das colunas w_ace/w_df/etc, que a WTA
-    # não tem localmente); fica "sem dados" nesse caso, sem inventar.
+    # Fonte local exata dos ÚLTIMOS 2 JOGOS. Quando essas colunas não existem
+    # (caso WTA), o bloco recent-stats abaixo fornece uma janela recente com
+    # tamanho factual explícito, sem a rotular falsamente como dois jogos.
     serve_recent_a = fetch_data.compute_serve_return_stats(
         history, player_a, 2, competition_policy=competition_policy,
     )
@@ -2630,6 +2630,17 @@ def _build_match_payload(match: dict) -> dict:
     # forem construídas, o custo tende a zero.
     rich_a = _get_rich_player_data(tour, player_a, official, player_id=_pid_a)
     rich_b = _get_rich_player_data(tour, player_b, official, player_id=_pid_b)
+    _career_srv_a = fetch_data.compute_serve_return_from_rich_stats(rich_a)
+    _career_srv_b = fetch_data.compute_serve_return_from_rich_stats(rich_b)
+    # Fora da política ATP que exige evidência jogo a jogo separável, a ficha
+    # de carreira é o fallback correto para históricos (como o WTA) sem
+    # colunas locais de serviço. Não reutilizamos a janela recente como se
+    # fosse carreira, evitando duplicar o mesmo sinal em dois fatores.
+    if not competition_policy.get("active"):
+        if _career_srv_a:
+            serve_a = _career_srv_a
+        if _career_srv_b:
+            serve_b = _career_srv_b
 
     set1_comeback_a, _comeback_diag_a = fetch_data.compute_set1_comeback_with_diagnostics(
         history, player_a, competition_policy=competition_policy
@@ -2769,11 +2780,11 @@ def _build_match_payload(match: dict) -> dict:
         _srv_a = fetch_data.compute_serve_return_from_recent_stats(_rs_a) if _rs_a else None
         _srv_b = fetch_data.compute_serve_return_from_recent_stats(_rs_b) if _rs_b else None
         if _srv_a and not competition_policy.get("active"):
-            if serve_a and _fontes_divergem_serve(serve_a, _srv_a):
+            if serve_recent_a and _fontes_divergem_serve(serve_recent_a, _srv_a):
                 _discrepancias.append("serviço")
-            serve_a = _srv_a
+            serve_recent_a = {**_srv_a, "source": "rapidapi_recent_stats"}
         if _srv_b and not competition_policy.get("active"):
-            serve_b = _srv_b
+            serve_recent_b = {**_srv_b, "source": "rapidapi_recent_stats"}
         # -- Sets decisivos --
         # O recent-stats não declara BO3/BO5. Mantemos a estatística local
         # separada por formato para não transformar um 5.º set de Slam num
@@ -2904,12 +2915,32 @@ def _build_match_payload(match: dict) -> dict:
         },
         "service_return": {
             "a": _coverage(
-                serve_a, "rapidapi_recent_stats" if _srv_a and not competition_policy.get("active") else "local_history",
+                serve_a, (
+                    "rapidapi_career_stats"
+                    if _career_srv_a and not competition_policy.get("active")
+                    else "local_history"
+                ),
                 unavailable_reason="service_return_unavailable",
             ),
             "b": _coverage(
-                serve_b, "rapidapi_recent_stats" if _srv_b and not competition_policy.get("active") else "local_history",
+                serve_b, (
+                    "rapidapi_career_stats"
+                    if _career_srv_b and not competition_policy.get("active")
+                    else "local_history"
+                ),
                 unavailable_reason="service_return_unavailable",
+            ),
+        },
+        "recent_service_return": {
+            "a": _coverage(
+                serve_recent_a,
+                "rapidapi_recent_stats" if _srv_a and not competition_policy.get("active") else "local_history",
+                unavailable_reason="recent_service_return_unavailable",
+            ),
+            "b": _coverage(
+                serve_recent_b,
+                "rapidapi_recent_stats" if _srv_b and not competition_policy.get("active") else "local_history",
+                unavailable_reason="recent_service_return_unavailable",
             ),
         },
         "surface": {
@@ -3040,7 +3071,7 @@ def _build_match_payload(match: dict) -> dict:
         "injury_signal_b": injury_b,
         "serve_return_stats_a": serve_a,
         "serve_return_stats_b": serve_b,
-        "serve_return_recent_a": serve_recent_a,  # NOVO: serviço nos últimos 2 jogos
+        "serve_return_recent_a": serve_recent_a,  # local: 2 jogos; API: janela recente declarada
         "serve_return_recent_b": serve_recent_b,
         "rich_stats_a": rich_a,  # Onda 2: resposta de carreira + desempenho vs nível do adversário (ficha ou API)
         "rich_stats_b": rich_b,

@@ -6298,6 +6298,86 @@ def compute_serve_return_from_recent_stats(recent_stats: dict) -> Optional[dict]
     return out if out["avg_first_serve_won_pct"] is not None else None
 
 
+def compute_serve_return_from_career_stats(career_stats: dict) -> Optional[dict]:
+    """Normalise factual career service fields from the vs-all endpoint."""
+    if not isinstance(career_stats, dict):
+        return None
+    ps = (
+        career_stats.get("playerStats")
+        or career_stats.get("player1Stats")
+        or {}
+    )
+    if not isinstance(ps, dict):
+        return None
+    try:
+        matches = int(ps.get("statMatchesPlayed"))
+    except (TypeError, ValueError):
+        return None
+    if matches <= 0:
+        return None
+
+    def _float(key: str) -> Optional[float]:
+        value = ps.get(key)
+        try:
+            return float(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def _ratio(numerator: str, denominator: str) -> Optional[float]:
+        num = _float(numerator)
+        den = _float(denominator)
+        if num is None or den is None or den <= 0:
+            return None
+        return round(100 * num / den, 1)
+
+    first_won = _float("winningOnFirstServePercentage")
+    if first_won is None:
+        first_won = _ratio("winningOnFirstServe", "winningOnFirstServeOf")
+    if first_won is None:
+        return None
+    second_won = _float("winningOnSecondServePercentage")
+    if second_won is None:
+        second_won = _ratio("winningOnSecondServe", "winningOnSecondServeOf")
+    return {
+        "matches_used": matches,
+        "avg_first_serve_won_pct": first_won,
+        "avg_second_serve_won_pct": second_won,
+        "avg_break_points_saved_pct": None,
+        "avg_break_points_converted_pct": _float("breakpointsWonPercentage"),
+        "avg_first_serve_in_pct": _float("firstServePercentage"),
+        "source": "rapidapi_career_stats",
+    }
+
+
+def compute_serve_return_from_rich_stats(rich_stats: dict) -> Optional[dict]:
+    """Read career service from current or legacy persisted player sheets."""
+    if not isinstance(rich_stats, dict):
+        return None
+    current = rich_stats.get("career_service")
+    if isinstance(current, dict) and current.get("avg_first_serve_won_pct") is not None:
+        return dict(current)
+    domination = rich_stats.get("domination") or {}
+    style = rich_stats.get("style") or {}
+    first_won = domination.get("own_first_serve_won_pct")
+    matches = style.get("matches_played")
+    try:
+        first_won = float(first_won)
+        matches = int(matches)
+    except (TypeError, ValueError):
+        return None
+    if matches <= 0:
+        return None
+    return {
+        "matches_used": matches,
+        "avg_first_serve_won_pct": first_won,
+        "avg_second_serve_won_pct": None,
+        "avg_break_points_saved_pct": None,
+        "avg_break_points_converted_pct": None,
+        "avg_first_serve_in_pct": None,
+        "source": "rapidapi_career_stats_legacy_sheet",
+    }
+
+
 def compute_deciding_set_from_recent_stats(recent_stats: dict) -> Optional[dict]:
     """Sets decisivos do recent-stats (yearStats)."""
     if not isinstance(recent_stats, dict):
