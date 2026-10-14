@@ -75,6 +75,53 @@ class ManualPaperLinkageIndexTests(unittest.TestCase):
         self.assertNotIn("outcome", str(result).lower())
         self.assertNotIn("winner", str(result).lower())
 
+    def test_legacy_public_report_recovers_factor_evidence_without_inventing_edge(self):
+        dashboard = {"days": [{
+            "reports": [{
+                "title": "Alpha vs Beta",
+                "url": "../relatorios/alpha-vs-beta.html",
+                "linkage": "SELF_DESCRIBED_REPORT",
+            }],
+            "matchups": [{
+                "title": "Alpha vs Beta",
+                "match_key": "fallback:legacy",
+                "version_indexes": [0],
+            }],
+        }]}
+        report = """
+        <div class="mh-sub">ATP #10</div>
+        <div class="mh-tourn">Example<br>ATP 500 · Hard</div>
+        <div class="mvs-val">73/100</div><div class="mvs-val">27/100</div>
+        <div class="weight-row" data-weight-factor="forma_recente">
+          <span class="weight-state a">→ Alpha</span>
+          <span class="weight-number">7</span>
+          <span class="weight-number used">4.25</span>
+        </div>
+        <div class="weight-row inactive" data-weight-factor="h2h">
+          <span class="weight-state">sem dados</span>
+          <span class="weight-number used">0.0</span>
+        </div>
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            reports = Path(tmp)
+            (reports / "alpha-vs-beta.html").write_text(report, encoding="utf-8")
+            legacy = manual_paper_linkage.build_legacy_report_factor_records(
+                dashboard, reports,
+            )
+        record = legacy["fallback:legacy"]
+        self.assertEqual(record["f"], [["forma_recente", "a", 4.25]])
+        self.assertEqual(record["m"], "a")
+        self.assertEqual(record["ia"], 73)
+        self.assertEqual(record["ib"], 27)
+        self.assertEqual(record["t"], "ATP")
+        self.assertEqual(record["l"], "500")
+        self.assertEqual(record["s"], "Hard")
+        self.assertEqual(record["o"], "REPORT_HTML_RECONSTRUCTED")
+        self.assertIsNone(record["p"])
+
+        result = manual_paper_linkage.build_factor_index([], {}, legacy)
+        self.assertEqual(result["records"]["fallback:legacy"], record)
+
 
 if __name__ == "__main__":
     unittest.main()

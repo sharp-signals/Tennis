@@ -1586,7 +1586,11 @@ def build_and_write(
     )
     manual_paper_linkage.write_index(
         manual_paper_linkage.build_factor_index(
-            snapshots, _mapping(market_memory_doc)
+            snapshots,
+            _mapping(market_memory_doc),
+            manual_paper_linkage.build_legacy_report_factor_records(
+                dashboard, root / "docs" / "relatorios",
+            ),
         ),
         root / manual_paper_linkage.DEFAULT_FACTOR_OUTPUT_PATH,
     )

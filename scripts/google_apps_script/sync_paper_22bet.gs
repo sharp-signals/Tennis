@@ -793,6 +793,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     exact_timestamp_entries: 0,
     retrospective_entries: 0,
     factor_index_matches: 0,
+    legacy_factor_reconstructed_entries: 0,
     factor_audit_eligible_entries: 0,
     selected_side_unresolved: 0,
     factor_index_missing: 0,
@@ -854,6 +855,9 @@ function buildPaperTradingPayload_(token, repository, branch) {
     addRowToStats_(guerraByMarket[market], row, tracking);
     addRowToStats_(guerraBySide[side], row, tracking);
     guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
+    const factorRecord = factorIndex.byKey[snapshotKey]
+      || factorIndex.byKey[reportMatchKey]
+      || null;
     addGuerraAuditRow_(
       guerraFactorGroups,
       guerraSegmentGroups,
@@ -862,7 +866,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
       row,
       tracking,
       status,
-      factorIndex.byKey[snapshotKey] || null,
+      factorRecord,
       candidateKey,
     );
     addGuerraExecutionAudit_(
@@ -871,7 +875,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
       row,
       tracking,
       status,
-      factorIndex.byKey[snapshotKey] || null,
+      factorRecord,
     );
     if (normalisedHeader_(sideName_(row, tracking)) === 'underdog') {
       if (!underdogPairs[candidateKey]) underdogPairs[candidateKey] = {moneyline: false, positiveHandicap: false};
@@ -1346,10 +1350,13 @@ function addGuerraAuditRow_(factorGroups, segmentGroups, quality, seenLegs, row,
   });
 
   if (!snapshot) {
-    if (canonical) quality.factor_index_missing += 1;
+    quality.factor_index_missing += 1;
     return;
   }
   quality.factor_index_matches += 1;
+  if (!canonical && snapshot.o === 'REPORT_HTML_RECONSTRUCTED') {
+    quality.legacy_factor_reconstructed_entries += 1;
+  }
   if (!selectedSide) {
     quality.selected_side_unresolved += 1;
     return;
@@ -1640,11 +1647,24 @@ function fetchManualFactorIndex_(token, repository, branch) {
   if (response.getResponseCode() !== 200) return {byKey: {}, recordCount: null, available: false};
   try {
     const body = JSON.parse(response.getContentText());
-    const document = JSON.parse(
-      Utilities.newBlob(
+    let document;
+    if (body.content) {
+      document = JSON.parse(Utilities.newBlob(
         Utilities.base64Decode(String(body.content || '').replace(/\s/g, '')),
-      ).getDataAsString(),
-    );
+      ).getDataAsString());
+    } else if (body.download_url) {
+      const download = UrlFetchApp.fetch(body.download_url, {
+        method: 'get',
+        headers: {Authorization: 'Bearer ' + token},
+        muteHttpExceptions: true,
+      });
+      if (download.getResponseCode() !== 200) {
+        return {byKey: {}, recordCount: null, available: false};
+      }
+      document = JSON.parse(download.getContentText());
+    } else {
+      return {byKey: {}, recordCount: null, available: false};
+    }
     return {
       byKey: document.records || {},
       recordCount: Number(document.record_count || 0),

@@ -127,6 +127,7 @@ function buildWeightDecisionPanelModel_(attribution, manualPaper) {
   const linked = Number(quality.linked_entries || 0);
   const canonical = Number(quality.canonical_entries || 0);
   const legacy = Number(quality.legacy_entries || 0);
+  const reconstructed = Number(quality.legacy_factor_reconstructed_entries || 0);
   const eligible = Number(quality.factor_audit_eligible_entries || 0);
   const unresolved = Number(quality.selected_side_unresolved || 0);
   const minimumTrend = 20;
@@ -200,6 +201,7 @@ function buildWeightDecisionPanelModel_(attribution, manualPaper) {
     linked: linked,
     canonical: canonical,
     legacy: legacy,
+    reconstructed: reconstructed,
     eligible: eligible,
     unresolved: unresolved,
     structural_snapshots: global.reduce((maximum, row) => Math.max(maximum, Number(row.seen_snapshots || 0)), 0),
@@ -255,7 +257,8 @@ function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
     .setFontSize(13).setFontWeight('bold');
   sheet.getRange('A9:L9').merge().setValue(model.headline).setBackground('#FFFDF5').setFontColor('#3C4652').setWrap(true);
   sheet.getRange('A10:L10').merge().setValue('Qualidade do linkage: ' + model.linked + ' ligadas · '
-    + model.canonical + ' canónicas · ' + model.legacy + ' legacy sem snapshot · '
+    + model.canonical + ' canónicas · ' + model.legacy + ' legacy sem snapshot ('
+    + model.reconstructed + ' reconstruídas do relatório) · '
     + model.unresolved + ' sem lado selecionado resolvido.')
     .setBackground('#FFFDF5').setFontColor('#3C4652');
 
@@ -438,6 +441,7 @@ function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
     ['Ligações ex ante com hora exata', quality.exact_timestamp_entries || 0],
     ['Ligações retrospetivas por data', quality.retrospective_entries || 0],
     ['Snapshots encontrados no índice de fatores', quality.factor_index_matches || 0],
+    ['Entradas legacy reconstruídas do relatório público', quality.legacy_factor_reconstructed_entries || 0],
     ['Entradas elegíveis para auditoria de fatores', quality.factor_audit_eligible_entries || 0],
     ['Lado selecionado não resolvido', quality.selected_side_unresolved || 0],
     ['Snapshot ausente do índice de fatores', quality.factor_index_missing || 0],
