@@ -82,6 +82,38 @@ test('Guerra audit relates factor direction to the selected side and real ROI', 
   assert.equal(market.units, 0.85);
 });
 
+test('legacy report factors remain eligible without pretending to be a canonical snapshot', () => {
+  const rowTracking = {
+    snapshot: 15, selection: 6, tour: 2, surface: 4, market: 5,
+    handicapLine: 19, side: 7, odd: 9, stake: 10, result: 12, profit: 13,
+  };
+  const values = Array(25).fill('');
+  values[2] = 'WTA'; values[4] = 'Hard'; values[5] = 'Vencedor';
+  values[6] = 'Alpha'; values[7] = 'Favorito'; values[9] = 1.80;
+  values[10] = 1; values[12] = 'GANHOU'; values[13] = 0.80;
+  const reconstructed = {
+    t: 'WTA', s: 'Hard', a: 'Alpha', b: 'Beta', m: 'a', ia: 73, ib: 27,
+    f: [['forma_recente', 'a', 4.25]], o: 'REPORT_HTML_RECONSTRUCTED',
+  };
+  const quality = {
+    linked_entries: 0, canonical_entries: 0, legacy_entries: 0,
+    exact_timestamp_entries: 0, retrospective_entries: 0,
+    factor_index_matches: 0, legacy_factor_reconstructed_entries: 0,
+    factor_audit_eligible_entries: 0, selected_side_unresolved: 0,
+    factor_index_missing: 0, duplicate_exact_legs: 0,
+  };
+  const factors = {}, segments = {};
+  context.addGuerraAuditRow_(
+    factors, segments, quality, {}, values, rowTracking,
+    'LINKED_RETROSPECTIVE_LEGACY', reconstructed, 'fallback:legacy',
+  );
+  assert.equal(quality.canonical_entries, 0);
+  assert.equal(quality.legacy_entries, 1);
+  assert.equal(quality.legacy_factor_reconstructed_entries, 1);
+  assert.equal(quality.factor_audit_eligible_entries, 1);
+  assert.equal(context.finishGuerraFactorAudit_(factors)[0].factor, 'forma_recente');
+});
+
 test('Guerra audit resolves surname, compound surname and initial plus surname selections', () => {
   const rowTracking = {selection: 6};
   const selected = value => {
@@ -272,6 +304,23 @@ test('Guerra backfill revisits rows with a report key but no snapshot', () => {
   assert.match(body, /if \(!existingSnapshot\)/);
   assert.match(body, /findCanonicalPaperReportLink_/);
   assert.doesNotMatch(body, /if \(!String\(row\[tracking\.reportMatchKey\]/);
+});
+
+test('Guerra audit falls back from snapshot key to the report factor key', () => {
+  const start = source.indexOf('const factorRecord = factorIndex.byKey[snapshotKey]');
+  assert.ok(start >= 0);
+  assert.match(
+    source.slice(start, start + 180),
+    /factorIndex\.byKey\[reportMatchKey\]/,
+  );
+});
+
+test('factor index supports GitHub download URL after growing beyond one MB', () => {
+  const start = source.indexOf('function fetchManualFactorIndex_');
+  const end = source.indexOf('function newStats_', start);
+  const body = source.slice(start, end);
+  assert.match(body, /body\.download_url/);
+  assert.match(body, /download\.getContentText\(\)/);
 });
 
 test('Challenger linkage fills snapshot, selected Fenzobot index and legacy EDGE safely', () => {

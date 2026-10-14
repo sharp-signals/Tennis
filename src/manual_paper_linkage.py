@@ -8,7 +8,9 @@ results or notes from the private Google Sheet.
 from __future__ import annotations
 
 import hashlib
+import html
 import json
+import re
 from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urljoin
@@ -16,8 +18,108 @@ from urllib.parse import urljoin
 
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_PATH = Path("data/validation/manual-paper-linkage-index-v1.json")
-FACTOR_INDEX_SCHEMA_VERSION = 2
+FACTOR_INDEX_SCHEMA_VERSION = 3
 DEFAULT_FACTOR_OUTPUT_PATH = Path("data/validation/manual-paper-factor-index-v1.json")
+
+
+_WEIGHT_ROW_START = re.compile(
+    r'<div class="weight-row(?:\s+inactive)?" data-weight-factor="([^"]+)">',
+)
+
+
+def _legacy_report_factor_record(
+    content: str, player_a: str, player_b: str,
+) -> dict[str, Any] | None:
+    """Recover frozen public factor facts from a legacy pre-match report."""
+    starts = list(_WEIGHT_ROW_START.finditer(content))
+    factors: list[list[Any]] = []
+    for index, match in enumerate(starts):
+        end = starts[index + 1].start() if index + 1 < len(starts) else len(content)
+        block = content[match.start():end]
+        direction_match = re.search(r'class="weight-state\s+([ab])"', block)
+        weight_match = re.search(
+            r'class="weight-number used">\s*([0-9]+(?:[.,][0-9]+)?)\s*<', block,
+        )
+        if not direction_match or not weight_match:
+            continue
+        weight = float(weight_match.group(1).replace(",", "."))
+        if weight <= 0:
+            continue
+        factors.append([html.unescape(match.group(1)), direction_match.group(1), round(weight, 3)])
+    if not factors:
+        return None
+
+    tour_match = re.search(r'class="mh-sub(?:\s+b)?">\s*(ATP|WTA)\b', content, re.I)
+    context_match = re.search(
+        r'class="mh-tourn">.*?<br>\s*(ATP|WTA)\s*([^<·Â]*?)\s*(?:Â?·)\s*([^<]+)</div>',
+        content,
+        re.I | re.S,
+    )
+    index_values = [
+        float(value)
+        for value in re.findall(
+            r'class="mvs-val"[^>]*>\s*([0-9]+(?:\.[0-9]+)?)/100\s*</div>',
+            content,
+        )[:2]
+    ]
+    index_a = index_values[0] if len(index_values) == 2 else None
+    index_b = index_values[1] if len(index_values) == 2 else None
+    model_side = None
+    if index_a is not None and index_b is not None and index_a != index_b:
+        model_side = "a" if index_a > index_b else "b"
+    tour = (context_match or tour_match).group(1).upper() if (context_match or tour_match) else None
+    return {
+        "t": tour,
+        "l": html.unescape(context_match.group(2).strip()) if context_match else None,
+        "s": html.unescape(context_match.group(3).strip()) if context_match else None,
+        "a": player_a,
+        "b": player_b,
+        "m": model_side,
+        "ia": index_a,
+        "ib": index_b,
+        "p": None,
+        "me": None,
+        "mc": None,
+        "f": factors,
+        "o": "REPORT_HTML_RECONSTRUCTED",
+    }
+
+
+def build_legacy_report_factor_records(
+    dashboard: Mapping[str, Any], reports_root: Path,
+) -> dict[str, dict[str, Any]]:
+    """Build factor records for public reports created before snapshots existed."""
+    records: dict[str, dict[str, Any]] = {}
+    for day_value in dashboard.get("days") or []:
+        day = _mapping(day_value)
+        reports = [row for row in day.get("reports") or [] if isinstance(row, Mapping)]
+        for matchup_value in day.get("matchups") or []:
+            matchup = _mapping(matchup_value)
+            match_key = str(matchup.get("match_key") or "").strip()
+            player_a, player_b = _split_title(matchup.get("title"))
+            if not match_key or not player_a or not player_b or match_key in records:
+                continue
+            versions = [
+                reports[index]
+                for index in matchup.get("version_indexes") or []
+                if isinstance(index, int) and 0 <= index < len(reports)
+            ]
+            representative = next(
+                (row for row in versions if row.get("linkage") == "EXACT_REPORT_ID"),
+                versions[0] if versions else {},
+            )
+            filename = Path(str(representative.get("url") or "")).name
+            if not filename.lower().endswith(".html"):
+                continue
+            report_path = reports_root / filename
+            try:
+                content = report_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            record = _legacy_report_factor_record(content, player_a, player_b)
+            if record:
+                records[match_key] = record
+    return records
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -102,7 +204,8 @@ def build_index(
 
 def write_index(document: Mapping[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Keep this below GitHub Contents API's 1 MB inline-content boundary.
+    # Compact serialization minimizes repository/API payloads. Consumers accept
+    # both inline Contents API data and download_url for files above 1 MB.
     # Apps Script consumes the file through that endpoint and therefore needs
     # the response body to contain Base64 data rather than a download URL.
     content = json.dumps(
@@ -114,6 +217,7 @@ def write_index(document: Mapping[str, Any], path: Path) -> None:
 def build_factor_index(
     snapshots: list[Mapping[str, Any]] | None = None,
     market_memory: Mapping[str, Any] | None = None,
+    legacy_report_factors: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build a compact, public lookup for private Sheet-side aggregation.
 
@@ -201,6 +305,9 @@ def build_factor_index(
             "mc": probability_pair(closing_market),
             "f": factors,
         }
+    for key, raw_record in sorted((legacy_report_factors or {}).items()):
+        if key and key not in records and isinstance(raw_record, Mapping):
+            records[str(key)] = dict(raw_record)
     material = json.dumps(records, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return {
         "schema_version": FACTOR_INDEX_SCHEMA_VERSION,
