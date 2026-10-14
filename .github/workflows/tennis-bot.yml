@@ -33,7 +33,10 @@ concurrency:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # CHANGE-2026-10-14-133: a aquisicao pode ocupar ~25 minutos e a
+    # manutencao posterior tem o seu proprio hard timeout. O limite anterior
+    # de 30 minutos cortava calibracao/historico depois de publicar relatorios.
+    timeout-minutes: 45
     permissions:
       contents: write   # necessário para o commit automático da cache de torneios
     steps:
