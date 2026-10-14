@@ -59,6 +59,29 @@ class DeterministicFeatureTests(unittest.TestCase):
     def test_feature_computation_with_no_comparable_data_returns_none(self):
         self.assertIsNone(main._compute_features({"player_a": "A", "player_b": "B"}))
 
+    def test_opponent_level_uses_local_history_outside_top100(self):
+        features = main._compute_features({
+            "player_a": "A", "player_b": "B",
+            "ranking_a": {"rank": 250}, "ranking_b": {"rank": 180},
+            "opponent_level_stats_a": {"wins": 6, "matches": 10, "rank_bucket": "top200"},
+            "opponent_level_stats_b": {"wins": 4, "matches": 10, "rank_bucket": "top300"},
+        })
+
+        self.assertEqual(features["nivel_adversario"]["lider"], "A")
+        self.assertEqual(features["nivel_adversario"]["valor_a"], 60.0)
+        self.assertEqual(features["nivel_adversario"]["valor_b"], 40.0)
+
+    def test_opponent_level_records_side_specific_missing_reason(self):
+        features = main._compute_features({
+            "player_a": "A", "player_b": "B",
+            "ranking_a": {"rank": 350}, "ranking_b": {"rank": 180},
+            "opponent_level_stats_a": {"wins": 6, "matches": 10, "rank_bucket": "top200"},
+        })
+
+        level = features["nivel_adversario"]
+        self.assertIsNone(level["lider"])
+        self.assertIn("B: sem histórico utilizável na faixa outside_top300", level["motivo_exclusao"])
+
     def test_court_speed_is_context_only_until_both_players_reach_minimum_sample(self):
         features = main._compute_features({
             "player_a": "A", "player_b": "B",

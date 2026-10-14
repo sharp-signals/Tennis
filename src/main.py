@@ -1429,9 +1429,9 @@ def _compute_features(payload: dict) -> dict:
         )
 
     # NOVO (18/08/2026, a pedido): desempenho vs o NÍVEL do adversário de
-    # HOJE (top10/20/50/100), carreira toda. Fonte: vs_rank_level dos
-    # dados "ricos" — já existia, só alimentava um gráfico visual, nunca
-    # um fator do motor.
+    # HOJE (top10/20/50/100/200/300 ou fora do top300), carreira toda.
+    # O histórico local é a fonte primária porque cobre também jogadores
+    # fora do top100; os dados ricos permanecem como fallback compatível.
     def _bucket_ranking(rank):
         # CORREÇÃO CRÍTICA (20/08/2026, log real — falha real em produção,
         # 2 jogos WTA rebentados): "rank" pode vir como texto da RapidAPI
@@ -1455,7 +1455,11 @@ def _compute_features(payload: dict) -> dict:
             return "top50"
         if rank <= 100:
             return "top100"
-        return None
+        if rank <= 200:
+            return "top200"
+        if rank <= 300:
+            return "top300"
+        return "outside_top300"
 
     _rank_a_val = (payload.get("ranking_a") or {}).get("rank")
     _rank_b_val = (payload.get("ranking_b") or {}).get("rank")
@@ -1464,17 +1468,21 @@ def _compute_features(payload: dict) -> dict:
 
     def _nivel_adversario(side, bucket):
         if bucket is None:
-            return None, None
+            return None, None, "ranking atual do adversário indisponível"
+        local_record = payload.get(f"opponent_level_stats_{side}")
+        local_rate, local_sample = competition_evidence.record_rate(local_record)
+        if local_rate is not None:
+            return local_rate, local_sample, None
         if policy.get("active"):
-            return competition_evidence.record_rate(
-                payload.get(f"opponent_level_stats_{side}")
-            )
+            return None, local_sample, f"sem histórico local elegível na faixa {bucket}"
         vs_rank = (payload.get(f"rich_stats_{side}") or {}).get("vs_rank_level") or {}
         cell = vs_rank.get(bucket) or {}
-        return cell.get("win_pct"), cell.get("matches")
+        if cell.get("win_pct") is not None and cell.get("matches"):
+            return cell.get("win_pct"), cell.get("matches"), None
+        return None, local_sample, f"sem histórico utilizável na faixa {bucket}"
 
-    _nva, _amostra_nivel_a = _nivel_adversario("a", _bucket_para_a)
-    _nvb, _amostra_nivel_b = _nivel_adversario("b", _bucket_para_b)
+    _nva, _amostra_nivel_a, _motivo_nivel_a = _nivel_adversario("a", _bucket_para_a)
+    _nvb, _amostra_nivel_b, _motivo_nivel_b = _nivel_adversario("b", _bucket_para_b)
     if _nva is not None and _nvb is not None:
         feats["nivel_adversario"] = {
             "lider": a if _nva > _nvb else (b if _nvb > _nva else "igual"),
@@ -1490,6 +1498,27 @@ def _compute_features(payload: dict) -> dict:
             active=bool(policy.get("active")),
             policy=policy,
         )
+    elif any((
+        _rank_a_val is not None,
+        _rank_b_val is not None,
+        payload.get("opponent_level_stats_a") is not None,
+        payload.get("opponent_level_stats_b") is not None,
+    )):
+        motivos = []
+        if _nva is None:
+            motivos.append(f"{a}: {_motivo_nivel_a}")
+        if _nvb is None:
+            motivos.append(f"{b}: {_motivo_nivel_b}")
+        feats["nivel_adversario"] = {
+            "lider": None,
+            "valor_a": _nva,
+            "valor_b": _nvb,
+            "amostra_a": _amostra_nivel_a,
+            "amostra_b": _amostra_nivel_b,
+            "bucket_a": _bucket_para_a,
+            "bucket_b": _bucket_para_b,
+            "motivo_exclusao": "; ".join(motivos),
+        }
 
     policy = payload.get("competition_evidence_policy") or {}
 
