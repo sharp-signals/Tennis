@@ -6,6 +6,7 @@ from src.system_history_analytics import (
     build_system_history,
     canonical_snapshots,
     factor_attribution_analysis,
+    factor_coverage_diagnostics,
     historical_wta_analytics,
     odds_band,
     fenzobot_index_band,
@@ -28,6 +29,65 @@ def _snapshot(*, analyzed_at, winner="a", key="atp:10", odd_a=1.4, odd_b=3.0, in
 
 
 class SystemHistoryAnalyticsTests(unittest.TestCase):
+    def test_factor_coverage_separates_main_tours_challenger_and_reasons(self):
+        atp = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:coverage")
+        atp["metrics"]["divergencia"]["fatores_status"] = {
+            "ranking": {
+                "disponivel": True, "direcao_impacto": "a", "peso_efetivo": 5.0,
+            },
+            "pressao_ronda": {"disponivel": False, "motivo_exclusao": None},
+        }
+        challenger = _snapshot(
+            analyzed_at="2026-09-28T06:31:00+00:00", key="atp:challenger-coverage",
+        )
+        challenger["match_id"] = 11
+        challenger["commence_time_utc"] = "2026-09-30T13:00:00+00:00"
+        challenger["tier"] = "Challenger 125"
+        challenger["tournament"] = "Porto Challenger"
+        challenger["metrics"]["divergencia"]["fatores_status"] = {
+            "ranking": {"disponivel": True, "lider": "igual"},
+            "servico_recente": {
+                "disponivel": False,
+                "motivo_exclusao": "amostra em falta num dos lados",
+            },
+        }
+        wta = _snapshot(
+            analyzed_at="2026-09-28T06:32:00+00:00", key="wta:coverage",
+        )
+        wta["tour"] = "wta"
+        wta["match_id"] = 12
+        wta["commence_time_utc"] = "2026-09-30T14:00:00+00:00"
+        wta["metrics"]["divergencia"]["fatores_status"] = {
+            "ranking": {
+                "disponivel": True,
+                "lider": "B",
+                "motivo_exclusao": "abaixo do limiar (<3 p.p.)",
+            },
+        }
+
+        result = factor_coverage_diagnostics([atp, challenger, wta])
+        by_key = {(row["scope"], row["factor"]): row for row in result["summary"]}
+        self.assertEqual(by_key[("GLOBAL", "ranking")]["seen_snapshots"], 3)
+        self.assertEqual(by_key[("GLOBAL", "ranking")]["active_snapshots"], 1)
+        self.assertEqual(by_key[("ATP", "ranking")]["active_pct"], 100.0)
+        self.assertEqual(by_key[("CHALLENGER", "ranking")]["available_inactive_snapshots"], 1)
+        self.assertNotIn(("ATP", "servico_recente"), by_key)
+        self.assertEqual(by_key[("CHALLENGER", "servico_recente")]["unavailable_snapshots"], 1)
+
+        reasons = {
+            (row["scope"], row["factor"], row["reason"]): row["snapshots"]
+            for row in result["reasons"]
+        }
+        self.assertEqual(
+            reasons[("ATP", "pressao_ronda", "motivo não registado")], 1,
+        )
+        self.assertEqual(
+            reasons[("CHALLENGER", "ranking", "sem diferença material entre jogadores")], 1,
+        )
+        self.assertEqual(
+            reasons[("WTA", "ranking", "abaixo do limiar (<3 p.p.)")], 1,
+        )
+
     def test_factor_attribution_keeps_tours_and_weight_bands_separate(self):
         atp = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:factor")
         atp["metrics"]["divergencia"]["fatores_status"] = {
