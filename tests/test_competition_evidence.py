@@ -365,6 +365,21 @@ class CompetitionContractTests(unittest.TestCase):
             {"COMPETITION_EVIDENCE_NOT_SEPARABLE"},
         )
 
+    def test_unavailable_diagnostic_factor_is_not_a_provenance_blocker(self):
+        feature = {
+            "nivel_adversario": {
+                "lider": None,
+                "motivo_exclusao": "B: sem histórico local elegível na faixa top200",
+            },
+        }
+
+        guarded, blockers = competition_evidence.guard_features(
+            feature, active=True, tour="atp",
+        )
+
+        self.assertEqual(guarded, feature)
+        self.assertEqual(blockers, [])
+
     def test_wta_is_out_of_scope_and_unchanged(self):
         scoped = competition_evidence.activation_for_tour(ACTIVE, "wta")
         self.assertFalse(scoped["active"])

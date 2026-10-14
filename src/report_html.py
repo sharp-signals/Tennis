@@ -1070,8 +1070,15 @@ def _calcular_divergencia(payload):
     elif isinstance(nv, dict) and nv.get("lider") is not None:
         _reg_status("nivel_adversario", True, nv["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"))
+    elif isinstance(nv, dict) and nv.get("motivo_exclusao"):
+        _reg_status(
+            "nivel_adversario", False,
+            motivo_exclusao=nv.get("motivo_exclusao"),
+            valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"),
+            amostra_a=nv.get("amostra_a"), amostra_b=nv.get("amostra_b"),
+        )
     else:
-        _reg_status("nivel_adversario", False)
+        _reg_status("nivel_adversario", False, motivo_exclusao="dados em falta num dos lados")
 
     # NOVO (22/08/2026, a pedido): histórico NESTE torneio específico.
     # Compara a taxa de vitória ponderada pela recência de cada jogador

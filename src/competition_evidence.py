@@ -1008,6 +1008,16 @@ def guard_features(
         | DIRECT_UNSEPARABLE_CONSUMERS.intersection(direct_consumers)
     )
     for key in sorted(audited_keys):
+        feature = output.get(key)
+        if (
+            key in RESULT_DERIVED_FEATURE_KEYS
+            and isinstance(feature, Mapping)
+            and feature.get("lider") is None
+            and feature.get("motivo_exclusao")
+        ):
+            # A diagnostic-only unavailable factor never enters the index, so
+            # it is not a provenance blocker. Keep the factual reason visible.
+            continue
         if not feature_is_eligible(output.get(key), active=True, policy=policy):
             blockers.append({
                 "feature": key,

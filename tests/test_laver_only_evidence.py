@@ -837,7 +837,10 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
                     )
                 )
 
-        for value, bucket in ((10, "top10"), (20, "top20"), (50, "top50"), (100, "top100")):
+        for value, bucket in (
+            (10, "top10"), (20, "top20"), (50, "top50"), (100, "top100"),
+            (200, "top200"), (300, "top300"),
+        ):
             with self.subTest(value=value):
                 result = fetch_data.compute_opponent_level_stats(
                     self.history,
@@ -846,6 +849,32 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
                     competition_policy=LAVER_ACTIVE,
                 )
                 self.assertEqual(result["rank_bucket"], bucket)
+
+        outside_history = pd.DataFrame([
+            {
+                "winner_name": "Alpha", "loser_name": "Low A",
+                "winner_rank": 120, "loser_rank": 350,
+                "tournament_name": "ATP Challenger Main Draw",
+                "_history_competition_scope": "challenger",
+            },
+            {
+                "winner_name": "Low B", "loser_name": "Alpha",
+                "winner_rank": 410, "loser_rank": 120,
+                "tournament_name": "ATP Challenger Main Draw",
+                "_history_competition_scope": "challenger",
+            },
+            {
+                "winner_name": "Alpha", "loser_name": "Top Player",
+                "winner_rank": 120, "loser_rank": 80,
+                "tournament_name": "ATP Challenger Main Draw",
+                "_history_competition_scope": "challenger",
+            },
+        ])
+        outside = fetch_data.compute_opponent_level_stats(
+            outside_history, "Alpha", 450, competition_policy=LAVER_ACTIVE,
+        )
+        self.assertEqual(outside["rank_bucket"], "outside_top300")
+        self.assertEqual(outside["ranking_sample_quality"]["eligible_rows"], 2)
 
         dirty = self.history.copy()
         dirty["loser_rank"] = dirty["loser_rank"].astype("object")

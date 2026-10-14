@@ -5993,14 +5993,28 @@ def compute_opponent_level_stats(
     rank, _target_reason = _parse_positive_finite_rank(opponent_rank)
     if rank is None:
         return None
-    limit = (
-        10 if rank <= 10 else
-        20 if rank <= 20 else
-        50 if rank <= 50 else
-        100 if rank <= 100 else
-        None
-    )
-    if limit is None or history.empty:
+    if rank <= 10:
+        bucket = "top10"
+        in_bucket = lambda parsed: parsed <= 10
+    elif rank <= 20:
+        bucket = "top20"
+        in_bucket = lambda parsed: parsed <= 20
+    elif rank <= 50:
+        bucket = "top50"
+        in_bucket = lambda parsed: parsed <= 50
+    elif rank <= 100:
+        bucket = "top100"
+        in_bucket = lambda parsed: parsed <= 100
+    elif rank <= 200:
+        bucket = "top200"
+        in_bucket = lambda parsed: parsed <= 200
+    elif rank <= 300:
+        bucket = "top300"
+        in_bucket = lambda parsed: parsed <= 300
+    else:
+        bucket = "outside_top300"
+        in_bucket = lambda parsed: parsed > 300
+    if history.empty:
         return None
     resolved = resolve_player_name(history, player)
     if resolved is None:
@@ -6022,7 +6036,7 @@ def compute_opponent_level_stats(
             key = reason or "INVALID_RANK"
             exclusions[key] = exclusions.get(key, 0) + 1
             continue
-        if parsed <= limit:
+        if in_bucket(parsed):
             rows.append(row.to_dict())
         else:
             exclusions["OUTSIDE_RANK_BUCKET"] = (
@@ -6037,7 +6051,7 @@ def compute_opponent_level_stats(
         policy=competition_policy,
     )
     result.update({
-        "rank_bucket": f"top{limit}",
+        "rank_bucket": bucket,
         "ranking_sample_quality": {
             "target_rank_raw": opponent_rank,
             "target_rank": rank,
