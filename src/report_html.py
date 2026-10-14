@@ -1057,8 +1057,15 @@ def _calcular_divergencia(payload):
     elif isinstance(pr, dict) and pr.get("lider") is not None:
         _reg_status("pressao_ronda", True, pr["lider"], "abaixo do limiar (<3 p.p.)",
                     valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"))
+    elif isinstance(pr, dict) and pr.get("motivo_exclusao"):
+        _reg_status(
+            "pressao_ronda", False,
+            motivo_exclusao=pr.get("motivo_exclusao"),
+            valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"),
+            amostra_a=pr.get("amostra_a"), amostra_b=pr.get("amostra_b"),
+        )
     else:
-        _reg_status("pressao_ronda", False)
+        _reg_status("pressao_ronda", False, motivo_exclusao="dados em falta num dos lados")
 
     # NOVO (18/08/2026, a pedido): desempenho vs nível do adversário de hoje
     nv = feats.get("nivel_adversario")

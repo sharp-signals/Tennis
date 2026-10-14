@@ -2746,6 +2746,7 @@ def _normalize_tennisdata_couk(df: pd.DataFrame) -> pd.DataFrame:
         "WPts": "winner_rank_points",
         "LPts": "loser_rank_points",
         "Best of": "best_of",
+        "Round": "round",
     })
     if "Date" in df.columns:
         df["tourney_date"] = pd.to_datetime(df["Date"], errors="coerce").dt.strftime("%Y%m%d")
@@ -5920,12 +5921,54 @@ def compute_court_speed_form(
         ),
     }
 
+def _round_stage(value: object) -> Optional[str]:
+    """Map factual provider round labels to a stable early/late stage.
+
+    Historical ATP files normally use compact codes (``QF``, ``SF``, ``F``),
+    while the WTA tennis-data cache uses labels such as ``Quarterfinals`` and
+    ``The Final``.  Only explicit, unambiguous labels are mapped; qualifying,
+    round-robin and unknown numeric identifiers remain outside this factor.
+    """
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        return None
+    normalized = unicodedata.normalize("NFKD", str(value))
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized.casefold()).strip()
+    compact = normalized.replace(" ", "")
+    if compact in {
+        "qf", "quarterfinal", "quarterfinals",
+        "sf", "semifinal", "semifinals",
+        "f", "final", "thefinal",
+    }:
+        return "late_rounds"
+    if compact in {
+        "r128", "roundof128", "1stround", "firstround",
+        "r64", "roundof64", "2ndround", "secondround",
+        "r32", "roundof32", "3rdround", "thirdround",
+        "r16", "roundof16", "4thround", "fourthround",
+    }:
+        return "early_rounds"
+    return None
+
+
 def compute_round_stage_stats(
     history: pd.DataFrame, player: str, *,
     competition_policy: Optional[dict] = None,
 ) -> Optional[dict]:
     """Early/late-round records reconstructed from match-level history."""
-    if history.empty or "round" not in history.columns:
+    if history.empty:
+        return None
+    round_col = next(
+        (column for column in ("round", "Round", "round_name", "tourney_round")
+         if column in history.columns),
+        None,
+    )
+    if round_col is None:
         return None
     resolved = resolve_player_name(history, player)
     if resolved is None:
@@ -5937,12 +5980,10 @@ def compute_round_stage_stats(
     if played.empty:
         return None
     active = bool((competition_policy or {}).get("active"))
+    stages = played[round_col].map(_round_stage)
     result: dict = {}
-    for round_set, label in (
-        ({"R128", "R64", "R32", "R16"}, "early_rounds"),
-        ({"QF", "SF", "F"}, "late_rounds"),
-    ):
-        subset = played[played["round"].isin(round_set)]
+    for label in ("early_rounds", "late_rounds"):
+        subset = played[stages == label]
         result[label] = (
             None
             if subset.empty

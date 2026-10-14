@@ -1390,15 +1390,22 @@ def _compute_features(payload: dict) -> dict:
     # NOVO (18/08/2026, a pedido): desempenho em rondas decisivas (QF+),
     # carreira toda — não condicionado à ronda de hoje (não temos o nome
     # da ronda de hoje como texto, só um ID numérico sem mapeamento
-    # conhecido; não adivinhamos essa correspondência). Fonte: by_round
-    # dos dados "ricos" (já pagos à RapidAPI, nunca antes ligados a nada
-    # — só existia a agregação, sem consumidor).
-    _RONDAS_DECISIVAS = {"F", "SF", "QF", "FINAL", "SEMIFINAL", "QUARTERFINAL"}
+    # conhecido; não adivinhamos essa correspondência). O histórico local
+    # jogo a jogo é primário em todos os tours; o agregado do fornecedor é
+    # apenas fallback fora da política ATP de evidência separável.
+    _RONDAS_DECISIVAS = {
+        "F", "SF", "QF", "FINAL", "THE FINAL",
+        "SEMIFINAL", "SEMIFINALS", "SEMI-FINAL", "SEMI-FINALS",
+        "QUARTERFINAL", "QUARTERFINALS", "QUARTER-FINAL", "QUARTER-FINALS",
+    }
 
     def _pressao_ronda(side):
+        cell = (payload.get(f"round_stage_stats_{side}") or {}).get("late_rounds")
+        local_rate, local_sample = competition_evidence.record_rate(cell)
+        if local_rate is not None:
+            return local_rate, local_sample, None
         if policy.get("active"):
-            cell = (payload.get(f"round_stage_stats_{side}") or {}).get("late_rounds")
-            return competition_evidence.record_rate(cell)
+            return None, local_sample, "sem histórico local elegível em QF/SF/F"
         by_round = (payload.get(f"rich_stats_{side}") or {}).get("by_round") or {}
         wins = losses = 0
         for rnd, cell in by_round.items():
@@ -1407,11 +1414,11 @@ def _compute_features(payload: dict) -> dict:
                 losses += cell.get("losses", 0) or 0
         total = wins + losses
         if total == 0:
-            return None, None
-        return round(100 * wins / total, 1), total
+            return None, local_sample, "sem histórico utilizável em QF/SF/F"
+        return round(100 * wins / total, 1), total, None
 
-    _pra, _amostra_ronda_a = _pressao_ronda("a")
-    _prb, _amostra_ronda_b = _pressao_ronda("b")
+    _pra, _amostra_ronda_a, _motivo_ronda_a = _pressao_ronda("a")
+    _prb, _amostra_ronda_b, _motivo_ronda_b = _pressao_ronda("b")
     if _pra is not None and _prb is not None:
         feats["pressao_ronda"] = {
             "lider": a if _pra > _prb else (b if _prb > _pra else "igual"),
@@ -1427,6 +1434,25 @@ def _compute_features(payload: dict) -> dict:
             active=bool(policy.get("active")),
             policy=policy,
         )
+    elif any((
+        payload.get("round_stage_stats_a") is not None,
+        payload.get("round_stage_stats_b") is not None,
+        (payload.get("rich_stats_a") or {}).get("by_round"),
+        (payload.get("rich_stats_b") or {}).get("by_round"),
+    )):
+        motivos = []
+        if _pra is None:
+            motivos.append(f"{a}: {_motivo_ronda_a}")
+        if _prb is None:
+            motivos.append(f"{b}: {_motivo_ronda_b}")
+        feats["pressao_ronda"] = {
+            "lider": None,
+            "valor_a": _pra,
+            "valor_b": _prb,
+            "amostra_a": _amostra_ronda_a,
+            "amostra_b": _amostra_ronda_b,
+            "motivo_exclusao": "; ".join(motivos),
+        }
 
     # NOVO (18/08/2026, a pedido): desempenho vs o NÍVEL do adversário de
     # HOJE (top10/20/50/100/200/300 ou fora do top300), carreira toda.
