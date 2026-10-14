@@ -166,7 +166,9 @@ function backfillGuerraReportLinks() {
     spreadsheet,
     fetchReportLinkageIndex_(token, repository, branch),
   );
-  return 'Ligações recuperadas: ' + result.linked + ' · por rever: ' + result.unmatched + '.';
+  return 'Linhas processadas: ' + result.linked
+    + ' · promovidas a canónicas: ' + result.upgradedCanonical
+    + ' · sem snapshot canónico seguro: ' + result.unmatched + '.';
 }
 
 function missingTrackingHeaders_(headers) {
@@ -390,6 +392,26 @@ function findPaperReportLink_(dateIso, game, records) {
   return Object.keys(identities).length === 1 ? nearest[0] : null;
 }
 
+/**
+ * Recupera uma ligação canónica para uma linha que já pode ter sido ligada a
+ * uma versão legacy do relatório. O match key existente é tentado primeiro;
+ * se essa versão não tiver snapshot, procura-se a versão canónica da mesma
+ * partida na janela temporal segura. Nunca promove uma ligação ambígua.
+ */
+function findCanonicalPaperReportLink_(dateIso, game, existingMatchKey, records) {
+  const key = String(existingMatchKey || '').trim();
+  if (key) {
+    const exactCanonical = (records || []).filter(record => (
+      String(record.report_match_key || '').trim() === key
+      && String(record.snapshot_key || '').trim()
+    ));
+    const exact = findPaperReportLink_(dateIso, game, exactCanonical);
+    if (exact) return exact;
+  }
+  const candidate = findPaperReportLink_(dateIso, game, records);
+  return candidate && String(candidate.snapshot_key || '').trim() ? candidate : null;
+}
+
 function fetchReportLinkageIndex_(token, repository, branch) {
   if (!token || !repository) return {available: false, records: []};
   const url = 'https://api.github.com/repos/' + repository + '/contents/' + PAPER_22BET_SYNC.reportLinkagePath + '?ref=' + encodeURIComponent(branch);
@@ -422,31 +444,39 @@ function fetchReportLinkageIndex_(token, repository, branch) {
 
 function recoverGuerraReportLinks_(spreadsheet, reportIndex) {
   const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName);
-  if (!sheet || !reportIndex || reportIndex.available !== true) return {linked: 0, unmatched: 0};
+  if (!sheet || !reportIndex || reportIndex.available !== true) return {linked: 0, upgradedCanonical: 0, unmatched: 0};
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
   const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, width).getValues()[0];
   const tracking = trackingIndexes_(headers);
   const map = trackingColumnMap_(sheet);
   const rowCount = Math.max(0, sheet.getLastRow() - PAPER_22BET_SYNC.headerRow);
-  if (!rowCount) return {linked: 0, unmatched: 0};
+  if (!rowCount) return {linked: 0, upgradedCanonical: 0, unmatched: 0};
   const rows = sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, 1, rowCount, width).getValues();
   const timeZone = spreadsheet.getSpreadsheetTimeZone ? spreadsheet.getSpreadsheetTimeZone() : 'Europe/Lisbon';
   let linked = 0;
+  let upgradedCanonical = 0;
   let unmatched = 0;
   rows.forEach(row => {
     if (!(row[0] && row[1] && row[tracking.market]) || isChallengerManualRow_(row, tracking)) return;
     row[tracking.strategy] = 'GUERRA_SELECTION_V1';
+    const existingSnapshot = String(row[tracking.snapshot] || '').trim();
+    const existingMatchKey = String(row[tracking.reportMatchKey] || '').trim();
     let link = null;
-    if (!String(row[tracking.reportMatchKey] || '').trim()) {
-      link = findPaperReportLink_(paperDateIso_(row[0], timeZone), row[1], reportIndex.records);
+    if (!existingSnapshot) {
+      link = existingMatchKey
+        ? findCanonicalPaperReportLink_(
+          paperDateIso_(row[0], timeZone), row[1], existingMatchKey, reportIndex.records,
+        )
+        : findPaperReportLink_(paperDateIso_(row[0], timeZone), row[1], reportIndex.records);
       if (!link) {
         unmatched += 1;
-        return;
+      } else {
+        row[tracking.snapshot] = link.snapshot_key || '';
+        row[tracking.reportMatchKey] = link.report_match_key || existingMatchKey;
+        row[tracking.reportUrl] = link.report_url || row[tracking.reportUrl] || '';
+        row[tracking.commenceTime] = link.commence_time_utc || row[tracking.commenceTime] || '';
+        if (String(link.snapshot_key || '').trim()) upgradedCanonical += 1;
       }
-      row[tracking.snapshot] = link.snapshot_key || '';
-      row[tracking.reportMatchKey] = link.report_match_key || '';
-      row[tracking.reportUrl] = link.report_url || '';
-      row[tracking.commenceTime] = link.commence_time_utc || '';
     }
     row[tracking.timePrecision] = row[tracking.selectedAt]
       ? 'EXACT_TIMESTAMP'
@@ -465,7 +495,7 @@ function recoverGuerraReportLinks_(spreadsheet, reportIndex) {
     sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, index + 1, rowCount, 1)
       .setValues(rows.map(row => [row[index]]));
   });
-  return {linked: linked, unmatched: unmatched};
+  return {linked: linked, upgradedCanonical: upgradedCanonical, unmatched: unmatched};
 }
 
 function challengerEdgePct_(value) {

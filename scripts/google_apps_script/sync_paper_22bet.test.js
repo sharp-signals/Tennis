@@ -229,6 +229,51 @@ test('Challenger linkage prefers an older canonical snapshot over a same-day fal
   assert.equal(match.report_match_key, 'canonical:older');
 });
 
+test('legacy Guerra linkage is promoted when the same match has a canonical report', () => {
+  const records = [
+    {
+      report_date: '2026-10-13', player_a: 'Jan Kumstat', player_b: 'Edas Butvilas',
+      report_match_key: 'fallback:same-day', snapshot_key: null,
+    },
+    {
+      report_date: '2026-10-11', player_a: 'Jan Kumstat', player_b: 'Edas Butvilas',
+      report_match_key: 'canonical:older', snapshot_key: 'mi2:canonical',
+      commence_time_utc: '2026-10-13T09:00:00Z',
+    },
+  ];
+  const match = context.findCanonicalPaperReportLink_(
+    '2026-10-13', 'J. Kumstat x E. Butvilas', 'fallback:same-day', records,
+  );
+  assert.equal(match.snapshot_key, 'mi2:canonical');
+  assert.equal(match.report_match_key, 'canonical:older');
+});
+
+test('canonical Guerra recovery fails closed when the match identity is ambiguous', () => {
+  const records = [
+    {
+      report_date: '2026-10-13', player_a: 'Alex Smith', player_b: 'Beta One',
+      report_match_key: 'canonical:one', snapshot_key: 'mi2:one',
+    },
+    {
+      report_date: '2026-10-13', player_a: 'Alex Smith', player_b: 'Beta Two',
+      report_match_key: 'canonical:two', snapshot_key: 'mi2:two',
+    },
+  ];
+  assert.equal(
+    context.findCanonicalPaperReportLink_('2026-10-13', 'Alex Smith x Beta', 'legacy:key', records),
+    null,
+  );
+});
+
+test('Guerra backfill revisits rows with a report key but no snapshot', () => {
+  const start = source.indexOf('function recoverGuerraReportLinks_');
+  const end = source.indexOf('function challengerEdgePct_', start);
+  const body = source.slice(start, end);
+  assert.match(body, /if \(!existingSnapshot\)/);
+  assert.match(body, /findCanonicalPaperReportLink_/);
+  assert.doesNotMatch(body, /if \(!String\(row\[tracking\.reportMatchKey\]/);
+});
+
 test('Challenger linkage fills snapshot, selected Fenzobot index and legacy EDGE safely', () => {
   const headers = [
     'Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und',
