@@ -120815,11 +120815,12 @@
       }
     ]
   },
-  "input_fingerprint_sha256": "b8dc74848ebdb590ea1eabfc4295b9feaec0741d1fc2046de7684bbd2a5621ee",
+  "input_fingerprint_sha256": "5fc4f524fad1f4114e201d17f089378da1c7e47fea467aa64fd294485f380fdd",
   "methodology": {
     "break_even": "theoretical 1 / average decimal odds per canonical snapshot band; not ROI, stake, vig or 22Bet execution",
     "canonical_snapshot_rule": "first_valid_pre_match_snapshot_per_event",
     "factor_attribution": "active directional factor contributions compared with settled canonical outcomes and no-vig two-way market expectation; descriptive audit only, not automatic model tuning",
+    "factor_coverage": "all canonical pre-match factor states split into ATP main tour, WTA and Challenger; descriptive availability diagnostics only, with no weight or decision changes",
     "fenzobot_index_learning": "settled canonical observations grouped by the selected side's 50–100 evidence-index band; descriptive only, not a probability or model tuning",
     "handicap_reference": "BO3 internal reference line; not a bookmaker handicap settlement",
     "historical_atp_source": "unavailable; ATP sheets use canonical Fenzobot snapshots only",
@@ -121410,11 +121411,11 @@
             "wins": 2
           },
           {
-            "average_odd": 2.162,
-            "break_even_pct": 46.3,
+            "average_odd": 2.163,
+            "break_even_pct": 46.2,
             "index_band": "80–89",
             "losses": 2,
-            "margin_vs_break_even_pp": 3.7,
+            "margin_vs_break_even_pp": 3.8,
             "matches": 4,
             "odds_band": "2.01–2.30",
             "win_pct": 50.0,
@@ -121443,11 +121444,11 @@
             "wins": 24
           },
           {
-            "average_odd": 1.249,
-            "break_even_pct": 80.1,
+            "average_odd": 1.25,
+            "break_even_pct": 80.0,
             "index_band": "90–100",
             "losses": 3,
-            "margin_vs_break_even_pp": 6.3,
+            "margin_vs_break_even_pp": 6.4,
             "matches": 22,
             "odds_band": "1.21–1.30",
             "win_pct": 86.4,
@@ -152671,6 +152672,2708 @@
         }
       ]
     },
+    "factor_coverage": {
+      "reasons": [
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 21.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 217,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 20.9,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 214,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 3.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 38,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 0.5,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "GLOBAL",
+          "snapshots": 5,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "fadiga",
+          "pct_of_factor_snapshots": 41.8,
+          "reason": "sem diferença nos jogos recentes",
+          "scope": "GLOBAL",
+          "snapshots": 427,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 21.1,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 216,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 2.7,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 28,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 0.1,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 1,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 58.9,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 602,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 18.6,
+          "reason": "amostra insuficiente (1 jogo)",
+          "scope": "GLOBAL",
+          "snapshots": 190,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 5.4,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 55,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h_piso",
+          "pct_of_factor_snapshots": 74.9,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 765,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "h2h_piso",
+          "pct_of_factor_snapshots": 2.6,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 27,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "historico_torneio",
+          "pct_of_factor_snapshots": 70.2,
+          "reason": "sem histórico suficiente no torneio (min. 2 edições cada)",
+          "scope": "GLOBAL",
+          "snapshots": 614,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "historico_torneio",
+          "pct_of_factor_snapshots": 5.9,
+          "reason": "abaixo do limiar (<8 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 52,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 14.5,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 148,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 10.1,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 103,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 0.8,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 8,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "lesao",
+          "pct_of_factor_snapshots": 98.5,
+          "reason": "nenhum em regresso claro (<60 dias parado)",
+          "scope": "GLOBAL",
+          "snapshots": 1007,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 20.9,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 214,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 9.6,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 98,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 1.3,
+          "reason": "diferença irrelevante",
+          "scope": "GLOBAL",
+          "snapshots": 13,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 0.3,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "GLOBAL",
+          "snapshots": 3,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 54.5,
+          "reason": "nenhum em transição de piso",
+          "scope": "GLOBAL",
+          "snapshots": 477,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 12.1,
+          "reason": "dados em falta num dos lados",
+          "scope": "GLOBAL",
+          "snapshots": 106,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 6.7,
+          "reason": "ambos em transição de piso",
+          "scope": "GLOBAL",
+          "snapshots": 59,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "nivel_adversario",
+          "pct_of_factor_snapshots": 57.0,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 511,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "nivel_adversario",
+          "pct_of_factor_snapshots": 4.7,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 42,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 21.1,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 216,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 5.5,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 56,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 0.5,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 5,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "pressao_ronda",
+          "pct_of_factor_snapshots": 93.9,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 841,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "pressao_ronda",
+          "pct_of_factor_snapshots": 0.9,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 8,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 34.8,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 356,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 13.4,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 137,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 0.1,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "GLOBAL",
+          "snapshots": 1,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 7.1,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 73,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 4.4,
+          "reason": "diferença irrelevante (posições e pontos próximos)",
+          "scope": "GLOBAL",
+          "snapshots": 45,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 0.1,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 1,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 29.5,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 301,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 9.7,
+          "reason": "abaixo do limiar (<15 p.p. de variação)",
+          "scope": "GLOBAL",
+          "snapshots": 99,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 0.2,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 2,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 21.4,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 219,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 7.0,
+          "reason": "diferença irrelevante",
+          "scope": "GLOBAL",
+          "snapshots": 72,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 0.5,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "GLOBAL",
+          "snapshots": 5,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 24.9,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 254,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 6.3,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 64,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 1.8,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 18,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 22.5,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 230,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 9.5,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 97,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 5.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 58,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_recente",
+          "pct_of_factor_snapshots": 52.3,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 535,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "servico_recente",
+          "pct_of_factor_snapshots": 10.7,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 109,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 17.9,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 183,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 12.0,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 123,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 1.4,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "GLOBAL",
+          "snapshots": 14,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 66.3,
+          "reason": "motivo não registado",
+          "scope": "GLOBAL",
+          "snapshots": 678,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 10.9,
+          "reason": "hard sem classificação factual de velocidade para este torneio",
+          "scope": "GLOBAL",
+          "snapshots": 111,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 5.9,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "GLOBAL",
+          "snapshots": 60,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 3.9,
+          "reason": "amostra insuficiente para o índice (mínimo n=10 por jogador)",
+          "scope": "GLOBAL",
+          "snapshots": 40,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 2.0,
+          "reason": "sem histórico hard comparável no perfil de velocidade",
+          "scope": "GLOBAL",
+          "snapshots": 20,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 1.0,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "GLOBAL",
+          "snapshots": 10,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 24.7,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 110,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 21.6,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 96,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 4.9,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 22,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "fadiga",
+          "pct_of_factor_snapshots": 36.6,
+          "reason": "sem diferença nos jogos recentes",
+          "scope": "ATP",
+          "snapshots": 163,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 23.4,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 104,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 0.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 1,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 51.9,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 231,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 19.3,
+          "reason": "amostra insuficiente (1 jogo)",
+          "scope": "ATP",
+          "snapshots": 86,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 8.5,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 38,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h_piso",
+          "pct_of_factor_snapshots": 69.0,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 307,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "h2h_piso",
+          "pct_of_factor_snapshots": 3.4,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 15,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "historico_torneio",
+          "pct_of_factor_snapshots": 61.8,
+          "reason": "sem histórico suficiente no torneio (min. 2 edições cada)",
+          "scope": "ATP",
+          "snapshots": 231,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "historico_torneio",
+          "pct_of_factor_snapshots": 6.4,
+          "reason": "abaixo do limiar (<8 p.p.)",
+          "scope": "ATP",
+          "snapshots": 24,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 10.6,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 47,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 10.1,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 45,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 0.2,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 1,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "lesao",
+          "pct_of_factor_snapshots": 98.9,
+          "reason": "nenhum em regresso claro (<60 dias parado)",
+          "scope": "ATP",
+          "snapshots": 440,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 10.6,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 47,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 10.3,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 46,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 0.9,
+          "reason": "diferença irrelevante",
+          "scope": "ATP",
+          "snapshots": 4,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 73.5,
+          "reason": "nenhum em transição de piso",
+          "scope": "ATP",
+          "snapshots": 275,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 7.2,
+          "reason": "dados em falta num dos lados",
+          "scope": "ATP",
+          "snapshots": 27,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 5.6,
+          "reason": "ambos em transição de piso",
+          "scope": "ATP",
+          "snapshots": 21,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "nivel_adversario",
+          "pct_of_factor_snapshots": 47.1,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 180,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "nivel_adversario",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 20,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 19.6,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 87,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 5.4,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 24,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 0.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 3,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "pressao_ronda",
+          "pct_of_factor_snapshots": 97.4,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 372,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "pressao_ronda",
+          "pct_of_factor_snapshots": 0.3,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 1,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 20.4,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 91,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 9.4,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 42,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 4.7,
+          "reason": "diferença irrelevante (posições e pontos próximos)",
+          "scope": "ATP",
+          "snapshots": 21,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 3.1,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 14,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 21.6,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 96,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 11.0,
+          "reason": "abaixo do limiar (<15 p.p. de variação)",
+          "scope": "ATP",
+          "snapshots": 49,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 22.5,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 100,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 7.0,
+          "reason": "diferença irrelevante",
+          "scope": "ATP",
+          "snapshots": 31,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 23.1,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 103,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 7.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 32,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 0.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 3,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 25.6,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 114,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 6.1,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 27,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 1.3,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 6,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "servico_recente",
+          "pct_of_factor_snapshots": 20.0,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 89,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_recente",
+          "pct_of_factor_snapshots": 10.1,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 45,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 16.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 72,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 11.0,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 49,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 0.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "ATP",
+          "snapshots": 3,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 72.6,
+          "reason": "motivo não registado",
+          "scope": "ATP",
+          "snapshots": 323,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 9.0,
+          "reason": "amostra insuficiente para o índice (mínimo n=10 por jogador)",
+          "scope": "ATP",
+          "snapshots": 40,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 4.5,
+          "reason": "sem histórico hard comparável no perfil de velocidade",
+          "scope": "ATP",
+          "snapshots": 20,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 1.8,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "ATP",
+          "snapshots": 8,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 0.9,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "ATP",
+          "snapshots": 4,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 23.5,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 104,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 20.5,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 91,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 2.5,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 11,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "fadiga",
+          "pct_of_factor_snapshots": 50.3,
+          "reason": "sem diferença nos jogos recentes",
+          "scope": "WTA",
+          "snapshots": 223,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 20.1,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 89,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 56.0,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 248,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 21.9,
+          "reason": "amostra insuficiente (1 jogo)",
+          "scope": "WTA",
+          "snapshots": 97,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 3.8,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 17,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h_piso",
+          "pct_of_factor_snapshots": 74.9,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 332,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "h2h_piso",
+          "pct_of_factor_snapshots": 2.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 12,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "historico_torneio",
+          "pct_of_factor_snapshots": 68.7,
+          "reason": "sem histórico suficiente no torneio (min. 2 edições cada)",
+          "scope": "WTA",
+          "snapshots": 252,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "historico_torneio",
+          "pct_of_factor_snapshots": 7.6,
+          "reason": "abaixo do limiar (<8 p.p.)",
+          "scope": "WTA",
+          "snapshots": 28,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 11.7,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 52,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 11.1,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 49,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 0.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 3,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "lesao",
+          "pct_of_factor_snapshots": 98.0,
+          "reason": "nenhum em regresso claro (<60 dias parado)",
+          "scope": "WTA",
+          "snapshots": 434,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 27.1,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 120,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 9.9,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 44,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 0.9,
+          "reason": "diferença irrelevante",
+          "scope": "WTA",
+          "snapshots": 4,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 39.8,
+          "reason": "nenhum em transição de piso",
+          "scope": "WTA",
+          "snapshots": 146,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 9.3,
+          "reason": "dados em falta num dos lados",
+          "scope": "WTA",
+          "snapshots": 34,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 8.4,
+          "reason": "ambos em transição de piso",
+          "scope": "WTA",
+          "snapshots": 31,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "nivel_adversario",
+          "pct_of_factor_snapshots": 52.1,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 198,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "nivel_adversario",
+          "pct_of_factor_snapshots": 5.8,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 22,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 20.3,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 90,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 23,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "pressao_ronda",
+          "pct_of_factor_snapshots": 100.0,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 380,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 44.2,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 196,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 11.3,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 50,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 7.2,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 32,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "diferença irrelevante (posições e pontos próximos)",
+          "scope": "WTA",
+          "snapshots": 23,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 29.1,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 129,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 9.9,
+          "reason": "abaixo do limiar (<15 p.p. de variação)",
+          "scope": "WTA",
+          "snapshots": 44,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 0.5,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 2,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 19.9,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 88,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 7.9,
+          "reason": "diferença irrelevante",
+          "scope": "WTA",
+          "snapshots": 35,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 20.1,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 89,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 6.3,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 28,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 1.8,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 8,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 20.3,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 90,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 10.4,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 46,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 7.0,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 31,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_recente",
+          "pct_of_factor_snapshots": 100.0,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 443,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 17.4,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 77,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 9.0,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 40,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 2.0,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "WTA",
+          "snapshots": 9,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 68.8,
+          "reason": "motivo não registado",
+          "scope": "WTA",
+          "snapshots": 305,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 17.8,
+          "reason": "hard sem classificação factual de velocidade para este torneio",
+          "scope": "WTA",
+          "snapshots": 79,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 1.4,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "WTA",
+          "snapshots": 6,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 22.4,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 30,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 3.7,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "CHALLENGER",
+          "snapshots": 5,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "comeback_set1",
+          "pct_of_factor_snapshots": 3.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 5,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "fadiga",
+          "pct_of_factor_snapshots": 30.6,
+          "reason": "sem diferença nos jogos recentes",
+          "scope": "CHALLENGER",
+          "snapshots": 41,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 20.9,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 28,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "forma_recente",
+          "pct_of_factor_snapshots": 17.2,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 23,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 91.8,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 123,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "h2h",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "amostra insuficiente (1 jogo)",
+          "scope": "CHALLENGER",
+          "snapshots": 7,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "h2h_piso",
+          "pct_of_factor_snapshots": 94.0,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 126,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "historico_torneio",
+          "pct_of_factor_snapshots": 97.8,
+          "reason": "sem histórico suficiente no torneio (min. 2 edições cada)",
+          "scope": "CHALLENGER",
+          "snapshots": 131,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 38.1,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 51,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 7,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "indoor_outdoor",
+          "pct_of_factor_snapshots": 3.0,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 4,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "lesao",
+          "pct_of_factor_snapshots": 99.3,
+          "reason": "nenhum em regresso claro (<60 dias parado)",
+          "scope": "CHALLENGER",
+          "snapshots": 133,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 35.1,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 47,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 6.0,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 8,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 3.7,
+          "reason": "diferença irrelevante",
+          "scope": "CHALLENGER",
+          "snapshots": 5,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "matchup_maos",
+          "pct_of_factor_snapshots": 2.2,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "CHALLENGER",
+          "snapshots": 3,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 41.8,
+          "reason": "nenhum em transição de piso",
+          "scope": "CHALLENGER",
+          "snapshots": 56,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 33.6,
+          "reason": "dados em falta num dos lados",
+          "scope": "CHALLENGER",
+          "snapshots": 45,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "mudanca_piso",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "ambos em transição de piso",
+          "scope": "CHALLENGER",
+          "snapshots": 7,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "nivel_adversario",
+          "pct_of_factor_snapshots": 99.3,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 133,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 29.1,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 39,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 6.7,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 9,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "piso",
+          "pct_of_factor_snapshots": 1.5,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 2,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "pressao_ronda",
+          "pct_of_factor_snapshots": 66.4,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 89,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "pressao_ronda",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 7,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 51.5,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 69,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 33.6,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 45,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "qualidade_vitorias",
+          "pct_of_factor_snapshots": 0.7,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "CHALLENGER",
+          "snapshots": 1,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 20.1,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 27,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 0.7,
+          "reason": "diferença irrelevante (posições e pontos próximos)",
+          "scope": "CHALLENGER",
+          "snapshots": 1,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking",
+          "pct_of_factor_snapshots": 0.7,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 1,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 56.7,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 76,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "ranking_evolucao",
+          "pct_of_factor_snapshots": 4.5,
+          "reason": "abaixo do limiar (<15 p.p. de variação)",
+          "scope": "CHALLENGER",
+          "snapshots": 6,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 23.1,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 31,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 4.5,
+          "reason": "diferença irrelevante",
+          "scope": "CHALLENGER",
+          "snapshots": 6,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "recuperacao_sets",
+          "pct_of_factor_snapshots": 3.7,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "CHALLENGER",
+          "snapshots": 5,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 46.3,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 62,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 5.2,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 7,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "sazonal",
+          "pct_of_factor_snapshots": 3.0,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 4,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 33.6,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 45,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "servico_carreira",
+          "pct_of_factor_snapshots": 19.4,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 26,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "servico_recente",
+          "pct_of_factor_snapshots": 35.1,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 47,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "servico_recente",
+          "pct_of_factor_snapshots": 14.9,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 20,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 42.5,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 57,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 8.2,
+          "reason": "abaixo do limiar (<3 p.p.)",
+          "scope": "CHALLENGER",
+          "snapshots": 11,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "tiebreak",
+          "pct_of_factor_snapshots": 1.5,
+          "reason": "sem diferença material entre jogadores",
+          "scope": "CHALLENGER",
+          "snapshots": 2,
+          "state": "DISPONIVEL_SEM_IMPACTO"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 38.8,
+          "reason": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+          "scope": "CHALLENGER",
+          "snapshots": 52,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 37.3,
+          "reason": "motivo não registado",
+          "scope": "CHALLENGER",
+          "snapshots": 50,
+          "state": "DADO_INDISPONIVEL"
+        },
+        {
+          "factor": "velocidade_piso",
+          "pct_of_factor_snapshots": 23.9,
+          "reason": "hard sem classificação factual de velocidade para este torneio",
+          "scope": "CHALLENGER",
+          "snapshots": 32,
+          "state": "DADO_INDISPONIVEL"
+        }
+      ],
+      "summary": [
+        {
+          "active_pct": 53.6,
+          "active_snapshots": 548,
+          "availability_pct": 78.6,
+          "available_inactive_snapshots": 255,
+          "available_snapshots": 803,
+          "factor": "comeback_set1",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 219
+        },
+        {
+          "active_pct": 58.2,
+          "active_snapshots": 595,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 427,
+          "available_snapshots": 1022,
+          "factor": "fadiga",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 76.0,
+          "active_snapshots": 777,
+          "availability_pct": 97.3,
+          "available_inactive_snapshots": 217,
+          "available_snapshots": 994,
+          "factor": "forma_recente",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 28
+        },
+        {
+          "active_pct": 17.1,
+          "active_snapshots": 175,
+          "availability_pct": 41.1,
+          "available_inactive_snapshots": 245,
+          "available_snapshots": 420,
+          "factor": "h2h",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 602
+        },
+        {
+          "active_pct": 22.5,
+          "active_snapshots": 230,
+          "availability_pct": 25.1,
+          "available_inactive_snapshots": 27,
+          "available_snapshots": 257,
+          "factor": "h2h_piso",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 765
+        },
+        {
+          "active_pct": 23.9,
+          "active_snapshots": 209,
+          "availability_pct": 29.8,
+          "available_inactive_snapshots": 52,
+          "available_snapshots": 261,
+          "factor": "historico_torneio",
+          "scope": "GLOBAL",
+          "seen_snapshots": 875,
+          "unavailable_snapshots": 614
+        },
+        {
+          "active_pct": 74.7,
+          "active_snapshots": 763,
+          "availability_pct": 85.5,
+          "available_inactive_snapshots": 111,
+          "available_snapshots": 874,
+          "factor": "indoor_outdoor",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 148
+        },
+        {
+          "active_pct": 1.5,
+          "active_snapshots": 15,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 1007,
+          "available_snapshots": 1022,
+          "factor": "lesao",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 67.9,
+          "active_snapshots": 694,
+          "availability_pct": 78.8,
+          "available_inactive_snapshots": 111,
+          "available_snapshots": 805,
+          "factor": "matchup_maos",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 217
+        },
+        {
+          "active_pct": 26.6,
+          "active_snapshots": 233,
+          "availability_pct": 33.4,
+          "available_inactive_snapshots": 59,
+          "available_snapshots": 292,
+          "factor": "mudanca_piso",
+          "scope": "GLOBAL",
+          "seen_snapshots": 875,
+          "unavailable_snapshots": 583
+        },
+        {
+          "active_pct": 38.3,
+          "active_snapshots": 343,
+          "availability_pct": 43.0,
+          "available_inactive_snapshots": 42,
+          "available_snapshots": 385,
+          "factor": "nivel_adversario",
+          "scope": "GLOBAL",
+          "seen_snapshots": 896,
+          "unavailable_snapshots": 511
+        },
+        {
+          "active_pct": 72.9,
+          "active_snapshots": 745,
+          "availability_pct": 94.5,
+          "available_inactive_snapshots": 221,
+          "available_snapshots": 966,
+          "factor": "piso",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 56
+        },
+        {
+          "active_pct": 5.2,
+          "active_snapshots": 47,
+          "availability_pct": 6.1,
+          "available_inactive_snapshots": 8,
+          "available_snapshots": 55,
+          "factor": "pressao_ronda",
+          "scope": "GLOBAL",
+          "seen_snapshots": 896,
+          "unavailable_snapshots": 841
+        },
+        {
+          "active_pct": 51.7,
+          "active_snapshots": 528,
+          "availability_pct": 86.5,
+          "available_inactive_snapshots": 356,
+          "available_snapshots": 884,
+          "factor": "qualidade_vitorias",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 138
+        },
+        {
+          "active_pct": 88.4,
+          "active_snapshots": 903,
+          "availability_pct": 92.9,
+          "available_inactive_snapshots": 46,
+          "available_snapshots": 949,
+          "factor": "ranking",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 73
+        },
+        {
+          "active_pct": 60.7,
+          "active_snapshots": 620,
+          "availability_pct": 70.5,
+          "available_inactive_snapshots": 101,
+          "available_snapshots": 721,
+          "factor": "ranking_evolucao",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 301
+        },
+        {
+          "active_pct": 71.0,
+          "active_snapshots": 726,
+          "availability_pct": 99.5,
+          "available_inactive_snapshots": 291,
+          "available_snapshots": 1017,
+          "factor": "recuperacao_sets",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 5
+        },
+        {
+          "active_pct": 67.1,
+          "active_snapshots": 686,
+          "availability_pct": 75.1,
+          "available_inactive_snapshots": 82,
+          "available_snapshots": 768,
+          "factor": "sazonal",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 254
+        },
+        {
+          "active_pct": 62.3,
+          "active_snapshots": 637,
+          "availability_pct": 90.5,
+          "available_inactive_snapshots": 288,
+          "available_snapshots": 925,
+          "factor": "servico_carreira",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 97
+        },
+        {
+          "active_pct": 37.0,
+          "active_snapshots": 378,
+          "availability_pct": 47.7,
+          "available_inactive_snapshots": 109,
+          "available_snapshots": 487,
+          "factor": "servico_recente",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 535
+        },
+        {
+          "active_pct": 68.7,
+          "active_snapshots": 702,
+          "availability_pct": 82.1,
+          "available_inactive_snapshots": 137,
+          "available_snapshots": 839,
+          "factor": "tiebreak",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 183
+        },
+        {
+          "active_pct": 10.1,
+          "active_snapshots": 103,
+          "availability_pct": 11.1,
+          "available_inactive_snapshots": 10,
+          "available_snapshots": 113,
+          "factor": "velocidade_piso",
+          "scope": "GLOBAL",
+          "seen_snapshots": 1022,
+          "unavailable_snapshots": 909
+        },
+        {
+          "active_pct": 48.8,
+          "active_snapshots": 217,
+          "availability_pct": 75.3,
+          "available_inactive_snapshots": 118,
+          "available_snapshots": 335,
+          "factor": "comeback_set1",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 110
+        },
+        {
+          "active_pct": 63.4,
+          "active_snapshots": 282,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 163,
+          "available_snapshots": 445,
+          "factor": "fadiga",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 76.4,
+          "active_snapshots": 340,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 105,
+          "available_snapshots": 445,
+          "factor": "forma_recente",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 20.2,
+          "active_snapshots": 90,
+          "availability_pct": 48.1,
+          "available_inactive_snapshots": 124,
+          "available_snapshots": 214,
+          "factor": "h2h",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 231
+        },
+        {
+          "active_pct": 27.6,
+          "active_snapshots": 123,
+          "availability_pct": 31.0,
+          "available_inactive_snapshots": 15,
+          "available_snapshots": 138,
+          "factor": "h2h_piso",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 307
+        },
+        {
+          "active_pct": 31.8,
+          "active_snapshots": 119,
+          "availability_pct": 38.2,
+          "available_inactive_snapshots": 24,
+          "available_snapshots": 143,
+          "factor": "historico_torneio",
+          "scope": "ATP",
+          "seen_snapshots": 374,
+          "unavailable_snapshots": 231
+        },
+        {
+          "active_pct": 79.1,
+          "active_snapshots": 352,
+          "availability_pct": 89.9,
+          "available_inactive_snapshots": 48,
+          "available_snapshots": 400,
+          "factor": "indoor_outdoor",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 45
+        },
+        {
+          "active_pct": 1.1,
+          "active_snapshots": 5,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 440,
+          "available_snapshots": 445,
+          "factor": "lesao",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 78.2,
+          "active_snapshots": 348,
+          "availability_pct": 89.4,
+          "available_inactive_snapshots": 50,
+          "available_snapshots": 398,
+          "factor": "matchup_maos",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 47
+        },
+        {
+          "active_pct": 13.6,
+          "active_snapshots": 51,
+          "availability_pct": 19.3,
+          "available_inactive_snapshots": 21,
+          "available_snapshots": 72,
+          "factor": "mudanca_piso",
+          "scope": "ATP",
+          "seen_snapshots": 374,
+          "unavailable_snapshots": 302
+        },
+        {
+          "active_pct": 47.6,
+          "active_snapshots": 182,
+          "availability_pct": 52.9,
+          "available_inactive_snapshots": 20,
+          "available_snapshots": 202,
+          "factor": "nivel_adversario",
+          "scope": "ATP",
+          "seen_snapshots": 382,
+          "unavailable_snapshots": 180
+        },
+        {
+          "active_pct": 74.4,
+          "active_snapshots": 331,
+          "availability_pct": 94.6,
+          "available_inactive_snapshots": 90,
+          "available_snapshots": 421,
+          "factor": "piso",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 24
+        },
+        {
+          "active_pct": 2.4,
+          "active_snapshots": 9,
+          "availability_pct": 2.6,
+          "available_inactive_snapshots": 1,
+          "available_snapshots": 10,
+          "factor": "pressao_ronda",
+          "scope": "ATP",
+          "seen_snapshots": 382,
+          "unavailable_snapshots": 372
+        },
+        {
+          "active_pct": 70.1,
+          "active_snapshots": 312,
+          "availability_pct": 90.6,
+          "available_inactive_snapshots": 91,
+          "available_snapshots": 403,
+          "factor": "qualidade_vitorias",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 42
+        },
+        {
+          "active_pct": 92.1,
+          "active_snapshots": 410,
+          "availability_pct": 96.9,
+          "available_inactive_snapshots": 21,
+          "available_snapshots": 431,
+          "factor": "ranking",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 14
+        },
+        {
+          "active_pct": 67.4,
+          "active_snapshots": 300,
+          "availability_pct": 78.4,
+          "available_inactive_snapshots": 49,
+          "available_snapshots": 349,
+          "factor": "ranking_evolucao",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 96
+        },
+        {
+          "active_pct": 70.6,
+          "active_snapshots": 314,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 131,
+          "available_snapshots": 445,
+          "factor": "recuperacao_sets",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 69.0,
+          "active_snapshots": 307,
+          "availability_pct": 76.9,
+          "available_inactive_snapshots": 35,
+          "available_snapshots": 342,
+          "factor": "sazonal",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 103
+        },
+        {
+          "active_pct": 67.0,
+          "active_snapshots": 298,
+          "availability_pct": 98.7,
+          "available_inactive_snapshots": 141,
+          "available_snapshots": 439,
+          "factor": "servico_carreira",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 6
+        },
+        {
+          "active_pct": 69.9,
+          "active_snapshots": 311,
+          "availability_pct": 89.9,
+          "available_inactive_snapshots": 89,
+          "available_snapshots": 400,
+          "factor": "servico_recente",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 45
+        },
+        {
+          "active_pct": 72.1,
+          "active_snapshots": 321,
+          "availability_pct": 89.0,
+          "available_inactive_snapshots": 75,
+          "available_snapshots": 396,
+          "factor": "tiebreak",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 49
+        },
+        {
+          "active_pct": 11.2,
+          "active_snapshots": 50,
+          "availability_pct": 12.1,
+          "available_inactive_snapshots": 4,
+          "available_snapshots": 54,
+          "factor": "velocidade_piso",
+          "scope": "ATP",
+          "seen_snapshots": 445,
+          "unavailable_snapshots": 391
+        },
+        {
+          "active_pct": 53.5,
+          "active_snapshots": 237,
+          "availability_pct": 76.5,
+          "available_inactive_snapshots": 102,
+          "available_snapshots": 339,
+          "factor": "comeback_set1",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 104
+        },
+        {
+          "active_pct": 49.7,
+          "active_snapshots": 220,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 223,
+          "available_snapshots": 443,
+          "factor": "fadiga",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 79.9,
+          "active_snapshots": 354,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 89,
+          "available_snapshots": 443,
+          "factor": "forma_recente",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 18.3,
+          "active_snapshots": 81,
+          "availability_pct": 44.0,
+          "available_inactive_snapshots": 114,
+          "available_snapshots": 195,
+          "factor": "h2h",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 248
+        },
+        {
+          "active_pct": 22.3,
+          "active_snapshots": 99,
+          "availability_pct": 25.1,
+          "available_inactive_snapshots": 12,
+          "available_snapshots": 111,
+          "factor": "h2h_piso",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 332
+        },
+        {
+          "active_pct": 23.7,
+          "active_snapshots": 87,
+          "availability_pct": 31.3,
+          "available_inactive_snapshots": 28,
+          "available_snapshots": 115,
+          "factor": "historico_torneio",
+          "scope": "WTA",
+          "seen_snapshots": 367,
+          "unavailable_snapshots": 252
+        },
+        {
+          "active_pct": 76.5,
+          "active_snapshots": 339,
+          "availability_pct": 88.3,
+          "available_inactive_snapshots": 52,
+          "available_snapshots": 391,
+          "factor": "indoor_outdoor",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 52
+        },
+        {
+          "active_pct": 2.0,
+          "active_snapshots": 9,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 434,
+          "available_snapshots": 443,
+          "factor": "lesao",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 62.1,
+          "active_snapshots": 275,
+          "availability_pct": 72.9,
+          "available_inactive_snapshots": 48,
+          "available_snapshots": 323,
+          "factor": "matchup_maos",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 120
+        },
+        {
+          "active_pct": 42.5,
+          "active_snapshots": 156,
+          "availability_pct": 51.0,
+          "available_inactive_snapshots": 31,
+          "available_snapshots": 187,
+          "factor": "mudanca_piso",
+          "scope": "WTA",
+          "seen_snapshots": 367,
+          "unavailable_snapshots": 180
+        },
+        {
+          "active_pct": 42.1,
+          "active_snapshots": 160,
+          "availability_pct": 47.9,
+          "available_inactive_snapshots": 22,
+          "available_snapshots": 182,
+          "factor": "nivel_adversario",
+          "scope": "WTA",
+          "seen_snapshots": 380,
+          "unavailable_snapshots": 198
+        },
+        {
+          "active_pct": 74.5,
+          "active_snapshots": 330,
+          "availability_pct": 94.8,
+          "available_inactive_snapshots": 90,
+          "available_snapshots": 420,
+          "factor": "piso",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 23
+        },
+        {
+          "active_pct": 0.0,
+          "active_snapshots": 0,
+          "availability_pct": 0.0,
+          "available_inactive_snapshots": 0,
+          "available_snapshots": 0,
+          "factor": "pressao_ronda",
+          "scope": "WTA",
+          "seen_snapshots": 380,
+          "unavailable_snapshots": 380
+        },
+        {
+          "active_pct": 44.5,
+          "active_snapshots": 197,
+          "availability_pct": 88.7,
+          "available_inactive_snapshots": 196,
+          "available_snapshots": 393,
+          "factor": "qualidade_vitorias",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 50
+        },
+        {
+          "active_pct": 87.6,
+          "active_snapshots": 388,
+          "availability_pct": 92.8,
+          "available_inactive_snapshots": 23,
+          "available_snapshots": 411,
+          "factor": "ranking",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 32
+        },
+        {
+          "active_pct": 60.5,
+          "active_snapshots": 268,
+          "availability_pct": 70.9,
+          "available_inactive_snapshots": 46,
+          "available_snapshots": 314,
+          "factor": "ranking_evolucao",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 129
+        },
+        {
+          "active_pct": 72.2,
+          "active_snapshots": 320,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 123,
+          "available_snapshots": 443,
+          "factor": "recuperacao_sets",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 71.8,
+          "active_snapshots": 318,
+          "availability_pct": 79.9,
+          "available_inactive_snapshots": 36,
+          "available_snapshots": 354,
+          "factor": "sazonal",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 89
+        },
+        {
+          "active_pct": 62.3,
+          "active_snapshots": 276,
+          "availability_pct": 89.6,
+          "available_inactive_snapshots": 121,
+          "available_snapshots": 397,
+          "factor": "servico_carreira",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 46
+        },
+        {
+          "active_pct": 0.0,
+          "active_snapshots": 0,
+          "availability_pct": 0.0,
+          "available_inactive_snapshots": 0,
+          "available_snapshots": 0,
+          "factor": "servico_recente",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 443
+        },
+        {
+          "active_pct": 71.6,
+          "active_snapshots": 317,
+          "availability_pct": 82.6,
+          "available_inactive_snapshots": 49,
+          "available_snapshots": 366,
+          "factor": "tiebreak",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 77
+        },
+        {
+          "active_pct": 12.0,
+          "active_snapshots": 53,
+          "availability_pct": 13.3,
+          "available_inactive_snapshots": 6,
+          "available_snapshots": 59,
+          "factor": "velocidade_piso",
+          "scope": "WTA",
+          "seen_snapshots": 443,
+          "unavailable_snapshots": 384
+        },
+        {
+          "active_pct": 70.1,
+          "active_snapshots": 94,
+          "availability_pct": 96.3,
+          "available_inactive_snapshots": 35,
+          "available_snapshots": 129,
+          "factor": "comeback_set1",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 5
+        },
+        {
+          "active_pct": 69.4,
+          "active_snapshots": 93,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 41,
+          "available_snapshots": 134,
+          "factor": "fadiga",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 61.9,
+          "active_snapshots": 83,
+          "availability_pct": 79.1,
+          "available_inactive_snapshots": 23,
+          "available_snapshots": 106,
+          "factor": "forma_recente",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 28
+        },
+        {
+          "active_pct": 3.0,
+          "active_snapshots": 4,
+          "availability_pct": 8.2,
+          "available_inactive_snapshots": 7,
+          "available_snapshots": 11,
+          "factor": "h2h",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 123
+        },
+        {
+          "active_pct": 6.0,
+          "active_snapshots": 8,
+          "availability_pct": 6.0,
+          "available_inactive_snapshots": 0,
+          "available_snapshots": 8,
+          "factor": "h2h_piso",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 126
+        },
+        {
+          "active_pct": 2.2,
+          "active_snapshots": 3,
+          "availability_pct": 2.2,
+          "available_inactive_snapshots": 0,
+          "available_snapshots": 3,
+          "factor": "historico_torneio",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 131
+        },
+        {
+          "active_pct": 53.7,
+          "active_snapshots": 72,
+          "availability_pct": 61.9,
+          "available_inactive_snapshots": 11,
+          "available_snapshots": 83,
+          "factor": "indoor_outdoor",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 51
+        },
+        {
+          "active_pct": 0.7,
+          "active_snapshots": 1,
+          "availability_pct": 100.0,
+          "available_inactive_snapshots": 133,
+          "available_snapshots": 134,
+          "factor": "lesao",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 0
+        },
+        {
+          "active_pct": 53.0,
+          "active_snapshots": 71,
+          "availability_pct": 62.7,
+          "available_inactive_snapshots": 13,
+          "available_snapshots": 84,
+          "factor": "matchup_maos",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 50
+        },
+        {
+          "active_pct": 19.4,
+          "active_snapshots": 26,
+          "availability_pct": 24.6,
+          "available_inactive_snapshots": 7,
+          "available_snapshots": 33,
+          "factor": "mudanca_piso",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 101
+        },
+        {
+          "active_pct": 0.7,
+          "active_snapshots": 1,
+          "availability_pct": 0.7,
+          "available_inactive_snapshots": 0,
+          "available_snapshots": 1,
+          "factor": "nivel_adversario",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 133
+        },
+        {
+          "active_pct": 62.7,
+          "active_snapshots": 84,
+          "availability_pct": 93.3,
+          "available_inactive_snapshots": 41,
+          "available_snapshots": 125,
+          "factor": "piso",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 9
+        },
+        {
+          "active_pct": 28.4,
+          "active_snapshots": 38,
+          "availability_pct": 33.6,
+          "available_inactive_snapshots": 7,
+          "available_snapshots": 45,
+          "factor": "pressao_ronda",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 89
+        },
+        {
+          "active_pct": 14.2,
+          "active_snapshots": 19,
+          "availability_pct": 65.7,
+          "available_inactive_snapshots": 69,
+          "available_snapshots": 88,
+          "factor": "qualidade_vitorias",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 46
+        },
+        {
+          "active_pct": 78.4,
+          "active_snapshots": 105,
+          "availability_pct": 79.9,
+          "available_inactive_snapshots": 2,
+          "available_snapshots": 107,
+          "factor": "ranking",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 27
+        },
+        {
+          "active_pct": 38.8,
+          "active_snapshots": 52,
+          "availability_pct": 43.3,
+          "available_inactive_snapshots": 6,
+          "available_snapshots": 58,
+          "factor": "ranking_evolucao",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 76
+        },
+        {
+          "active_pct": 68.7,
+          "active_snapshots": 92,
+          "availability_pct": 96.3,
+          "available_inactive_snapshots": 37,
+          "available_snapshots": 129,
+          "factor": "recuperacao_sets",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 5
+        },
+        {
+          "active_pct": 45.5,
+          "active_snapshots": 61,
+          "availability_pct": 53.7,
+          "available_inactive_snapshots": 11,
+          "available_snapshots": 72,
+          "factor": "sazonal",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 62
+        },
+        {
+          "active_pct": 47.0,
+          "active_snapshots": 63,
+          "availability_pct": 66.4,
+          "available_inactive_snapshots": 26,
+          "available_snapshots": 89,
+          "factor": "servico_carreira",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 45
+        },
+        {
+          "active_pct": 50.0,
+          "active_snapshots": 67,
+          "availability_pct": 64.9,
+          "available_inactive_snapshots": 20,
+          "available_snapshots": 87,
+          "factor": "servico_recente",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 47
+        },
+        {
+          "active_pct": 47.8,
+          "active_snapshots": 64,
+          "availability_pct": 57.5,
+          "available_inactive_snapshots": 13,
+          "available_snapshots": 77,
+          "factor": "tiebreak",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 57
+        },
+        {
+          "active_pct": 0.0,
+          "active_snapshots": 0,
+          "availability_pct": 0.0,
+          "available_inactive_snapshots": 0,
+          "available_snapshots": 0,
+          "factor": "velocidade_piso",
+          "scope": "CHALLENGER",
+          "seen_snapshots": 134,
+          "unavailable_snapshots": 134
+        }
+      ]
+    },
     "fenzobot_band_summary": [
       {
         "average_odd": 1.118,
@@ -152763,7 +155466,7 @@
         "wins": 16
       },
       {
-        "average_odd": 2.995,
+        "average_odd": 2.996,
         "break_even_pct": 33.4,
         "losses": 13,
         "margin_vs_break_even_pp": 1.6,
@@ -193056,7 +195759,7 @@
       "report_file": "zsombor-piros-vs-max-alcala-gurri-2026-08-25.html"
     }
   ],
-  "schema_version": 6,
+  "schema_version": 7,
   "summary": {
     "canonical_snapshots": 1022,
     "duplicate_snapshots_excluded": 0,

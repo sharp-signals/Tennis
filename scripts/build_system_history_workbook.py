@@ -183,6 +183,43 @@ def _write_factor_attribution_sheets(wb: Workbook, attribution: Mapping[str, Any
     _widths(factor_weights, [14, 24, 18, 12, 12, 12, 14, 22, 18, 20, 24])
 
 
+def _write_factor_coverage_sheets(wb: Workbook, coverage: Mapping[str, Any]) -> None:
+    """Expose collection gaps separately from factor performance."""
+    for name in ("Cobertura — fatores", "Cobertura — motivos"):
+        if name in wb.sheetnames:
+            del wb[name]
+
+    factors = wb.create_sheet("Cobertura — fatores")
+    _title(
+        factors,
+        "Cobertura dos fatores Fenzobot",
+        "Todos os snapshots canónicos, incluindo jogos ainda não liquidados. ATP exclui Challenger neste painel. Disponibilidade e aplicação ao índice são estados diferentes; este diagnóstico não altera pesos.",
+    )
+    last = _write_rows(
+        factors, 5,
+        ["Universo", "Fator", "Snapshots com estado", "Disponível", "Indisponível", "Disponível sem impacto", "Aplicado", "% disponível", "% aplicado"],
+        coverage.get("summary") or [],
+        ["scope", "factor", "seen_snapshots", "available_snapshots", "unavailable_snapshots", "available_inactive_snapshots", "active_snapshots", "availability_pct", "active_pct"],
+    )
+    _percent_columns(factors, 6, last, [8, 9])
+    _widths(factors, [16, 26, 22, 14, 16, 24, 14, 16, 16])
+
+    reasons = wb.create_sheet("Cobertura — motivos")
+    _title(
+        reasons,
+        "Motivos de ausência ou não aplicação",
+        "Mostra a razão guardada no snapshot para dados indisponíveis ou fatores disponíveis que não tiveram impacto. 'Motivo não registado' identifica uma lacuna de observabilidade a corrigir.",
+    )
+    last = _write_rows(
+        reasons, 5,
+        ["Universo", "Fator", "Estado", "Motivo", "Snapshots", "% dos snapshots do fator"],
+        coverage.get("reasons") or [],
+        ["scope", "factor", "state", "reason", "snapshots", "pct_of_factor_snapshots"],
+    )
+    _percent_columns(reasons, 6, last, [6])
+    _widths(reasons, [16, 26, 26, 68, 14, 24])
+
+
 def _write_guerra_audit_sheets(wb: Workbook, manual_paper: Mapping[str, Any]) -> None:
     """Append the private-Sheet-derived aggregate audit; never individual rows."""
     for name in ("GUERRA — fatores", "GUERRA — segmentos", "GUERRA — qualidade"):
@@ -321,6 +358,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
             _widths(sheet, widths)
 
     _write_factor_attribution_sheets(wb, payload["operational"].get("factor_attribution") or {})
+    _write_factor_coverage_sheets(wb, payload["operational"].get("factor_coverage") or {})
 
     rankings = wb.create_sheet("Rankings")
     _write_rankings(rankings, payload["rankings"])
@@ -432,6 +470,10 @@ def _prospective_workbook(baseline: bytes, payload: Mapping[str, Any]) -> Workbo
         workbook,
         (payload.get("operational") or {}).get("factor_attribution") or {},
     )
+    _write_factor_coverage_sheets(
+        workbook,
+        (payload.get("operational") or {}).get("factor_coverage") or {},
+    )
     _write_guerra_audit_sheets(workbook, _read_json(MANUAL_PAPER_JSON))
     return workbook
 
@@ -477,6 +519,7 @@ def main() -> int:
             # em T0.
             operational_current={
                 "factor_attribution": (payload.get("operational") or {}).get("factor_attribution") or {},
+                "factor_coverage": (payload.get("operational") or {}).get("factor_coverage") or {},
             },
             root=ROOT,
         )

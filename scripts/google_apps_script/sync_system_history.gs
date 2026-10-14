@@ -22,7 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
-  projectionSchemaVersion: '2026-10-13-weight-decision-panel-v2',
+  projectionSchemaVersion: '2026-10-14-factor-coverage-diagnostics-v1',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 
@@ -55,6 +55,8 @@ function syncSystemHistoryToSheet() {
   const attributionSheetsMissing = [
     'Atribuição — fatores',
     'Atribuição — força do peso',
+    'Cobertura — fatores',
+    'Cobertura — motivos',
     'GUERRA — fatores',
     'GUERRA — segmentos',
     'GUERRA — qualidade',
@@ -79,6 +81,7 @@ function syncSystemHistoryToSheet() {
   // estudar todos os snapshots canónicos sem recalcular as métricas legadas.
   const currentOperational = continuity && continuity.operational_current || (payload.operational || {});
   writeFactorAttributionSheets_(spreadsheet, currentOperational.factor_attribution || {});
+  writeFactorCoverageSheets_(spreadsheet, currentOperational.factor_coverage || {});
   writeChallengerManualPaperSheet_(spreadsheet, manualPaper || {});
   writeGuerraAuditSheets_(spreadsheet, manualPaper || {});
   writeWeightDecisionPanel_(spreadsheet, currentOperational.factor_attribution || {}, manualPaper || {});
@@ -602,6 +605,29 @@ function writeFactorAttributionSheets_(spreadsheet, attribution) {
     byWeight,
     ['scope', 'factor', 'weight_band', 'matches', 'wins', 'losses', 'hit_pct', 'average_effective_weight', 'average_odd', 'market_expected_pct', 'market_residual_pp'],
   ), { headerRow: 1, widths: [14, 24, 18, 12, 12, 12, 14, 22, 18, 20, 24], percentageColumns: [7, 10], marginColumn: 11 });
+}
+
+function writeFactorCoverageSheets_(spreadsheet, coverage) {
+  const summary = coverage.summary || [];
+  const reasons = coverage.reasons || [];
+  upsertSystemSheet_(spreadsheet, 'Cobertura — fatores', rowsWithHeaders_(
+    ['Universo', 'Fator', 'Snapshots com estado', 'Disponível', 'Indisponível', 'Disponível sem impacto', 'Aplicado', '% disponível', '% aplicado'],
+    summary,
+    ['scope', 'factor', 'seen_snapshots', 'available_snapshots', 'unavailable_snapshots', 'available_inactive_snapshots', 'active_snapshots', 'availability_pct', 'active_pct'],
+  ), {
+    headerRow: 1,
+    widths: [16, 26, 22, 14, 16, 24, 14, 16, 16],
+    percentageColumns: [8, 9],
+  });
+  upsertSystemSheet_(spreadsheet, 'Cobertura — motivos', rowsWithHeaders_(
+    ['Universo', 'Fator', 'Estado', 'Motivo', 'Snapshots', '% dos snapshots do fator'],
+    reasons,
+    ['scope', 'factor', 'state', 'reason', 'snapshots', 'pct_of_factor_snapshots'],
+  ), {
+    headerRow: 1,
+    widths: [16, 26, 26, 68, 14, 24],
+    percentageColumn: 6,
+  });
 }
 
 function writeRankingsSheet_(spreadsheet, rankings) {

@@ -97,3 +97,25 @@ test('weight panel clears legacy validation before writing the new projection', 
   assert.match(body, /sheet\.clear\(\);/);
   assert.doesNotMatch(body, /sheet\.clear\(\{contentsOnly:\s*false\}\);/);
 });
+
+test('factor coverage projection keeps availability separate from application', () => {
+  const calls = [];
+  context.upsertSystemSheet_ = (_spreadsheet, name, values) => calls.push({name, values});
+  context.writeFactorCoverageSheets_({}, {
+    summary: [{
+      scope: 'CHALLENGER', factor: 'servico_recente', seen_snapshots: 10,
+      available_snapshots: 4, unavailable_snapshots: 6,
+      available_inactive_snapshots: 1, active_snapshots: 3,
+      availability_pct: 40, active_pct: 30,
+    }],
+    reasons: [{
+      scope: 'CHALLENGER', factor: 'servico_recente', state: 'DADO_INDISPONIVEL',
+      reason: 'amostra em falta num dos lados', snapshots: 6,
+      pct_of_factor_snapshots: 60,
+    }],
+  });
+  assert.deepEqual(calls.map(call => call.name), ['Cobertura — fatores', 'Cobertura — motivos']);
+  assert.equal(calls[0].values[1][3], 4);
+  assert.equal(calls[0].values[1][6], 3);
+  assert.equal(calls[1].values[1][3], 'amostra em falta num dos lados');
+});

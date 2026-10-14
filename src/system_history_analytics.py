@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 # Rankings only surface sufficiently sized samples.  They are descriptive
 # study aids, not betting recommendations or a substitute for the report's
@@ -660,6 +660,125 @@ def factor_attribution_analysis(snapshots: Iterable[Mapping[str, Any]]) -> dict[
     return {"summary": summary_rows, "by_weight_band": weight_rows}
 
 
+def _factor_coverage_scope(snapshot: Mapping[str, Any]) -> str:
+    """Return mutually exclusive operational circuit buckets.
+
+    Challenger is intentionally separated from ATP main-tour snapshots so a
+    sparse lower-tour feed cannot be hidden by the much deeper ATP history.
+    The raw tour remains useful when the tier label is unavailable.
+    """
+    tour = _text(snapshot.get("tour")).upper()
+    tier = _text(snapshot.get("tier")).casefold()
+    tournament = _text(snapshot.get("tournament")).casefold()
+    if "challenger" in tier or "challenger" in tournament:
+        return "CHALLENGER"
+    if tour in {"ATP", "WTA"}:
+        return tour
+    return "OUTROS"
+
+
+def _factor_absence_reason(status: Mapping[str, Any], *, available: bool) -> str:
+    explicit = _text(status.get("motivo_exclusao"))
+    if explicit:
+        return explicit
+    if not available:
+        return "motivo não registado"
+    if _text(status.get("lider")).casefold() == "igual":
+        return "sem diferença material entre jogadores"
+    direction = _text(status.get("direcao_impacto")).casefold()
+    if direction not in {"a", "b"}:
+        return "disponível sem direção de impacto"
+    return "peso efetivo nulo após limites de família"
+
+
+def factor_coverage_diagnostics(
+    snapshots: Iterable[Mapping[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Describe factor availability and non-application without tuning it.
+
+    Unlike attribution, this audit does not require a settled outcome.  It
+    inspects the immutable pre-match factor status in every canonical
+    snapshot and keeps ATP main tour, WTA and Challenger mutually exclusive.
+    Missing data, available-but-inactive evidence and active contributions
+    are separate states; absence is never converted into a zero.
+    """
+    grouped: dict[tuple[str, str], dict[str, int]] = defaultdict(
+        lambda: {"seen": 0, "available": 0, "active": 0}
+    )
+    reasons: dict[tuple[str, str, str, str], int] = defaultdict(int)
+
+    for snapshot in snapshots:
+        metrics = snapshot.get("metrics") if isinstance(snapshot.get("metrics"), Mapping) else {}
+        divergence = metrics.get("divergencia") if isinstance(metrics.get("divergencia"), Mapping) else {}
+        statuses = divergence.get("fatores_status") if isinstance(divergence.get("fatores_status"), Mapping) else {}
+        if not statuses:
+            continue
+        circuit = _factor_coverage_scope(snapshot)
+        for factor, raw_status in statuses.items():
+            if not isinstance(raw_status, Mapping):
+                continue
+            factor_key = _text(factor)
+            if not factor_key:
+                continue
+            available = bool(raw_status.get("disponivel"))
+            direction = _text(raw_status.get("direcao_impacto")).casefold()
+            weight = _float(raw_status.get("peso_efetivo")) or 0.0
+            active = available and direction in {"a", "b"} and weight > 0
+            state = "DADO_INDISPONIVEL" if not available else "DISPONIVEL_SEM_IMPACTO"
+            for scope in ("GLOBAL", circuit):
+                item = grouped[(scope, factor_key)]
+                item["seen"] += 1
+                item["available"] += int(available)
+                item["active"] += int(active)
+                if not active:
+                    reasons[(
+                        scope,
+                        factor_key,
+                        state,
+                        _factor_absence_reason(raw_status, available=available),
+                    )] += 1
+
+    scope_order = {"GLOBAL": 0, "ATP": 1, "WTA": 2, "CHALLENGER": 3, "OUTROS": 4}
+    summary_rows = []
+    for (scope, factor), values in sorted(
+        grouped.items(),
+        key=lambda item: (scope_order.get(item[0][0], 9), item[0][0], item[0][1]),
+    ):
+        seen = values["seen"]
+        available = values["available"]
+        active = values["active"]
+        summary_rows.append({
+            "scope": scope,
+            "factor": factor,
+            "seen_snapshots": seen,
+            "available_snapshots": available,
+            "unavailable_snapshots": seen - available,
+            "available_inactive_snapshots": available - active,
+            "active_snapshots": active,
+            "availability_pct": _pct(available, seen),
+            "active_pct": _pct(active, seen),
+        })
+
+    reason_rows = []
+    for (scope, factor, state, reason), count in sorted(
+        reasons.items(),
+        key=lambda item: (
+            scope_order.get(item[0][0], 9), item[0][0], item[0][1],
+            -item[1], item[0][3],
+        ),
+    ):
+        denominator = grouped[(scope, factor)]["seen"]
+        reason_rows.append({
+            "scope": scope,
+            "factor": factor,
+            "state": state,
+            "reason": reason,
+            "snapshots": count,
+            "pct_of_factor_snapshots": _pct(count, denominator),
+        })
+    return {"summary": summary_rows, "reasons": reason_rows}
+
+
 def _int(value: Any) -> int | None:
     try:
         parsed = float(str(value).strip())
@@ -755,6 +874,7 @@ def build_system_history(
     canonical, removed = canonical_snapshots(raw)
     operational = snapshot_performance(canonical)
     operational["factor_attribution"] = factor_attribution_analysis(canonical)
+    operational["factor_coverage"] = factor_coverage_diagnostics(canonical)
     history = historical_wta_analytics(local_wta_matches)
     rankings = build_rankings(operational, history, active_players=active_wta_players(local_wta_matches))
     payload = {
@@ -767,6 +887,7 @@ def build_system_history(
             "handicap_reference": "BO3 internal reference line; not a bookmaker handicap settlement",
             "fenzobot_index_learning": "settled canonical observations grouped by the selected side's 50–100 evidence-index band; descriptive only, not a probability or model tuning",
             "factor_attribution": "active directional factor contributions compared with settled canonical outcomes and no-vig two-way market expectation; descriptive audit only, not automatic model tuning",
+            "factor_coverage": "all canonical pre-match factor states split into ATP main tour, WTA and Challenger; descriptive availability diagnostics only, with no weight or decision changes",
             "break_even": "theoretical 1 / average decimal odds per canonical snapshot band; not ROI, stake, vig or 22Bet execution",
             "workbook_layout_version": 2,
         },
