@@ -6046,15 +6046,14 @@ def compute_opponent_level_stats(
     elif rank <= 100:
         bucket = "top100"
         in_bucket = lambda parsed: parsed <= 100
-    elif rank <= 200:
-        bucket = "top200"
-        in_bucket = lambda parsed: parsed <= 200
-    elif rank <= 300:
-        bucket = "top300"
-        in_bucket = lambda parsed: parsed <= 300
     else:
-        bucket = "outside_top300"
-        in_bucket = lambda parsed: parsed > 300
+        # O endpoint ``perf-breakdown`` do fornecedor termina em ``top100``.
+        # Usar top200/top300 aqui criava categorias sem equivalente no
+        # fallback agregado e fragmentava desnecessariamente a amostra local,
+        # sobretudo nos Challengers. Para qualquer adversário fora do top100,
+        # a comparação factual compatível é portanto o universo >100.
+        bucket = "outside_top100"
+        in_bucket = lambda parsed: parsed > 100
     if history.empty:
         return None
     resolved = resolve_player_name(history, player)
@@ -7172,6 +7171,53 @@ def compute_form_from_recent(recent_matches: list, player_id: int,
     return out
 
 
+def enrich_opponent_level_breakdown(perf: object) -> Optional[dict]:
+    """Return provider rank bands plus the factual ``outside_top100`` band.
+
+    Existing persistent caches and player sheets predate the derived band but
+    already preserve ``raw``/``by_year``.  Enriching at read time makes those
+    records immediately useful without refetching or rewriting history.
+    """
+    if not isinstance(perf, dict):
+        return None
+    existing = perf.get("vs_rank_level") or {}
+    summary = {
+        str(key): dict(value)
+        for key, value in existing.items()
+        if isinstance(value, dict)
+    }
+    raw = perf.get("raw") or perf.get("by_year") or {}
+    if not isinstance(raw, dict):
+        return summary or None
+
+    total_wins = total_losses = top100_wins = top100_losses = 0
+    for year_data in raw.values():
+        if not isinstance(year_data, dict):
+            continue
+        total_cell = ((year_data.get("level") or {}).get("total") or {})
+        top100_cell = ((year_data.get("rank") or {}).get("top100") or {})
+        try:
+            total_wins += int(total_cell.get("aw", 0) or 0)
+            total_losses += int(total_cell.get("al", 0) or 0)
+            top100_wins += int(top100_cell.get("aw", 0) or 0)
+            top100_losses += int(top100_cell.get("al", 0) or 0)
+        except (TypeError, ValueError):
+            return summary or None
+
+    outside_wins = total_wins - top100_wins
+    outside_losses = total_losses - top100_losses
+    outside_total = outside_wins + outside_losses
+    if outside_wins >= 0 and outside_losses >= 0 and outside_total > 0:
+        summary["outside_top100"] = {
+            "wins": outside_wins,
+            "losses": outside_losses,
+            "matches": outside_total,
+            "win_pct": round(100 * outside_wins / outside_total, 1),
+            "source": "derived_total_minus_top100",
+        }
+    return summary or None
+
+
 def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
     """
     Desempenho do jogador SEPARADO POR NÍVEL DE RANKING do adversário
@@ -7185,7 +7231,13 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
     if cached is not None:
         age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
         if age_hours < PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS:
-            return cached["data"]
+            data = cached["data"]
+            if isinstance(data, dict):
+                data = dict(data)
+                enriched = enrich_opponent_level_breakdown(data)
+                if enriched:
+                    data["vs_rank_level"] = enriched
+            return data
 
     persistent = _read_player_cache_entry(
         tour,
@@ -7194,6 +7246,11 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
         PERF_BREAKDOWN_CACHE_MAX_AGE_HOURS,
     )
     if persistent is not None:
+        if isinstance(persistent, dict):
+            persistent = dict(persistent)
+            enriched = enrich_opponent_level_breakdown(persistent)
+            if enriched:
+                persistent["vs_rank_level"] = enriched
         _PERF_BREAKDOWN_CACHE[cache_key] = {
             "fetched_at": datetime.now(timezone.utc),
             "data": persistent,
@@ -7313,6 +7370,9 @@ def fetch_player_perf_breakdown(tour: str, player_id: int) -> Optional[dict]:
         if isinstance(raw, dict) and raw:
             data["by_year"] = raw  # dados brutos preservados por ano (não agregados)
             data["raw"] = raw
+        enriched = enrich_opponent_level_breakdown(data)
+        if enriched:
+            data["vs_rank_level"] = enriched
         data = data or None
         _PERF_BREAKDOWN_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
         _write_player_cache_entry(tour, player_id, "perf_breakdown", data)

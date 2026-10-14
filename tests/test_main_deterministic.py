@@ -80,7 +80,7 @@ class DeterministicFeatureTests(unittest.TestCase):
 
         level = features["nivel_adversario"]
         self.assertIsNone(level["lider"])
-        self.assertIn("B: sem histórico utilizável na faixa outside_top300", level["motivo_exclusao"])
+        self.assertIn("B: sem histórico utilizável na faixa outside_top100", level["motivo_exclusao"])
 
     def test_court_speed_is_context_only_until_both_players_reach_minimum_sample(self):
         features = main._compute_features({
