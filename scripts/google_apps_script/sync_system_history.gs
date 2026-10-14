@@ -126,6 +126,7 @@ function buildWeightDecisionPanelModel_(attribution, manualPaper) {
   const quality = audit.quality || {};
   const linked = Number(quality.linked_entries || 0);
   const canonical = Number(quality.canonical_entries || 0);
+  const legacy = Number(quality.legacy_entries || 0);
   const eligible = Number(quality.factor_audit_eligible_entries || 0);
   const unresolved = Number(quality.selected_side_unresolved || 0);
   const minimumTrend = 20;
@@ -198,6 +199,7 @@ function buildWeightDecisionPanelModel_(attribution, manualPaper) {
     headline: headline,
     linked: linked,
     canonical: canonical,
+    legacy: legacy,
     eligible: eligible,
     unresolved: unresolved,
     structural_snapshots: global.reduce((maximum, row) => Math.max(maximum, Number(row.seen_snapshots || 0)), 0),
@@ -240,7 +242,7 @@ function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
     ['A4:C4', 'A5:C6', 'SNAPSHOTS ESTRUTURAIS', model.structural_snapshots],
     ['D4:F4', 'D5:F6', 'FATORES ANALISADOS', model.factor_count],
     ['G4:I4', 'G5:I6', 'GUERRA LIGADAS', model.linked],
-    ['J4:L4', 'J5:L6', 'GUERRA ELEGÍVEIS', model.eligible],
+    ['J4:L4', 'J5:L6', 'AUDITORIA DE FATORES', model.eligible],
   ];
   cards.forEach(card => {
     sheet.getRange(card[0]).merge().setValue(card[2]).setBackground('#17365D').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center');
@@ -252,7 +254,9 @@ function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
     .setBackground(safe ? '#FFF3CD' : '#DFF3E7').setFontColor(safe ? '#7A4F01' : '#166534')
     .setFontSize(13).setFontWeight('bold');
   sheet.getRange('A9:L9').merge().setValue(model.headline).setBackground('#FFFDF5').setFontColor('#3C4652').setWrap(true);
-  sheet.getRange('A10:L10').merge().setValue('Qualidade do linkage: ' + model.canonical + ' canónicas · ' + model.unresolved + ' sem lado selecionado resolvido.')
+  sheet.getRange('A10:L10').merge().setValue('Qualidade do linkage: ' + model.linked + ' ligadas · '
+    + model.canonical + ' canónicas · ' + model.legacy + ' legacy sem snapshot · '
+    + model.unresolved + ' sem lado selecionado resolvido.')
     .setBackground('#FFFDF5').setFontColor('#3C4652');
 
   sheet.getRange('A12:L12').merge().setValue('CONCLUSÕES AUTOMÁTICAS — O QUE FAZER AGORA')

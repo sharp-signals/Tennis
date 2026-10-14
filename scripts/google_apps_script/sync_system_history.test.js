@@ -64,7 +64,17 @@ test('weight decision panel blocks tuning while GUERRA factor evidence is insuff
   assert.match(model.status, /MANTER PESOS/);
   assert.match(model.headline, /Faltam 18/);
   assert.equal(model.eligible, 2);
+  assert.equal(model.legacy, 0);
   assert.equal(model.rows.find(row => row.factor === 'servico_carreira').signal, 'Sinal positivo a validar');
+});
+
+test('weight panel labels factor eligibility precisely and exposes legacy linkage', () => {
+  const start = source.indexOf('function writeWeightDecisionPanel_');
+  const end = source.indexOf('function writeProspectiveSystemHistory_', start);
+  const body = source.slice(start, end);
+  assert.match(body, /AUDITORIA DE FATORES/);
+  assert.doesNotMatch(body, /GUERRA ELEGÍVEIS/);
+  assert.match(body, /legacy sem snapshot/);
 });
 
 test('history projection repairs legacy GUERRA break-even scale defensively', () => {
