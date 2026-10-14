@@ -1205,6 +1205,33 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(actual["matches_used"], 5)
         self.assertIsNone(fetch_data.compute_serve_return_from_recent_stats({"recentStats": {}}))
 
+    def test_career_service_is_distinct_from_recent_provider_window(self):
+        career = {
+            "playerStats": {
+                "statMatchesPlayed": 100,
+                "winningOnFirstServePercentage": 68,
+                "winningOnSecondServe": 240,
+                "winningOnSecondServeOf": 500,
+                "breakpointsWonPercentage": 43,
+                "firstServePercentage": 62,
+            }
+        }
+        actual = fetch_data.compute_serve_return_from_career_stats(career)
+        self.assertEqual(actual["matches_used"], 100)
+        self.assertEqual(actual["avg_first_serve_won_pct"], 68.0)
+        self.assertEqual(actual["avg_second_serve_won_pct"], 48.0)
+        self.assertEqual(actual["source"], "rapidapi_career_stats")
+
+    def test_legacy_rich_sheet_recovers_factual_career_service(self):
+        rich = {
+            "domination": {"own_first_serve_won_pct": 65},
+            "style": {"matches_played": 680},
+        }
+        actual = fetch_data.compute_serve_return_from_rich_stats(rich)
+        self.assertEqual(actual["matches_used"], 680)
+        self.assertEqual(actual["avg_first_serve_won_pct"], 65.0)
+        self.assertEqual(actual["source"], "rapidapi_career_stats_legacy_sheet")
+
     def test_zero_match_percentages_are_treated_as_missing(self):
         stats = {"recentStats": {
             "firstServeWinPer": 0,

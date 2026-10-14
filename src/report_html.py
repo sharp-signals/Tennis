@@ -628,7 +628,7 @@ PESOS = {
     "comeback_set1": 7,        # MÉDIO-ALTO — recuperação após perder o 1º set, relevante para observação em live (14/08/2026, a pedido)
     "fadiga": 3.75,            # MÉDIO-BAIXO — ajuste prudente -0,25; sobe +3 se último jogo foi longo
     "mudanca_piso": 5,         # MÉDIO-BAIXO — jogador entra fresco num piso diferente do que vinha a jogar (22/08/2026, a pedido)
-    "servico_recente": 5,      # MÉDIO — últimos 2 jogos (14/08/2026, a pedido)
+    "servico_recente": 5,      # MÉDIO — janela recente factual da fonte
     "servico_carreira": 3.25,  # MÉDIO-BAIXO — ajuste prudente +0,25 após auditoria descritiva
     "meteo": 1,                # BAIXO — raramente decisiva
 }
@@ -661,7 +661,7 @@ def _nome_fator(chave):
         "ranking_evolucao": "evolução de ranking",
         "lesao": "regresso após paragem", "fadiga": "fadiga",
         "mudanca_piso": "mudança de piso",
-        "servico_recente": "serviço (2 jogos)", "servico_carreira": "serviço (carreira)", "velocidade_piso": "velocidade do piso", "indoor_outdoor": "indoor/outdoor", "tiebreak": "tie-break", "pressao_ronda": "pressão de ronda decisiva", "nivel_adversario": "nível do adversário", "historico_torneio": "histórico no torneio", "comeback_set1": "recuperação pós-1º set", "sazonal": "padrão sazonal", "meteo": "meteorologia",
+        "servico_recente": "serviço recente", "servico_carreira": "serviço (carreira)", "velocidade_piso": "velocidade do piso", "indoor_outdoor": "indoor/outdoor", "tiebreak": "tie-break", "pressao_ronda": "pressão de ronda decisiva", "nivel_adversario": "nível do adversário", "historico_torneio": "histórico no torneio", "comeback_set1": "recuperação pós-1º set", "sazonal": "padrão sazonal", "meteo": "meteorologia",
     }.get(chave, chave)
 
 
