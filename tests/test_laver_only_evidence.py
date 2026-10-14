@@ -892,7 +892,6 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
 
         for value, bucket in (
             (10, "top10"), (20, "top20"), (50, "top50"), (100, "top100"),
-            (200, "top200"), (300, "top300"),
         ):
             with self.subTest(value=value):
                 result = fetch_data.compute_opponent_level_stats(
@@ -923,11 +922,16 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
                 "_history_competition_scope": "challenger",
             },
         ])
-        outside = fetch_data.compute_opponent_level_stats(
-            outside_history, "Alpha", 450, competition_policy=LAVER_ACTIVE,
-        )
-        self.assertEqual(outside["rank_bucket"], "outside_top300")
-        self.assertEqual(outside["ranking_sample_quality"]["eligible_rows"], 2)
+        for opponent_rank in (200, 300, 450):
+            with self.subTest(opponent_rank=opponent_rank):
+                outside = fetch_data.compute_opponent_level_stats(
+                    outside_history, "Alpha", opponent_rank,
+                    competition_policy=LAVER_ACTIVE,
+                )
+                self.assertEqual(outside["rank_bucket"], "outside_top100")
+                self.assertEqual(
+                    outside["ranking_sample_quality"]["eligible_rows"], 2,
+                )
 
         dirty = self.history.copy()
         dirty["loser_rank"] = dirty["loser_rank"].astype("object")

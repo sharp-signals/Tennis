@@ -22,6 +22,31 @@ class FakeResponse:
 
 
 class PlayerPersistentCacheTests(unittest.TestCase):
+    def test_existing_perf_cache_derives_outside_top100_without_refetch(self) -> None:
+        perf = {
+            "vs_rank_level": {
+                "top100": {"wins": 3, "losses": 2, "matches": 5, "win_pct": 60.0},
+            },
+            "by_year": {
+                "2025": {
+                    "rank": {"top100": {"aw": 1, "al": 1}},
+                    "level": {"total": {"aw": 4, "al": 3}},
+                },
+                "2026": {
+                    "rank": {"top100": {"aw": 2, "al": 1}},
+                    "level": {"total": {"aw": 5, "al": 2}},
+                },
+            },
+        }
+
+        actual = fetch_data.enrich_opponent_level_breakdown(perf)
+
+        self.assertEqual(actual["top100"], perf["vs_rank_level"]["top100"])
+        self.assertEqual(actual["outside_top100"]["wins"], 6)
+        self.assertEqual(actual["outside_top100"]["losses"], 3)
+        self.assertEqual(actual["outside_top100"]["matches"], 9)
+        self.assertEqual(actual["outside_top100"]["win_pct"], 66.7)
+
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -128,7 +153,9 @@ class PlayerPersistentCacheTests(unittest.TestCase):
                 "2026": {
                     "rank": {
                         "top10": {"aw": 2, "al": 1},
+                        "top100": {"aw": 3, "al": 2},
                     },
+                    "level": {"total": {"aw": 7, "al": 5}},
                     "round": {"QF": {"aw": 1, "al": 1}},
                 }
             }
@@ -147,6 +174,16 @@ class PlayerPersistentCacheTests(unittest.TestCase):
         self.assertEqual(first["by_year"]["2026"]["round"]["QF"], {"aw": 1, "al": 1})
         self.assertEqual(first["raw"], payload["data"])
         self.assertEqual(first["by_round"]["QF"]["win_pct"], 50.0)
+        self.assertEqual(
+            first["vs_rank_level"]["outside_top100"],
+            {
+                "wins": 4,
+                "losses": 3,
+                "matches": 7,
+                "win_pct": 57.1,
+                "source": "derived_total_minus_top100",
+            },
+        )
         self.assertEqual(1, request.call_count)
 
         fetch_data._PERF_BREAKDOWN_CACHE.clear()

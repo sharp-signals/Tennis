@@ -743,9 +743,17 @@ def _get_rich_player_data(
                     if age_days > PLAYER_SHEET_MAX_AGE_DAYS:
                         print(f"[ficha] ficha expirada ({age_days:.0f} dias): {candidate}")
                         continue
-                return stored["data"]
+                data = dict(stored["data"])
+                enriched = fetch_data.enrich_opponent_level_breakdown(data)
+                if enriched:
+                    data["vs_rank_level"] = enriched
+                return data
             if isinstance(stored, dict):
-                return stored
+                data = dict(stored)
+                enriched = fetch_data.enrich_opponent_level_breakdown(data)
+                if enriched:
+                    data["vs_rank_level"] = enriched
+                return data
     except Exception:
         pass
 
@@ -1455,7 +1463,10 @@ def _compute_features(payload: dict) -> dict:
         }
 
     # NOVO (18/08/2026, a pedido): desempenho vs o NÍVEL do adversário de
-    # HOJE (top10/20/50/100/200/300 ou fora do top300), carreira toda.
+    # HOJE (top10/20/50/100 ou fora do top100), carreira toda. O patamar
+    # exterior é deliberadamente mais largo porque o agregado factual do
+    # fornecedor termina no top100; assim a fonte local e o fallback usam o
+    # mesmo universo comparável, incluindo nos Challengers.
     # O histórico local é a fonte primária porque cobre também jogadores
     # fora do top100; os dados ricos permanecem como fallback compatível.
     def _bucket_ranking(rank):
@@ -1481,11 +1492,7 @@ def _compute_features(payload: dict) -> dict:
             return "top50"
         if rank <= 100:
             return "top100"
-        if rank <= 200:
-            return "top200"
-        if rank <= 300:
-            return "top300"
-        return "outside_top300"
+        return "outside_top100"
 
     _rank_a_val = (payload.get("ranking_a") or {}).get("rank")
     _rank_b_val = (payload.get("ranking_b") or {}).get("rank")
