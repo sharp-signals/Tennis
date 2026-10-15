@@ -43,6 +43,10 @@ class ChallengerHistoryCoverageTests(unittest.TestCase):
                     "name": "challenger_ongoing_tourneys.csv",
                     "url": "https://test/ongoing.csv",
                 },
+                {
+                    "name": "ongoing_tourneys.csv",
+                    "url": "https://test/main-ongoing.csv",
+                },
             ]
         }
         main_csv = (
@@ -59,6 +63,10 @@ class ChallengerHistoryCoverageTests(unittest.TestCase):
             "ch-1,1,20260102,Challenger Player,Other Player,6-3 6-3,11\n"
             "ch-2,1,20260103,New Player,Fresh Player,6-2 6-2,9\n"
         )
+        main_ongoing_csv = (
+            "tourney_id,match_num,tourney_date,winner_name,loser_name,score,w_ace\n"
+            "main-2,1,20260103,Fresh Main,Main Opponent,6-2 6-2,8\n"
+        )
 
         def fake_get(url, **_kwargs):
             if url == fetch_data.TENNISMYLIFE_FILES_ENDPOINT:
@@ -67,6 +75,7 @@ class ChallengerHistoryCoverageTests(unittest.TestCase):
                 "https://test/main.csv": main_csv,
                 "https://test/challenger.csv": challenger_csv,
                 "https://test/ongoing.csv": ongoing_csv,
+                "https://test/main-ongoing.csv": main_ongoing_csv,
             }
             return _Response(text=bodies[url])
 
@@ -77,13 +86,13 @@ class ChallengerHistoryCoverageTests(unittest.TestCase):
                 "atp", include_challenger=True
             )
 
-        self.assertEqual(len(history), 4)
+        self.assertEqual(len(history), 5)
         self.assertEqual(
             fetch_data.history_scope_summary(history),
             {
                 "mode": "ATP_MAIN_PLUS_CHALLENGER",
-                "rows_total": 4,
-                "rows_main": 1,
+                "rows_total": 5,
+                "rows_main": 2,
                 "rows_challenger": 3,
             },
         )
@@ -141,6 +150,47 @@ class ChallengerHistoryCoverageTests(unittest.TestCase):
             fetch_data.resolve_player_name(challenger_history, "Challenger A"),
             "Challenger A",
         )
+
+    def test_loader_supports_wta_rich_annual_and_ongoing_files(self):
+        year = datetime.now(timezone.utc).year
+        listing = {
+            "files": [
+                {"name": f"{year}_wta.csv", "url": "https://test/wta.csv"},
+                {
+                    "name": "wta_ongoing_tourneys.csv",
+                    "url": "https://test/wta-ongoing.csv",
+                },
+            ]
+        }
+        annual = (
+            "tourney_id,match_num,tourney_date,tourney_name,surface,"
+            "winner_name,loser_name,w_ace,l_ace,w_svpt,l_svpt\n"
+            "wta-1,1,20260101,WTA Event,Hard,A,B,5,3,50,50\n"
+        )
+        ongoing = (
+            "tourney_id,match_num,tourney_date,tourney_name,surface,"
+            "winner_name,loser_name,w_ace,l_ace,w_svpt,l_svpt\n"
+            "wta-1,1,20260101,WTA Event,Hard,A,B,8,4,50,50\n"
+            "wta-2,1,20260108,Current WTA,Hard,C,D,6,2,50,50\n"
+        )
+
+        def fake_get(url, **_kwargs):
+            if url == fetch_data.TENNISMYLIFE_FILES_ENDPOINT:
+                return _Response(json_body=listing)
+            return _Response(text={
+                "https://test/wta.csv": annual,
+                "https://test/wta-ongoing.csv": ongoing,
+            }[url])
+
+        with patch.object(fetch_data, "HISTORY_YEARS_TO_LOAD", 1), patch.object(
+            fetch_data.requests, "get", side_effect=fake_get
+        ):
+            history = fetch_data._load_tennismylife("wta")
+
+        self.assertEqual(len(history), 2)
+        updated = history[history["tourney_id"] == "wta-1"].iloc[0]
+        self.assertEqual(float(updated["w_ace"]), 8.0)
+        self.assertEqual(history.attrs["history_scope"], "WTA_MAIN")
 
     def test_filter_history_scope_is_a_non_mutating_challenger_view(self):
         history = pd.DataFrame([
