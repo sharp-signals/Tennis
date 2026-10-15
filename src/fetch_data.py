@@ -52,7 +52,7 @@ import pandas as pd
 import requests
 
 from .cache_store import JsonCacheStore
-from . import competition_evidence, market_integrity
+from . import competition_evidence, competition_registry, market_integrity
 from .market_ledger import payload_sha256
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
@@ -3801,9 +3801,94 @@ def compute_surface_transition(history: pd.DataFrame, player: str, current_surfa
     }
 
 
+def _enrich_exact_current_competition(
+    records: list[dict], competition_context: Optional[dict],
+) -> list[dict]:
+    """Attach a factual current-tier signal to exact same-edition rows.
+
+    O ficheiro ``ongoing`` pode publicar partidas do torneio atual antes de
+    preencher ``tourney_level``. O fixture pré-live, porém, já traz o tier
+    factual. Reutilizamos esse tier apenas quando nome normalizado e ano da
+    edição coincidem exatamente (ou quando coincide o ID factual), sem fuzzy
+    matching e sem alterar linhas de outras competições.
+    """
+    context = competition_context or {}
+    tier = context.get("tier")
+    edition_year = context.get("edition_year")
+    context_name = competition_registry.normalize_exact_name(
+        context.get("tournament_name")
+    )
+    context_id = context.get("tournament_id")
+    context_id = str(context_id) if context_id not in (None, "") else None
+    try:
+        edition_year = int(edition_year)
+    except (TypeError, ValueError):
+        return records
+
+    # Só um tier explicitamente autorizado pelo registry pode enriquecer a
+    # linha. Um texto livre ou um tier desconhecido continua fail-closed.
+    tier_classification = competition_registry.classify({
+        "tier": tier,
+        "edition_year": edition_year,
+    })
+    if tier_classification.get("classification") != "RANKING_ELIGIBLE":
+        return records
+
+    enriched: list[dict] = []
+    for original in records:
+        record = dict(original)
+        row_id = next((
+            record.get(key) for key in
+            ("tournamentId", "tournament_id", "tourney_id")
+            if record.get(key) not in (None, "")
+        ), None)
+        row_id = str(row_id) if row_id not in (None, "") else None
+        row_name = competition_registry.normalize_exact_name(
+            record.get("tourney_name")
+            or record.get("tournament_name")
+            or record.get("tournament")
+        )
+        raw_date = record.get("tourney_date") or record.get("date")
+        date_text = str(raw_date or "").strip()
+        if re.fullmatch(r"(?:19|20)\d{6}(?:\.0+)?", date_text):
+            row_year = int(date_text[:4])
+        else:
+            year_match = re.search(
+                r"(?<!\d)((?:19|20)\d{2})(?!\d)", date_text
+            )
+            row_year = int(year_match.group(1)) if year_match else None
+
+        id_match = bool(context_id and row_id and context_id == row_id)
+        exact_name_match = bool(
+            context_name and row_name == context_name and row_year == edition_year
+        )
+        if id_match or exact_name_match:
+            existing_tier = record.get("tier")
+            if (
+                existing_tier is None
+                or pd.isna(existing_tier)
+                or not str(existing_tier).strip()
+            ):
+                record["tier"] = tier
+                record["_competition_identity_enrichment"] = {
+                    "change_id": "CHANGE-2026-10-15-137",
+                    "method": (
+                        "exact_tournament_id"
+                        if id_match else "exact_tournament_name_and_edition"
+                    ),
+                    "tournament_name": context.get("tournament_name"),
+                    "tournament_id": context_id,
+                    "edition_year": edition_year,
+                    "tier": tier,
+                }
+        enriched.append(record)
+    return enriched
+
+
 def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
                         window_days: Optional[int] = None, *,
-                        competition_policy: Optional[dict] = None) -> Optional[dict]:
+                        competition_policy: Optional[dict] = None,
+                        competition_context: Optional[dict] = None) -> Optional[dict]:
     """Forma recente do jogador (qualquer piso). None se não há dados.
 
     CORREÇÃO (14/08/2026, a pedido): antes usava sempre os últimos
@@ -3851,8 +3936,13 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
         played = played.tail(n_matches)
 
     policy_active = bool((competition_policy or {}).get("active"))
+    records = played.to_dict("records")
+    if policy_active:
+        records = _enrich_exact_current_competition(
+            records, competition_context
+        )
     return competition_evidence.weighted_binary_record(
-        played.to_dict("records"),
+        records,
         lambda row: row.get("winner_name") == player,
         active=policy_active,
         policy=competition_policy,
