@@ -42,6 +42,158 @@ class CourtPaceEvidenceTests(unittest.TestCase):
         self.assertFalse(result["eligible_for_index"])
         self.assertEqual(result["sample_minimum"], 10)
 
+    @staticmethod
+    def _event_rows(name, date, ace_total, matches=12):
+        rows = []
+        for index in range(matches):
+            rows.append({
+                "tourney_name": name,
+                "tourney_date": date,
+                "surface": "Hard",
+                "winner_name": f"Winner {name} {index}",
+                "loser_name": f"Loser {name} {index}",
+                "w_ace": ace_total / 2,
+                "l_ace": ace_total / 2,
+                "w_svpt": 50,
+                "l_svpt": 50,
+            })
+        return rows
+
+    def test_unclassified_hard_event_uses_only_prior_empirical_events(self):
+        rows = []
+        for index in range(12):
+            rows.extend(self._event_rows(
+                f"Reference {index}", 20250101 + index * 100,
+                4 + index,
+            ))
+        rows.extend(self._event_rows("Porto Challenger", 20260101, 22))
+        # A future outlier must not change Porto's reference distribution.
+        rows.extend(self._event_rows("Future Event", 20260301, 40))
+        history = pd.DataFrame(rows)
+
+        profiles = fetch_data.build_empirical_court_speed_profiles(
+            history, before=datetime(2026, 2, 1, tzinfo=timezone.utc)
+        )
+        context = fetch_data.court_pace_context(
+            "Porto Challenger - Porto", 2026, "Hard",
+            empirical_profiles=profiles,
+        )
+
+        self.assertEqual(context["status"], "available")
+        self.assertEqual(context["source"], "event_ace_rate_percentile_v1")
+        self.assertEqual(context["bucket"], "fast")
+        self.assertEqual(context["event_matches"], 12)
+        self.assertEqual(context["reference_events"], 12)
+        self.assertNotIn(("main", "future event", 2026), profiles)
+
+    def test_cpi_remains_authoritative_over_empirical_profile(self):
+        context = fetch_data.court_pace_context(
+            "Shanghai Rolex Masters - Shanghai", 2026, "Hard",
+            empirical_profiles={
+                ("main", "shanghai", 2026): {
+                    "bucket": "fast",
+                    "source": "event_ace_rate_percentile_v1",
+                }
+            },
+        )
+
+        self.assertEqual(context["source"], "courtspeed_cpi")
+        self.assertEqual(context["bucket"], "medium_slow")
+
+    def test_provider_city_suffix_resolves_empirical_event_identity(self):
+        context = fetch_data.court_pace_context(
+            "Guadalajara Open Akron - Guadalajara", 2026, "Hard",
+            empirical_profiles={
+                ("main", "guadalajara", 2026): {
+                    "bucket": "medium",
+                    "source": "event_ace_rate_percentile_v1",
+                }
+            },
+        )
+
+        self.assertEqual(context["status"], "available")
+        self.assertEqual(context["bucket"], "medium")
+
+    def test_empirical_profile_uses_recent_same_event_before_current_sample(self):
+        context = fetch_data.court_pace_context(
+            "Guadalajara Open Akron - Guadalajara", 2026, "Hard",
+            empirical_profiles={
+                ("main", "guadalajara", 2025): {
+                    "bucket": "medium_fast",
+                    "source": "event_ace_rate_percentile_v1",
+                    "ano_usado": 2025,
+                    "ano_exato": True,
+                }
+            },
+        )
+
+        self.assertEqual(context["status"], "available")
+        self.assertEqual(context["bucket"], "medium_fast")
+        self.assertEqual(context["ano_usado"], 2025)
+        self.assertFalse(context["ano_exato"])
+
+    def test_empirical_profiles_keep_main_and_challenger_baselines_separate(self):
+        rows = []
+        for scope, prefix, base_aces in (
+            ("main", "Main", 4), ("challenger", "Challenger", 18)
+        ):
+            for index in range(12):
+                event_rows = self._event_rows(
+                    f"{prefix} {index}", 20250101 + index * 100,
+                    base_aces + index,
+                )
+                for row in event_rows:
+                    row["_history_competition_scope"] = scope
+                rows.extend(event_rows)
+            target_rows = self._event_rows(
+                f"{prefix} 12", 20260101, base_aces + 12,
+            )
+            for row in target_rows:
+                row["_history_competition_scope"] = scope
+            rows.extend(target_rows)
+        history = pd.DataFrame(rows)
+
+        profiles = fetch_data.build_empirical_court_speed_profiles(history)
+
+        self.assertIn(("main", "main 12", 2026), profiles)
+        self.assertIn(("challenger", "challenger 12", 2026), profiles)
+        self.assertEqual(
+            profiles[("main", "main 12", 2026)]["reference_events"], 12
+        )
+        self.assertEqual(
+            profiles[("challenger", "challenger 12", 2026)]["reference_events"],
+            12,
+        )
+
+    def test_player_speed_form_combines_cpi_and_empirical_classifications(self):
+        history = pd.DataFrame([
+            {
+                "winner_name": "A", "loser_name": "B", "surface": "Hard",
+                "tourney_name": "Shanghai Masters", "tourney_date": 20251001,
+            },
+            {
+                "winner_name": "A", "loser_name": "C", "surface": "Hard",
+                "tourney_name": "Porto Challenger", "tourney_date": 20251008,
+            },
+        ])
+        profiles = {
+            ("main", "porto challenger", 2025): {
+                "bucket": "medium_slow",
+                "source": "event_ace_rate_percentile_v1",
+            }
+        }
+
+        result = fetch_data.compute_court_speed_form(
+            history, "A", "medium_slow", empirical_profiles=profiles,
+            before=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(result["matches"], 2)
+        self.assertEqual(
+            result["classification_sources"],
+            ["courtspeed_cpi", "event_ace_rate_percentile_v1"],
+        )
+
 
 class MatchInputTests(unittest.TestCase):
     def test_tennisdata_download_discovery_supports_atp_and_wta_versioned_paths(self):

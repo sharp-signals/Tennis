@@ -2605,24 +2605,26 @@ def _load_tennismylife(
     tour: str, *, include_challenger: bool = False,
 ) -> Optional[pd.DataFrame]:
     """
-    A TennisMyLife é confirmadamente só ATP. Os jogos do QUADRO PRINCIPAL
-    vêm em ficheiros simples por ano, ex: "2026.csv", SEM qualquer prefixo
-    "atp" no nome (descoberto na prática — ver histórico do projeto).
+    A TennisMyLife publica ATP e WTA com o mesmo esquema rico de estatísticas.
+    Os jogos ATP vêm em ``2026.csv`` e os WTA em ``2026_wta.csv``.
 
     Carrega os últimos HISTORY_YEARS_TO_LOAD anos e junta tudo num único
     DataFrame, para o H2H cobrir a carreira inteira de um jogador, não só
     o ano corrente. Cada ano em falta é ignorado com aviso — não impede
     os restantes de carregar.
 
-    Para o ATP principal carrega apenas ``{ano}.csv``. Quando
+    Para o ATP principal carrega ``{ano}.csv``; para WTA, ``{ano}_wta.csv``.
+    Acrescenta o ficheiro ongoing do circuito para que rondas concluídas do
+    torneio atual já estejam disponíveis na análise seguinte. Quando
     ``include_challenger`` é verdadeiro, acrescenta ``{ano}_challenger.csv``
     e ``challenger_ongoing_tourneys.csv``. Cada linha fica identificada pela
     origem, para impedir que o universo Challenger contamine silenciosamente
     análises do circuito principal. Qualifying e bases agregadas continuam
     excluídos.
     """
-    if tour != "atp":
-        return None  # confirmado: sem WTA nesta fonte
+    if tour not in {"atp", "wta"}:
+        return None
+    include_challenger = bool(include_challenger and tour == "atp")
 
     try:
         resp = requests.get(TENNISMYLIFE_FILES_ENDPOINT, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
@@ -2667,7 +2669,7 @@ def _load_tennismylife(
     challenger_years = 0
     for offset in range(HISTORY_YEARS_TO_LOAD):
         year = current_year - offset
-        name = f"{year}.csv"
+        name = f"{year}.csv" if tour == "atp" else f"{year}_wta.csv"
         if name not in by_name:
             print(f"[aviso] TennisMyLife não tem ficheiro para o ano {year} — a saltar.")
         elif load_file(name, "main"):
@@ -2678,11 +2680,25 @@ def _load_tennismylife(
             if load_file(challenger_name, "challenger"):
                 challenger_years += 1
 
-    ongoing_loaded = False
-    if include_challenger:
-        ongoing_loaded = load_file(
-            "challenger_ongoing_tourneys.csv", "challenger"
-        )
+    ongoing_files = (
+        [
+            ("ongoing_tourneys.csv", "main"),
+            ("challenger_ongoing_tourneys.csv", "challenger"),
+        ]
+        if include_challenger
+        else [
+            (
+                "ongoing_tourneys.csv"
+                if tour == "atp"
+                else "wta_ongoing_tourneys.csv",
+                "main",
+            )
+        ]
+    )
+    ongoing_loaded = [
+        name for name, file_scope in ongoing_files
+        if load_file(name, file_scope)
+    ]
 
     if not frames:
         return None
@@ -2691,13 +2707,15 @@ def _load_tennismylife(
         pd.concat(frames, ignore_index=True, sort=False)
     )
     combined.attrs["history_scope"] = (
-        "ATP_MAIN_PLUS_CHALLENGER" if include_challenger else "ATP_MAIN"
+        "ATP_MAIN_PLUS_CHALLENGER" if include_challenger
+        else f"{tour.upper()}_MAIN"
     )
     print(
-        f"[info] TennisMyLife: ATP principal {main_years}/"
+        f"[info] TennisMyLife: {tour.upper()} principal {main_years}/"
         f"{HISTORY_YEARS_TO_LOAD} anos; Challenger {challenger_years}/"
-        f"{HISTORY_YEARS_TO_LOAD} anos; ongoing Challenger "
-        f"{'sim' if ongoing_loaded else 'não'}; {len(combined)} jogos únicos."
+        f"{HISTORY_YEARS_TO_LOAD} anos; ongoing "
+        f"{', '.join(ongoing_loaded) if ongoing_loaded else 'não'}; "
+        f"{len(combined)} jogos únicos."
     )
     return combined
 
@@ -2970,29 +2988,23 @@ def get_history(tour: str, tier: Optional[str] = None) -> pd.DataFrame:
 
         year = datetime.now(timezone.utc).year
 
-        if normalized_tour == "atp":
-            df = _load_tennismylife(
-                normalized_tour, include_challenger=(scope == "challenger_125")
-            )
-            source = (
-                "tennismylife (ATP principal + Challenger)"
-                if scope == "challenger_125" else "tennismylife (ATP principal)"
-            )
-        else:
-            # (correção: repositório tennis_wta do Sackmann continua a devolver
-            # 404 para todos os anos, confirmado por logs reais — ver histórico
-            # do projeto. Deixámos de o tentar para o WTA: ia direto ao
-            # tennis-data.co.uk, que é fiável e já funciona bem como fonte.
-            # Poupa ~20 pedidos falhados por jogo WTA.)
-            df = None
-            source = "sackmann (desativado para wta)"
+        df = _load_tennismylife(
+            normalized_tour,
+            include_challenger=(
+                normalized_tour == "atp" and scope == "challenger_125"
+            ),
+        )
+        source = (
+            "tennismylife (ATP principal + Challenger)"
+            if scope == "challenger_125"
+            else f"tennismylife ({normalized_tour.upper()} principal)"
+        )
 
         if df is None or df.empty:
             if normalized_tour == "atp":
                 df = _load_sackmann(normalized_tour, year)
             source = "sackmann"
-            # para wta não tentamos o Sackmann de todo (ver nota acima) —
-            # passamos direto ao tennis-data.co.uk abaixo.
+            # Para WTA não tentamos Sackmann: passamos ao tennis-data abaixo.
         if df is None or df.empty:
             df = _load_tennisdata_couk_multi_year(
                 normalized_tour, HISTORY_YEARS_TO_LOAD
@@ -5689,13 +5701,19 @@ def compute_ranking_evolution(history: pd.DataFrame, player: str,
 # Categorias oficiais do CPI (courtspeed.com): <30 lento, 30-34
 # médio-lento, 35-39 médio, 40-44 médio-rápido, >44 rápido.
 #
-# Esta estrutura é o registo versionado de evidência do Fenzobot: cada valor
-# é rastreável à fonte pública e não se infere velocidade para eventos que
-# não estejam explicitamente cobertos. A velocidade só pode pesar no índice
-# quando os DOIS jogadores tiverem pelo menos esta amostra comparável.
+# Esta estrutura é o registo versionado de evidência CPI do Fenzobot: cada
+# valor é rastreável à fonte pública. Eventos fora dessa cobertura podem agora
+# receber um perfil empírico separado, explicitamente rotulado e calculado
+# apenas com partidas anteriores. A velocidade só pode pesar no índice quando
+# os DOIS jogadores tiverem pelo menos esta amostra comparável.
 COURT_PACE_SOURCE = "courtspeed_cpi"
 COURT_PACE_SOURCE_URL = "https://courtspeed.com/"
 COURT_PACE_MIN_MATCHES = 10
+COURT_PACE_EMPIRICAL_SOURCE = "event_ace_rate_percentile_v1"
+COURT_PACE_EMPIRICAL_MIN_MATCHES = 12
+COURT_PACE_EMPIRICAL_MIN_REFERENCE_EVENTS = 12
+_COURT_PACE_PROFILE_CACHE: dict[tuple, dict] = {}
+_COURT_PACE_PROFILE_CACHE_LOCK = threading.RLock()
 COURT_PACE_INDEX: dict = {
     "indian wells": {2016: 30, 2017: 27.4, 2018: 27.9, 2019: 32.1, 2021: 32,
                       2023: 35.4, 2024: 36.9, 2025: 30.9, 2026: 39.3},
@@ -5754,6 +5772,112 @@ def _normalize_tournament_name(name) -> Optional[str]:
     for alias, canon in _CPI_NOME_ALIASES.items():
         if alias in n or n in alias:
             return canon
+    return None
+
+
+def _empirical_tournament_key(name) -> Optional[str]:
+    """Stable event key for factual event-level pace observations.
+
+    Provider event labels commonly append the city after ``" - "`` while the
+    historical files do not.  Known CPI aliases retain their canonical key;
+    unknown events keep a conservative normalized base label so unrelated
+    tournaments are never merged merely because they share a city or tier.
+    """
+    canon = _normalize_tournament_name(name)
+    if canon is not None:
+        return canon
+    if not isinstance(name, str) or not name.strip():
+        return None
+    base = re.split(r"\s+-\s+", name.strip(), maxsplit=1)[0]
+    normalized = _normalize_name(base)
+    normalized = re.sub(r"\b(?:19|20)\d{2}\b", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized or None
+
+
+def _empirical_tournament_candidates(name) -> list[str]:
+    if not isinstance(name, str) or not name.strip():
+        return []
+    candidates = []
+    canon = _normalize_tournament_name(name)
+    if canon:
+        candidates.append(canon)
+    parts = re.split(r"\s+-\s+", name.strip(), maxsplit=1)
+    for part in parts + [name]:
+        normalized = _normalize_name(part)
+        normalized = re.sub(r"\b(?:19|20)\d{2}\b", " ", normalized)
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        if normalized and normalized not in candidates:
+            candidates.append(normalized)
+    return candidates
+
+
+def _lookup_empirical_court_pace(
+    profiles: dict, tournament_name, year: Optional[int], scope: str,
+) -> Optional[dict]:
+    if not profiles or year is None:
+        return None
+    candidates = _empirical_tournament_candidates(tournament_name)
+    generic = {
+        "open", "challenger", "atp", "wta", "masters", "master",
+        "championship", "championships", "tennis", "international",
+    }
+    candidate_sets = [
+        {token for token in candidate.split() if token not in generic}
+        for candidate in candidates
+    ]
+
+    # Current-year evidence wins.  Before enough rounds are complete, the same
+    # event from either of the preceding two seasons is an explicitly marked
+    # fallback, mirroring the conservative window already used for CPI.
+    for candidate_year in (year, year - 1, year - 2):
+        for candidate in candidates:
+            exact = profiles.get((scope, candidate, candidate_year)) or profiles.get(
+                (candidate, candidate_year)
+            )
+            if exact:
+                result = dict(exact)
+                result["ano_exato"] = candidate_year == year
+                return result
+
+        # Conservative unique token match for sponsor/title variations.
+        # Keep only each event's best score so several candidate spellings do
+        # not create a false ambiguity against the same profile.
+        scored_by_event: dict[str, tuple[float, dict]] = {}
+        for key, profile in profiles.items():
+            if not isinstance(key, tuple) or len(key) != 3:
+                continue
+            profile_scope, event_key, event_year = key
+            if profile_scope != scope or event_year != candidate_year:
+                continue
+            event_tokens = {
+                token for token in str(event_key).split() if token not in generic
+            }
+            for tokens in candidate_sets:
+                if not tokens or not event_tokens:
+                    continue
+                score = len(tokens & event_tokens) / max(
+                    len(tokens), len(event_tokens)
+                )
+                if score < 0.75:
+                    continue
+                previous = scored_by_event.get(str(event_key))
+                if previous is None or score > previous[0]:
+                    scored_by_event[str(event_key)] = (score, profile)
+        scored = sorted(
+            (
+                (score, event_key, profile)
+                for event_key, (score, profile) in scored_by_event.items()
+            ),
+            key=lambda item: (-item[0], item[1]),
+        )
+        if not scored:
+            continue
+        if len(scored) > 1 and scored[0][0] == scored[1][0]:
+            continue
+        result = dict(scored[0][2])
+        result["ano_exato"] = candidate_year == year
+        return result
     return None
 
 
@@ -5829,12 +5953,16 @@ def lookup_court_pace(tournament_name, year: Optional[int]) -> Optional[dict]:
     }
 
 
-def court_pace_context(tournament_name, year: Optional[int], surface) -> dict:
+def court_pace_context(
+    tournament_name, year: Optional[int], surface, *,
+    empirical_profiles: Optional[dict] = None,
+    empirical_scope: str = "main",
+) -> dict:
     """Contexto auditável da velocidade do piso para o jogo atual.
 
-    Em hard, só expõe CPI quando o torneio está no registo factual. Em clay e
-    grass declara explicitamente que o fator não é aplicável; isso impede que
-    uma classificação CPI de outro tipo de superfície seja usada por engano.
+    Em hard, prefere CPI e só depois aceita um perfil empírico ex-ante. Em clay
+    e grass declara explicitamente que o fator não é aplicável; isso impede
+    que uma classificação de outro tipo de superfície seja usada por engano.
     """
     family = _surface_family(surface)
     if family in {"clay", "grass"}:
@@ -5849,6 +5977,15 @@ def court_pace_context(tournament_name, year: Optional[int], surface) -> dict:
             "motivo_exclusao": "tipo de piso não identificado para classificação de velocidade",
         }
     info = lookup_court_pace(tournament_name, year)
+    if info is None and empirical_profiles:
+        empirical = _lookup_empirical_court_pace(
+            empirical_profiles, tournament_name, year, empirical_scope
+        )
+        if empirical:
+            return {
+                "status": "available", "surface_family": "hard",
+                **dict(empirical),
+            }
     if info is None:
         return {
             "status": "unclassified_hard", "surface_family": "hard",
@@ -5857,12 +5994,138 @@ def court_pace_context(tournament_name, year: Optional[int], surface) -> dict:
     return {"status": "available", "surface_family": "hard", **info}
 
 
+def _history_year_and_date(history: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    raw = history.get("tourney_date")
+    if raw is None:
+        empty = pd.Series(pd.NaT, index=history.index, dtype="datetime64[ns]")
+        return pd.Series(pd.NA, index=history.index, dtype="Int64"), empty
+    dates = pd.to_datetime(raw.astype(str), format="%Y%m%d", errors="coerce")
+    return dates.dt.year.astype("Int64"), dates
+
+
+def build_empirical_court_speed_profiles(
+    history: pd.DataFrame, *, before: Optional[datetime] = None,
+) -> dict[tuple[str, str, int], dict]:
+    """Build ex-ante hard-court pace buckets from event-wide ace rates.
+
+    This is deliberately a relative, factual proxy and never labelled CPI.
+    Each event needs at least 12 completed matches with bilateral service-point
+    data.  Its ace rate is compared only with sufficiently sampled hard-court
+    events that started earlier, so future tournaments cannot classify the
+    past.  CourtSpeed CPI remains authoritative whenever it exists.
+    """
+    cutoff_key = None
+    if before is not None:
+        parsed_cutoff = pd.Timestamp(before)
+        if parsed_cutoff.tzinfo:
+            parsed_cutoff = parsed_cutoff.tz_localize(None)
+        cutoff_key = parsed_cutoff.date().isoformat()
+    history_identity = history.attrs.get("history_cache_key") or id(history)
+    cache_key = (str(history_identity), len(history), cutoff_key)
+    with _COURT_PACE_PROFILE_CACHE_LOCK:
+        cached = _COURT_PACE_PROFILE_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+
+    required = {
+        "tourney_name", "tourney_date", "surface",
+        "w_ace", "l_ace", "w_svpt", "l_svpt",
+    }
+    if history.empty or not required.issubset(history.columns):
+        return {}
+    frame = history.copy()
+    if "_history_competition_scope" in frame.columns:
+        frame["_pace_scope"] = frame["_history_competition_scope"].fillna("main")
+    else:
+        frame["_pace_scope"] = "main"
+    frame["_year"], frame["_event_date"] = _history_year_and_date(frame)
+    if before is not None:
+        frame = frame[frame["_event_date"] <= parsed_cutoff]
+    frame = frame[frame["surface"].map(_surface_family) == "hard"].copy()
+    frame["_event_key"] = frame["tourney_name"].map(_empirical_tournament_key)
+    numeric = ("w_ace", "l_ace", "w_svpt", "l_svpt")
+    for column in numeric:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame["_aces"] = frame["w_ace"] + frame["l_ace"]
+    frame["_service_points"] = frame["w_svpt"] + frame["l_svpt"]
+    frame = frame[
+        frame["_event_key"].notna()
+        & frame["_year"].notna()
+        & frame["_aces"].notna()
+        & (frame["_aces"] >= 0)
+        & frame["_service_points"].notna()
+        & (frame["_service_points"] > 0)
+    ]
+    if frame.empty:
+        return {}
+    grouped = (
+        frame.groupby(["_pace_scope", "_event_key", "_year"], dropna=True)
+        .agg(
+            event_date=("_event_date", "min"),
+            matches=("_service_points", "size"),
+            aces=("_aces", "sum"),
+            service_points=("_service_points", "sum"),
+        )
+        .reset_index()
+    )
+    grouped = grouped[
+        (grouped["matches"] >= COURT_PACE_EMPIRICAL_MIN_MATCHES)
+        & (grouped["service_points"] > 0)
+    ].copy()
+    if grouped.empty:
+        return {}
+    grouped["ace_rate"] = grouped["aces"] / grouped["service_points"]
+    grouped = grouped.sort_values(["event_date", "_event_key"])
+
+    profiles: dict[tuple[str, str, int], dict] = {}
+    for row in grouped.to_dict("records"):
+        references = grouped[
+            (grouped["_pace_scope"] == row["_pace_scope"])
+            & (grouped["event_date"] < row["event_date"])
+        ]
+        if len(references) < COURT_PACE_EMPIRICAL_MIN_REFERENCE_EVENTS:
+            continue
+        percentile = float((references["ace_rate"] <= row["ace_rate"]).mean())
+        if percentile <= 0.20:
+            bucket = "slow"
+        elif percentile <= 0.40:
+            bucket = "medium_slow"
+        elif percentile <= 0.60:
+            bucket = "medium"
+        elif percentile <= 0.80:
+            bucket = "medium_fast"
+        else:
+            bucket = "fast"
+        key = (
+            str(row["_pace_scope"]), str(row["_event_key"]), int(row["_year"])
+        )
+        profiles[key] = {
+            "bucket": bucket,
+            "source": COURT_PACE_EMPIRICAL_SOURCE,
+            "source_url": None,
+            "competition_scope": key[0],
+            "tournament_key": key[1],
+            "ano_usado": key[2],
+            "ano_exato": True,
+            "proxy_metric": "bilateral_ace_rate_per_service_point",
+            "event_ace_rate_pct": round(100.0 * float(row["ace_rate"]), 2),
+            "event_matches": int(row["matches"]),
+            "reference_events": int(len(references)),
+            "reference_percentile": round(100.0 * percentile, 1),
+        }
+    with _COURT_PACE_PROFILE_CACHE_LOCK:
+        _COURT_PACE_PROFILE_CACHE[cache_key] = profiles
+    return profiles
+
+
 def compute_court_speed_form(
     history: pd.DataFrame,
     player: str,
     current_bucket: str,
     *,
     competition_policy: Optional[dict] = None,
+    empirical_profiles: Optional[dict] = None,
+    before: Optional[datetime] = None,
 ) -> Optional[dict]:
     """Performance in the same factual hard-court pace bucket."""
     if history.empty or current_bucket is None:
@@ -5881,12 +6144,10 @@ def compute_court_speed_form(
     ].copy()
     if played.empty:
         return None
-    played["_year"] = (
-        pd.to_datetime(
-            played["tourney_date"], format="%Y%m%d", errors="coerce"
-        ).dt.year
-        if "tourney_date" in played.columns else None
-    )
+    played["_year"], played["_event_date"] = _history_year_and_date(played)
+    if before is not None:
+        cutoff = pd.Timestamp(before).tz_localize(None) if pd.Timestamp(before).tzinfo else pd.Timestamp(before)
+        played = played[played["_event_date"] <= cutoff]
     surface_col = "surface" if "surface" in played.columns else (
         "Surface" if "Surface" in played.columns else None
     )
@@ -5896,9 +6157,24 @@ def compute_court_speed_form(
     for record in played.to_dict("records"):
         if _surface_family(record.get(surface_col)) != "hard":
             continue
-        context = lookup_court_pace(record.get(name_col), record.get("_year"))
+        try:
+            event_year = int(record.get("_year"))
+        except (TypeError, ValueError):
+            event_year = None
+        context = lookup_court_pace(record.get(name_col), event_year)
+        if context is None and empirical_profiles:
+            event_scope = str(
+                record.get("_history_competition_scope") or "main"
+            )
+            context = _lookup_empirical_court_pace(
+                empirical_profiles, record.get(name_col), event_year,
+                event_scope,
+            )
         if context is not None and context["bucket"] == current_bucket:
-            selected.append(record)
+            selected.append({
+                **record,
+                "_court_speed_source": context.get("source") or "unknown",
+            })
     if not selected:
         return None
     result = competition_evidence.weighted_binary_record(
@@ -5919,6 +6195,10 @@ def compute_court_speed_form(
         "eligible_for_index": (
             isinstance(sample, (int, float)) and sample >= COURT_PACE_MIN_MATCHES
         ),
+        "classification_sources": sorted({
+            str(row.get("_court_speed_source") or "unknown")
+            for row in selected
+        }),
     }
 
 def _round_stage(value: object) -> Optional[str]:

@@ -2615,18 +2615,34 @@ def _build_match_payload(match: dict) -> dict:
         competition_policy=competition_policy,
     )
 
-    # Velocidade do piso: apenas em hard e apenas com uma classificação CPI
-    # factual do torneio. Terra/relva mantêm-se deliberadamente no fator de
-    # desempenho por superfície, sem velocidade inventada.
-    _cpi_hoje = fetch_data.court_pace_context(tournament, start.year, surface)
+    # Velocidade do piso: apenas em hard. CPI factual tem prioridade; fora da
+    # sua cobertura usamos a proxy empírica ex-ante do próprio circuito.
+    # Terra/relva mantêm-se deliberadamente no fator de superfície.
+    _court_pace_profiles = fetch_data.build_empirical_court_speed_profiles(
+        history, before=start,
+    )
+    _court_pace_scope = (
+        "challenger"
+        if str(match.get("tier") or "").strip() == "Challenger 125"
+        else "main"
+    )
+    _cpi_hoje = fetch_data.court_pace_context(
+        tournament, start.year, surface,
+        empirical_profiles=_court_pace_profiles,
+        empirical_scope=_court_pace_scope,
+    )
     _cpi_bucket_hoje = _cpi_hoje.get("bucket") if _cpi_hoje.get("status") == "available" else None
     court_speed_a = fetch_data.compute_court_speed_form(
         history, player_a, _cpi_bucket_hoje,
         competition_policy=competition_policy,
+        empirical_profiles=_court_pace_profiles,
+        before=start,
     )
     court_speed_b = fetch_data.compute_court_speed_form(
         history, player_b, _cpi_bucket_hoje,
         competition_policy=competition_policy,
+        empirical_profiles=_court_pace_profiles,
+        before=start,
     )
 
     # Onda 2 (dados ricos por jogador): desempenho vs qualidade do
