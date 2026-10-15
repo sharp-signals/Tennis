@@ -5709,9 +5709,15 @@ def compute_ranking_evolution(history: pd.DataFrame, player: str,
 COURT_PACE_SOURCE = "courtspeed_cpi"
 COURT_PACE_SOURCE_URL = "https://courtspeed.com/"
 COURT_PACE_MIN_MATCHES = 10
-COURT_PACE_EMPIRICAL_SOURCE = "event_ace_rate_percentile_v1"
+COURT_PACE_EMPIRICAL_SOURCE = "event_pace_composite_v2"
 COURT_PACE_EMPIRICAL_MIN_MATCHES = 12
 COURT_PACE_EMPIRICAL_MIN_REFERENCE_EVENTS = 12
+COURT_PACE_EMPIRICAL_WEIGHTS = {
+    "hold_rate": 0.35,
+    "service_points_won_rate": 0.30,
+    "ace_rate": 0.20,
+    "tiebreak_set_rate": 0.15,
+}
 _COURT_PACE_PROFILE_CACHE: dict[tuple, dict] = {}
 _COURT_PACE_PROFILE_CACHE_LOCK = threading.RLock()
 COURT_PACE_INDEX: dict = {
@@ -6003,16 +6009,48 @@ def _history_year_and_date(history: pd.DataFrame) -> tuple[pd.Series, pd.Series]
     return dates.dt.year.astype("Int64"), dates
 
 
+def _court_pace_score_counts(score: object) -> tuple[int, int]:
+    """Return completed sets and tie-break sets from a conventional score."""
+    if not isinstance(score, str) or not score.strip():
+        return 0, 0
+    raw = score.upper().strip()
+    if any(marker in raw for marker in ("RET", "W/O", " WO", "DEF", "ABD")):
+        return 0, 0
+    completed = tiebreaks = 0
+    for token in raw.split():
+        match = re.fullmatch(r"(\d+)-(\d+)(?:\([^)]*\))?", token)
+        if not match:
+            return 0, 0
+        left, right = int(match.group(1)), int(match.group(2))
+        if max(left, right) < 6 or left == right:
+            return 0, 0
+        completed += 1
+        if {left, right} == {6, 7}:
+            tiebreaks += 1
+    return completed, tiebreaks
+
+
+def _reference_percentile(values: pd.Series, target: float) -> float:
+    """Mid-rank percentile; tied event metrics remain neutral, not maximal."""
+    numeric = pd.to_numeric(values, errors="coerce").dropna()
+    if numeric.empty:
+        return 0.5
+    lower = float((numeric < target).sum())
+    equal = float((numeric == target).sum())
+    return (lower + 0.5 * equal) / len(numeric)
+
+
 def build_empirical_court_speed_profiles(
     history: pd.DataFrame, *, before: Optional[datetime] = None,
 ) -> dict[tuple[str, str, int], dict]:
-    """Build ex-ante hard-court pace buckets from event-wide ace rates.
+    """Build ex-ante hard-court pace buckets from event-wide match dynamics.
 
     This is deliberately a relative, factual proxy and never labelled CPI.
-    Each event needs at least 12 completed matches with bilateral service-point
-    data.  Its ace rate is compared only with sufficiently sampled hard-court
-    events that started earlier, so future tournaments cannot classify the
-    past.  CourtSpeed CPI remains authoritative whenever it exists.
+    The composite combines hold rate, service points won, ace rate and
+    tie-break frequency. Each event needs at least 12 completed matches with
+    bilateral data. Every component is compared only with hard-court events
+    that started earlier in the same circuit, so future tournaments cannot
+    classify the past. CourtSpeed CPI remains authoritative whenever it exists.
     """
     cutoff_key = None
     if before is not None:
@@ -6029,7 +6067,9 @@ def build_empirical_court_speed_profiles(
 
     required = {
         "tourney_name", "tourney_date", "surface",
-        "w_ace", "l_ace", "w_svpt", "l_svpt",
+        "w_ace", "l_ace", "w_svpt", "l_svpt", "w_1stWon", "l_1stWon",
+        "w_2ndWon", "l_2ndWon", "w_SvGms", "l_SvGms", "w_bpSaved",
+        "l_bpSaved", "w_bpFaced", "l_bpFaced", "score",
     }
     if history.empty or not required.issubset(history.columns):
         return {}
@@ -6043,11 +6083,27 @@ def build_empirical_court_speed_profiles(
         frame = frame[frame["_event_date"] <= parsed_cutoff]
     frame = frame[frame["surface"].map(_surface_family) == "hard"].copy()
     frame["_event_key"] = frame["tourney_name"].map(_empirical_tournament_key)
-    numeric = ("w_ace", "l_ace", "w_svpt", "l_svpt")
+    numeric = (
+        "w_ace", "l_ace", "w_svpt", "l_svpt", "w_1stWon", "l_1stWon",
+        "w_2ndWon", "l_2ndWon", "w_SvGms", "l_SvGms", "w_bpSaved",
+        "l_bpSaved", "w_bpFaced", "l_bpFaced",
+    )
     for column in numeric:
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
     frame["_aces"] = frame["w_ace"] + frame["l_ace"]
     frame["_service_points"] = frame["w_svpt"] + frame["l_svpt"]
+    frame["_service_points_won"] = (
+        frame["w_1stWon"] + frame["w_2ndWon"]
+        + frame["l_1stWon"] + frame["l_2ndWon"]
+    )
+    frame["_service_games"] = frame["w_SvGms"] + frame["l_SvGms"]
+    frame["_breaks"] = (
+        (frame["w_bpFaced"] - frame["w_bpSaved"])
+        + (frame["l_bpFaced"] - frame["l_bpSaved"])
+    )
+    score_counts = frame["score"].map(_court_pace_score_counts)
+    frame["_completed_sets"] = score_counts.map(lambda value: value[0])
+    frame["_tiebreak_sets"] = score_counts.map(lambda value: value[1])
     frame = frame[
         frame["_event_key"].notna()
         & frame["_year"].notna()
@@ -6055,6 +6111,14 @@ def build_empirical_court_speed_profiles(
         & (frame["_aces"] >= 0)
         & frame["_service_points"].notna()
         & (frame["_service_points"] > 0)
+        & frame["_service_points_won"].notna()
+        & (frame["_service_points_won"] >= 0)
+        & frame["_service_games"].notna()
+        & (frame["_service_games"] > 0)
+        & frame["_breaks"].notna()
+        & (frame["_breaks"] >= 0)
+        & (frame["_breaks"] <= frame["_service_games"])
+        & (frame["_completed_sets"] > 0)
     ]
     if frame.empty:
         return {}
@@ -6065,6 +6129,11 @@ def build_empirical_court_speed_profiles(
             matches=("_service_points", "size"),
             aces=("_aces", "sum"),
             service_points=("_service_points", "sum"),
+            service_points_won=("_service_points_won", "sum"),
+            service_games=("_service_games", "sum"),
+            breaks=("_breaks", "sum"),
+            completed_sets=("_completed_sets", "sum"),
+            tiebreak_sets=("_tiebreak_sets", "sum"),
         )
         .reset_index()
     )
@@ -6075,6 +6144,16 @@ def build_empirical_court_speed_profiles(
     if grouped.empty:
         return {}
     grouped["ace_rate"] = grouped["aces"] / grouped["service_points"]
+    grouped["service_points_won_rate"] = (
+        grouped["service_points_won"] / grouped["service_points"]
+    )
+    grouped["hold_rate"] = (
+        grouped["service_games"] - grouped["breaks"]
+    ) / grouped["service_games"]
+    grouped["break_rate"] = grouped["breaks"] / grouped["service_games"]
+    grouped["tiebreak_set_rate"] = (
+        grouped["tiebreak_sets"] / grouped["completed_sets"]
+    )
     grouped = grouped.sort_values(["event_date", "_event_key"])
 
     profiles: dict[tuple[str, str, int], dict] = {}
@@ -6085,7 +6164,14 @@ def build_empirical_court_speed_profiles(
         ]
         if len(references) < COURT_PACE_EMPIRICAL_MIN_REFERENCE_EVENTS:
             continue
-        percentile = float((references["ace_rate"] <= row["ace_rate"]).mean())
+        component_percentiles = {
+            metric: _reference_percentile(references[metric], float(row[metric]))
+            for metric in COURT_PACE_EMPIRICAL_WEIGHTS
+        }
+        percentile = sum(
+            component_percentiles[metric] * weight
+            for metric, weight in COURT_PACE_EMPIRICAL_WEIGHTS.items()
+        )
         if percentile <= 0.20:
             bucket = "slow"
         elif percentile <= 0.40:
@@ -6107,7 +6193,22 @@ def build_empirical_court_speed_profiles(
             "tournament_key": key[1],
             "ano_usado": key[2],
             "ano_exato": True,
-            "proxy_metric": "bilateral_ace_rate_per_service_point",
+            "proxy_metric": "event_match_dynamics_composite",
+            "pace_components": {
+                "hold_rate_pct": round(100.0 * float(row["hold_rate"]), 2),
+                "break_rate_pct": round(100.0 * float(row["break_rate"]), 2),
+                "service_points_won_pct": round(
+                    100.0 * float(row["service_points_won_rate"]), 2
+                ),
+                "ace_rate_pct": round(100.0 * float(row["ace_rate"]), 2),
+                "tiebreak_set_rate_pct": round(
+                    100.0 * float(row["tiebreak_set_rate"]), 2
+                ),
+            },
+            "component_percentiles": {
+                metric: round(100.0 * value, 1)
+                for metric, value in component_percentiles.items()
+            },
             "event_ace_rate_pct": round(100.0 * float(row["ace_rate"]), 2),
             "event_matches": int(row["matches"]),
             "reference_events": int(len(references)),
@@ -6116,6 +6217,114 @@ def build_empirical_court_speed_profiles(
     with _COURT_PACE_PROFILE_CACHE_LOCK:
         _COURT_PACE_PROFILE_CACHE[cache_key] = profiles
     return profiles
+
+
+def _court_speed_player_performance(rows: list[dict], player: str) -> dict:
+    """Descriptive player performance inside one pace bucket.
+
+    Win rate remains the decision input. These extra factual splits explain
+    *how* the player performs at that pace without silently duplicating the
+    separate service, return and recovery factors in the Fenzobot index.
+    """
+    totals = {
+        "service_points": 0.0,
+        "service_points_won": 0.0,
+        "return_points": 0.0,
+        "return_points_won": 0.0,
+        "service_games": 0.0,
+        "breaks_conceded": 0.0,
+        "return_games": 0.0,
+        "breaks_made": 0.0,
+    }
+    service_matches = recovery_attempts = recovery_wins = 0
+
+    def number(value) -> Optional[float]:
+        try:
+            parsed = float(value)
+            return None if pd.isna(parsed) else parsed
+        except (TypeError, ValueError):
+            return None
+
+    for row in rows:
+        is_winner = row.get("winner_name") == player
+        own = "w_" if is_winner else "l_"
+        opponent = "l_" if is_winner else "w_"
+        values = {
+            "own_svpt": number(row.get(f"{own}svpt")),
+            "own_first_won": number(row.get(f"{own}1stWon")),
+            "own_second_won": number(row.get(f"{own}2ndWon")),
+            "own_games": number(row.get(f"{own}SvGms")),
+            "own_bp_saved": number(row.get(f"{own}bpSaved")),
+            "own_bp_faced": number(row.get(f"{own}bpFaced")),
+            "opp_svpt": number(row.get(f"{opponent}svpt")),
+            "opp_first_won": number(row.get(f"{opponent}1stWon")),
+            "opp_second_won": number(row.get(f"{opponent}2ndWon")),
+            "opp_games": number(row.get(f"{opponent}SvGms")),
+            "opp_bp_saved": number(row.get(f"{opponent}bpSaved")),
+            "opp_bp_faced": number(row.get(f"{opponent}bpFaced")),
+        }
+        if all(value is not None for value in values.values()):
+            own_won = values["own_first_won"] + values["own_second_won"]
+            opponent_won = values["opp_first_won"] + values["opp_second_won"]
+            breaks_conceded = values["own_bp_faced"] - values["own_bp_saved"]
+            breaks_made = values["opp_bp_faced"] - values["opp_bp_saved"]
+            if (
+                values["own_svpt"] > 0
+                and values["opp_svpt"] > 0
+                and values["own_games"] > 0
+                and values["opp_games"] > 0
+                and 0 <= breaks_conceded <= values["own_games"]
+                and 0 <= breaks_made <= values["opp_games"]
+            ):
+                service_matches += 1
+                totals["service_points"] += values["own_svpt"]
+                totals["service_points_won"] += own_won
+                totals["return_points"] += values["opp_svpt"]
+                totals["return_points_won"] += values["opp_svpt"] - opponent_won
+                totals["service_games"] += values["own_games"]
+                totals["breaks_conceded"] += breaks_conceded
+                totals["return_games"] += values["opp_games"]
+                totals["breaks_made"] += breaks_made
+
+        first_set_winner_is_match_winner = _first_set_winner_is_match_winner(
+            row.get("score")
+        )
+        if first_set_winner_is_match_winner is not None:
+            player_lost_first = (
+                (is_winner and not first_set_winner_is_match_winner)
+                or (not is_winner and first_set_winner_is_match_winner)
+            )
+            if player_lost_first:
+                recovery_attempts += 1
+                recovery_wins += int(is_winner)
+
+    def percentage(numerator: float, denominator: float) -> Optional[float]:
+        return (
+            round(100.0 * numerator / denominator, 1)
+            if denominator > 0 else None
+        )
+
+    return {
+        "service_matches": service_matches,
+        "hold_rate_pct": percentage(
+            totals["service_games"] - totals["breaks_conceded"],
+            totals["service_games"],
+        ),
+        "break_rate_pct": percentage(
+            totals["breaks_made"], totals["return_games"]
+        ),
+        "service_points_won_pct": percentage(
+            totals["service_points_won"], totals["service_points"]
+        ),
+        "return_points_won_pct": percentage(
+            totals["return_points_won"], totals["return_points"]
+        ),
+        "first_set_recovery_pct": percentage(
+            recovery_wins, recovery_attempts
+        ),
+        "first_set_recovery_wins": recovery_wins,
+        "first_set_recovery_attempts": recovery_attempts,
+    }
 
 
 def compute_court_speed_form(
@@ -6199,6 +6408,9 @@ def compute_court_speed_form(
             str(row.get("_court_speed_source") or "unknown")
             for row in selected
         }),
+        "performance_context": _court_speed_player_performance(
+            selected, player
+        ),
     }
 
 def _round_stage(value: object) -> Optional[str]:

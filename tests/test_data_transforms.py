@@ -45,6 +45,10 @@ class CourtPaceEvidenceTests(unittest.TestCase):
     @staticmethod
     def _event_rows(name, date, ace_total, matches=12):
         rows = []
+        first_won = 20 + ace_total / 4
+        second_won = 10 + ace_total / 8
+        bp_saved = min(5, 1 + ace_total / 5)
+        score = "7-6(4) 7-6(5)" if ace_total >= 12 else "6-4 6-4"
         for index in range(matches):
             rows.append({
                 "tourney_name": name,
@@ -56,6 +60,17 @@ class CourtPaceEvidenceTests(unittest.TestCase):
                 "l_ace": ace_total / 2,
                 "w_svpt": 50,
                 "l_svpt": 50,
+                "w_1stWon": first_won,
+                "l_1stWon": first_won,
+                "w_2ndWon": second_won,
+                "l_2ndWon": second_won,
+                "w_SvGms": 10,
+                "l_SvGms": 10,
+                "w_bpFaced": 5,
+                "l_bpFaced": 5,
+                "w_bpSaved": bp_saved,
+                "l_bpSaved": bp_saved,
+                "score": score,
             })
         return rows
 
@@ -80,10 +95,19 @@ class CourtPaceEvidenceTests(unittest.TestCase):
         )
 
         self.assertEqual(context["status"], "available")
-        self.assertEqual(context["source"], "event_ace_rate_percentile_v1")
+        self.assertEqual(context["source"], "event_pace_composite_v2")
         self.assertEqual(context["bucket"], "fast")
         self.assertEqual(context["event_matches"], 12)
         self.assertEqual(context["reference_events"], 12)
+        self.assertEqual(context["proxy_metric"], "event_match_dynamics_composite")
+        self.assertEqual(
+            set(context["pace_components"]),
+            {
+                "hold_rate_pct", "break_rate_pct",
+                "service_points_won_pct", "ace_rate_pct",
+                "tiebreak_set_rate_pct",
+            },
+        )
         self.assertNotIn(("main", "future event", 2026), profiles)
 
     def test_cpi_remains_authoritative_over_empirical_profile(self):
@@ -92,7 +116,7 @@ class CourtPaceEvidenceTests(unittest.TestCase):
             empirical_profiles={
                 ("main", "shanghai", 2026): {
                     "bucket": "fast",
-                    "source": "event_ace_rate_percentile_v1",
+                    "source": "event_pace_composite_v2",
                 }
             },
         )
@@ -106,7 +130,7 @@ class CourtPaceEvidenceTests(unittest.TestCase):
             empirical_profiles={
                 ("main", "guadalajara", 2026): {
                     "bucket": "medium",
-                    "source": "event_ace_rate_percentile_v1",
+                    "source": "event_pace_composite_v2",
                 }
             },
         )
@@ -120,7 +144,7 @@ class CourtPaceEvidenceTests(unittest.TestCase):
             empirical_profiles={
                 ("main", "guadalajara", 2025): {
                     "bucket": "medium_fast",
-                    "source": "event_ace_rate_percentile_v1",
+                    "source": "event_pace_composite_v2",
                     "ano_usado": 2025,
                     "ano_exato": True,
                 }
@@ -179,7 +203,7 @@ class CourtPaceEvidenceTests(unittest.TestCase):
         profiles = {
             ("main", "porto challenger", 2025): {
                 "bucket": "medium_slow",
-                "source": "event_ace_rate_percentile_v1",
+                "source": "event_pace_composite_v2",
             }
         }
 
@@ -191,8 +215,32 @@ class CourtPaceEvidenceTests(unittest.TestCase):
         self.assertEqual(result["matches"], 2)
         self.assertEqual(
             result["classification_sources"],
-            ["courtspeed_cpi", "event_ace_rate_percentile_v1"],
+            ["courtspeed_cpi", "event_pace_composite_v2"],
         )
+
+    def test_player_speed_form_exposes_hold_break_return_and_recovery(self):
+        history = pd.DataFrame([{
+            "winner_name": "A", "loser_name": "B", "surface": "Hard",
+            "tourney_name": "Shanghai Masters", "tourney_date": 20251001,
+            "score": "4-6 6-3 6-2",
+            "w_svpt": 60, "w_1stWon": 30, "w_2ndWon": 15,
+            "w_SvGms": 10, "w_bpFaced": 3, "w_bpSaved": 2,
+            "l_svpt": 60, "l_1stWon": 25, "l_2ndWon": 10,
+            "l_SvGms": 10, "l_bpFaced": 5, "l_bpSaved": 3,
+        }])
+
+        result = fetch_data.compute_court_speed_form(
+            history, "A", "medium_slow",
+            before=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+
+        context = result["performance_context"]
+        self.assertEqual(context["hold_rate_pct"], 90.0)
+        self.assertEqual(context["break_rate_pct"], 20.0)
+        self.assertEqual(context["service_points_won_pct"], 75.0)
+        self.assertEqual(context["return_points_won_pct"], 41.7)
+        self.assertEqual(context["first_set_recovery_pct"], 100.0)
+        self.assertEqual(context["first_set_recovery_attempts"], 1)
 
 
 class MatchInputTests(unittest.TestCase):

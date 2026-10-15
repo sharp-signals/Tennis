@@ -1014,22 +1014,33 @@ def _calcular_divergencia(payload):
     else:
         _reg_status("indoor_outdoor", False)
 
-    # NOVO (14/08/2026, a pedido): velocidade do piso — mesmo limiar de
-    # 3 p.p. Cobertura limitada (só Slams/Masters1000/ATP Finals) — "sem
-    # dados" é o resultado esperado na maioria dos jogos, por desenho.
+    # Velocidade do piso — mesmo limiar de 3 p.p. O sinal decisório continua
+    # a ser a taxa de vitória no perfil comparável; hold, break, serviço,
+    # retorno e recuperação ficam anexos como explicação factual, evitando
+    # duplicar no índice fatores que já têm peso próprio.
     vp = feats.get("velocidade_piso")
+    _cs_a = payload.get("court_speed_a") or {}
+    _cs_b = payload.get("court_speed_b") or {}
+    _cs_context = payload.get("court_speed_hoje") or {}
+    _vp_extra = {
+        "perfil_a": _cs_a.get("performance_context"),
+        "perfil_b": _cs_b.get("performance_context"),
+        "perfil_velocidade": _cs_context.get("bucket"),
+        "fonte_velocidade": _cs_context.get("source"),
+    }
     if isinstance(vp, dict) and vp.get("lider") not in (None, "igual") and abs(vp.get("diff") or 0) >= 3:
         _add("velocidade_piso", vp["lider"])
-        _reg_status("velocidade_piso", True, vp["lider"], valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"))
+        _reg_status("velocidade_piso", True, vp["lider"], valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"), **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") == "igual":
-        _reg_status("velocidade_piso", True, "igual", valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"))
+        _reg_status("velocidade_piso", True, "igual", valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"), **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") is not None:
         _reg_status("velocidade_piso", True, vp["lider"], "abaixo do limiar (<3 p.p.)",
-                    valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"))
+                    valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"), **_vp_extra)
     elif isinstance(vp, dict) and vp.get("motivo_exclusao"):
         _reg_status("velocidade_piso", False, motivo_exclusao=vp.get("motivo_exclusao"),
                     valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"),
-                    amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"))
+                    amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"),
+                    **_vp_extra)
     else:
         _reg_status("velocidade_piso", False)
 
@@ -3278,6 +3289,9 @@ details.weight-transparency-card .more-hint {{ color:var(--a); opacity:.72; }}
 .fd-val {{ font-weight:600; text-align:right; }}
 .fd-dim {{ color:var(--dim); font-weight:400; }}
 .fd-nota {{ color:var(--dim); font-size:11px; font-weight:400; }}
+.fd-speed-context {{ color:var(--dim); font-size:11px; line-height:1.45;
+  margin:4px 0 1px; display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; }}
+.fd-speed-context b {{ color:var(--text); font-weight:600; }}
 .fd-bar {{ display:flex; position:relative; height:22px; border-radius:5px;
   overflow:hidden; background:var(--surface2); }}
 .fd-bar::after {{ content:""; position:absolute; left:50%; top:0; bottom:0;
@@ -4003,6 +4017,38 @@ def _mod_fatores_detalhados(
         motivo = str(st.get("motivo_exclusao") or "").casefold()
         return "amostra insuficiente" in motivo or "fonte não fiável" in motivo
 
+    def speed_context_markup(st):
+        if not isinstance(st, dict):
+            return ""
+        profiles = (st.get("perfil_a"), st.get("perfil_b"))
+        if not any(isinstance(profile, dict) for profile in profiles):
+            return ""
+
+        def value(profile, key):
+            raw = (profile or {}).get(key)
+            return "N/D" if raw is None else f"{float(raw):.1f}%"
+
+        players = (payload.get("player_a") or "A", payload.get("player_b") or "B")
+        cells = []
+        for player, profile in zip(players, profiles):
+            if not isinstance(profile, dict):
+                cells.append(f"<span><b>{_esc(player)}</b> · contexto N/D</span>")
+                continue
+            recovery = value(profile, "first_set_recovery_pct")
+            attempts = profile.get("first_set_recovery_attempts")
+            recovery_text = (
+                f"{recovery} ({int(attempts)} casos)"
+                if isinstance(attempts, (int, float)) else recovery
+            )
+            cells.append(
+                f"<span><b>{_esc(player)}</b> · hold {value(profile, 'hold_rate_pct')} · "
+                f"break {value(profile, 'break_rate_pct')} · serviço "
+                f"{value(profile, 'service_points_won_pct')} · retorno "
+                f"{value(profile, 'return_points_won_pct')} · recuperação "
+                f"{recovery_text}</span>"
+            )
+        return f'<div class="fd-speed-context">{"".join(cells)}</div>'
+
     # Ordenação estável: preserva a sequência editorial dentro de cada grupo,
     # mas empurra para o fim apenas ausência/insuficiência de dados. Empates e
     # diferenças abaixo do limiar continuam junto dos fatores válidos, pois
@@ -4017,11 +4063,12 @@ def _mod_fatores_detalhados(
             continue
         nome = _esc(_nome_fator(chave))
         impact_attrs, impact_bar = impact_markup(st)
+        context_html = speed_context_markup(st) if chave == "velocidade_piso" else ""
         if not st.get("disponivel"):
             txt = st.get("motivo_exclusao") or "sem dados"
             linhas.append(
                 f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{impact_bar}</div>')
+                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{context_html}{impact_bar}</div>')
             continue
         lider = st.get("lider")
         motivo = st.get("motivo_exclusao")
@@ -4030,7 +4077,7 @@ def _mod_fatores_detalhados(
             txt = "empate" if lider == "igual" else (motivo or "sem vantagem clara")
             linhas.append(
                 f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
-                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{bar_html}{impact_bar}</div>')
+                f'<span class="fd-val fd-dim">{_esc(txt)}</span></div>{bar_html}{context_html}{impact_bar}</div>')
             continue
         # contribuiu de facto (sem motivo de exclusão) -> destaque; excluído
         # apesar de haver vantagem (ex: abaixo do limiar) -> tom neutro
@@ -4047,7 +4094,7 @@ def _mod_fatores_detalhados(
         linhas.append(
             f'<div class="fd-linha"{impact_attrs}><div class="fd-linha-top"><span class="fd-nome">{nome}</span>'
             f'<span class="fd-val" style="color:{cor}">{seta} {_esc(lider)}{nota}</span></div>'
-            f'{bar_html}{impact_bar}</div>')
+            f'{bar_html}{context_html}{impact_bar}</div>')
     if not linhas and not overview_html and not extras_html and not tail_html:
         return ""
     total_tag = f" ({len(linhas)})" if linhas else ""
