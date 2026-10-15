@@ -5655,30 +5655,52 @@ def compute_ranking_evolution(history: pd.DataFrame, player: str,
 
     if "winner_rank_points" not in played.columns or "loser_rank_points" not in played.columns:
         return None
-    played["_points"] = played.apply(_points_at, axis=1)
+    played["_points"] = pd.to_numeric(played.apply(_points_at, axis=1), errors="coerce")
     played = played.dropna(subset=["_points"])
     if played.empty:
         return None
 
     ref = reference_date or datetime.now(timezone.utc).replace(tzinfo=None)
+    if getattr(ref, "tzinfo", None) is not None:
+        ref = ref.astimezone(timezone.utc).replace(tzinfo=None)
+    # O histórico pode conter jogos posteriores quando esta função é usada em
+    # replay. Nunca permitir que uma observação futura escolha a âncora.
+    played = played[played["_date"] < ref]
+    if played.empty:
+        return None
 
-    def _pontos_ha(dias):
+    def _pontos_ha(dias, tolerancia_dias):
         alvo = ref - timedelta(days=dias)
         diffs = (played["_date"] - alvo).abs()
         idx = diffs.idxmin()
-        # só aceita se o jogo mais próximo estiver razoavelmente perto da
-        # data alvo (não mais de 45 dias) — senão arrisca comparar com um
-        # valor de há muito mais tempo (jogador esteve parado nessa altura)
-        if diffs.loc[idx] > timedelta(days=45):
+        distancia = int(diffs.loc[idx].days)
+        if distancia > tolerancia_dias:
             return None
-        return float(played.loc[idx, "_points"])
+        return {
+            "points": float(played.loc[idx, "_points"]),
+            "observed_at": played.loc[idx, "_date"].date().isoformat(),
+            "anchor_offset_days": distancia,
+            "tolerance_days": tolerancia_dias,
+        }
 
-    pontos_6m = _pontos_ha(182)
-    pontos_12m = _pontos_ha(365)
-    if pontos_6m is None and pontos_12m is None:
+    observacao_6m = _pontos_ha(182, 60)
+    observacao_12m = _pontos_ha(365, 90)
+    if observacao_6m is None and observacao_12m is None:
         return None
 
-    result = {"current": current_points, "points_6m_ago": pontos_6m, "points_12m_ago": pontos_12m}
+    pontos_6m = observacao_6m["points"] if observacao_6m else None
+    pontos_12m = observacao_12m["points"] if observacao_12m else None
+    result = {
+        "current": current_points,
+        "points_6m_ago": pontos_6m,
+        "points_12m_ago": pontos_12m,
+        "observations": {
+            "6m": observacao_6m,
+            "12m": observacao_12m,
+        },
+        "source": "historical_match_ranking_points",
+        "resolved_player_name": player,
+    }
     if pontos_6m and pontos_6m > 0:
         result["change_6m_pct"] = round(100 * (current_points - pontos_6m) / pontos_6m, 1)
     if pontos_12m and pontos_12m > 0:

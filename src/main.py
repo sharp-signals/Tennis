@@ -2039,6 +2039,46 @@ def _select_set1_comeback_source(
     }
 
 
+def _compute_ranking_evolution_pair(
+    history,
+    *,
+    tour: str,
+    tier: str | None,
+    player_a: str,
+    player_b: str,
+    points_a: float | None,
+    points_b: float | None,
+    reference_date: datetime,
+) -> tuple[dict | None, dict | None]:
+    """Resolve both ranking paths and lazily widen ATP history when needed."""
+    evolution_a = fetch_data.compute_ranking_evolution(
+        history, player_a, points_a, reference_date=reference_date,
+    )
+    evolution_b = fetch_data.compute_ranking_evolution(
+        history, player_b, points_b, reference_date=reference_date,
+    )
+    if (
+        tour != "atp"
+        or str(tier or "").strip() == "Challenger 125"
+        or (evolution_a is not None and evolution_b is not None)
+    ):
+        return evolution_a, evolution_b
+
+    # Um jogador hoje no ATP principal pode ter construído o ranking nos
+    # Challengers. Só este fator usa o universo alargado; os restantes mantêm
+    # o scope competitivo original.
+    ranking_history = fetch_data.get_history("atp", tier="Challenger 125")
+    if evolution_a is None:
+        evolution_a = fetch_data.compute_ranking_evolution(
+            ranking_history, player_a, points_a, reference_date=reference_date,
+        )
+    if evolution_b is None:
+        evolution_b = fetch_data.compute_ranking_evolution(
+            ranking_history, player_b, points_b, reference_date=reference_date,
+        )
+    return evolution_a, evolution_b
+
+
 def _build_match_payload(match: dict) -> dict:
     tour = match["_tour"]
     history = fetch_data.get_history(tour, tier=match.get("tier"))
@@ -2604,8 +2644,16 @@ def _build_match_payload(match: dict) -> dict:
               f"chave normalizada A: {fetch_data._normalize_name(player_a)!r} | "
               f"chave normalizada B: {fetch_data._normalize_name(player_b)!r}")
     # NOVO (14/08/2026, a pedido): evolução de ranking (pontos, 6m/12m)
-    ranking_evo_a = fetch_data.compute_ranking_evolution(history, player_a, (rank_a or {}).get("points"))
-    ranking_evo_b = fetch_data.compute_ranking_evolution(history, player_b, (rank_b or {}).get("points"))
+    ranking_evo_a, ranking_evo_b = _compute_ranking_evolution_pair(
+        history,
+        tour=tour,
+        tier=match.get("tier"),
+        player_a=player_a,
+        player_b=player_b,
+        points_a=(rank_a or {}).get("points"),
+        points_b=(rank_b or {}).get("points"),
+        reference_date=start,
+    )
     opponent_level_stats_a = fetch_data.compute_opponent_level_stats(
         history, player_a, (rank_b or {}).get("rank"),
         competition_policy=competition_policy,

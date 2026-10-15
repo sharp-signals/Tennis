@@ -1,12 +1,69 @@
 import os
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import pandas as pd
 
 from src import fetch_data, main, market_integrity, match_identity_v2
+
+
+class RankingEvolutionCoverageTests(unittest.TestCase):
+    @staticmethod
+    def _row(player, opponent, date, points):
+        return {
+            "winner_name": player,
+            "loser_name": opponent,
+            "winner_rank_points": points,
+            "loser_rank_points": 100,
+            "tourney_date": int(date.strftime("%Y%m%d")),
+        }
+
+    def test_wider_factual_anchors_preserve_observation_metadata(self):
+        reference = datetime(2026, 10, 15, tzinfo=timezone.utc)
+        history = pd.DataFrame([
+            self._row("Player A", "Opponent 1", reference - timedelta(days=127), 800),
+            self._row("Player A", "Opponent 2", reference - timedelta(days=285), 600),
+        ])
+
+        actual = fetch_data.compute_ranking_evolution(
+            history, "Player A", 1000, reference_date=reference,
+        )
+
+        self.assertEqual(actual["points_6m_ago"], 800.0)
+        self.assertEqual(actual["points_12m_ago"], 600.0)
+        self.assertEqual(actual["change_6m_pct"], 25.0)
+        self.assertEqual(actual["change_12m_pct"], 66.7)
+        self.assertEqual(actual["observations"]["6m"]["anchor_offset_days"], 55)
+        self.assertEqual(actual["observations"]["6m"]["tolerance_days"], 60)
+        self.assertEqual(actual["observations"]["12m"]["anchor_offset_days"], 80)
+        self.assertEqual(actual["source"], "historical_match_ranking_points")
+
+    def test_future_observations_are_never_used_in_replay(self):
+        reference = datetime(2026, 10, 15, tzinfo=timezone.utc)
+        history = pd.DataFrame([
+            self._row("Player A", "Opponent", reference + timedelta(days=1), 900),
+        ])
+
+        actual = fetch_data.compute_ranking_evolution(
+            history, "Player A", 1000, reference_date=reference,
+        )
+
+        self.assertIsNone(actual)
+
+    def test_observations_outside_both_tolerances_remain_unavailable(self):
+        reference = datetime(2026, 10, 15, tzinfo=timezone.utc)
+        history = pd.DataFrame([
+            self._row("Player A", "Opponent 1", reference - timedelta(days=121), 800),
+            self._row("Player A", "Opponent 2", reference - timedelta(days=274), 600),
+        ])
+
+        actual = fetch_data.compute_ranking_evolution(
+            history, "Player A", 1000, reference_date=reference,
+        )
+
+        self.assertIsNone(actual)
 
 
 class CourtPaceEvidenceTests(unittest.TestCase):
