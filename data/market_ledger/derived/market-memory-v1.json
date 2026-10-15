@@ -77934,10 +77934,10 @@
         "a": 0.6864,
         "b": 0.3136
       },
-      "last_valid_prestart_market_observation_id": "ca04aaf9c8c189be133702abfe39d2a9d20f68b27d7d804c97dcdd95a06b691c",
+      "last_valid_prestart_market_observation_id": "29c168636ba011a1c17db69bd2d3892e399b8d68badf1bc0a9c69740003d95d8",
       "last_valid_prestart_market_probabilities": {
-        "a": 0.6271604938271605,
-        "b": 0.37283950617283945
+        "a": 0.6390243902439025,
+        "b": 0.36097560975609755
       },
       "market_only_prediction": "a",
       "market_plus_sharp_prediction": "a",
@@ -77950,12 +77950,12 @@
       "outcome_side": null,
       "paper": [
         {
-          "closing_market_observation_id": "ca04aaf9c8c189be133702abfe39d2a9d20f68b27d7d804c97dcdd95a06b691c",
-          "clv_price_pct": 0.6623,
-          "clv_probability_pp": 0.4332,
+          "closing_market_observation_id": "29c168636ba011a1c17db69bd2d3892e399b8d68badf1bc0a9c69740003d95d8",
+          "clv_price_pct": 2.7027,
+          "clv_probability_pp": 1.6196,
           "entry_market_observation_id": "b91b0f6d22c77ca139e26af3b342384943cc1adf5366faaa49a7f5c0c32d49d8",
           "entry_market_probability": 0.62282878,
-          "last_valid_prestart_market_probability": 0.62716049,
+          "last_valid_prestart_market_probability": 0.63902439,
           "paper_key": "mi2_5fcde5cdaacd484e8089b7cce750f5ee:moneyline:a:na",
           "selected_side": "a"
         }
@@ -78483,6 +78483,109 @@
         "reason_code": null,
         "tier": "WTA 1000"
       }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-15T05:36:52+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "EXPERIMENTAL_TIER_CHALLENGER_125",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Michael Mmoh",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "0eb1352050ce06a9daa5a8bb4d991bac4c915e84",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "EDGE_NEGATIVE",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.6182,
+              "b": 0.3818
+            },
+            "github_run_id": "38687368579",
+            "market_probabilities": {
+              "a": 0.5807,
+              "b": 0.4193
+            },
+            "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+            "pricing_model_version": "market-residual-v0.3",
+            "snapshot_key": "mi2_db0a72e8cc2b45fb8b86ec0f89e8703f"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "6b36e206cf89c44453be6b3b"
+        }
+      },
+      "entry_market_observation_id": "9099305fd06e8b9640cf4f5b19c4fae0a1141c10b9ec673b76017781c82a4c76",
+      "entry_market_probabilities": {
+        "a": 0.5807291666666666,
+        "b": 0.4192708333333333
+      },
+      "evaluation_scope": "EXPERIMENTAL",
+      "event_key": "mi2_db0a72e8cc2b45fb8b86ec0f89e8703f",
+      "fenzobot_probabilities": {
+        "a": 0.6182,
+        "b": 0.3818
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "a",
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.6182,
+        "b": 0.3818
+      },
+      "match_format": "BO3",
+      "match_id": 1465,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 26925,
+          "name": "Michael Mmoh"
+        },
+        "b": {
+          "id": 71221,
+          "name": "Luca Nardi"
+        }
+      },
+      "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+      "pricing_market_probabilities": {
+        "a": 0.5807,
+        "b": 0.4193
+      },
+      "pricing_model_version": "market-residual-v0.3",
+      "report_id": "e6d1e9f69a51145cb8a4",
+      "scheduled_start_utc": "2026-10-16T09:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_db0a72e8cc2b45fb8b86ec0f89e8703f",
+      "surface": "Hard",
+      "tier": "Challenger 125",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": false,
+        "label": "Challenger 125 · EXPERIMENTAL",
+        "mode": "EXPERIMENTAL_REPORT_ONLY",
+        "paper_allowed": false,
+        "pricing_allowed": true,
+        "reason_code": "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "tier": "Challenger 125"
+      }
     }
   ],
   "experimental_evaluation_by_tier": {
@@ -78499,12 +78602,12 @@
         "log_loss": 0.559595,
         "sample_size": 81
       },
-      "sample_size": 135
+      "sample_size": 136
     }
   },
-  "generated_at_utc": "2026-10-14T22:27:14+00:00",
+  "generated_at_utc": "2026-10-15T05:56:09+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 20697,
+  "observation_count": 20840,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
