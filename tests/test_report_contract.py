@@ -81,6 +81,33 @@ class ReportStateTests(unittest.TestCase):
 
         self.assertIn("não aplicável em terra batida", html)
 
+    def test_court_speed_profile_shows_win_context_beyond_aces(self):
+        profile_a = {
+            "hold_rate_pct": 86.2, "break_rate_pct": 23.4,
+            "service_points_won_pct": 68.1, "return_points_won_pct": 39.2,
+            "first_set_recovery_pct": 42.9,
+            "first_set_recovery_attempts": 7,
+        }
+        profile_b = {
+            "hold_rate_pct": 81.0, "break_rate_pct": 18.0,
+            "service_points_won_pct": 64.0, "return_points_won_pct": 35.0,
+            "first_set_recovery_pct": 25.0,
+            "first_set_recovery_attempts": 4,
+        }
+        html = report_html._mod_fatores_detalhados(
+            {"player_a": "A", "player_b": "B"},
+            {"fatores_status": {"velocidade_piso": {
+                "disponivel": True, "lider": "A",
+                "valor_a": 64.0, "valor_b": 51.0,
+                "perfil_a": profile_a, "perfil_b": profile_b,
+            }}},
+        )
+
+        self.assertIn("hold 86.2%", html)
+        self.assertIn("break 23.4%", html)
+        self.assertIn("retorno 39.2%", html)
+        self.assertIn("recuperação 42.9% (7 casos)", html)
+
     def test_handicap_reference_header_is_explicitly_internal(self):
         html = report_html._mod_handicap_reference_header({
             "player_a": "A", "player_b": "B", "match_format": "bo5",
