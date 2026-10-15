@@ -5840,6 +5840,64 @@ def _empirical_tournament_candidates(name) -> list[str]:
     return candidates
 
 
+_TOURNAMENT_HISTORY_ALIASES = {
+    "u s open": "us open",
+    "us open": "us open",
+    "tokyo": "tokyo",
+    "japan open": "tokyo",
+    "kinoshita group japan open tennis championships": "tokyo",
+    "beijing": "beijing",
+    "china open": "beijing",
+    "jinan": "jinan",
+    "jinan open": "jinan",
+    "jinan challenger": "jinan",
+    "olbia": "olbia",
+    "olbia challenger": "olbia",
+    "wuhan": "wuhan",
+    "wuhan open": "wuhan",
+    "ningbo": "ningbo",
+    "ningbo open": "ningbo",
+}
+_TOURNAMENT_HISTORY_SPECIAL_MARKERS = (
+    "olympic", "road to", "next gen", "davis cup", "laver cup",
+    "united cup",
+)
+_TOURNAMENT_HISTORY_GENERIC_SUFFIXES = {
+    "challenger", "championship", "championships", "international",
+    "masters", "open", "tennis",
+}
+
+
+def _tournament_history_key(name) -> Optional[str]:
+    """Return a conservative cross-provider identity for one event.
+
+    The key removes provider presentation differences, not sporting identity.
+    Special competitions and numbered sibling events remain distinct.
+    """
+    if not isinstance(name, str) or not name.strip():
+        return None
+    base = re.split(r"\s+-\s+", name.strip(), maxsplit=1)[0]
+    normalized = _normalize_name(base)
+    normalized = re.sub(r"\b(?:19|20)\d{2}\b", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    if not normalized:
+        return None
+    if any(marker in normalized for marker in _TOURNAMENT_HISTORY_SPECIAL_MARKERS):
+        return normalized
+
+    pace_key = _normalize_tournament_name(base)
+    if pace_key is not None:
+        return pace_key
+    explicit = _TOURNAMENT_HISTORY_ALIASES.get(normalized)
+    if explicit is not None:
+        return explicit
+
+    tokens = normalized.split()
+    while len(tokens) > 1 and tokens[-1] in _TOURNAMENT_HISTORY_GENERIC_SUFFIXES:
+        tokens.pop()
+    return " ".join(tokens) or None
+
+
 def _lookup_empirical_court_pace(
     profiles: dict, tournament_name, year: Optional[int], scope: str,
 ) -> Optional[dict]:
@@ -6645,10 +6703,10 @@ def compute_tournament_record_from_history(
             mask |= played[column].astype(str) == target
         factual_basis = "TOURNAMENT_ID"
     if not mask.any() and tournament_name and name_cols:
-        target_name = _normalize_name(tournament_name)
+        target_name = _tournament_history_key(tournament_name)
         for column in name_cols:
-            mask |= played[column].map(_normalize_name) == target_name
-        factual_basis = "EXACT_NORMALIZED_TOURNAMENT_NAME"
+            mask |= played[column].map(_tournament_history_key) == target_name
+        factual_basis = "CANONICAL_TOURNAMENT_NAME_V1"
     selected = played[mask]
     if selected.empty:
         return None
@@ -6668,6 +6726,14 @@ def compute_tournament_record_from_history(
         editions = 0
     record.update({
         "factual_match_basis": factual_basis,
+        "canonical_tournament_key": (
+            _tournament_history_key(tournament_name)
+            if factual_basis == "CANONICAL_TOURNAMENT_NAME_V1" else None
+        ),
+        "matched_tournament_names": sorted({
+            str(value) for column in name_cols
+            for value in selected[column].dropna().unique()
+        }),
         "edicoes": editions,
         "win_pct_cru": round(100 * record["wins"] / record["matches"], 1)
         if record.get("matches") else None,
