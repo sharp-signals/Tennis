@@ -66,6 +66,78 @@ class RankingEvolutionCoverageTests(unittest.TestCase):
         self.assertIsNone(actual)
 
 
+class TournamentHistoryIdentityTests(unittest.TestCase):
+    @staticmethod
+    def _row(name, date, winner="Player A", loser="Opponent"):
+        return {
+            "tourney_name": name,
+            "tourney_date": date,
+            "winner_name": winner,
+            "loser_name": loser,
+        }
+
+    def test_sponsor_and_provider_suffixes_resolve_to_one_event(self):
+        history = pd.DataFrame([
+            self._row("Shanghai", 20231001),
+            self._row("Shanghai Masters", 20241001, loser="Opponent 2"),
+            self._row("Road to the Rolex Shanghai Masters", 20240901, loser="Opponent 3"),
+        ])
+
+        actual = fetch_data.compute_tournament_record_from_history(
+            history,
+            "Player A",
+            "different-provider-id",
+            "Shanghai Rolex Masters - Shanghai",
+        )
+
+        self.assertEqual(actual["matches"], 2)
+        self.assertEqual(actual["edicoes"], 2)
+        self.assertEqual(actual["canonical_tournament_key"], "shanghai")
+        self.assertEqual(
+            actual["matched_tournament_names"],
+            ["Shanghai", "Shanghai Masters"],
+        )
+        self.assertEqual(actual["factual_match_basis"], "CANONICAL_TOURNAMENT_NAME_V1")
+
+    def test_challenger_open_and_challenger_labels_share_city_identity(self):
+        history = pd.DataFrame([
+            self._row("Jinan", 20230901),
+            self._row("Jinan Open", 20240901, loser="Opponent 2"),
+        ])
+
+        actual = fetch_data.compute_tournament_record_from_history(
+            history, "Player A", None, "Jinan Challenger",
+        )
+
+        self.assertEqual(actual["matches"], 2)
+        self.assertEqual(actual["edicoes"], 2)
+        self.assertEqual(actual["canonical_tournament_key"], "jinan")
+
+    def test_special_and_numbered_events_remain_separate(self):
+        history = pd.DataFrame([
+            self._row("Tokyo", 20231001),
+            self._row("Tokyo Olympics", 20210724, loser="Opponent 2"),
+            self._row("Nottingham", 20240601, loser="Opponent 3"),
+            self._row("Nottingham 2", 20240608, loser="Opponent 4"),
+        ])
+
+        tokyo = fetch_data.compute_tournament_record_from_history(
+            history, "Player A", None, "Japan Open",
+        )
+        nottingham = fetch_data.compute_tournament_record_from_history(
+            history, "Player A", None, "Nottingham 2 Challenger",
+        )
+
+        self.assertEqual(tokyo["matched_tournament_names"], ["Tokyo"])
+        self.assertEqual(nottingham["matched_tournament_names"], ["Nottingham 2"])
+
+    def test_us_open_punctuation_does_not_split_the_same_major(self):
+        self.assertEqual(
+            fetch_data._tournament_history_key("U.S. Open - New York"),
+            fetch_data._tournament_history_key("US Open"),
+        )
+
+
 class CourtPaceEvidenceTests(unittest.TestCase):
     def test_shanghai_rolex_name_resolves_to_the_versioned_cpi_registry(self):
         info = fetch_data.lookup_court_pace("Shanghai Rolex Masters - Shanghai", 2026)
