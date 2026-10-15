@@ -6787,19 +6787,39 @@ def compute_tournament_record_from_history(
     name_cols = [name for name in ("tourney_name", "tournament_name") if name in played.columns]
     mask = pd.Series(False, index=played.index)
     factual_basis = None
+    identity_checked = False
     if tournament_id not in (None, "") and id_cols:
         target = str(tournament_id)
         for column in id_cols:
             mask |= played[column].astype(str) == target
         factual_basis = "TOURNAMENT_ID"
+        identity_checked = True
     if not mask.any() and tournament_name and name_cols:
         target_name = _tournament_history_key(tournament_name)
-        for column in name_cols:
-            mask |= played[column].map(_tournament_history_key) == target_name
-        factual_basis = "CANONICAL_TOURNAMENT_NAME_V1"
+        if target_name is not None:
+            for column in name_cols:
+                mask |= played[column].map(_tournament_history_key) == target_name
+            factual_basis = "CANONICAL_TOURNAMENT_NAME_V1"
+            identity_checked = True
     selected = played[mask]
     if selected.empty:
-        return None
+        if not identity_checked:
+            return None
+        return {
+            "wins": 0,
+            "losses": 0,
+            "matches": 0,
+            "observation_status": "NONE_OBSERVED",
+            "factual_match_basis": factual_basis,
+            "canonical_tournament_key": (
+                _tournament_history_key(tournament_name)
+                if factual_basis == "CANONICAL_TOURNAMENT_NAME_V1" else None
+            ),
+            "matched_tournament_names": [],
+            "edicoes": 0,
+            "win_pct_cru": None,
+            "win_pct_ponderado": None,
+        }
     record = competition_evidence.weighted_binary_record(
         selected.to_dict("records"),
         lambda row: row.get("winner_name") == resolved,
@@ -6815,6 +6835,7 @@ def compute_tournament_record_from_history(
     else:
         editions = 0
     record.update({
+        "observation_status": "AVAILABLE",
         "factual_match_basis": factual_basis,
         "canonical_tournament_key": (
             _tournament_history_key(tournament_name)
