@@ -1,4 +1,6 @@
 import unittest
+from datetime import datetime, timezone
+from unittest.mock import Mock, patch
 
 from src import main
 
@@ -156,6 +158,63 @@ class DeterministicFeatureTests(unittest.TestCase):
 
 
 class DeterministicFallbackTests(unittest.TestCase):
+    def test_atp_ranking_evolution_retries_only_missing_side_with_challenger_history(self):
+        main_history = Mock(name="main_history")
+        combined_history = Mock(name="combined_history")
+        primary_b = {"change_6m_pct": 4.0}
+        fallback_a = {"change_6m_pct": 12.0}
+        reference = datetime(2026, 10, 15, tzinfo=timezone.utc)
+
+        with patch.object(
+            main.fetch_data,
+            "compute_ranking_evolution",
+            side_effect=[None, primary_b, fallback_a],
+        ) as compute, patch.object(
+            main.fetch_data,
+            "get_history",
+            return_value=combined_history,
+        ) as get_history:
+            actual = main._compute_ranking_evolution_pair(
+                main_history,
+                tour="atp",
+                tier="ATP 500",
+                player_a="A",
+                player_b="B",
+                points_a=1000,
+                points_b=900,
+                reference_date=reference,
+            )
+
+        self.assertEqual(actual, (fallback_a, primary_b))
+        get_history.assert_called_once_with("atp", tier="Challenger 125")
+        self.assertEqual(compute.call_count, 3)
+        self.assertIs(compute.call_args_list[2].args[0], combined_history)
+        self.assertEqual(compute.call_args_list[2].args[1:3], ("A", 1000))
+
+    def test_wta_ranking_evolution_never_loads_atp_challenger_history(self):
+        history = Mock(name="wta_history")
+        primary_a = {"change_6m_pct": 1.0}
+        reference = datetime(2026, 10, 15, tzinfo=timezone.utc)
+
+        with patch.object(
+            main.fetch_data,
+            "compute_ranking_evolution",
+            side_effect=[primary_a, None],
+        ), patch.object(main.fetch_data, "get_history") as get_history:
+            actual = main._compute_ranking_evolution_pair(
+                history,
+                tour="wta",
+                tier="WTA 500",
+                player_a="A",
+                player_b="B",
+                points_a=1000,
+                points_b=900,
+                reference_date=reference,
+            )
+
+        self.assertEqual(actual, (primary_a, None))
+        get_history.assert_not_called()
+
     def test_minimum_flag_only_changes_routine_when_both_core_sources_missing(self):
         result = {"flag": main.FLAG_ROUTINE, "summary_line": "Resumo"}
         actual = main._enforce_minimum_flag(
