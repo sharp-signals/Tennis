@@ -314,6 +314,66 @@ class RankingEligibleTransformTests(unittest.TestCase):
         )
         self.assertIsNone(blocked["weight"])
 
+    def test_recent_form_enriches_exact_current_challenger_edition(self):
+        history = pd.DataFrame([
+            row(
+                901, 20261021, "Jinan Challenger",
+                winner="Alpha", loser="Beta",
+            ),
+            row(
+                902, 20261022, "Jinan Challenger",
+                winner="Gamma", loser="Alpha",
+            ),
+        ])
+        result = fetch_data.compute_recent_form(
+            history,
+            "Alpha",
+            10,
+            competition_policy=V2_ACTIVE,
+            competition_context={
+                "tournament_id": 22098,
+                "tournament_name": "Jinan Challenger",
+                "tier": "Challenger 125",
+                "edition_year": 2026,
+            },
+        )
+        self.assertEqual(result["matches"], 2)
+        self.assertEqual(result["weighted_matches"], 2.0)
+        self.assertEqual(result["weighted_win_rate_pct"], 50.0)
+        evidence = result["competition_evidence"]
+        self.assertTrue(evidence["eligible_for_performance"])
+        self.assertEqual(
+            evidence["classification_counts"], {"RANKING_ELIGIBLE": 2}
+        )
+
+    def test_recent_form_does_not_enrich_different_tournament(self):
+        history = pd.DataFrame([
+            row(
+                903, 20261021, "Unknown Invitational",
+                winner="Alpha", loser="Beta",
+            ),
+        ])
+        result = fetch_data.compute_recent_form(
+            history,
+            "Alpha",
+            10,
+            competition_policy=V2_ACTIVE,
+            competition_context={
+                "tournament_id": 22098,
+                "tournament_name": "Jinan Challenger",
+                "tier": "Challenger 125",
+                "edition_year": 2026,
+            },
+        )
+        self.assertIsNone(result["weighted_matches"])
+        self.assertFalse(
+            result["competition_evidence"]["eligible_for_performance"]
+        )
+        self.assertEqual(
+            result["competition_evidence"]["blocker_reason_counts"],
+            {"ATP_RANKING_ELIGIBILITY_UNRESOLVED": 1},
+        )
+
 
     def test_fatigue_load_remains_raw_for_non_ranking_matches(self):
         start = datetime(2026, 1, 10, tzinfo=timezone.utc)

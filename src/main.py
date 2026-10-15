@@ -2102,6 +2102,14 @@ def _build_match_payload(match: dict) -> dict:
     competition_policy = competition_evidence.activation_for_tour(
         competition_evidence.activation_from_environment(), tour
     )
+    current_competition_context = {
+        "tournament_id": (
+            match.get("tournamentId") or match.get("tournament_id")
+        ),
+        "tournament_name": tournament,
+        "tier": match.get("tier"),
+        "edition_year": start.year,
+    }
 
     # DIAGNÓSTICO (15/08/2026, a pedido — muitos fatores "sem dados" em
     # jogos WTA que não deviam faltar). Se resolve_player_name falhar aqui,
@@ -2416,11 +2424,13 @@ def _build_match_payload(match: dict) -> dict:
         history, player_a, RECENT_FORM_MATCHES,
         window_days=RECENT_FORM_WINDOW_DAYS,
         competition_policy=competition_policy,
+        competition_context=current_competition_context,
     )
     form_b = fetch_data.compute_recent_form(
         history, player_b, RECENT_FORM_MATCHES,
         window_days=RECENT_FORM_WINDOW_DAYS,
         competition_policy=competition_policy,
+        competition_context=current_competition_context,
     )
     season_a = fetch_data.compute_current_season_record(
         history, player_a, competition_policy=competition_policy,
