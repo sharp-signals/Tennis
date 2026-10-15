@@ -91,6 +91,7 @@ class TournamentHistoryIdentityTests(unittest.TestCase):
         )
 
         self.assertEqual(actual["matches"], 2)
+        self.assertEqual(actual["observation_status"], "AVAILABLE")
         self.assertEqual(actual["edicoes"], 2)
         self.assertEqual(actual["canonical_tournament_key"], "shanghai")
         self.assertEqual(
@@ -136,6 +137,39 @@ class TournamentHistoryIdentityTests(unittest.TestCase):
             fetch_data._tournament_history_key("U.S. Open - New York"),
             fetch_data._tournament_history_key("US Open"),
         )
+
+    def test_verified_absence_is_not_reported_as_source_failure(self):
+        history = pd.DataFrame([
+            self._row("Other Tournament", 20241001),
+        ])
+
+        actual = fetch_data.compute_tournament_record_from_history(
+            history, "Player A", None, "Shanghai Masters",
+        )
+        coverage = main._tournament_record_coverage(actual, "local_history")
+
+        self.assertEqual(actual["observation_status"], "NONE_OBSERVED")
+        self.assertEqual(actual["matches"], 0)
+        self.assertEqual(actual["edicoes"], 0)
+        self.assertIsNone(actual["win_pct_ponderado"])
+        self.assertEqual(coverage["status"], "NONE_OBSERVED")
+        self.assertEqual(coverage["reason"], "no_prior_tournament_record_observed")
+
+    def test_missing_tournament_identity_remains_unavailable(self):
+        history = pd.DataFrame([{
+            "winner_name": "Player A",
+            "loser_name": "Opponent",
+            "tourney_date": 20241001,
+        }])
+
+        actual = fetch_data.compute_tournament_record_from_history(
+            history, "Player A", None, "Shanghai Masters",
+        )
+        coverage = main._tournament_record_coverage(actual, "local_history")
+
+        self.assertIsNone(actual)
+        self.assertEqual(coverage["status"], "UNAVAILABLE")
+        self.assertEqual(coverage["reason"], "tournament_record_unavailable")
 
 
 class CourtPaceEvidenceTests(unittest.TestCase):

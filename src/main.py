@@ -1816,6 +1816,23 @@ def _report_data_status(data_coverage: dict) -> str:
     ) else "DEGRADED"
 
 
+def _tournament_record_coverage(value: Optional[dict], source: str) -> dict:
+    """Separate a verified zero tournament history from an unsearchable source."""
+    if isinstance(value, dict) and value.get("observation_status") == "NONE_OBSERVED":
+        return {
+            "status": "NONE_OBSERVED",
+            "source": source,
+            "reason": "no_prior_tournament_record_observed",
+        }
+    if value is None:
+        return {
+            "status": "UNAVAILABLE",
+            "source": source,
+            "reason": "tournament_record_unavailable",
+        }
+    return {"status": "AVAILABLE", "source": source, "reason": None}
+
+
 def _apply_identity_persistence_gate(payload: dict) -> None:
     """Keep factual pricing visible while blocking persistence without canonical v2 identity."""
     if payload.get("identity_schema_version") != match_identity_v2.SCHEMA_VERSION:
@@ -3035,21 +3052,19 @@ def _build_match_payload(match: dict) -> dict:
             ),
         },
         "tournament_record": {
-            "a": _coverage(
+            "a": _tournament_record_coverage(
                 tournament_record_a, (
                     "local_history"
                     if competition_evidence.uses_match_level_competition_evidence(competition_policy)
                     else "rapidapi_tournament_record"
                 ),
-                unavailable_reason="tournament_record_unavailable",
             ),
-            "b": _coverage(
+            "b": _tournament_record_coverage(
                 tournament_record_b, (
                     "local_history"
                     if competition_evidence.uses_match_level_competition_evidence(competition_policy)
                     else "rapidapi_tournament_record"
                 ),
-                unavailable_reason="tournament_record_unavailable",
             ),
         },
     }
