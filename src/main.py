@@ -1071,19 +1071,18 @@ def _compute_features(payload: dict) -> dict:
     # de cada jogador no MESMO contexto do jogo de hoje (indoor ou outdoor),
     # não uma média geral. Mesmo padrão do matchup de mão (comparar no
     # contexto específico, não em bruto).
-    _surf_str = (payload.get("surface") or "").lower()
-    _hoje_indoor = "indoor" in _surf_str
-    _ctx = "indoor" if _hoje_indoor else "outdoor"
-    _io_a = (payload.get("indoor_outdoor_a") or {}).get(_ctx)
-    _io_b = (payload.get("indoor_outdoor_b") or {}).get(_ctx)
-    _edge(_pct(_io_a), _pct(_io_b), "indoor_outdoor",
-          amostra_a=competition_evidence.record_rate(_io_a)[1],
-          amostra_b=competition_evidence.record_rate(_io_b)[1])
-    competition_evidence.annotate_feature(
-        feats.get("indoor_outdoor"), [_io_a, _io_b],
-        active=bool(policy.get("active")),
-        policy=policy,
-    )
+    _ctx = fetch_data.indoor_outdoor_context(payload.get("surface"))
+    if _ctx is not None:
+        _io_a = (payload.get("indoor_outdoor_a") or {}).get(_ctx)
+        _io_b = (payload.get("indoor_outdoor_b") or {}).get(_ctx)
+        _edge(_pct(_io_a), _pct(_io_b), "indoor_outdoor",
+              amostra_a=competition_evidence.record_rate(_io_a)[1],
+              amostra_b=competition_evidence.record_rate(_io_b)[1])
+        competition_evidence.annotate_feature(
+            feats.get("indoor_outdoor"), [_io_a, _io_b],
+            active=bool(policy.get("active")),
+            policy=policy,
+        )
 
     # Velocidade do piso: só hard com classificação factual do torneio e
     # amostra bilateral mínima. Uma amostra fina continua visível como
@@ -2569,6 +2568,20 @@ def _build_match_payload(match: dict) -> dict:
             if _fb.get("season"): season_b = _fb["season"]
             if _surface_api_a: surface_a = _surface_api_a
             if _surface_api_b: surface_b = _surface_api_b
+            indoor_outdoor_a = fetch_data.merge_indoor_outdoor_fallback(
+                indoor_outdoor_a,
+                fetch_data.compute_indoor_outdoor_from_recent(
+                    _recent_a_cache, _pid_a, start,
+                    competition_policy=competition_policy,
+                ),
+            )
+            indoor_outdoor_b = fetch_data.merge_indoor_outdoor_fallback(
+                indoor_outdoor_b,
+                fetch_data.compute_indoor_outdoor_from_recent(
+                    _recent_b_cache, _pid_b, start,
+                    competition_policy=competition_policy,
+                ),
+            )
 
             # COMPARAÇÃO DE FONTES: registar onde Sackmann e RapidAPI divergem
             # (a RapidAPI já ganhou acima; isto é só para SABER). Compara o
@@ -2728,6 +2741,15 @@ def _build_match_payload(match: dict) -> dict:
     # forem construídas, o custo tende a zero.
     rich_a = _get_rich_player_data(tour, player_a, official, player_id=_pid_a)
     rich_b = _get_rich_player_data(tour, player_b, official, player_id=_pid_b)
+    if not competition_policy.get("active"):
+        indoor_outdoor_a = fetch_data.merge_indoor_outdoor_fallback(
+            indoor_outdoor_a,
+            fetch_data.compute_indoor_outdoor_from_perf_breakdown(rich_a),
+        )
+        indoor_outdoor_b = fetch_data.merge_indoor_outdoor_fallback(
+            indoor_outdoor_b,
+            fetch_data.compute_indoor_outdoor_from_perf_breakdown(rich_b),
+        )
     _career_srv_a = fetch_data.compute_serve_return_from_rich_stats(rich_a)
     _career_srv_b = fetch_data.compute_serve_return_from_rich_stats(rich_b)
     # Fora da política ATP que exige evidência jogo a jogo separável, a ficha
