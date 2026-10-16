@@ -2436,6 +2436,9 @@ def _build_match_payload(match: dict) -> dict:
         history, player_a, player_b, surface,
         competition_policy=competition_policy,
     )
+    _local_h2h_coverage = fetch_data.assess_local_h2h_coverage(
+        history, player_a, player_b, surface,
+    )
     form_a = fetch_data.compute_recent_form(
         history, player_a, RECENT_FORM_MATCHES,
         window_days=RECENT_FORM_WINDOW_DAYS,
@@ -2507,6 +2510,12 @@ def _build_match_payload(match: dict) -> dict:
     # Fonte RapidAPI para dados básicos em falta (WTA ou jogador ausente do histórico)
     _recent_a_cache = _recent_b_cache = None
     _h2h_matches = _h2h_api = None
+    _h2h_endpoint_coverage = {
+        "status": "UNAVAILABLE",
+        "source": f"rapidapi_{tour}_h2h_matches",
+        "endpoint_family": f"{tour}/h2h/matches",
+        "reason": "player_identity_unavailable",
+    }
     _form_api_a = _form_api_b = None
     _surface_api_a = _surface_api_b = None
     _rs_a = _rs_b = None
@@ -2526,7 +2535,9 @@ def _build_match_payload(match: dict) -> dict:
             # H2H via API — RapidAPI é a fonte PRINCIPAL (mesmo motivo da
             # forma: o Sackmann partido pode dar H2H errados). Só fica o
             # Sackmann se a RapidAPI não devolver H2H.
-            _h2h_matches = fetch_data.fetch_h2h_matches(tour, _pid_a, _pid_b)
+            _h2h_matches, _h2h_endpoint_coverage = (
+                fetch_data.fetch_h2h_matches_with_coverage(tour, _pid_a, _pid_b)
+            )
             h2h_history = _compact_match_history(
                 _h2h_matches, limit=10, tour=tour, resolve_tournaments=True,
             )
@@ -3004,19 +3015,38 @@ def _build_match_payload(match: dict) -> dict:
             return _coverage(True, "local_history")
         return _coverage(None, None, unavailable_reason="no_verified_historical_matches")
 
-    if isinstance(_h2h_matches, list) and _h2h_matches:
-        _h2h_coverage = _coverage(_h2h_matches, "rapidapi_h2h_matches")
-    elif h2h is not None:
-        _h2h_coverage = _coverage(h2h, "local_history")
-    elif isinstance(_h2h_matches, list):
-        _h2h_coverage = {
-            "status": "NONE_OBSERVED", "source": "rapidapi_h2h_matches",
-            "reason": "no_prior_head_to_head_observed",
-        }
+    _selected_h2h_coverage = (h2h or {}).get("coverage") if isinstance(h2h, dict) else None
+    if _selected_h2h_coverage:
+        _h2h_coverage = _selected_h2h_coverage["overall"]
+        _h2h_surface_coverage = _selected_h2h_coverage["surface"]
     else:
-        _h2h_coverage = _coverage(
-            None, None, unavailable_reason="h2h_endpoint_and_local_history_unavailable",
-        )
+        if _h2h_endpoint_coverage.get("status") == "NONE_OBSERVED":
+            _h2h_coverage = _h2h_endpoint_coverage
+        elif isinstance(_h2h_matches, list) and _h2h_matches:
+            _h2h_coverage = {
+                **_h2h_endpoint_coverage,
+                "status": "UNAVAILABLE",
+                "reason": "h2h_rows_without_usable_winner_identity",
+            }
+        else:
+            _h2h_coverage = _h2h_endpoint_coverage
+
+        if _h2h_coverage.get("status") == "NONE_OBSERVED":
+            _surface_family = fetch_data._normalize_surface_family(surface)
+            _h2h_surface_coverage = {
+                "status": "NONE_OBSERVED" if _surface_family else "NOT_APPLICABLE",
+                "source": _h2h_coverage.get("source"),
+                "reason": (
+                    "no_prior_head_to_head_observed"
+                    if _surface_family else "current_surface_unavailable"
+                ),
+                "observed_matches": 0,
+            }
+        else:
+            _h2h_surface_coverage = _local_h2h_coverage.get("surface") or {
+                "status": "UNAVAILABLE", "source": None,
+                "reason": "h2h_surface_unavailable",
+            }
 
     data_coverage = {
         "ranking": {
@@ -3028,6 +3058,7 @@ def _build_match_payload(match: dict) -> dict:
             "b": _historical_coverage(_recent_b_cache, _resolved_b),
         },
         "h2h": _h2h_coverage,
+        "h2h_surface": _h2h_surface_coverage,
         "h2h_rich_stats": h2h_rich_stats_coverage,
         "recent_form": {
             "a": _coverage(

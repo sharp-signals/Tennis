@@ -1363,6 +1363,91 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in main._filter_prelive_matches(fixtures)], [1, 2])
 
 
+class H2HCoverageTests(unittest.TestCase):
+    class _Response:
+        def __init__(self, payload, status_code=200):
+            self.payload = payload
+            self.status_code = status_code
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                error = fetch_data.requests.HTTPError(f"{self.status_code} H2H")
+                error.response = self
+                raise error
+
+        def json(self):
+            return self.payload
+
+    def test_endpoint_empty_list_is_verified_none_observed(self):
+        with patch.object(fetch_data, "RAPIDAPI_KEY", "test"), \
+                patch.object(fetch_data, "_rapidapi_get", return_value=self._Response({"data": []})), \
+                patch.dict(fetch_data._H2H_CACHE, {}, clear=True):
+            rows, coverage = fetch_data.fetch_h2h_matches_with_coverage("atp", 1, 2)
+
+        self.assertEqual(rows, [])
+        self.assertEqual(coverage["status"], "NONE_OBSERVED")
+        self.assertEqual(coverage["observed_matches"], 0)
+
+    def test_malformed_endpoint_payload_is_unavailable(self):
+        with patch.object(fetch_data, "RAPIDAPI_KEY", "test"), \
+                patch.object(fetch_data, "_rapidapi_get", return_value=self._Response({"data": None})), \
+                patch.dict(fetch_data._H2H_CACHE, {}, clear=True):
+            rows, coverage = fetch_data.fetch_h2h_matches_with_coverage("atp", 1, 2)
+
+        self.assertIsNone(rows)
+        self.assertEqual(coverage["status"], "UNAVAILABLE")
+        self.assertEqual(coverage["reason"], "invalid_provider_payload")
+
+    def test_api_h2h_resolves_nested_court_id_without_tournament_lookup(self):
+        matches = [{
+            "match_winner": "1",
+            "tournament": {"courtId": 2},
+        }]
+        with patch.object(fetch_data, "get_tournament_info") as lookup:
+            actual = fetch_data.compute_h2h_from_api(
+                matches, 1, 2, "Clay", tour="atp",
+            )
+
+        lookup.assert_not_called()
+        self.assertEqual(actual["on_surface"]["total_matches"], 1)
+        self.assertEqual(actual["coverage"]["surface"]["status"], "AVAILABLE")
+
+    def test_api_h2h_other_resolved_surface_is_verified_none_observed(self):
+        matches = [{"match_winner": 1, "court": "Grass"}]
+        actual = fetch_data.compute_h2h_from_api(
+            matches, 1, 2, "Hard", tour="atp",
+        )
+
+        self.assertIsNone(actual["on_surface"])
+        self.assertEqual(actual["coverage"]["surface"]["status"], "NONE_OBSERVED")
+
+    def test_api_h2h_unresolved_surface_is_not_a_verified_zero(self):
+        matches = [{"match_winner": 1}]
+        actual = fetch_data.compute_h2h_from_api(
+            matches, 1, 2, "Hard", tour="atp",
+        )
+
+        self.assertIsNone(actual["on_surface"])
+        self.assertEqual(actual["coverage"]["surface"]["status"], "UNAVAILABLE")
+
+    def test_local_history_distinguishes_no_pair_from_unresolved_identity(self):
+        history = pd.DataFrame([{
+            "winner_name": "Alice Alpha", "loser_name": "Carol Gamma", "surface": "Hard",
+        }, {
+            "winner_name": "Bea Beta", "loser_name": "Diana Delta", "surface": "Clay",
+        }])
+        none_seen = fetch_data.assess_local_h2h_coverage(
+            history, "Alice Alpha", "Bea Beta", "Hard",
+        )
+        unresolved = fetch_data.assess_local_h2h_coverage(
+            history, "Alice Alpha", "Unknown Player", "Hard",
+        )
+
+        self.assertEqual(none_seen["overall"]["status"], "NONE_OBSERVED")
+        self.assertEqual(none_seen["surface"]["status"], "NONE_OBSERVED")
+        self.assertEqual(unresolved["overall"]["status"], "UNAVAILABLE")
+
+
 class DeterministicStatisticTests(unittest.TestCase):
     def test_indoor_outdoor_context_understands_provider_contract(self):
         self.assertEqual(fetch_data.indoor_outdoor_context("I.hard"), "indoor")

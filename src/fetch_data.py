@@ -3380,8 +3380,17 @@ def _build_name_index(history: pd.DataFrame) -> dict[str, str]:
     o que só faz sentido com a cache "cruzada" entre tours. As colunas
     diferem sempre entre ATP (TennisMyLife) e WTA (tennis-data.co.uk),
     por isso usá-las na chave elimina a colisão."""
+    identity_sample = tuple(
+        str(value)
+        for column in ("winner_name", "loser_name")
+        if column in history.columns
+        for value in (
+            history[column].head(2).tolist() + history[column].tail(2).tolist()
+        )
+    )
     key = history.attrs.get("history_cache_key") or (
-        len(history), tuple(history.columns), history.attrs.get("history_scope")
+        len(history), tuple(history.columns), history.attrs.get("history_scope"),
+        identity_sample,
     )
     if key in _NAME_INDEX_CACHE:
         return _NAME_INDEX_CACHE[key]
@@ -3607,6 +3616,7 @@ def compute_h2h(
             weighted = None
 
     on_surface = None
+    subset_surface = subset.iloc[0:0]
     surface_family = _normalize_surface_family(surface)
     if surface_family and "surface" in history.columns:
         historical_families = subset["surface"].map(_normalize_surface_family)
@@ -3615,9 +3625,105 @@ def compute_h2h(
             on_surface = _tally(subset_surface)
             on_surface.update(_competition_tally(subset_surface))
 
-    return {"overall": overall, "on_surface": on_surface, "surface": surface,
-            "surface_family": surface_family, "weighted_recency": weighted,
-            "raw_weighted_recency": raw_weighted_recency}
+    resolved_surface_matches = 0
+    if "surface" in subset.columns:
+        resolved_surface_matches = int(
+            subset["surface"].map(_normalize_surface_family).notna().sum()
+        )
+    surface_status = (
+        "NOT_APPLICABLE" if not surface_family
+        else "AVAILABLE" if on_surface is not None
+        else "NONE_OBSERVED" if resolved_surface_matches == len(subset)
+        else "UNAVAILABLE"
+    )
+    surface_reason = {
+        "NOT_APPLICABLE": "current_surface_unavailable",
+        "AVAILABLE": None,
+        "NONE_OBSERVED": "no_prior_head_to_head_on_surface_observed",
+        "UNAVAILABLE": "historical_h2h_surface_unresolved",
+    }[surface_status]
+    return {
+        "overall": overall,
+        "on_surface": on_surface,
+        "surface": surface,
+        "surface_family": surface_family,
+        "weighted_recency": weighted,
+        "raw_weighted_recency": raw_weighted_recency,
+        "coverage": {
+            "overall": {
+                "status": "AVAILABLE",
+                "source": "local_history",
+                "reason": None,
+                "observed_matches": len(subset),
+            },
+            "surface": {
+                "status": surface_status,
+                "source": "local_history",
+                "reason": surface_reason,
+                "observed_matches": len(subset_surface) if surface_family else 0,
+                "surface_resolved_matches": resolved_surface_matches,
+                "total_h2h_matches": len(subset),
+            },
+        },
+    }
+
+
+def assess_local_h2h_coverage(
+    history: pd.DataFrame,
+    player_a: str,
+    player_b: str,
+    surface: Optional[str] = None,
+) -> dict:
+    """Describe whether local history was searchable, including verified zeroes."""
+    unavailable = {
+        "overall": {
+            "status": "UNAVAILABLE", "source": "local_history",
+            "reason": "local_history_unavailable",
+        },
+        "surface": {
+            "status": "UNAVAILABLE", "source": "local_history",
+            "reason": "local_history_unavailable",
+        },
+    }
+    required = {"winner_name", "loser_name"}
+    if history.empty or not required.issubset(history.columns):
+        return unavailable
+
+    resolved_a = resolve_player_name(history, player_a)
+    resolved_b = resolve_player_name(history, player_b)
+    if resolved_a is None or resolved_b is None:
+        reason = "player_identity_unavailable_in_local_history"
+        return {
+            "overall": {"status": "UNAVAILABLE", "source": "local_history", "reason": reason},
+            "surface": {"status": "UNAVAILABLE", "source": "local_history", "reason": reason},
+        }
+
+    mask = (
+        ((history["winner_name"] == resolved_a) & (history["loser_name"] == resolved_b))
+        | ((history["winner_name"] == resolved_b) & (history["loser_name"] == resolved_a))
+    )
+    subset = history[mask]
+    family = _normalize_surface_family(surface)
+    if subset.empty:
+        surface_status = "NONE_OBSERVED" if family else "NOT_APPLICABLE"
+        return {
+            "overall": {
+                "status": "NONE_OBSERVED", "source": "local_history",
+                "reason": "no_prior_head_to_head_observed", "observed_matches": 0,
+            },
+            "surface": {
+                "status": surface_status, "source": "local_history",
+                "reason": (
+                    "no_prior_head_to_head_observed"
+                    if family else "current_surface_unavailable"
+                ),
+                "observed_matches": 0, "surface_resolved_matches": 0,
+                "total_h2h_matches": 0,
+            },
+        }
+
+    computed = compute_h2h(history, player_a, player_b, surface)
+    return (computed or {}).get("coverage") or unavailable
 
 
 def compute_current_season_record(
@@ -7540,27 +7646,71 @@ def _h2h_cache_key(tour: str, player1_id: int, player2_id: int) -> str:
 
 
 def fetch_h2h_matches(tour: str, player1_id: int, player2_id: int) -> Optional[list]:
-    """Lista de confrontos diretos passados entre dois jogadores, por ID matchstat."""
+    """Compatibility wrapper returning only the provider's H2H match list."""
+    data, _coverage = fetch_h2h_matches_with_coverage(tour, player1_id, player2_id)
+    return data
+
+
+def fetch_h2h_matches_with_coverage(
+    tour: str, player1_id: int, player2_id: int,
+) -> tuple[Optional[list], dict]:
+    """Fetch H2H rows while preserving verified zeroes and provider failures."""
+    endpoint_family = f"{tour}/h2h/matches"
+    source = f"rapidapi_{tour}_h2h_matches"
+
+    def _coverage(
+        status: str, *, reason: Optional[str] = None,
+        http_status: Optional[int] = None, cache_status: str = "MISS",
+        observed_matches: Optional[int] = None,
+    ) -> dict:
+        result = {
+            "status": status,
+            "source": source,
+            "endpoint_family": endpoint_family,
+            "reason": reason,
+            "cache_status": cache_status,
+        }
+        if http_status is not None:
+            result["http_status"] = int(http_status)
+        if observed_matches is not None:
+            result["observed_matches"] = int(observed_matches)
+        return result
+
     cache_key = f"matches:{_h2h_cache_key(tour, player1_id, player2_id)}"
     cached = _H2H_CACHE.get(cache_key)
     if cached is not None:
         age_hours = (datetime.now(timezone.utc) - cached["fetched_at"]).total_seconds() / 3600
         if age_hours < H2H_CACHE_MAX_AGE_HOURS:
-            return cached["data"]
+            data = cached["data"]
+            return data, _coverage(
+                "AVAILABLE" if data else "NONE_OBSERVED",
+                reason=None if data else "no_prior_head_to_head_observed",
+                cache_status="HIT", observed_matches=len(data),
+            )
 
     if not RAPIDAPI_KEY:
-        return None
+        return None, _coverage("UNAVAILABLE", reason="rapidapi_key_unavailable")
 
     url = f"{RAPIDAPI_BASE}/{tour}/h2h/matches/{player1_id}/{player2_id}/"
+    resp = None
     try:
         resp = _rapidapi_get(url)
         resp.raise_for_status()
-        data = resp.json().get("data", [])
+        payload = resp.json()
+        if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+            return None, _coverage("UNAVAILABLE", reason="invalid_provider_payload")
+        data = payload["data"]
         _H2H_CACHE[cache_key] = {"fetched_at": datetime.now(timezone.utc), "data": data}
-        return data
-    except requests.RequestException as exc:
+        return data, _coverage(
+            "AVAILABLE" if data else "NONE_OBSERVED",
+            reason=None if data else "no_prior_head_to_head_observed",
+            observed_matches=len(data),
+        )
+    except (requests.RequestException, ValueError, TypeError) as exc:
         print(f"[aviso] falha a obter h2h/matches ({tour}, {player1_id} vs {player2_id}): {exc}")
-        return None
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        reason = f"http_{status_code}" if status_code else "provider_request_failed"
+        return None, _coverage("UNAVAILABLE", reason=reason, http_status=status_code)
 
 
 def fetch_h2h_stats(tour: str, player1_id: int, player2_id: int) -> Optional[dict]:
@@ -7926,11 +8076,11 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
         return None
 
     def _piso_do_confronto(m):
-        # 1) piso direto no confronto (raro, mas honramos se vier)
-        surf = (m.get("court") or m.get("surface") or "")
-        if surf:
-            return str(surf).lower()
-        # 2) resolver via tournamentId (o caso real) — usa cache
+        # 1) campos diretos, torneio aninhado e courtId conhecidos.
+        family = _recent_match_surface_family(m)
+        if family:
+            return family
+        # 2) resolver via tournamentId (fallback) — usa cache
         tid = m.get("tournamentId")
         if tid is not None and tour:
             try:
@@ -7938,8 +8088,8 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
             except Exception:
                 info = None
             if info and info.get("surface"):
-                return str(info["surface"]).lower()
-        return ""
+                return _normalize_surface_family(info["surface"])
+        return None
 
     a_wins = b_wins = 0
     a_surf = b_surf = 0
@@ -7954,16 +8104,15 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
             continue
         # piso do confronto (direto ou resolvido via torneio), comparado por
         # FAMÍLIA de piso (hard/clay/grass), não por igualdade de texto.
-        piso_confronto = _piso_do_confronto(m)
-        fam_confronto = _normalize_surface_family(piso_confronto) if piso_confronto else None
+        fam_confronto = _piso_do_confronto(m)
         same_surface = bool(_cur and fam_confronto and fam_confronto == _cur)
-        if winner == player_a_id:
+        if str(winner) == str(player_a_id):
             a_wins += 1
             valid_matches.append(m)
             if same_surface:
                 a_surf += 1
                 surface_matches.append(m)
-        elif winner == player_b_id:
+        elif str(winner) == str(player_b_id):
             b_wins += 1
             valid_matches.append(m)
             if same_surface:
@@ -7979,7 +8128,9 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
             rows,
             lambda row: (
                 row.get("match_winner") or row.get("winnerId") or row.get("winner")
-            ) == player_a_id,
+            ) is not None and str(
+                row.get("match_winner") or row.get("winnerId") or row.get("winner")
+            ) == str(player_a_id),
             active=policy_active,
                 policy=competition_policy,
         )
@@ -7998,7 +8149,42 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
     if current_surface and (a_surf + b_surf) > 0:
         on_surface = {"a_wins": a_surf, "b_wins": b_surf, "total_matches": a_surf + b_surf}
         on_surface.update(_weighted(surface_matches))
-    return {"overall": overall, "on_surface": on_surface, "surface": current_surface}
+    surface_resolved_matches = sum(
+        1 for match in valid_matches if _piso_do_confronto(match) is not None
+    )
+    if not _cur:
+        surface_status = "NOT_APPLICABLE"
+        surface_reason = "current_surface_unavailable"
+    elif on_surface is not None:
+        surface_status = "AVAILABLE"
+        surface_reason = (
+            "partial_surface_resolution"
+            if surface_resolved_matches < total else None
+        )
+    elif surface_resolved_matches == total:
+        surface_status = "NONE_OBSERVED"
+        surface_reason = "no_prior_head_to_head_on_surface_observed"
+    else:
+        surface_status = "UNAVAILABLE"
+        surface_reason = "h2h_match_surface_unresolved"
+    return {
+        "overall": overall,
+        "on_surface": on_surface,
+        "surface": current_surface,
+        "coverage": {
+            "overall": {
+                "status": "AVAILABLE", "source": f"rapidapi_{tour}_h2h_matches",
+                "reason": None, "observed_matches": total,
+            },
+            "surface": {
+                "status": surface_status, "source": f"rapidapi_{tour}_h2h_matches",
+                "reason": surface_reason,
+                "observed_matches": a_surf + b_surf,
+                "surface_resolved_matches": surface_resolved_matches,
+                "total_h2h_matches": total,
+            },
+        },
+    }
 
 
 def compute_form_from_recent(recent_matches: list, player_id: int,

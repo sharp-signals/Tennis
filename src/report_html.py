@@ -677,6 +677,7 @@ def _calcular_divergencia(payload):
     a = payload.get("player_a", "A")
     b = payload.get("player_b", "B")
     feats = payload.get("features") or {}
+    data_coverage = payload.get("data_coverage") or {}
 
     # --- 1. Recolher a "vantagem" de cada fator (quem lidera e força) ---
     # Para cada fator disponível: +peso se lidera A, -peso se lidera B,
@@ -781,8 +782,20 @@ def _calcular_divergencia(payload):
             _reg_status("h2h_piso", True, "igual", "amostra insuficiente")
     elif isinstance(hp, dict) and hp.get("lider") == "igual":
         _reg_status("h2h_piso", True, "igual")
+    elif (data_coverage.get("h2h_surface") or {}).get("status") == "NONE_OBSERVED":
+        _reg_status(
+            "h2h_piso", False, None,
+            "nenhum confronto anterior observado nesta superfície",
+            amostra=0, observacao_confirmada=True,
+            estado_observacao="NONE_OBSERVED",
+        )
+    elif (data_coverage.get("h2h_surface") or {}).get("status") == "NOT_APPLICABLE":
+        _reg_status("h2h_piso", False, motivo_exclusao="superfície atual indisponível")
     else:
-        _reg_status("h2h_piso", False)
+        _reg_status(
+            "h2h_piso", False,
+            motivo_exclusao=(data_coverage.get("h2h_surface") or {}).get("reason"),
+        )
 
     # H2H global — só conta com amostra mínima (1 jogo não é evidência
     # fiável) e com força proporcional ao domínio do confronto.
@@ -808,8 +821,18 @@ def _calcular_divergencia(payload):
             _reg_status("h2h", True, h["lider"], "amostra insuficiente (1 jogo)")
     elif isinstance(h, dict) and h.get("lider") == "igual":
         _reg_status("h2h", True, "igual")
+    elif (data_coverage.get("h2h") or {}).get("status") == "NONE_OBSERVED":
+        _reg_status(
+            "h2h", False, None,
+            "nenhum confronto direto anterior observado",
+            amostra=0, observacao_confirmada=True,
+            estado_observacao="NONE_OBSERVED",
+        )
     else:
-        _reg_status("h2h", False)
+        _reg_status(
+            "h2h", False,
+            motivo_exclusao=(data_coverage.get("h2h") or {}).get("reason"),
+        )
 
     # Piso — com confiança de amostra (auditoria: 8 jogos não pesa como 300)
     # CORREÇÃO (12/08/2026, feedback de teste): faltava o limiar mínimo que
