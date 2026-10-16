@@ -93,6 +93,51 @@ def test_h2h_um_jogo_nao_conta():
     assert r is None or r["classificacao"]["nivel"] <= 1
 
 
+def test_h2h_zero_verificado_e_factual_sem_inclinar_indice():
+    r = _calcular_divergencia(_payload(
+        1.65,
+        2.30,
+        {"ranking": {"lider": "A", "diff": 20}},
+        data_coverage={
+            "h2h": {
+                "status": "NONE_OBSERVED",
+                "source": "rapidapi_atp_h2h_matches",
+                "reason": "no_prior_head_to_head_observed",
+            },
+            "h2h_surface": {
+                "status": "NONE_OBSERVED",
+                "source": "rapidapi_atp_h2h_matches",
+                "reason": "no_prior_head_to_head_observed",
+            },
+        },
+    ))
+
+    assert r["fatores_status"]["h2h"]["disponivel"] is False
+    assert r["fatores_status"]["h2h"]["observacao_confirmada"] is True
+    assert r["fatores_status"]["h2h"]["estado_observacao"] == "NONE_OBSERVED"
+    assert r["fatores_status"]["h2h"]["amostra"] == 0
+    assert r["fatores_status"]["h2h_piso"]["disponivel"] is False
+    assert r["fatores_status"]["h2h_piso"]["observacao_confirmada"] is True
+    assert not r["fatores_status"]["h2h"].get("peso_efetivo")
+    assert not r["fatores_status"]["h2h_piso"].get("peso_efetivo")
+
+
+def test_h2h_falha_de_fonte_continua_indisponivel():
+    r = _calcular_divergencia(_payload(
+        1.65,
+        2.30,
+        {"ranking": {"lider": "A", "diff": 20}},
+        data_coverage={
+            "h2h": {"status": "UNAVAILABLE", "reason": "http_500"},
+            "h2h_surface": {"status": "UNAVAILABLE", "reason": "http_500"},
+        },
+    ))
+
+    assert r["fatores_status"]["h2h"]["disponivel"] is False
+    assert r["fatores_status"]["h2h"]["motivo_exclusao"] == "http_500"
+    assert r["fatores_status"]["h2h_piso"]["disponivel"] is False
+
+
 def test_ranking_quase_igual_nao_conta():
     """Ranking #70 vs #72 (diff 2) não deve pesar."""
     r = _calcular_divergencia(_payload(2.0, 1.8, {
