@@ -27,7 +27,7 @@
       "total_snapshots": 1039
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-15T19:27:49+00:00",
+      "attempted_at_utc": "2026-10-16T11:15:23+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
@@ -537,7 +537,7 @@
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
       "first_ledger_capture_utc": "2026-09-03T17:34:09+00:00",
       "fresh": 0.0,
-      "last_monitor_capture_utc": "2026-10-16T01:30:32+00:00",
+      "last_monitor_capture_utc": "2026-10-16T09:55:56+00:00",
       "stale": 0.0,
       "unknown": 0.0
     },
@@ -97308,11 +97308,11 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-16T05:56:42+00:00",
+  "generated_at_utc": "2026-10-16T11:37:06+00:00",
   "global": {
     "distinct_matchups": 2825,
     "green_strong_candidates": 14,
-    "market_observations": 21054,
+    "market_observations": 21056,
     "paper_22bet_entries": 147,
     "paper_technical_entries": 247,
     "report_colors": {
@@ -97354,7 +97354,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-16T05:56:42+00:00",
+    "generated_at_utc": "2026-10-16T11:37:06+00:00",
     "losses": 75,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": 37.0,
@@ -97398,7 +97398,7 @@
       "average_market_probability": 0.43225,
       "observed_win_rate_pct": 41.67
     },
-    "generated_at_utc": "2026-10-16T05:54:44+00:00",
+    "generated_at_utc": "2026-10-16T11:37:06+00:00",
     "market_movement": {
       "average_probability_pp": -1.4342,
       "comparable_closing_n": 3,
@@ -97790,7 +97790,7 @@
     "distinct_events": 1039,
     "events_with_comparable_closing": 91,
     "events_with_entry_market": 357,
-    "generated_at_utc": "2026-10-16T05:54:44+00:00",
+    "generated_at_utc": "2026-10-16T11:37:05+00:00",
     "market_only": {
       "accuracy_pct": 68.27,
       "brier_score": 0.197819,
@@ -97798,10 +97798,10 @@
       "sample_size": 249
     },
     "market_plus_fenzobot": {
-      "accuracy_pct": 66.91,
-      "brier_score": 0.215264,
-      "log_loss": 0.621203,
-      "sample_size": 411
+      "accuracy_pct": 66.59,
+      "brier_score": 0.21545,
+      "log_loss": 0.621259,
+      "sample_size": 419
     },
     "observations_by_day": [
       {
@@ -97922,11 +97922,11 @@
       },
       {
         "date": "2026-10-16",
-        "observations": 100
+        "observations": 102
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 21054
+    "total_observations": 21056
   },
   "match_identity_v2": {
     "activation": {
@@ -98045,7 +98045,7 @@
     "settled": 142,
     "settled_stake_units": 139,
     "status": "AVAILABLE",
-    "synced_at_utc": "2026-10-15T18:23:16.587Z",
+    "synced_at_utc": "2026-10-16T06:23:13.651Z",
     "total_entries": 147,
     "units": 22.117,
     "win_rate_pct": 59.859,
@@ -98189,7 +98189,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "9f59971070a7e6c37794bc38f246a6e01f6f3f5ab0c90c01cae08a0d160f4efa",
+  "semantic_fingerprint": "e1ce40f28f75431e7840e55592591468cdc61b640de96b1708843d1d747f0194",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 321,
@@ -98234,16 +98234,16 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-16T05:54:44+00:00"
+      "updated_at_utc": "2026-10-16T11:37:06+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-16T05:34:28+00:00"
+      "updated_at_utc": "2026-10-16T09:55:55+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-16T05:54:44+00:00"
+      "updated_at_utc": "2026-10-16T11:37:05+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
@@ -98251,7 +98251,7 @@
     },
     "paper_22bet": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-15T18:23:16.587Z"
+      "updated_at_utc": "2026-10-16T06:23:13.651Z"
     },
     "paper_technical": {
       "status": "AVAILABLE",
@@ -98271,7 +98271,9 @@
     }
   },
   "system_health": {
-    "alerts": [],
+    "alerts": [
+      "manutenção de resultados: TIMED_OUT"
+    ],
     "latest": {
       "analysis_failed": 0,
       "duration_seconds": 1279.128,
@@ -98363,10 +98365,10 @@
         "timestamp": "2026-10-15T17:55:34+00:00"
       },
       {
-        "status": "HEALTHY",
+        "status": "DEGRADED",
         "timestamp": "2026-10-16T05:54:45+00:00"
       }
     ],
-    "status": "HEALTHY"
+    "status": "DEGRADED"
   }
 }
