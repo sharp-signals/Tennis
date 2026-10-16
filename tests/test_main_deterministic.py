@@ -61,6 +61,22 @@ class DeterministicFeatureTests(unittest.TestCase):
     def test_feature_computation_with_no_comparable_data_returns_none(self):
         self.assertIsNone(main._compute_features({"player_a": "A", "player_b": "B"}))
 
+    def test_indoor_provider_surface_uses_indoor_records(self):
+        features = main._compute_features({
+            "player_a": "A", "player_b": "B", "surface": "I.hard",
+            "indoor_outdoor_a": {
+                "indoor": {"wins": 8, "matches": 10},
+                "outdoor": {"wins": 1, "matches": 10},
+            },
+            "indoor_outdoor_b": {
+                "indoor": {"wins": 4, "matches": 10},
+                "outdoor": {"wins": 9, "matches": 10},
+            },
+        })
+
+        self.assertEqual(features["indoor_outdoor"]["lider"], "A")
+        self.assertEqual(features["indoor_outdoor"]["valor_a"], 80.0)
+
     def test_opponent_level_uses_local_history_outside_top100(self):
         features = main._compute_features({
             "player_a": "A", "player_b": "B",

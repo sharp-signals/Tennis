@@ -1364,6 +1364,65 @@ class MatchInputTests(unittest.TestCase):
 
 
 class DeterministicStatisticTests(unittest.TestCase):
+    def test_indoor_outdoor_context_understands_provider_contract(self):
+        self.assertEqual(fetch_data.indoor_outdoor_context("I.hard"), "indoor")
+        self.assertEqual(fetch_data.indoor_outdoor_context("Indoor Hard"), "indoor")
+        self.assertEqual(fetch_data.indoor_outdoor_context("Hard"), "outdoor")
+        self.assertEqual(fetch_data.indoor_outdoor_context("Clay"), "outdoor")
+        self.assertIsNone(fetch_data.indoor_outdoor_context("Desconhecido"))
+
+    def test_indoor_outdoor_reads_surface_when_court_column_is_absent(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "surface": "I.hard"},
+            {"winner_name": "C", "loser_name": "A", "surface": "Hard"},
+        ])
+
+        actual = fetch_data.compute_indoor_outdoor_stats(history, "A")
+
+        self.assertEqual(actual["indoor"]["wins"], 1)
+        self.assertEqual(actual["outdoor"]["losses"], 1)
+
+    def test_indoor_outdoor_recent_uses_match_level_court_id(self):
+        matches = [
+            {
+                "date": "2026-10-10T12:00:00Z",
+                "player1Id": 10,
+                "player2Id": 20,
+                "match_winner": 10,
+                "tournament": {"courtId": 3, "name": "Indoor Event"},
+            },
+            {
+                "date": "2026-10-08T12:00:00Z",
+                "player1Id": 10,
+                "player2Id": 30,
+                "match_winner": 30,
+                "tournament": {"courtId": 1, "name": "Outdoor Event"},
+            },
+        ]
+
+        actual = fetch_data.compute_indoor_outdoor_from_recent(
+            matches, 10, datetime(2026, 10, 15, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(actual["indoor"]["wins"], 1)
+        self.assertEqual(actual["outdoor"]["losses"], 1)
+        self.assertEqual(actual["indoor"]["source"], "rapidapi_player_past_matches")
+
+    def test_indoor_outdoor_perf_breakdown_uses_persisted_factual_buckets(self):
+        rich = {"by_surface": {
+            "hard": {"wins": 8, "losses": 2, "matches": 10},
+            "clay": {"wins": 3, "losses": 2, "matches": 5},
+            "grass": {"wins": 1, "losses": 1, "matches": 2},
+            "hard_indoor": {"wins": 4, "losses": 1, "matches": 5},
+        }}
+
+        actual = fetch_data.compute_indoor_outdoor_from_perf_breakdown(rich)
+
+        self.assertEqual(actual["indoor"]["matches"], 5)
+        self.assertEqual(actual["indoor"]["win_pct"], 80.0)
+        self.assertEqual(actual["outdoor"]["matches"], 17)
+        self.assertEqual(actual["outdoor"]["win_pct"], 70.6)
+
     def test_h2h_normalizes_surface_family(self):
         history = pd.DataFrame([
             {"winner_name": "A", "loser_name": "B", "surface": "Hardcourt"},

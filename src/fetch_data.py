@@ -46,7 +46,7 @@ from contextlib import contextmanager
 from urllib.parse import quote, urljoin, urlparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional
 
 import pandas as pd
 import requests
@@ -3654,6 +3654,162 @@ def compute_current_season_record(
     return {"season": current_year, **record}
 
 
+def indoor_outdoor_context(surface: object) -> Optional[str]:
+    """Resolve the provider's explicit venue context without guessing unknowns."""
+    if surface is None or pd.isna(surface):
+        return None
+    normalized = str(surface).strip().casefold().replace("_", " ")
+    if not normalized:
+        return None
+    if normalized.startswith("i.") or "indoor" in normalized:
+        return "indoor"
+    if "outdoor" in normalized:
+        return "outdoor"
+    # The tournament-info contract uses I.hard for indoor and the plain
+    # physical surfaces for outdoor events.
+    if normalized in {"hard", "hardcourt", "clay", "grass"}:
+        return "outdoor"
+    return None
+
+
+def _row_indoor_outdoor_context(row: Mapping) -> Optional[str]:
+    """Read explicit local/API venue fields in decreasing order of precision."""
+    for column in ("indoor", "Indoor", "isIndoor", "is_indoor"):
+        if column not in row:
+            continue
+        value = row.get(column)
+        if value is None or pd.isna(value):
+            continue
+        if isinstance(value, bool):
+            return "indoor" if value else "outdoor"
+        normalized = str(value).strip().casefold()
+        if normalized in {"i", "indoor", "1", "true", "yes"}:
+            return "indoor"
+        if normalized in {"o", "outdoor", "0", "false", "no"}:
+            return "outdoor"
+
+    for column in ("Court", "court", "surface", "Surface"):
+        value = row.get(column)
+        if isinstance(value, Mapping):
+            value = value.get("name")
+        context = indoor_outdoor_context(value)
+        if context is not None:
+            return context
+
+    tournament = row.get("tournament")
+    if isinstance(tournament, Mapping):
+        court = tournament.get("court")
+        if isinstance(court, Mapping):
+            court = court.get("name")
+        context = indoor_outdoor_context(court)
+        if context is not None:
+            return context
+        court_id = tournament.get("courtId") or tournament.get("court_id")
+    else:
+        court_id = None
+    court_id = court_id or row.get("courtId") or row.get("court_id")
+    try:
+        normalized_id = str(int(float(court_id)))
+    except (TypeError, ValueError):
+        return None
+    if normalized_id == "3":
+        return "indoor"
+    if normalized_id in {"1", "2", "5"}:
+        return "outdoor"
+    # Carpet (4) is not promoted: the provider does not declare its venue.
+    return None
+
+
+def _indoor_outdoor_recent_records(
+    recent_matches: Optional[list], player_id: object, before: Optional[datetime],
+) -> dict[str, list[dict]]:
+    records = {"indoor": [], "outdoor": []}
+    if player_id is None:
+        return records
+    player_key = str(player_id)
+    cutoff = pd.Timestamp(before) if before is not None else None
+    for match in recent_matches or []:
+        if not isinstance(match, dict):
+            continue
+        p1 = match.get("player1Id") or (match.get("player1") or {}).get("id")
+        p2 = match.get("player2Id") or (match.get("player2") or {}).get("id")
+        if player_key not in {str(p1), str(p2)}:
+            continue
+        if cutoff is not None:
+            match_date = pd.to_datetime(match.get("date"), errors="coerce", utc=True)
+            if pd.isna(match_date):
+                continue
+            comparable_cutoff = cutoff.tz_localize("UTC") if cutoff.tzinfo is None else cutoff
+            if match_date >= comparable_cutoff:
+                continue
+        context = _row_indoor_outdoor_context(match)
+        winner = match.get("match_winner") or match.get("winnerId") or match.get("winner")
+        if context is None or winner is None:
+            continue
+        records[context].append({
+            **match,
+            "_player_won": str(winner) == player_key,
+        })
+    return records
+
+
+def merge_indoor_outdoor_fallback(primary: Optional[dict], fallback: Optional[dict]) -> Optional[dict]:
+    """Fill missing contexts only; never double-count overlapping sources."""
+    result = dict(primary or {})
+    for context in ("indoor", "outdoor"):
+        if not result.get(context) and (fallback or {}).get(context):
+            result[context] = fallback[context]
+    return result if any(result.get(key) for key in ("indoor", "outdoor")) else None
+
+
+def compute_indoor_outdoor_from_recent(
+    recent_matches: Optional[list], player_id: object, before: Optional[datetime], *,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Build match-level venue records from already-fetched past matches."""
+    grouped = _indoor_outdoor_recent_records(recent_matches, player_id, before)
+    result: dict = {}
+    for context, rows in grouped.items():
+        if not rows:
+            result[context] = None
+            continue
+        record = competition_evidence.weighted_binary_record(
+            rows,
+            lambda row: bool(row.get("_player_won")),
+            active=bool((competition_policy or {}).get("active")),
+            policy=competition_policy,
+        )
+        record["source"] = "rapidapi_player_past_matches"
+        result[context] = record
+    return result if any(result.values()) else None
+
+
+def compute_indoor_outdoor_from_perf_breakdown(rich: Optional[dict]) -> Optional[dict]:
+    """Use the persisted provider aggregate only where policy permits it."""
+    by_surface = (rich or {}).get("by_surface") or {}
+
+    def _combine(keys: tuple[str, ...]) -> Optional[dict]:
+        cells = [by_surface.get(key) for key in keys]
+        wins = sum(int((cell or {}).get("wins") or 0) for cell in cells)
+        losses = sum(int((cell or {}).get("losses") or 0) for cell in cells)
+        matches = wins + losses
+        if matches <= 0:
+            return None
+        return {
+            "wins": wins,
+            "losses": losses,
+            "matches": matches,
+            "win_pct": round(100 * wins / matches, 1),
+            "source": "rapidapi_perf_breakdown_aggregate",
+        }
+
+    result = {
+        "indoor": _combine(("hard_indoor",)),
+        "outdoor": _combine(("hard", "clay", "grass")),
+    }
+    return result if any(result.values()) else None
+
+
 def compute_indoor_outdoor_stats(
     history: pd.DataFrame,
     player: str,
@@ -3673,38 +3829,14 @@ def compute_indoor_outdoor_stats(
     if played.empty:
         return None
 
-    def _is_indoor(row) -> Optional[bool]:
-        try:
-            if "indoor" in played.columns:
-                value = row.get("indoor")
-                if pd.isna(value):
-                    return None
-                if isinstance(value, bool):
-                    return value
-                if isinstance(value, str):
-                    normalized = value.strip().upper()
-                    if normalized in ("I", "INDOOR", "1", "TRUE"):
-                        return True
-                    if normalized in ("O", "OUTDOOR", "0", "FALSE"):
-                        return False
-                    return None
-                return bool(int(value))
-            if "Court" in played.columns:
-                value = row.get("Court")
-                if not isinstance(value, str):
-                    return None
-                normalized = value.strip().lower()
-                if normalized == "indoor":
-                    return True
-                if normalized == "outdoor":
-                    return False
-        except (ValueError, TypeError):
-            return None
-        return None
-
-    played["_indoor"] = played.apply(_is_indoor, axis=1)
-    if played["_indoor"].isna().all():
-        relevant = [key for key in ("indoor", "Court") if key in played.columns]
+    played["_venue_context"] = played.apply(
+        lambda row: _row_indoor_outdoor_context(row), axis=1,
+    )
+    if played["_venue_context"].isna().all():
+        relevant = [
+            key for key in ("indoor", "Indoor", "Court", "court", "surface", "Surface")
+            if key in played.columns
+        ]
         print(
             f"[diag:indoor] {player}: colunas presentes {relevant}, "
             "mas nenhum valor interpretável"
@@ -3712,8 +3844,8 @@ def compute_indoor_outdoor_stats(
         return None
     result: dict = {}
     policy_active = bool((competition_policy or {}).get("active"))
-    for key, expected in (("indoor", True), ("outdoor", False)):
-        subset = played[played["_indoor"] == expected]
+    for key in ("indoor", "outdoor"):
+        subset = played[played["_venue_context"] == key]
         result[key] = (
             None
             if subset.empty
