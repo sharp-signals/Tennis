@@ -1252,7 +1252,9 @@ def _calcular_divergencia(payload):
     elif trans_a and trans_b:
         _reg_status("mudanca_piso", True, "igual", "ambos em transição de piso")
     else:
-        _reg_status("mudanca_piso", False, motivo_exclusao="nenhum em transição de piso")
+        # Ausência factual de transição é evidência disponível sem impacto,
+        # não uma falha de cobertura.
+        _reg_status("mudanca_piso", True, "igual", "nenhum em transição de piso")
 
     # Lesão (só ativa em regresso claro/longo)
     # CORREÇÃO (11/08/2026): lia layoff_return_stats.days_out, que só existe

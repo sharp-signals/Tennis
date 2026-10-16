@@ -2813,8 +2813,14 @@ def _build_match_payload(match: dict) -> dict:
     )
     # NOVO (22/08/2026, a pedido): efeito de mudança de piso — jogador que
     # vem de outra superfície e entra fresco no piso de hoje.
-    surface_transition_a = fetch_data.compute_surface_transition(history, player_a, surface)
-    surface_transition_b = fetch_data.compute_surface_transition(history, player_b, surface)
+    surface_transition_a = fetch_data.compute_surface_transition(
+        history, player_a, surface, before=start,
+        recent_matches=_recent_a_cache, player_id=_pid_a,
+    )
+    surface_transition_b = fetch_data.compute_surface_transition(
+        history, player_b, surface, before=start,
+        recent_matches=_recent_b_cache, player_id=_pid_b,
+    )
     # NOVO (22/08/2026, a pedido): histórico de cada jogador NESTE torneio
     # específico (tournament-record). Só se houver ID de jogador E do
     # torneio — sem isso, salta sem gastar chamada.

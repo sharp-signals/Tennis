@@ -1423,6 +1423,60 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(actual["outdoor"]["matches"], 17)
         self.assertEqual(actual["outdoor"]["win_pct"], 70.6)
 
+    def test_surface_transition_uses_recent_court_id_and_excludes_future_match(self):
+        matches = [
+            {
+                "date": "2026-10-10T12:00:00Z",
+                "player1Id": 10,
+                "player2Id": 20,
+                "tournament": {"courtId": 2},
+            },
+            {
+                "date": "2026-10-12T12:00:00Z",
+                "player1Id": 10,
+                "player2Id": 30,
+                "tournament": {"courtId": 2},
+            },
+            {
+                "date": "2026-10-17T12:00:00Z",
+                "player1Id": 10,
+                "player2Id": 40,
+                "tournament": {"courtId": 5},
+            },
+        ]
+
+        actual = fetch_data.compute_surface_transition(
+            pd.DataFrame(), "Player A", "Grass",
+            before=datetime(2026, 10, 15, tzinfo=timezone.utc),
+            recent_matches=matches, player_id=10,
+        )
+
+        self.assertTrue(actual["em_transicao"])
+        self.assertEqual(actual["piso_recente_dominante"], "clay")
+        self.assertEqual(actual["jogos_recentes_total"], 2)
+        self.assertEqual(actual["source"], "rapidapi_player_past_matches")
+
+    def test_surface_transition_local_fallback_is_anchored_before_fixture(self):
+        history = pd.DataFrame([
+            {
+                "winner_name": "A", "loser_name": "B",
+                "surface": "Clay", "tourney_date": 20261001,
+            },
+            {
+                "winner_name": "C", "loser_name": "A",
+                "surface": "Grass", "tourney_date": 20261020,
+            },
+        ])
+
+        actual = fetch_data.compute_surface_transition(
+            history, "A", "Hard",
+            before=datetime(2026, 10, 15, tzinfo=timezone.utc),
+        )
+
+        self.assertTrue(actual["em_transicao"])
+        self.assertEqual(actual["piso_recente_dominante"], "clay")
+        self.assertEqual(actual["source"], "local_match_history")
+
     def test_h2h_normalizes_surface_family(self):
         history = pd.DataFrame([
             {"winner_name": "A", "loser_name": "B", "surface": "Hardcourt"},

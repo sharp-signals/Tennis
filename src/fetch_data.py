@@ -42,6 +42,7 @@ import re
 import threading
 import time
 import unicodedata
+from collections import Counter
 from contextlib import contextmanager
 from urllib.parse import quote, urljoin, urlparse
 from datetime import datetime, timedelta, timezone
@@ -3858,8 +3859,76 @@ def compute_indoor_outdoor_stats(
         )
     return result if any(result.values()) else None
 
-def compute_surface_transition(history: pd.DataFrame, player: str, current_surface: str,
-                               recent_window_days: int = 35) -> Optional[dict]:
+def _recent_match_surface_family(match: Mapping) -> Optional[str]:
+    """Return the physical surface family declared by a recent-match row."""
+    tournament = match.get("tournament")
+    tournament = tournament if isinstance(tournament, Mapping) else {}
+    for value in (
+        match.get("surface"), match.get("court"),
+        tournament.get("surface"), tournament.get("court"),
+    ):
+        family = _normalize_surface_family(value)
+        if family:
+            return family
+    raw_court_id = match.get("courtId")
+    if raw_court_id in (None, ""):
+        raw_court_id = tournament.get("courtId")
+    try:
+        court_id = int(raw_court_id)
+    except (TypeError, ValueError):
+        return None
+    return {1: "hard", 2: "clay", 3: "hard", 4: "carpet", 5: "grass"}.get(court_id)
+
+
+def _surface_transition_from_records(
+    records: list[dict], current_family: str, reference: datetime,
+    recent_window_days: int, source: str,
+) -> Optional[dict]:
+    valid = [
+        row for row in records
+        if isinstance(row.get("date"), datetime) and row.get("family")
+        and row["date"] < reference
+    ]
+    if not valid:
+        return None
+    valid.sort(key=lambda row: row["date"])
+    cutoff = reference - timedelta(days=recent_window_days)
+    recent = [row for row in valid if row["date"] >= cutoff]
+    if not recent:
+        recent = valid[-5:]
+
+    counts = Counter(row["family"] for row in recent)
+    if not counts:
+        return None
+    # Em empate, a superfície do jogo mais recente decide. Isto evita que a
+    # ordenação alfabética transforme arbitrariamente um 1-1 numa transição.
+    most_recent_family = recent[-1]["family"]
+    dominant = max(
+        counts,
+        key=lambda family: (counts[family], family == most_recent_family),
+    )
+    on_current = [row for row in valid if row["family"] == current_family]
+    days_since = None
+    if on_current:
+        days_since = int((reference - on_current[-1]["date"]).total_seconds() // 86400)
+    recent_on_current = sum(row["family"] == current_family for row in recent)
+    return {
+        "em_transicao": bool(dominant != current_family and recent_on_current == 0),
+        "piso_recente_dominante": dominant,
+        "piso_atual": current_family,
+        "dias_desde_ultimo_no_piso_atual": days_since,
+        "jogos_recentes_no_piso_atual": recent_on_current,
+        "jogos_recentes_total": len(recent),
+        "source": source,
+        "reference_time_utc": reference.isoformat(),
+    }
+
+
+def compute_surface_transition(
+    history: pd.DataFrame, player: str, current_surface: str,
+    recent_window_days: int = 35, *, before: Optional[datetime] = None,
+    recent_matches: Optional[list] = None, player_id: object = None,
+) -> Optional[dict]:
     """
     NOVO (22/08/2026, a pedido): efeito de MUDANÇA DE PISO. Um jogador que
     vem de várias semanas noutro piso (ex: época de terra batida) e entra
@@ -3872,65 +3941,71 @@ def compute_surface_transition(history: pd.DataFrame, player: str, current_surfa
         de hoje (None se nunca, dentro do histórico disponível)
       - "jogos_recentes_no_piso_atual": quantos dos jogos recentes já foram
         no piso de hoje (0 = mudança fresca, sem rodagem)
-    None se não houver dados de piso/data utilizáveis.
+    Usa primeiro os ``past-matches`` já recolhidos e cai para o histórico
+    local. None apenas quando nenhuma das fontes tiver piso/data utilizáveis.
     """
-    if history.empty or "winner_name" not in history.columns:
-        return None
-    if "surface" not in history.columns or "tourney_date" not in history.columns:
-        return None
     current_family = _normalize_surface_family(current_surface)
     if not current_family:
         return None
+    reference = before or datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    else:
+        reference = reference.astimezone(timezone.utc)
 
+    recent_records: list[dict] = []
+    for match in recent_matches or []:
+        if not isinstance(match, Mapping):
+            continue
+        if player_id not in (None, ""):
+            participants = {
+                str(value) for value in (
+                    match.get("player1Id"), match.get("player2Id")
+                ) if value not in (None, "")
+            }
+            if str(player_id) not in participants:
+                continue
+        raw_date = match.get("date")
+        try:
+            played_at = datetime.fromisoformat(str(raw_date).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            continue
+        if played_at.tzinfo is None:
+            played_at = played_at.replace(tzinfo=timezone.utc)
+        else:
+            played_at = played_at.astimezone(timezone.utc)
+        family = _recent_match_surface_family(match)
+        if family:
+            recent_records.append({"date": played_at, "family": family})
+    recent_result = _surface_transition_from_records(
+        recent_records, current_family, reference, recent_window_days,
+        "rapidapi_player_past_matches",
+    )
+    if recent_result is not None:
+        return recent_result
+
+    required = {"winner_name", "loser_name", "surface", "tourney_date"}
+    if history.empty or not required.issubset(history.columns):
+        return None
     resolved = resolve_player_name(history, player)
     if resolved is None:
         return None
-    player = resolved
-
-    played = history[(history["winner_name"] == player) | (history["loser_name"] == player)].copy()
-    if played.empty:
-        return None
-
-    played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
-    played = played.dropna(subset=["_date"]).sort_values("_date")
-    if played.empty:
-        return None
-
-    played["_family"] = played["surface"].map(_normalize_surface_family)
-    hoje = played["_date"].max()
-
-    # Janela recente (as últimas semanas antes do jogo de hoje)
-    cutoff = hoje - pd.Timedelta(days=recent_window_days)
-    recentes = played[played["_date"] >= cutoff]
-    if recentes.empty:
-        recentes = played.tail(5)  # fallback: últimos jogos se a janela vier vazia
-
-    # Piso dominante nos jogos recentes
-    contagem_familias = recentes["_family"].value_counts()
-    if contagem_familias.empty:
-        return None
-    piso_recente_dominante = contagem_familias.idxmax()
-
-    jogos_recentes_no_piso_atual = int((recentes["_family"] == current_family).sum())
-
-    # Há quanto tempo não joga no piso de hoje
-    no_piso_atual = played[played["_family"] == current_family]
-    dias_desde = None
-    if not no_piso_atual.empty:
-        ultimo = no_piso_atual["_date"].max()
-        dias_desde = int((hoje - ultimo).days)
-
-    em_transicao = (piso_recente_dominante != current_family
-                    and jogos_recentes_no_piso_atual == 0)
-
-    return {
-        "em_transicao": bool(em_transicao),
-        "piso_recente_dominante": piso_recente_dominante,
-        "piso_atual": current_family,
-        "dias_desde_ultimo_no_piso_atual": dias_desde,
-        "jogos_recentes_no_piso_atual": jogos_recentes_no_piso_atual,
-        "jogos_recentes_total": int(len(recentes)),
-    }
+    played = history[
+        (history["winner_name"] == resolved) | (history["loser_name"] == resolved)
+    ].copy()
+    local_records: list[dict] = []
+    for row in played.to_dict("records"):
+        parsed = pd.to_datetime(row.get("tourney_date"), format="%Y%m%d", errors="coerce")
+        if pd.isna(parsed):
+            continue
+        played_at = parsed.to_pydatetime().replace(tzinfo=timezone.utc)
+        family = _normalize_surface_family(row.get("surface"))
+        if family:
+            local_records.append({"date": played_at, "family": family})
+    return _surface_transition_from_records(
+        local_records, current_family, reference, recent_window_days,
+        "local_match_history",
+    )
 
 
 def _enrich_exact_current_competition(

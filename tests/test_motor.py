@@ -262,6 +262,26 @@ def test_mudanca_piso_nao_pontua_quando_faltam_dados_de_um_lado():
     assert not status.get("peso_efetivo")
 
 
+def test_ausencia_factual_de_mudanca_de_piso_e_dado_disponivel_sem_impacto():
+    stable = {
+        "em_transicao": False,
+        "piso_recente_dominante": "hard",
+        "piso_atual": "hard",
+    }
+    r = _calcular_divergencia(_payload(
+        2.1, 1.8,
+        {"ranking": {"lider": "A", "diff": 30}},
+        surface_transition_a=stable,
+        surface_transition_b=stable,
+    ))
+    assert r is not None
+    status = r["fatores_status"]["mudanca_piso"]
+    assert status["disponivel"] is True
+    assert status["lider"] == "igual"
+    assert "nenhum em transição" in status["motivo_exclusao"]
+    assert not status.get("peso_efetivo")
+
+
 def test_regresso_nao_pontua_quando_faltam_dias_de_um_lado():
     r = _calcular_divergencia(_payload(2.1, 1.8, {
         "ranking": {"lider": "A", "diff": 30},
