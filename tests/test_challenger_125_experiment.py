@@ -238,12 +238,21 @@ class Challenger125ExperimentTests(unittest.TestCase):
             "recent_form_b": {"matches": 10},
         })
         tournament_policy.apply_experimental_paper_gate(payload)
+        payload["prelive_decision"]["coverage"] = {
+            "weighted_ratio": 0.91,
+            "weighted_pct": 91.0,
+            "status": "reduzida",
+        }
         html = report_html.build_report_html(
             payload,
             {"flag": "🟣", "summary_line": "Candidato manual", "key_points": []},
         )
         self.assertIn("CANDIDATO PAPER MANUAL 0,5u", html)
         self.assertIn("Confirmar preço atual na 22Bet", html)
+        self.assertIn(
+            "91% dos fatores ponderados disponíveis · 9% em falta", html
+        )
+        self.assertNotIn("91% · reduzida", html)
         priority, icon, text = telegram_summary.decision_row(payload)
         self.assertEqual((priority, icon), (2.75, "🟣"))
         self.assertIn("CANDIDATO PAPER MANUAL 0,5u", text)
