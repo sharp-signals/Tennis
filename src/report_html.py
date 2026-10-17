@@ -3583,7 +3583,18 @@ def _mod_decision_box(payload):
     decision = _d(payload.get("prelive_decision"))
     state = decision.get("state") or "REPORT_NULL"
     coverage = _d(decision.get("coverage"))
-    coverage_text = f'{coverage.get("weighted_pct", 0):g}% · {coverage.get("status", "insuficiente")}'
+    try:
+        coverage_pct = max(0.0, min(100.0, float(coverage.get("weighted_pct") or 0)))
+    except (TypeError, ValueError):
+        coverage_pct = 0.0
+    if coverage_pct >= 99.95:
+        coverage_text = "100% dos fatores ponderados disponíveis"
+    else:
+        missing_pct = 100.0 - coverage_pct
+        coverage_text = (
+            f"{coverage_pct:g}% dos fatores ponderados disponíveis · "
+            f"{missing_pct:g}% em falta"
+        )
     label, css_class, ball, _color = REPORT_DECISION_PRESENTATION.get(
         state, REPORT_DECISION_PRESENTATION["REPORT_NULL"]
     )
