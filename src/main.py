@@ -3998,6 +3998,7 @@ def run() -> None:
     match_reports = []  # (payload, result, url_ou_None)
     report_artifacts = []  # HTML local + URL; consumido apenas após publicação.
     generated_slugs = []
+    completed_delivery_recovery_keys: list[str] = []
     # NOVO (22/08/2026, a pedido): histórico de acerto do próprio sistema,
     # calculado uma vez a partir dos snapshots já resolvidos e mostrado em
     # todos os relatórios (é o mesmo número global para todos). Falha
@@ -4039,10 +4040,38 @@ def run() -> None:
                 "local_path": artifact["local_path"],
             })
             generated_slugs.append((payload, result, artifact["slug"]))
+            # The atomic HTML plus completion manifest now provide durable
+            # proof of the first delivery.  The bulky frozen retry bundle is
+            # no longer needed, but the canonical analytical snapshot stays.
+            if artifact.get("delivery_fingerprint"):
+                completed_delivery_recovery_keys.append(
+                    str(payload.get("snapshot_key") or "")
+                )
         except Exception as exc:
             print(f"[aviso] falha a gerar HTML para {payload['player_a']} vs {payload['player_b']}: {exc}")
             url = None
         match_reports.append((payload, result, url))
+
+    # Also reclaim legacy retry bundles left behind by earlier successful
+    # runs.  A bundle is removed only when its exact frozen fingerprint has a
+    # valid HTML plus completion manifest on disk.
+    for snapshot_key, recovery in (
+        calibration_store.read_delivery_recoveries().items()
+    ):
+        if _frozen_delivery_complete(recovery):
+            completed_delivery_recovery_keys.append(snapshot_key)
+
+    cleared_delivery_recoveries = (
+        calibration_store.clear_completed_delivery_recovery(
+            completed_delivery_recovery_keys
+        )
+    )
+    if cleared_delivery_recoveries:
+        print(
+            "[calibracao] "
+            f"{cleared_delivery_recoveries} bundle(s) de recuperação "
+            "já concluídos removido(s); snapshots preservados."
+        )
 
     # Índice do dia: uma página que lista todos os jogos, para o Netlify
     # ter uma raiz navegável (e evitar o "Page not found").

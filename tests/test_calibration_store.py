@@ -53,6 +53,69 @@ class CalibrationStoreTests(unittest.TestCase):
             saved = json.loads(path.read_text(encoding="utf-8"))["snapshots"]
             self.assertEqual(saved[0]["market_odds_decimal"]["A"], 1.8)
 
+    def test_store_is_compact_json_without_losing_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            snapshot = calibration_store.build_snapshot(self._payload())
+            self.assertEqual(calibration_store.upsert_snapshots([snapshot], path), 1)
+
+            raw = path.read_text(encoding="utf-8")
+            self.assertNotIn("\n  ", raw)
+            self.assertEqual(
+                json.loads(raw)["snapshots"][0]["market_odds_decimal"],
+                {"A": 1.8, "B": 2.1},
+            )
+
+    def test_completed_delivery_recovery_cleanup_is_targeted_and_idempotent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshots.json"
+            first = calibration_store.build_snapshot(self._payload())
+            first["delivery_recovery"] = {
+                "payload": {"large": "x" * 1000}, "result": {"flag": "green"}
+            }
+            second = dict(first)
+            second["key"] = "atp:m2"
+            second["event_key"] = "atp:m2"
+            second["delivery_recovery"] = {
+                "payload": {"large": "y" * 1000}, "result": {"flag": "red"}
+            }
+            calibration_store.upsert_snapshots([first, second], path)
+
+            recoveries = calibration_store.read_delivery_recoveries(path)
+            self.assertEqual(set(recoveries), {"atp:m1", "atp:m2"})
+            raw_before = {
+                item["key"]: item
+                for item in json.loads(path.read_text(encoding="utf-8"))["snapshots"]
+            }
+            self.assertNotIn("delivery_recovery", raw_before["atp:m1"])
+            self.assertIn("delivery_recovery_ref", raw_before["atp:m1"])
+            hydrated = calibration_store.read_snapshots_by_key(
+                ["atp:m1"], path
+            )["atp:m1"]
+            self.assertEqual(
+                hydrated["delivery_recovery"]["result"], {"flag": "green"}
+            )
+            self.assertEqual(
+                calibration_store.clear_completed_delivery_recovery(
+                    ["atp:m1"], path
+                ),
+                1,
+            )
+            saved = {
+                item["key"]: item
+                for item in json.loads(path.read_text(encoding="utf-8"))["snapshots"]
+            }
+            self.assertNotIn("delivery_recovery", saved["atp:m1"])
+            self.assertNotIn("delivery_recovery_ref", saved["atp:m1"])
+            self.assertIn("delivery_recovery_ref", saved["atp:m2"])
+            self.assertEqual(saved["atp:m1"]["metrics"], first["metrics"])
+            self.assertEqual(
+                calibration_store.clear_completed_delivery_recovery(
+                    ["atp:m1"], path
+                ),
+                0,
+            )
+
     def test_market_observation_link_is_frozen_with_snapshot(self):
         payload = self._payload()
         payload.update({
