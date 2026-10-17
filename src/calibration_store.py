@@ -20,6 +20,7 @@ from .green_strong_validation import COHORT_NAME, classify_snapshot
 
 SCHEMA_VERSION = 1
 DEFAULT_PATH = Path("data/calibration_snapshots.json")
+DELIVERY_RECOVERY_DIRNAME = "calibration_delivery_recovery"
 MAX_ENTRIES = None  # o histórico operacional não é truncado silenciosamente
 
 _LOCK = threading.Lock()
@@ -176,12 +177,24 @@ def _read(path: Path) -> dict[str, Any]:
     return value
 
 
-def _write(path: Path, document: Mapping[str, Any]) -> None:
+def _recovery_sidecar_path(path: Path, key: str) -> Path:
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    return path.parent / DELIVERY_RECOVERY_DIRNAME / f"{digest}.json"
+
+
+def _write_json_atomic(path: Path, document: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
     try:
         with temp.open("w", encoding="utf-8") as handle:
-            json.dump(document, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            json.dump(
+                document,
+                handle,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+            handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temp, path)
@@ -190,6 +203,129 @@ def _write(path: Path, document: Mapping[str, Any]) -> None:
             temp.unlink()
         except FileNotFoundError:
             pass
+
+
+def _externalize_delivery_recoveries(
+    path: Path, document: Mapping[str, Any],
+) -> None:
+    snapshots = document.get("snapshots")
+    if not isinstance(snapshots, list):
+        return
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict) or not snapshot.get("key"):
+            continue
+        recovery = snapshot.get("delivery_recovery")
+        if not isinstance(recovery, Mapping):
+            continue
+        sidecar = _recovery_sidecar_path(path, str(snapshot["key"]))
+        _write_json_atomic(sidecar, recovery)
+        encoded = sidecar.read_bytes()
+        snapshot["delivery_recovery_ref"] = {
+            "schema_version": "competition-delivery-recovery-ref-v1",
+            "file": sidecar.name,
+            "sha256": hashlib.sha256(encoded).hexdigest(),
+            "bytes": len(encoded),
+        }
+        del snapshot["delivery_recovery"]
+
+
+def _load_delivery_recovery(
+    path: Path, snapshot: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    embedded = snapshot.get("delivery_recovery")
+    if isinstance(embedded, Mapping):
+        return copy.deepcopy(dict(embedded))
+    reference = snapshot.get("delivery_recovery_ref")
+    if not isinstance(reference, Mapping):
+        return None
+    filename = str(reference.get("file") or "")
+    if not filename or Path(filename).name != filename:
+        return None
+    sidecar = path.parent / DELIVERY_RECOVERY_DIRNAME / filename
+    try:
+        encoded = sidecar.read_bytes()
+        if hashlib.sha256(encoded).hexdigest() != reference.get("sha256"):
+            return None
+        value = json.loads(encoded.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return copy.deepcopy(dict(value)) if isinstance(value, Mapping) else None
+
+
+def _write(path: Path, document: Mapping[str, Any]) -> None:
+    """Write the durable store atomically without presentation whitespace.
+
+    This file is a machine-owned ledger rather than a hand-edited document.
+    Pretty-printing almost doubled its Git blob size and eventually made an
+    otherwise valid bot run impossible to publish through GitHub's 100 MiB
+    per-file limit.  Compact JSON preserves exactly the same values while
+    keeping the canonical store comfortably below that transport boundary.
+    """
+    _externalize_delivery_recoveries(path, document)
+    _write_json_atomic(path, document)
+
+
+def clear_completed_delivery_recovery(
+    keys: Iterable[str], path: Path = DEFAULT_PATH,
+) -> int:
+    """Drop retry-only bundles after their report delivery is complete.
+
+    ``delivery_recovery`` contains a full frozen payload/result so that an
+    interrupted first delivery can be resumed byte-for-byte.  Once the caller
+    has verified the final HTML and its completion manifest, keeping that
+    bundle no longer adds recoverability: the canonical snapshot, outcome and
+    report remain durable, while the already-delivered bundle only duplicates
+    tens of megabytes.  The operation is targeted and idempotent.
+    """
+    completed = {str(key) for key in keys if key}
+    if not completed:
+        return 0
+    with _LOCK:
+        document = _read(path)
+        cleared = 0
+        obsolete_sidecars: list[Path] = []
+        for snapshot in document["snapshots"]:
+            if (
+                str(snapshot.get("key") or "") in completed
+                and (
+                    "delivery_recovery" in snapshot
+                    or "delivery_recovery_ref" in snapshot
+                )
+            ):
+                reference = snapshot.pop("delivery_recovery_ref", None)
+                snapshot.pop("delivery_recovery", None)
+                if isinstance(reference, Mapping):
+                    filename = str(reference.get("file") or "")
+                    if filename and Path(filename).name == filename:
+                        obsolete_sidecars.append(
+                            path.parent / DELIVERY_RECOVERY_DIRNAME / filename
+                        )
+                cleared += 1
+        if cleared:
+            document["updated_at_utc"] = _utc_now()
+            _write(path, document)
+            for sidecar in obsolete_sidecars:
+                try:
+                    sidecar.unlink()
+                except FileNotFoundError:
+                    pass
+        return cleared
+
+
+def read_delivery_recoveries(
+    path: Path = DEFAULT_PATH,
+) -> dict[str, dict[str, Any]]:
+    """Return retry bundles for integrity verification by the report layer."""
+    with _LOCK:
+        document = _read(path)
+        result: dict[str, dict[str, Any]] = {}
+        for snapshot in document["snapshots"]:
+            if not snapshot.get("key"):
+                continue
+            recovery = _load_delivery_recovery(path, snapshot)
+            if recovery is not None:
+                result[str(snapshot["key"])] = recovery
+        return result
 
 
 def upsert_snapshots(snapshots: Iterable[Mapping[str, Any]], path: Path = DEFAULT_PATH,
@@ -232,11 +368,16 @@ def read_snapshots_by_key(
     wanted = {str(key) for key in keys if key}
     with _LOCK:
         document = _read(path)
-        return {
-            str(item["key"]): copy.deepcopy(dict(item))
-            for item in document["snapshots"]
-            if item.get("key") is not None and str(item["key"]) in wanted
-        }
+        result: dict[str, dict[str, Any]] = {}
+        for item in document["snapshots"]:
+            if item.get("key") is None or str(item["key"]) not in wanted:
+                continue
+            hydrated = copy.deepcopy(dict(item))
+            recovery = _load_delivery_recovery(path, item)
+            if recovery is not None:
+                hydrated["delivery_recovery"] = recovery
+            result[str(item["key"])] = hydrated
+        return result
 
 
 def apply_persisted_validation(
