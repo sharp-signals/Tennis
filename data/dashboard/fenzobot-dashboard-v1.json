@@ -3,28 +3,28 @@
     "change_id": "CHANGE-2026-09-08-030",
     "contract_version": "audit-observability-v1",
     "green_diagnostics": {
-      "decision_positive": 124,
-      "direction_strong": 29,
-      "eligible": 18,
+      "decision_positive": 129,
+      "direction_strong": 31,
+      "eligible": 20,
       "eligible_settled": 12,
       "exclusion_reason_counts": {
-        "DECISION_STATE_NOT_EDGE_POSITIVE": 617,
-        "DIVERGENCE_LEVEL_NOT_STRONG": 712,
+        "DECISION_STATE_NOT_EDGE_POSITIVE": 628,
+        "DIVERGENCE_LEVEL_NOT_STRONG": 726,
         "DIVERGENCE_SIDE_UNAVAILABLE": 9,
-        "DIVERGENCE_TYPE_NOT_DIRECTION": 595,
+        "DIVERGENCE_TYPE_NOT_DIRECTION": 607,
         "EXPERIMENTAL_TIER_CHALLENGER_125": 147,
-        "INTEGRITY_CONFLICT": 89,
-        "PAPER_NOT_ELIGIBLE": 617,
-        "PRICING_UNAVAILABLE": 192,
-        "PROBABILITIES_UNAVAILABLE": 192,
-        "SELECTED_PLAYER_UNAVAILABLE": 225,
-        "SELECTED_SIDE_UNAVAILABLE": 225
+        "INTEGRITY_CONFLICT": 91,
+        "PAPER_NOT_ELIGIBLE": 628,
+        "PRICING_UNAVAILABLE": 194,
+        "PROBABILITIES_UNAVAILABLE": 194,
+        "SELECTED_PLAYER_UNAVAILABLE": 227,
+        "SELECTED_SIDE_UNAVAILABLE": 227
       },
       "legacy_or_not_prospective": 390,
       "note": "Independent stored gates, not an inferred sequential funnel; reasons may overlap.",
-      "prospectively_classified": 741,
+      "prospectively_classified": 757,
       "status": "AVAILABLE",
-      "total_snapshots": 1131
+      "total_snapshots": 1147
     },
     "last_refresh_attempt": {
       "attempted_at_utc": "2026-10-18T00:59:27+00:00",
@@ -35,7 +35,7 @@
     "llm": {
       "llm_external_requests": 0,
       "llm_mode": "disabled",
-      "llm_provider_invocations": 54
+      "llm_provider_invocations": 60
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -565,9 +565,9 @@
       "eligibility_hash": "2f9ce5a1afae9f48a2db81b115a73e90fa69af77e11a0de4770b6d3afff01add",
       "eligible_forecasts": 133,
       "exclusions": {
-        "ENTRY_LINK_UNAVAILABLE": 348,
+        "ENTRY_LINK_UNAVAILABLE": 362,
         "EXPERIMENTAL_TIER_EXCLUDED": 147,
-        "FROZEN_PROBABILITIES_UNAVAILABLE": 449,
+        "FROZEN_PROBABILITIES_UNAVAILABLE": 451,
         "TEMPORAL_PROVENANCE_INVALID": 54
       },
       "fenzobot": {
@@ -588,13 +588,13 @@
       "sample_size": 125,
       "scored_snapshot_keys_hash": "b8a1d2a99fe9c9cbad54ce2978d4e69c55074a49f561221032f49512aa9a3677",
       "status": "AVAILABLE",
-      "total_snapshots": 1131
+      "total_snapshots": 1147
     },
     "source_quality": {
       "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
       "first_ledger_capture_utc": "2026-09-03T17:34:09+00:00",
       "fresh": 0.0,
-      "last_monitor_capture_utc": "2026-10-17T22:50:44+00:00",
+      "last_monitor_capture_utc": "2026-10-18T01:24:07+00:00",
       "stale": 0.0,
       "unknown": 0.0
     },
@@ -605,16 +605,1758 @@
       "total_snapshots": "STORED_SNAPSHOTS"
     },
     "unknown_colors_by_linkage": {
-      "EXACT_REPORT_ID": 105,
+      "EXACT_REPORT_ID": 107,
       "HISTORICAL_DOM_CONTRACT": 116,
       "LEGACY_UNLINKED": 1046,
-      "SELF_DESCRIBED_REPORT": 151,
+      "SELF_DESCRIBED_REPORT": 154,
       "SNAPSHOT_IDENTITY_COLLISION": 3
     }
   },
   "change_id": "CHANGE-2026-09-23-051",
   "claims": "OBSERVATIONAL_ONLY",
   "days": [
+    {
+      "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
+      "counts": {
+        "GREEN": 17,
+        "GREEN_STRONG": 2,
+        "PAPER_TECHNICAL": 5,
+        "RED": 38,
+        "UNAVAILABLE": 5,
+        "YELLOW": 1,
+        "matchups": 61,
+        "reports": 61
+      },
+      "date": "2026-10-18",
+      "matchups": [
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:bcf7b99155d0067f8747",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Adam Walton vs Nikoloz Basilashvili",
+          "version_count": 1,
+          "version_indexes": [
+            0
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:9fc5f0e26fbbe76b3561",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Adrian Mannarino vs Aleksandar Vukic",
+          "version_count": 1,
+          "version_indexes": [
+            1
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:73c4026781d26ee28723",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alejandro Davidovich Fokina vs Rafael Jodar",
+          "version_count": 1,
+          "version_indexes": [
+            2
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:1ce0da794e636557c9e2",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexander Shevchenko vs Stefanos Sakellaridis",
+          "version_count": 1,
+          "version_indexes": [
+            3
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:2ca8d8ec403ef3e7cbc8",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexandra Eala vs Diane Parry",
+          "version_count": 1,
+          "version_indexes": [
+            4
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:1d04be4329edad198acd",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Ashlyn Krueger vs Janice Tjen",
+          "version_count": 1,
+          "version_indexes": [
+            5
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:43759a20c4ee4eea3f22",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Botic Van De Zandschulp vs Kamil Majchrzak",
+          "version_count": 1,
+          "version_indexes": [
+            6
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:20e3a8500152e6b51e6e",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Clement Chidekh vs Gauthier Onclin",
+          "version_count": 1,
+          "version_indexes": [
+            7
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:7136e6d924fc5a244932",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Dino Prizmic vs Damir Dzumhur",
+          "version_count": 1,
+          "version_indexes": [
+            8
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:db02676f468aa13f6402",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Elise Mertens vs Leylah Annie Fernandez",
+          "version_count": 1,
+          "version_indexes": [
+            9
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:64f13db507c4970a1bc4",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Fabian Marozsan vs Timofey Skatov",
+          "version_count": 1,
+          "version_indexes": [
+            10
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:f3314dc49ae9eefd59b0",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Gabriel Diallo vs Rei Sakamoto",
+          "version_count": 1,
+          "version_indexes": [
+            11
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:00c525860337ddb5f160",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Han Shi vs Alina Korneeva",
+          "version_count": 1,
+          "version_indexes": [
+            12
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:60a765751954453e3177",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Hanyu Guo vs Ekaterina Alexandrova",
+          "version_count": 1,
+          "version_indexes": [
+            13
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:83f3e91693d4babec2c2",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Holger Rune vs Raphael Collignon",
+          "version_count": 1,
+          "version_indexes": [
+            14
+          ]
+        },
+        {
+          "colors": {
+            "YELLOW": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:fedeebf9b2a51919bdb5",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jacob Fearnley vs Damir Dzumhur",
+          "version_count": 1,
+          "version_indexes": [
+            15
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:64b853936d0caf388fea",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jacob Fearnley vs Hugo Gaston",
+          "version_count": 1,
+          "version_indexes": [
+            16
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:59fdb467bb58287099f9",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jan-Lennard Struff vs Marcos Giron",
+          "version_count": 1,
+          "version_indexes": [
+            17
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:2c6d46787ba75d5656d5",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jelena Ostapenko vs Belinda Bencic",
+          "version_count": 1,
+          "version_indexes": [
+            18
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:6e738995809be1974d0f",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Katerina Siniakova vs Peyton Stearns",
+          "version_count": 1,
+          "version_indexes": [
+            19
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:0caaddcefbec369ca80d",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Katie Boulter vs Himeno Sakatsume",
+          "version_count": 1,
+          "version_indexes": [
+            20
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:d8c04abd2be6dd644179",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Lanlana Tararudee vs Kaitlin Quevedo",
+          "version_count": 1,
+          "version_indexes": [
+            21
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:b8cf47eb49403f5c3234",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Lilli Tagger vs Liudmila Samsonova",
+          "version_count": 1,
+          "version_indexes": [
+            22
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:472c3d3f85dd63364e7b",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Maja Chwalinska vs Sonay Kartal",
+          "version_count": 1,
+          "version_indexes": [
+            23
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:d9ce07517865a1e5f261",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Mariano Navone vs Juan Manuel Cerundolo",
+          "version_count": 1,
+          "version_indexes": [
+            24
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:00ef4e70a5271ddb5277",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Martin Damm vs Andrea Guerrieri",
+          "version_count": 1,
+          "version_indexes": [
+            25
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:61c600092352558ffab2",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Mattia Bellucci vs Martin Landaluce",
+          "version_count": 1,
+          "version_indexes": [
+            26
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:a07ddc53400587b98d13",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Mattia Bellucci vs Tomas Martin Etcheverry",
+          "version_count": 1,
+          "version_indexes": [
+            27
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:acfc6c8e53ce20d190cd",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Miomir Kecmanovic vs James Duckworth",
+          "version_count": 1,
+          "version_indexes": [
+            28
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:4b5b6c83cbb85c8e9ff0",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Moyuka Uchijima vs Ena Shibahara",
+          "version_count": 1,
+          "version_indexes": [
+            29
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:1dad4eb607b183675bf3",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Nishesh Basavareddy vs Aziz Dougaz",
+          "version_count": 1,
+          "version_indexes": [
+            30
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:01768c2a24bdcdd65a92",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Paula Badosa Gibert vs Antonia Ruzic",
+          "version_count": 1,
+          "version_indexes": [
+            31
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:dfbd2c61fe1328310727",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Remy Bertola vs Federico Cina",
+          "version_count": 1,
+          "version_indexes": [
+            32
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:c92c03c36d6fd9fbbb4b",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Roman Safiullin vs Ilia Simakin",
+          "version_count": 1,
+          "version_indexes": [
+            33
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:f6a8f64d868dd0aa6c92",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Sara Bejlek vs Xiyu Wang",
+          "version_count": 1,
+          "version_indexes": [
+            34
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:1218907658014ba97c3c",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Sonay Kartal vs Kimberly Birrell",
+          "version_count": 1,
+          "version_indexes": [
+            35
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:16ad909afba16e8d562f",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Stefanos Tsitsipas vs Aleksandar Kovacevic",
+          "version_count": 1,
+          "version_indexes": [
+            36
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:733fcfec59d582407b2b",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Tallon Griekspoor vs Max Schoenhaus",
+          "version_count": 1,
+          "version_indexes": [
+            37
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:51871dd956cc5351dcf3",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Tatiana Prozorova vs Kamilla Rakhimova",
+          "version_count": 1,
+          "version_indexes": [
+            38
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:5d0612df9888574652d0",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Terence Atmane vs Rinky Hijikata",
+          "version_count": 1,
+          "version_indexes": [
+            39
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:2a19f69c9c9c666dd156",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Tereza Valentova vs Shuai Zhang",
+          "version_count": 1,
+          "version_indexes": [
+            40
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:e081b368a73dff51e583",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Thiago Agustin Tirante vs Facundo Diaz Acosta",
+          "version_count": 1,
+          "version_indexes": [
+            41
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:4d1917551a97558b6b72",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Toby Samuel vs Zizou Bergs",
+          "version_count": 1,
+          "version_indexes": [
+            42
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:551d0d26c048b151e783",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Viktorija Golubic vs Mai Hontama",
+          "version_count": 1,
+          "version_indexes": [
+            43
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 1,
+          "green_strong": false,
+          "match_key": "fallback:289f1a1573fa80eccc2f",
+          "match_key_fallback": true,
+          "match_key_source": "DATE_NORMALIZED_TITLE",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Zangar Nurlanuly vs Tomas Machac",
+          "version_count": 1,
+          "version_indexes": [
+            44
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:458e892f6f630f308705",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": true,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Francesco Maestrelli vs Borna Gojo",
+          "version_count": 1,
+          "version_indexes": [
+            45
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:e235615c400926e871e8",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Jan Kumstat vs Michael Mmoh",
+          "version_count": 1,
+          "version_indexes": [
+            46
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:39c172fc984f501f1af4",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Jurij Rodionov vs Pierre-Hugues Herbert",
+          "version_count": 1,
+          "version_indexes": [
+            47
+          ]
+        },
+        {
+          "colors": {
+            "UNAVAILABLE": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:1f5c3051264d163fe391",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Kyrian Jacquet vs Sascha Gueymard Wayenburg",
+          "version_count": 1,
+          "version_indexes": [
+            48
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:94d6e97da7d4f0baf861",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Lorenzo Sonego vs Moise Kouame",
+          "version_count": 1,
+          "version_indexes": [
+            49
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:5132a3b4cf7dfb0324c3",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Maxim Mrva vs Dusan Lajovic",
+          "version_count": 1,
+          "version_indexes": [
+            50
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:8a91692dc6149e403f31",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Otto Virtanen vs Vitaliy Sachko",
+          "version_count": 1,
+          "version_indexes": [
+            51
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:62f474f68180c47bf628",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Ugo Blanchet vs Nicolai Budkov Kjaer",
+          "version_count": 1,
+          "version_indexes": [
+            52
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": true,
+          "match_key": "canonical:df54c255b76bfc58caa1",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": true,
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Valentin Royer vs Clement Tabur",
+          "version_count": 1,
+          "version_indexes": [
+            53
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:b27d4f1ff1c6ef12fc77",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Benjamin Bonzi vs Cameron Norrie",
+          "version_count": 1,
+          "version_indexes": [
+            54
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:a26ab7eb0ff521cb6f10",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": true,
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Daniel Altmaier vs Titouan Droguet",
+          "version_count": 1,
+          "version_indexes": [
+            55
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:d3ee65d447b61cfb52d7",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Hamad Medjedovic vs Brandon Nakashima",
+          "version_count": 1,
+          "version_indexes": [
+            56
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:451fe31e2553adceb279",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Jaime Faria vs Felix Balshaw",
+          "version_count": 1,
+          "version_indexes": [
+            57
+          ]
+        },
+        {
+          "colors": {
+            "RED": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:51746884c2390380d1a5",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": false,
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Matteo Arnaldi vs Lorenzo Musetti",
+          "version_count": 1,
+          "version_indexes": [
+            58
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": true,
+          "match_key": "canonical:1da842069c0d856c54c1",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": true,
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Stan Wawrinka vs Martin Landaluce",
+          "version_count": 1,
+          "version_indexes": [
+            59
+          ]
+        },
+        {
+          "colors": {
+            "GREEN": 1
+          },
+          "date": "2026-10-18",
+          "fallback_version_count": 0,
+          "green_strong": false,
+          "match_key": "canonical:9a8010c71cc47153d9d6",
+          "match_key_fallback": false,
+          "match_key_source": "SNAPSHOT_KEY",
+          "paper_technical": true,
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Ugo Humbert vs Corentin Moutet",
+          "version_count": 1,
+          "version_indexes": [
+            60
+          ]
+        }
+      ],
+      "reports": [
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Adam Walton vs Nikoloz Basilashvili",
+          "url": "../relatorios/adam-walton-vs-nikoloz-basilashvili-2026-10-18-126e3cdec10a5450c2e5.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Adrian Mannarino vs Aleksandar Vukic",
+          "url": "../relatorios/adrian-mannarino-vs-aleksandar-vukic-2026-10-18-198d400db5fefa0570d9.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alejandro Davidovich Fokina vs Rafael Jodar",
+          "url": "../relatorios/alejandro-davidovich-fokina-vs-rafael-jodar-2026-10-18-43629312260dff6e5314.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexander Shevchenko vs Stefanos Sakellaridis",
+          "url": "../relatorios/alexander-shevchenko-vs-stefanos-sakellaridis-2026-10-18-64d1a97b54f55d42e2d2.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Alexandra Eala vs Diane Parry",
+          "url": "../relatorios/alexandra-eala-vs-diane-parry-2026-10-18-6980c4c46797c90bd77f.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Ashlyn Krueger vs Janice Tjen",
+          "url": "../relatorios/ashlyn-krueger-vs-janice-tjen-2026-10-18-526383f547bca7a08e38.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Botic Van De Zandschulp vs Kamil Majchrzak",
+          "url": "../relatorios/botic-van-de-zandschulp-vs-kamil-majchrzak-2026-10-18-b4c777e51e4b2f14e8b9.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Clement Chidekh vs Gauthier Onclin",
+          "url": "../relatorios/clement-chidekh-vs-gauthier-onclin-2026-10-18-82e2aaf97a862f6f01ab.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Dino Prizmic vs Damir Dzumhur",
+          "url": "../relatorios/dino-prizmic-vs-damir-dzumhur-2026-10-18-c3c8197bf13cd1595f0d.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Elise Mertens vs Leylah Annie Fernandez",
+          "url": "../relatorios/elise-mertens-vs-leylah-annie-fernandez-2026-10-18-ea6796a69ee217e1f502.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Fabian Marozsan vs Timofey Skatov",
+          "url": "../relatorios/fabian-marozsan-vs-timofey-skatov-2026-10-18-e249420f98765514e3d9.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Gabriel Diallo vs Rei Sakamoto",
+          "url": "../relatorios/gabriel-diallo-vs-rei-sakamoto-2026-10-18-308ea53c724be1414cdf.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Han Shi vs Alina Korneeva",
+          "url": "../relatorios/han-shi-vs-alina-korneeva-2026-10-18-a27aaeef1762008f19fb.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Hanyu Guo vs Ekaterina Alexandrova",
+          "url": "../relatorios/hanyu-guo-vs-ekaterina-alexandrova-2026-10-18-c37739608f5d20dcdf84.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Holger Rune vs Raphael Collignon",
+          "url": "../relatorios/holger-rune-vs-raphael-collignon-2026-10-18-c4749df67101fd511d17.html"
+        },
+        {
+          "color": "YELLOW",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jacob Fearnley vs Damir Dzumhur",
+          "url": "../relatorios/jacob-fearnley-vs-damir-dzumhur-2026-10-18-7b3793e577880a7fb534.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jacob Fearnley vs Hugo Gaston",
+          "url": "../relatorios/jacob-fearnley-vs-hugo-gaston-2026-10-18-ada11cdc947a1ccdf106.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jan-Lennard Struff vs Marcos Giron",
+          "url": "../relatorios/jan-lennard-struff-vs-marcos-giron-2026-10-18-96f9a55b8c647c98c0b3.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Jelena Ostapenko vs Belinda Bencic",
+          "url": "../relatorios/jelena-ostapenko-vs-belinda-bencic-2026-10-18-31c4bd788262e1bfe8f5.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Katerina Siniakova vs Peyton Stearns",
+          "url": "../relatorios/katerina-siniakova-vs-peyton-stearns-2026-10-18-b96c385a64d4f6785cf0.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Katie Boulter vs Himeno Sakatsume",
+          "url": "../relatorios/katie-boulter-vs-himeno-sakatsume-2026-10-18-0183371f58a7eda5519a.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Lanlana Tararudee vs Kaitlin Quevedo",
+          "url": "../relatorios/lanlana-tararudee-vs-kaitlin-quevedo-2026-10-18-b509e463f60eda4eaa75.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Lilli Tagger vs Liudmila Samsonova",
+          "url": "../relatorios/lilli-tagger-vs-liudmila-samsonova-2026-10-18-dbc07d0346565be7dae3.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Maja Chwalinska vs Sonay Kartal",
+          "url": "../relatorios/maja-chwalinska-vs-sonay-kartal-2026-10-18-d4a99522e09f330c4e71.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Mariano Navone vs Juan Manuel Cerundolo",
+          "url": "../relatorios/mariano-navone-vs-juan-manuel-cerundolo-2026-10-18-d1092a50f3f915e7765c.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Martin Damm vs Andrea Guerrieri",
+          "url": "../relatorios/martin-damm-vs-andrea-guerrieri-2026-10-18-98d95b1f78e740e17813.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Mattia Bellucci vs Martin Landaluce",
+          "url": "../relatorios/mattia-bellucci-vs-martin-landaluce-2026-10-18-b76c2498de64200a9481.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Mattia Bellucci vs Tomas Martin Etcheverry",
+          "url": "../relatorios/mattia-bellucci-vs-tomas-martin-etcheverry-2026-10-18-a3e643c58943cbd0b578.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Miomir Kecmanovic vs James Duckworth",
+          "url": "../relatorios/miomir-kecmanovic-vs-james-duckworth-2026-10-18-db2a0d515d169316fe06.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Moyuka Uchijima vs Ena Shibahara",
+          "url": "../relatorios/moyuka-uchijima-vs-ena-shibahara-2026-10-18-b39da732de8f2dc4c648.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Nishesh Basavareddy vs Aziz Dougaz",
+          "url": "../relatorios/nishesh-basavareddy-vs-aziz-dougaz-2026-10-18-77fdafec25a60c315bf0.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Paula Badosa Gibert vs Antonia Ruzic",
+          "url": "../relatorios/paula-badosa-gibert-vs-antonia-ruzic-2026-10-18-1fd7614c760cc307630c.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Remy Bertola vs Federico Cina",
+          "url": "../relatorios/remy-bertola-vs-federico-cina-2026-10-18-381ca5c9c451b365e044.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Roman Safiullin vs Ilia Simakin",
+          "url": "../relatorios/roman-safiullin-vs-ilia-simakin-2026-10-18-e4810622d6b02fc5151c.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Sara Bejlek vs Xiyu Wang",
+          "url": "../relatorios/sara-bejlek-vs-xiyu-wang-2026-10-18-fe7c0d35a4f7375cd87b.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Sonay Kartal vs Kimberly Birrell",
+          "url": "../relatorios/sonay-kartal-vs-kimberly-birrell-2026-10-18-9eda7c2d895125946e6b.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Stefanos Tsitsipas vs Aleksandar Kovacevic",
+          "url": "../relatorios/stefanos-tsitsipas-vs-aleksandar-kovacevic-2026-10-18-7c4feae9bdd3e787d30d.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Tallon Griekspoor vs Max Schoenhaus",
+          "url": "../relatorios/tallon-griekspoor-vs-max-schoenhaus-2026-10-18-5c7d32b4618f556a359e.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Tatiana Prozorova vs Kamilla Rakhimova",
+          "url": "../relatorios/tatiana-prozorova-vs-kamilla-rakhimova-2026-10-18-8326ba8a7d68f45d3395.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Terence Atmane vs Rinky Hijikata",
+          "url": "../relatorios/terence-atmane-vs-rinky-hijikata-2026-10-18-3ad9b5eec25749f9c8e6.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Tereza Valentova vs Shuai Zhang",
+          "url": "../relatorios/tereza-valentova-vs-shuai-zhang-2026-10-18-d95ee5ec6cf9f9fef3d0.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Thiago Agustin Tirante vs Facundo Diaz Acosta",
+          "url": "../relatorios/thiago-agustin-tirante-vs-facundo-diaz-acosta-2026-10-18-badbbb1327040b18d7f3.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Toby Samuel vs Zizou Bergs",
+          "url": "../relatorios/toby-samuel-vs-zizou-bergs-2026-10-18-5bc28f4d29985a348aef.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Viktorija Golubic vs Mai Hontama",
+          "url": "../relatorios/viktorija-golubic-vs-mai-hontama-2026-10-18-6ff7d5918831feb4d319.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "SELF_DESCRIBED_REPORT",
+          "paper_technical": false,
+          "scheduled_start_utc": null,
+          "title": "Zangar Nurlanuly vs Tomas Machac",
+          "url": "../relatorios/zangar-nurlanuly-vs-tomas-machac-2026-10-18-640ef6079c3503fbf0a2.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": true,
+          "report_id": "b8fa07e04603f26da619",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Francesco Maestrelli vs Borna Gojo",
+          "url": "../relatorios/francesco-maestrelli-vs-borna-gojo-2026-10-18-b8fa07e04603f26da619.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "8ad171399d8f4f053eb9",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Jan Kumstat vs Michael Mmoh",
+          "url": "../relatorios/jan-kumstat-vs-michael-mmoh-2026-10-18-8ad171399d8f4f053eb9.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "69b7340c9dae12947750",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Jurij Rodionov vs Pierre-Hugues Herbert",
+          "url": "../relatorios/jurij-rodionov-vs-pierre-hugues-herbert-2026-10-18-69b7340c9dae12947750.html"
+        },
+        {
+          "color": "UNAVAILABLE",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "81f00567cce644624eb2",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Kyrian Jacquet vs Sascha Gueymard Wayenburg",
+          "url": "../relatorios/kyrian-jacquet-vs-sascha-gueymard-wayenburg-2026-10-18-81f00567cce644624eb2.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "2d9d13becaa2a34fc7cf",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Lorenzo Sonego vs Moise Kouame",
+          "url": "../relatorios/lorenzo-sonego-vs-moise-kouame-2026-10-18-2d9d13becaa2a34fc7cf.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "2a54f4456ddf6939eb44",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Maxim Mrva vs Dusan Lajovic",
+          "url": "../relatorios/maxim-mrva-vs-dusan-lajovic-2026-10-18-2a54f4456ddf6939eb44.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "81153a0b8fe58ac1038c",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Otto Virtanen vs Vitaliy Sachko",
+          "url": "../relatorios/otto-virtanen-vs-vitaliy-sachko-2026-10-18-81153a0b8fe58ac1038c.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "025326823b7a29365b5b",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Ugo Blanchet vs Nicolai Budkov Kjaer",
+          "url": "../relatorios/ugo-blanchet-vs-nicolai-budkov-kjaer-2026-10-18-025326823b7a29365b5b.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": true,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": true,
+          "report_id": "9fca88574201072e81f5",
+          "scheduled_start_utc": "2026-10-18T08:00:00+00:00",
+          "title": "Valentin Royer vs Clement Tabur",
+          "url": "../relatorios/valentin-royer-vs-clement-tabur-2026-10-18-9fca88574201072e81f5.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "2920eb2f60cedb256dac",
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Benjamin Bonzi vs Cameron Norrie",
+          "url": "../relatorios/benjamin-bonzi-vs-cameron-norrie-2026-10-18-2920eb2f60cedb256dac.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": true,
+          "report_id": "6c29d2da8ae32d851ad4",
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Daniel Altmaier vs Titouan Droguet",
+          "url": "../relatorios/daniel-altmaier-vs-titouan-droguet-2026-10-18-6c29d2da8ae32d851ad4.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "84f766487ba8e6550f68",
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Hamad Medjedovic vs Brandon Nakashima",
+          "url": "../relatorios/hamad-medjedovic-vs-brandon-nakashima-2026-10-18-84f766487ba8e6550f68.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "89ceacf0ca2a2c4ccd2e",
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Jaime Faria vs Felix Balshaw",
+          "url": "../relatorios/jaime-faria-vs-felix-balshaw-2026-10-18-89ceacf0ca2a2c4ccd2e.html"
+        },
+        {
+          "color": "RED",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": false,
+          "report_id": "dbd062371f00f593734f",
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Matteo Arnaldi vs Lorenzo Musetti",
+          "url": "../relatorios/matteo-arnaldi-vs-lorenzo-musetti-2026-10-18-dbd062371f00f593734f.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": true,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": true,
+          "report_id": "a0cd243639c36eaac1d5",
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Stan Wawrinka vs Martin Landaluce",
+          "url": "../relatorios/stan-wawrinka-vs-martin-landaluce-2026-10-18-a0cd243639c36eaac1d5.html"
+        },
+        {
+          "color": "GREEN",
+          "date": "2026-10-18",
+          "green_strong": false,
+          "linkage": "EXACT_REPORT_ID",
+          "paper_technical": true,
+          "report_id": "1324fca9c42a57608225",
+          "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
+          "title": "Ugo Humbert vs Corentin Moutet",
+          "url": "../relatorios/ugo-humbert-vs-corentin-moutet-2026-10-18-1324fca9c42a57608225.html"
+        }
+      ]
+    },
     {
       "color_filter_semantics": "REPORT_VERSIONS_WITHIN_GROUPED_MATCHUPS",
       "counts": {
@@ -100062,31 +101804,31 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-18T01:22:50+00:00",
+  "generated_at_utc": "2026-10-18T05:57:16+00:00",
   "global": {
-    "distinct_matchups": 2917,
-    "green_strong_candidates": 18,
-    "market_observations": 21421,
+    "distinct_matchups": 2978,
+    "green_strong_candidates": 20,
+    "market_observations": 21640,
     "paper_22bet_entries": 153,
-    "paper_technical_entries": 260,
+    "paper_technical_entries": 265,
     "report_colors": {
-      "GREEN": 701,
-      "RED": 1791,
-      "UNAVAILABLE": 1421,
-      "YELLOW": 404
+      "GREEN": 718,
+      "RED": 1829,
+      "UNAVAILABLE": 1426,
+      "YELLOW": 405
     },
     "settled_snapshots": 971,
-    "total_reports": 4317,
-    "total_snapshots": 1131
+    "total_reports": 4378,
+    "total_snapshots": 1147
   },
   "green_monetization_v1": {
     "by_market": {
       "Moneyline": {
-        "eligible_entries": 252,
+        "eligible_entries": 257,
         "losses": 76,
         "net_profit_eur": 32.2,
-        "pending_entries": 22,
-        "pending_exposure_eur": 220.0,
+        "pending_entries": 27,
+        "pending_exposure_eur": 270.0,
         "resolved_entries": 230,
         "resolved_stake_eur": 2300.0,
         "roi_pct": 1.4,
@@ -100098,9 +101840,9 @@
     "claims": "HISTORICAL_EXPERIMENTAL_SIMULATION_NOT_REAL_NOT_PROOF_OF_FUTURE_EDGE",
     "deduplication": {
       "contract": "snapshot_key + market_type + line/selection",
-      "unique_leg_identities": 252
+      "unique_leg_identities": 257
     },
-    "eligible_entries": 252,
+    "eligible_entries": 257,
     "excluded_entries": 11,
     "exclusion_reasons": {
       "MARKET_BOUNDARY_SENTINEL": 1,
@@ -100108,12 +101850,12 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-18T01:22:50+00:00",
+    "generated_at_utc": "2026-10-18T05:57:16+00:00",
     "losses": 76,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": 32.2,
-    "pending_entries": 22,
-    "pending_exposure_eur": 220.0,
+    "pending_entries": 27,
+    "pending_exposure_eur": 270.0,
     "resolved_entries": 230,
     "resolved_stake_eur": 2300.0,
     "roi_pct": 1.4,
@@ -100124,9 +101866,9 @@
         "data/validation/market-integrity-exclusions-v1.json",
         "data/validation/green-projection-exclusions-v1.json"
       ],
-      "fingerprint_sha256": "4cb13b58481cb8578a8ab3b9660e0d9e8dbec99a7e29670116d16f59713bfd12",
+      "fingerprint_sha256": "3928a302740a0f18ef0b3680e4dd01ada23740be8532453879990f2501b84050",
       "paper_path": "data/paper_trades.json",
-      "physical_entries": 263,
+      "physical_entries": 268,
       "universe": "PAPER_TECHNICAL_EDGE_POSITIVE_BASELINE"
     },
     "stake_per_leg_eur": 10.0,
@@ -100148,11 +101890,11 @@
       "count": 1
     },
     "forecast": {
-      "average_fenzobot_probability": 0.475833,
-      "average_market_probability": 0.427378,
+      "average_fenzobot_probability": 0.469755,
+      "average_market_probability": 0.42178,
       "observed_win_rate_pct": 41.67
     },
-    "generated_at_utc": "2026-10-18T01:22:50+00:00",
+    "generated_at_utc": "2026-10-18T05:57:14+00:00",
     "market_movement": {
       "average_probability_pp": -1.4342,
       "comparable_closing_n": 3,
@@ -100170,8 +101912,8 @@
       "market_n": 12
     },
     "sample": {
-      "candidates": 18,
-      "pending": 6,
+      "candidates": 20,
+      "pending": 8,
       "settled": 12
     },
     "status": "AVAILABLE"
@@ -100540,11 +102282,11 @@
   "market_memory": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
     "closing_coverage_denominator": "DISTINCT_EVENTS",
-    "closing_coverage_pct": 8.05,
-    "distinct_events": 1131,
-    "events_with_comparable_closing": 91,
+    "closing_coverage_pct": 8.02,
+    "distinct_events": 1147,
+    "events_with_comparable_closing": 92,
     "events_with_entry_market": 365,
-    "generated_at_utc": "2026-10-18T01:22:50+00:00",
+    "generated_at_utc": "2026-10-18T05:57:13+00:00",
     "market_only": {
       "accuracy_pct": 68.25,
       "brier_score": 0.199005,
@@ -100676,11 +102418,11 @@
       },
       {
         "date": "2026-10-18",
-        "observations": 0
+        "observations": 219
       }
     ],
     "status": "AVAILABLE",
-    "total_observations": 21421
+    "total_observations": 21640
   },
   "match_identity_v2": {
     "activation": {
@@ -100690,18 +102432,18 @@
       "runtime_sha": "76fdc295c9907d98efabad08529672d9ba8bc57c"
     },
     "aliases": {
-      "ACTIVE": 1577,
+      "ACTIVE": 1593,
       "CONFLICTED": 0,
       "RETIRED": 0
     },
-    "canonical_instances": 708,
+    "canonical_instances": 724,
     "canonical_paper_entries": 0,
     "canonical_snapshot_coverage_pct": 100.0,
-    "canonical_snapshots": 708,
+    "canonical_snapshots": 724,
     "change_id": "CHANGE-2026-09-21-049",
     "observations_by_state": {
-      "CANONICAL_RESOLVED": 14338,
-      "CANONICAL_STRONG": 3524,
+      "CANONICAL_RESOLVED": 14498,
+      "CANONICAL_STRONG": 3572,
       "IDENTITY_CONFLICT": 0,
       "IDENTITY_INSUFFICIENT": 0,
       "IDENTITY_PROVISIONAL": 0
@@ -100709,7 +102451,7 @@
     "privacy": "AGGREGATES_ONLY_CANONICAL_IDS_NOT_PUBLISHED",
     "schema_version": 2,
     "status": "AVAILABLE",
-    "v2_observations": 17862
+    "v2_observations": 18070
   },
   "mode": "READ_ONLY_DERIVED_DASHBOARD",
   "paper_22bet": {
@@ -100816,19 +102558,19 @@
     "status": "AVAILABLE"
   },
   "paper_technical": {
-    "average_odd": 1.603,
+    "average_odd": 1.608,
     "by_market": {
       "Handicap": null,
       "Moneyline": {
-        "average_odd": 1.603,
+        "average_odd": 1.608,
         "losses": 76,
-        "pending": 30,
+        "pending": 35,
         "pending_stake_units": null,
         "pushes": 0,
         "roi_pct": 1.4,
         "settled": 230,
         "settled_stake_units": null,
-        "total_entries": 260,
+        "total_entries": 265,
         "units": 3.22,
         "win_rate_pct": 66.96,
         "wins": 154,
@@ -100841,14 +102583,14 @@
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
     "losses": 76,
-    "pending": 30,
+    "pending": 35,
     "pending_stake_units": null,
     "pushes": 0,
     "roi_pct": 1.4,
     "settled": 230,
     "settled_stake_units": null,
     "status": "AVAILABLE",
-    "total_entries": 260,
+    "total_entries": 265,
     "units": 3.22,
     "win_rate_pct": 66.96,
     "wins": 154,
@@ -100938,36 +102680,37 @@
     },
     "snapshot_universe": {
       "settled": 971,
-      "total": 1131
+      "total": 1147
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "97b6973c5b364b581b0b5877c574efdbb6a9222d8d5aff0fcb0868c42c42b80b",
+  "semantic_fingerprint": "e22f5bef008daa732f164e0ee03c413f381985fb60c86f4c8bb4f696ab3c6d7b",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
-      "DUPLICATE_REPORT_VERSION": 295,
-      "PROVIDER_MATCH_ID_REUSED": 165,
-      "SNAPSHOT_KEY_NOT_PERSISTED": 287
+      "DUPLICATE_REPORT_VERSION": 168,
+      "OBSERVED_MATCHUP_WITHOUT_IDENTITY_TELEMETRY": 45,
+      "PROVIDER_MATCH_ID_REUSED": 112,
+      "SNAPSHOT_KEY_NOT_PERSISTED": 207
     },
     "change_id": "CHANGE-2026-09-21-047",
     "conversion": {
-      "created_to_settled_pct": 55.4,
+      "created_to_settled_pct": 42.39,
       "eligible_to_snapshot_pct": 0.0
     },
     "counts": {
       "collision_marked_report_versions": 0,
-      "duplicate_report_versions": 295,
-      "eligible_run_identities": 452,
-      "eligible_without_snapshot": 452,
-      "linked_exact_versions": 213,
-      "matchups_observed": 400,
-      "provider_match_id_collisions": 165,
-      "report_versions": 695,
-      "self_described_versions": 482,
+      "duplicate_report_versions": 168,
+      "eligible_run_identities": 319,
+      "eligible_without_snapshot": 319,
+      "linked_exact_versions": 184,
+      "matchups_observed": 364,
+      "provider_match_id_collisions": 112,
+      "report_versions": 532,
+      "self_described_versions": 348,
       "snapshot_identity_matches": 0,
-      "snapshots_created": 213,
-      "snapshots_settled": 118
+      "snapshots_created": 184,
+      "snapshots_settled": 78
     },
     "integrity": {
       "eligible_identities_reconciled": true,
@@ -100981,27 +102724,27 @@
     "status": "DEGRADED",
     "window": {
       "days": 7,
-      "end_date": "2026-10-17",
-      "start_date": "2026-10-11"
+      "end_date": "2026-10-18",
+      "start_date": "2026-10-12"
     }
   },
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-18T01:22:50+00:00"
+      "updated_at_utc": "2026-10-18T05:57:14+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-17T22:50:38+00:00"
+      "updated_at_utc": "2026-10-18T05:36:01+00:00"
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-18T01:22:50+00:00"
+      "updated_at_utc": "2026-10-18T05:57:13+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-17T22:15:58+00:00"
+      "updated_at_utc": "2026-10-18T05:33:30+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
@@ -101009,43 +102752,37 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-17T22:44:46+00:00"
+      "updated_at_utc": "2026-10-18T05:37:44+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-17"
+      "updated_at_utc": "2026-10-18"
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-17T22:42:16+00:00"
+      "updated_at_utc": "2026-10-18T05:57:16+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-17T22:44:40+00:00"
+      "updated_at_utc": "2026-10-18T05:57:15+00:00"
     }
   },
   "system_health": {
-    "alerts": [
-      "manutenção de resultados: TIMED_OUT"
-    ],
+    "alerts": [],
     "latest": {
       "analysis_failed": 0,
-      "duration_seconds": 1580.922,
-      "eligible": 55,
-      "llm_calls": 54,
+      "duration_seconds": 1429.273,
+      "eligible": 61,
+      "llm_calls": 60,
       "llm_estimated_cost_usd": 0.0,
       "phase": "complete",
-      "processed": 55,
-      "rapidapi_calls": 430,
+      "processed": 61,
+      "rapidapi_calls": 358,
       "reports_failed": 0,
       "status": "success",
-      "timestamp": "2026-10-17T22:42:16+00:00"
+      "timestamp": "2026-10-18T05:57:16+00:00"
     },
     "recent_runs": [
-      {
-        "status": "DEGRADED",
-        "timestamp": "2026-10-10T17:54:18+00:00"
-      },
       {
         "status": "DEGRADED",
         "timestamp": "2026-10-11T05:52:12+00:00"
@@ -101121,8 +102858,12 @@
       {
         "status": "DEGRADED",
         "timestamp": "2026-10-17T22:42:16+00:00"
+      },
+      {
+        "status": "HEALTHY",
+        "timestamp": "2026-10-18T05:57:16+00:00"
       }
     ],
-    "status": "DEGRADED"
+    "status": "HEALTHY"
   }
 }
