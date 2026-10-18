@@ -1,6 +1,8 @@
 import os
 import tempfile
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
@@ -407,6 +409,72 @@ class CourtPaceEvidenceTests(unittest.TestCase):
 
 
 class MatchInputTests(unittest.TestCase):
+    def test_tennisdata_403_opens_circuit_breaker_for_remaining_years(self):
+        response = Mock()
+        response.raise_for_status.side_effect = fetch_data.requests.HTTPError(
+            "403 Forbidden"
+        )
+
+        with patch.object(fetch_data, "_TENNISDATA_DOWNLOAD_INDEX", None), \
+             patch.object(fetch_data, "_TENNISDATA_SOURCE_FAILURE", None), \
+             patch.object(fetch_data.requests, "get", return_value=response) as request, \
+             tempfile.TemporaryDirectory(dir=os.getcwd()) as temp_dir:
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                result = fetch_data._load_tennisdata_couk_multi_year("atp", 3)
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertIsNone(result)
+        request.assert_called_once()
+
+    def test_closed_tennisdata_years_are_loaded_from_cache_before_network(self):
+        current_year = datetime.now(timezone.utc).year
+        original_cwd = os.getcwd()
+        with tempfile.TemporaryDirectory(dir=os.getcwd()) as temp_dir:
+            try:
+                os.chdir(temp_dir)
+                os.makedirs("data/history_cache", exist_ok=True)
+                for year in (current_year, current_year - 1):
+                    pd.DataFrame([{
+                        "winner_name": f"Winner {year}",
+                        "loser_name": "Opponent",
+                    }]).to_csv(
+                        f"data/history_cache/wta_tdcouk_{year}.csv", index=False
+                    )
+                with patch.object(
+                    fetch_data, "_TENNISDATA_SOURCE_FAILURE", None
+                ), patch.object(
+                    fetch_data, "_load_tennisdata_couk", return_value=None
+                ) as loader:
+                    result = fetch_data._load_tennisdata_couk_multi_year("wta", 2)
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertEqual(len(result), 2)
+        loader.assert_called_once_with("wta", current_year)
+
+    def test_historical_odds_history_is_loaded_once_across_worker_threads(self):
+        frame = pd.DataFrame([{"winner_name": "A", "loser_name": "B"}])
+
+        def delayed_loader(*_args):
+            time.sleep(0.05)
+            return frame
+
+        with patch.dict(
+            fetch_data._HISTORICAL_ODDS_HISTORY_CACHE, {}, clear=True
+        ), patch.object(
+            fetch_data, "_load_tennisdata_couk_multi_year",
+            side_effect=delayed_loader,
+        ) as loader, ThreadPoolExecutor(max_workers=6) as executor:
+            results = list(executor.map(
+                fetch_data.get_historical_odds_history, ["atp"] * 6
+            ))
+
+        self.assertTrue(all(result is frame for result in results))
+        loader.assert_called_once_with("atp", fetch_data.HISTORY_YEARS_TO_LOAD)
+
     def test_tennisdata_download_discovery_supports_atp_and_wta_versioned_paths(self):
         response = Mock()
         response.text = """
@@ -416,6 +484,7 @@ class MatchInputTests(unittest.TestCase):
         response.raise_for_status.return_value = None
 
         with patch.object(fetch_data, "_TENNISDATA_DOWNLOAD_INDEX", None), \
+             patch.object(fetch_data, "_TENNISDATA_SOURCE_FAILURE", None), \
              patch.object(fetch_data.requests, "get", return_value=response) as request:
             atp_url = fetch_data._tennisdata_couk_download_url("atp", 2026)
             wta_url = fetch_data._tennisdata_couk_download_url("wta", 2026)
@@ -1581,6 +1650,23 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(
             fetch_data.resolve_player_name(history, "Daniel Merida Aguilar"),
             "Merida D.",
+        )
+
+    def test_name_resolution_uses_audited_full_name_aliases(self):
+        history = pd.DataFrame([
+            {"winner_name": "Paula Badosa", "loser_name": "Leylah Fernandez"},
+        ])
+
+        self.assertEqual(
+            fetch_data.resolve_player_name(history, "Paula Badosa Gibert"),
+            "Paula Badosa",
+        )
+        self.assertEqual(
+            fetch_data.resolve_player_name(history, "Leylah Annie Fernandez"),
+            "Leylah Fernandez",
+        )
+        self.assertIsNone(
+            fetch_data.resolve_player_name(history, "Zangar Nurlanuly")
         )
 
     def test_comeback_normalizes_text_best_of_and_falls_back_to_set_columns(self):
