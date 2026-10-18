@@ -37,6 +37,11 @@ RANKING_MIN_SAMPLES = {
     "wta_tiebreak": 10,
 }
 RANKING_ACTIVE_WINDOW_DAYS = 365
+# O histórico tennis-data identifica jogadoras apenas por apelido + inicial.
+# Uma única aparição recente pode, por isso, reativar por engano todo o
+# histórico de uma homónima antiga. Exigir duas aparições recentes reduz essa
+# colisão sem alterar nem apagar qualquer linha histórica.
+RANKING_ACTIVE_MIN_RECENT_MATCHES = 2
 ODDS_BANDS = (
     (1.01, 1.20, "1.01–1.20"),
     (1.21, 1.30, "1.21–1.30"),
@@ -101,12 +106,17 @@ def active_wta_players(matches: Iterable[Mapping[str, Any]]) -> set[str]:
     if not available_dates:
         return set()
     cutoff = max(available_dates) - timedelta(days=RANKING_ACTIVE_WINDOW_DAYS)
+    recent_appearances: defaultdict[str, int] = defaultdict(int)
+    for match, played_on in dated:
+        if not played_on or played_on < cutoff:
+            continue
+        for player in (_text(match.get("winner")), _text(match.get("loser"))):
+            if player:
+                recent_appearances[player] += 1
     return {
         player
-        for match, played_on in dated
-        if played_on and played_on >= cutoff
-        for player in (_text(match.get("winner")), _text(match.get("loser")))
-        if player
+        for player, appearances in recent_appearances.items()
+        if appearances >= RANKING_ACTIVE_MIN_RECENT_MATCHES
     }
 
 
