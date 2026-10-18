@@ -22,7 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
-  projectionSchemaVersion: '2026-10-14-factor-coverage-diagnostics-v1',
+  projectionSchemaVersion: '2026-10-18-sheet-integrity-rankings-v2',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 

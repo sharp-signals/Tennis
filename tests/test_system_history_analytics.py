@@ -256,5 +256,22 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         matches = [
             {"date": "2025-09-29", "winner": "Retired", "loser": "Old opponent"},
             {"date": "2026-09-30", "winner": "Current", "loser": "Active opponent"},
+            {"date": "2026-09-29", "winner": "Current", "loser": "Active opponent"},
         ]
         self.assertEqual(active_wta_players(matches), {"Current", "Active opponent"})
+
+    def test_active_wta_players_does_not_reactivate_history_from_one_abbreviated_collision(self):
+        matches = [
+            {"date": "2019-01-01", "winner": "Williams S.", "loser": "Historic opponent"},
+            {"date": "2026-09-30", "winner": "Williams S.", "loser": "One-off opponent"},
+            {"date": "2026-09-29", "winner": "Current", "loser": "Active opponent"},
+            {"date": "2026-09-28", "winner": "Current", "loser": "Active opponent"},
+        ]
+        self.assertEqual(active_wta_players(matches), {"Current", "Active opponent"})
+
+    def test_active_wta_players_accepts_two_recent_appearances(self):
+        matches = [
+            {"date": "2026-09-30", "winner": "Returning", "loser": "Opponent A"},
+            {"date": "2026-09-29", "winner": "Opponent B", "loser": "Returning"},
+        ]
+        self.assertEqual(active_wta_players(matches), {"Returning"})
