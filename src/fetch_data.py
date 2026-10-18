@@ -2563,6 +2563,7 @@ _HISTORICAL_ODDS_HISTORY_CACHE: dict[str, pd.DataFrame] = {}
 _TENNISDATA_DOWNLOAD_INDEX: Optional[dict[tuple[str, int], str]] = None
 _TENNISDATA_DOWNLOAD_INDEX_LOCK = threading.Lock()
 _TENNISDATA_INDEX_URL = "https://www.tennis-data.co.uk/data.php"
+_TENNISDATA_SOURCE_FAILURE: Optional[str] = None
 
 
 def _tennismylife_history_key(row: pd.Series) -> str:
@@ -2780,17 +2781,28 @@ def _discover_tennisdata_couk_downloads() -> dict[tuple[str, int], str]:
     dados. Descobrir os ``href`` oficiais evita fixar o token atual no código e
     mantém ATP e WTA sob o mesmo contrato.
     """
-    global _TENNISDATA_DOWNLOAD_INDEX
+    global _TENNISDATA_DOWNLOAD_INDEX, _TENNISDATA_SOURCE_FAILURE
     with _TENNISDATA_DOWNLOAD_INDEX_LOCK:
         if _TENNISDATA_DOWNLOAD_INDEX is not None:
             return _TENNISDATA_DOWNLOAD_INDEX
+        if _TENNISDATA_SOURCE_FAILURE is not None:
+            raise RuntimeError(_TENNISDATA_SOURCE_FAILURE)
 
-        resp = requests.get(
-            _TENNISDATA_INDEX_URL,
-            headers=_BROWSER_HEADERS,
-            timeout=REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
+        try:
+            resp = requests.get(
+                _TENNISDATA_INDEX_URL,
+                headers=_BROWSER_HEADERS,
+                timeout=REQUEST_TIMEOUT,
+            )
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            # A listagem é comum a todos os anos/tours. Repetir o mesmo
+            # pedido dezenas de vezes na mesma run não recupera dados e torna
+            # o log ruidoso. A execução seguinte volta a tentar normalmente.
+            _TENNISDATA_SOURCE_FAILURE = (
+                f"listagem oficial indisponivel nesta execucao: {exc}"
+            )
+            raise RuntimeError(_TENNISDATA_SOURCE_FAILURE) from exc
         index: dict[tuple[str, int], str] = {}
         hrefs = re.findall(
             r"href\s*=\s*['\"]([^'\"]+\.xlsx(?:\?[^'\"]*)?)['\"]",
@@ -2863,26 +2875,36 @@ def _load_tennisdata_couk_multi_year(tour: str, years_to_load: int) -> Optional[
         local_path = os.path.join(cache_dir, f"{tour}_tdcouk_{year}.csv")
         df_year = None
 
-        # 1) tentar online
-        df_year = _load_tennisdata_couk(tour, year)
-        if df_year is not None and not df_year.empty:
-            loaded_years += 1
-            # gravar cópia local (best-effort)
-            try:
-                os.makedirs(cache_dir, exist_ok=True)
-                df_year.to_csv(local_path, index=False)
-            except Exception:
-                pass
-        # 2) se online falhou, tentar cópia local
-        elif os.path.exists(local_path):
+        # Anos fechados são imutáveis para esta leitura: usar primeiro a
+        # cópia persistida evita rede desnecessária. O ano corrente tenta um
+        # refresh e cai para a última cópia boa se o fornecedor bloquear o
+        # runner.
+        if offset > 0 and os.path.exists(local_path):
             try:
                 df_year = pd.read_csv(local_path)
-                loaded_years += 1
+            except Exception:
+                df_year = None
+
+        # Depois do primeiro 403/timeout da listagem comum, o circuit breaker
+        # impede pedidos idênticos para todos os outros anos nesta execução.
+        if df_year is None and _TENNISDATA_SOURCE_FAILURE is None:
+            df_year = _load_tennisdata_couk(tour, year)
+            if df_year is not None and not df_year.empty:
+                try:
+                    os.makedirs(cache_dir, exist_ok=True)
+                    df_year.to_csv(local_path, index=False)
+                except Exception:
+                    pass
+
+        if df_year is None and os.path.exists(local_path):
+            try:
+                df_year = pd.read_csv(local_path)
             except Exception:
                 df_year = None
 
         if df_year is not None and not df_year.empty:
             frames.append(df_year)
+            loaded_years += 1
 
     if not frames:
         return None
@@ -3045,18 +3067,24 @@ def get_historical_odds_history(tour: str) -> pd.DataFrame:
     normalized_tour = str(tour or "").strip().lower()
     if normalized_tour not in {"atp", "wta"}:
         return pd.DataFrame()
-    if normalized_tour in _HISTORICAL_ODDS_HISTORY_CACHE:
-        return _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour]
+    # Os payloads dos jogos são construídos em paralelo. Sem serializar este
+    # primeiro carregamento, várias threads descarregavam os mesmos dez anos
+    # antes de qualquer uma preencher a cache.
+    with _HISTORY_CACHE_LOCK:
+        if normalized_tour in _HISTORICAL_ODDS_HISTORY_CACHE:
+            return _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour]
 
-    df = _load_tennisdata_couk_multi_year(normalized_tour, HISTORY_YEARS_TO_LOAD)
-    if df is None:
-        df = pd.DataFrame()
-    print(
-        f"[info] histórico de odds {normalized_tour} carregado de: "
-        f"tennis-data.co.uk ({len(df)} linhas)"
-    )
-    _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour] = df
-    return df
+        df = _load_tennisdata_couk_multi_year(
+            normalized_tour, HISTORY_YEARS_TO_LOAD
+        )
+        if df is None:
+            df = pd.DataFrame()
+        print(
+            f"[info] histórico de odds {normalized_tour} carregado de: "
+            f"tennis-data.co.uk ({len(df)} linhas)"
+        )
+        _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour] = df
+        return df
 
 
 def _canonical_snapshot_key(snapshot: dict) -> str:
@@ -3207,6 +3235,13 @@ def compute_canonical_snapshot_odds_context(
 #     pequenas variações de grafia entre o matchstat e o histórico)
 # --------------------------------------------------------------------- #
 _NAME_INDEX_CACHE: dict[object, dict[str, str]] = {}
+
+# Variações completas confirmadas nos feeds operacionais e no histórico.
+# São equivalências exatas auditadas, não fuzzy matching permissivo.
+_HISTORICAL_EXACT_NAME_ALIASES: dict[str, tuple[str, ...]] = {
+    "paula badosa gibert": ("paula badosa",),
+    "leylah annie fernandez": ("leylah fernandez",),
+}
 
 
 def _normalize_name(name: str) -> str:
@@ -3435,6 +3470,12 @@ def resolve_player_name(history: pd.DataFrame, name: str) -> Optional[str]:
 
     if normalized_input in index:
         return index[normalized_input]
+
+    for audited_alias in _HISTORICAL_EXACT_NAME_ALIASES.get(
+        normalized_input, ()
+    ):
+        if audited_alias in index:
+            return index[audited_alias]
 
     for candidate in _structural_name_candidates(normalized_input):
         if candidate in index:
