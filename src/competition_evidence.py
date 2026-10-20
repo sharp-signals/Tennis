@@ -30,6 +30,7 @@ RANKING_ELIGIBLE_POLICY_VERSION = "atp-ranking-eligible-performance-v1"
 RANKING_ELIGIBLE_V2_CHANGE_ID = "CHANGE-2026-10-11-105"
 RANKING_ELIGIBLE_V2_POLICY_VERSION = "atp-ranking-eligible-performance-v2"
 RANKING_ELIGIBLE_V1_EFFECTIVE_FROM_UTC = "2026-10-12T00:00:00Z"
+BALANCED_ATP_EVIDENCE_CHANGE_ID = "CHANGE-2026-10-20-147"
 RANKING_REGISTRY_VERSION = competition_registry.REGISTRY_VERSION
 RANKING_REGISTRY_SHA256 = competition_registry.REGISTRY_SHA256
 ACTIVATION_VERSION_ENV = "FENZOBOT_COMPETITION_EVIDENCE_VERSION"
@@ -128,6 +129,18 @@ RANKING_ELIGIBLE_V2_CONFIG_HASH = hashlib.sha256(
         separators=(",", ":"),
     ).encode("utf-8")
 ).hexdigest()[:20]
+
+# These reasons describe an individual historical row whose competition cannot
+# be classified safely. Under V2 the row is excluded from the calculation; it
+# must not erase other, independently classified rows in the same sample.
+_V2_ROW_LOCAL_EXCLUSION_REASONS = frozenset(
+    {
+        "ATP_RANKING_ELIGIBILITY_UNRESOLVED",
+        "ATP_RANKING_ELIGIBILITY_CONFLICT",
+        "ATP_RANKING_CLASSIFICATION_UNSUPPORTED",
+        "COMPETITION_MATCH_DATE_UNRESOLVED",
+    }
+)
 
 
 def _policy_contract(policy: Mapping[str, Any] | None = None) -> tuple[str, str, str]:
@@ -677,6 +690,7 @@ def weighted_observations(
     temporal_scopes: Counter[str] = Counter()
     weighted: list[tuple[dict[str, Any], float]] = []
     source_ids: list[str] = []
+    excluded_row_blockers: Counter[str] = Counter()
     for record in selected:
         classification = classify_selected_match(record, policy)
         reason = str(classification["reason_code"])
@@ -691,7 +705,13 @@ def weighted_observations(
             temporal_scopes[str(temporal_scope)] += 1
         weight = classification.get("weight")
         if weight is None:
-            blockers[reason] += 1
+            if (
+                is_ranking_eligible_v2(policy)
+                and reason in _V2_ROW_LOCAL_EXCLUSION_REASONS
+            ):
+                excluded_row_blockers[reason] += 1
+            else:
+                blockers[reason] += 1
         else:
             weighted.append((record, float(weight)))
         source_id = _value(
@@ -699,12 +719,25 @@ def weighted_observations(
         )
         if source_id is not None:
             source_ids.append(str(source_id))
-    blocked = bool(blockers)
+    # CHANGE-147: na política V2, uma linha factual sem competição resolvida
+    # é excluída individualmente. Só bloqueia o agregado inteiro quando não
+    # sobra nenhuma observação classificável ou quando o bloqueio é sistémico
+    # (por exemplo, contrato/configuração inválidos).
+    blocked = bool(blockers) or (
+        bool(excluded_row_blockers) and not weighted
+    )
     weighted_matches = sum(weight for _record, weight in weighted)
+    applied_with_exclusions = bool(excluded_row_blockers) and not blocked
+    reported_blockers = blockers + (excluded_row_blockers if blocked else Counter())
+    reported_exclusions = Counter() if blocked else excluded_row_blockers
     evidence = {
         "version": version,
         "config_hash": config_hash,
-        "status": "BLOCKED" if blocked else "APPLIED",
+        "status": (
+            "BLOCKED" if blocked
+            else "APPLIED_WITH_EXCLUSIONS" if applied_with_exclusions
+            else "APPLIED"
+        ),
         "eligible_for_performance": not blocked and weighted_matches > 0,
         "raw_matches": len(selected),
         "weighted_matches": None if blocked else round(weighted_matches, 3),
@@ -717,9 +750,13 @@ def weighted_observations(
         "next_gen_exception_included": classifications["NEXT_GEN_EXCEPTION"],
         "olympics_exception_included": classifications["OLYMPICS_EXCEPTION"],
         "classification_counts": dict(sorted(classifications.items())),
-        "unresolved": sum(blockers.values()),
+        "unresolved": sum(reported_blockers.values()) + sum(
+            reported_exclusions.values()
+        ),
+        "unresolved_excluded": sum(reported_exclusions.values()),
         "reason_counts": dict(sorted(counts.items())),
-        "blocker_reason_counts": dict(sorted(blockers.items())),
+        "blocker_reason_counts": dict(sorted(reported_blockers.items())),
+        "excluded_reason_counts": dict(sorted(reported_exclusions.items())),
         "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
         "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
         "preserved_v1_interval": temporal_scopes["V1_INTERVAL_CHANGE_102"],
@@ -760,6 +797,8 @@ def weighted_binary_record(
     blockers: Counter[str] = Counter()
     temporal_scopes: Counter[str] = Counter()
     source_ids: list[str] = []
+    excluded_row_blockers: Counter[str] = Counter()
+    weighted_row_count = 0
     for record in selected:
         classification = classify_selected_match(record, policy)
         reason = str(classification["reason_code"])
@@ -774,10 +813,18 @@ def weighted_binary_record(
             temporal_scopes[str(temporal_scope)] += 1
         weight = classification.get("weight")
         if weight is None:
-            blockers[reason] += 1
+            if (
+                is_ranking_eligible_v2(policy)
+                and reason in _V2_ROW_LOCAL_EXCLUSION_REASONS
+            ):
+                excluded_row_blockers[reason] += 1
+            else:
+                blockers[reason] += 1
         elif won(record):
+            weighted_row_count += 1
             weighted_wins += float(weight)
         else:
+            weighted_row_count += 1
             weighted_losses += float(weight)
         source_id = _value(
             record, "id", "matchId", "match_id", "eventId", "event_id"
@@ -786,7 +833,12 @@ def weighted_binary_record(
             source_ids.append(str(source_id))
 
     weighted_matches = weighted_wins + weighted_losses
-    blocked = bool(blockers)
+    blocked = bool(blockers) or (
+        bool(excluded_row_blockers) and weighted_row_count == 0
+    )
+    applied_with_exclusions = bool(excluded_row_blockers) and not blocked
+    reported_blockers = blockers + (excluded_row_blockers if blocked else Counter())
+    reported_exclusions = Counter() if blocked else excluded_row_blockers
     return {
         **base,
         "weighted_wins": None if blocked else round(weighted_wins, 3),
@@ -800,7 +852,11 @@ def weighted_binary_record(
         "competition_evidence": {
             "version": version,
             "config_hash": config_hash,
-            "status": "BLOCKED" if blocked else "APPLIED",
+            "status": (
+                "BLOCKED" if blocked
+                else "APPLIED_WITH_EXCLUSIONS" if applied_with_exclusions
+                else "APPLIED"
+            ),
             "eligible_for_performance": not blocked and weighted_matches > 0,
             "raw_matches": raw_matches,
             "laver_excluded": counts["LAVER_EXCLUDED_FROM_PERFORMANCE"],
@@ -812,9 +868,15 @@ def weighted_binary_record(
             "next_gen_exception_included": classifications["NEXT_GEN_EXCEPTION"],
             "olympics_exception_included": classifications["OLYMPICS_EXCEPTION"],
             "classification_counts": dict(sorted(classifications.items())),
-            "unresolved": sum(blockers.values()),
+            "unresolved": sum(reported_blockers.values()) + sum(
+                reported_exclusions.values()
+            ),
+            "unresolved_excluded": sum(reported_exclusions.values()),
             "reason_counts": dict(sorted(counts.items())),
-            "blocker_reason_counts": dict(sorted(blockers.items())),
+            "blocker_reason_counts": dict(sorted(reported_blockers.items())),
+            "excluded_reason_counts": dict(
+                sorted(reported_exclusions.items())
+            ),
             "temporal_scope_counts": dict(sorted(temporal_scopes.items())),
             "grandfathered_pre_t0": temporal_scopes["PRE_T0_GRANDFATHERED"],
             "preserved_v1_interval": temporal_scopes["V1_INTERVAL_CHANGE_102"],
@@ -926,6 +988,10 @@ def policy_metadata(activation: Mapping[str, Any]) -> dict[str, Any]:
         result["post_t1_policy_version"] = RANKING_ELIGIBLE_V2_POLICY_VERSION
         result["v1_effective_from_utc"] = RANKING_ELIGIBLE_V1_EFFECTIVE_FROM_UTC
         result["historical_reclassification"] = False
+        result["mixed_sample_unresolved_treatment"] = (
+            "EXCLUDE_ROW_BLOCK_IF_NO_USABLE_SAMPLE"
+        )
+        result["aggregation_change_id"] = BALANCED_ATP_EVIDENCE_CHANGE_ID
     elif is_ranking_eligible(result):
         result["weights"] = {
             "ranking_eligible": 1.0,
