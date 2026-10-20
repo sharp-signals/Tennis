@@ -30,6 +30,10 @@ não-oficial tipo Sofascore):
 5. Cache local tennis-data.co.uk -> histórico legado de resultados + odds.
                           A produção não automatiza downloads dessa fonte;
                           só lê cópias previamente obtidas de forma legítima.
+6. Valuebetennis      -> histórico ATP/Challenger de resultados e odds desde
+                         2021, publicado sob CC BY 4.0. Abertura e fecho são
+                         preservados separadamente; fecho é a referência
+                         descritiva preferida e abertura o fallback rotulado.
 """
 
 from __future__ import annotations
@@ -55,6 +59,7 @@ import requests
 
 from .cache_store import JsonCacheStore
 from . import competition_evidence, competition_registry, market_integrity
+from . import valuebetennis_history
 from .market_ledger import payload_sha256
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
@@ -3100,9 +3105,21 @@ def get_historical_odds_history(tour: str) -> pd.DataFrame:
         if normalized_tour in _HISTORICAL_ODDS_HISTORY_CACHE:
             return _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour]
 
-        df = _load_tennisdata_couk_multi_year(
-            normalized_tour, HISTORY_YEARS_TO_LOAD
-        )
+        if normalized_tour == "atp":
+            cache_dir = _SYSTEM_HISTORY_SNAPSHOTS_PATH.parent / "history_cache"
+            df = valuebetennis_history.load_history(cache_dir)
+            if df.empty:
+                # Compatibility fallback for installations that already have
+                # an authorised legacy ATP cache but have not populated the
+                # licensed Valuebetennis cache yet.
+                legacy = _load_tennisdata_couk_multi_year(
+                    normalized_tour, HISTORY_YEARS_TO_LOAD
+                )
+                df = legacy if legacy is not None else pd.DataFrame()
+        else:
+            df = _load_tennisdata_couk_multi_year(
+                normalized_tour, HISTORY_YEARS_TO_LOAD
+            )
         if df is None:
             df = pd.DataFrame()
         source = "cache histórica local" if not df.empty else "sem cache externa"
@@ -5130,6 +5147,7 @@ def compute_historical_moneyline_margins(
     history: pd.DataFrame,
     player: str,
     *,
+    before: object = None,
     competition_policy: Optional[dict] = None,
 ) -> Optional[dict]:
     """Cruza odds históricas realmente presentes com margem factual.
@@ -5186,11 +5204,33 @@ def compute_historical_moneyline_margins(
             format_cell["win_margins" if won else "loss_margins"].append(margin)
 
     competition_counts: dict[str, int] = {}
+    cutoff_date = None
+    if before is not None:
+        try:
+            cutoff_date = pd.Timestamp(before).date()
+        except (TypeError, ValueError):
+            cutoff_date = None
     for index, row in history.iterrows():
         won = bool(winner_mask.loc[index])
         lost = bool(loser_mask.loc[index])
         if not (won or lost):
             continue
+        if cutoff_date is not None:
+            history_date = next(
+                (
+                    row.get(key) for key in ("date", "tourney_date", "Date")
+                    if row.get(key) is not None and not pd.isna(row.get(key))
+                ),
+                None,
+            )
+            parsed_date = _parse_history_date(history_date)
+            if not parsed_date:
+                continue
+            try:
+                if pd.Timestamp(parsed_date).date() >= cutoff_date:
+                    continue
+            except (TypeError, ValueError):
+                continue
         try:
             odd = float(row.get(cols[0] if won else cols[1]))
         except (TypeError, ValueError):
@@ -5247,6 +5287,13 @@ def compute_historical_moneyline_margins(
         return None
     output_result = {
         "odds_columns": cols,
+        "source": history.attrs.get("source"),
+        "source_license": history.attrs.get("source_license"),
+        "odds_basis": (
+            "closing_preferred_opening_fallback"
+            if cols == ("PSW", "PSL") and "odds_observation" in history.columns
+            else "provider_pair"
+        ),
         "buckets": result,
         "underdog": underdog_result,
     }

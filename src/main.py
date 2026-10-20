@@ -2806,10 +2806,12 @@ def _build_match_payload(match: dict) -> dict:
     )
     historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(
         historical_odds_history, player_a,
+        before=start,
         competition_policy=competition_policy,
     )
     historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(
         historical_odds_history, player_b,
+        before=start,
         competition_policy=competition_policy,
     )
     # O Excel ``Fenzobot_Historico_do_Sistema`` é uma vista do arquivo

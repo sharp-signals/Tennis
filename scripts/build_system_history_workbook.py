@@ -23,8 +23,14 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from src.system_history_analytics import build_system_history, load_local_wta_history, write_if_changed
-from src import forward_only, forward_only_projections
+from src.system_history_analytics import (
+    build_system_history,
+    canonical_snapshots,
+    load_local_atp_odds_history,
+    load_local_wta_history,
+    write_if_changed,
+)
+from src import forward_only, forward_only_projections, valuebetennis_history
 
 
 SNAPSHOTS = ROOT / "data" / "calibration_snapshots.json"
@@ -288,11 +294,55 @@ def _write_guerra_audit_sheets(wb: Workbook, manual_paper: Mapping[str, Any]) ->
     _widths(quality, [48, 105])
 
 
+def _write_atp_history_sheets(wb: Workbook, payload: Mapping[str, Any]) -> None:
+    for name in ("ATP histórico - jogador odd", "ATP histórico — fonte", "ATP odds recuperadas"):
+        if name in wb.sheetnames:
+            del wb[name]
+    history = payload.get("historical_atp") or {}
+    player = wb.create_sheet("ATP histórico - jogador odd")
+    last = _write_rows(
+        player, 1,
+        ["Jogador", "Faixa de odd", "Papel", "Jogos", "Vitórias", "Derrotas", "% vitória"],
+        history.get("player_odds") or [],
+        ["player", "odds_band", "role", "matches", "wins", "losses", "win_pct"],
+    )
+    _percent_columns(player, 2, last, [7])
+    _widths(player, [28, 16, 14, 12, 12, 12, 14])
+
+    source = wb.create_sheet("ATP histórico — fonte")
+    _title(
+        source,
+        "ATP histórico de odds — cobertura da fonte",
+        "Valuebetennis · CC BY 4.0 · fecho preferido; abertura apenas como fallback identificado.",
+    )
+    _write_rows(
+        source, 5,
+        ["Ano", "Categoria", "Observação da odd", "Jogos"],
+        history.get("source_summary") or [],
+        ["year", "category", "odds_observation", "matches"],
+    )
+    _widths(source, [14, 24, 24, 14])
+
+    recovered = wb.create_sheet("ATP odds recuperadas")
+    _title(
+        recovered,
+        "Odds ATP recuperadas para snapshots sem preço",
+        "Enriquecimento pós-jogo separado: nunca substitui a odd capturada originalmente.",
+    )
+    _write_rows(
+        recovered, 5,
+        ["Evento", "Snapshot", "Data snapshot", "Data fonte", "Desvio (dias)", "Torneio", "Jogador A", "Jogador B", "Abertura A", "Abertura B", "Fecho A", "Fecho B", "Fonte", "ID fonte", "Confiança", "Semântica"],
+        payload.get("canonical_odds_recovery") or [],
+        ["event_id", "snapshot_key", "match_date", "source_match_date", "date_delta_days", "tournament", "player_a", "player_b", "opening_odd_a", "opening_odd_b", "closing_odd_a", "closing_odd_b", "source", "source_match_id", "match_confidence", "semantics"],
+    )
+    _widths(recovered, [38, 25, 16, 16, 14, 32, 25, 25, 13, 13, 13, 13, 18, 14, 38, 38])
+
+
 def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> Workbook:
     wb = Workbook()
     ws = wb.active
     ws.title = "Resumo"
-    _title(ws, "Fenzobot — Histórico Canónico", "Snapshots canónicos e cache WTA local. ATP operacional usa apenas snapshots Fenzobot; não existe cache ATP bruta local.")
+    _title(ws, "Fenzobot — Histórico Canónico", "Snapshots canónicos, histórico WTA local e histórico ATP de odds licenciado, sempre com proveniência separada.")
     summary = payload["summary"]
     _header(ws, 5, ["Indicador", "Valor"])
     items = [
@@ -303,19 +353,25 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
         ("Partidas canónicas liquidadas", summary["settled_canonical_snapshots"]),
         ("Seleções liquidadas com índice Fenzobot", summary.get("settled_fenzobot_index_observations", 0)),
         ("Jogos WTA históricos locais", summary["historical_wta_matches"]),
+        ("Jogos ATP históricos com odds", summary.get("historical_atp_matches_with_odds", 0)),
+        ("Snapshots ATP sem preço enriquecidos", summary.get("canonical_atp_odds_recovered", 0)),
         ("Faixas Fenzobot ≥ break-even teórico (n ≥ 5)", _break_even_summary(payload)),
         ("Regra de contagem", "primeiro snapshot pré-jogo válido por partida"),
     ]
     for row, item in enumerate(items, 6):
         ws.cell(row, 1, item[0]).font = Font(name="Arial", bold=True, color="243B53")
         ws.cell(row, 2, item[1]).fill = PatternFill("solid", fgColor=LIGHT_BLUE)
-    ws.merge_cells("A15:B15"); ws["A15"] = "Como usar este ficheiro"; ws["A15"].fill = PatternFill("solid", fgColor=TEAL); ws["A15"].font = Font(name="Arial", bold=True, color="FFFFFF")
-    ws.merge_cells("A16:B19")
-    ws["A16"] = ("Operacional usa apenas o primeiro snapshot guardado de cada jogo, pelo que repetir uma run ou gerar HTML novo não multiplica o histórico. "
+    guide_row = 7 + len(items)
+    ws.merge_cells(start_row=guide_row, start_column=1, end_row=guide_row, end_column=2)
+    ws.cell(guide_row, 1, "Como usar este ficheiro")
+    ws.cell(guide_row, 1).fill = PatternFill("solid", fgColor=TEAL)
+    ws.cell(guide_row, 1).font = Font(name="Arial", bold=True, color="FFFFFF")
+    ws.merge_cells(start_row=guide_row + 1, start_column=1, end_row=guide_row + 4, end_column=2)
+    ws.cell(guide_row + 1, 1, ("Operacional usa apenas o primeiro snapshot guardado de cada jogo, pelo que repetir uma run ou gerar HTML novo não multiplica o histórico. "
                  "WTA histórico usa a cache local tennis-data.co.uk para estudo factual. As linhas de handicap são referências internas BO3 e não resultados de mercados reais. "
-                 "O break-even é teórico (1 / odd média), não ROI. PAPER e REAL devem ser consultados nos seus registos próprios; este ficheiro não prova lucro futuro.")
-    ws["A16"].alignment = Alignment(wrap_text=True, vertical="top")
-    ws["A16"].fill = PatternFill("solid", fgColor="F4F8FC")
+                 "O break-even é teórico (1 / odd média), não ROI. PAPER e REAL devem ser consultados nos seus registos próprios; este ficheiro não prova lucro futuro."))
+    ws.cell(guide_row + 1, 1).alignment = Alignment(wrap_text=True, vertical="top")
+    ws.cell(guide_row + 1, 1).fill = PatternFill("solid", fgColor="F4F8FC")
     _widths(ws, [40, 68])
 
     events = wb.create_sheet("Partidas canónicas")
@@ -359,6 +415,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
 
     _write_factor_attribution_sheets(wb, payload["operational"].get("factor_attribution") or {})
     _write_factor_coverage_sheets(wb, payload["operational"].get("factor_coverage") or {})
+    _write_atp_history_sheets(wb, payload)
 
     rankings = wb.create_sheet("Rankings")
     _write_rankings(rankings, payload["rankings"])
@@ -381,7 +438,8 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     rows = [
         ("Deduplicação", "Uma partida entra uma vez: o primeiro snapshot pré-jogo válido. HTMLs repetidos são ficheiros de publicação, não observações analíticas."),
         ("Operacional", "Métricas de Fenzobot por odd e por faixa de índice usam apenas snapshots canónicos já liquidados. São observacionais, não backtest; o índice não é uma probabilidade."),
-        ("ATP operacional", "Não existe cache ATP bruta local neste projeto. As abas ATP operacional usam apenas snapshots canónicos já registados pelo Fenzobot; não mostram handicap, recuperação ou tiebreak ATP como se fossem histórico completo."),
+        ("Histórico ATP", "Resultados e odds vêm da cache anual Valuebetennis (CC BY 4.0). Fecho é preferido; abertura é fallback identificado. Estas odds são evidência histórica externa e não reescrevem snapshots pré-jogo."),
+        ("Odds recuperadas", "Correspondência única por jogadores normalizados e data. É enriquecimento pós-jogo auditável, nunca uma captura ex ante nem base para recalcular decisões antigas."),
         ("Histórico WTA", "Resultados e odds vêm apenas das cópias tennis-data.co.uk existentes localmente. Não houve descarga nova nesta construção."),
         ("Handicaps", "A linha -4.5, +2 etc. é referência interna BO3, não lucro, retorno nem linha efetivamente oferecida por bookmaker. Os rankings ordenam por % cobre e amostra."),
         ("Break-even", "Taxa teórica 1 / odd decimal média da faixa nos snapshots canónicos. Não incorpora stake, vigor, limites ou execução numa casa de apostas."),
@@ -435,8 +493,13 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     return wb
 
 
-def _prospective_workbook(baseline: bytes, payload: Mapping[str, Any]) -> Workbook:
+def _prospective_workbook(
+    baseline: bytes,
+    payload: Mapping[str, Any],
+    current_products: Mapping[str, Any] | None = None,
+) -> Workbook:
     """Append only post-T0 sheets; every historical sheet/cell stays untouched."""
+    current_products = current_products or {}
     workbook = load_workbook(BytesIO(baseline), data_only=False)
     for name in ("Pós-T0 - Resumo", "Pós-T0 - Partidas"):
         if name in workbook.sheetnames:
@@ -472,10 +535,37 @@ def _prospective_workbook(baseline: bytes, payload: Mapping[str, Any]) -> Workbo
     )
     _write_factor_coverage_sheets(
         workbook,
-        (payload.get("operational") or {}).get("factor_coverage") or {},
+        current_products.get("factor_coverage") or {},
     )
+    _write_atp_history_sheets(workbook, current_products)
     _write_guerra_audit_sheets(workbook, _read_json(MANUAL_PAPER_JSON))
     return workbook
+
+
+def _stored_workbook_fingerprint(path: Path) -> str:
+    if not path.exists():
+        return ""
+    workbook = None
+    try:
+        workbook = load_workbook(path, read_only=True, data_only=True)
+        if "_fenzobot_meta" not in workbook.sheetnames:
+            return ""
+        return str(workbook["_fenzobot_meta"]["A1"].value or "")
+    except (OSError, ValueError, KeyError):
+        return ""
+    finally:
+        if workbook is not None:
+            workbook.close()
+
+
+def _stamp_workbook_fingerprint(workbook: Workbook, fingerprint: str) -> None:
+    if "_fenzobot_meta" in workbook.sheetnames:
+        meta = workbook["_fenzobot_meta"]
+    else:
+        meta = workbook.create_sheet("_fenzobot_meta")
+    meta["A1"] = fingerprint
+    meta["A2"] = "Fingerprint dos dados usados para construir este workbook."
+    meta.sheet_state = "veryHidden"
 
 
 def _prospective_history(
@@ -502,8 +592,29 @@ def main() -> int:
     snapshots = _read_json(SNAPSHOTS)
     manual_paper = _read_json(MANUAL_PAPER_JSON)
     raw_wta = load_local_wta_history(HISTORY_CACHE)
+    atp_frame = valuebetennis_history.load_history(HISTORY_CACHE, refresh_current=False)
+    raw_atp = load_local_atp_odds_history(HISTORY_CACHE)
+    canonical, _removed = canonical_snapshots(snapshots.get("snapshots") or [])
+    recovered_odds = valuebetennis_history.canonical_odds_enrichment(canonical, atp_frame)
     report_files = [path.name for path in REPORTS_DIR.glob("*.html")]
-    payload = build_system_history(snapshots, raw_wta, report_files)
+    payload = build_system_history(
+        snapshots,
+        raw_wta,
+        report_files,
+        local_atp_matches=raw_atp,
+        canonical_odds_recovery=recovered_odds,
+    )
+    current_source_fingerprint = str(payload.get("input_fingerprint_sha256") or "")
+    current_products = {
+        "factor_attribution": (payload.get("operational") or {}).get("factor_attribution") or {},
+        "factor_coverage": (payload.get("operational") or {}).get("factor_coverage") or {},
+        "historical_atp": payload.get("historical_atp") or {},
+        "canonical_odds_recovery": payload.get("canonical_odds_recovery") or [],
+        "summary": {
+            "historical_atp_matches_with_odds": (payload.get("summary") or {}).get("historical_atp_matches_with_odds", 0),
+            "canonical_atp_odds_recovered": (payload.get("summary") or {}).get("canonical_atp_odds_recovered", 0),
+        },
+    }
     boundary = forward_only.load_boundary_for_store(ANALYTICS_JSON)
     if boundary.fail_closed:
         raise RuntimeError(boundary.reason_code)
@@ -517,10 +628,7 @@ def main() -> int:
             # baseline histórica intacta, mas pode consultar os snapshots
             # canónicos completos para que a amostra não comece artificialmente
             # em T0.
-            operational_current={
-                "factor_attribution": (payload.get("operational") or {}).get("factor_attribution") or {},
-                "factor_coverage": (payload.get("operational") or {}).get("factor_coverage") or {},
-            },
+            operational_current=current_products,
             root=ROOT,
         )
     # The manual audit is an aggregate external projection.  Include only its
@@ -529,7 +637,7 @@ def main() -> int:
     history_fingerprint = str(payload.get("input_fingerprint_sha256") or "")
     manual_fingerprint = str(manual_paper.get("data_fingerprint") or "manual-paper-unavailable")
     payload["input_fingerprint_sha256"] = hashlib.sha256(
-        f"{history_fingerprint}:{manual_fingerprint}:guerra-audit-v1".encode("utf-8")
+        f"{history_fingerprint}:{current_source_fingerprint}:{manual_fingerprint}:atp-history-v1".encode("utf-8")
     ).hexdigest()
     if boundary.active:
         serialized = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
@@ -542,7 +650,11 @@ def main() -> int:
             ANALYTICS_JSON.write_text(serialized, encoding="utf-8")
     else:
         changed = write_if_changed(payload, ANALYTICS_JSON)
-    if not changed and WORKBOOK_PATH.exists():
+    workbook_current = (
+        _stored_workbook_fingerprint(WORKBOOK_PATH)
+        == str(payload.get("input_fingerprint_sha256") or "")
+    )
+    if not changed and WORKBOOK_PATH.exists() and workbook_current:
         print("[info] histórico sem alterações semânticas; Excel preservado.")
         return 0
     WORKBOOK_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -550,10 +662,13 @@ def main() -> int:
         baseline = forward_only_projections.baseline_bytes(
             boundary, WORKBOOK_PATH.relative_to(ROOT).as_posix(), root=ROOT,
         )
-        wb = _prospective_workbook(baseline, prospective)
+        wb = _prospective_workbook(baseline, prospective, current_products)
     else:
         wb = _workbook(payload, raw_wta)
         _write_guerra_audit_sheets(wb, manual_paper)
+    _stamp_workbook_fingerprint(
+        wb, str(payload.get("input_fingerprint_sha256") or ""),
+    )
     wb.save(WORKBOOK_PATH)
     print(f"[info] histórico canónico atualizado: {WORKBOOK_PATH}")
     return 0

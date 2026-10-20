@@ -13,6 +13,7 @@ are not PAPER results or bookmaker handicap settlement.
 from __future__ import annotations
 
 import csv
+import gzip
 import hashlib
 import json
 import math
@@ -23,7 +24,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 # Rankings only surface sufficiently sized samples.  They are descriptive
 # study aids, not betting recommendations or a substitute for the report's
@@ -823,6 +824,85 @@ def load_local_wta_history(cache_dir: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def load_local_atp_odds_history(cache_dir: Path) -> list[dict[str, Any]]:
+    """Read the licensed normalized ATP caches without performing network I/O."""
+    rows: list[dict[str, Any]] = []
+    for path in sorted(cache_dir.glob("valuebetennis_atp_*.csv.gz")):
+        try:
+            handle = gzip.open(path, "rt", encoding="utf-8-sig", newline="")
+        except OSError:
+            continue
+        with handle:
+            for row in csv.DictReader(handle):
+                winner, loser = _text(row.get("winner_name")), _text(row.get("loser_name"))
+                if not winner or not loser:
+                    continue
+                winner_games = loser_games = 0
+                parsed_sets = 0
+                for number in range(1, 6):
+                    left, right = _int(row.get(f"W{number}")), _int(row.get(f"L{number}"))
+                    if left is None and right is None:
+                        continue
+                    if left is None or right is None:
+                        parsed_sets = 0
+                        break
+                    winner_games += left
+                    loser_games += right
+                    parsed_sets += 1
+                winner_odd = _float(row.get("PSW"))
+                loser_odd = _float(row.get("PSL"))
+                if winner_odd is None or loser_odd is None:
+                    continue
+                rows.append({
+                    "source_match_id": _text(row.get("source_match_id")),
+                    "date": _text(row.get("date")),
+                    "year": _text(row.get("date"))[:4],
+                    "tournament": _text(row.get("tourney_name")),
+                    "category": _text(row.get("category")),
+                    "surface": _text(row.get("surface")),
+                    "best_of": _int(row.get("best_of")),
+                    "winner": winner,
+                    "loser": loser,
+                    "winner_odd": winner_odd,
+                    "loser_odd": loser_odd,
+                    "opening_winner_odd": _float(row.get("opening_winner_odd")),
+                    "opening_loser_odd": _float(row.get("opening_loser_odd")),
+                    "closing_winner_odd": _float(row.get("closing_winner_odd")),
+                    "closing_loser_odd": _float(row.get("closing_loser_odd")),
+                    "odds_observation": _text(row.get("odds_observation")),
+                    "winner_games": winner_games if parsed_sets else None,
+                    "loser_games": loser_games if parsed_sets else None,
+                })
+    return rows
+
+
+def historical_atp_odds_analytics(matches: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+    player_rows: list[tuple[str, str, str, bool]] = []
+    source_counts: defaultdict[tuple[str, str, str], int] = defaultdict(int)
+    for match in matches:
+        winner, loser = _text(match.get("winner")), _text(match.get("loser"))
+        odd_w, odd_l = _float(match.get("winner_odd")), _float(match.get("loser_odd"))
+        if not winner or not loser or odd_w is None or odd_l is None:
+            continue
+        player_rows.extend((
+            (winner, odds_band(odd_w) or "sem faixa", _role(odd_w, odd_l), True),
+            (loser, odds_band(odd_l) or "sem faixa", _role(odd_l, odd_w), False),
+        ))
+        source_counts[(
+            _text(match.get("year")) or "N/D",
+            _text(match.get("category")) or "N/D",
+            _text(match.get("odds_observation")) or "N/D",
+        )] += 1
+    source_summary = [
+        {"year": year, "category": category, "odds_observation": observation, "matches": count}
+        for (year, category, observation), count in sorted(source_counts.items())
+    ]
+    return {
+        "player_odds": _aggregate_player_rows(player_rows),
+        "source_summary": source_summary,
+    }
+
+
 def historical_wta_analytics(matches: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     player_rows: list[tuple[str, str, str, bool]] = []
     handicap: dict[tuple[str, str, float], dict[str, int]] = defaultdict(lambda: {"matches": 0, "covers": 0, "pushes": 0, "fails": 0})
@@ -874,8 +954,13 @@ def build_system_history(
     snapshot_document: Mapping[str, Any],
     local_wta_matches: Iterable[Mapping[str, Any]],
     report_files: Iterable[str] = (),
+    *,
+    local_atp_matches: Iterable[Mapping[str, Any]] = (),
+    canonical_odds_recovery: Iterable[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     local_wta_matches = list(local_wta_matches)
+    local_atp_matches = list(local_atp_matches)
+    canonical_odds_recovery = [dict(item) for item in canonical_odds_recovery]
     report_registry = []
     for name in sorted({_text(item) for item in report_files if _text(item)}):
         match = re.search(r"(20\d{2}-\d{2}-\d{2})", name)
@@ -886,6 +971,7 @@ def build_system_history(
     operational["factor_attribution"] = factor_attribution_analysis(canonical)
     operational["factor_coverage"] = factor_coverage_diagnostics(canonical)
     history = historical_wta_analytics(local_wta_matches)
+    atp_history = historical_atp_odds_analytics(local_atp_matches)
     rankings = build_rankings(operational, history, active_players=active_wta_players(local_wta_matches))
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -893,7 +979,8 @@ def build_system_history(
             "canonical_snapshot_rule": "first_valid_pre_match_snapshot_per_event",
             "raw_report_html_excluded_from_metrics": True,
             "historical_wta_source": "local tennis-data.co.uk cache only",
-            "historical_atp_source": "unavailable; ATP sheets use canonical Fenzobot snapshots only",
+            "historical_atp_source": "Valuebetennis annual cache (CC BY 4.0); closing odds preferred, opening fallback labelled",
+            "canonical_odds_recovery": "post-hoc enrichment kept separate from immutable pre-match capture",
             "handicap_reference": "BO3 internal reference line; not a bookmaker handicap settlement",
             "fenzobot_index_learning": "settled canonical observations grouped by the selected side's 50–100 evidence-index band; descriptive only, not a probability or model tuning",
             "factor_attribution": "active directional factor contributions compared with settled canonical outcomes and no-vig two-way market expectation; descriptive audit only, not automatic model tuning",
@@ -906,10 +993,14 @@ def build_system_history(
             "settled_canonical_snapshots": sum(1 for item in canonical if _text((item.get("outcome") or {}).get("winner_side")) in {"a", "b"}),
             "settled_fenzobot_index_observations": sum(item["matches"] for item in operational["fenzobot_index_band_summary"]),
             "historical_wta_matches": len(local_wta_matches),
+            "historical_atp_matches_with_odds": len(local_atp_matches),
+            "canonical_atp_odds_recovered": len(canonical_odds_recovery),
             "raw_report_html_versions": len(report_registry),
         },
         "operational": operational,
         "historical_wta": history,
+        "historical_atp": atp_history,
+        "canonical_odds_recovery": canonical_odds_recovery,
         "rankings": rankings,
         "report_registry": report_registry,
     }

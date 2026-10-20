@@ -22,7 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
-  projectionSchemaVersion: '2026-10-18-sheet-integrity-rankings-v2',
+  projectionSchemaVersion: '2026-10-20-atp-history-odds-v1',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 
@@ -60,6 +60,9 @@ function syncSystemHistoryToSheet() {
     'GUERRA — fatores',
     'GUERRA — segmentos',
     'GUERRA — qualidade',
+    'ATP histórico - jogador odd',
+    'ATP histórico — fonte',
+    'ATP odds recuperadas',
   ].some(name => {
     const sheet = spreadsheet.getSheetByName(name);
     return !sheet || sheet.getLastRow() < 2;
@@ -82,6 +85,7 @@ function syncSystemHistoryToSheet() {
   const currentOperational = continuity && continuity.operational_current || (payload.operational || {});
   writeFactorAttributionSheets_(spreadsheet, currentOperational.factor_attribution || {});
   writeFactorCoverageSheets_(spreadsheet, currentOperational.factor_coverage || {});
+  writeAtpHistorySheets_(spreadsheet, continuity ? currentOperational : payload);
   writeChallengerManualPaperSheet_(spreadsheet, manualPaper || {});
   writeGuerraAuditSheets_(spreadsheet, manualPaper || {});
   writeWeightDecisionPanel_(spreadsheet, currentOperational.factor_attribution || {}, manualPaper || {});
@@ -331,6 +335,44 @@ function writeProspectiveSystemHistory_(spreadsheet, payload) {
   ), { headerRow: 1, widths: [42, 28, 22, 22, 10, 34, 25, 25, 10, 10, 10, 20, 25, 16, 16] });
 }
 
+function writeAtpHistorySheets_(spreadsheet, products) {
+  const history = (products || {}).historical_atp || {};
+  upsertSystemSheet_(spreadsheet, 'ATP histórico - jogador odd', rowsWithHeaders_(
+    ['Jogador', 'Faixa de odd', 'Papel', 'Jogos', 'Vitórias', 'Derrotas', '% vitória'],
+    history.player_odds || [],
+    ['player', 'odds_band', 'role', 'matches', 'wins', 'losses', 'win_pct'],
+  ), {headerRow: 1, widths: [28, 16, 14, 12, 12, 12, 14], percentageColumn: 7});
+
+  const sourceRows = [
+    ['ATP histórico de odds — cobertura da fonte', '', '', ''],
+    ['Valuebetennis · CC BY 4.0 · fecho preferido; abertura apenas como fallback identificado.', '', '', ''],
+    ['', '', '', ''],
+    ['Ano', 'Categoria', 'Observação da odd', 'Jogos'],
+  ].concat((history.source_summary || []).map(row => [
+    row.year || 'N/D', row.category || 'N/D', row.odds_observation || 'N/D', row.matches || 0,
+  ]));
+  upsertSystemSheet_(spreadsheet, 'ATP histórico — fonte', sourceRows, {
+    titleRows: 2, headerRow: 4, widths: [14, 24, 24, 14],
+  });
+
+  const recovered = (products || {}).canonical_odds_recovery || [];
+  const recoveredRows = [
+    ['Odds ATP recuperadas para snapshots sem preço', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['Enriquecimento pós-jogo separado: nunca substitui a odd capturada originalmente.', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+  ].concat(rowsWithHeaders_(
+    ['Evento', 'Snapshot', 'Data snapshot', 'Data fonte', 'Desvio (dias)', 'Torneio', 'Jogador A', 'Jogador B', 'Abertura A', 'Abertura B', 'Fecho A', 'Fecho B', 'Fonte', 'ID fonte', 'Confiança', 'Semântica'],
+    recovered,
+    ['event_id', 'snapshot_key', 'match_date', 'source_match_date', 'date_delta_days', 'tournament', 'player_a', 'player_b', 'opening_odd_a', 'opening_odd_b', 'closing_odd_a', 'closing_odd_b', 'source', 'source_match_id', 'match_confidence', 'semantics'],
+  ));
+  const normalizedRecoveredRows = recoveredRows.map(row =>
+    row.concat(new Array(Math.max(0, 16 - row.length)).fill('')).slice(0, 16)
+  );
+  upsertSystemSheet_(spreadsheet, 'ATP odds recuperadas', normalizedRecoveredRows, {
+    titleRows: 2, headerRow: 4, widths: [38, 25, 16, 16, 14, 32, 25, 25, 13, 13, 13, 13, 18, 14, 38, 38],
+  });
+}
+
 function installSystemHistorySync() {
   ScriptApp.getProjectTriggers()
     .filter(trigger => trigger.getHandlerFunction() === SYSTEM_HISTORY_SYNC.triggerHandler)
@@ -543,6 +585,7 @@ function writeSystemHistoryWorkbook_(spreadsheet, payload) {
   const byTour = operational.by_tour || {};
   writeTourOperationalSheets_(spreadsheet, 'ATP', byTour.ATP || {});
   writeTourOperationalSheets_(spreadsheet, 'WTA', byTour.WTA || {});
+  writeAtpHistorySheets_(spreadsheet, payload);
 
   const wta = payload.historical_wta || {};
   upsertSystemSheet_(spreadsheet, 'WTA histórico - jogador odd', rowsWithHeaders_(

@@ -170,6 +170,28 @@ class SystemHistoryAnalyticsTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["canonical_snapshots"], 1)
         self.assertEqual(payload["summary"]["duplicate_snapshots_excluded"], 1)
 
+    def test_atp_history_and_recovered_odds_are_additive_products(self):
+        atp = [{
+            "year": "2026", "category": "Main tour", "odds_observation": "closing",
+            "winner": "A", "loser": "B", "winner_odd": 1.7, "loser_odd": 2.2,
+        }]
+        recovered = [{
+            "event_id": "atp:10", "player_a": "A", "player_b": "B",
+            "closing_odd_a": 1.7, "closing_odd_b": 2.2,
+            "semantics": "POST_HOC_ENRICHMENT_NOT_ORIGINAL_CAPTURE",
+        }]
+        payload = build_system_history(
+            {"snapshots": [_snapshot(analyzed_at="2026-09-28T06:30:00+00:00")]},
+            [],
+            local_atp_matches=atp,
+            canonical_odds_recovery=recovered,
+        )
+        self.assertEqual(payload["summary"]["historical_atp_matches_with_odds"], 1)
+        self.assertEqual(payload["summary"]["canonical_atp_odds_recovered"], 1)
+        self.assertEqual(payload["historical_atp"]["source_summary"][0]["matches"], 1)
+        self.assertEqual(payload["canonical_odds_recovery"], recovered)
+        self.assertEqual(payload["operational"]["event_rows"][0]["odd_a"], 1.4)
+
     def test_fenzobot_chart_source_is_aggregated_by_band(self):
         first = _snapshot(analyzed_at="2026-09-28T06:30:00+00:00", key="atp:1", odd_a=1.45)
         second = _snapshot(analyzed_at="2026-09-28T06:31:00+00:00", key="atp:2", odd_a=1.45)

@@ -1,14 +1,27 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from openpyxl import Workbook
 
 from scripts.build_system_history_workbook import (
+    _stamp_workbook_fingerprint,
+    _stored_workbook_fingerprint,
     _write_factor_coverage_sheets,
     _write_guerra_audit_sheets,
 )
 
 
 class GuerraAuditWorkbookTests(unittest.TestCase):
+    def test_workbook_fingerprint_detects_stale_or_interrupted_projection(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "history.xlsx"
+            workbook = Workbook()
+            self.assertEqual(_stored_workbook_fingerprint(path), "")
+            _stamp_workbook_fingerprint(workbook, "fingerprint-1")
+            workbook.save(path)
+            self.assertEqual(_stored_workbook_fingerprint(path), "fingerprint-1")
+
     def test_writes_factor_coverage_and_reason_tabs(self):
         workbook = Workbook()
         _write_factor_coverage_sheets(workbook, {

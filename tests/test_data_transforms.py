@@ -482,7 +482,7 @@ class MatchInputTests(unittest.TestCase):
         with patch.dict(
             fetch_data._HISTORICAL_ODDS_HISTORY_CACHE, {}, clear=True
         ), patch.object(
-            fetch_data, "_load_tennisdata_couk_multi_year",
+            fetch_data.valuebetennis_history, "load_history",
             side_effect=delayed_loader,
         ) as loader, ThreadPoolExecutor(max_workers=6) as executor:
             results = list(executor.map(
@@ -490,7 +490,7 @@ class MatchInputTests(unittest.TestCase):
             ))
 
         self.assertTrue(all(result is frame for result in results))
-        loader.assert_called_once_with("atp", fetch_data.HISTORY_YEARS_TO_LOAD)
+        loader.assert_called_once()
 
     def test_tennisdata_download_discovery_supports_atp_and_wta_versioned_paths(self):
         response = Mock()
@@ -582,18 +582,29 @@ class MatchInputTests(unittest.TestCase):
         self.assertIsNone(unresolved)
         self.assertIsNone(no_source)
 
-    def test_historical_odds_history_uses_tennis_data_without_replacing_primary_history(self):
+    def test_historical_odds_history_uses_licensed_atp_cache_without_replacing_primary_history(self):
         odds_frame = pd.DataFrame([
             {"winner_name": "A", "loser_name": "B", "B365W": 1.70, "B365L": 2.20}
         ])
         with patch.dict(fetch_data._HISTORICAL_ODDS_HISTORY_CACHE, {}, clear=True), \
-             patch.object(fetch_data, "_load_tennisdata_couk_multi_year", return_value=odds_frame) as loader:
+             patch.object(fetch_data.valuebetennis_history, "load_history", return_value=odds_frame) as loader:
             result = fetch_data.get_historical_odds_history("atp")
             cached = fetch_data.get_historical_odds_history("atp")
 
         self.assertIs(result, odds_frame)
         self.assertIs(cached, odds_frame)
-        loader.assert_called_once_with("atp", fetch_data.HISTORY_YEARS_TO_LOAD)
+        loader.assert_called_once()
+
+    def test_historical_moneyline_history_excludes_same_day_and_future_rows(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "PSW": 1.70, "PSL": 2.20, "score": "6-4 6-4", "best_of": 3, "date": "2026-10-01"},
+            {"winner_name": "A", "loser_name": "C", "PSW": 1.70, "PSL": 2.20, "score": "6-4 6-4", "best_of": 3, "date": "2026-10-03"},
+            {"winner_name": "A", "loser_name": "D", "PSW": 1.70, "PSL": 2.20, "score": "6-4 6-4", "best_of": 3, "date": "2026-10-04"},
+        ])
+        result = fetch_data.compute_historical_moneyline_margins(
+            history, "A", before="2026-10-03T12:00:00Z",
+        )
+        self.assertEqual(result["buckets"]["1.61-1.80"]["n"], 1)
 
     def test_canonical_history_context_uses_first_pre_match_snapshot_and_no_future_result(self):
         earlier = {
