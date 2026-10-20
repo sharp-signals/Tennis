@@ -417,6 +417,7 @@ class MatchInputTests(unittest.TestCase):
 
         with patch.object(fetch_data, "_TENNISDATA_DOWNLOAD_INDEX", None), \
              patch.object(fetch_data, "_TENNISDATA_SOURCE_FAILURE", None), \
+             patch.dict(os.environ, {"TENNISDATA_NETWORK_REFRESH": "1"}), \
              patch.object(fetch_data.requests, "get", return_value=response) as request, \
              tempfile.TemporaryDirectory(dir=os.getcwd()) as temp_dir:
             original_cwd = os.getcwd()
@@ -428,6 +429,20 @@ class MatchInputTests(unittest.TestCase):
 
         self.assertIsNone(result)
         request.assert_called_once()
+
+    def test_tennisdata_production_is_cache_only(self):
+        with patch.dict(os.environ, {}, clear=True), \
+             patch.object(fetch_data.requests, "get") as request, \
+             tempfile.TemporaryDirectory(dir=os.getcwd()) as temp_dir:
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                result = fetch_data._load_tennisdata_couk_multi_year("atp", 2)
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertIsNone(result)
+        request.assert_not_called()
 
     def test_closed_tennisdata_years_are_loaded_from_cache_before_network(self):
         current_year = datetime.now(timezone.utc).year
@@ -445,6 +460,8 @@ class MatchInputTests(unittest.TestCase):
                     )
                 with patch.object(
                     fetch_data, "_TENNISDATA_SOURCE_FAILURE", None
+                ), patch.dict(
+                    os.environ, {"TENNISDATA_NETWORK_REFRESH": "1"}
                 ), patch.object(
                     fetch_data, "_load_tennisdata_couk", return_value=None
                 ) as loader:
@@ -465,7 +482,7 @@ class MatchInputTests(unittest.TestCase):
         with patch.dict(
             fetch_data._HISTORICAL_ODDS_HISTORY_CACHE, {}, clear=True
         ), patch.object(
-            fetch_data, "_load_tennisdata_couk_multi_year",
+            fetch_data.valuebetennis_history, "load_history",
             side_effect=delayed_loader,
         ) as loader, ThreadPoolExecutor(max_workers=6) as executor:
             results = list(executor.map(
@@ -473,7 +490,7 @@ class MatchInputTests(unittest.TestCase):
             ))
 
         self.assertTrue(all(result is frame for result in results))
-        loader.assert_called_once_with("atp", fetch_data.HISTORY_YEARS_TO_LOAD)
+        loader.assert_called_once()
 
     def test_tennisdata_download_discovery_supports_atp_and_wta_versioned_paths(self):
         response = Mock()
@@ -565,18 +582,29 @@ class MatchInputTests(unittest.TestCase):
         self.assertIsNone(unresolved)
         self.assertIsNone(no_source)
 
-    def test_historical_odds_history_uses_tennis_data_without_replacing_primary_history(self):
+    def test_historical_odds_history_uses_licensed_atp_cache_without_replacing_primary_history(self):
         odds_frame = pd.DataFrame([
             {"winner_name": "A", "loser_name": "B", "B365W": 1.70, "B365L": 2.20}
         ])
         with patch.dict(fetch_data._HISTORICAL_ODDS_HISTORY_CACHE, {}, clear=True), \
-             patch.object(fetch_data, "_load_tennisdata_couk_multi_year", return_value=odds_frame) as loader:
+             patch.object(fetch_data.valuebetennis_history, "load_history", return_value=odds_frame) as loader:
             result = fetch_data.get_historical_odds_history("atp")
             cached = fetch_data.get_historical_odds_history("atp")
 
         self.assertIs(result, odds_frame)
         self.assertIs(cached, odds_frame)
-        loader.assert_called_once_with("atp", fetch_data.HISTORY_YEARS_TO_LOAD)
+        loader.assert_called_once()
+
+    def test_historical_moneyline_history_excludes_same_day_and_future_rows(self):
+        history = pd.DataFrame([
+            {"winner_name": "A", "loser_name": "B", "PSW": 1.70, "PSL": 2.20, "score": "6-4 6-4", "best_of": 3, "date": "2026-10-01"},
+            {"winner_name": "A", "loser_name": "C", "PSW": 1.70, "PSL": 2.20, "score": "6-4 6-4", "best_of": 3, "date": "2026-10-03"},
+            {"winner_name": "A", "loser_name": "D", "PSW": 1.70, "PSL": 2.20, "score": "6-4 6-4", "best_of": 3, "date": "2026-10-04"},
+        ])
+        result = fetch_data.compute_historical_moneyline_margins(
+            history, "A", before="2026-10-03T12:00:00Z",
+        )
+        self.assertEqual(result["buckets"]["1.61-1.80"]["n"], 1)
 
     def test_canonical_history_context_uses_first_pre_match_snapshot_and_no_future_result(self):
         earlier = {
@@ -1948,6 +1976,28 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(actual["bo5"]["matches_went_the_distance"], 1)
         self.assertEqual(actual["bo5"]["win_rate_pct"], 100.0)
         self.assertEqual(actual["bo3"]["matches_went_the_distance"], 1)
+
+    def test_deciding_set_past_matches_keeps_only_verified_current_format(self):
+        matches = [
+            {"player1Id": 1, "player2Id": 2, "match_winner": 1,
+             "result": "4-6 6-3 6-2", "bestOf": 3, "result_type": "completed"},
+            {"player1Id": 1, "player2Id": 3, "match_winner": 3,
+             "result": "6-4 3-6 2-6", "bestOf": 3, "result_type": "completed"},
+            {"player1Id": 1, "player2Id": 4, "match_winner": 1,
+             "result": "6-4 3-6 6-3 4-6 6-2", "bestOf": 5, "result_type": "completed"},
+            {"player1Id": 1, "player2Id": 5, "match_winner": 1,
+             "result": "4-6 6-3 2-1 RET", "bestOf": 3, "result_type": "retired"},
+        ]
+
+        actual = fetch_data.compute_deciding_set_from_past_matches(
+            matches, 1, expected_best_of=3,
+        )
+
+        self.assertEqual(actual["matches_went_the_distance"], 2)
+        self.assertEqual(actual["wins"], 1)
+        self.assertEqual(actual["losses"], 1)
+        self.assertEqual(actual["win_rate_pct"], 50.0)
+        self.assertEqual(actual["source"], "rapidapi_past_matches_format_verified")
 
     def test_layoff_uses_only_the_requested_player_and_valid_dates(self):
         matches = [

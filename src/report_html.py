@@ -5210,8 +5210,14 @@ def _mod_action_map(payload, div, result):
         }
 
     def moneyline_history_note(side):
-        if policy_active:
-            # Estes arquivos agregados não conservam competição por encontro.
+        history_payload = _d(payload.get(f"historical_moneyline_margins_{side}"))
+        if policy_active and not _d(history_payload.get("competition_evidence")).get(
+            "eligible_for_performance"
+        ):
+            # With an active competition policy, only an explicitly filtered
+            # per-match sample may be shown. The licensed ATP cache carries
+            # category/tier on every row, so validated samples no longer need
+            # to be hidden wholesale.
             return ""
         context = comparable_moneyline_history(side)
         notes = []
@@ -5224,7 +5230,7 @@ def _mod_action_map(payload, div, result):
         except (TypeError, ValueError):
             current_odd = None
         if current_odd and current_odd > 2.0:
-            history = _d(payload.get(f"historical_moneyline_margins_{side}"))
+            history = history_payload
             underdog = _d(history.get("underdog"))
             format_stats = _d(_d(underdog.get("by_format")).get(match_format))
             if not underdog.get("by_format"):
@@ -5280,8 +5286,7 @@ def _mod_action_map(payload, div, result):
         # O Excel Histórico é construído a partir deste arquivo canónico de
         # snapshots. Não o misturamos com a fonte externa de scores completos:
         # este bloco comunica só vitórias por faixa de odd, com regra temporal
-        # explícita, e é especialmente útil para ATP onde ainda não existe a
-        # mesma cobertura histórica de odds da WTA.
+        # explícita. O contexto canónico continua separado da fonte externa.
         canonical = _d(payload.get(f"canonical_odds_context_{side}"))
         exact = _d(canonical.get("exact"))
         general = _d(canonical.get("general"))
@@ -5302,6 +5307,15 @@ def _mod_action_map(payload, div, result):
                     f"amostra; geral: vitórias {100 * general_wins / general_n:.1f}% "
                     f"({general_wins}/{general_n})."
                 )
+        if notes and history_payload.get("source"):
+            basis = (
+                "fecho preferido; abertura identificada como fallback"
+                if history_payload.get("odds_basis") == "closing_preferred_opening_fallback"
+                else "par observado pelo fornecedor"
+            )
+            notes.append(
+                f"Fonte histórica externa: {history_payload.get('source')} ({basis})."
+            )
         return ("\n" + " ".join(notes)) if notes else ""
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão

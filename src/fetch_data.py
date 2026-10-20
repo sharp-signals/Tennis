@@ -27,8 +27,13 @@ não-oficial tipo Sofascore):
                           deles diretamente em stats.tennismylife.org.
 4. Jeff Sackmann GitHub -> histórico ATP (fallback) e WTA (fonte principal
                           para este tour). Licença CC BY-NC-SA.
-5. tennis-data.co.uk  -> CSV semanal com resultados + odds + piso,
-                          terceira fonte de cruzamento para stats por piso
+5. Cache local tennis-data.co.uk -> histórico legado de resultados + odds.
+                          A produção não automatiza downloads dessa fonte;
+                          só lê cópias previamente obtidas de forma legítima.
+6. Valuebetennis      -> histórico ATP/Challenger de resultados e odds desde
+                         2021, publicado sob CC BY 4.0. Abertura e fecho são
+                         preservados separadamente; fecho é a referência
+                         descritiva preferida e abertura o fallback rotulado.
 """
 
 from __future__ import annotations
@@ -54,6 +59,7 @@ import requests
 
 from .cache_store import JsonCacheStore
 from . import competition_evidence, competition_registry, market_integrity
+from . import valuebetennis_history
 from .market_ledger import payload_sha256
 from .config import (
     ALLOWED_TOURNAMENT_TIERS,
@@ -2566,6 +2572,19 @@ _TENNISDATA_INDEX_URL = "https://www.tennis-data.co.uk/data.php"
 _TENNISDATA_SOURCE_FAILURE: Optional[str] = None
 
 
+def _tennisdata_network_refresh_enabled() -> bool:
+    """Autoriza apenas um refresh explicitamente supervisionado.
+
+    O site deixou de aceitar recolha automatizada e devolve 403 aos runners.
+    A execução normal é, por isso, cache-only. A flag existe somente para um
+    ambiente em que o operador tenha autorização expressa da fonte; nunca é
+    ativada implicitamente pelo bot.
+    """
+    return str(os.getenv("TENNISDATA_NETWORK_REFRESH", "")).strip().casefold() in {
+        "1", "true", "yes", "on",
+    }
+
+
 def _tennismylife_history_key(row: pd.Series) -> str:
     """Chave estável para remover duplicados entre o anual e ``ongoing``."""
     scope = str(row.get("_history_competition_scope") or "unknown")
@@ -2885,9 +2904,14 @@ def _load_tennisdata_couk_multi_year(tour: str, years_to_load: int) -> Optional[
             except Exception:
                 df_year = None
 
-        # Depois do primeiro 403/timeout da listagem comum, o circuit breaker
-        # impede pedidos idênticos para todos os outros anos nesta execução.
-        if df_year is None and _TENNISDATA_SOURCE_FAILURE is None:
+        # A produção é cache-only. Um refresh de rede só é permitido quando o
+        # operador o ativa explicitamente num ambiente autorizado. Depois do
+        # primeiro erro, o circuit breaker continua a impedir repetições.
+        if (
+            df_year is None
+            and _tennisdata_network_refresh_enabled()
+            and _TENNISDATA_SOURCE_FAILURE is None
+        ):
             df_year = _load_tennisdata_couk(tour, year)
             if df_year is not None and not df_year.empty:
                 try:
@@ -2907,10 +2931,17 @@ def _load_tennisdata_couk_multi_year(tour: str, years_to_load: int) -> Optional[
             loaded_years += 1
 
     if not frames:
+        print(
+            f"[info] histórico externo de odds {tour}: cache local ausente; "
+            "o relatório mantém o histórico canónico do Fenzobot."
+        )
         return None
 
     combined = pd.concat(frames, ignore_index=True)
-    print(f"[info] tennis-data.co.uk {tour}: {loaded_years}/{years_to_load} anos, {len(combined)} jogos.")
+    print(
+        f"[info] cache histórica local {tour}: "
+        f"{loaded_years}/{years_to_load} anos, {len(combined)} jogos."
+    )
     return combined
 
 
@@ -3074,14 +3105,27 @@ def get_historical_odds_history(tour: str) -> pd.DataFrame:
         if normalized_tour in _HISTORICAL_ODDS_HISTORY_CACHE:
             return _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour]
 
-        df = _load_tennisdata_couk_multi_year(
-            normalized_tour, HISTORY_YEARS_TO_LOAD
-        )
+        if normalized_tour == "atp":
+            cache_dir = _SYSTEM_HISTORY_SNAPSHOTS_PATH.parent / "history_cache"
+            df = valuebetennis_history.load_history(cache_dir)
+            if df.empty:
+                # Compatibility fallback for installations that already have
+                # an authorised legacy ATP cache but have not populated the
+                # licensed Valuebetennis cache yet.
+                legacy = _load_tennisdata_couk_multi_year(
+                    normalized_tour, HISTORY_YEARS_TO_LOAD
+                )
+                df = legacy if legacy is not None else pd.DataFrame()
+        else:
+            df = _load_tennisdata_couk_multi_year(
+                normalized_tour, HISTORY_YEARS_TO_LOAD
+            )
         if df is None:
             df = pd.DataFrame()
+        source = "cache histórica local" if not df.empty else "sem cache externa"
         print(
-            f"[info] histórico de odds {normalized_tour} carregado de: "
-            f"tennis-data.co.uk ({len(df)} linhas)"
+            f"[info] histórico externo de odds {normalized_tour}: "
+            f"{source} ({len(df)} linhas); contexto canónico independente ativo."
         )
         _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour] = df
         return df
@@ -5103,6 +5147,7 @@ def compute_historical_moneyline_margins(
     history: pd.DataFrame,
     player: str,
     *,
+    before: object = None,
     competition_policy: Optional[dict] = None,
 ) -> Optional[dict]:
     """Cruza odds históricas realmente presentes com margem factual.
@@ -5159,11 +5204,33 @@ def compute_historical_moneyline_margins(
             format_cell["win_margins" if won else "loss_margins"].append(margin)
 
     competition_counts: dict[str, int] = {}
+    cutoff_date = None
+    if before is not None:
+        try:
+            cutoff_date = pd.Timestamp(before).date()
+        except (TypeError, ValueError):
+            cutoff_date = None
     for index, row in history.iterrows():
         won = bool(winner_mask.loc[index])
         lost = bool(loser_mask.loc[index])
         if not (won or lost):
             continue
+        if cutoff_date is not None:
+            history_date = next(
+                (
+                    row.get(key) for key in ("date", "tourney_date", "Date")
+                    if row.get(key) is not None and not pd.isna(row.get(key))
+                ),
+                None,
+            )
+            parsed_date = _parse_history_date(history_date)
+            if not parsed_date:
+                continue
+            try:
+                if pd.Timestamp(parsed_date).date() >= cutoff_date:
+                    continue
+            except (TypeError, ValueError):
+                continue
         try:
             odd = float(row.get(cols[0] if won else cols[1]))
         except (TypeError, ValueError):
@@ -5220,6 +5287,13 @@ def compute_historical_moneyline_margins(
         return None
     output_result = {
         "odds_columns": cols,
+        "source": history.attrs.get("source"),
+        "source_license": history.attrs.get("source_license"),
+        "odds_basis": (
+            "closing_preferred_opening_fallback"
+            if cols == ("PSW", "PSL") and "odds_observation" in history.columns
+            else "provider_pair"
+        ),
         "buckets": result,
         "underdog": underdog_result,
     }
@@ -7470,6 +7544,54 @@ def compute_deciding_set_from_recent_stats(recent_stats: dict) -> Optional[dict]
         "deciding_set_win_pct": float(pct),
         "deciding_set_count": ys.get("decidingSetWinOf"),
         "deciding_set_wins": ys.get("decidingSetWin"),
+    }
+
+
+def compute_deciding_set_from_past_matches(
+    matches: list,
+    player_id: int,
+    *,
+    expected_best_of: int,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Set decisivo recente com formato comprovado partida a partida.
+
+    O agregado ``recent-stats`` do fornecedor mistura BO3/BO5 no ATP e não
+    declara o formato. Esta transformação usa os ``past-matches`` já obtidos
+    pelo bot, aceita apenas resultados completos cujo formato coincide com o
+    encontro atual e preserva a política de competição aplicada aos restantes
+    fatores. Não faz chamadas adicionais.
+    """
+    if expected_best_of not in (3, 5) or not matches:
+        return None
+    rows = []
+    for match in matches:
+        parsed = _game_differential_from_recent_match(match, player_id)
+        if parsed is None:
+            continue
+        best_of, _won, _margin = parsed
+        if best_of != expected_best_of:
+            continue
+        if _count_completed_sets(match.get("result")) != expected_best_of:
+            continue
+        rows.append(match)
+    if not rows:
+        return None
+    record = competition_evidence.weighted_binary_record(
+        rows,
+        lambda row: row.get("match_winner") == player_id,
+        active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
+    )
+    rate, sample = competition_evidence.record_rate(record)
+    if rate is None or not sample:
+        return None
+    return {
+        **record,
+        "matches_went_the_distance": record.get("matches"),
+        "win_rate_pct": rate,
+        "decision_sample": sample,
+        "source": "rapidapi_past_matches_format_verified",
     }
 
 

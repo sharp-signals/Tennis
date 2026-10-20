@@ -2806,10 +2806,12 @@ def _build_match_payload(match: dict) -> dict:
     )
     historical_moneyline_margins_a = fetch_data.compute_historical_moneyline_margins(
         historical_odds_history, player_a,
+        before=start,
         competition_policy=competition_policy,
     )
     historical_moneyline_margins_b = fetch_data.compute_historical_moneyline_margins(
         historical_odds_history, player_b,
+        before=start,
         competition_policy=competition_policy,
     )
     # O Excel ``Fenzobot_Historico_do_Sistema`` é uma vista do arquivo
@@ -2922,14 +2924,6 @@ def _build_match_payload(match: dict) -> dict:
             serve_recent_a = {**_srv_a, "source": "rapidapi_recent_stats"}
         if _srv_b and not competition_policy.get("active"):
             serve_recent_b = {**_srv_b, "source": "rapidapi_recent_stats"}
-        # -- Sets decisivos --
-        # O recent-stats não declara BO3/BO5. Mantemos a estatística local
-        # separada por formato para não transformar um 5.º set de Slam num
-        # agregado misto de sets decisivos.
-        _ds_a = fetch_data.compute_deciding_set_from_recent_stats(_rs_a) if _rs_a else None
-        _ds_b = fetch_data.compute_deciding_set_from_recent_stats(_rs_b) if _rs_b else None
-        if _ds_a or _ds_b:
-            print("[info] deciding-set recent-stats ignorado no payload pré-live: formato BO3/BO5 não declarado.")
         # -- Recuperação de 1º set (past-matches, reaproveita cache) --
         _pm_a = _recent_a_cache if _recent_a_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_a)
         _pm_b = _recent_b_cache if _recent_b_cache is not None else fetch_data.fetch_player_recent_matches(tour, _pid_b)
@@ -2938,6 +2932,24 @@ def _build_match_payload(match: dict) -> dict:
         market_form_a = fetch_data.compute_market_adjusted_form(_pm_a, _pid_a)
         market_form_b = fetch_data.compute_market_adjusted_form(_pm_b, _pid_b)
         _expected_best_of = 5 if _match_format(match) == "bo5" else 3
+        _deciding_format = f"bo{_expected_best_of}"
+        _ds_a = fetch_data.compute_deciding_set_from_past_matches(
+            _pm_a, _pid_a,
+            expected_best_of=_expected_best_of,
+            competition_policy=competition_policy,
+        ) if _pm_a else None
+        _ds_b = fetch_data.compute_deciding_set_from_past_matches(
+            _pm_b, _pid_b,
+            expected_best_of=_expected_best_of,
+            competition_policy=competition_policy,
+        ) if _pm_b else None
+        # O histórico longo continua prioritário. A amostra recente por ID só
+        # preenche o formato em falta, evitando trocar uma base robusta por uma
+        # janela curta e eliminando o agregado ATP BO3/BO5 ambíguo.
+        if _ds_a and not (deciding_set_a or {}).get(_deciding_format):
+            deciding_set_a = {**(deciding_set_a or {}), _deciding_format: _ds_a}
+        if _ds_b and not (deciding_set_b or {}).get(_deciding_format):
+            deciding_set_b = {**(deciding_set_b or {}), _deciding_format: _ds_b}
         _sc_a = fetch_data.compute_scenarios_from_past_matches(
             _pm_a, _pid_a, expected_best_of=_expected_best_of,
             competition_policy=competition_policy,
