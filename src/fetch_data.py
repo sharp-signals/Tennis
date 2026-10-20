@@ -27,8 +27,9 @@ não-oficial tipo Sofascore):
                           deles diretamente em stats.tennismylife.org.
 4. Jeff Sackmann GitHub -> histórico ATP (fallback) e WTA (fonte principal
                           para este tour). Licença CC BY-NC-SA.
-5. tennis-data.co.uk  -> CSV semanal com resultados + odds + piso,
-                          terceira fonte de cruzamento para stats por piso
+5. Cache local tennis-data.co.uk -> histórico legado de resultados + odds.
+                          A produção não automatiza downloads dessa fonte;
+                          só lê cópias previamente obtidas de forma legítima.
 """
 
 from __future__ import annotations
@@ -2566,6 +2567,19 @@ _TENNISDATA_INDEX_URL = "https://www.tennis-data.co.uk/data.php"
 _TENNISDATA_SOURCE_FAILURE: Optional[str] = None
 
 
+def _tennisdata_network_refresh_enabled() -> bool:
+    """Autoriza apenas um refresh explicitamente supervisionado.
+
+    O site deixou de aceitar recolha automatizada e devolve 403 aos runners.
+    A execução normal é, por isso, cache-only. A flag existe somente para um
+    ambiente em que o operador tenha autorização expressa da fonte; nunca é
+    ativada implicitamente pelo bot.
+    """
+    return str(os.getenv("TENNISDATA_NETWORK_REFRESH", "")).strip().casefold() in {
+        "1", "true", "yes", "on",
+    }
+
+
 def _tennismylife_history_key(row: pd.Series) -> str:
     """Chave estável para remover duplicados entre o anual e ``ongoing``."""
     scope = str(row.get("_history_competition_scope") or "unknown")
@@ -2885,9 +2899,14 @@ def _load_tennisdata_couk_multi_year(tour: str, years_to_load: int) -> Optional[
             except Exception:
                 df_year = None
 
-        # Depois do primeiro 403/timeout da listagem comum, o circuit breaker
-        # impede pedidos idênticos para todos os outros anos nesta execução.
-        if df_year is None and _TENNISDATA_SOURCE_FAILURE is None:
+        # A produção é cache-only. Um refresh de rede só é permitido quando o
+        # operador o ativa explicitamente num ambiente autorizado. Depois do
+        # primeiro erro, o circuit breaker continua a impedir repetições.
+        if (
+            df_year is None
+            and _tennisdata_network_refresh_enabled()
+            and _TENNISDATA_SOURCE_FAILURE is None
+        ):
             df_year = _load_tennisdata_couk(tour, year)
             if df_year is not None and not df_year.empty:
                 try:
@@ -2907,10 +2926,17 @@ def _load_tennisdata_couk_multi_year(tour: str, years_to_load: int) -> Optional[
             loaded_years += 1
 
     if not frames:
+        print(
+            f"[info] histórico externo de odds {tour}: cache local ausente; "
+            "o relatório mantém o histórico canónico do Fenzobot."
+        )
         return None
 
     combined = pd.concat(frames, ignore_index=True)
-    print(f"[info] tennis-data.co.uk {tour}: {loaded_years}/{years_to_load} anos, {len(combined)} jogos.")
+    print(
+        f"[info] cache histórica local {tour}: "
+        f"{loaded_years}/{years_to_load} anos, {len(combined)} jogos."
+    )
     return combined
 
 
@@ -3079,9 +3105,10 @@ def get_historical_odds_history(tour: str) -> pd.DataFrame:
         )
         if df is None:
             df = pd.DataFrame()
+        source = "cache histórica local" if not df.empty else "sem cache externa"
         print(
-            f"[info] histórico de odds {normalized_tour} carregado de: "
-            f"tennis-data.co.uk ({len(df)} linhas)"
+            f"[info] histórico externo de odds {normalized_tour}: "
+            f"{source} ({len(df)} linhas); contexto canónico independente ativo."
         )
         _HISTORICAL_ODDS_HISTORY_CACHE[normalized_tour] = df
         return df
@@ -7470,6 +7497,54 @@ def compute_deciding_set_from_recent_stats(recent_stats: dict) -> Optional[dict]
         "deciding_set_win_pct": float(pct),
         "deciding_set_count": ys.get("decidingSetWinOf"),
         "deciding_set_wins": ys.get("decidingSetWin"),
+    }
+
+
+def compute_deciding_set_from_past_matches(
+    matches: list,
+    player_id: int,
+    *,
+    expected_best_of: int,
+    competition_policy: Optional[dict] = None,
+) -> Optional[dict]:
+    """Set decisivo recente com formato comprovado partida a partida.
+
+    O agregado ``recent-stats`` do fornecedor mistura BO3/BO5 no ATP e não
+    declara o formato. Esta transformação usa os ``past-matches`` já obtidos
+    pelo bot, aceita apenas resultados completos cujo formato coincide com o
+    encontro atual e preserva a política de competição aplicada aos restantes
+    fatores. Não faz chamadas adicionais.
+    """
+    if expected_best_of not in (3, 5) or not matches:
+        return None
+    rows = []
+    for match in matches:
+        parsed = _game_differential_from_recent_match(match, player_id)
+        if parsed is None:
+            continue
+        best_of, _won, _margin = parsed
+        if best_of != expected_best_of:
+            continue
+        if _count_completed_sets(match.get("result")) != expected_best_of:
+            continue
+        rows.append(match)
+    if not rows:
+        return None
+    record = competition_evidence.weighted_binary_record(
+        rows,
+        lambda row: row.get("match_winner") == player_id,
+        active=bool((competition_policy or {}).get("active")),
+        policy=competition_policy,
+    )
+    rate, sample = competition_evidence.record_rate(record)
+    if rate is None or not sample:
+        return None
+    return {
+        **record,
+        "matches_went_the_distance": record.get("matches"),
+        "win_rate_pct": rate,
+        "decision_sample": sample,
+        "source": "rapidapi_past_matches_format_verified",
     }
 
 

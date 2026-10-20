@@ -417,6 +417,7 @@ class MatchInputTests(unittest.TestCase):
 
         with patch.object(fetch_data, "_TENNISDATA_DOWNLOAD_INDEX", None), \
              patch.object(fetch_data, "_TENNISDATA_SOURCE_FAILURE", None), \
+             patch.dict(os.environ, {"TENNISDATA_NETWORK_REFRESH": "1"}), \
              patch.object(fetch_data.requests, "get", return_value=response) as request, \
              tempfile.TemporaryDirectory(dir=os.getcwd()) as temp_dir:
             original_cwd = os.getcwd()
@@ -428,6 +429,20 @@ class MatchInputTests(unittest.TestCase):
 
         self.assertIsNone(result)
         request.assert_called_once()
+
+    def test_tennisdata_production_is_cache_only(self):
+        with patch.dict(os.environ, {}, clear=True), \
+             patch.object(fetch_data.requests, "get") as request, \
+             tempfile.TemporaryDirectory(dir=os.getcwd()) as temp_dir:
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                result = fetch_data._load_tennisdata_couk_multi_year("atp", 2)
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertIsNone(result)
+        request.assert_not_called()
 
     def test_closed_tennisdata_years_are_loaded_from_cache_before_network(self):
         current_year = datetime.now(timezone.utc).year
@@ -445,6 +460,8 @@ class MatchInputTests(unittest.TestCase):
                     )
                 with patch.object(
                     fetch_data, "_TENNISDATA_SOURCE_FAILURE", None
+                ), patch.dict(
+                    os.environ, {"TENNISDATA_NETWORK_REFRESH": "1"}
                 ), patch.object(
                     fetch_data, "_load_tennisdata_couk", return_value=None
                 ) as loader:
@@ -1948,6 +1965,28 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(actual["bo5"]["matches_went_the_distance"], 1)
         self.assertEqual(actual["bo5"]["win_rate_pct"], 100.0)
         self.assertEqual(actual["bo3"]["matches_went_the_distance"], 1)
+
+    def test_deciding_set_past_matches_keeps_only_verified_current_format(self):
+        matches = [
+            {"player1Id": 1, "player2Id": 2, "match_winner": 1,
+             "result": "4-6 6-3 6-2", "bestOf": 3, "result_type": "completed"},
+            {"player1Id": 1, "player2Id": 3, "match_winner": 3,
+             "result": "6-4 3-6 2-6", "bestOf": 3, "result_type": "completed"},
+            {"player1Id": 1, "player2Id": 4, "match_winner": 1,
+             "result": "6-4 3-6 6-3 4-6 6-2", "bestOf": 5, "result_type": "completed"},
+            {"player1Id": 1, "player2Id": 5, "match_winner": 1,
+             "result": "4-6 6-3 2-1 RET", "bestOf": 3, "result_type": "retired"},
+        ]
+
+        actual = fetch_data.compute_deciding_set_from_past_matches(
+            matches, 1, expected_best_of=3,
+        )
+
+        self.assertEqual(actual["matches_went_the_distance"], 2)
+        self.assertEqual(actual["wins"], 1)
+        self.assertEqual(actual["losses"], 1)
+        self.assertEqual(actual["win_rate_pct"], 50.0)
+        self.assertEqual(actual["source"], "rapidapi_past_matches_format_verified")
 
     def test_layoff_uses_only_the_requested_player_and_valid_dates(self):
         matches = [
