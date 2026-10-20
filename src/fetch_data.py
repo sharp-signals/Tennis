@@ -3241,6 +3241,7 @@ _NAME_INDEX_CACHE: dict[object, dict[str, str]] = {}
 _HISTORICAL_EXACT_NAME_ALIASES: dict[str, tuple[str, ...]] = {
     "paula badosa gibert": ("paula badosa",),
     "leylah annie fernandez": ("leylah fernandez",),
+    "jaume antoni munar clar": ("jaume munar",),
 }
 
 
@@ -4295,12 +4296,47 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
         records = _enrich_exact_current_competition(
             records, competition_context
         )
-    return competition_evidence.weighted_binary_record(
+        original_records = records
+        # Uma linha recente sem competição classificável continua excluída
+        # (fail-closed), mas não deve apagar os restantes jogos ATP factuais
+        # da janela. Este era o defeito observado em Mannarino–Rublev: 9 jogos
+        # válidos deixavam de produzir forma recente por causa de 1 linha
+        # unresolved. Não inferimos a competição nem atribuímos peso à linha.
+        eligible_records = []
+        unresolved_excluded = 0
+        zero_weight_included = 0
+        for record in records:
+            classification = competition_evidence.classify_selected_match(
+                record, competition_policy
+            )
+            weight = classification.get("weight")
+            if weight is None:
+                unresolved_excluded += 1
+                continue
+            if float(weight) <= 0:
+                zero_weight_included += 1
+            eligible_records.append(record)
+        records = eligible_records
+        if not records:
+            # Se toda a janela for ambígua, preserva o contrato fail-closed
+            # original (resultado presente, mas weighted_matches=None).
+            return competition_evidence.weighted_binary_record(
+                original_records,
+                lambda row: row.get("winner_name") == player,
+                active=True,
+                policy=competition_policy,
+            )
+    result = competition_evidence.weighted_binary_record(
         records,
         lambda row: row.get("winner_name") == player,
         active=policy_active,
         policy=competition_policy,
     )
+    evidence = result.get("competition_evidence") if result else None
+    if evidence is not None and policy_active:
+        evidence["selection_unresolved_excluded"] = unresolved_excluded
+        evidence["selection_zero_weight_included"] = zero_weight_included
+    return result
 
 
 def compute_recent_quality_wins(
@@ -7647,19 +7683,48 @@ def compute_serve_return_stats(
         "avg_first_serve_won_pct": _average(observations, "first_won_pct"),
         "avg_break_points_saved_pct": _average(observations, "bp_saved_pct"),
     }
+    policy_active = bool((competition_policy or {}).get("active"))
+    weighted_observations = observations
+    selection_counts = {
+        "selection_unresolved_excluded": 0,
+        "selection_zero_weight_included": 0,
+        "selection_partial_weight_included": 0,
+    }
+    if policy_active:
+        # Mantém exatamente a mesma janela dos últimos N jogos. Uma linha sem
+        # competição classificável continua fail-closed, mas é excluída
+        # individualmente em vez de apagar os restantes jogos ATP factuais.
+        # Não procuramos um jogo N+1, preservando a comparabilidade da amostra.
+        selected = []
+        for item in observations:
+            classification = competition_evidence.classify_selected_match(
+                item["record"], competition_policy
+            )
+            weight = classification.get("weight")
+            if weight is None:
+                selection_counts["selection_unresolved_excluded"] += 1
+                continue
+            if float(weight) <= 0:
+                selection_counts["selection_zero_weight_included"] += 1
+            elif float(weight) < 1:
+                selection_counts["selection_partial_weight_included"] += 1
+            selected.append(item)
+        weighted_observations = selected
+
     weighted = competition_evidence.weighted_observations(
-        [item["record"] for item in observations],
-        active=bool((competition_policy or {}).get("active")),
+        [item["record"] for item in weighted_observations],
+        active=policy_active,
         policy=competition_policy,
     )
     evidence = weighted.get("competition_evidence")
     if evidence is not None:
+        evidence.update(selection_counts)
         result["competition_evidence"] = evidence
         if evidence.get("eligible_for_performance") is True:
             weighted_items = [
                 {**item, "weight": weight}
                 for item, (_record, weight) in zip(
-                    observations, weighted["records"], strict=True
+                    weighted_observations, weighted["records"], strict=True
                 )
             ]
             result["weighted_matches_used"] = evidence.get("weighted_matches")

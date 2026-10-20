@@ -442,6 +442,72 @@ class RankingEligibleTransformTests(unittest.TestCase):
 
 
 class RankingEligibleV2Tests(unittest.TestCase):
+    def test_recent_form_excludes_only_unresolved_row_from_mixed_window(self):
+        records = [
+            row(260 + index, 20261020 + index, "Vienna Open", tier="ATP 500")
+            for index in range(9)
+        ]
+        records.append(row(269, 20261029, "Unknown Invitational"))
+
+        actual = fetch_data.compute_recent_form(
+            pd.DataFrame(records),
+            "Alpha",
+            10,
+            competition_policy=V2_ACTIVE,
+        )
+
+        self.assertIsNotNone(actual)
+        self.assertTrue(actual["competition_evidence"]["eligible_for_performance"])
+        self.assertEqual(actual["weighted_matches"], 9.0)
+        self.assertEqual(
+            actual["competition_evidence"]["selection_unresolved_excluded"], 1
+        )
+
+    def test_service_window_excludes_only_unresolved_row_without_n_plus_one(self):
+        records = []
+        for index in range(10):
+            records.append({
+                **row(
+                    270 + index,
+                    20261020 + index,
+                    "Vienna Open",
+                    tier="ATP 500",
+                ),
+                "w_ace": 8,
+                "w_df": 2,
+                "w_svpt": 100,
+                "w_1stIn": 60,
+                "w_1stWon": 42,
+                "w_2ndWon": 20,
+                "w_bpSaved": 5,
+                "w_bpFaced": 8,
+            })
+        records.append({
+            **row(280, 20261030, "Unknown Invitational"),
+            "w_ace": 12,
+            "w_df": 3,
+            "w_svpt": 100,
+            "w_1stIn": 60,
+            "w_1stWon": 54,
+            "w_2ndWon": 20,
+            "w_bpSaved": 5,
+            "w_bpFaced": 8,
+        })
+
+        actual = fetch_data.compute_serve_return_stats(
+            pd.DataFrame(records),
+            "Alpha",
+            10,
+            competition_policy=V2_ACTIVE,
+        )
+
+        self.assertTrue(actual["competition_evidence"]["eligible_for_performance"])
+        self.assertEqual(actual["weighted_matches_used"], 9.0)
+        self.assertEqual(actual["weighted_avg_first_serve_won_pct"], 0.7)
+        self.assertEqual(
+            actual["competition_evidence"]["selection_unresolved_excluded"], 1
+        )
+
     def test_operational_handicap_history_keeps_only_full_weight_matches(self):
         records = [
             {**row(290, 20261021, "Vienna Open", tier="ATP 500"),
