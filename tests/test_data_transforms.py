@@ -1655,6 +1655,7 @@ class DeterministicStatisticTests(unittest.TestCase):
     def test_name_resolution_uses_audited_full_name_aliases(self):
         history = pd.DataFrame([
             {"winner_name": "Paula Badosa", "loser_name": "Leylah Fernandez"},
+            {"winner_name": "Jaume Munar", "loser_name": "Other Player"},
         ])
 
         self.assertEqual(
@@ -1664,6 +1665,10 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(
             fetch_data.resolve_player_name(history, "Leylah Annie Fernandez"),
             "Leylah Fernandez",
+        )
+        self.assertEqual(
+            fetch_data.resolve_player_name(history, "Jaume Antoni Munar Clar"),
+            "Jaume Munar",
         )
         self.assertIsNone(
             fetch_data.resolve_player_name(history, "Zangar Nurlanuly")
