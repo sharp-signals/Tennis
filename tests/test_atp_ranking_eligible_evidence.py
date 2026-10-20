@@ -442,6 +442,82 @@ class RankingEligibleTransformTests(unittest.TestCase):
 
 
 class RankingEligibleV2Tests(unittest.TestCase):
+    def test_mixed_sample_excludes_only_unresolved_row_across_aggregators(self):
+        records = [
+            {**row(250, 20261020, "Vienna Open", tier="ATP 500"), "won": True},
+            {**row(251, 20261021, "Unknown Invitational"), "won": False},
+        ]
+
+        binary = competition_evidence.weighted_binary_record(
+            records,
+            lambda item: item["won"],
+            active=True,
+            policy=V2_ACTIVE,
+        )
+        observations = competition_evidence.weighted_observations(
+            records,
+            active=True,
+            policy=V2_ACTIVE,
+        )
+
+        self.assertEqual(binary["matches"], 2)
+        self.assertEqual(binary["weighted_matches"], 1.0)
+        self.assertEqual(binary["weighted_win_rate_pct"], 100.0)
+        self.assertEqual(
+            binary["competition_evidence"]["status"],
+            "APPLIED_WITH_EXCLUSIONS",
+        )
+        self.assertEqual(
+            binary["competition_evidence"]["unresolved_excluded"], 1
+        )
+        self.assertEqual(len(observations["records"]), 1)
+        self.assertTrue(
+            observations["competition_evidence"]["eligible_for_performance"]
+        )
+        self.assertEqual(
+            observations["competition_evidence"]["unresolved_excluded"], 1
+        )
+
+    def test_all_unresolved_sample_remains_fail_closed(self):
+        records = [
+            {**row(252, 20261020, "Unknown Invitational"), "won": True},
+            {**row(253, 20261021, "Another Unknown Event"), "won": False},
+        ]
+
+        binary = competition_evidence.weighted_binary_record(
+            records,
+            lambda item: item["won"],
+            active=True,
+            policy=V2_ACTIVE,
+        )
+        observations = competition_evidence.weighted_observations(
+            records,
+            active=True,
+            policy=V2_ACTIVE,
+        )
+
+        self.assertIsNone(binary["weighted_matches"])
+        self.assertEqual(binary["competition_evidence"]["status"], "BLOCKED")
+        self.assertFalse(
+            binary["competition_evidence"]["eligible_for_performance"]
+        )
+        self.assertEqual(observations["records"], [])
+        self.assertEqual(
+            observations["competition_evidence"]["status"], "BLOCKED"
+        )
+
+    def test_v2_metadata_declares_balanced_mixed_sample_treatment(self):
+        metadata = competition_evidence.policy_metadata(V2_ACTIVE)
+
+        self.assertEqual(
+            metadata["mixed_sample_unresolved_treatment"],
+            "EXCLUDE_ROW_BLOCK_IF_NO_USABLE_SAMPLE",
+        )
+        self.assertEqual(
+            metadata["aggregation_change_id"],
+            "CHANGE-2026-10-20-147",
+        )
+
     def test_recent_form_excludes_only_unresolved_row_from_mixed_window(self):
         records = [
             row(260 + index, 20261020 + index, "Vienna Open", tier="ATP 500")
