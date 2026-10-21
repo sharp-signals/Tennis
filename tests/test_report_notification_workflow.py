@@ -34,6 +34,7 @@ class ReportNotificationWorkflowTests(unittest.TestCase):
         self.assertIn(">> \"$GITHUB_ENV\"", configure_step)
         self.assertIn("python -m src.report_notifications wait", self.workflow)
         self.assertIn("python -m src.report_notifications send", self.workflow)
+        self.assertIn('REPORT_PUBLICATION_TIMEOUT_SECONDS: "360"', self.workflow)
 
     def test_rerun_checks_out_current_main_for_durable_delivery_state(self):
         checkout = self.workflow.index("uses: actions/checkout@")
