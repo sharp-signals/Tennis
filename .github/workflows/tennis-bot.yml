@@ -116,7 +116,10 @@ jobs:
         if: steps.run_bot.outcome == 'success' && steps.publish_reports.outcome == 'success'
         continue-on-error: true
         env:
-          REPORT_PUBLICATION_TIMEOUT_SECONDS: "120"
+          # O Pages pode demorar mais de dois minutos a concluir um deployment.
+          # Mantemos a validação byte-a-byte, mas evitamos classificar latência
+          # normal do Pages como falha do bot e reter notificações válidas.
+          REPORT_PUBLICATION_TIMEOUT_SECONDS: "360"
           REPORT_PUBLICATION_POLL_SECONDS: "4"
         run: python -m src.report_notifications wait
 
