@@ -40780,8 +40780,1315 @@
         "tournament_id": 21357
       },
       "settlement": null
+    },
+    {
+      "key": "mi2_5842e81030184ce0986c3b7cf20cb2c7:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-22T17:36:48+00:00",
+        "canonical_match_instance_id": "mi2_5842e81030184ce0986c3b7cf20cb2c7",
+        "commence_time_utc": "2026-10-23T09:30:00+00:00",
+        "competition_evidence_policy": {
+          "active": true,
+          "aggregation_change_id": "CHANGE-2026-10-20-147",
+          "application": "PROSPECTIVE_ONLY",
+          "change_id": "CHANGE-2026-10-11-105",
+          "config_hash": "d8c2a674bb1b241e2a8c",
+          "effective_from_utc": "2026-10-12T00:00:00Z",
+          "factor_impact_matrix": [
+            {
+              "feature": "comeback_set1",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "forma_recente",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "h2h",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "h2h_piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_BLOCKED",
+              "reason_code": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+              "report_factual_display": "PRESERVED",
+              "separability": "UNAVAILABLE"
+            },
+            {
+              "feature": "indoor_outdoor",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "matchup_maos",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "nivel_adversario",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "pressao_ronda",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "qualidade_vitorias",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "recuperacao_sets",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "sazonal",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "servico_carreira",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "tiebreak",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "velocidade_piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            }
+          ],
+          "fatigue_load_unweighted": true,
+          "feature_blockers": [
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_BLOCKED",
+              "reason_code": "COMPETITION_EVIDENCE_NOT_SEPARABLE"
+            }
+          ],
+          "historical_reclassification": false,
+          "integral_laver_exclusion_claimed": false,
+          "integral_non_ranking_exclusion_claimed": false,
+          "intermediate_policy_version": "atp-ranking-eligible-performance-v1",
+          "known_blockers": [
+            "rapidapi_recent_stats_aggregate",
+            "rapidapi_perf_breakdown_aggregate",
+            "rapidapi_h2h_vs_all_aggregate",
+            "local_result_helpers_without_competition_provenance"
+          ],
+          "mixed_sample_unresolved_treatment": "EXCLUDE_ROW_BLOCK_IF_NO_USABLE_SAMPLE",
+          "policy_mode": "ATP_RANKING_ELIGIBLE_50",
+          "post_t1_policy_version": "atp-ranking-eligible-performance-v2",
+          "pre_t0_policy_version": "laver-only-performance-v1",
+          "registry_factual_taxonomy_reused": true,
+          "registry_sha256": "b0a9d3578b142062ec6a325d72991b40c5c11eec22cc06fd621b6aa019619bc5",
+          "registry_version": "2026-10-11.2",
+          "requested_version": "atp-ranking-eligible-performance-v2",
+          "same_sample_before_weighting": true,
+          "scope": "ATP_ONLY",
+          "separability_contract": "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE",
+          "status": "ACTIVE",
+          "temporal_application": "PER_MATCH_T1_DELTA",
+          "tour": "atp",
+          "v1_effective_from_utc": "2026-10-12T00:00:00Z",
+          "version": "atp-ranking-eligible-performance-v2",
+          "weights": {
+            "davis_exception": 0.5,
+            "next_gen_exception": 0.5,
+            "non_ranking": 0.0,
+            "olympics_exception": 0.5,
+            "ranking_eligible": 1.0,
+            "unresolved": null
+          }
+        },
+        "coverage": {
+          "available_factors": 20,
+          "available_weight": 133.25,
+          "configured_factors": 22,
+          "configured_weight": 144.25,
+          "status": "reduzida",
+          "weighted_pct": 92.4,
+          "weighted_ratio": 0.923744
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": null,
+        "event_key": "mi2_5842e81030184ce0986c3b7cf20cb2c7",
+        "expected_edge_pct": 0.29,
+        "fair_odd": 1.217,
+        "fenzobot_index": 97,
+        "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "atp:550970",
+        "line": null,
+        "market": "Moneyline Daniil Medvedev",
+        "market_memory_eligible": false,
+        "market_memory_status": "PARTIAL",
+        "market_odds_decimal": {
+          "Daniil Medvedev": 1.22,
+          "Terence Atmane": 4.25
+        },
+        "market_type": "Moneyline",
+        "match_id": 550970,
+        "odd": 1.22,
+        "odds_contract_activation": {
+          "activation_commit": "034c3c803228269d9d89d09909d56a88c7afe7ff",
+          "activation_observed_at_utc": "2026-10-22T17:33:36+00:00",
+          "activation_run_id": "39823665226",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": null,
+          "cache_age_seconds": 0,
+          "capture_kind": "feed_observed_at_capture",
+          "captured_at_utc": "2026-10-22T17:33:36+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/atp",
+          "event_id": 550970,
+          "freshness_status": "OBSERVED_AT_CAPTURE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.7769652650822669,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "verified_provider_pre_match_feed",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": null,
+          "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+          "source": "RapidAPI Tennis API / pre-match match-winner feed"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 22807,
+            "name": "Daniil Medvedev"
+          },
+          "b": {
+            "id": 67535,
+            "name": "Terence Atmane"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "ae8ffc008314b6a56906",
+        "selected_player": "Daniil Medvedev",
+        "selected_side": "a",
+        "sharp_estimate_pct": 82.2,
+        "snapshot_key": "mi2_5842e81030184ce0986c3b7cf20cb2c7",
+        "surface": "I.hard",
+        "tour": "atp",
+        "tournament": "Almaty Open - Almaty",
+        "tournament_id": 21357
+      },
+      "settlement": null
+    },
+    {
+      "key": "mi2_99aca0581af540bb96b60cacc501cd01:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-22T17:36:48+00:00",
+        "canonical_match_instance_id": "mi2_99aca0581af540bb96b60cacc501cd01",
+        "commence_time_utc": "2026-10-23T16:30:00+00:00",
+        "competition_evidence_policy": {
+          "active": true,
+          "aggregation_change_id": "CHANGE-2026-10-20-147",
+          "application": "PROSPECTIVE_ONLY",
+          "change_id": "CHANGE-2026-10-11-105",
+          "config_hash": "d8c2a674bb1b241e2a8c",
+          "effective_from_utc": "2026-10-12T00:00:00Z",
+          "factor_impact_matrix": [
+            {
+              "feature": "comeback_set1",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "forma_recente",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_BLOCKED",
+              "reason_code": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+              "report_factual_display": "PRESERVED",
+              "separability": "UNAVAILABLE"
+            },
+            {
+              "feature": "indoor_outdoor",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "matchup_maos",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "nivel_adversario",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "pressao_ronda",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "qualidade_vitorias",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "recuperacao_sets",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "sazonal",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "servico_carreira",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "tiebreak",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "velocidade_piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            }
+          ],
+          "fatigue_load_unweighted": true,
+          "feature_blockers": [
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_BLOCKED",
+              "reason_code": "COMPETITION_EVIDENCE_NOT_SEPARABLE"
+            }
+          ],
+          "historical_reclassification": false,
+          "integral_laver_exclusion_claimed": false,
+          "integral_non_ranking_exclusion_claimed": false,
+          "intermediate_policy_version": "atp-ranking-eligible-performance-v1",
+          "known_blockers": [
+            "rapidapi_recent_stats_aggregate",
+            "rapidapi_perf_breakdown_aggregate",
+            "rapidapi_h2h_vs_all_aggregate",
+            "local_result_helpers_without_competition_provenance"
+          ],
+          "mixed_sample_unresolved_treatment": "EXCLUDE_ROW_BLOCK_IF_NO_USABLE_SAMPLE",
+          "policy_mode": "ATP_RANKING_ELIGIBLE_50",
+          "post_t1_policy_version": "atp-ranking-eligible-performance-v2",
+          "pre_t0_policy_version": "laver-only-performance-v1",
+          "registry_factual_taxonomy_reused": true,
+          "registry_sha256": "b0a9d3578b142062ec6a325d72991b40c5c11eec22cc06fd621b6aa019619bc5",
+          "registry_version": "2026-10-11.2",
+          "requested_version": "atp-ranking-eligible-performance-v2",
+          "same_sample_before_weighting": true,
+          "scope": "ATP_ONLY",
+          "separability_contract": "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE",
+          "status": "ACTIVE",
+          "temporal_application": "PER_MATCH_T1_DELTA",
+          "tour": "atp",
+          "v1_effective_from_utc": "2026-10-12T00:00:00Z",
+          "version": "atp-ranking-eligible-performance-v2",
+          "weights": {
+            "davis_exception": 0.5,
+            "next_gen_exception": 0.5,
+            "non_ranking": 0.0,
+            "olympics_exception": 0.5,
+            "ranking_eligible": 1.0,
+            "unresolved": null
+          }
+        },
+        "coverage": {
+          "available_factors": 18,
+          "available_weight": 115.25,
+          "configured_factors": 22,
+          "configured_weight": 144.25,
+          "status": "reduzida",
+          "weighted_pct": 79.9,
+          "weighted_ratio": 0.79896
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": null,
+        "event_key": "mi2_99aca0581af540bb96b60cacc501cd01",
+        "expected_edge_pct": 1.06,
+        "fair_odd": 1.395,
+        "fenzobot_index": 86,
+        "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "atp:554024",
+        "line": null,
+        "market": "Moneyline Arthur Fils",
+        "market_memory_eligible": false,
+        "market_memory_status": "PARTIAL",
+        "market_odds_decimal": {
+          "Alex Michelsen": 2.875,
+          "Arthur Fils": 1.41
+        },
+        "market_type": "Moneyline",
+        "match_id": 554024,
+        "odd": 1.41,
+        "odds_contract_activation": {
+          "activation_commit": "034c3c803228269d9d89d09909d56a88c7afe7ff",
+          "activation_observed_at_utc": "2026-10-22T17:33:36+00:00",
+          "activation_run_id": "39823665226",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": null,
+          "cache_age_seconds": 0,
+          "capture_kind": "feed_observed_at_capture",
+          "captured_at_utc": "2026-10-22T17:33:36+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/atp",
+          "event_id": 554024,
+          "freshness_status": "OBSERVED_AT_CAPTURE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.6709451575262545,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "verified_provider_pre_match_feed",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": null,
+          "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+          "source": "RapidAPI Tennis API / pre-match match-winner feed"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 83135,
+            "name": "Arthur Fils"
+          },
+          "b": {
+            "id": 92985,
+            "name": "Alex Michelsen"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "e16e67fe96a5cf519bc4",
+        "selected_player": "Arthur Fils",
+        "selected_side": "a",
+        "sharp_estimate_pct": 71.68,
+        "snapshot_key": "mi2_99aca0581af540bb96b60cacc501cd01",
+        "surface": "I.hard",
+        "tour": "atp",
+        "tournament": "European Open - Brussels",
+        "tournament_id": 21358
+      },
+      "settlement": null
+    },
+    {
+      "key": "mi2_69adad260ee34598ad997b5d0f3fc292:moneyline:b:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-22T17:36:48+00:00",
+        "canonical_match_instance_id": "mi2_69adad260ee34598ad997b5d0f3fc292",
+        "commence_time_utc": "2026-10-23T08:00:00+00:00",
+        "competition_evidence_policy": {
+          "active": true,
+          "aggregation_change_id": "CHANGE-2026-10-20-147",
+          "application": "PROSPECTIVE_ONLY",
+          "change_id": "CHANGE-2026-10-11-105",
+          "config_hash": "d8c2a674bb1b241e2a8c",
+          "effective_from_utc": "2026-10-12T00:00:00Z",
+          "factor_impact_matrix": [
+            {
+              "feature": "comeback_set1",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "forma_recente",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_BLOCKED",
+              "reason_code": "COMPETITION_EVIDENCE_NOT_SEPARABLE",
+              "report_factual_display": "PRESERVED",
+              "separability": "UNAVAILABLE"
+            },
+            {
+              "feature": "indoor_outdoor",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "matchup_maos",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "nivel_adversario",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "pressao_ronda",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "qualidade_vitorias",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "recuperacao_sets",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "sazonal",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "servico_carreira",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "tiebreak",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "velocidade_piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            }
+          ],
+          "fatigue_load_unweighted": true,
+          "feature_blockers": [
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_BLOCKED",
+              "reason_code": "COMPETITION_EVIDENCE_NOT_SEPARABLE"
+            }
+          ],
+          "historical_reclassification": false,
+          "integral_laver_exclusion_claimed": false,
+          "integral_non_ranking_exclusion_claimed": false,
+          "intermediate_policy_version": "atp-ranking-eligible-performance-v1",
+          "known_blockers": [
+            "rapidapi_recent_stats_aggregate",
+            "rapidapi_perf_breakdown_aggregate",
+            "rapidapi_h2h_vs_all_aggregate",
+            "local_result_helpers_without_competition_provenance"
+          ],
+          "mixed_sample_unresolved_treatment": "EXCLUDE_ROW_BLOCK_IF_NO_USABLE_SAMPLE",
+          "policy_mode": "ATP_RANKING_ELIGIBLE_50",
+          "post_t1_policy_version": "atp-ranking-eligible-performance-v2",
+          "pre_t0_policy_version": "laver-only-performance-v1",
+          "registry_factual_taxonomy_reused": true,
+          "registry_sha256": "b0a9d3578b142062ec6a325d72991b40c5c11eec22cc06fd621b6aa019619bc5",
+          "registry_version": "2026-10-11.2",
+          "requested_version": "atp-ranking-eligible-performance-v2",
+          "same_sample_before_weighting": true,
+          "scope": "ATP_ONLY",
+          "separability_contract": "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE",
+          "status": "ACTIVE",
+          "temporal_application": "PER_MATCH_T1_DELTA",
+          "tour": "atp",
+          "v1_effective_from_utc": "2026-10-12T00:00:00Z",
+          "version": "atp-ranking-eligible-performance-v2",
+          "weights": {
+            "davis_exception": 0.5,
+            "next_gen_exception": 0.5,
+            "non_ranking": 0.0,
+            "olympics_exception": 0.5,
+            "ranking_eligible": 1.0,
+            "unresolved": null
+          }
+        },
+        "coverage": {
+          "available_factors": 18,
+          "available_weight": 115.25,
+          "configured_factors": 22,
+          "configured_weight": 144.25,
+          "status": "reduzida",
+          "weighted_pct": 79.9,
+          "weighted_ratio": 0.79896
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": null,
+        "event_key": "mi2_69adad260ee34598ad997b5d0f3fc292",
+        "expected_edge_pct": 0.99,
+        "fair_odd": 1.386,
+        "fenzobot_index": 86,
+        "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "atp:548047",
+        "line": null,
+        "market": "Moneyline Jiri Lehecka",
+        "market_memory_eligible": false,
+        "market_memory_status": "PARTIAL",
+        "market_odds_decimal": {
+          "Jiri Lehecka": 1.4,
+          "Tallon Griekspoor": 2.92
+        },
+        "market_type": "Moneyline",
+        "match_id": 548047,
+        "odd": 1.4,
+        "odds_contract_activation": {
+          "activation_commit": "034c3c803228269d9d89d09909d56a88c7afe7ff",
+          "activation_observed_at_utc": "2026-10-22T17:33:36+00:00",
+          "activation_run_id": "39823665226",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": null,
+          "cache_age_seconds": 0,
+          "capture_kind": "feed_observed_at_capture",
+          "captured_at_utc": "2026-10-22T17:33:36+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/atp",
+          "event_id": 548047,
+          "freshness_status": "OBSERVED_AT_CAPTURE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.32407407407407407,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "verified_provider_pre_match_feed",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": null,
+          "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+          "source": "RapidAPI Tennis API / pre-match match-winner feed"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 33860,
+            "name": "Tallon Griekspoor"
+          },
+          "b": {
+            "id": 61838,
+            "name": "Jiri Lehecka"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "bb782837970b43652661",
+        "selected_player": "Jiri Lehecka",
+        "selected_side": "b",
+        "sharp_estimate_pct": 72.13,
+        "snapshot_key": "mi2_69adad260ee34598ad997b5d0f3fc292",
+        "surface": "I.hard",
+        "tour": "atp",
+        "tournament": "European Open - Brussels",
+        "tournament_id": 21358
+      },
+      "settlement": null
+    },
+    {
+      "key": "mi2_760ef3c5c1b24d5486a07a1496ffeb9d:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-22T17:36:48+00:00",
+        "canonical_match_instance_id": "mi2_760ef3c5c1b24d5486a07a1496ffeb9d",
+        "commence_time_utc": "2026-10-23T07:00:00+00:00",
+        "competition_evidence_policy": {
+          "active": false,
+          "aggregation_change_id": "CHANGE-2026-10-20-147",
+          "application": "PROSPECTIVE_ONLY",
+          "change_id": "CHANGE-2026-10-11-105",
+          "config_hash": "d8c2a674bb1b241e2a8c",
+          "effective_from_utc": "2026-10-12T00:00:00Z",
+          "factor_impact_matrix": [
+            {
+              "feature": "comeback_set1",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "forma_recente",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "indoor_outdoor",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "matchup_maos",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "nivel_adversario",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "pressao_ronda",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "qualidade_vitorias",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "recuperacao_sets",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "sazonal",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "servico_carreira",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "servico_recente",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "tiebreak",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "velocidade_piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            }
+          ],
+          "fatigue_load_unweighted": true,
+          "feature_blockers": [],
+          "historical_reclassification": false,
+          "integral_laver_exclusion_claimed": false,
+          "integral_non_ranking_exclusion_claimed": false,
+          "intermediate_policy_version": "atp-ranking-eligible-performance-v1",
+          "known_blockers": [
+            "rapidapi_recent_stats_aggregate",
+            "rapidapi_perf_breakdown_aggregate",
+            "rapidapi_h2h_vs_all_aggregate",
+            "local_result_helpers_without_competition_provenance"
+          ],
+          "mixed_sample_unresolved_treatment": "EXCLUDE_ROW_BLOCK_IF_NO_USABLE_SAMPLE",
+          "policy_mode": "ATP_RANKING_ELIGIBLE_50",
+          "post_t1_policy_version": "atp-ranking-eligible-performance-v2",
+          "pre_t0_policy_version": "laver-only-performance-v1",
+          "registry_factual_taxonomy_reused": true,
+          "registry_sha256": "b0a9d3578b142062ec6a325d72991b40c5c11eec22cc06fd621b6aa019619bc5",
+          "registry_version": "2026-10-11.2",
+          "requested_version": "atp-ranking-eligible-performance-v2",
+          "same_sample_before_weighting": true,
+          "scope": "ATP_ONLY",
+          "scope_reason_code": "COMPETITION_POLICY_ATP_ONLY",
+          "separability_contract": "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE",
+          "status": "OUT_OF_SCOPE_TOUR",
+          "temporal_application": "PER_MATCH_T1_DELTA",
+          "tour": "wta",
+          "v1_effective_from_utc": "2026-10-12T00:00:00Z",
+          "version": "atp-ranking-eligible-performance-v2",
+          "weights": {
+            "davis_exception": 0.5,
+            "next_gen_exception": 0.5,
+            "non_ranking": 0.0,
+            "olympics_exception": 0.5,
+            "ranking_eligible": 1.0,
+            "unresolved": null
+          }
+        },
+        "coverage": {
+          "available_factors": 19,
+          "available_weight": 120.25,
+          "configured_factors": 22,
+          "configured_weight": 144.25,
+          "status": "reduzida",
+          "weighted_pct": 83.4,
+          "weighted_ratio": 0.833622
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": null,
+        "event_key": "mi2_760ef3c5c1b24d5486a07a1496ffeb9d",
+        "expected_edge_pct": 0.08,
+        "fair_odd": 1.539,
+        "fenzobot_index": 75,
+        "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "wta:377903",
+        "line": null,
+        "market": "Moneyline Katie Boulter",
+        "market_memory_eligible": false,
+        "market_memory_status": "PARTIAL",
+        "market_odds_decimal": {
+          "Antonia Ruzic": 2.46,
+          "Katie Boulter": 1.54
+        },
+        "market_type": "Moneyline",
+        "match_id": 377903,
+        "odd": 1.54,
+        "odds_contract_activation": {
+          "activation_commit": "034c3c803228269d9d89d09909d56a88c7afe7ff",
+          "activation_observed_at_utc": "2026-10-22T17:33:37+00:00",
+          "activation_run_id": "39823665226",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": null,
+          "cache_age_seconds": 0,
+          "capture_kind": "feed_observed_at_capture",
+          "captured_at_utc": "2026-10-22T17:33:37+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+          "event_id": 377903,
+          "freshness_status": "OBSERVED_AT_CAPTURE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.615,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "verified_provider_pre_match_feed",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": null,
+          "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+          "source": "RapidAPI Tennis API / pre-match match-winner feed"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 14175,
+            "name": "Katie Boulter"
+          },
+          "b": {
+            "id": 65417,
+            "name": "Antonia Ruzic"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "b2617ede67497886cf72",
+        "selected_player": "Katie Boulter",
+        "selected_side": "a",
+        "sharp_estimate_pct": 64.98,
+        "snapshot_key": "mi2_760ef3c5c1b24d5486a07a1496ffeb9d",
+        "surface": "Hard",
+        "tour": "wta",
+        "tournament": "Japan Open - Osaka",
+        "tournament_id": 16752
+      },
+      "settlement": null
+    },
+    {
+      "key": "mi2_fb5ca899f66a46e0b3d5081c04f8d8e3:moneyline:a:na",
+      "mode": "PAPER",
+      "pregame": {
+        "analyzed_at_utc": "2026-10-22T17:36:48+00:00",
+        "canonical_match_instance_id": "mi2_fb5ca899f66a46e0b3d5081c04f8d8e3",
+        "commence_time_utc": "2026-10-23T08:00:00+00:00",
+        "competition_evidence_policy": {
+          "active": false,
+          "aggregation_change_id": "CHANGE-2026-10-20-147",
+          "application": "PROSPECTIVE_ONLY",
+          "change_id": "CHANGE-2026-10-11-105",
+          "config_hash": "d8c2a674bb1b241e2a8c",
+          "effective_from_utc": "2026-10-12T00:00:00Z",
+          "factor_impact_matrix": [
+            {
+              "feature": "comeback_set1",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "forma_recente",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "h2h",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "h2h_piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "historico_torneio",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "indoor_outdoor",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "matchup_maos",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "nivel_adversario",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "pressao_ronda",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "qualidade_vitorias",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "recuperacao_sets",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "sazonal",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "servico_carreira",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "servico_recente",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "tiebreak",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            },
+            {
+              "feature": "velocidade_piso",
+              "impact": "DECISION_FACTOR_ELIGIBLE",
+              "reason_code": "MATCH_LEVEL_COMPETITION_EVIDENCE_APPLIED",
+              "report_factual_display": "PRESERVED",
+              "separability": "MATCH_LEVEL"
+            }
+          ],
+          "fatigue_load_unweighted": true,
+          "feature_blockers": [],
+          "historical_reclassification": false,
+          "integral_laver_exclusion_claimed": false,
+          "integral_non_ranking_exclusion_claimed": false,
+          "intermediate_policy_version": "atp-ranking-eligible-performance-v1",
+          "known_blockers": [
+            "rapidapi_recent_stats_aggregate",
+            "rapidapi_perf_breakdown_aggregate",
+            "rapidapi_h2h_vs_all_aggregate",
+            "local_result_helpers_without_competition_provenance"
+          ],
+          "mixed_sample_unresolved_treatment": "EXCLUDE_ROW_BLOCK_IF_NO_USABLE_SAMPLE",
+          "policy_mode": "ATP_RANKING_ELIGIBLE_50",
+          "post_t1_policy_version": "atp-ranking-eligible-performance-v2",
+          "pre_t0_policy_version": "laver-only-performance-v1",
+          "registry_factual_taxonomy_reused": true,
+          "registry_sha256": "b0a9d3578b142062ec6a325d72991b40c5c11eec22cc06fd621b6aa019619bc5",
+          "registry_version": "2026-10-11.2",
+          "requested_version": "atp-ranking-eligible-performance-v2",
+          "same_sample_before_weighting": true,
+          "scope": "ATP_ONLY",
+          "scope_reason_code": "COMPETITION_POLICY_ATP_ONLY",
+          "separability_contract": "FACTOR_LOCAL_MATCH_LEVEL_PROVENANCE",
+          "status": "OUT_OF_SCOPE_TOUR",
+          "temporal_application": "PER_MATCH_T1_DELTA",
+          "tour": "wta",
+          "v1_effective_from_utc": "2026-10-12T00:00:00Z",
+          "version": "atp-ranking-eligible-performance-v2",
+          "weights": {
+            "davis_exception": 0.5,
+            "next_gen_exception": 0.5,
+            "non_ranking": 0.0,
+            "olympics_exception": 0.5,
+            "ranking_eligible": 1.0,
+            "unresolved": null
+          }
+        },
+        "coverage": {
+          "available_factors": 20,
+          "available_weight": 128.25,
+          "configured_factors": 22,
+          "configured_weight": 144.25,
+          "status": "reduzida",
+          "weighted_pct": 88.9,
+          "weighted_ratio": 0.889081
+        },
+        "decision_contract_version": "fenzobot-prelive-v1",
+        "entry_market_observation_id": null,
+        "event_key": "mi2_fb5ca899f66a46e0b3d5081c04f8d8e3",
+        "expected_edge_pct": 6.13,
+        "fair_odd": 1.799,
+        "fenzobot_index": 90,
+        "identity_reason_code": "MINTED_WITH_FACTUAL_ROUND_ID",
+        "identity_schema_version": 2,
+        "identity_status": "CANONICAL_STRONG",
+        "legacy_key": "wta:392591",
+        "line": null,
+        "market": "Moneyline Iva Jovic",
+        "market_memory_eligible": false,
+        "market_memory_status": "PARTIAL",
+        "market_odds_decimal": {
+          "Diana Shnaider": 1.88,
+          "Iva Jovic": 1.909
+        },
+        "market_type": "Moneyline",
+        "match_id": 392591,
+        "odd": 1.909,
+        "odds_contract_activation": {
+          "activation_commit": "034c3c803228269d9d89d09909d56a88c7afe7ff",
+          "activation_observed_at_utc": "2026-10-22T17:33:37+00:00",
+          "activation_run_id": "39823665226",
+          "boundary": "FIRST_POST_MERGE_OBSERVATION_WITH_CONTRACT_FINGERPRINT",
+          "change_id": "CHANGE-2026-10-04-079",
+          "contract_version": "verified-direct-pre-match-v5"
+        },
+        "odds_provenance": {
+          "bookmaker": null,
+          "cache_age_seconds": 0,
+          "capture_kind": "feed_observed_at_capture",
+          "captured_at_utc": "2026-10-22T17:33:37+00:00",
+          "endpoint": "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/ms-api/upcoming/matches/wta",
+          "event_id": 392591,
+          "freshness_status": "OBSERVED_AT_CAPTURE",
+          "from_cache": false,
+          "market_integrity": {
+            "candidate_count": 1,
+            "coherent_bookmaker_count": 1,
+            "dispersion_pp": null,
+            "median_devig_probability_a": 0.49617313275270525,
+            "minimum_operational_bookmakers": 1,
+            "policy_version": "market-quote-integrity-v4",
+            "pricing_basis": "verified_provider_pre_match_feed",
+            "reason_code": null,
+            "status": "AVAILABLE",
+            "valid_candidate_count": 1
+          },
+          "operational_pricing_eligible": true,
+          "provider_timestamp": null,
+          "provider_timestamp_status": "not_exposed_by_upcoming_feed",
+          "source": "RapidAPI Tennis API / pre-match match-winner feed"
+        },
+        "odds_source_contract": {
+          "bookmaker_policy": "named-bookmaker-or-verified-provider-feed-v3",
+          "freshness_semantics": "provider-timestamp-or-direct-provider-capture-v2",
+          "identity_policy_version": "rapidapi-event-bilateral-v1",
+          "market_integrity_policy_version": "market-quote-integrity-v4",
+          "source_contract_version": "verified-direct-pre-match-v5",
+          "source_family": "verified-direct-pre-match"
+        },
+        "odds_source_contract_fingerprint": "d41b30d1af486db68034",
+        "odds_source_contract_version": "verified-direct-pre-match-v5",
+        "players": {
+          "a": {
+            "id": 80381,
+            "name": "Iva Jovic"
+          },
+          "b": {
+            "id": 65911,
+            "name": "Diana Shnaider"
+          }
+        },
+        "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
+        "pricing_model_version": "market-residual-v0.3",
+        "report_id": "e34bc6c232c6d1271cd7",
+        "selected_player": "Iva Jovic",
+        "selected_side": "a",
+        "sharp_estimate_pct": 55.59,
+        "snapshot_key": "mi2_fb5ca899f66a46e0b3d5081c04f8d8e3",
+        "surface": "Hard",
+        "tour": "wta",
+        "tournament": "Ningbo Open - Ningbo",
+        "tournament_id": 16751
+      },
+      "settlement": null
     }
   ],
   "schema_version": 1,
-  "updated_at_utc": "2026-10-22T06:02:57+00:00"
+  "updated_at_utc": "2026-10-22T17:36:50+00:00"
 }
