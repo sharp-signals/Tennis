@@ -359,13 +359,13 @@
       "fenzobot_probability": 0.4113,
       "last_valid_prestart_market_probability": null,
       "match_format": "BO3",
-      "outcome_side": "UNAVAILABLE",
+      "outcome_side": "a",
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3",
       "scheduled_start_utc": "2026-10-19T08:00:00+00:00",
       "selected_side": "a",
       "selected_side_market_position": "UNDERDOG",
-      "selected_side_won": null,
+      "selected_side_won": true,
       "snapshot_key": "mi2_25a97acee8464a3095a900d51ef52015",
       "surface": "I.hard",
       "tour": "atp",
@@ -397,13 +397,13 @@
       "fenzobot_probability": 0.5276,
       "last_valid_prestart_market_probability": null,
       "match_format": "BO3",
-      "outcome_side": "UNAVAILABLE",
+      "outcome_side": "a",
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3",
       "scheduled_start_utc": "2026-10-21T05:30:00+00:00",
       "selected_side": "a",
       "selected_side_market_position": "UNDERDOG",
-      "selected_side_won": null,
+      "selected_side_won": true,
       "snapshot_key": "mi2_259272282ad44664b5410aa71ccc11ef",
       "surface": "Hard",
       "tour": "wta",
@@ -429,7 +429,7 @@
       "validation_id": "01cb573dedc2fdb9a92f270a"
     }
   ],
-  "generated_at_utc": "2026-10-22T06:00:02+00:00",
+  "generated_at_utc": "2026-10-22T07:54:44+00:00",
   "guerra_selection_v1": {
     "audit_v1": {
       "claims": "DESCRIPTIVE_ONLY_NO_AUTOMATIC_WEIGHT_CHANGE",
@@ -488,7 +488,7 @@
           "SELECTION_SIDE_UNRESOLVED": 3
         }
       },
-      "factor_index_records": 3936,
+      "factor_index_records": 3961,
       "factor_index_status": "AVAILABLE",
       "factors": [
         {
@@ -3713,25 +3713,25 @@
     },
     "entry_market_usable": 22,
     "fenzobot": {
-      "accuracy_pct": 58.82,
-      "brier_score": 0.237365,
-      "log_loss": 0.667215,
-      "sample_size": 17
+      "accuracy_pct": 57.89,
+      "brier_score": 0.242365,
+      "log_loss": 0.677395,
+      "sample_size": 19
     },
     "market": {
-      "accuracy_pct": 64.71,
-      "brier_score": 0.226954,
-      "log_loss": 0.645341,
-      "sample_size": 17
+      "accuracy_pct": 57.89,
+      "brier_score": 0.238912,
+      "log_loss": 0.669882,
+      "sample_size": 19
     },
     "paired_delta": {
-      "brier": 0.010411,
-      "log_loss": 0.021874
+      "brier": 0.003453,
+      "log_loss": 0.007513
     },
     "sample_size": 22,
-    "settled_sample_size": 17,
-    "win_rate_pct": 35.29,
-    "wins": 6
+    "settled_sample_size": 19,
+    "win_rate_pct": 42.11,
+    "wins": 8
   },
   "mode": "PROSPECTIVE_SHADOW_VALIDATION",
   "prospective_classifications": [
@@ -17112,25 +17112,25 @@
         },
         "entry_market_usable": 1,
         "fenzobot": {
-          "accuracy_pct": null,
-          "brier_score": null,
-          "log_loss": null,
-          "sample_size": 0
+          "accuracy_pct": 100.0,
+          "brier_score": 0.223162,
+          "log_loss": 0.639417,
+          "sample_size": 1
         },
         "market": {
-          "accuracy_pct": null,
-          "brier_score": null,
-          "log_loss": null,
-          "sample_size": 0
+          "accuracy_pct": 0.0,
+          "brier_score": 0.276992,
+          "log_loss": 0.747181,
+          "sample_size": 1
         },
         "paired_delta": {
-          "brier": null,
-          "log_loss": null
+          "brier": -0.05383,
+          "log_loss": -0.107764
         },
         "sample_size": 1,
-        "settled_sample_size": 0,
-        "win_rate_pct": null,
-        "wins": 0
+        "settled_sample_size": 1,
+        "win_rate_pct": 100.0,
+        "wins": 1
       },
       "6c322bca79a256bacc0ed8add53704ef003ce8eb": {
         "average_selected_fenzobot_probability": 0.5368,
@@ -17305,24 +17305,24 @@
         "entry_market_usable": 2,
         "fenzobot": {
           "accuracy_pct": 0.0,
-          "brier_score": 0.337793,
-          "log_loss": 0.870362,
-          "sample_size": 1
+          "brier_score": 0.342181,
+          "log_loss": 0.879397,
+          "sample_size": 2
         },
         "market": {
           "accuracy_pct": 0.0,
-          "brier_score": 0.386262,
-          "log_loss": 0.971539,
-          "sample_size": 1
+          "brier_score": 0.395188,
+          "log_loss": 0.990658,
+          "sample_size": 2
         },
         "paired_delta": {
-          "brier": -0.048469,
-          "log_loss": -0.101177
+          "brier": -0.053007,
+          "log_loss": -0.111261
         },
         "sample_size": 2,
-        "settled_sample_size": 1,
+        "settled_sample_size": 2,
         "win_rate_pct": 100.0,
-        "wins": 1
+        "wins": 2
       },
       "e00a0010f7a1495646efd25d0ffa41a33773fae0": {
         "average_selected_fenzobot_probability": 0.4471,
@@ -17370,25 +17370,25 @@
         },
         "entry_market_usable": 22,
         "fenzobot": {
-          "accuracy_pct": 58.82,
-          "brier_score": 0.237365,
-          "log_loss": 0.667215,
-          "sample_size": 17
+          "accuracy_pct": 57.89,
+          "brier_score": 0.242365,
+          "log_loss": 0.677395,
+          "sample_size": 19
         },
         "market": {
-          "accuracy_pct": 64.71,
-          "brier_score": 0.226954,
-          "log_loss": 0.645341,
-          "sample_size": 17
+          "accuracy_pct": 57.89,
+          "brier_score": 0.238912,
+          "log_loss": 0.669882,
+          "sample_size": 19
         },
         "paired_delta": {
-          "brier": 0.010411,
-          "log_loss": 0.021874
+          "brier": 0.003453,
+          "log_loss": 0.007513
         },
         "sample_size": 22,
-        "settled_sample_size": 17,
-        "win_rate_pct": 35.29,
-        "wins": 6
+        "settled_sample_size": 19,
+        "win_rate_pct": 42.11,
+        "wins": 8
       }
     },
     "pricing_model": {
@@ -17404,25 +17404,25 @@
         },
         "entry_market_usable": 22,
         "fenzobot": {
-          "accuracy_pct": 58.82,
-          "brier_score": 0.237365,
-          "log_loss": 0.667215,
-          "sample_size": 17
+          "accuracy_pct": 57.89,
+          "brier_score": 0.242365,
+          "log_loss": 0.677395,
+          "sample_size": 19
         },
         "market": {
-          "accuracy_pct": 64.71,
-          "brier_score": 0.226954,
-          "log_loss": 0.645341,
-          "sample_size": 17
+          "accuracy_pct": 57.89,
+          "brier_score": 0.238912,
+          "log_loss": 0.669882,
+          "sample_size": 19
         },
         "paired_delta": {
-          "brier": 0.010411,
-          "log_loss": 0.021874
+          "brier": 0.003453,
+          "log_loss": 0.007513
         },
         "sample_size": 22,
-        "settled_sample_size": 17,
-        "win_rate_pct": 35.29,
-        "wins": 6
+        "settled_sample_size": 19,
+        "win_rate_pct": 42.11,
+        "wins": 8
       }
     },
     "selected_side_market_position": {
@@ -17470,25 +17470,25 @@
         },
         "entry_market_usable": 19,
         "fenzobot": {
-          "accuracy_pct": 66.67,
-          "brier_score": 0.226356,
-          "log_loss": 0.644993,
-          "sample_size": 15
+          "accuracy_pct": 64.71,
+          "brier_score": 0.233239,
+          "log_loss": 0.658985,
+          "sample_size": 17
         },
         "market": {
-          "accuracy_pct": 60.0,
-          "brier_score": 0.223881,
-          "log_loss": 0.638966,
-          "sample_size": 15
+          "accuracy_pct": 52.94,
+          "brier_score": 0.237607,
+          "log_loss": 0.667144,
+          "sample_size": 17
         },
         "paired_delta": {
-          "brier": 0.002475,
-          "log_loss": 0.006027
+          "brier": -0.004368,
+          "log_loss": -0.008159
         },
         "sample_size": 19,
-        "settled_sample_size": 15,
-        "win_rate_pct": 40.0,
-        "wins": 6
+        "settled_sample_size": 17,
+        "win_rate_pct": 47.06,
+        "wins": 8
       }
     },
     "tour": {
@@ -17504,25 +17504,25 @@
         },
         "entry_market_usable": 13,
         "fenzobot": {
-          "accuracy_pct": 55.56,
-          "brier_score": 0.238694,
-          "log_loss": 0.669771,
-          "sample_size": 9
+          "accuracy_pct": 50.0,
+          "brier_score": 0.249482,
+          "log_loss": 0.691637,
+          "sample_size": 10
         },
         "market": {
-          "accuracy_pct": 55.56,
-          "brier_score": 0.235541,
-          "log_loss": 0.66256,
-          "sample_size": 9
+          "accuracy_pct": 50.0,
+          "brier_score": 0.252399,
+          "log_loss": 0.697282,
+          "sample_size": 10
         },
         "paired_delta": {
-          "brier": 0.003153,
-          "log_loss": 0.007211
+          "brier": -0.002917,
+          "log_loss": -0.005645
         },
         "sample_size": 13,
-        "settled_sample_size": 9,
-        "win_rate_pct": 44.44,
-        "wins": 4
+        "settled_sample_size": 10,
+        "win_rate_pct": 50.0,
+        "wins": 5
       },
       "wta": {
         "average_selected_fenzobot_probability": 0.495433,
@@ -17536,25 +17536,25 @@
         },
         "entry_market_usable": 9,
         "fenzobot": {
-          "accuracy_pct": 62.5,
-          "brier_score": 0.23587,
-          "log_loss": 0.66434,
-          "sample_size": 8
+          "accuracy_pct": 66.67,
+          "brier_score": 0.234458,
+          "log_loss": 0.661571,
+          "sample_size": 9
         },
         "market": {
-          "accuracy_pct": 75.0,
-          "brier_score": 0.217293,
-          "log_loss": 0.625969,
-          "sample_size": 8
+          "accuracy_pct": 66.67,
+          "brier_score": 0.223926,
+          "log_loss": 0.639437,
+          "sample_size": 9
         },
         "paired_delta": {
-          "brier": 0.018577,
-          "log_loss": 0.038371
+          "brier": 0.010532,
+          "log_loss": 0.022134
         },
         "sample_size": 9,
-        "settled_sample_size": 8,
-        "win_rate_pct": 25.0,
-        "wins": 2
+        "settled_sample_size": 9,
+        "win_rate_pct": 33.33,
+        "wins": 3
       }
     }
   },
