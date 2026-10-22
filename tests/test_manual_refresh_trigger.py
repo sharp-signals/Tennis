@@ -53,6 +53,9 @@ class ManualRefreshTriggerTests(unittest.TestCase):
     def test_explicit_dispatch_is_supported(self):
         self.assertTrue(needs_refresh('workflow_dispatch', '', self.root))
 
+    def test_sheet_repository_dispatch_is_supported(self):
+        self.assertTrue(needs_refresh('repository_dispatch', '', self.root))
+
     def test_schedule_recovers_valid_newer_sheet_aggregate(self):
         current = {
             'schema_version': 2,
