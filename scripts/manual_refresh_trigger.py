@@ -60,7 +60,7 @@ def scheduled_refresh_needed(root: Path) -> bool:
 
 
 def needs_refresh(event: str, source_sha: str, root: Path = Path('.')) -> bool:
-    if event == 'workflow_dispatch':
+    if event in {'workflow_dispatch', 'repository_dispatch'}:
         return True
     if event == 'schedule':
         return scheduled_refresh_needed(root)

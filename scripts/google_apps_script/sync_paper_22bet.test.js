@@ -407,6 +407,18 @@ test('GitHub content is Base64-encoded from UTF-8 bytes', () => {
   assert.equal(context.githubContentBase64_('ação'), 'YcOnw6Nv');
 });
 
+test('successful Sheet publication dispatches the derived dashboard refresh', () => {
+  let request = null;
+  context.UrlFetchApp = {fetch(url, options) {
+    request = {url, options};
+    return {getResponseCode: () => 204, getContentText: () => ''};
+  }};
+  const result = context.dispatchObservationalRefresh_('secret', 'sharp-signals/Tennis', 'main');
+  assert.equal(request.url, 'https://api.github.com/repos/sharp-signals/Tennis/dispatches');
+  assert.equal(JSON.parse(request.options.payload).event_type, 'paper_sheet_synced');
+  assert.match(result, /dashboard solicitada/i);
+});
+
 test('derived linkage changes semantic fingerprint with identical sheet rows', () => {
   const rows = [['same', 'rows']];
   const missing = context.semanticFingerprintMaterial_(rows, {linkage: {SNAPSHOT_NOT_FOUND: 1}, eligible_green_strong: 0});

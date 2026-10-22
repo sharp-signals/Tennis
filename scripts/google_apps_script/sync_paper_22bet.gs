@@ -118,7 +118,33 @@ function syncPaperTradingToGitHub() {
   if (writeResponse.getResponseCode() < 200 || writeResponse.getResponseCode() >= 300) {
     throw new Error('Não foi possível publicar o resumo: HTTP ' + writeResponse.getResponseCode() + ': ' + writeResponse.getContentText());
   }
-  return 'Métricas PAPER 22Bet sincronizadas com sucesso.';
+  const refreshStatus = dispatchObservationalRefresh_(token, repository, branch);
+  return 'Métricas PAPER 22Bet sincronizadas com sucesso. ' + refreshStatus;
+}
+
+function dispatchObservationalRefresh_(token, repository, branch) {
+  const response = UrlFetchApp.fetch('https://api.github.com/repos/' + repository + '/dispatches', {
+    method: 'post',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      event_type: 'paper_sheet_synced',
+      client_payload: {branch: branch, source: 'google_apps_script'},
+    }),
+    muteHttpExceptions: true,
+  });
+  if (response.getResponseCode() === 204) {
+    return 'Atualização derivada do dashboard solicitada.';
+  }
+  console.warn(
+    'Resumo publicado, mas o refresh automático devolveu HTTP ' +
+    response.getResponseCode() + ': ' + response.getContentText(),
+  );
+  return 'Dashboard em fallback automático; não é necessário repetir a sincronização.';
 }
 
 /**
