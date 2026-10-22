@@ -910,6 +910,8 @@ function buildPaperTradingPayload_(token, repository, branch) {
     selected_candidates: selectedCandidates,
     by_market: finishCollection_(guerraByMarket),
     by_side: finishCollection_(guerraBySide),
+    by_stage: finishCollection_(guerraSegmentGroups['Fase do torneio'] || {}),
+    by_stage_and_alignment: finishCollection_(guerraSegmentGroups['Fase × alinhamento'] || {}),
     moneyline_review_routes: guerraReviewRoutes,
     underdog_pair_completeness: pairCompleteness,
     linkage: linkage,
@@ -1289,6 +1291,14 @@ function auditIndexBand_(rawIndex) {
   return '<50';
 }
 
+function auditRoundStage_(snapshot) {
+  const stage = String(snapshot && snapshot.r || '').trim().toUpperCase();
+  if (stage === 'QUALIFYING') return 'Qualificação';
+  if (stage === 'EARLY_ROUNDS') return 'Primeiras rondas';
+  if (stage === 'LATE_STAGES') return 'Fases finais (QF/SF/F)';
+  return 'Ronda não resolvida';
+}
+
 function addAuditStats_(collection, key, row, tracking) {
   const label = String(key || 'N/D');
   if (!collection[label]) collection[label] = newStats_();
@@ -1332,6 +1342,7 @@ function addGuerraAuditRow_(factorGroups, segmentGroups, quality, seenLegs, row,
   const alignment = snapshot && selectedSide && snapshot.m
     ? (snapshot.m === selectedSide ? 'Alinhado com Fenzobot' : 'Divergente do Fenzobot')
     : 'N/D';
+  const roundStage = auditRoundStage_(snapshot);
   const dimensions = {
     'Circuito': String(tour || 'N/D').toUpperCase(),
     'Mercado': marketType,
@@ -1342,6 +1353,8 @@ function addGuerraAuditRow_(factorGroups, segmentGroups, quality, seenLegs, row,
     'Piso': surface,
     'Índice Fenzobot': auditIndexBand_(selectedIndex),
     'Alinhamento': alignment,
+    'Fase do torneio': roundStage,
+    'Fase × alinhamento': roundStage + ' · ' + alignment,
     'Tipo de ligação': retrospective ? 'Retrospetiva' : 'Ex ante',
   };
   Object.keys(dimensions).forEach(dimension => {

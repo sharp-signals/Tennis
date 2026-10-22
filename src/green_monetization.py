@@ -17,14 +17,15 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import forward_only, forward_only_projections, paper_trading
+from . import forward_only, forward_only_projections, paper_trading, round_stage
 
 
-CHANGE_ID = "CHANGE-2026-10-07-091"
-SCHEMA_VERSION = 1
+CHANGE_ID = "CHANGE-2026-10-22-152"
+SCHEMA_VERSION = 2
 METRIC_ID = "GREEN_MONETIZATION_V1"
 STAKE_EUR = Decimal("10.00")
 DEFAULT_OUTPUT_PATH = Path("data/validation/green-monetization-v1.json")
+DEFAULT_SNAPSHOTS_PATH = Path("data/calibration_snapshots.json")
 DEFAULT_LEGACY_EXCLUSIONS_PATH = Path("data/paper_integrity_exclusions.json")
 DEFAULT_MARKET_EXCLUSIONS_PATH = Path("data/validation/market-integrity-exclusions-v1.json")
 # This manifest is intentionally narrower than the integrity manifests above:
@@ -98,6 +99,28 @@ def _market_bucket(value: Any) -> str:
     return "Other"
 
 
+def _snapshot_stage(snapshot: Mapping[str, Any]) -> str:
+    evidence = _mapping(snapshot.get("identity_evidence"))
+    return round_stage.classify_round_stage(
+        round_id=snapshot.get("round_id") or evidence.get("round_id"),
+        round_label=snapshot.get("round"),
+    )
+
+
+def _snapshot_alignment(snapshot: Mapping[str, Any]) -> str:
+    divergence = _mapping(_mapping(snapshot.get("metrics")).get("divergencia"))
+    model = str(divergence.get("indice_favorece") or "").strip().casefold()
+    market = str(divergence.get("mercado_favorece") or "").strip().casefold()
+    if model and market:
+        return "ALIGNED_WITH_MARKET" if model == market else "DIVERGENT_FROM_MARKET"
+    kind = str(divergence.get("tipo") or "").strip().casefold()
+    if kind in {"alinhamento", "eficiente"}:
+        return "ALIGNED_WITH_MARKET"
+    if kind == "divergencia":
+        return "DIVERGENT_FROM_MARKET"
+    return "ALIGNMENT_UNRESOLVED"
+
+
 def _leg_identity(entry: Mapping[str, Any]) -> tuple[str | None, str | None]:
     pregame = _mapping(entry.get("pregame"))
     snapshot_key = str(pregame.get("snapshot_key") or "").strip()
@@ -155,6 +178,7 @@ def _public_bucket(bucket: Mapping[str, Any]) -> dict[str, Any]:
 def build_report(
     *,
     paper_path: Path = paper_trading.DEFAULT_PATH,
+    snapshots_path: Path = DEFAULT_SNAPSHOTS_PATH,
     legacy_exclusions_path: Path = DEFAULT_LEGACY_EXCLUSIONS_PATH,
     market_exclusions_path: Path = DEFAULT_MARKET_EXCLUSIONS_PATH,
     projection_exclusions_path: Path = DEFAULT_PROJECTION_EXCLUSIONS_PATH,
@@ -166,6 +190,12 @@ def build_report(
     paper_path = Path(paper_path)
     source_exists = paper_path.is_file()
     entries = paper_trading.read_entries(paper_path)
+    snapshots_document = _read_json(Path(snapshots_path))
+    snapshots_by_key = {
+        str(row.get("key")): row
+        for row in snapshots_document.get("snapshots", [])
+        if isinstance(row, Mapping) and row.get("key")
+    }
     if prospective_only:
         if boundary is None or not boundary.active:
             raise ValueError("prospective_only_requires_active_forward_only_boundary")
@@ -182,6 +212,8 @@ def build_report(
     seen: set[str] = set()
     total = _empty_bucket()
     buckets = {name: _empty_bucket() for name in ("Moneyline", "Handicap", "Other")}
+    stage_buckets: dict[str, dict[str, Any]] = {}
+    stage_alignment_buckets: dict[str, dict[str, Any]] = {}
     provenance_rows: list[dict[str, Any]] = []
 
     for entry in entries:
@@ -219,7 +251,13 @@ def build_report(
         seen.add(str(identity))
 
         bucket = buckets[_market_bucket(pregame.get("market_type"))]
-        for target in (total, bucket):
+        snapshot = _mapping(snapshots_by_key.get(str(pregame.get("snapshot_key") or "")))
+        stage = _snapshot_stage(snapshot)
+        alignment = _snapshot_alignment(snapshot)
+        stage_bucket = stage_buckets.setdefault(stage, _empty_bucket())
+        cross_key = f"{stage}|{alignment}"
+        cross_bucket = stage_alignment_buckets.setdefault(cross_key, _empty_bucket())
+        for target in (total, bucket, stage_bucket, cross_bucket):
             target["eligible_entries"] += 1
             if result is None:
                 target["pending_entries"] += 1
@@ -239,6 +277,8 @@ def build_report(
             "identity": identity,
             "odd": str(odd),
             "result": result or "PENDING",
+            "stage": stage,
+            "alignment": alignment,
         })
 
     public_total = _public_bucket(total)
@@ -285,6 +325,16 @@ def build_report(
             for name, bucket in buckets.items()
             if bucket["eligible_entries"]
         },
+        "by_stage": {
+            name: _public_bucket(bucket)
+            for name, bucket in sorted(stage_buckets.items())
+            if bucket["eligible_entries"]
+        },
+        "by_stage_and_alignment": {
+            name: _public_bucket(bucket)
+            for name, bucket in sorted(stage_alignment_buckets.items())
+            if bucket["eligible_entries"]
+        },
         "universes": {
             "paper_technical_source": True,
             "guerra_selection_v1": "SUPERSEDED_NOT_INCLUDED",
@@ -313,6 +363,7 @@ def write_report(report: Mapping[str, Any], path: Path = DEFAULT_OUTPUT_PATH) ->
 def build_and_write(
     *,
     paper_path: Path = paper_trading.DEFAULT_PATH,
+    snapshots_path: Path = DEFAULT_SNAPSHOTS_PATH,
     legacy_exclusions_path: Path = DEFAULT_LEGACY_EXCLUSIONS_PATH,
     market_exclusions_path: Path = DEFAULT_MARKET_EXCLUSIONS_PATH,
     projection_exclusions_path: Path = DEFAULT_PROJECTION_EXCLUSIONS_PATH,
@@ -324,6 +375,7 @@ def build_and_write(
 ) -> dict[str, Any]:
     report = build_report(
         paper_path=paper_path,
+        snapshots_path=snapshots_path,
         legacy_exclusions_path=legacy_exclusions_path,
         market_exclusions_path=market_exclusions_path,
         projection_exclusions_path=projection_exclusions_path,
@@ -335,6 +387,7 @@ def build_and_write(
     if boundary.active:
         prospective = build_report(
             paper_path=paper_path,
+            snapshots_path=snapshots_path,
             legacy_exclusions_path=legacy_exclusions_path,
             market_exclusions_path=market_exclusions_path,
             generated_at_utc=generated_at_utc,

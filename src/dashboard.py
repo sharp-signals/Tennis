@@ -559,12 +559,17 @@ def _paper_22bet(document: Mapping[str, Any] | None) -> dict[str, Any]:
             "flat_stake_projection": _manual_flat_stake_projection({}),
         }
     source = _mapping(document.get("source"))
+    guerra = _mapping(_mapping(document.get("by_strategy")).get("GUERRA_SELECTION_V1"))
     summary = _copy_summary(document.get("summary"))
     return {
         "status": "AVAILABLE",
         **summary,
         "by_market": _copy_summary_collection(document.get("by_market")),
         "by_side": _copy_summary_collection(document.get("by_side")),
+        "by_stage": _copy_summary_collection(guerra.get("by_stage")),
+        "by_stage_and_alignment": _copy_summary_collection(
+            guerra.get("by_stage_and_alignment")
+        ),
         "synced_at_utc": source.get("synced_at_utc"),
         "reference_bookmaker": source.get("reference_bookmaker") or "22Bet",
         "flat_stake_projection": _manual_flat_stake_projection(summary),
@@ -1113,6 +1118,7 @@ def build_dashboard(*, root: Path = Path("."), generated_at_utc: str | None = No
     try:
         green_money = green_monetization.build_report(
             paper_path=root / "data/paper_trades.json",
+            snapshots_path=root / "data/calibration_snapshots.json",
             legacy_exclusions_path=root / "data/paper_integrity_exclusions.json",
             market_exclusions_path=root / "data/validation/market-integrity-exclusions-v1.json",
             projection_exclusions_path=(
@@ -1525,6 +1531,7 @@ def build_and_write(
     if boundary.active:
         green = green_monetization.build_and_write(
             paper_path=root / "data/paper_trades.json",
+            snapshots_path=root / "data/calibration_snapshots.json",
             output_path=root / green_monetization.DEFAULT_OUTPUT_PATH,
             legacy_exclusions_path=root / "data/paper_integrity_exclusions.json",
             market_exclusions_path=(
