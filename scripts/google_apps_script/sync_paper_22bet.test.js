@@ -52,6 +52,7 @@ test('Guerra audit relates factor direction to the selected side and real ROI', 
   values[15] = 'snapshot:one'; values[19] = -2.5;
   const snapshot = {
     t: 'ATP', s: 'Hard', a: 'Alpha', b: 'Beta', m: 'a', ia: 78, ib: 22,
+    r: 'QUALIFYING',
     f: [['forma_recente', 'a', 4], ['fadiga', 'b', 2]],
   };
   const factors = {}, segments = {}, seen = {};
@@ -80,6 +81,12 @@ test('Guerra audit relates factor direction to the selected side and real ROI', 
     .find(item => item.dimension === 'Mercado');
   assert.equal(market.group, 'Handicap negativo');
   assert.equal(market.units, 0.85);
+  const stageRows = context.finishGuerraSegmentAudit_(segments);
+  const stage = stageRows.find(item => item.dimension === 'Fase do torneio');
+  const stageAlignment = stageRows.find(item => item.dimension === 'Fase × alinhamento');
+  assert.equal(stage.group, 'Qualificação');
+  assert.equal(stage.roi_pct, 85);
+  assert.equal(stageAlignment.group, 'Qualificação · Alinhado com Fenzobot');
 });
 
 test('legacy report factors remain eligible without pretending to be a canonical snapshot', () => {

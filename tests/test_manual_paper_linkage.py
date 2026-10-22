@@ -42,6 +42,7 @@ class ManualPaperLinkageIndexTests(unittest.TestCase):
             "tour": "atp",
             "tier": "500",
             "surface": "Hard",
+            "identity_evidence": {"round_id": "9"},
             "player_a": {"name": "A"},
             "player_b": {"name": "B"},
             "outcome": {"winner_side": "a"},
@@ -72,8 +73,22 @@ class ManualPaperLinkageIndexTests(unittest.TestCase):
         self.assertEqual(result["records"]["snapshot:1"]["p"], [0.58, 0.42])
         self.assertEqual(result["records"]["snapshot:1"]["me"], [0.55, 0.45])
         self.assertEqual(result["records"]["snapshot:1"]["mc"], [0.60, 0.40])
+        self.assertEqual(result["records"]["snapshot:1"]["r"], "LATE_STAGES")
         self.assertNotIn("outcome", str(result).lower())
         self.assertNotIn("winner", str(result).lower())
+
+    def test_factor_index_keeps_qualifying_and_unknown_rounds_separate(self):
+        snapshots = [
+            {"key": "q", "identity_evidence": {"round_id": 2}, "metrics": {"divergencia": {
+                "fatores_status": {"ranking": {"direcao_impacto": "a", "peso_efetivo": 1}},
+            }}},
+            {"key": "unknown", "identity_evidence": {"round_id": 99}, "metrics": {"divergencia": {
+                "fatores_status": {"ranking": {"direcao_impacto": "a", "peso_efetivo": 1}},
+            }}},
+        ]
+        result = manual_paper_linkage.build_factor_index(snapshots)
+        self.assertEqual(result["records"]["q"]["r"], "QUALIFYING")
+        self.assertEqual(result["records"]["unknown"]["r"], "ROUND_UNRESOLVED")
 
     def test_legacy_public_report_recovers_factor_evidence_without_inventing_edge(self):
         dashboard = {"days": [{

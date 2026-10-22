@@ -51,9 +51,11 @@ class GreenMonetizationTests(unittest.TestCase):
         self.legacy = self.root / "legacy.json"
         self.market = self.root / "market.json"
         self.projection = self.root / "projection.json"
+        self.snapshots = self.root / "snapshots.json"
         write_json(self.legacy, {"schema_version": 1, "exclusions": []})
         write_json(self.market, {"schema_version": 1, "exclusions": []})
         write_json(self.projection, {"schema_version": 1, "exclusions": []})
+        write_json(self.snapshots, {"schema_version": 1, "snapshots": []})
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -62,6 +64,7 @@ class GreenMonetizationTests(unittest.TestCase):
         write_json(self.paper, {"schema_version": 1, "entries": entries})
         return green_monetization.build_report(
             paper_path=self.paper,
+            snapshots_path=self.snapshots,
             legacy_exclusions_path=self.legacy,
             market_exclusions_path=self.market,
             projection_exclusions_path=self.projection,
@@ -103,6 +106,33 @@ class GreenMonetizationTests(unittest.TestCase):
         self.assertEqual(report["excluded_entries"], 1)
         self.assertEqual(report["exclusion_reasons"], {"DUPLICATE_GREEN_LEG": 1})
         self.assertEqual(report["status"], "DEGRADED")
+
+    def test_segments_by_qualifying_early_late_and_market_alignment(self):
+        write_json(self.snapshots, {"schema_version": 1, "snapshots": [
+            {"key": "atp:q", "identity_evidence": {"round_id": 1}, "metrics": {"divergencia": {
+                "indice_favorece": "Alpha", "mercado_favorece": "Alpha",
+            }}},
+            {"key": "atp:early", "identity_evidence": {"round_id": 5}, "metrics": {"divergencia": {
+                "indice_favorece": "Alpha", "mercado_favorece": "Beta",
+            }}},
+            {"key": "atp:late", "identity_evidence": {"round_id": 9}, "metrics": {"divergencia": {
+                "indice_favorece": "Alpha", "mercado_favorece": "Alpha",
+            }}},
+        ]})
+        report = self.build([
+            leg("q", snapshot="atp:q", odd=2.0, result="WIN"),
+            leg("early", snapshot="atp:early", odd=2.0, result="LOSS"),
+            leg("late", snapshot="atp:late", odd=2.0, result="WIN"),
+            leg("unknown", snapshot="atp:unknown", odd=2.0, result="LOSS"),
+        ])
+        self.assertEqual(report["by_stage"]["QUALIFYING"]["roi_pct"], 100.0)
+        self.assertEqual(report["by_stage"]["EARLY_ROUNDS"]["roi_pct"], -100.0)
+        self.assertEqual(report["by_stage"]["LATE_STAGES"]["wins"], 1)
+        self.assertEqual(report["by_stage"]["ROUND_UNRESOLVED"]["losses"], 1)
+        self.assertEqual(
+            report["by_stage_and_alignment"]["EARLY_ROUNDS|DIVERGENT_FROM_MARKET"]["losses"],
+            1,
+        )
 
     def test_applies_both_exclusion_manifests_with_typed_reasons(self):
         entries = [

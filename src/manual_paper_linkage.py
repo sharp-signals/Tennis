@@ -15,10 +15,12 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urljoin
 
+from . import round_stage
+
 
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_PATH = Path("data/validation/manual-paper-linkage-index-v1.json")
-FACTOR_INDEX_SCHEMA_VERSION = 3
+FACTOR_INDEX_SCHEMA_VERSION = 4
 DEFAULT_FACTOR_OUTPUT_PATH = Path("data/validation/manual-paper-factor-index-v1.json")
 
 
@@ -303,6 +305,13 @@ def build_factor_index(
             # na execução manual e, por isso, nunca são rotulados como CLV.
             "me": probability_pair(entry_market),
             "mc": probability_pair(closing_market),
+            "r": round_stage.classify_round_stage(
+                round_id=(
+                    snapshot.get("round_id")
+                    or _mapping(snapshot.get("identity_evidence")).get("round_id")
+                ),
+                round_label=snapshot.get("round"),
+            ),
             "f": factors,
         }
     for key, raw_record in sorted((legacy_report_factors or {}).items()):
