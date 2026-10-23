@@ -1597,7 +1597,9 @@ def build_and_write(
             _mapping(market_memory_doc),
             manual_paper_linkage.build_legacy_report_factor_records(
                 dashboard, root / "docs" / "relatorios",
+                root / "data" / "cache" / "players",
             ),
+            root / "data" / "cache" / "players",
         ),
         root / manual_paper_linkage.DEFAULT_FACTOR_OUTPUT_PATH,
     )

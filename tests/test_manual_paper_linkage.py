@@ -90,6 +90,101 @@ class ManualPaperLinkageIndexTests(unittest.TestCase):
         self.assertEqual(result["records"]["q"]["r"], "QUALIFYING")
         self.assertEqual(result["records"]["unknown"]["r"], "ROUND_UNRESOLVED")
 
+    def test_factor_index_recovers_old_snapshot_round_from_player_cache(self):
+        snapshot = {
+            "key": "snapshot:old",
+            "tour": "atp",
+            "tournament_id": 99,
+            "commence_time_utc": "2026-08-31T23:00:00Z",
+            "player_a": {"id": 10, "name": "Alpha"},
+            "player_b": {"id": 20, "name": "Beta"},
+            "metrics": {"divergencia": {
+                "fatores_status": {
+                    "ranking": {"direcao_impacto": "a", "peso_efetivo": 1},
+                },
+            }},
+        }
+        cached_match = {
+            "date": "2026-09-01T00:00:00Z",
+            "player1Id": 20,
+            "player2Id": 10,
+            "tournamentId": 99,
+            "roundId": 9,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_root = Path(tmp)
+            for player_id in (10, 20):
+                path = cache_root / "atp" / f"{player_id}.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(
+                    __import__("json").dumps({
+                        "entries": {"recent_matches": {"data": [cached_match]}},
+                    }),
+                    encoding="utf-8",
+                )
+            result = manual_paper_linkage.build_factor_index(
+                [snapshot], player_cache_root=cache_root,
+            )
+        self.assertEqual(result["schema_version"], 5)
+        self.assertEqual(result["records"]["snapshot:old"]["r"], "LATE_STAGES")
+
+    def test_round_recovery_rejects_ambiguous_cache_evidence(self):
+        snapshot = {
+            "tour": "wta",
+            "tournament_id": "88",
+            "commence_time_utc": "2026-10-10T12:00:00Z",
+            "player_a": {"id": 1},
+            "player_b": {"id": 2},
+        }
+        matches = [
+            {"date": "2026-10-10T10:00:00Z", "player1Id": 1, "player2Id": 2,
+             "tournamentId": 88, "roundId": 4},
+            {"date": "2026-10-11T10:00:00Z", "player1Id": 2, "player2Id": 1,
+             "tournamentId": 88, "roundId": 9},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_root = Path(tmp)
+            path = cache_root / "wta" / "1.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                __import__("json").dumps({
+                    "entries": {"recent_matches": {"data": matches}},
+                }),
+                encoding="utf-8",
+            )
+            recovered = manual_paper_linkage.recover_round_id_from_player_cache(
+                snapshot, cache_root,
+            )
+        self.assertIsNone(recovered)
+
+    def test_legacy_round_recovery_uses_exact_names_and_nearby_date(self):
+        evidence = {
+            ("atp", ("alpha one", "beta two")): [
+                (manual_paper_linkage._timestamp("2026-08-24T18:00:00Z"), 4),
+            ],
+        }
+        stage = manual_paper_linkage.recover_round_stage_by_names(
+            tour="ATP",
+            player_a="Alpha One",
+            player_b="Beta Two",
+            report_date="2026-08-23",
+            evidence=evidence,
+        )
+        self.assertEqual(stage, "EARLY_ROUNDS")
+
+    def test_legacy_round_recovery_rejects_two_stages_in_same_window(self):
+        evidence = {
+            ("wta", ("alpha", "beta")): [
+                (manual_paper_linkage._timestamp("2026-10-10T10:00:00Z"), 4),
+                (manual_paper_linkage._timestamp("2026-10-12T10:00:00Z"), 9),
+            ],
+        }
+        stage = manual_paper_linkage.recover_round_stage_by_names(
+            tour="WTA", player_a="Alpha", player_b="Beta",
+            report_date="2026-10-11", evidence=evidence,
+        )
+        self.assertEqual(stage, "ROUND_UNRESOLVED")
+
     def test_legacy_public_report_recovers_factor_evidence_without_inventing_edge(self):
         dashboard = {"days": [{
             "reports": [{
