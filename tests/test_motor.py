@@ -93,6 +93,41 @@ def test_h2h_um_jogo_nao_conta():
     assert r is None or r["classificacao"]["nivel"] <= 1
 
 
+def test_h2h_piso_um_jogo_contribui_apenas_com_peso_residual():
+    """Um H2H único no piso é contexto fraco: 15% de 12 = 1,8."""
+    r = _calcular_divergencia(_payload(1.80, 2.10, {
+        "h2h_piso": {"lider": "A", "a_wins": 1, "b_wins": 0},
+    }))
+    assert r is not None
+    status = r["fatores_status"]["h2h_piso"]
+    assert status["multiplicador_forca"] == 1.0
+    assert status["confianca_amostra"] == 0.15
+    assert status["peso_antes_cap"] == 1.8
+    assert status["peso_efetivo"] == 1.8
+
+
+def test_h2h_piso_tambem_distingue_dominio_da_serie():
+    dominante = _calcular_divergencia(_payload(1.80, 2.10, {
+        "h2h_piso": {"lider": "A", "a_wins": 3, "b_wins": 0},
+    }))["fatores_status"]["h2h_piso"]
+    dividido = _calcular_divergencia(_payload(1.80, 2.10, {
+        "h2h_piso": {"lider": "A", "a_wins": 2, "b_wins": 1},
+    }))["fatores_status"]["h2h_piso"]
+    assert dominante["confianca_amostra"] == dividido["confianca_amostra"] == 0.55
+    assert dominante["peso_efetivo"] == 6.6
+    assert dividido["peso_efetivo"] == 2.2
+
+
+def test_h2h_global_um_jogo_continua_sem_inclinar_indice():
+    r = _calcular_divergencia(_payload(1.80, 2.10, {
+        "h2h": {"lider": "A", "diff": 1, "a_wins": 1, "b_wins": 0},
+        "ranking": {"lider": "B", "diff": 20},
+    }))
+    status = r["fatores_status"]["h2h"]
+    assert status["motivo_exclusao"] == "amostra insuficiente (1 jogo)"
+    assert not status.get("peso_efetivo")
+
+
 def test_h2h_zero_verificado_e_factual_sem_inclinar_indice():
     r = _calcular_divergencia(_payload(
         1.65,
@@ -179,8 +214,37 @@ def test_comeback_e_atenuado_pela_menor_amostra():
     }))
     status = r["fatores_status"]["comeback_set1"]
     assert status["confianca_amostra"] == 0.707
-    assert status["peso_efetivo"] == 4.95
+    assert status["multiplicador_forca"] == 0.8
+    assert status["peso_efetivo"] == 3.96
     assert status["amostra"] == 15
+
+
+def test_velocidade_piso_diferenca_pequena_nao_recebe_forca_total():
+    r = _calcular_divergencia(_payload(1.80, 2.10, {
+        "velocidade_piso": {
+            "lider": "A", "diff": 4, "valor_a": 50, "valor_b": 46,
+            "amostra_a": 30, "amostra_b": 30,
+        },
+    }))
+    status = r["fatores_status"]["velocidade_piso"]
+    assert status["multiplicador_forca"] == 0.3
+    assert status["confianca_amostra"] == 1.0
+    assert status["peso_antes_cap"] == 3.0
+    assert status["peso_efetivo"] == 3.0
+
+
+def test_fator_percentual_combina_magnitude_e_amostra():
+    r = _calcular_divergencia(_payload(1.80, 2.10, {
+        "tiebreak": {
+            "lider": "B", "diff": 9, "valor_a": 45, "valor_b": 54,
+            "amostra_a": 5, "amostra_b": 5,
+        },
+    }))
+    status = r["fatores_status"]["tiebreak"]
+    assert status["multiplicador_forca"] == 0.6
+    assert status["confianca_amostra"] == 0.5
+    assert status["peso_antes_cap"] == 1.5
+    assert status["peso_efetivo"] == 1.5
 
 
 def test_servico_com_zero_observacoes_nao_pontua():
