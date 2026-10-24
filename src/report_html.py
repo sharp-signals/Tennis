@@ -746,6 +746,28 @@ def _calcular_divergencia(payload):
             return None
         return min(sample_a, sample_b)
 
+    def _multiplicadores_percentuais(feature, *, escala_diff=15, n_pleno=30):
+        """Força e confiança conservadoras para fatores percentuais.
+
+        O limiar de ativação continua a ser decidido por cada consumidor.
+        Depois de ativo, o fator conserva um chão moderado de 30%, cresce
+        proporcionalmente com a diferença e só recebe confiança total quando
+        existe amostra bilateral suficiente. Uma amostra não declarada nunca é
+        tratada como confiança plena.
+        """
+        try:
+            diff = abs(float((feature or {}).get("diff") or 0))
+        except (TypeError, ValueError):
+            diff = 0.0
+        forca = max(0.3, min(diff / float(escala_diff), 1.0))
+        amostra = _amostra_bilateral(feature)
+        confianca = (
+            _conf_amostra(amostra, n_pleno)
+            if amostra is not None
+            else 0.5
+        )
+        return forca, confianca, amostra
+
     def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
         # Gate final no ponto real de consumo: dados factuais podem continuar
         # no payload/HTML, mas uma origem não separável nunca inclina o índice.
@@ -775,8 +797,26 @@ def _calcular_divergencia(payload):
     if isinstance(hp, dict) and hp.get("lider") not in (None, "igual"):
         _hp_total = hp.get("a_wins", 0) + hp.get("b_wins", 0)
         if _hp_total >= 1:  # amostra por piso é sempre pequena; 1 jogo já conta, com confiança baixa
-            forca = min(_hp_total / 3.0, 1.0)
-            _add("h2h_piso", hp["lider"], max(forca, 0.5), conf_amostra=_conf_amostra(_hp_total, 6))
+            # Um único confronto no mesmo piso é contexto útil, mas não prova
+            # um padrão. A progressão explícita evita que n=1 receba ~20% do
+            # peso máximo por combinação acidental de dois multiplicadores.
+            if _hp_total == 1:
+                conf_h2h_piso = 0.15
+            elif _hp_total == 2:
+                conf_h2h_piso = 0.35
+            elif _hp_total == 3:
+                conf_h2h_piso = 0.55
+            elif _hp_total <= 5:
+                conf_h2h_piso = 0.75
+            else:
+                conf_h2h_piso = 1.0
+            dominio_h2h_piso = abs(
+                float(hp.get("a_wins", 0)) - float(hp.get("b_wins", 0))
+            ) / float(_hp_total)
+            _add(
+                "h2h_piso", hp["lider"], dominio_h2h_piso,
+                conf_amostra=conf_h2h_piso,
+            )
             _reg_status("h2h_piso", True, hp["lider"], valor_a=hp.get("a_wins"), valor_b=hp.get("b_wins"), amostra=_hp_total)
         else:
             _reg_status("h2h_piso", True, "igual", "amostra insuficiente")
@@ -1027,8 +1067,10 @@ def _calcular_divergencia(payload):
     # NOVO (14/08/2026, a pedido): indoor vs outdoor — mesmo limiar de 3 p.p.
     io = feats.get("indoor_outdoor")
     if isinstance(io, dict) and io.get("lider") not in (None, "igual") and abs(io.get("diff") or 0) >= 3:
-        _add("indoor_outdoor", io["lider"])
-        _reg_status("indoor_outdoor", True, io["lider"], valor_a=io.get("valor_a"), valor_b=io.get("valor_b"))
+        forca, conf, amostra = _multiplicadores_percentuais(io, n_pleno=40)
+        _add("indoor_outdoor", io["lider"], forca, conf_amostra=conf)
+        _reg_status("indoor_outdoor", True, io["lider"], valor_a=io.get("valor_a"), valor_b=io.get("valor_b"),
+                    amostra=amostra, amostra_a=io.get("amostra_a"), amostra_b=io.get("amostra_b"))
     elif isinstance(io, dict) and io.get("lider") == "igual":
         _reg_status("indoor_outdoor", True, "igual", valor_a=io.get("valor_a"), valor_b=io.get("valor_b"))
     elif isinstance(io, dict) and io.get("lider") is not None:
@@ -1052,8 +1094,10 @@ def _calcular_divergencia(payload):
         "fonte_velocidade": _cs_context.get("source"),
     }
     if isinstance(vp, dict) and vp.get("lider") not in (None, "igual") and abs(vp.get("diff") or 0) >= 3:
-        _add("velocidade_piso", vp["lider"])
-        _reg_status("velocidade_piso", True, vp["lider"], valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"), **_vp_extra)
+        forca, conf, amostra = _multiplicadores_percentuais(vp, n_pleno=30)
+        _add("velocidade_piso", vp["lider"], forca, conf_amostra=conf)
+        _reg_status("velocidade_piso", True, vp["lider"], valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"),
+                    amostra=amostra, amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"), **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") == "igual":
         _reg_status("velocidade_piso", True, "igual", valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"), **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") is not None:
@@ -1070,8 +1114,10 @@ def _calcular_divergencia(payload):
     # NOVO (14/08/2026, a pedido): tie-break — mesmo limiar de 3 p.p.
     tb = feats.get("tiebreak")
     if isinstance(tb, dict) and tb.get("lider") not in (None, "igual") and abs(tb.get("diff") or 0) >= 3:
-        _add("tiebreak", tb["lider"])
-        _reg_status("tiebreak", True, tb["lider"], valor_a=tb.get("valor_a"), valor_b=tb.get("valor_b"))
+        forca, conf, amostra = _multiplicadores_percentuais(tb, n_pleno=20)
+        _add("tiebreak", tb["lider"], forca, conf_amostra=conf)
+        _reg_status("tiebreak", True, tb["lider"], valor_a=tb.get("valor_a"), valor_b=tb.get("valor_b"),
+                    amostra=amostra, amostra_a=tb.get("amostra_a"), amostra_b=tb.get("amostra_b"))
     elif isinstance(tb, dict) and tb.get("lider") == "igual":
         _reg_status("tiebreak", True, "igual", valor_a=tb.get("valor_a"), valor_b=tb.get("valor_b"))
     elif isinstance(tb, dict) and tb.get("lider") is not None:
@@ -1084,8 +1130,10 @@ def _calcular_divergencia(payload):
     # limiar de 3 p.p. já usado nos outros fatores percentuais.
     pr = feats.get("pressao_ronda")
     if isinstance(pr, dict) and pr.get("lider") not in (None, "igual") and abs(pr.get("diff") or 0) >= 3:
-        _add("pressao_ronda", pr["lider"])
-        _reg_status("pressao_ronda", True, pr["lider"], valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"))
+        forca, conf, amostra = _multiplicadores_percentuais(pr, n_pleno=20)
+        _add("pressao_ronda", pr["lider"], forca, conf_amostra=conf)
+        _reg_status("pressao_ronda", True, pr["lider"], valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"),
+                    amostra=amostra, amostra_a=pr.get("amostra_a"), amostra_b=pr.get("amostra_b"))
     elif isinstance(pr, dict) and pr.get("lider") == "igual":
         _reg_status("pressao_ronda", True, "igual", valor_a=pr.get("valor_a"), valor_b=pr.get("valor_b"))
     elif isinstance(pr, dict) and pr.get("lider") is not None:
@@ -1104,8 +1152,10 @@ def _calcular_divergencia(payload):
     # NOVO (18/08/2026, a pedido): desempenho vs nível do adversário de hoje
     nv = feats.get("nivel_adversario")
     if isinstance(nv, dict) and nv.get("lider") not in (None, "igual") and abs(nv.get("diff") or 0) >= 3:
-        _add("nivel_adversario", nv["lider"])
-        _reg_status("nivel_adversario", True, nv["lider"], valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"))
+        forca, conf, amostra = _multiplicadores_percentuais(nv, n_pleno=30)
+        _add("nivel_adversario", nv["lider"], forca, conf_amostra=conf)
+        _reg_status("nivel_adversario", True, nv["lider"], valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"),
+                    amostra=amostra, amostra_a=nv.get("amostra_a"), amostra_b=nv.get("amostra_b"))
     elif isinstance(nv, dict) and nv.get("lider") == "igual":
         _reg_status("nivel_adversario", True, "igual", valor_a=nv.get("valor_a"), valor_b=nv.get("valor_b"))
     elif isinstance(nv, dict) and nv.get("lider") is not None:
@@ -1158,7 +1208,8 @@ def _calcular_divergencia(payload):
                     valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"),
                     amostra_a=cb.get("amostra_a"), amostra_b=cb.get("amostra_b"))
     elif isinstance(cb, dict) and cb.get("lider") not in (None, "igual") and abs(cb.get("diff") or 0) >= 3:
-        _add("comeback_set1", cb["lider"], conf_amostra=_conf_amostra(_n_cb, 30))
+        forca, conf, _ = _multiplicadores_percentuais(cb, n_pleno=30)
+        _add("comeback_set1", cb["lider"], forca, conf_amostra=conf)
         _reg_status("comeback_set1", True, cb["lider"], valor_a=cb.get("valor_a"), valor_b=cb.get("valor_b"),
                     amostra=_n_cb, amostra_a=cb.get("amostra_a"), amostra_b=cb.get("amostra_b"))
     elif isinstance(cb, dict) and cb.get("lider") == "igual":
