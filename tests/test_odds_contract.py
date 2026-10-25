@@ -181,6 +181,10 @@ class OperationalOddsContractTests(unittest.TestCase):
             odds, provenance = fetch_data.fetch_rapidapi_embedded_moneyline_with_provenance(match)
         with patch.object(
             fetch_data, "fetch_rapidapi_embedded_moneyline_with_provenance", return_value=(odds, provenance)
+        ), patch.object(
+            fetch_data, "_rapidapi_quote_lineage", return_value={
+                "status": "FIRST_OBSERVATION", "operationally_current": True,
+            },
         ):
             promoted_odds, promoted = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
         self.assertEqual(promoted_odds, {"Alpha One": 2.1, "Beta Two": 1.8})
@@ -204,6 +208,10 @@ class OperationalOddsContractTests(unittest.TestCase):
         with patch.object(
             fetch_data, "fetch_rapidapi_embedded_moneyline_with_provenance",
             return_value=(embedded_odds, embedded_provenance),
+        ), patch.object(
+            fetch_data, "_rapidapi_quote_lineage", return_value={
+                "status": "FIRST_OBSERVATION", "operationally_current": True,
+            },
         ):
             odds, provenance = fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
         self.assertEqual(odds, {"Alpha One": 2.1, "Beta Two": 1.8})
@@ -220,6 +228,111 @@ class OperationalOddsContractTests(unittest.TestCase):
         priced = pricing.estimate_market_residual_pricing(payload, self.divergence())
         self.assertTrue(priced["available"])
         self.assertEqual(priced["market_quote_mode"], "challenger_observed_feed_experimental")
+
+    def test_repeated_timestamp_free_quote_is_not_current_after_six_hours(self):
+        match = self.match()
+        source = {
+            "event_id": "690252",
+            "captured_at_utc": "2026-10-24T17:33:31+00:00",
+            "raw_payload_sha256": "same-provider-payload",
+        }
+        odds = {"Alpha One": 2.14, "Beta Two": 1.70}
+        with tempfile.TemporaryDirectory() as tmp:
+            store = fetch_data.JsonCacheStore(tmp)
+            path = store.entity_path("quote-lineage.json")
+            first = fetch_data._rapidapi_quote_lineage(
+                match, odds, source, store=store, path=path,
+            )
+            source["captured_at_utc"] = "2026-10-25T06:33:36+00:00"
+            repeated = fetch_data._rapidapi_quote_lineage(
+                match, odds, source, store=store, path=path,
+            )
+        self.assertTrue(first["operationally_current"])
+        self.assertFalse(repeated["operationally_current"])
+        self.assertEqual(
+            repeated["status"], "UNCHANGED_BEYOND_VERIFIABLE_WINDOW",
+        )
+        self.assertEqual(repeated["unchanged_age_seconds"], 46805)
+
+    def test_changed_timestamp_free_quote_resets_lineage_and_remains_current(self):
+        match = self.match()
+        source = {
+            "event_id": "690252",
+            "captured_at_utc": "2026-10-24T17:33:31+00:00",
+            "raw_payload_sha256": "provider-payload-a",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            store = fetch_data.JsonCacheStore(tmp)
+            path = store.entity_path("quote-lineage.json")
+            fetch_data._rapidapi_quote_lineage(
+                match, {"Alpha One": 2.14, "Beta Two": 1.70}, source,
+                store=store, path=path,
+            )
+            source.update({
+                "captured_at_utc": "2026-10-25T06:33:36+00:00",
+                "raw_payload_sha256": "provider-payload-b",
+            })
+            changed = fetch_data._rapidapi_quote_lineage(
+                match, {"Alpha One": 2.32, "Beta Two": 1.58}, source,
+                store=store, path=path,
+            )
+        self.assertTrue(changed["operationally_current"])
+        self.assertEqual(changed["status"], "QUOTE_CHANGED")
+
+    def test_promotion_rejects_repeated_unverified_quote_end_to_end(self):
+        match = self.match()
+        odds = {"Alpha One": 2.14, "Beta Two": 1.70}
+        provenance = {
+            "source": "RapidAPI Tennis API / embedded upcoming feed",
+            "endpoint": "upcoming",
+            "event_id": "690252",
+            "captured_at_utc": "2026-10-24T17:33:31+00:00",
+            "capture_kind": "feed_observed_at_capture",
+            "provider_timestamp": None,
+            "bookmaker": None,
+            "from_cache": True,
+            "cache_age_seconds": 0,
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_PROVIDER_TIME",
+            "identity_mapping_status": "VERIFIED_PROVIDER_PLAYER_IDS",
+            "raw_payload_sha256": "same-provider-payload",
+            "provider_side_a": "player1",
+            "provider_side_b": "player2",
+            "operational_pricing_eligible": False,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            store = fetch_data.JsonCacheStore(tmp)
+            path = store.entity_path("quote-lineage.json")
+            with patch.object(
+                fetch_data, "fetch_rapidapi_embedded_moneyline_with_provenance",
+                return_value=(odds, dict(provenance)),
+            ), patch.object(
+                fetch_data, "_RAPIDAPI_QUOTE_LINEAGE_STORE", store,
+            ), patch.object(
+                fetch_data, "_RAPIDAPI_QUOTE_LINEAGE_PATH", path,
+            ):
+                first_odds, first = (
+                    fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
+                )
+            provenance["captured_at_utc"] = "2026-10-25T06:33:36+00:00"
+            with patch.object(
+                fetch_data, "fetch_rapidapi_embedded_moneyline_with_provenance",
+                return_value=(odds, dict(provenance)),
+            ), patch.object(
+                fetch_data, "_RAPIDAPI_QUOTE_LINEAGE_STORE", store,
+            ), patch.object(
+                fetch_data, "_RAPIDAPI_QUOTE_LINEAGE_PATH", path,
+            ):
+                repeated_odds, repeated = (
+                    fetch_data.fetch_rapidapi_upcoming_operational_moneyline_with_provenance(match)
+                )
+        self.assertEqual(first_odds, odds)
+        self.assertTrue(market_integrity.is_operational_pricing_provenance(first))
+        self.assertEqual(repeated_odds, odds)
+        self.assertFalse(market_integrity.is_operational_pricing_provenance(repeated))
+        self.assertEqual(repeated["availability_status"], "OBSERVATION_ONLY")
+        self.assertEqual(
+            repeated["unavailable_reason"], "repeated_unverified_provider_quote",
+        )
 
     def test_missing_false_and_true_eligibility_are_fail_closed_then_open(self):
         payload = self.payload()

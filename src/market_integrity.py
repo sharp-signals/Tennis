@@ -11,13 +11,13 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-CHANGE_ID = "CHANGE-2026-10-04-079"
+CHANGE_ID = "CHANGE-2026-10-25-156"
 POLICY_VERSION = "market-quote-integrity-v4"
-ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-04-079"
+ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-25-156"
 ODDS_SOURCE_FAMILY = "verified-direct-pre-match"
-ODDS_SOURCE_CONTRACT_VERSION = "verified-direct-pre-match-v5"
+ODDS_SOURCE_CONTRACT_VERSION = "verified-direct-pre-match-v6"
 ODDS_IDENTITY_POLICY_VERSION = "rapidapi-event-bilateral-v1"
-ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-or-direct-provider-capture-v2"
+ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-or-bounded-quote-lineage-v3"
 ODDS_BOOKMAKER_POLICY = "named-bookmaker-or-verified-provider-feed-v3"
 
 _ODDS_SOURCE_CONTRACT = {
@@ -116,6 +116,7 @@ def is_operational_pricing_provenance(provenance: Mapping[str, Any] | None) -> b
         provenance.get("provider_timestamp_status") == "not_exposed_by_upcoming_feed",
         provenance.get("bookmaker") in (None, ""),
         provenance.get("bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED",
+        (provenance.get("quote_lineage") or {}).get("operationally_current") is True,
         integrity.get("pricing_basis") == "verified_provider_pre_match_feed",
     ))
 
@@ -146,6 +147,7 @@ def is_experimental_challenger_pricing_provenance(
         provenance.get("freshness_status") == "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
         provenance.get("bookmaker") in (None, ""),
         provenance.get("bookmaker_attribution") == "NOT_EXPOSED_BY_PROVIDER_FEED",
+        provenance.get("unavailable_reason") != "repeated_unverified_provider_quote",
         isinstance(integrity, Mapping),
         integrity.get("policy_version") == POLICY_VERSION,
         integrity.get("status") == "AVAILABLE",
