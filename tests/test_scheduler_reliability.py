@@ -33,7 +33,7 @@ class SchedulerReliabilityTests(unittest.TestCase):
         )
 
     def test_bot_job_keeps_runtime_headroom_for_post_run_maintenance(self):
-        self.assertIn("timeout-minutes: 45", self.workflow)
+        self.assertIn("timeout-minutes: 60", self.workflow)
         self.assertIn('SETTLEMENT_HARD_TIMEOUT_SECONDS: "270"', self.workflow)
 
     def test_scheduler_payload_propagates_slot_and_source(self):

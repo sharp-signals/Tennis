@@ -11,6 +11,7 @@ from src.pricing import (
     de_vig_market_probabilities,
     evidence_probability,
     estimate_market_residual_pricing,
+    market_prior_probability,
 )
 
 
@@ -47,11 +48,13 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(market_a + market_b, 1.0, places=12)
         self.assertGreater(overround, 0)
 
-    def test_no_evidence_signal_returns_neutral_probability(self):
+    def test_no_evidence_signal_keeps_market_prior(self):
         pricing = estimate_market_residual_pricing(
             self._payload(), self._divergence(index_a=53, factors=4, intensity=0)
         )
-        self.assertAlmostEqual(pricing["sharp_estimate_a"], 0.5, places=12)
+        self.assertAlmostEqual(
+            pricing["sharp_estimate_a"], pricing["market_probability_a"], places=12,
+        )
         self.assertIsNone(pricing["residual_logit"])
 
     def test_positive_evidence_increases_a_and_decreases_b(self):
@@ -69,20 +72,55 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(pricing["fair_odd_a"], 1.0 / pricing["sharp_estimate_a"])
         self.assertAlmostEqual(pricing["fair_odd_b"], 1.0 / pricing["sharp_estimate_b"])
 
-    def test_fair_probability_is_independent_of_market_price(self):
+    def test_fair_probability_uses_market_as_prior_but_residual_is_bounded(self):
         first = estimate_market_residual_pricing(
             self._payload(2.10, 1.90), self._divergence(79)
         )
         second = estimate_market_residual_pricing(
             self._payload(8.00, 1.15), self._divergence(79)
         )
-        self.assertAlmostEqual(first["sharp_estimate_a"], second["sharp_estimate_a"])
-        self.assertAlmostEqual(first["fair_odd_a"], second["fair_odd_a"])
+        self.assertNotEqual(first["sharp_estimate_a"], second["sharp_estimate_a"])
+        self.assertNotEqual(first["fair_odd_a"], second["fair_odd_a"])
         self.assertNotEqual(first["expected_edge_a"], second["expected_edge_a"])
-        self.assertFalse(first["market_used_in_fair_probability"])
+        self.assertTrue(first["market_used_in_fair_probability"])
+        self.assertLessEqual(abs(first["bounded_adjustment_pp"]), 6.0)
+        self.assertLessEqual(abs(second["bounded_adjustment_pp"]), 6.0)
 
     def test_index_is_not_used_directly_as_probability(self):
         self.assertAlmostEqual(evidence_probability(79, 1.0), 0.61774, places=5)
+
+    def test_market_prior_extreme_index_does_not_create_85_pct_automatically(self):
+        probability, adjustment = market_prior_probability(
+            0.56, 100, 1.0, maximum_adjustment_pp=6.0,
+        )
+        self.assertAlmostEqual(probability, 0.62)
+        self.assertAlmostEqual(adjustment, 0.06)
+
+    def test_challenger_residual_is_more_conservative(self):
+        probability, adjustment = market_prior_probability(
+            0.50, 100, 1.0, maximum_adjustment_pp=3.0,
+        )
+        self.assertAlmostEqual(probability, 0.53)
+        self.assertAlmostEqual(adjustment, 0.03)
+
+    def test_hurkacz_like_favourite_cannot_be_crushed_to_1_18(self):
+        pricing = estimate_market_residual_pricing(
+            self._payload(1.59, 2.34),
+            self._divergence(100, factors=8, intensity=3, weight=5),
+        )
+        self.assertLessEqual(pricing["bounded_adjustment_pp"], 6.0)
+        self.assertGreater(pricing["fair_odd_a"], 1.45)
+        self.assertLess(pricing["expected_edge_a"], 0.10)
+
+    def test_balanced_evidence_keeps_underdog_at_market_prior(self):
+        pricing = estimate_market_residual_pricing(
+            self._payload(1.52, 2.66),
+            self._divergence(50, factors=8, intensity=0, weight=5),
+        )
+        self.assertAlmostEqual(
+            pricing["sharp_estimate_b"], pricing["market_probability_b"], places=12,
+        )
+        self.assertAlmostEqual(pricing["bounded_adjustment_pp"], 0.0, places=12)
 
     def test_expected_edge_explicit_example(self):
         self.assertAlmostEqual(calculate_expected_edge(0.442, 2.44), 0.07848, places=5)

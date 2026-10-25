@@ -327,13 +327,15 @@ def build_decision(
         coverage_ratio = 0.0
     coverage_sufficient_for_paper = coverage_ratio >= PAPER_MIN_WEIGHTED_COVERAGE
     if (
-        str(pricing.get("model_version") or "").startswith("factor-independent-v1")
+        str(pricing.get("model_version") or "").startswith((
+            "factor-independent-v1", "market-prior-residual-v1",
+        ))
         and not _is_experimental_tier(payload)
     ):
         return {
             **base,
             "state": PRICING_SHADOW,
-            "reason": "pricing independente ainda em calibração SHADOW; sem PAPER automático",
+            "reason": "pricing com prior de mercado ainda em calibração SHADOW; sem PAPER automático",
             "side": side,
             "player": payload.get(f"player_{side}"),
             "fenzobot_index": index,

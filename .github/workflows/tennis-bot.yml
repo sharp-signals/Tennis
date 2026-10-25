@@ -36,7 +36,7 @@ jobs:
     # CHANGE-2026-10-14-133: a aquisicao pode ocupar ~25 minutos e a
     # manutencao posterior tem o seu proprio hard timeout. O limite anterior
     # de 30 minutos cortava calibracao/historico depois de publicar relatorios.
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: write   # necessário para o commit automático da cache de torneios
     steps:

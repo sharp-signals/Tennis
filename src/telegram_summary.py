@@ -67,9 +67,21 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
         reason = html.escape(str(decision.get("reason") or "preço de mercado indisponível"))
         return 0.5, "🟡", f"{a} vs {b} — <b>MERCADO PENDENTE</b> · análise factual disponível · reconsulta automática · {reason}"
     if state == "PRICING_SHADOW":
-        return 1.5, "🟣", (
-            f"{a} vs {b} — <b>PRICING INDEPENDENTE EM SHADOW</b> · "
-            f"edge experimental {edge_text} em {player} · sem PAPER automático"
+        try:
+            edge_value = float(edge)
+        except (TypeError, ValueError):
+            edge_value = None
+        if edge_value is not None and edge_value > 0:
+            return 2.8, "🟢", (
+                f"{a} vs {b} — <b>EDGE POSITIVO SHADOW {edge_text}</b> em {player} "
+                f"· pricing em calibração · sem PAPER automático"
+            )
+        if edge_value is not None and edge_value < 0:
+            return 1.8, "🔴", (
+                f"{a} vs {b} — edge negativo SHADOW {edge_text} em {player} · sem PAPER"
+            )
+        return 0.8, "⚪", (
+            f"{a} vs {b} — pricing SHADOW sem edge positivo · sem PAPER"
         )
     if state == "EXPERIMENTAL_FACTUAL_PARTIAL":
         reason = html.escape(str(decision.get("reason") or "cobertura bilateral parcial"))

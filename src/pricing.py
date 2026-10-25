@@ -1,8 +1,9 @@
-"""Pricing experimental independente do preco corrente do mercado.
+"""Pricing experimental com mercado como prior e residual Fenzobot.
 
-O indice de evidencia continua a nao ser uma probabilidade. A estimativa e
-produzida exclusivamente a partir da forca do indice e da qualidade/cobertura
-da evidencia. A odd de mercado e usada apenas depois, para calcular edge.
+O indice de evidencia continua a nao ser uma probabilidade. O mercado sem
+margem fornece o prior; a direcao, intensidade, qualidade e cobertura da
+evidencia Fenzobot aplicam apenas um ajuste limitado. A versão permanece em
+SHADOW ate existir calibracao prospetiva suficiente.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "factor-independent-v1.0"
+MODEL_VERSION = "market-prior-residual-v1.0"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
     "Estimativa experimental em desenvolvimento. Ainda não validada fora da "
@@ -44,8 +45,8 @@ DISCLAIMER = (
     "modelo e não uma recomendação de aposta."
 )
 METHOD = (
-    "P_fenzobot = 0.5 + sign(indice-50) × "
-    "((abs(indice-50)/50)^2 × 0.35) × qualidade_da_evidencia; "
+    "P_fenzobot = P_mercado_sem_margem + "
+    "((indice-50)/50) × qualidade_da_evidencia × limite_residual; "
     "edge = P_fenzobot × odd_mercado - 1"
 )
 
@@ -54,7 +55,8 @@ METHOD = (
 class PricingParameters:
     """Configuracao versionada usada para produzir uma estimativa."""
 
-    maximum_evidence_probability: float = 0.85
+    maximum_adjustment_pp: float = 6.0
+    challenger_maximum_adjustment_pp: float = 3.0
     minimum_edge_pct: float = PRICING_MIN_EDGE_PCT
     minimum_factors: int = PRICING_MIN_FACTORS
     minimum_quality: float = PRICING_MIN_QUALITY
@@ -67,7 +69,8 @@ def _configuration_fingerprint(parameters: PricingParameters) -> str:
         "model_version": MODEL_VERSION,
         "parameters": asdict(parameters),
         "intensity_quality": {"0": 0.0, "1": 0.50, "2": 0.75, "3": 1.0},
-        "coverage_and_source_quality": True,
+        "market_prior": "two_way_devig",
+        "bounded_residual": True,
     }
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
@@ -114,6 +117,30 @@ def evidence_probability(index_a: float, quality: float, *, maximum_probability:
     directional_distance = math.copysign(abs(signed_strength) ** 2, signed_strength)
     probability = 0.5 + directional_distance * (ceiling - 0.5) * quality
     return min(0.99, max(0.01, probability))
+
+
+def market_prior_probability(
+    market_probability: float,
+    index_a: float,
+    quality: float,
+    *,
+    maximum_adjustment_pp: float,
+) -> tuple[float, float]:
+    """Aplica um residual limitado ao prior de mercado sem margem.
+
+    Devolve ``(probabilidade, ajuste_decimal)``. Um indice extremo só usa o
+    limite completo quando a qualidade também é completa; diferenças menores
+    ou amostras frágeis encolhem proporcionalmente. Isto impede que consenso
+    direcional seja confundido com 85% de probabilidade absoluta.
+    """
+    prior = min(0.99, max(0.01, float(market_probability)))
+    index = min(100.0, max(0.0, float(index_a)))
+    quality = min(1.0, max(0.0, float(quality)))
+    signed_strength = (index - 50.0) / 50.0
+    limit = max(0.0, float(maximum_adjustment_pp)) / 100.0
+    adjustment = signed_strength * quality * limit
+    probability = min(0.99, max(0.01, prior + adjustment))
+    return probability, probability - prior
 
 
 def _coerce_odd(value: Any) -> float | None:
@@ -268,11 +295,12 @@ def estimate_market_residual_pricing(
     *,
     parameters: PricingParameters | None = None,
 ) -> dict[str, Any]:
-    """Estima fair odds pelos fatores e calcula o edge contra o mercado.
+    """Estima fair odds com mercado sem margem como prior e residual factual.
 
     O resultado e sempre coerente a duas vias: calcula-se apenas P(A) e usa-se
-    P(B)=1-P(A). As odds continuam obrigatorias para calcular edge e validar a
-    cotacao operacional, mas nao influenciam P(A), P(B) ou as fair odds.
+    P(B)=1-P(A). O mercado fornece o ponto de partida, enquanto o indice, a
+    intensidade, a massa efetiva, a cobertura e a fiabilidade determinam a
+    direção e a fração do ajuste limitado que pode ser aplicada.
     """
     parameters = parameters or PricingParameters()
     assessment = payload.get("report_assessment")
@@ -314,10 +342,16 @@ def estimate_market_residual_pricing(
         source_reliability = min(source_reliability, 0.5)
     source_gate_passed = not identity_warning and source_reliability >= 0.75
     quality = internal_quality * coverage_quality * source_reliability
-    sharp_a = evidence_probability(
+    residual_limit_pp = (
+        parameters.challenger_maximum_adjustment_pp
+        if experimental_challenger_quote
+        else parameters.maximum_adjustment_pp
+    )
+    sharp_a, bounded_adjustment = market_prior_probability(
+        market_a,
         index_a,
         quality,
-        maximum_probability=parameters.maximum_evidence_probability,
+        maximum_adjustment_pp=residual_limit_pp,
     )
     sharp_b = 1.0 - sharp_a
     adjustment_a = (sharp_a - market_a) * 100.0
@@ -386,8 +420,10 @@ def estimate_market_residual_pricing(
         "market_overround_pct": round(overround * 100.0, 3),
         "signed_strength": round(signed_strength, 6),
         "residual_logit": None,
-        "probability_basis": "factor_evidence_only",
-        "market_used_in_fair_probability": False,
+        "bounded_adjustment_pp": round(bounded_adjustment * 100.0, 6),
+        "maximum_adjustment_pp": residual_limit_pp,
+        "probability_basis": "market_devig_prior_plus_bounded_factor_residual",
+        "market_used_in_fair_probability": True,
         "quality_score": round(quality, 6),
         "quality_gate_passed": quality_gate_passed,
         "evidence_quality": {
