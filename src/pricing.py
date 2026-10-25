@@ -1,8 +1,8 @@
-"""Pricing residual experimental com o mercado de-vig como baseline.
+"""Pricing experimental independente do preco corrente do mercado.
 
-O indice de evidencia continua a nao ser uma probabilidade. Este modulo usa
-apenas a sua direcao e forca normalizada para aplicar um desvio pequeno,
-limitado e auditavel no espaco log-odds da probabilidade de mercado.
+O indice de evidencia continua a nao ser uma probabilidade. A estimativa e
+produzida exclusivamente a partir da forca do indice e da qualidade/cobertura
+da evidencia. A odd de mercado e usada apenas depois, para calcular edge.
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ try:
     from .config import (
         PRICING_FULL_QUALITY_FACTORS,
         PRICING_FULL_QUALITY_MASS,
-        PRICING_MAX_LOGIT_SHIFT,
         PRICING_MIN_EDGE_PCT,
         PRICING_MIN_FACTORS,
         PRICING_MIN_QUALITY,
@@ -31,14 +30,13 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     from config import (
         PRICING_FULL_QUALITY_FACTORS,
         PRICING_FULL_QUALITY_MASS,
-        PRICING_MAX_LOGIT_SHIFT,
         PRICING_MIN_EDGE_PCT,
         PRICING_MIN_FACTORS,
         PRICING_MIN_QUALITY,
     )
 
 
-MODEL_VERSION = "market-residual-v0.3"
+MODEL_VERSION = "factor-independent-v1.0"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
     "Estimativa experimental em desenvolvimento. Ainda não validada fora da "
@@ -46,8 +44,9 @@ DISCLAIMER = (
     "modelo e não uma recomendação de aposta."
 )
 METHOD = (
-    "logit(P_sharp) = logit(P_market_de_vig) + "
-    "max_logit_shift × signed_strength × internal_quality × coverage × source_reliability"
+    "P_fenzobot = 0.5 + sign(indice-50) × "
+    "((abs(indice-50)/50)^2 × 0.35) × qualidade_da_evidencia; "
+    "edge = P_fenzobot × odd_mercado - 1"
 )
 
 
@@ -55,7 +54,7 @@ METHOD = (
 class PricingParameters:
     """Configuracao versionada usada para produzir uma estimativa."""
 
-    max_logit_shift: float = PRICING_MAX_LOGIT_SHIFT
+    maximum_evidence_probability: float = 0.85
     minimum_edge_pct: float = PRICING_MIN_EDGE_PCT
     minimum_factors: int = PRICING_MIN_FACTORS
     minimum_quality: float = PRICING_MIN_QUALITY
@@ -98,6 +97,23 @@ def apply_logit_residual(market_probability: float, residual: float) -> float:
 def calculate_expected_edge(sharp_probability: float, market_odd: float) -> float:
     """Expected edge decimal: P_sharp × odd de mercado - 1."""
     return float(sharp_probability) * float(market_odd) - 1.0
+
+
+def evidence_probability(index_a: float, quality: float, *, maximum_probability: float = 0.85) -> float:
+    """Converte evidencia direcional numa probabilidade experimental independente.
+
+    O indice nao e tratado linearmente como probabilidade. A curva quadratica
+    mantem sinais moderados perto de 50%, limita o extremo a 85% com evidencia
+    completa e contrai a estimativa para 50% quando a qualidade e incompleta.
+    Nenhum preco de mercado participa neste calculo.
+    """
+    index = min(100.0, max(0.0, float(index_a)))
+    quality = min(1.0, max(0.0, float(quality)))
+    ceiling = min(0.99, max(0.5, float(maximum_probability)))
+    signed_strength = (index - 50.0) / 50.0
+    directional_distance = math.copysign(abs(signed_strength) ** 2, signed_strength)
+    probability = 0.5 + directional_distance * (ceiling - 0.5) * quality
+    return min(0.99, max(0.01, probability))
 
 
 def _coerce_odd(value: Any) -> float | None:
@@ -252,10 +268,11 @@ def estimate_market_residual_pricing(
     *,
     parameters: PricingParameters | None = None,
 ) -> dict[str, Any]:
-    """Estima fair odds/edge a partir do mercado e de um residual limitado.
+    """Estima fair odds pelos fatores e calcula o edge contra o mercado.
 
     O resultado e sempre coerente a duas vias: calcula-se apenas P(A) e usa-se
-    P(B)=1-P(A). Sem odds validas, nao se fabricam probabilidades.
+    P(B)=1-P(A). As odds continuam obrigatorias para calcular edge e validar a
+    cotacao operacional, mas nao influenciam P(A), P(B) ou as fair odds.
     """
     parameters = parameters or PricingParameters()
     assessment = payload.get("report_assessment")
@@ -297,9 +314,11 @@ def estimate_market_residual_pricing(
         source_reliability = min(source_reliability, 0.5)
     source_gate_passed = not identity_warning and source_reliability >= 0.75
     quality = internal_quality * coverage_quality * source_reliability
-    residual = parameters.max_logit_shift * signed_strength * quality
-
-    sharp_a = apply_logit_residual(market_a, residual)
+    sharp_a = evidence_probability(
+        index_a,
+        quality,
+        maximum_probability=parameters.maximum_evidence_probability,
+    )
     sharp_b = 1.0 - sharp_a
     adjustment_a = (sharp_a - market_a) * 100.0
     adjustment_b = -adjustment_a
@@ -366,7 +385,9 @@ def estimate_market_residual_pricing(
         "method": METHOD,
         "market_overround_pct": round(overround * 100.0, 3),
         "signed_strength": round(signed_strength, 6),
-        "residual_logit": round(residual, 8),
+        "residual_logit": None,
+        "probability_basis": "factor_evidence_only",
+        "market_used_in_fair_probability": False,
         "quality_score": round(quality, 6),
         "quality_gate_passed": quality_gate_passed,
         "evidence_quality": {

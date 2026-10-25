@@ -4254,7 +4254,7 @@ def _mod_mercado_vs_sinal(payload, div):
 
 
 def _mod_market_residual_pricing(payload):
-    """Bloco economico principal: mercado de-vig -> residual -> edge."""
+    """Bloco económico: probabilidade independente -> comparação -> edge."""
     pricing = _d(payload.get("pricing"))
     if not pricing.get("available"):
         return ""
@@ -4283,7 +4283,7 @@ def _mod_market_residual_pricing(payload):
             '<div class="pricing-metrics">'
             f'<div><span>Market probability</span><b>{fmt(data.get("market_probability_pct"), 1, suffix="%")}</b></div>'
             f'<div><span>Fenzobot estimate</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>Fenzobot adjustment</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
+            f'<div><span>Diferença vs mercado</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
             f'<div><span>Fair odd</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
             f'<div><span>Market odd</span><b>{fmt(data.get("market_odd"), 2)}</b></div>'
             f'<div class="pricing-edge{edge_class}"><span>Expected edge</span>'
@@ -4305,15 +4305,15 @@ def _mod_market_residual_pricing(payload):
     # caso não os apresentar falsamente como 0%.
     coverage_pct = 100.0 * float(1.0 if coverage_raw is None else coverage_raw)
     source_pct = 100.0 * float(1.0 if source_raw is None else source_raw)
-    version = pricing.get("model_version") or "market-residual-v0.2"
+    version = pricing.get("model_version") or "factor-independent-v1.0"
     fingerprint = pricing.get("configuration_fingerprint") or "—"
     overround = pricing.get("market_overround_pct")
     return (
         '<section class="pricing-block">'
         '<div class="pricing-head"><div>'
-        '<div class="pricing-kicker">FENZOBOT PRICING — MARKET RESIDUAL</div>'
+        '<div class="pricing-kicker">FENZOBOT PRICING — PROBABILIDADE INDEPENDENTE</div>'
         '<p class="pricing-disclaimer">PAPER técnico automático e revisão manual 22Bet são estratégias separadas. As coberturas operacional e de pricing têm bases distintas.</p>'
-        '<div class="pricing-path">Mercado sem margem → ajuste residual limitado → estimativa Fenzobot</div>'
+        '<div class="pricing-path">Fatores + qualidade da evidência → probabilidade Fenzobot → comparação com o mercado</div>'
         '</div><span class="pricing-status">EXPERIMENTAL — EM VALIDAÇÃO</span></div>'
         f'<div class="pricing-grid">{card("a", payload.get("player_a", "A"))}'
         f'{card("b", payload.get("player_b", "B"))}</div>'
