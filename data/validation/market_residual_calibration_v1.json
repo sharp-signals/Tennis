@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "method": "chronological_train_holdout_grid_search_brier",
+  "source": "data/calibration_snapshots.json",
+  "train_fraction": 0.7,
+  "grid_scale_pp": {
+    "minimum": 0.0,
+    "maximum": 12.0,
+    "step": 0.25
+  },
+  "deduplication": "earliest analyzed snapshot per canonical match identity",
+  "exclusions": {
+    "invalid_two_way_odds": 129,
+    "later_duplicate_snapshots": 0,
+    "unsettled": 189
+  },
+  "segments": {
+    "atp": {
+      "sample": {
+        "total": 486,
+        "train": 340,
+        "holdout": 146
+      },
+      "chronological_cutoff_utc": "2026-10-10T17:39:37+00:00",
+      "selected_scale_pp": 0.75,
+      "train": {
+        "market_only": {
+          "n": 340,
+          "brier": 0.213111,
+          "log_loss": 0.6143,
+          "accuracy_pct": 64.41
+        },
+        "selected": {
+          "n": 340,
+          "brier": 0.213093,
+          "log_loss": 0.614117,
+          "accuracy_pct": 65.88
+        }
+      },
+      "holdout": {
+        "market_only": {
+          "n": 146,
+          "brier": 0.229372,
+          "log_loss": 0.649981,
+          "accuracy_pct": 60.96
+        },
+        "selected": {
+          "n": 146,
+          "brier": 0.22957,
+          "log_loss": 0.650637,
+          "accuracy_pct": 60.27
+        },
+        "provisional_rule": {
+          "n": 146,
+          "brier": 0.231939,
+          "log_loss": 0.659003,
+          "accuracy_pct": 60.96
+        }
+      },
+      "cutoff_sensitivity": [
+        {
+          "train_fraction": 0.5,
+          "selected_scale_pp": 0.0,
+          "holdout_n": 243,
+          "holdout_delta_brier": 0.0,
+          "holdout_delta_log_loss": 0.0
+        },
+        {
+          "train_fraction": 0.6,
+          "selected_scale_pp": 0.25,
+          "holdout_n": 195,
+          "holdout_delta_brier": 3.5e-05,
+          "holdout_delta_log_loss": 8.1e-05
+        },
+        {
+          "train_fraction": 0.7,
+          "selected_scale_pp": 0.75,
+          "holdout_n": 146,
+          "holdout_delta_brier": 0.000198,
+          "holdout_delta_log_loss": 0.000656
+        },
+        {
+          "train_fraction": 0.8,
+          "selected_scale_pp": 1.0,
+          "holdout_n": 98,
+          "holdout_delta_brier": 0.000431,
+          "holdout_delta_log_loss": 0.000842
+        }
+      ],
+      "validation_status": "NOT_SUPPORTED",
+      "validated_scale_pp": 0.0
+    },
+    "wta": {
+      "sample": {
+        "total": 458,
+        "train": 320,
+        "holdout": 138
+      },
+      "chronological_cutoff_utc": "2026-10-10T17:39:37+00:00",
+      "selected_scale_pp": 4.5,
+      "train": {
+        "market_only": {
+          "n": 320,
+          "brier": 0.191121,
+          "log_loss": 0.560588,
+          "accuracy_pct": 67.81
+        },
+        "selected": {
+          "n": 320,
+          "brier": 0.190536,
+          "log_loss": 0.559162,
+          "accuracy_pct": 67.81
+        }
+      },
+      "holdout": {
+        "market_only": {
+          "n": 138,
+          "brier": 0.216864,
+          "log_loss": 0.622593,
+          "accuracy_pct": 65.22
+        },
+        "selected": {
+          "n": 138,
+          "brier": 0.218294,
+          "log_loss": 0.627403,
+          "accuracy_pct": 63.04
+        },
+        "provisional_rule": {
+          "n": 138,
+          "brier": 0.219012,
+          "log_loss": 0.629992,
+          "accuracy_pct": 63.04
+        }
+      },
+      "cutoff_sensitivity": [
+        {
+          "train_fraction": 0.5,
+          "selected_scale_pp": 3.75,
+          "holdout_n": 229,
+          "holdout_delta_brier": 0.000285,
+          "holdout_delta_log_loss": 0.003085
+        },
+        {
+          "train_fraction": 0.6,
+          "selected_scale_pp": 5.0,
+          "holdout_n": 184,
+          "holdout_delta_brier": 0.001365,
+          "holdout_delta_log_loss": 0.005561
+        },
+        {
+          "train_fraction": 0.7,
+          "selected_scale_pp": 4.5,
+          "holdout_n": 138,
+          "holdout_delta_brier": 0.00143,
+          "holdout_delta_log_loss": 0.00481
+        },
+        {
+          "train_fraction": 0.8,
+          "selected_scale_pp": 1.5,
+          "holdout_n": 92,
+          "holdout_delta_brier": -0.000336,
+          "holdout_delta_log_loss": -0.000386
+        }
+      ],
+      "validation_status": "NOT_SUPPORTED",
+      "validated_scale_pp": 0.0
+    },
+    "challenger": {
+      "sample": {
+        "total": 134,
+        "train": 93,
+        "holdout": 41
+      },
+      "chronological_cutoff_utc": "2026-10-13T17:37:40+00:00",
+      "selected_scale_pp": 12.0,
+      "train": {
+        "market_only": {
+          "n": 93,
+          "brier": 0.195713,
+          "log_loss": 0.571337,
+          "accuracy_pct": 68.82
+        },
+        "selected": {
+          "n": 93,
+          "brier": 0.192967,
+          "log_loss": 0.564407,
+          "accuracy_pct": 72.04
+        }
+      },
+      "holdout": {
+        "market_only": {
+          "n": 41,
+          "brier": 0.223709,
+          "log_loss": 0.63865,
+          "accuracy_pct": 65.85
+        },
+        "selected": {
+          "n": 41,
+          "brier": 0.236164,
+          "log_loss": 0.666344,
+          "accuracy_pct": 63.41
+        },
+        "provisional_rule": {
+          "n": 41,
+          "brier": 0.226153,
+          "log_loss": 0.643656,
+          "accuracy_pct": 68.29
+        }
+      },
+      "cutoff_sensitivity": [
+        {
+          "train_fraction": 0.5,
+          "selected_scale_pp": 1.0,
+          "holdout_n": 67,
+          "holdout_delta_brier": -4.3e-05,
+          "holdout_delta_log_loss": -0.000304
+        },
+        {
+          "train_fraction": 0.6,
+          "selected_scale_pp": 12.0,
+          "holdout_n": 54,
+          "holdout_delta_brier": 0.009182,
+          "holdout_delta_log_loss": 0.017875
+        },
+        {
+          "train_fraction": 0.7,
+          "selected_scale_pp": 12.0,
+          "holdout_n": 41,
+          "holdout_delta_brier": 0.012455,
+          "holdout_delta_log_loss": 0.027694
+        },
+        {
+          "train_fraction": 0.8,
+          "selected_scale_pp": 7.75,
+          "holdout_n": 27,
+          "holdout_delta_brier": 0.007162,
+          "holdout_delta_log_loss": 0.015293
+        }
+      ],
+      "validation_status": "NOT_SUPPORTED",
+      "validated_scale_pp": 0.0
+    }
+  }
+}

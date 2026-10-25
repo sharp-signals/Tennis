@@ -504,7 +504,7 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertIn("EDGE POSITIVO SHADOW — SEM PAPER AUTOMÁTICO", html)
+        self.assertIn("EDGE NEGATIVO SHADOW — SEM PAPER", html)
         self.assertIn("Moneyline A", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)

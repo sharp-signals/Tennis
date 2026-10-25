@@ -37,7 +37,9 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "market-prior-residual-v1.0"
+MODEL_VERSION = "market-prior-residual-v1.1"
+CALIBRATION_VERSION = "market-residual-calibration-v1"
+CALIBRATION_STATUS = "NOT_SUPPORTED_OUT_OF_SAMPLE"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
     "Estimativa experimental em desenvolvimento. Ainda não validada fora da "
@@ -46,7 +48,7 @@ DISCLAIMER = (
 )
 METHOD = (
     "P_fenzobot = P_mercado_sem_margem + "
-    "((indice-50)/50) × qualidade_da_evidencia × limite_residual; "
+    "((indice-50)/50) × qualidade_da_evidencia × escala_residual_validada; "
     "edge = P_fenzobot × odd_mercado - 1"
 )
 
@@ -55,8 +57,12 @@ METHOD = (
 class PricingParameters:
     """Configuracao versionada usada para produzir uma estimativa."""
 
-    maximum_adjustment_pp: float = 6.0
-    challenger_maximum_adjustment_pp: float = 3.0
+    # A auditoria cronológica v1 não encontrou melhoria fora da amostra em
+    # nenhum circuito. Zero é uma decisão empírica fail-closed, não ausência
+    # de configuração. Escalas futuras exigem nova validação versionada.
+    atp_maximum_adjustment_pp: float = 0.0
+    wta_maximum_adjustment_pp: float = 0.0
+    challenger_maximum_adjustment_pp: float = 0.0
     minimum_edge_pct: float = PRICING_MIN_EDGE_PCT
     minimum_factors: int = PRICING_MIN_FACTORS
     minimum_quality: float = PRICING_MIN_QUALITY
@@ -71,6 +77,8 @@ def _configuration_fingerprint(parameters: PricingParameters) -> str:
         "intensity_quality": {"0": 0.0, "1": 0.50, "2": 0.75, "3": 1.0},
         "market_prior": "two_way_devig",
         "bounded_residual": True,
+        "calibration_version": CALIBRATION_VERSION,
+        "calibration_status": CALIBRATION_STATUS,
     }
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
@@ -342,11 +350,17 @@ def estimate_market_residual_pricing(
         source_reliability = min(source_reliability, 0.5)
     source_gate_passed = not identity_warning and source_reliability >= 0.75
     quality = internal_quality * coverage_quality * source_reliability
-    residual_limit_pp = (
-        parameters.challenger_maximum_adjustment_pp
-        if experimental_challenger_quote
-        else parameters.maximum_adjustment_pp
-    )
+    tier = str(payload.get("tier") or "").casefold()
+    tour = str(payload.get("tour") or "").casefold()
+    if experimental_challenger_quote or "challenger" in tier:
+        calibration_segment = "challenger"
+        residual_limit_pp = parameters.challenger_maximum_adjustment_pp
+    elif tour == "wta":
+        calibration_segment = "wta"
+        residual_limit_pp = parameters.wta_maximum_adjustment_pp
+    else:
+        calibration_segment = "atp"
+        residual_limit_pp = parameters.atp_maximum_adjustment_pp
     sharp_a, bounded_adjustment = market_prior_probability(
         market_a,
         index_a,
@@ -422,6 +436,12 @@ def estimate_market_residual_pricing(
         "residual_logit": None,
         "bounded_adjustment_pp": round(bounded_adjustment * 100.0, 6),
         "maximum_adjustment_pp": residual_limit_pp,
+        "residual_calibration": {
+            "version": CALIBRATION_VERSION,
+            "status": CALIBRATION_STATUS,
+            "segment": calibration_segment,
+            "validated_scale_pp": residual_limit_pp,
+        },
         "probability_basis": "market_devig_prior_plus_bounded_factor_residual",
         "market_used_in_fair_probability": True,
         "quality_score": round(quality, 6),
