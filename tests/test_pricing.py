@@ -9,6 +9,7 @@ from src.pricing import (
     apply_logit_residual,
     calculate_expected_edge,
     de_vig_market_probabilities,
+    evidence_probability,
     estimate_market_residual_pricing,
 )
 
@@ -46,21 +47,19 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(market_a + market_b, 1.0, places=12)
         self.assertGreater(overround, 0)
 
-    def test_no_evidence_adjustment_keeps_market_baseline(self):
+    def test_no_evidence_signal_returns_neutral_probability(self):
         pricing = estimate_market_residual_pricing(
             self._payload(), self._divergence(index_a=53, factors=4, intensity=0)
         )
-        self.assertAlmostEqual(
-            pricing["sharp_estimate_a"], pricing["market_probability_a"], places=12
-        )
-        self.assertEqual(pricing["residual_logit"], 0.0)
+        self.assertAlmostEqual(pricing["sharp_estimate_a"], 0.5, places=12)
+        self.assertIsNone(pricing["residual_logit"])
 
-    def test_positive_residual_increases_a_and_decreases_b(self):
+    def test_positive_evidence_increases_a_and_decreases_b(self):
         pricing = estimate_market_residual_pricing(self._payload(), self._divergence(80))
         self.assertGreater(pricing["sharp_estimate_a"], pricing["market_probability_a"])
         self.assertLess(pricing["sharp_estimate_b"], pricing["market_probability_b"])
 
-    def test_negative_residual_decreases_a(self):
+    def test_negative_evidence_decreases_a(self):
         pricing = estimate_market_residual_pricing(self._payload(), self._divergence(20))
         self.assertLess(pricing["sharp_estimate_a"], pricing["market_probability_a"])
 
@@ -69,6 +68,21 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(pricing["sharp_estimate_a"] + pricing["sharp_estimate_b"], 1.0)
         self.assertAlmostEqual(pricing["fair_odd_a"], 1.0 / pricing["sharp_estimate_a"])
         self.assertAlmostEqual(pricing["fair_odd_b"], 1.0 / pricing["sharp_estimate_b"])
+
+    def test_fair_probability_is_independent_of_market_price(self):
+        first = estimate_market_residual_pricing(
+            self._payload(2.10, 1.90), self._divergence(79)
+        )
+        second = estimate_market_residual_pricing(
+            self._payload(8.00, 1.15), self._divergence(79)
+        )
+        self.assertAlmostEqual(first["sharp_estimate_a"], second["sharp_estimate_a"])
+        self.assertAlmostEqual(first["fair_odd_a"], second["fair_odd_a"])
+        self.assertNotEqual(first["expected_edge_a"], second["expected_edge_a"])
+        self.assertFalse(first["market_used_in_fair_probability"])
+
+    def test_index_is_not_used_directly_as_probability(self):
+        self.assertAlmostEqual(evidence_probability(79, 1.0), 0.61774, places=5)
 
     def test_expected_edge_explicit_example(self):
         self.assertAlmostEqual(calculate_expected_edge(0.442, 2.44), 0.07848, places=5)
@@ -79,7 +93,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         pricing = estimate_market_residual_pricing(
             self._payload(2.0, 2.0), self._divergence(100, factors=1, intensity=3, weight=18)
         )
-        self.assertLess(pricing["residual_logit"], pricing["parameters"]["max_logit_shift"])
+        self.assertLess(pricing["sharp_estimate_a"], 0.85)
         self.assertFalse(pricing["quality_gate_passed"])
         self.assertEqual(pricing["candidate_side"], "a")
 
