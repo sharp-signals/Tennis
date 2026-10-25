@@ -563,6 +563,7 @@ _RAPIDAPI_QUOTE_LINEAGE_STORE = JsonCacheStore("data/cache")
 _RAPIDAPI_QUOTE_LINEAGE_PATH = _RAPIDAPI_QUOTE_LINEAGE_STORE.entity_path(
     "rapidapi_quote_lineage.json"
 )
+_RAPIDAPI_LEDGER_LINEAGE_INDEX: dict[str, dict[tuple[str, str], list[dict]]] = {}
 try:
     RAPIDAPI_UNCHANGED_QUOTE_MAX_AGE_SECONDS = int(
         os.environ.get("RAPIDAPI_UNCHANGED_QUOTE_MAX_AGE_SECONDS", str(6 * 60 * 60))
@@ -597,6 +598,106 @@ def _parse_utc_datetime(value: object) -> Optional[datetime]:
     return parsed.astimezone(timezone.utc)
 
 
+def _rapidapi_ledger_lineage_index(
+    root: Optional[Path] = None,
+) -> dict[tuple[str, str], list[dict]]:
+    """Indexa uma vez as observações RapidAPI já persistidas no ledger ativo."""
+    ledger_root = Path(root or "data/market_ledger")
+    cache_key = str(ledger_root.resolve())
+    if root is None and cache_key in _RAPIDAPI_LEDGER_LINEAGE_INDEX:
+        return _RAPIDAPI_LEDGER_LINEAGE_INDEX[cache_key]
+    index: dict[tuple[str, str], list[dict]] = {}
+    observations_dir = ledger_root / "observations"
+    for ledger_path in sorted(observations_dir.glob("*.jsonl")):
+        try:
+            lines = ledger_path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                observation = json.loads(line)
+            except (TypeError, json.JSONDecodeError):
+                continue
+            source = observation.get("source") or {}
+            if str(source.get("provider") or "").casefold() != "rapidapi":
+                continue
+            event = observation.get("event") or {}
+            event_id = str(
+                event.get("provider_event_id") or event.get("match_id") or ""
+            ).strip()
+            tour = str(event.get("tour") or "unknown").casefold()
+            captured = _parse_utc_datetime(
+                (observation.get("capture") or {}).get("captured_at_utc")
+            )
+            selections = observation.get("selections") or []
+            try:
+                quote_odds = sorted(
+                    (
+                        str(selection.get("name") or "").casefold().strip(),
+                        float(selection.get("raw_decimal_odd")),
+                    )
+                    for selection in selections
+                    if selection.get("name")
+                )
+            except (TypeError, ValueError):
+                continue
+            if not event_id or captured is None or len(quote_odds) != 2:
+                continue
+            fingerprint = payload_sha256({
+                "event_id": event_id,
+                "odds": quote_odds,
+            })
+            index.setdefault((tour, event_id), []).append({
+                "captured_at_utc": captured,
+                "quote_fingerprint": fingerprint,
+            })
+    for records in index.values():
+        unique = {
+            (record["captured_at_utc"], record["quote_fingerprint"]): record
+            for record in records
+        }
+        records[:] = sorted(
+            unique.values(), key=lambda record: record["captured_at_utc"]
+        )
+    if root is None:
+        _RAPIDAPI_LEDGER_LINEAGE_INDEX[cache_key] = index
+    return index
+
+
+def _rapidapi_ledger_lineage_seed(
+    tour: str,
+    event_id: str,
+    fingerprint: str,
+    captured: datetime,
+    *,
+    ledger_root: Optional[Path] = None,
+) -> Optional[dict]:
+    """Recupera a sequência imediatamente anterior da mesma quote no ledger."""
+    records = [
+        record
+        for record in _rapidapi_ledger_lineage_index(ledger_root).get(
+            (tour, event_id), []
+        )
+        if record["captured_at_utc"] < captured
+    ]
+    if not records:
+        return None
+    if records[-1]["quote_fingerprint"] != fingerprint:
+        return {"status": "QUOTE_CHANGED"}
+    run = []
+    for record in reversed(records):
+        if record["quote_fingerprint"] != fingerprint:
+            break
+        run.append(record)
+    first_seen = min(record["captured_at_utc"] for record in run)
+    return {
+        "status": "UNCHANGED",
+        "first_seen_at_utc": first_seen,
+        "observation_count": len(run),
+        "bootstrap_source": "market_ledger",
+    }
+
+
 def _rapidapi_quote_lineage(
     match: dict,
     odds: dict,
@@ -605,8 +706,10 @@ def _rapidapi_quote_lineage(
     store: Optional[JsonCacheStore] = None,
     path: Optional[Path] = None,
     max_unchanged_age_seconds: Optional[int] = None,
+    ledger_root: Optional[Path] = None,
 ) -> dict:
     """Classifica uma quote sem timestamp pela sua linhagem entre execuções."""
+    custom_store = store is not None or path is not None
     store = store or _RAPIDAPI_QUOTE_LINEAGE_STORE
     path = path or _RAPIDAPI_QUOTE_LINEAGE_PATH
     threshold = (
@@ -644,10 +747,23 @@ def _rapidapi_quote_lineage(
         return result
     try:
         previous = store.get_entry(path, key, max_age_hours=24 * 7)
+        ledger_seed = None
+        if ledger_root is not None or not custom_store:
+            ledger_seed = _rapidapi_ledger_lineage_seed(
+                tour,
+                event_id,
+                fingerprint,
+                captured,
+                ledger_root=ledger_root,
+            )
         if isinstance(previous, dict) and previous.get("quote_fingerprint") == fingerprint:
             first_seen = _parse_utc_datetime(previous.get("first_seen_at_utc")) or captured
+            if ledger_seed and ledger_seed.get("status") == "UNCHANGED":
+                first_seen = min(first_seen, ledger_seed["first_seen_at_utc"])
             age_seconds = max(0, int((captured - first_seen).total_seconds()))
             count = max(1, int(previous.get("observation_count") or 1)) + 1
+            if ledger_seed and ledger_seed.get("status") == "UNCHANGED":
+                count = max(count, int(ledger_seed["observation_count"]) + 1)
             too_old = count >= 2 and age_seconds >= threshold
             result.update({
                 "status": (
@@ -659,7 +775,27 @@ def _rapidapi_quote_lineage(
                 "observation_count": count,
                 "operationally_current": not too_old,
             })
+            if ledger_seed and ledger_seed.get("status") == "UNCHANGED":
+                result["bootstrap_source"] = "market_ledger"
         elif isinstance(previous, dict):
+            result["status"] = "QUOTE_CHANGED"
+        elif ledger_seed and ledger_seed.get("status") == "UNCHANGED":
+            first_seen = ledger_seed["first_seen_at_utc"]
+            age_seconds = max(0, int((captured - first_seen).total_seconds()))
+            count = int(ledger_seed["observation_count"]) + 1
+            too_old = count >= 2 and age_seconds >= threshold
+            result.update({
+                "status": (
+                    "UNCHANGED_BEYOND_VERIFIABLE_WINDOW"
+                    if too_old else "UNCHANGED_WITHIN_VERIFIABLE_WINDOW"
+                ),
+                "first_seen_at_utc": first_seen.isoformat(timespec="seconds"),
+                "unchanged_age_seconds": age_seconds,
+                "observation_count": count,
+                "operationally_current": not too_old,
+                "bootstrap_source": "market_ledger",
+            })
+        elif ledger_seed and ledger_seed.get("status") == "QUOTE_CHANGED":
             result["status"] = "QUOTE_CHANGED"
         store.set_entry(
             path,

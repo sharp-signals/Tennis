@@ -1,4 +1,5 @@
 import inspect
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -253,6 +254,95 @@ class OperationalOddsContractTests(unittest.TestCase):
             repeated["status"], "UNCHANGED_BEYOND_VERIFIABLE_WINDOW",
         )
         self.assertEqual(repeated["unchanged_age_seconds"], 46805)
+
+    def test_empty_lineage_bootstraps_from_existing_market_ledger(self):
+        match = self.match()
+        source = {
+            "event_id": "690252",
+            "captured_at_utc": "2026-10-25T11:45:13+00:00",
+            "raw_payload_sha256": "new-envelope-same-price",
+        }
+        odds = {"Alpha One": 2.14, "Beta Two": 1.70}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            observations = root / "ledger" / "observations"
+            observations.mkdir(parents=True)
+            prior = {
+                "capture": {"captured_at_utc": "2026-10-24T17:33:31+00:00"},
+                "event": {
+                    "provider_event_id": 690252,
+                    "tour": "atp",
+                },
+                "selections": [
+                    {"name": "Alpha One", "raw_decimal_odd": 2.14},
+                    {"name": "Beta Two", "raw_decimal_odd": 1.70},
+                ],
+                "source": {"provider": "RapidAPI"},
+            }
+            (observations / "2026-10-24.jsonl").write_text(
+                json.dumps(prior) + "\n", encoding="utf-8"
+            )
+            store = fetch_data.JsonCacheStore(root / "cache")
+            result = fetch_data._rapidapi_quote_lineage(
+                match,
+                odds,
+                source,
+                store=store,
+                path=store.entity_path("quote-lineage.json"),
+                ledger_root=root / "ledger",
+            )
+        self.assertFalse(result["operationally_current"])
+        self.assertEqual(
+            result["status"], "UNCHANGED_BEYOND_VERIFIABLE_WINDOW"
+        )
+        self.assertEqual(result["unchanged_age_seconds"], 65502)
+        self.assertEqual(result["bootstrap_source"], "market_ledger")
+
+    def test_existing_new_lineage_is_extended_back_to_market_ledger(self):
+        match = self.match()
+        odds = {"Alpha One": 2.14, "Beta Two": 1.70}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            observations = root / "ledger" / "observations"
+            observations.mkdir(parents=True)
+            prior = {
+                "capture": {"captured_at_utc": "2026-10-24T17:33:31+00:00"},
+                "event": {"provider_event_id": 690252, "tour": "atp"},
+                "selections": [
+                    {"name": "Alpha One", "raw_decimal_odd": 2.14},
+                    {"name": "Beta Two", "raw_decimal_odd": 1.70},
+                ],
+                "source": {"provider": "RapidAPI"},
+            }
+            (observations / "2026-10-24.jsonl").write_text(
+                json.dumps(prior) + "\n", encoding="utf-8"
+            )
+            store = fetch_data.JsonCacheStore(root / "cache")
+            path = store.entity_path("quote-lineage.json")
+            fingerprint = fetch_data.payload_sha256({
+                "event_id": "690252",
+                "odds": [("alpha one", 2.14), ("beta two", 1.70)],
+            })
+            store.set_entry(path, "atp:690252", {
+                "quote_fingerprint": fingerprint,
+                "first_seen_at_utc": "2026-10-25T11:45:13+00:00",
+                "observation_count": 1,
+            })
+            result = fetch_data._rapidapi_quote_lineage(
+                match,
+                odds,
+                {
+                    "event_id": "690252",
+                    "captured_at_utc": "2026-10-25T12:00:00+00:00",
+                },
+                store=store,
+                path=path,
+                ledger_root=root / "ledger",
+            )
+        self.assertFalse(result["operationally_current"])
+        self.assertEqual(
+            result["first_seen_at_utc"], "2026-10-24T17:33:31+00:00"
+        )
 
     def test_changed_timestamp_free_quote_resets_lineage_and_remains_current(self):
         match = self.match()

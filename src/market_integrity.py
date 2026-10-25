@@ -11,13 +11,13 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-CHANGE_ID = "CHANGE-2026-10-25-156"
+CHANGE_ID = "CHANGE-2026-10-25-157"
 POLICY_VERSION = "market-quote-integrity-v4"
-ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-25-156"
+ODDS_CONTRACT_CHANGE_ID = "CHANGE-2026-10-25-157"
 ODDS_SOURCE_FAMILY = "verified-direct-pre-match"
-ODDS_SOURCE_CONTRACT_VERSION = "verified-direct-pre-match-v6"
+ODDS_SOURCE_CONTRACT_VERSION = "verified-direct-pre-match-v7"
 ODDS_IDENTITY_POLICY_VERSION = "rapidapi-event-bilateral-v1"
-ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-or-bounded-quote-lineage-v3"
+ODDS_FRESHNESS_SEMANTICS = "provider-timestamp-or-ledger-bootstrapped-lineage-v4"
 ODDS_BOOKMAKER_POLICY = "named-bookmaker-or-verified-provider-feed-v3"
 
 _ODDS_SOURCE_CONTRACT = {
