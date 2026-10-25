@@ -300,14 +300,15 @@ class Challenger125ExperimentTests(unittest.TestCase):
             membership["reason_codes"],
         )
 
-    def test_main_tour_and_250_behaviour_remain_unchanged(self):
+    def test_main_tour_and_250_independent_pricing_stays_shadow(self):
         for tier in ("ATP 500", "ATP 250", "WTA 250"):
             with self.subTest(tier=tier):
                 payload = self._priced_payload(tier)
                 original = dict(payload["prelive_decision"])
                 self.assertFalse(tournament_policy.apply_experimental_paper_gate(payload))
                 self.assertEqual(payload["prelive_decision"], original)
-                self.assertEqual(len(paper_trading.build_entries(payload)), 1)
+                self.assertEqual(payload["prelive_decision"]["state"], "PRICING_SHADOW")
+                self.assertEqual(paper_trading.build_entries(payload), [])
 
     def test_gate_preserves_identity_v2_and_legacy_payloads_without_tier(self):
         payload = self._priced_payload()

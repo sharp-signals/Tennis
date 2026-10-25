@@ -15,6 +15,7 @@ from src.prelive_decision import (
     EXPERIMENTAL_FACTUAL_PARTIAL,
     REPORT_NULL,
     PRICING_UNAVAILABLE,
+    PRICING_SHADOW,
     _action_block_available,
     _service_block_available,
     assess_report,
@@ -87,6 +88,21 @@ class PreliveOperationalContractTests(unittest.TestCase):
         decision = self.decision(0.1)
         self.assertEqual(decision["state"], EDGE_POSITIVE)
         self.assertTrue(decision["paper_eligible"])
+
+    def test_independent_pricing_stays_shadow_and_never_enters_paper(self):
+        pricing = self.pricing(4.2)
+        pricing["model_version"] = "factor-independent-v1.0"
+        decision = build_decision(
+            self.payload(), self.divergence(), pricing, self.assessment()
+        )
+        self.assertEqual(decision["state"], PRICING_SHADOW)
+        self.assertFalse(decision["paper_eligible"])
+        self.assertEqual(decision["paper_markets"], [])
+        payload = self.payload()
+        payload["pricing"] = pricing
+        payload["prelive_decision"] = decision
+        self.assertEqual(paper_trading.build_entries(payload), [])
+        self.assertIn("SHADOW", _telegram_decision_row(payload)[2])
 
     def test_existing_decision_refresh_never_creates_new_paper(self):
         payload = self.payload()
@@ -359,6 +375,7 @@ class PreliveOperationalContractTests(unittest.TestCase):
             EDGE_POSITIVE: 1, EDGE_POSITIVE_COVERAGE_INSUFFICIENT: 0,
             "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": 0,
             EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1,
+            PRICING_SHADOW: 0,
             EXPERIMENTAL_FACTUAL_PARTIAL: 0,
             "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0,
             REPORT_NULL: 1,
