@@ -556,6 +556,19 @@ _EVENT_IDENTITY_PATH = _EVENT_IDENTITY_STORE.entity_path("rapidapi_event_identit
 # necessária para uma reconsulta leve posterior.
 _PENDING_MARKET_STORE = JsonCacheStore("data/cache")
 _PENDING_MARKET_PATH = _PENDING_MARKET_STORE.entity_path("pending_market_checks.json")
+# O feed pre-match do plano PRO não expõe a hora da casa. Conservamos uma
+# linhagem mínima por evento para distinguir uma captura realmente nova de
+# uma fotografia que o fornecedor continua a repetir entre execuções.
+_RAPIDAPI_QUOTE_LINEAGE_STORE = JsonCacheStore("data/cache")
+_RAPIDAPI_QUOTE_LINEAGE_PATH = _RAPIDAPI_QUOTE_LINEAGE_STORE.entity_path(
+    "rapidapi_quote_lineage.json"
+)
+try:
+    RAPIDAPI_UNCHANGED_QUOTE_MAX_AGE_SECONDS = int(
+        os.environ.get("RAPIDAPI_UNCHANGED_QUOTE_MAX_AGE_SECONDS", str(6 * 60 * 60))
+    )
+except (TypeError, ValueError):
+    RAPIDAPI_UNCHANGED_QUOTE_MAX_AGE_SECONDS = 6 * 60 * 60
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
 ODDS_API_BASE = "https://api.the-odds-api.com/v4"
@@ -572,6 +585,93 @@ RAPIDAPI_FRESH_MARKET_MAX_AGE_SECONDS = 15 * 60
 
 def _odds_capture_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _parse_utc_datetime(value: object) -> Optional[datetime]:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _rapidapi_quote_lineage(
+    match: dict,
+    odds: dict,
+    source: dict,
+    *,
+    store: Optional[JsonCacheStore] = None,
+    path: Optional[Path] = None,
+    max_unchanged_age_seconds: Optional[int] = None,
+) -> dict:
+    """Classifica uma quote sem timestamp pela sua linhagem entre execuções."""
+    store = store or _RAPIDAPI_QUOTE_LINEAGE_STORE
+    path = path or _RAPIDAPI_QUOTE_LINEAGE_PATH
+    threshold = (
+        RAPIDAPI_UNCHANGED_QUOTE_MAX_AGE_SECONDS
+        if max_unchanged_age_seconds is None
+        else max(0, int(max_unchanged_age_seconds))
+    )
+    event_id = str(source.get("event_id") or "").strip()
+    tour = str(match.get("_tour") or match.get("tour") or "unknown").casefold()
+    captured_text = str(source.get("captured_at_utc") or _odds_capture_timestamp())
+    captured = _parse_utc_datetime(captured_text) or datetime.now(timezone.utc)
+    quote_material = {
+        "event_id": event_id,
+        "odds": sorted(
+            (str(player).casefold().strip(), float(odd))
+            for player, odd in odds.items()
+        ),
+    }
+    fingerprint = payload_sha256(quote_material)
+    key = f"{tour}:{event_id}"
+    result = {
+        "status": "FIRST_OBSERVATION",
+        "quote_fingerprint": fingerprint,
+        "first_seen_at_utc": captured.isoformat(timespec="seconds"),
+        "last_seen_at_utc": captured.isoformat(timespec="seconds"),
+        "unchanged_age_seconds": 0,
+        "observation_count": 1,
+        "operationally_current": True,
+    }
+    if not event_id:
+        result.update({
+            "status": "EVENT_ID_UNAVAILABLE",
+            "operationally_current": False,
+        })
+        return result
+    try:
+        previous = store.get_entry(path, key, max_age_hours=24 * 7)
+        if isinstance(previous, dict) and previous.get("quote_fingerprint") == fingerprint:
+            first_seen = _parse_utc_datetime(previous.get("first_seen_at_utc")) or captured
+            age_seconds = max(0, int((captured - first_seen).total_seconds()))
+            count = max(1, int(previous.get("observation_count") or 1)) + 1
+            too_old = count >= 2 and age_seconds >= threshold
+            result.update({
+                "status": (
+                    "UNCHANGED_BEYOND_VERIFIABLE_WINDOW"
+                    if too_old else "UNCHANGED_WITHIN_VERIFIABLE_WINDOW"
+                ),
+                "first_seen_at_utc": first_seen.isoformat(timespec="seconds"),
+                "unchanged_age_seconds": age_seconds,
+                "observation_count": count,
+                "operationally_current": not too_old,
+            })
+        elif isinstance(previous, dict):
+            result["status"] = "QUOTE_CHANGED"
+        store.set_entry(
+            path,
+            key,
+            {**result, "raw_payload_sha256": source.get("raw_payload_sha256")},
+            metadata={"purpose": "RapidAPI timestamp-free quote freshness guard"},
+        )
+    except (OSError, TypeError, ValueError):
+        # A persistência é observabilidade auxiliar. A sua indisponibilidade
+        # não transforma automaticamente todos os mercados em pendentes.
+        result["status"] = "LINEAGE_STORE_UNAVAILABLE"
+    return result
 
 
 def _odds_cache_age_seconds(captured_at_utc: object) -> Optional[int]:
@@ -1755,6 +1855,22 @@ def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
         }],
         "operational_pricing_eligible": not challenger_experiment,
     })
+    lineage = _rapidapi_quote_lineage(match, odds, promoted)
+    promoted["quote_lineage"] = lineage
+    if lineage.get("operationally_current") is not True:
+        promoted.update({
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "availability_status": "OBSERVATION_ONLY",
+            "unavailable_reason": "repeated_unverified_provider_quote",
+            "operational_pricing_eligible": False,
+        })
+        promoted["market_quotes"][0].update({
+            "freshness_status": "OBSERVED_AT_CAPTURE_UNVERIFIED_AGE",
+            "market_integrity_reason_codes": [
+                "REPEATED_UNVERIFIED_PROVIDER_QUOTE"
+            ],
+            "operational_pricing_eligible": False,
+        })
     promoted.update(market_integrity.operational_contract_metadata(captured_at_utc))
     promoted["operational_pricing_eligible"] = (
         market_integrity.is_operational_pricing_provenance(promoted)
@@ -1764,8 +1880,11 @@ def fetch_rapidapi_upcoming_operational_moneyline_with_provenance(
         # nunca é devolvida como fonte de preço operacional pelo chamador.
         promoted["availability_status"] = "OBSERVATION_ONLY"
         promoted["unavailable_reason"] = (
-            "challenger_provider_quote_experimental"
-            if challenger_experiment else "provider_quote_contract_rejected"
+            promoted.get("unavailable_reason")
+            or (
+                "challenger_provider_quote_experimental"
+                if challenger_experiment else "provider_quote_contract_rejected"
+            )
         )
         register_pending_market_check(match, promoted, available=False)
         return dict(odds), promoted
