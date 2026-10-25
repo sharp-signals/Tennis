@@ -29,6 +29,7 @@ EDGE_NEGATIVE = "EDGE_NEGATIVE"
 EDGE_ZERO = "EDGE_ZERO"
 REPORT_NULL = "REPORT_NULL"
 PRICING_UNAVAILABLE = "PRICING_UNAVAILABLE"
+PRICING_SHADOW = "PRICING_SHADOW"
 EXPERIMENTAL_FACTUAL_PARTIAL = "EXPERIMENTAL_FACTUAL_PARTIAL"
 
 
@@ -325,6 +326,23 @@ def build_decision(
     except (TypeError, ValueError):
         coverage_ratio = 0.0
     coverage_sufficient_for_paper = coverage_ratio >= PAPER_MIN_WEIGHTED_COVERAGE
+    if (
+        str(pricing.get("model_version") or "").startswith("factor-independent-v1")
+        and not _is_experimental_tier(payload)
+    ):
+        return {
+            **base,
+            "state": PRICING_SHADOW,
+            "reason": "pricing independente ainda em calibração SHADOW; sem PAPER automático",
+            "side": side,
+            "player": payload.get(f"player_{side}"),
+            "fenzobot_index": index,
+            "expected_edge_pct": edge,
+            "market": market,
+            "paper_eligible": False,
+            "paper_markets": [],
+            "pricing_validation_mode": "SHADOW",
+        }
     if state == EDGE_POSITIVE and not coverage_sufficient_for_paper:
         state = EDGE_POSITIVE_COVERAGE_INSUFFICIENT
         reason = (

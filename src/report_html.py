@@ -87,6 +87,7 @@ REPORT_DECISION_PRESENTATION = {
     ),
     "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
     "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
+    "PRICING_SHADOW": ("PRICING INDEPENDENTE — SHADOW / SEM PAPER", "zero", "🟣", "YELLOW"),
 }
 
 
@@ -3750,6 +3751,19 @@ def _mod_decision_box(payload):
             '<div class="decision-primary">Análise factual disponível; edge e PAPER aguardam uma cotação bilateral verificável.</div>'
             f'<div class="decision-note">{_esc(detail)} · O mercado entra em reconsulta automática; não cria PAPER. Cobertura {_esc(coverage_text)}.</div>'
         )
+    elif state == "PRICING_SHADOW":
+        market = _d(decision.get("market"))
+        edge = decision.get("expected_edge_pct")
+        edge_text = f"{float(edge):+.1f}%" if edge is not None else "N/D"
+        body = (
+            f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
+            f'{_esc(decision.get("fenzobot_index"))}/100 · edge experimental {_esc(edge_text)}</div>'
+            f'<div class="decision-grid"><span>Mercado observado <b>{_esc(market.get("market"))}</b></span>'
+            f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
+            f'<span>Cobertura ponderada <b>{_esc(coverage_text)}</b></span></div>'
+            '<div class="decision-note">A probabilidade independente está em calibração SHADOW. '
+            'O valor é visível para estudo, mas não cria PAPER automático nem claim de edge validado.</div>'
+        )
     else:
         assessment = _d(decision.get("report_assessment"))
         reasons = assessment.get("reasons") or [decision.get("reason") or "dados insuficientes"]
@@ -5370,7 +5384,7 @@ def _mod_action_map(payload, div, result):
         return ("\n" + " ".join(notes)) if notes else ""
 
     # Só Moneyline dispõe simultaneamente de odds e modelo próprios. A decisão
-    # económica vem exclusivamente do pricing residual v0.1; a antiga faixa
+    # económica vem do pricing independente experimental; a antiga faixa
     # indicative_odds não promove valor nem orienta este mapa.
     _pricing = _d(payload.get("pricing"))
     _pricing_available = bool(_pricing.get("available"))
@@ -5403,14 +5417,14 @@ def _mod_action_map(payload, div, result):
                 _edge = _pricing_player.get("expected_edge_pct")
                 _edge_txt = f"{float(_edge):+.1f}%" if _edge is not None else "acima do limiar"
                 _pricing_note = (
-                    f" O pricing residual também assinala candidato experimental ({_edge_txt}), "
-                    "sujeito aos avisos de validação acima."
+                    f" O pricing independente observa edge experimental ({_edge_txt}) em SHADOW, "
+                    "sem criar PAPER automático."
                 )
             add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
                 f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}."
                 f"{_pricing_note} Confirmar o preço antes de decidir."
                 f"{moneyline_history_note(fav_side)}",
-                "Motor de divergência + pricing residual experimental",
+                "Motor de divergência + pricing independente SHADOW",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
         _odd_fav = observed_odd(fav_side)
@@ -5427,22 +5441,22 @@ def _mod_action_map(payload, div, result):
                 _edge = _pricing_player.get("expected_edge_pct")
                 _edge_txt = f"{float(_edge):+.1f}%" if _edge is not None else "acima do limiar"
                 _nota_alinhamento = (
-                    "Mercado e indicadores concordam e o pricing residual assinala "
-                    f"candidato experimental ({_edge_txt}); consultar os gates e o aviso de validação acima."
+                    "Mercado e indicadores concordam e o pricing independente observa "
+                    f"edge experimental ({_edge_txt}) em SHADOW; sem PAPER automático."
                 )
             elif _pricing_available:
                 _nota_alinhamento = (
-                    "Mercado e indicadores concordam, mas o pricing residual experimental "
+                    "Mercado e indicadores concordam, mas o pricing independente experimental "
                     "não superou simultaneamente o limiar de edge e os gates de qualidade."
                 )
             else:
                 _nota_alinhamento = (
-                    "Mercado e indicadores concordam, mas não há pricing residual disponível "
+                    "Mercado e indicadores concordam, mas não há pricing independente disponível "
                     "para avaliar o preço."
                 )
             add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}",
                 f"{_nota_alinhamento}{moneyline_history_note(fav_side)}",
-                "Mercado + índice de sinais + pricing residual experimental",
+                "Mercado + índice de sinais + pricing independente SHADOW",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     else:
         add("Pré-jogo", "Sem sinal claro",
