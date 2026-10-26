@@ -61,36 +61,33 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(market_a + market_b, 1.0, places=12)
         self.assertGreater(overround, 0)
 
-    def test_no_evidence_signal_keeps_market_prior(self):
+    def test_no_evidence_signal_returns_neutral_probability(self):
         pricing = self._estimate(
             self._payload(), self._divergence(index_a=53, factors=4, intensity=0)
         )
-        self.assertAlmostEqual(
-            pricing["sharp_estimate_a"], pricing["market_probability_a"], places=12,
-        )
-        self.assertIsNone(pricing["residual_logit"])
+        self.assertAlmostEqual(pricing["sharp_estimate_a"], 0.5, places=12)
+        self.assertAlmostEqual(pricing["residual_logit"], 0.0, places=12)
 
-    def test_production_default_uses_only_validated_zero_scale(self):
+    def test_production_default_uses_historical_factor_calibration(self):
         pricing = estimate_market_residual_pricing(
             self._payload(), self._divergence(index_a=100, factors=8, intensity=3)
         )
-        self.assertAlmostEqual(
-            pricing["sharp_estimate_a"], pricing["market_probability_a"], places=12,
-        )
-        self.assertEqual(pricing["maximum_adjustment_pp"], 0.0)
+        self.assertGreater(pricing["sharp_estimate_a"], 0.70)
+        self.assertIsNone(pricing["maximum_adjustment_pp"])
         self.assertEqual(
             pricing["residual_calibration"]["status"],
-            "NOT_SUPPORTED_OUT_OF_SAMPLE",
+            "HISTORICALLY_CALIBRATED_SHADOW",
         )
+        self.assertFalse(pricing["market_used_in_fair_probability"])
 
     def test_positive_evidence_increases_a_and_decreases_b(self):
         pricing = self._estimate(self._payload(), self._divergence(80))
-        self.assertGreater(pricing["sharp_estimate_a"], pricing["market_probability_a"])
-        self.assertLess(pricing["sharp_estimate_b"], pricing["market_probability_b"])
+        self.assertGreater(pricing["sharp_estimate_a"], 0.5)
+        self.assertLess(pricing["sharp_estimate_b"], 0.5)
 
     def test_negative_evidence_decreases_a(self):
         pricing = self._estimate(self._payload(), self._divergence(20))
-        self.assertLess(pricing["sharp_estimate_a"], pricing["market_probability_a"])
+        self.assertLess(pricing["sharp_estimate_a"], 0.5)
 
     def test_probability_coherence_and_fair_odds(self):
         pricing = self._estimate(self._payload(), self._divergence(80))
@@ -98,19 +95,17 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(pricing["fair_odd_a"], 1.0 / pricing["sharp_estimate_a"])
         self.assertAlmostEqual(pricing["fair_odd_b"], 1.0 / pricing["sharp_estimate_b"])
 
-    def test_fair_probability_uses_market_as_prior_but_residual_is_bounded(self):
+    def test_fair_probability_is_independent_of_market_price(self):
         first = self._estimate(
             self._payload(2.10, 1.90), self._divergence(79)
         )
         second = self._estimate(
             self._payload(8.00, 1.15), self._divergence(79)
         )
-        self.assertNotEqual(first["sharp_estimate_a"], second["sharp_estimate_a"])
-        self.assertNotEqual(first["fair_odd_a"], second["fair_odd_a"])
+        self.assertEqual(first["sharp_estimate_a"], second["sharp_estimate_a"])
+        self.assertEqual(first["fair_odd_a"], second["fair_odd_a"])
         self.assertNotEqual(first["expected_edge_a"], second["expected_edge_a"])
-        self.assertTrue(first["market_used_in_fair_probability"])
-        self.assertLessEqual(abs(first["bounded_adjustment_pp"]), 6.0)
-        self.assertLessEqual(abs(second["bounded_adjustment_pp"]), 6.0)
+        self.assertFalse(first["market_used_in_fair_probability"])
 
     def test_index_is_not_used_directly_as_probability(self):
         self.assertAlmostEqual(evidence_probability(79, 1.0), 0.61774, places=5)
@@ -134,19 +129,15 @@ class MarketResidualPricingTests(unittest.TestCase):
             self._payload(1.59, 2.34),
             self._divergence(100, factors=8, intensity=3, weight=5),
         )
-        self.assertLessEqual(pricing["bounded_adjustment_pp"], 6.0)
-        self.assertGreater(pricing["fair_odd_a"], 1.45)
-        self.assertLess(pricing["expected_edge_a"], 0.10)
+        self.assertGreater(pricing["fair_odd_a"], 1.35)
+        self.assertLess(pricing["sharp_estimate_a"], 0.74)
 
-    def test_balanced_evidence_keeps_underdog_at_market_prior(self):
+    def test_balanced_evidence_returns_neutral_probability(self):
         pricing = self._estimate(
             self._payload(1.52, 2.66),
             self._divergence(50, factors=8, intensity=0, weight=5),
         )
-        self.assertAlmostEqual(
-            pricing["sharp_estimate_b"], pricing["market_probability_b"], places=12,
-        )
-        self.assertAlmostEqual(pricing["bounded_adjustment_pp"], 0.0, places=12)
+        self.assertAlmostEqual(pricing["sharp_estimate_b"], 0.5, places=12)
 
     def test_expected_edge_explicit_example(self):
         self.assertAlmostEqual(calculate_expected_edge(0.442, 2.44), 0.07848, places=5)
@@ -159,7 +150,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         )
         self.assertLess(pricing["sharp_estimate_a"], 0.85)
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertEqual(pricing["candidate_side"], "a")
+        self.assertIsNone(pricing["candidate_side"])
 
     def test_valid_edge_is_promoted_only_after_quality_gates(self):
         pricing = self._estimate(
@@ -168,7 +159,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertTrue(pricing["quality_gate_passed"])
         self.assertTrue(pricing["candidate"])
         self.assertEqual(pricing["candidate_side"], "a")
-        self.assertEqual(pricing["candidate_status"], "experimental_edge")
+        self.assertEqual(pricing["candidate_status"], "historically_supported_shadow_edge")
 
     def test_serious_data_quality_failure_blocks_promotion_but_keeps_numbers_visible(self):
         payload = self._payload()
@@ -180,8 +171,8 @@ class MarketResidualPricingTests(unittest.TestCase):
         )
         self.assertTrue(pricing["available"])
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertEqual(pricing["candidate_side"], "a")
-        self.assertEqual(pricing["candidate_status"], "experimental_edge")
+        self.assertIsNone(pricing["candidate_side"])
+        self.assertEqual(pricing["candidate_status"], "central_edge_not_confirmed")
 
     def test_identity_warning_reduces_quality_and_blocks_candidate(self):
         payload = self._payload()
@@ -194,7 +185,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertEqual(pricing["evidence_quality"]["source_reliability"], 0.5)
         self.assertFalse(pricing["evidence_quality"]["source_gate_passed"])
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertEqual(pricing["candidate_side"], "a")
+        self.assertIsNone(pricing["candidate_side"])
 
     def test_insufficient_factor_family_coverage_blocks_candidate(self):
         divergence = self._divergence(100, factors=4, intensity=3, weight=5)
@@ -207,7 +198,7 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertAlmostEqual(pricing["evidence_quality"]["coverage_quality"], 2 / 3, places=6)
         self.assertFalse(pricing["evidence_quality"]["coverage_gate_passed"])
         self.assertFalse(pricing["quality_gate_passed"])
-        self.assertEqual(pricing["candidate_side"], "a")
+        self.assertIsNone(pricing["candidate_side"])
 
     def test_missing_odds_fails_safely(self):
         payload = self._payload()
@@ -253,8 +244,8 @@ class MarketResidualPricingTests(unittest.TestCase):
             payload, {}, lambda _: payload["divergencia"]
         )
         for expected in (
-            "Market probability", "Fenzobot estimate", "Fair odd", "Market odd",
-            "Expected edge", "EXPERIMENTAL", "Estimativa experimental em desenvolvimento",
+            "Market probability", "Probabilidade Fenzobot", "Fair odd central", "Market odd",
+            "Faixa de fair odd", "Edge conservador", "EXPERIMENTAL", "Estimativa experimental em desenvolvimento",
             "Cobertura", "Coeficiente de fonte (pricing)",
         ):
             self.assertIn(expected, html)

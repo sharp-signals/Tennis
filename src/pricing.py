@@ -1,9 +1,9 @@
-"""Pricing experimental com mercado como prior e residual Fenzobot.
+"""Pricing Fenzobot independente do mercado, calibrado em histórico liquidado.
 
-O indice de evidencia continua a nao ser uma probabilidade. O mercado sem
-margem fornece o prior; a direcao, intensidade, qualidade e cobertura da
-evidencia Fenzobot aplicam apenas um ajuste limitado. A versão permanece em
-SHADOW ate existir calibracao prospetiva suficiente.
+O índice de evidência não é usado diretamente como probabilidade. Uma curva
+logística estimada apenas com snapshots pré-jogo e resultados liquidados
+converte força × qualidade numa probabilidade estrutural. As odds de mercado
+entram depois, exclusivamente para calcular edge e detetar extrapolações.
 """
 
 from __future__ import annotations
@@ -37,9 +37,9 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "market-prior-residual-v1.1"
-CALIBRATION_VERSION = "market-residual-calibration-v1"
-CALIBRATION_STATUS = "NOT_SUPPORTED_OUT_OF_SAMPLE"
+MODEL_VERSION = "factor-calibrated-v2.0"
+CALIBRATION_VERSION = "factor-probability-calibration-v2"
+CALIBRATION_STATUS = "HISTORICALLY_CALIBRATED_SHADOW"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
     "Estimativa experimental em desenvolvimento. Ainda não validada fora da "
@@ -47,9 +47,9 @@ DISCLAIMER = (
     "modelo e não uma recomendação de aposta."
 )
 METHOD = (
-    "P_fenzobot = P_mercado_sem_margem + "
-    "((indice-50)/50) × qualidade_da_evidencia × escala_residual_validada; "
-    "edge = P_fenzobot × odd_mercado - 1"
+    "P_fenzobot = logistic(beta_circuito × força_assinada_do_indice × "
+    "qualidade_da_evidencia); edge = P_fenzobot × odd_mercado - 1. "
+    "O mercado não participa na fair probability."
 )
 
 
@@ -57,9 +57,8 @@ METHOD = (
 class PricingParameters:
     """Configuracao versionada usada para produzir uma estimativa."""
 
-    # A auditoria cronológica v1 não encontrou melhoria fora da amostra em
-    # nenhum circuito. Zero é uma decisão empírica fail-closed, não ausência
-    # de configuração. Escalas futuras exigem nova validação versionada.
+    # Mantidos para compatibilidade com chamadas históricas; já não participam
+    # no cálculo da probabilidade própria do FenzoBot.
     atp_maximum_adjustment_pp: float = 0.0
     wta_maximum_adjustment_pp: float = 0.0
     challenger_maximum_adjustment_pp: float = 0.0
@@ -68,6 +67,21 @@ class PricingParameters:
     minimum_quality: float = PRICING_MIN_QUALITY
     full_quality_factors: int = PRICING_FULL_QUALITY_FACTORS
     full_quality_mass: float = PRICING_FULL_QUALITY_MASS
+    # MLE e IC 95% calculados em 1 078 partidas canónicas liquidadas. O limite
+    # inferior produz o edge conservador; o central produz a fair odd visível.
+    atp_beta: float = 1.00911
+    atp_beta_low: float = 0.63706
+    atp_beta_high: float = 1.38116
+    wta_beta: float = 1.24198
+    wta_beta_low: float = 0.85680
+    wta_beta_high: float = 1.62715
+    challenger_beta: float = 0.80537
+    challenger_beta_low: float = 0.0
+    challenger_beta_high: float = 1.67285
+    # Percentil 95 da diferença histórica |P_fenzobot - P_mercado sem margem|.
+    atp_anomaly_gap_pp: float = 27.93
+    wta_anomaly_gap_pp: float = 32.62
+    challenger_anomaly_gap_pp: float = 37.71
 
 
 def _configuration_fingerprint(parameters: PricingParameters) -> str:
@@ -75,8 +89,8 @@ def _configuration_fingerprint(parameters: PricingParameters) -> str:
         "model_version": MODEL_VERSION,
         "parameters": asdict(parameters),
         "intensity_quality": {"0": 0.0, "1": 0.50, "2": 0.75, "3": 1.0},
-        "market_prior": "two_way_devig",
-        "bounded_residual": True,
+        "probability_source": "settled_pre_match_factor_snapshots",
+        "market_role": "edge_and_anomaly_check_only",
         "calibration_version": CALIBRATION_VERSION,
         "calibration_status": CALIBRATION_STATUS,
     }
@@ -108,6 +122,15 @@ def apply_logit_residual(market_probability: float, residual: float) -> float:
 def calculate_expected_edge(sharp_probability: float, market_odd: float) -> float:
     """Expected edge decimal: P_sharp × odd de mercado - 1."""
     return float(sharp_probability) * float(market_odd) - 1.0
+
+
+def calibrated_factor_probability(residual_predictor: float, beta: float) -> float:
+    """Converte evidência assinada em probabilidade sem consultar o mercado."""
+    z = float(residual_predictor) * max(0.0, float(beta))
+    # Os valores atuais nunca chegam perto destes limites, mas o clamp evita
+    # overflow e preserva a coerência matemática em payloads corrompidos.
+    z = min(20.0, max(-20.0, z))
+    return 1.0 / (1.0 + math.exp(-z))
 
 
 def evidence_probability(index_a: float, quality: float, *, maximum_probability: float = 0.85) -> float:
@@ -303,13 +326,7 @@ def estimate_market_residual_pricing(
     *,
     parameters: PricingParameters | None = None,
 ) -> dict[str, Any]:
-    """Estima fair odds com mercado sem margem como prior e residual factual.
-
-    O resultado e sempre coerente a duas vias: calcula-se apenas P(A) e usa-se
-    P(B)=1-P(A). O mercado fornece o ponto de partida, enquanto o indice, a
-    intensidade, a massa efetiva, a cobertura e a fiabilidade determinam a
-    direção e a fração do ajuste limitado que pode ser aplicada.
-    """
+    """Estima fair odds próprias e só depois compara com o mercado observado."""
     parameters = parameters or PricingParameters()
     assessment = payload.get("report_assessment")
     if isinstance(assessment, Mapping) and assessment.get("report_null"):
@@ -354,25 +371,40 @@ def estimate_market_residual_pricing(
     tour = str(payload.get("tour") or "").casefold()
     if experimental_challenger_quote or "challenger" in tier:
         calibration_segment = "challenger"
-        residual_limit_pp = parameters.challenger_maximum_adjustment_pp
+        beta = parameters.challenger_beta
+        beta_low = parameters.challenger_beta_low
+        beta_high = parameters.challenger_beta_high
+        anomaly_gap_pp = parameters.challenger_anomaly_gap_pp
     elif tour == "wta":
         calibration_segment = "wta"
-        residual_limit_pp = parameters.wta_maximum_adjustment_pp
+        beta = parameters.wta_beta
+        beta_low = parameters.wta_beta_low
+        beta_high = parameters.wta_beta_high
+        anomaly_gap_pp = parameters.wta_anomaly_gap_pp
     else:
         calibration_segment = "atp"
-        residual_limit_pp = parameters.atp_maximum_adjustment_pp
-    sharp_a, bounded_adjustment = market_prior_probability(
-        market_a,
-        index_a,
-        quality,
-        maximum_adjustment_pp=residual_limit_pp,
-    )
+        beta = parameters.atp_beta
+        beta_low = parameters.atp_beta_low
+        beta_high = parameters.atp_beta_high
+        anomaly_gap_pp = parameters.atp_anomaly_gap_pp
+    residual_predictor = signed_strength * quality
+    sharp_a = calibrated_factor_probability(residual_predictor, beta)
+    interval_a = sorted((
+        calibrated_factor_probability(residual_predictor, beta_low),
+        calibrated_factor_probability(residual_predictor, beta_high),
+    ))
+    sharp_a_low, sharp_a_high = interval_a
     sharp_b = 1.0 - sharp_a
+    sharp_b_low, sharp_b_high = 1.0 - sharp_a_high, 1.0 - sharp_a_low
     adjustment_a = (sharp_a - market_a) * 100.0
     adjustment_b = -adjustment_a
     fair_a, fair_b = 1.0 / sharp_a, 1.0 / sharp_b
     edge_a = calculate_expected_edge(sharp_a, odd_a)
     edge_b = calculate_expected_edge(sharp_b, odd_b)
+    conservative_edge_a = calculate_expected_edge(sharp_a_low, odd_a)
+    conservative_edge_b = calculate_expected_edge(sharp_b_low, odd_b)
+    anomaly_gap_observed_pp = abs(adjustment_a)
+    anomaly_gate_passed = anomaly_gap_observed_pp <= anomaly_gap_pp
 
     serious_failure = _has_serious_data_failure(payload)
     quality_gate_passed = (
@@ -391,10 +423,32 @@ def estimate_market_residual_pricing(
     # apenas como diagnostico de qualidade do pricing.
     fenzobot_side = "a" if index_a > 50 else "b" if index_a < 50 else None
     fenzobot_edge = edge_a if fenzobot_side == "a" else edge_b if fenzobot_side == "b" else None
-    candidate_side = fenzobot_side if fenzobot_edge is not None and fenzobot_edge > 0 else None
+    conservative_edge = (
+        conservative_edge_a if fenzobot_side == "a"
+        else conservative_edge_b if fenzobot_side == "b" else None
+    )
+    candidate_side = (
+        fenzobot_side
+        if fenzobot_edge is not None
+        and fenzobot_edge > 0
+        and conservative_edge is not None
+        and conservative_edge > 0
+        and quality_gate_passed
+        and anomaly_gate_passed
+        else None
+    )
     if candidate_side:
-        candidate_status = "experimental_edge"
-        visible_label = f"EDGE EXPERIMENTAL +{fenzobot_edge * 100.0:.1f}%"
+        candidate_status = "historically_supported_shadow_edge"
+        visible_label = (
+            f"EDGE SHADOW +{fenzobot_edge * 100.0:.1f}% · "
+            f"conservador +{conservative_edge * 100.0:.1f}%"
+        )
+    elif fenzobot_edge is not None and fenzobot_edge > 0 and not anomaly_gate_passed:
+        candidate_status = "market_discrepancy_out_of_calibration"
+        visible_label = "DISCREPÂNCIA FORA DA CALIBRAÇÃO — REVISÃO OBRIGATÓRIA"
+    elif fenzobot_edge is not None and fenzobot_edge > 0:
+        candidate_status = "central_edge_not_confirmed"
+        visible_label = "EDGE CENTRAL NÃO CONFIRMADO PELO INTERVALO CONSERVADOR"
     else:
         candidate_status = "non_positive_fenzobot_edge"
         visible_label = "SEM EDGE POSITIVO NO LADO FENZOBOT"
@@ -403,18 +457,28 @@ def estimate_market_residual_pricing(
         "a": {
             "market_probability_pct": round(market_a * 100.0, 2),
             "sharp_estimate_pct": round(sharp_a * 100.0, 2),
+            "sharp_estimate_low_pct": round(sharp_a_low * 100.0, 2),
+            "sharp_estimate_high_pct": round(sharp_a_high * 100.0, 2),
             "adjustment_pp": round(adjustment_a, 2),
             "fair_odd": round(fair_a, 3),
+            "fair_odd_low": round(1.0 / sharp_a_high, 3),
+            "fair_odd_high": round(1.0 / sharp_a_low, 3),
             "market_odd": round(odd_a, 3),
             "expected_edge_pct": round(edge_a * 100.0, 2),
+            "conservative_edge_pct": round(conservative_edge_a * 100.0, 2),
         },
         "b": {
             "market_probability_pct": round(market_b * 100.0, 2),
             "sharp_estimate_pct": round(sharp_b * 100.0, 2),
+            "sharp_estimate_low_pct": round(sharp_b_low * 100.0, 2),
+            "sharp_estimate_high_pct": round(sharp_b_high * 100.0, 2),
             "adjustment_pp": round(adjustment_b, 2),
             "fair_odd": round(fair_b, 3),
+            "fair_odd_low": round(1.0 / sharp_b_high, 3),
+            "fair_odd_high": round(1.0 / sharp_b_low, 3),
             "market_odd": round(odd_b, 3),
             "expected_edge_pct": round(edge_b * 100.0, 2),
+            "conservative_edge_pct": round(conservative_edge_b * 100.0, 2),
         },
     }
     return {
@@ -433,17 +497,25 @@ def estimate_market_residual_pricing(
         "method": METHOD,
         "market_overround_pct": round(overround * 100.0, 3),
         "signed_strength": round(signed_strength, 6),
-        "residual_logit": None,
-        "bounded_adjustment_pp": round(bounded_adjustment * 100.0, 6),
-        "maximum_adjustment_pp": residual_limit_pp,
+        "residual_logit": round(beta * residual_predictor, 6),
+        "bounded_adjustment_pp": round(adjustment_a, 6),
+        "maximum_adjustment_pp": None,
         "residual_calibration": {
             "version": CALIBRATION_VERSION,
             "status": CALIBRATION_STATUS,
             "segment": calibration_segment,
-            "validated_scale_pp": residual_limit_pp,
+            "beta": beta,
+            "beta_low": beta_low,
+            "beta_high": beta_high,
+            "anomaly_gap_pp": anomaly_gap_pp,
         },
-        "probability_basis": "market_devig_prior_plus_bounded_factor_residual",
-        "market_used_in_fair_probability": True,
+        "probability_basis": "independent_factor_logistic_calibration",
+        "market_used_in_fair_probability": False,
+        "market_comparison": {
+            "absolute_gap_pp": round(anomaly_gap_observed_pp, 2),
+            "historical_p95_gap_pp": anomaly_gap_pp,
+            "within_calibrated_range": anomaly_gate_passed,
+        },
         "quality_score": round(quality, 6),
         "quality_gate_passed": quality_gate_passed,
         "evidence_quality": {
@@ -474,6 +546,8 @@ def estimate_market_residual_pricing(
         "market_odd_b": odd_b,
         "expected_edge_a": edge_a,
         "expected_edge_b": edge_b,
+        "conservative_edge_a": conservative_edge_a,
+        "conservative_edge_b": conservative_edge_b,
         "mathematical_edge_side": mathematical_side,
         "candidate": bool(candidate_side),
         "candidate_side": candidate_side,

@@ -1,0 +1,271 @@
+{
+  "schema_version": 2,
+  "model": "factor-calibrated-v2",
+  "source": "data/calibration_snapshots.json",
+  "deduplication": "earliest pre-match snapshot per canonical match identity",
+  "predictor": "signed_index_strength_x_evidence_quality",
+  "market_role": "comparison_and_out_of_distribution_check_only",
+  "exclusions": {
+    "invalid_two_way_odds": 129,
+    "later_duplicate_snapshots": 0,
+    "unsettled": 189
+  },
+  "pooled": {
+    "n": 1078,
+    "beta": 1.097095,
+    "standard_error": 0.13019,
+    "beta_ci95": [
+      0.841923,
+      1.352268
+    ],
+    "maximum_quality_probability": 0.749715,
+    "market_gap_pp": {
+      "p90": 25.18,
+      "p95": 31.11
+    },
+    "chronological_sensitivity": [
+      {
+        "train_fraction": 0.5,
+        "train_beta": 1.212887,
+        "holdout": {
+          "n": 539,
+          "brier": 0.234977
+        },
+        "holdout_neutral": {
+          "n": 539,
+          "brier": 0.25
+        }
+      },
+      {
+        "train_fraction": 0.6,
+        "train_beta": 1.203718,
+        "holdout": {
+          "n": 432,
+          "brier": 0.236398
+        },
+        "holdout_neutral": {
+          "n": 432,
+          "brier": 0.25
+        }
+      },
+      {
+        "train_fraction": 0.7,
+        "train_beta": 1.260342,
+        "holdout": {
+          "n": 324,
+          "brier": 0.242383
+        },
+        "holdout_neutral": {
+          "n": 324,
+          "brier": 0.25
+        }
+      },
+      {
+        "train_fraction": 0.8,
+        "train_beta": 1.223382,
+        "holdout": {
+          "n": 216,
+          "brier": 0.245474
+        },
+        "holdout_neutral": {
+          "n": 216,
+          "brier": 0.25
+        }
+      }
+    ]
+  },
+  "segments": {
+    "atp": {
+      "n": 486,
+      "beta": 1.009109,
+      "standard_error": 0.18982,
+      "beta_ci95": [
+        0.637062,
+        1.381156
+      ],
+      "maximum_quality_probability": 0.732846,
+      "market_gap_pp": {
+        "p90": 22.33,
+        "p95": 27.93
+      },
+      "chronological_sensitivity": [
+        {
+          "train_fraction": 0.5,
+          "train_beta": 0.994537,
+          "holdout": {
+            "n": 243,
+            "brier": 0.232205
+          },
+          "holdout_neutral": {
+            "n": 243,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.6,
+          "train_beta": 1.144727,
+          "holdout": {
+            "n": 195,
+            "brier": 0.236434
+          },
+          "holdout_neutral": {
+            "n": 195,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.7,
+          "train_beta": 1.203578,
+          "holdout": {
+            "n": 146,
+            "brier": 0.245249
+          },
+          "holdout_neutral": {
+            "n": 146,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.8,
+          "train_beta": 1.163097,
+          "holdout": {
+            "n": 98,
+            "brier": 0.250247
+          },
+          "holdout_neutral": {
+            "n": 98,
+            "brier": 0.25
+          }
+        }
+      ]
+    },
+    "wta": {
+      "n": 458,
+      "beta": 1.241977,
+      "standard_error": 0.196518,
+      "beta_ci95": [
+        0.856802,
+        1.627152
+      ],
+      "maximum_quality_probability": 0.775908,
+      "market_gap_pp": {
+        "p90": 27.3,
+        "p95": 32.62
+      },
+      "chronological_sensitivity": [
+        {
+          "train_fraction": 0.5,
+          "train_beta": 1.38877,
+          "holdout": {
+            "n": 229,
+            "brier": 0.230908
+          },
+          "holdout_neutral": {
+            "n": 229,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.6,
+          "train_beta": 1.489021,
+          "holdout": {
+            "n": 184,
+            "brier": 0.240648
+          },
+          "holdout_neutral": {
+            "n": 184,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.7,
+          "train_beta": 1.41934,
+          "holdout": {
+            "n": 138,
+            "brier": 0.24225
+          },
+          "holdout_neutral": {
+            "n": 138,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.8,
+          "train_beta": 1.255474,
+          "holdout": {
+            "n": 92,
+            "brier": 0.229238
+          },
+          "holdout_neutral": {
+            "n": 92,
+            "brier": 0.25
+          }
+        }
+      ]
+    },
+    "challenger": {
+      "n": 134,
+      "beta": 0.805366,
+      "standard_error": 0.442595,
+      "beta_ci95": [
+        0.0,
+        1.672854
+      ],
+      "maximum_quality_probability": 0.691121,
+      "market_gap_pp": {
+        "p90": 28.71,
+        "p95": 37.71
+      },
+      "chronological_sensitivity": [
+        {
+          "train_fraction": 0.5,
+          "train_beta": 0.814702,
+          "holdout": {
+            "n": 67,
+            "brier": 0.24081
+          },
+          "holdout_neutral": {
+            "n": 67,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.6,
+          "train_beta": 1.539857,
+          "holdout": {
+            "n": 54,
+            "brier": 0.263112
+          },
+          "holdout_neutral": {
+            "n": 54,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.7,
+          "train_beta": 1.509174,
+          "holdout": {
+            "n": 41,
+            "brier": 0.274588
+          },
+          "holdout_neutral": {
+            "n": 41,
+            "brier": 0.25
+          }
+        },
+        {
+          "train_fraction": 0.8,
+          "train_beta": 1.073426,
+          "holdout": {
+            "n": 27,
+            "brier": 0.260467
+          },
+          "holdout_neutral": {
+            "n": 27,
+            "brier": 0.25
+          }
+        }
+      ]
+    }
+  }
+}

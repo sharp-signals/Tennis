@@ -87,7 +87,7 @@ REPORT_DECISION_PRESENTATION = {
     ),
     "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
     "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
-    "PRICING_SHADOW": ("PRICING COM PRIOR DE MERCADO — SHADOW / SEM PAPER", "zero", "🟣", "YELLOW"),
+    "PRICING_SHADOW": ("FAIR ODD INDEPENDENTE — SHADOW / SEM PAPER", "zero", "🟣", "YELLOW"),
 }
 
 
@@ -3778,7 +3778,7 @@ def _mod_decision_box(payload):
             f'<div class="decision-grid"><span>Mercado observado <b>{_esc(market.get("market"))}</b></span>'
             f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
             f'<span>Cobertura ponderada <b>{_esc(coverage_text)}</b></span></div>'
-            '<div class="decision-note">A probabilidade com prior de mercado e residual Fenzobot está em calibração SHADOW. '
+        '<div class="decision-note">A probabilidade independente dos fatores Fenzobot está em calibração SHADOW. '
             'O valor é visível para estudo, mas não cria PAPER automático nem claim de edge validado.</div>'
         )
     else:
@@ -4285,7 +4285,7 @@ def _mod_mercado_vs_sinal(payload, div):
 
 
 def _mod_market_residual_pricing(payload):
-    """Bloco económico: prior de mercado + residual limitado -> edge."""
+    """Bloco económico: fair probability independente -> comparação de edge."""
     pricing = _d(payload.get("pricing"))
     if not pricing.get("available"):
         return ""
@@ -4313,12 +4313,15 @@ def _mod_market_residual_pricing(payload):
             f'<div class="pricing-player-name">{_esc(name)}</div>'
             '<div class="pricing-metrics">'
             f'<div><span>Market probability</span><b>{fmt(data.get("market_probability_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>Fenzobot estimate</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>Probabilidade Fenzobot</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>Intervalo histórico</span><b>{fmt(data.get("sharp_estimate_low_pct"), 1, suffix="%")}–{fmt(data.get("sharp_estimate_high_pct"), 1, suffix="%")}</b></div>'
             f'<div><span>Diferença vs mercado</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
-            f'<div><span>Fair odd</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
+            f'<div><span>Fair odd central</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
+            f'<div><span>Faixa de fair odd</span><b>{fmt(data.get("fair_odd_low"), 2)}–{fmt(data.get("fair_odd_high"), 2)}</b></div>'
             f'<div><span>Market odd</span><b>{fmt(data.get("market_odd"), 2)}</b></div>'
             f'<div class="pricing-edge{edge_class}"><span>Expected edge</span>'
             f'<b>{fmt(edge, 1, signed=True, suffix="%")}</b></div>'
+            f'<div><span>Edge conservador</span><b>{fmt(data.get("conservative_edge_pct"), 1, signed=True, suffix="%")}</b></div>'
             '</div></div>'
         )
 
@@ -4342,9 +4345,9 @@ def _mod_market_residual_pricing(payload):
     return (
         '<section class="pricing-block">'
         '<div class="pricing-head"><div>'
-        '<div class="pricing-kicker">FENZOBOT PRICING — MERCADO COMO PRIOR + RESIDUAL LIMITADO</div>'
+        '<div class="pricing-kicker">FENZOBOT PRICING — FAIR ODD INDEPENDENTE E CALIBRADA</div>'
         '<p class="pricing-disclaimer">PAPER técnico automático e revisão manual 22Bet são estratégias separadas. As coberturas operacional e de pricing têm bases distintas.</p>'
-        '<div class="pricing-path">Mercado sem margem + fatores ponderados → ajuste residual limitado → comparação com a odd observada</div>'
+        '<div class="pricing-path">Fatores ponderados × qualidade → probabilidade calibrada no histórico → comparação posterior com a odd observada</div>'
         '</div><span class="pricing-status">EXPERIMENTAL — EM VALIDAÇÃO</span></div>'
         f'<div class="pricing-grid">{card("a", payload.get("player_a", "A"))}'
         f'{card("b", payload.get("player_b", "B"))}</div>'
@@ -5434,14 +5437,14 @@ def _mod_action_map(payload, div, result):
                 _edge = _pricing_player.get("expected_edge_pct")
                 _edge_txt = f"{float(_edge):+.1f}%" if _edge is not None else "acima do limiar"
                 _pricing_note = (
-                    f" O pricing residual observa edge experimental ({_edge_txt}) em SHADOW, "
+                    f" A fair odd independente observa edge experimental ({_edge_txt}) em SHADOW, "
                     "sem criar PAPER automático."
                 )
             add("Mercado principal", f"Seguir {fav} @ {_odd_fav_txt}",
                 f"Divergência {strength}: o mercado favorece o outro lado, mas os indicadores apontam para {fav}."
                 f"{_pricing_note} Confirmar o preço antes de decidir."
                 f"{moneyline_history_note(fav_side)}",
-                "Motor de divergência + pricing residual SHADOW",
+                "Motor de fatores + fair odd independente SHADOW",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     elif signal_type == "alinhamento" and fav_side and div.get("intensidade_nivel", 0) >= 3:
         _odd_fav = observed_odd(fav_side)
@@ -5458,22 +5461,22 @@ def _mod_action_map(payload, div, result):
                 _edge = _pricing_player.get("expected_edge_pct")
                 _edge_txt = f"{float(_edge):+.1f}%" if _edge is not None else "acima do limiar"
                 _nota_alinhamento = (
-                    "Mercado e indicadores concordam e o pricing residual observa "
+                    "Mercado e indicadores concordam e a fair odd independente observa "
                     f"edge experimental ({_edge_txt}) em SHADOW; sem PAPER automático."
                 )
             elif _pricing_available:
                 _nota_alinhamento = (
-                    "Mercado e indicadores concordam, mas o pricing residual experimental "
+                    "Mercado e indicadores concordam, mas a fair odd independente "
                     "não superou simultaneamente o limiar de edge e os gates de qualidade."
                 )
             else:
                 _nota_alinhamento = (
-                    "Mercado e indicadores concordam, mas não há pricing residual disponível "
+                    "Mercado e indicadores concordam, mas não há fair odd independente disponível "
                     "para avaliar o preço."
                 )
             add("Mercado principal", f"Moneyline {fav} @ {_odd_fav_txt}",
                 f"{_nota_alinhamento}{moneyline_history_note(fav_side)}",
-                "Mercado + índice de sinais + pricing residual SHADOW",
+                "Índice de sinais + fair odd independente SHADOW",
                 headline=f"Moneyline {fav} @ {_odd_fav_txt}")
     else:
         add("Pré-jogo", "Sem sinal claro",

@@ -504,7 +504,7 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertIn("EDGE NEGATIVO SHADOW — SEM PAPER", html)
+        self.assertIn("EDGE POSITIVO SHADOW — SEM PAPER AUTOMÁTICO", html)
         self.assertIn("Moneyline A", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)
@@ -869,7 +869,7 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("FENZOBOT PRICING — MERCADO COMO PRIOR + RESIDUAL LIMITADO", html)
+        self.assertIn("FENZOBOT PRICING — FAIR ODD INDEPENDENTE E CALIBRADA", html)
         self.assertIn("Expected edge", html)
         self.assertNotIn("Faixa indicativa calibrada", html)
         self.assertNotIn("Veredicto de mercado", html)
@@ -891,7 +891,7 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("FENZOBOT PRICING — MERCADO COMO PRIOR + RESIDUAL LIMITADO", html)
+        self.assertIn("FENZOBOT PRICING — FAIR ODD INDEPENDENTE E CALIBRADA", html)
         self.assertIn("EXPERIMENTAL — EM VALIDAÇÃO", html)
         self.assertNotIn("Faixa indicativa em calibração", html)
         self.assertNotIn("Veredicto de mercado", html)

@@ -3336,7 +3336,7 @@ def _build_match_payload(match: dict) -> dict:
         ):
             payload["pricing"]["reason"] = payload["odds_unavailable_reason"]
     except Exception as exc:
-        print(f"[aviso:pricing] pricing residual indisponível para "
+        print(f"[aviso:pricing] fair odd independente indisponível para "
               f"{payload.get('player_a')} vs {payload.get('player_b')}: {exc}")
         payload["pricing"] = None
 
@@ -3466,7 +3466,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             line = html.escape("Análise factual disponível · preço de mercado indisponível · sem PAPER")
         elif state == "PRICING_SHADOW":
             line = html.escape(
-                f"Pricing residual SHADOW · edge experimental "
+                f"Fair odd independente SHADOW · edge experimental "
                 f"{float(decision.get('expected_edge_pct')):+.1f}% · sem PAPER automático"
             )
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
