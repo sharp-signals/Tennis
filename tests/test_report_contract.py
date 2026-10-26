@@ -196,6 +196,22 @@ class ReportStateTests(unittest.TestCase):
             report_html.historical_report_color_from_decision_head("🔴 texto não canónico")
         )
 
+    def test_shadow_decision_box_visually_separates_positive_and_negative_edges(self):
+        base = {
+            "player_a": "A", "player_b": "B",
+            "prelive_decision": {
+                "state": "PRICING_SHADOW", "player": "A", "fenzobot_index": 72,
+                "market": {"market": "Moneyline A", "odd": 1.90},
+                "coverage": {"weighted_pct": 100},
+            },
+        }
+        positive = {**base, "prelive_decision": {**base["prelive_decision"], "expected_edge_pct": 3.0}}
+        negative = {**base, "prelive_decision": {**base["prelive_decision"], "expected_edge_pct": -2.0}}
+        self.assertIn("🟢", report_html._mod_decision_box(positive))
+        self.assertIn("EDGE POSITIVO SHADOW", report_html._mod_decision_box(positive))
+        self.assertIn("🔴", report_html._mod_decision_box(negative))
+        self.assertIn("EDGE NEGATIVO SHADOW", report_html._mod_decision_box(negative))
+
     def test_divergence_normalization_preserves_diagnostic_fields(self):
         raw = {
             "prob_mercado_a": 60,
@@ -488,7 +504,7 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertIn("PRICING INDEPENDENTE — SHADOW / SEM PAPER", html)
+        self.assertIn("EDGE POSITIVO SHADOW — SEM PAPER AUTOMÁTICO", html)
         self.assertIn("Moneyline A", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)
@@ -853,7 +869,7 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("FENZOBOT PRICING — PROBABILIDADE INDEPENDENTE", html)
+        self.assertIn("FENZOBOT PRICING — FAIR ODD INDEPENDENTE E CALIBRADA", html)
         self.assertIn("Expected edge", html)
         self.assertNotIn("Faixa indicativa calibrada", html)
         self.assertNotIn("Veredicto de mercado", html)
@@ -875,7 +891,7 @@ class ReportRenderingTests(unittest.TestCase):
             },
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
-        self.assertIn("FENZOBOT PRICING — PROBABILIDADE INDEPENDENTE", html)
+        self.assertIn("FENZOBOT PRICING — FAIR ODD INDEPENDENTE E CALIBRADA", html)
         self.assertIn("EXPERIMENTAL — EM VALIDAÇÃO", html)
         self.assertNotIn("Faixa indicativa em calibração", html)
         self.assertNotIn("Veredicto de mercado", html)

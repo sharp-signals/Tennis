@@ -995,7 +995,10 @@ class LaverOnlyBrainReviewRegressionTests(unittest.TestCase):
             self.assertFalse(matrix[mode]["h2h_available"])
             self.assertTrue(matrix[mode]["hands_available"])
             self.assertTrue(matrix[mode]["pricing_available"])
-            self.assertTrue(matrix[mode]["candidate"])
+            # A auditoria cronológica v1 não validou uma escala residual
+            # positiva; o relatório continua disponível em SHADOW, sem
+            # fabricar um candidato a partir de um limite arbitrário.
+            self.assertFalse(matrix[mode]["candidate"])
             self.assertTrue(matrix[mode]["html_map"])
         self.assertEqual(
             matrix["LAVER_ONLY"]["comeback_source"], "local_history"

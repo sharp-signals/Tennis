@@ -91,7 +91,7 @@ class PreliveOperationalContractTests(unittest.TestCase):
 
     def test_independent_pricing_stays_shadow_and_never_enters_paper(self):
         pricing = self.pricing(4.2)
-        pricing["model_version"] = "factor-independent-v1.0"
+        pricing["model_version"] = "market-prior-residual-v1.0"
         decision = build_decision(
             self.payload(), self.divergence(), pricing, self.assessment()
         )
@@ -103,6 +103,18 @@ class PreliveOperationalContractTests(unittest.TestCase):
         payload["prelive_decision"] = decision
         self.assertEqual(paper_trading.build_entries(payload), [])
         self.assertIn("SHADOW", _telegram_decision_row(payload)[2])
+        self.assertEqual(_telegram_decision_row(payload)[:2], (2.8, "🟢"))
+
+    def test_shadow_negative_is_not_grouped_with_positive_alerts(self):
+        pricing = self.pricing(-4.2)
+        pricing["model_version"] = "market-prior-residual-v1.0"
+        decision = build_decision(
+            self.payload(), self.divergence(), pricing, self.assessment()
+        )
+        payload = self.payload()
+        payload["prelive_decision"] = decision
+        self.assertEqual(decision["state"], PRICING_SHADOW)
+        self.assertEqual(_telegram_decision_row(payload)[:2], (1.8, "🔴"))
 
     def test_existing_decision_refresh_never_creates_new_paper(self):
         payload = self.payload()

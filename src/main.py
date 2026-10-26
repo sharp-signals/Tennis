@@ -3336,7 +3336,7 @@ def _build_match_payload(match: dict) -> dict:
         ):
             payload["pricing"]["reason"] = payload["odds_unavailable_reason"]
     except Exception as exc:
-        print(f"[aviso:pricing] pricing residual indisponível para "
+        print(f"[aviso:pricing] fair odd independente indisponível para "
               f"{payload.get('player_a')} vs {payload.get('player_b')}: {exc}")
         payload["pricing"] = None
 
@@ -3416,6 +3416,17 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             "EXPERIMENTAL_FACTUAL_PARTIAL": (0.5, "🟡"),
             "REPORT_NULL": (0, "⚫"),
         }.get(state, (0, "⚫"))
+        if state == "PRICING_SHADOW":
+            try:
+                shadow_edge = float(decision.get("expected_edge_pct"))
+            except (TypeError, ValueError):
+                shadow_edge = None
+            if shadow_edge is not None and shadow_edge > 0:
+                level, flag = 2.8, "🟢"
+            elif shadow_edge is not None and shadow_edge < 0:
+                level, flag = 1.8, "🔴"
+            else:
+                level, flag = 0.8, "⚪"
         if not decision:
             # Compatibilidade para índices reconstruídos a partir de payloads
             # históricos anteriores ao contrato pre-live v1.
@@ -3455,7 +3466,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             line = html.escape("Análise factual disponível · preço de mercado indisponível · sem PAPER")
         elif state == "PRICING_SHADOW":
             line = html.escape(
-                f"Pricing independente SHADOW · edge experimental "
+                f"Fair odd independente SHADOW · edge experimental "
                 f"{float(decision.get('expected_edge_pct')):+.1f}% · sem PAPER automático"
             )
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
@@ -4118,6 +4129,9 @@ def run() -> None:
     linhas_challenger.sort(key=lambda x: x[0], reverse=True)
 
     n_high = sum(1 for n, _, _, _ in linhas_dados if n == 3)
+    n_shadow_positive = sum(1 for n, _, _, _ in linhas_dados if n == 2.8)
+    n_shadow_negative = sum(1 for n, _, _, _ in linhas_dados if n == 1.8)
+    n_shadow_neutral = sum(1 for n, _, _, _ in linhas_dados if n == 0.8)
     n_low_coverage = sum(1 for n, _, _, _ in linhas_dados if n == 2.5)
     n_value = sum(1 for n, _, _, _ in linhas_dados if n == 2)
     n_watch = sum(1 for n, _, _, _ in linhas_dados if n == 1)
@@ -4138,7 +4152,9 @@ def run() -> None:
 
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
-        f"🟢 {n_high} edge positivo / PAPER · 🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
+        f"🟢 {n_high} edge positivo / PAPER · 🟢 {n_shadow_positive} edge positivo SHADOW / sem PAPER · "
+        f"🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
+        f"🔴 {n_shadow_negative} edge negativo SHADOW · ⚪ {n_shadow_neutral} SHADOW sem edge positivo · "
         f"⚪ {n_watch} edge zero · 🟣 {n_challenger} Challenger 125 experimental ({n_challenger_manual_candidates} candidato manual 0,5u) · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
@@ -4146,9 +4162,13 @@ def run() -> None:
 
     # Separadores tornam a lista muito mais legível sem repetir informação.
     previous_group = None
-    group_names = {3: "🟢 EDGE POSITIVO / PAPER", 2.5: "🟡 EDGE POSITIVO / SEM PAPER",
+    group_names = {3: "🟢 EDGE POSITIVO / PAPER",
+                   2.8: "🟢 EDGE POSITIVO SHADOW / SEM PAPER",
+                   2.5: "🟡 EDGE POSITIVO / SEM PAPER",
                    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
+                   1.8: "🔴 EDGE NEGATIVO SHADOW / SEM PAPER",
                     1: "⚪ EDGE ZERO / EXCLUÍDO",
+                    0.8: "⚪ SHADOW SEM EDGE POSITIVO / SEM PAPER",
                     0.5: "🟡 MERCADO PENDENTE / RECONSULTA AUTOMÁTICA",
                    0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
     for nivel, bola, txt, url in linhas_dados:

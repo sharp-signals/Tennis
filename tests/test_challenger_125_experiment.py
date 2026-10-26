@@ -78,7 +78,13 @@ class Challenger125ExperimentTests(unittest.TestCase):
         payload = self._base_payload(tier)
         divergence = self._divergence()
         payload["divergencia"] = divergence
-        payload["pricing"] = pricing.estimate_market_residual_pricing(payload, divergence)
+        payload["pricing"] = pricing.estimate_market_residual_pricing(
+            payload,
+            divergence,
+            parameters=pricing.PricingParameters(
+                challenger_maximum_adjustment_pp=3.0,
+            ),
+        )
         self.assertTrue(payload["pricing"]["available"])
         payload["prelive_decision"] = build_decision(
             payload,
