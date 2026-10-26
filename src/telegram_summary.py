@@ -77,6 +77,11 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
                 f"{a} vs {b} — <b>EDGE POSITIVO SHADOW {edge_text}</b> em {player} "
                 f"· pricing em calibração · sem PAPER automático"
             )
+        if classification == "SHADOW_POSITIVE_UNVALIDATED":
+            return 2.2, "🟡", (
+                f"{a} vs {b} — <b>EDGE SHADOW POSITIVO {edge_text}</b> em {player} "
+                "· validação walk-forward pendente · sem candidato/PAPER"
+            )
         if classification == "BLOCKED_BY_ANOMALY":
             return 1.4, "🟡", f"{a} vs {b} — <b>DISCREPÂNCIA FORA DA CALIBRAÇÃO</b> · revisão obrigatória · sem PAPER"
         if edge_value is not None and edge_value < 0:

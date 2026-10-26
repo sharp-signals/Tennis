@@ -212,6 +212,22 @@ class ReportStateTests(unittest.TestCase):
         self.assertIn("🔴", report_html._mod_decision_box(negative))
         self.assertIn("EDGE NEGATIVO SHADOW", report_html._mod_decision_box(negative))
 
+    def test_unvalidated_positive_shadow_is_amber_not_green(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "prelive_decision": {
+                "state": "PRICING_SHADOW", "player": "A", "fenzobot_index": 72,
+                "expected_edge_pct": 12.0, "shadow_candidate": False,
+                "shadow_classification": "SHADOW_POSITIVE_UNVALIDATED",
+                "market": {"market": "Moneyline A", "odd": 2.10},
+                "coverage": {"weighted_pct": 78},
+            },
+        }
+        rendered = report_html._mod_decision_box(payload)
+        self.assertIn("🟡", rendered)
+        self.assertIn("VALIDAÇÃO WALK-FORWARD PENDENTE", rendered)
+        self.assertNotIn("🟢", rendered)
+
     def test_divergence_normalization_preserves_diagnostic_fields(self):
         raw = {
             "prob_mercado_a": 60,
@@ -504,7 +520,7 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertIn("SHADOW SEM EDGE POSITIVO — SEM PAPER", html)
+        self.assertIn("EDGE NEGATIVO SHADOW — SEM PAPER", html)
         self.assertIn("Moneyline A", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)

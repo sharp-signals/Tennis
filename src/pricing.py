@@ -16,8 +16,18 @@ from typing import Any, Mapping
 
 try:
     from . import market_integrity
+    from .pricing_promotion import (
+        PROMOTION_APPROVED,
+        PROMOTION_GATE_VERSION,
+        promotion_gate,
+    )
 except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     import market_integrity
+    from pricing_promotion import (
+        PROMOTION_APPROVED,
+        PROMOTION_GATE_VERSION,
+        promotion_gate,
+    )
 
 try:
     from .config import (
@@ -37,8 +47,8 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "factor-calibrated-v3.0"
-CALIBRATION_VERSION = "factor-probability-calibration-v3"
+MODEL_VERSION = "factor-calibrated-v3.1"
+CALIBRATION_VERSION = "factor-probability-calibration-v3.1"
 CALIBRATION_STATUS = "HISTORICALLY_CALIBRATED_SHADOW"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
@@ -51,7 +61,7 @@ METHOD = (
     "qualidade_da_evidencia); edge = P_fenzobot × odd_mercado - 1. "
     "O mercado não participa na fair probability."
 )
-FEATURE_CONTRACT_VERSION = "pricing-features-v3"
+FEATURE_CONTRACT_VERSION = "pricing-features-v3.1"
 
 
 @dataclass(frozen=True)
@@ -94,6 +104,8 @@ def _configuration_fingerprint(parameters: PricingParameters) -> str:
         "market_role": "edge_and_anomaly_check_only",
         "calibration_version": CALIBRATION_VERSION,
         "calibration_status": CALIBRATION_STATUS,
+        "promotion_gate_version": PROMOTION_GATE_VERSION,
+        "promotion_approved": PROMOTION_APPROVED,
     }
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
@@ -286,26 +298,62 @@ def _has_identity_resolution_warning(payload: Mapping[str, Any]) -> bool:
     )
 
 
-def _coverage_values(divergence: Mapping[str, Any] | None) -> tuple[float, float, bool]:
-    """Cobertura, fiabilidade e elegibilidade; defaults preservam payloads antigos."""
+def _weighted_factor_coverage(divergence: Mapping[str, Any] | None) -> float | None:
+    """Cobertura ponderada real dos fatores, quando o contrato a disponibiliza."""
     if not isinstance(divergence, Mapping):
-        return 1.0, 1.0, True
+        return None
+    statuses = divergence.get("fatores_status")
+    if not isinstance(statuses, Mapping):
+        return None
+    configured = 0.0
+    available = 0.0
+    for raw in statuses.values():
+        if not isinstance(raw, Mapping):
+            continue
+        try:
+            weight = max(0.0, float(raw.get("peso_base_configurado") or 0.0))
+        except (TypeError, ValueError):
+            continue
+        configured += weight
+        if raw.get("disponivel") is True:
+            available += weight
+    if configured <= 0:
+        return None
+    return min(1.0, max(0.0, available / configured))
+
+
+def _coverage_values(
+    divergence: Mapping[str, Any] | None,
+) -> tuple[float, float, bool, float, float | None]:
+    """Cobertura efetiva, fonte, gate e respetivos componentes auditáveis."""
+    if not isinstance(divergence, Mapping):
+        return 1.0, 1.0, True, 1.0, None
     coverage = divergence.get("evidence_coverage")
-    if not isinstance(coverage, Mapping):
-        return 1.0, 1.0, True
+    coverage = coverage if isinstance(coverage, Mapping) else {}
     try:
-        coverage_quality = min(1.0, max(0.0, float(coverage.get("coverage_quality", 1.0))))
+        family_coverage = min(1.0, max(0.0, float(coverage.get("coverage_quality", 1.0))))
     except (TypeError, ValueError):
-        coverage_quality = 0.0
+        family_coverage = 0.0
     try:
         source_reliability = min(1.0, max(0.0, float(coverage.get("source_reliability", 1.0))))
     except (TypeError, ValueError):
         source_reliability = 0.0
-    return coverage_quality, source_reliability, bool(coverage.get("pricing_eligible", True))
+    weighted_coverage = _weighted_factor_coverage(divergence)
+    effective_coverage = (
+        min(family_coverage, weighted_coverage)
+        if weighted_coverage is not None else family_coverage
+    )
+    return (
+        effective_coverage,
+        source_reliability,
+        bool(coverage.get("pricing_eligible", True)),
+        family_coverage,
+        weighted_coverage,
+    )
 
 
 def evidence_components(divergence: Mapping[str, Any] | None,
-                        parameters: PricingParameters) -> dict[str, float | int | bool]:
+                        parameters: PricingParameters) -> dict[str, float | int | bool | None]:
     """Single train/runtime transformation contract for pricing evidence."""
     index_a, factor_count, intensity, effective_mass = _evidence_values(divergence)
     signed_strength = min(1.0, max(-1.0, (index_a - 50.0) / 50.0))
@@ -313,7 +361,8 @@ def evidence_components(divergence: Mapping[str, Any] | None,
     mass_quality = (min(1.0, effective_mass / parameters.full_quality_mass)
                     if effective_mass > 0 and parameters.full_quality_mass > 0 else factor_quality)
     intensity_quality = (0.0, 0.50, 0.75, 1.0)[intensity]
-    coverage_quality, source_reliability, coverage_gate = _coverage_values(divergence)
+    (coverage_quality, source_reliability, coverage_gate, family_coverage,
+     weighted_coverage) = _coverage_values(divergence)
     # Finite-sample shrinkage prevents nominal 100/100 confidence. Missingness
     # and sparse factor mass increase uncertainty instead of disappearing.
     finite_sample_reliability = factor_count / (factor_count + 2.0) if factor_count else 0.0
@@ -323,6 +372,8 @@ def evidence_components(divergence: Mapping[str, Any] | None,
             "effective_mass": effective_mass, "signed_strength": signed_strength,
             "factor_quality": factor_quality, "mass_quality": mass_quality,
             "intensity_quality": intensity_quality, "coverage_quality": coverage_quality,
+            "family_coverage_quality": family_coverage,
+            "weighted_factor_coverage": weighted_coverage,
             "source_reliability": source_reliability, "coverage_gate_passed": coverage_gate,
             "finite_sample_reliability": finite_sample_reliability,
             "coverage_score": coverage_score,
@@ -502,7 +553,7 @@ def estimate_market_residual_pricing(
         conservative_edge_a if fenzobot_side == "a"
         else conservative_edge_b if fenzobot_side == "b" else None
     )
-    candidate_side = (
+    observation_side = (
         fenzobot_side
         if fenzobot_edge is not None
         and fenzobot_edge > 0
@@ -513,9 +564,19 @@ def estimate_market_residual_pricing(
         else None
     )
     reason_codes: list[str] = []
-    if candidate_side:
+    promotion = promotion_gate()
+    candidate_side = observation_side if PROMOTION_APPROVED else None
+    if observation_side and not PROMOTION_APPROVED:
+        shadow_classification = "SHADOW_POSITIVE_UNVALIDATED"
+        reason_codes.append("WALK_FORWARD_PROMOTION_NOT_APPROVED")
+        candidate_status = "shadow_positive_unvalidated"
+        visible_label = (
+            f"EDGE SHADOW POSITIVO +{fenzobot_edge * 100.0:.1f}% · "
+            "VALIDAÇÃO WALK-FORWARD PENDENTE"
+        )
+    elif candidate_side:
         shadow_classification = "SHADOW_CANDIDATE"
-        candidate_status = "historically_supported_shadow_edge"
+        candidate_status = "walk_forward_approved_shadow_edge"
         visible_label = (
             f"EDGE SHADOW +{fenzobot_edge * 100.0:.1f}% · "
             f"conservador +{conservative_edge * 100.0:.1f}%"
@@ -628,6 +689,13 @@ def estimate_market_residual_pricing(
             "intensity_quality": intensity_quality,
             "internal_quality": round(internal_quality, 6),
             "coverage_quality": round(coverage_quality, 6),
+            "family_coverage_quality": round(
+                float(components["family_coverage_quality"]), 6
+            ),
+            "weighted_factor_coverage": (
+                round(float(components["weighted_factor_coverage"]), 6)
+                if components["weighted_factor_coverage"] is not None else None
+            ),
             "source_reliability": round(source_reliability, 6),
             "coverage_gate_passed": coverage_gate_passed,
             "source_gate_passed": source_gate_passed,
@@ -654,6 +722,11 @@ def estimate_market_residual_pricing(
         "candidate": bool(candidate_side),
         "candidate_side": candidate_side,
         "candidate_player": payload.get(f"player_{candidate_side}") if candidate_side else None,
+        "shadow_observation_side": observation_side,
+        "shadow_observation_player": (
+            payload.get(f"player_{observation_side}") if observation_side else None
+        ),
+        "promotion_gate": promotion,
         "candidate_status": candidate_status,
         "candidate_label": visible_label,
         "candidate_threshold_pct": 0.0,
