@@ -228,6 +228,23 @@ class ReportStateTests(unittest.TestCase):
         self.assertIn("VALIDAÇÃO WALK-FORWARD PENDENTE", rendered)
         self.assertNotIn("🟢", rendered)
 
+    def test_central_edge_only_is_amber_and_explicit(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "prelive_decision": {
+                "state": "PRICING_SHADOW", "player": "A", "fenzobot_index": 72,
+                "expected_edge_pct": 5.5, "shadow_candidate": False,
+                "shadow_classification": "CENTRAL_EDGE_ONLY",
+                "market": {"market": "Moneyline A", "odd": 1.90},
+                "coverage": {"weighted_pct": 76},
+            },
+        }
+        rendered = report_html._mod_decision_box(payload)
+        self.assertIn("🟡", rendered)
+        self.assertIn("EDGE CENTRAL POSITIVO", rendered)
+        self.assertIn("INTERVALO CONSERVADOR NÃO CONFIRMA", rendered)
+        self.assertNotIn("SHADOW SEM EDGE POSITIVO", rendered)
+
     def test_divergence_normalization_preserves_diagnostic_fields(self):
         raw = {
             "prob_mercado_a": 60,

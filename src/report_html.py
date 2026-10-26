@@ -3667,6 +3667,12 @@ def _mod_decision_box(payload):
                 "zero",
                 "🟡",
             )
+        elif classification == "CENTRAL_EDGE_ONLY":
+            label, css_class, ball = (
+                "EDGE CENTRAL POSITIVO — INTERVALO CONSERVADOR NÃO CONFIRMA",
+                "zero",
+                "🟡",
+            )
         elif classification == "BLOCKED_BY_ANOMALY":
             label, css_class, ball = (
                 "DISCREPÂNCIA FORA DA CALIBRAÇÃO — REVISÃO", "zero", "🟡",
