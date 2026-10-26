@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Any, Iterable, Mapping
 
 from .shadow_pricing_store import first_valid_by_match_and_version
+from .pricing_promotion import promotion_gate
 
 
 def _scores(rows: list[dict[str, float]]) -> dict[str, Any]:
@@ -94,4 +95,4 @@ def walk_forward(rows: Iterable[Mapping[str, Any]], outcomes: Mapping[str, str],
             "train_size": cut, "holdout_size": len(holdout), "overall": comparison(holdout),
             "segments": {f"{k[0]}|{k[1]}": comparison(v) for k, v in sorted(grouped.items())},
             "expanding_window_folds": folds,
-            "promotion_gate": {"passed": False, "reason": "manual_audit_required_and_no_automatic_promotion"}}
+            "promotion_gate": promotion_gate()}

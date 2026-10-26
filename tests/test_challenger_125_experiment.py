@@ -166,8 +166,9 @@ class Challenger125ExperimentTests(unittest.TestCase):
         self.assertTrue(payload["prelive_decision"]["paper_eligible"])
         would_be = tournament_policy.apply_experimental_paper_gate(payload)
         decision = payload["prelive_decision"]
-        self.assertTrue(would_be)
+        self.assertFalse(would_be)
         self.assertEqual(decision["state"], tournament_policy.EXPERIMENTAL_EDGE_STATE)
+        self.assertIn("walk-forward", decision["reason"])
         self.assertFalse(decision["paper_eligible"])
         self.assertEqual(decision["paper_markets"], [])
         self.assertEqual(
@@ -210,6 +211,7 @@ class Challenger125ExperimentTests(unittest.TestCase):
 
     def test_challenger_manual_half_unit_candidate_requires_all_priority_metrics(self):
         payload = self._priced_payload()
+        payload["pricing"].update({"candidate": True, "candidate_side": "a"})
         payload.update({
             "recent_form_a": {"wins": 8, "losses": 2, "matches": 10},
             "recent_form_b": {"wins": 5, "losses": 5, "matches": 10},
@@ -230,6 +232,7 @@ class Challenger125ExperimentTests(unittest.TestCase):
 
     def test_challenger_manual_candidate_fails_closed_without_recent_sample(self):
         payload = self._priced_payload()
+        payload["pricing"].update({"candidate": True, "candidate_side": "a"})
         payload.update({
             "recent_form_a": {"wins": 8, "losses": 2, "matches": 10},
             "recent_form_b": {"wins": 4, "losses": 5, "matches": 9},
@@ -241,6 +244,7 @@ class Challenger125ExperimentTests(unittest.TestCase):
 
     def test_manual_candidate_is_visible_but_not_presented_as_automatic_paper(self):
         payload = self._priced_payload()
+        payload["pricing"].update({"candidate": True, "candidate_side": "a"})
         payload.update({
             "recent_form_a": {"matches": 10},
             "recent_form_b": {"matches": 10},
@@ -415,7 +419,7 @@ class Challenger125ExperimentTests(unittest.TestCase):
         self.assertEqual(metrics["data"]["reports"], {"complete": 0, "degraded": 1})
         self.assertEqual(metrics["market"]["recent_odds_available"], 1)
         self.assertEqual(metrics["pricing"], {"available": 1, "unavailable": 0})
-        self.assertEqual(metrics["paper"]["would_be_candidates"], 1)
+        self.assertEqual(metrics["paper"]["would_be_candidates"], 0)
         self.assertEqual(metrics["paper"]["persisted"], 0)
         self.assertEqual(
             metrics["paper"]["blocked_by_reason"],

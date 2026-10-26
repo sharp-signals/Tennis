@@ -3425,6 +3425,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             classification = str(decision.get("shadow_classification") or "")
             if decision.get("shadow_candidate") is True or classification == "SHADOW_CANDIDATE":
                 level, flag = 2.8, "🟢"
+            elif classification == "SHADOW_POSITIVE_UNVALIDATED":
+                level, flag = 2.2, "🟡"
             elif shadow_edge is not None and shadow_edge < 0:
                 level, flag = 1.8, "🔴"
             else:
@@ -3470,7 +3472,12 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             edge_value = decision.get("expected_edge_pct")
             edge_text = f"{float(edge_value):+.1f}%" if edge_value is not None else "N/D"
             classification = str(decision.get("shadow_classification") or "sem candidato confirmado")
-            line = html.escape(f"Fair odd independente SHADOW · {classification} · edge {edge_text} · sem PAPER automático")
+            if classification == "SHADOW_POSITIVE_UNVALIDATED":
+                line = html.escape(
+                    f"Edge SHADOW positivo {edge_text} · validação walk-forward pendente · sem candidato/PAPER"
+                )
+            else:
+                line = html.escape(f"Fair odd independente SHADOW · {classification} · edge {edge_text} · sem PAPER automático")
         elif state == "PRICING_INCONCLUSIVE":
             line = html.escape("Pricing inconclusivo · fair odd e edge N/D · sem PAPER")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)

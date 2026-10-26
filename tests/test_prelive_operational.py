@@ -121,6 +121,28 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(decision["state"], PRICING_SHADOW)
         self.assertEqual(_telegram_decision_row(payload)[:2], (1.8, "🔴"))
 
+    def test_unvalidated_positive_shadow_is_amber_and_not_candidate(self):
+        pricing = self.pricing(12.0)
+        pricing.update({
+            "model_version": "factor-calibrated-v3.1",
+            "candidate": False,
+            "candidate_side": None,
+            "shadow_observation_side": "a",
+            "shadow_observation_player": "Alpha One",
+            "shadow_classification": "SHADOW_POSITIVE_UNVALIDATED",
+            "reason_codes": ["WALK_FORWARD_PROMOTION_NOT_APPROVED"],
+            "promotion_gate": {"passed": False},
+        })
+        decision = build_decision(
+            self.payload(), self.divergence(), pricing, self.assessment()
+        )
+        payload = self.payload()
+        payload["prelive_decision"] = decision
+        self.assertFalse(decision["shadow_candidate"])
+        self.assertFalse(decision["promotion_gate"]["passed"])
+        self.assertEqual(_telegram_decision_row(payload)[:2], (2.2, "🟡"))
+        self.assertIn("walk-forward pendente", _telegram_decision_row(payload)[2])
+
     def test_existing_decision_refresh_never_creates_new_paper(self):
         payload = self.payload()
         payload["prelive_decision"] = self.decision(0.1)

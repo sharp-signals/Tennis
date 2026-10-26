@@ -187,14 +187,39 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertFalse(pricing["quality_gate_passed"])
         self.assertIsNone(pricing["candidate_side"])
 
-    def test_valid_edge_is_promoted_only_after_quality_gates(self):
+    def test_valid_shadow_edge_is_not_promoted_without_walk_forward_approval(self):
         pricing = self._estimate(
             self._payload(2.0, 2.0), self._divergence(100, factors=20, intensity=3, weight=5)
         )
         self.assertTrue(pricing["quality_gate_passed"])
-        self.assertTrue(pricing["candidate"])
-        self.assertEqual(pricing["candidate_side"], "a")
-        self.assertEqual(pricing["candidate_status"], "historically_supported_shadow_edge")
+        self.assertFalse(pricing["candidate"])
+        self.assertIsNone(pricing["candidate_side"])
+        self.assertEqual(pricing["shadow_observation_side"], "a")
+        self.assertEqual(pricing["candidate_status"], "shadow_positive_unvalidated")
+        self.assertEqual(pricing["shadow_classification"], "SHADOW_POSITIVE_UNVALIDATED")
+        self.assertFalse(pricing["promotion_gate"]["passed"])
+        self.assertIn("WALK_FORWARD_PROMOTION_NOT_APPROVED", pricing["reason_codes"])
+
+    def test_weighted_factor_coverage_is_used_in_pricing_quality(self):
+        full = self._divergence(85, factors=4, intensity=3, weight=5)
+        sparse = self._divergence(85, factors=4, intensity=3, weight=5)
+        for status in full["fatores_status"].values():
+            status.update({"peso_base_configurado": 5, "disponivel": True})
+        for number, status in enumerate(sparse["fatores_status"].values()):
+            status.update({
+                "peso_base_configurado": 5,
+                "disponivel": number < 3,
+            })
+        complete = self._estimate(self._payload(), full)
+        incomplete = self._estimate(self._payload(), sparse)
+        self.assertEqual(complete["evidence_quality"]["coverage_quality"], 1.0)
+        self.assertEqual(incomplete["evidence_quality"]["weighted_factor_coverage"], 0.75)
+        self.assertEqual(incomplete["evidence_quality"]["coverage_quality"], 0.75)
+        self.assertLess(incomplete["quality_score"], complete["quality_score"])
+        self.assertLess(
+            incomplete["uncertainty_adjusted_index_a"],
+            complete["uncertainty_adjusted_index_a"],
+        )
 
     def test_serious_data_quality_failure_blocks_promotion_but_keeps_numbers_visible(self):
         payload = self._payload()

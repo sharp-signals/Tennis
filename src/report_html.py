@@ -3661,6 +3661,12 @@ def _mod_decision_box(payload):
             label, css_class, ball = (
                 "EDGE POSITIVO SHADOW — SEM PAPER AUTOMÁTICO", "positive", "🟢",
             )
+        elif classification == "SHADOW_POSITIVE_UNVALIDATED":
+            label, css_class, ball = (
+                "EDGE SHADOW POSITIVO — VALIDAÇÃO WALK-FORWARD PENDENTE",
+                "zero",
+                "🟡",
+            )
         elif classification == "BLOCKED_BY_ANOMALY":
             label, css_class, ball = (
                 "DISCREPÂNCIA FORA DA CALIBRAÇÃO — REVISÃO", "zero", "🟡",
@@ -4340,7 +4346,13 @@ def _mod_market_residual_pricing(payload):
     candidate_side = pricing.get("candidate_side")
     candidate_label = pricing.get("candidate_label") or "SEM EDGE EXPERIMENTAL"
     candidate_player = pricing.get("candidate_player")
-    candidate_class = " promoted" if candidate_side else " withheld" if pricing.get("candidate_status") == "edge_not_promoted_insufficient_evidence" else ""
+    candidate_class = (
+        " promoted" if candidate_side else " withheld"
+        if pricing.get("candidate_status") in {
+            "edge_not_promoted_insufficient_evidence",
+            "shadow_positive_unvalidated",
+        } else ""
+    )
     if candidate_player:
         candidate_label = f"{candidate_label} · {candidate_player}"
     evidence = _d(pricing.get("evidence_quality"))

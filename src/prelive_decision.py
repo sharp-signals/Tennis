@@ -361,6 +361,9 @@ def build_decision(
             "pricing_validation_mode": "SHADOW",
             "shadow_classification": pricing.get("shadow_classification"),
             "shadow_candidate": bool(pricing.get("candidate")),
+            "shadow_observation_side": pricing.get("shadow_observation_side"),
+            "shadow_observation_player": pricing.get("shadow_observation_player"),
+            "promotion_gate": dict(_mapping(pricing.get("promotion_gate"))),
             "shadow_reason_codes": list(pricing.get("reason_codes") or []),
             "conservative_edge_pct": side_data.get("conservative_edge_pct"),
         }

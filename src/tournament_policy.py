@@ -217,6 +217,13 @@ def apply_experimental_paper_gate(payload: MutableMapping[str, Any]) -> bool:
                 f"edge Challenger de {edge_pct:+.1f}% abaixo do mínimo experimental de "
                 f"{threshold:.1f}% para {coverage:.0%} de dados; análise factual apenas"
             )
+    elif positive_edge and pricing.get("shadow_classification") == "SHADOW_POSITIVE_UNVALIDATED":
+        decision["state_before_experimental_gate"] = decision.get("state")
+        decision["state"] = EXPERIMENTAL_EDGE_STATE
+        decision["reason"] = (
+            f"edge SHADOW Challenger de {edge_pct:+.1f}% apenas observacional; "
+            "promoção walk-forward ainda não aprovada"
+        )
     decision["paper_eligible"] = False
     decision["paper_markets"] = []
     return would_be_candidate
