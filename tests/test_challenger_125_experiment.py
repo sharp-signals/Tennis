@@ -30,7 +30,7 @@ class Challenger125ExperimentTests(unittest.TestCase):
             "indice_favorece": "Alpha One",
             "tipo": "direcao",
             "classificacao": {"nivel": 3},
-            "n_fatores": 4,
+            "n_fatores": 20,
             "intensidade_nivel": 3,
             "fatores_status": {
                 f"factor-{index}": {
@@ -38,7 +38,7 @@ class Challenger125ExperimentTests(unittest.TestCase):
                     "peso_efetivo": 5,
                     "peso_base_configurado": 5,
                 }
-                for index in range(4)
+                for index in range(20)
             },
         }
 
@@ -184,7 +184,9 @@ class Challenger125ExperimentTests(unittest.TestCase):
             "coverage": {"weighted_ratio": 0.55, "weighted_pct": 55.0},
             "paper_eligible": False,
             "paper_markets": [],
+            "side": "a",
         }
+        payload["pricing"] = {"economic_estimate_available": True, "candidate": True, "candidate_side": "a"}
         tournament_policy.apply_experimental_paper_gate(payload)
         decision = payload["prelive_decision"]
         self.assertEqual(

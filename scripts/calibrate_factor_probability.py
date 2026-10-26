@@ -95,10 +95,10 @@ def build_report(path: Path) -> dict[str, Any]:
     pooled = calibrate(observations)
     return {
         "schema_version": 2,
-        "model": "factor-calibrated-v2",
+        "model": "factor-calibrated-v3",
         "source": path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path),
         "deduplication": "earliest pre-match snapshot per canonical match identity",
-        "predictor": "signed_index_strength_x_evidence_quality",
+        "predictor": "pricing-features-v3:signed_strength_x_directional_reliability",
         "market_role": "comparison_and_out_of_distribution_check_only",
         "exclusions": exclusions,
         "pooled": pooled,

@@ -19,6 +19,7 @@ PROFILES: dict[str, tuple[str, ...]] = {
         "data/analysis_cache/", "data/cache/", "data/fixtures_cache.json",
         "data/history_cache/",
         "data/tournament_cache.json", "data/calibration_snapshots.json",
+        "data/shadow_pricing_observations-v1.jsonl",
         "data/calibration_delivery_recovery/",
         "data/paper_trades.json", "data/market_ledger/", "data/match_identity/",
         "data/validation/", "data/dashboard/", "data/player_images.json",

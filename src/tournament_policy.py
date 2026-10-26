@@ -165,8 +165,14 @@ def apply_experimental_paper_gate(payload: MutableMapping[str, Any]) -> bool:
         edge_pct = None
     coverage = _coverage_ratio(decision)
     threshold, evidence_band = _challenger_edge_rule(coverage)
+    pricing = payload.get("pricing") if isinstance(payload.get("pricing"), Mapping) else {}
+    canonical_shadow_candidate = (
+        pricing.get("economic_estimate_available") is not False
+        and pricing.get("candidate") is True
+        and pricing.get("candidate_side") == decision.get("side")
+    )
     positive_edge = edge_pct is not None and edge_pct > 0
-    would_be_candidate = positive_edge and coverage >= 0.50
+    would_be_candidate = canonical_shadow_candidate and positive_edge and coverage >= 0.50
     original_markets = decision.get("paper_markets") or []
     manual_candidate_reason = _manual_paper_candidate_reason(
         payload, decision, edge_pct, coverage, threshold,
