@@ -3413,6 +3413,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             "EDGE_POSITIVE_EXPERIMENTAL_TIER": (2.5, "🟡"),
             "EDGE_ZERO": (1, "⚪"), "PRICING_UNAVAILABLE": (0, "🟡"),
             "PRICING_SHADOW": (1.5, "🟣"),
+            "PRICING_INCONCLUSIVE": (0.7, "⚪"),
             "EXPERIMENTAL_FACTUAL_PARTIAL": (0.5, "🟡"),
             "REPORT_NULL": (0, "⚫"),
         }.get(state, (0, "⚫"))
@@ -3421,7 +3422,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
                 shadow_edge = float(decision.get("expected_edge_pct"))
             except (TypeError, ValueError):
                 shadow_edge = None
-            if shadow_edge is not None and shadow_edge > 0:
+            classification = str(decision.get("shadow_classification") or "")
+            if decision.get("shadow_candidate") is True or classification == "SHADOW_CANDIDATE":
                 level, flag = 2.8, "🟢"
             elif shadow_edge is not None and shadow_edge < 0:
                 level, flag = 1.8, "🔴"
@@ -3465,10 +3467,12 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
         elif state == "PRICING_UNAVAILABLE":
             line = html.escape("Análise factual disponível · preço de mercado indisponível · sem PAPER")
         elif state == "PRICING_SHADOW":
-            line = html.escape(
-                f"Fair odd independente SHADOW · edge experimental "
-                f"{float(decision.get('expected_edge_pct')):+.1f}% · sem PAPER automático"
-            )
+            edge_value = decision.get("expected_edge_pct")
+            edge_text = f"{float(edge_value):+.1f}%" if edge_value is not None else "N/D"
+            classification = str(decision.get("shadow_classification") or "sem candidato confirmado")
+            line = html.escape(f"Fair odd independente SHADOW · {classification} · edge {edge_text} · sem PAPER automático")
+        elif state == "PRICING_INCONCLUSIVE":
+            line = html.escape("Pricing inconclusivo · fair odd e edge N/D · sem PAPER")
         tour_key = html.escape(str(payload.get("_tour") or "").lower(), quote=True)
         cards.append(
             f'<a class="idx-card" href="{href}" data-level="{level}" data-tour="{tour_key}">'
@@ -3941,6 +3945,10 @@ def run() -> None:
             }
     added_snapshots = calibration_store.upsert_snapshots(snapshots)
     print(f"[calibracao] {added_snapshots} snapshot(s) pre-jogo novo(s) guardado(s).")
+    from . import shadow_pricing_store
+    shadow_rows = [row for row in (shadow_pricing_store.build_observation(payload) for payload, _ in analyses) if row]
+    added_shadow = shadow_pricing_store.append_observations(shadow_rows)
+    print(f"[pricing-shadow] {added_shadow} observação(ões) versionada(s) acrescentada(s).")
     persisted_snapshots = calibration_store.read_snapshots_by_key(
         (
             str(payload.get("snapshot_key"))
@@ -4132,6 +4140,8 @@ def run() -> None:
     n_shadow_positive = sum(1 for n, _, _, _ in linhas_dados if n == 2.8)
     n_shadow_negative = sum(1 for n, _, _, _ in linhas_dados if n == 1.8)
     n_shadow_neutral = sum(1 for n, _, _, _ in linhas_dados if n == 0.8)
+    n_shadow_inconclusive = sum(1 for n, _, _, _ in linhas_dados if n == 0.7)
+    n_shadow_anomaly = sum(1 for n, _, _, _ in linhas_dados if n == 1.4)
     n_low_coverage = sum(1 for n, _, _, _ in linhas_dados if n == 2.5)
     n_value = sum(1 for n, _, _, _ in linhas_dados if n == 2)
     n_watch = sum(1 for n, _, _, _ in linhas_dados if n == 1)
@@ -4154,7 +4164,8 @@ def run() -> None:
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
         f"🟢 {n_high} edge positivo / PAPER · 🟢 {n_shadow_positive} edge positivo SHADOW / sem PAPER · "
         f"🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
-        f"🔴 {n_shadow_negative} edge negativo SHADOW · ⚪ {n_shadow_neutral} SHADOW sem edge positivo · "
+        f"🔴 {n_shadow_negative} edge negativo SHADOW · 🟡 {n_shadow_anomaly} discrepância fora da calibração · "
+        f"⚪ {n_shadow_neutral} SHADOW sem candidato · ⚪ {n_shadow_inconclusive} pricing inconclusivo · "
         f"⚪ {n_watch} edge zero · 🟣 {n_challenger} Challenger 125 experimental ({n_challenger_manual_candidates} candidato manual 0,5u) · 🟡 {n_pending_market} mercado pendente · ⚫ {n_none} relatório nulo"
     )
     cabecalho += "\n"
@@ -4167,8 +4178,10 @@ def run() -> None:
                    2.5: "🟡 EDGE POSITIVO / SEM PAPER",
                    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
                    1.8: "🔴 EDGE NEGATIVO SHADOW / SEM PAPER",
+                   1.4: "🟡 DISCREPÂNCIA SHADOW / REVISÃO",
                     1: "⚪ EDGE ZERO / EXCLUÍDO",
                     0.8: "⚪ SHADOW SEM EDGE POSITIVO / SEM PAPER",
+                    0.7: "⚪ PRICING INCONCLUSIVO / SEM PAPER",
                     0.5: "🟡 MERCADO PENDENTE / RECONSULTA AUTOMÁTICA",
                    0: "⚫ RELATÓRIO NULO", -1: "⚫ RELATÓRIO NULO"}
     for nivel, bola, txt, url in linhas_dados:

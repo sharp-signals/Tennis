@@ -30,6 +30,7 @@ EDGE_ZERO = "EDGE_ZERO"
 REPORT_NULL = "REPORT_NULL"
 PRICING_UNAVAILABLE = "PRICING_UNAVAILABLE"
 PRICING_SHADOW = "PRICING_SHADOW"
+PRICING_INCONCLUSIVE = "PRICING_INCONCLUSIVE"
 EXPERIMENTAL_FACTUAL_PARTIAL = "EXPERIMENTAL_FACTUAL_PARTIAL"
 
 
@@ -264,6 +265,13 @@ def build_decision(
     if not pricing.get("available"):
         reason = pricing.get("reason") or "edge não calculável para o lado Fenzobot"
         return {**base, "state": PRICING_UNAVAILABLE, "reason": reason}
+    if pricing.get("economic_estimate_available") is False:
+        return {**base, "state": PRICING_INCONCLUSIVE,
+                "reason": pricing.get("reason") or "fair odd e edge não calculáveis",
+                "shadow_classification": "PRICING_INCONCLUSIVE",
+                "shadow_candidate": False,
+                "shadow_reason_codes": list(pricing.get("reason_codes") or []),
+                "pricing_validation_mode": "SHADOW"}
     if side not in {"a", "b"}:
         # Um empate real 50--50 é uma conclusão válida do modelo, não uma
         # falha de dados. Só índices ausentes, não numéricos ou não finitos
@@ -307,7 +315,14 @@ def build_decision(
 
     state = EDGE_POSITIVE if edge > 0 else EDGE_NEGATIVE if edge < 0 else EDGE_ZERO
     div = _mapping(divergence)
-    index = div.get(f"indice_evidencia_{side}")
+    adjusted_a = pricing.get("uncertainty_adjusted_index_a")
+    if adjusted_a is not None:
+        try:
+            index = float(adjusted_a) if side == "a" else 100.0 - float(adjusted_a)
+        except (TypeError, ValueError):
+            index = div.get(f"indice_evidencia_{side}")
+    else:
+        index = div.get(f"indice_evidencia_{side}")
     market = {
         "market_type": "Moneyline",
         "market": f"Moneyline {payload.get(f'player_{side}')}",
@@ -328,7 +343,7 @@ def build_decision(
     coverage_sufficient_for_paper = coverage_ratio >= PAPER_MIN_WEIGHTED_COVERAGE
     if (
         str(pricing.get("model_version") or "").startswith((
-            "factor-independent-v1", "market-prior-residual-v1", "factor-calibrated-v2",
+            "factor-independent-v1", "market-prior-residual-v1", "factor-calibrated-v",
         ))
         and not _is_experimental_tier(payload)
     ):
@@ -344,6 +359,10 @@ def build_decision(
             "paper_eligible": False,
             "paper_markets": [],
             "pricing_validation_mode": "SHADOW",
+            "shadow_classification": pricing.get("shadow_classification"),
+            "shadow_candidate": bool(pricing.get("candidate")),
+            "shadow_reason_codes": list(pricing.get("reason_codes") or []),
+            "conservative_edge_pct": side_data.get("conservative_edge_pct"),
         }
     if state == EDGE_POSITIVE and not coverage_sufficient_for_paper:
         state = EDGE_POSITIVE_COVERAGE_INSUFFICIENT

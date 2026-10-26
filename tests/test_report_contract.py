@@ -205,8 +205,8 @@ class ReportStateTests(unittest.TestCase):
                 "coverage": {"weighted_pct": 100},
             },
         }
-        positive = {**base, "prelive_decision": {**base["prelive_decision"], "expected_edge_pct": 3.0}}
-        negative = {**base, "prelive_decision": {**base["prelive_decision"], "expected_edge_pct": -2.0}}
+        positive = {**base, "prelive_decision": {**base["prelive_decision"], "expected_edge_pct": 3.0, "shadow_candidate": True, "shadow_classification": "SHADOW_CANDIDATE"}}
+        negative = {**base, "prelive_decision": {**base["prelive_decision"], "expected_edge_pct": -2.0, "shadow_candidate": False, "shadow_classification": "NON_POSITIVE_EDGE"}}
         self.assertIn("🟢", report_html._mod_decision_box(positive))
         self.assertIn("EDGE POSITIVO SHADOW", report_html._mod_decision_box(positive))
         self.assertIn("🔴", report_html._mod_decision_box(negative))
@@ -504,7 +504,7 @@ class ReportRenderingTests(unittest.TestCase):
         }
         html = report_html.build_report_html_v2(payload, {}, report_html._calcular_divergencia)
 
-        self.assertIn("EDGE POSITIVO SHADOW — SEM PAPER AUTOMÁTICO", html)
+        self.assertIn("SHADOW SEM EDGE POSITIVO — SEM PAPER", html)
         self.assertIn("Moneyline A", html)
         self.assertNotIn("Handicap Games", html)
         self.assertNotIn("Total Games", html)

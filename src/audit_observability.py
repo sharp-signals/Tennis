@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import market_ledger, market_memory_report, tournament_policy
+from . import market_ledger, market_memory_report, tournament_policy, pricing_validation, shadow_pricing_store
 
 CONTRACT = "PAIRED_PRICING_MARKET_V1"
 CHANGE_ID = "CHANGE-2026-09-08-030"
@@ -213,9 +213,19 @@ def build(root: Path, snapshots_doc: Any, dashboard: Mapping) -> dict:
     runs = read_json(root / "data/run_metrics_log.json")
     latest = mapping(runs[-1]) if isinstance(runs, list) and runs else {}
     refresh = mapping(read_json(root / "data/dashboard/refresh-status-v1.json"))
+    maintenance = mapping(read_json(root / "data/maintenance/settlement-v1.json"))
+    maintenance_last = mapping(maintenance.get("last_run"))
+    shadow_rows = shadow_pricing_store.read_observations(
+        root / "data/shadow_pricing_observations-v1.jsonl"
+    )
+    outcomes = {
+        str(row.get("canonical_match_instance_id") or row.get("key")): mapping(row.get("outcome")).get("winner_side")
+        for row in (snapshots or []) if isinstance(row, Mapping)
+    }
     return {"last_refresh_attempt": {k: refresh.get(k) for k in ("attempted_at_utc", "market_memory", "green_strong")},
             "contract_version": "audit-observability-v1", "change_id": CHANGE_ID,
             "paired_comparison": paired_comparison(snapshots, observations),
+            "walk_forward_pricing_v1": pricing_validation.walk_forward(shadow_rows, outcomes),
             "green_diagnostics": green_diagnostics(snapshots),
             "unknown_colors_by_linkage": dict(sorted(report_counts.items())),
             "ledger_status": ledger_status,
@@ -225,5 +235,7 @@ def build(root: Path, snapshots_doc: Any, dashboard: Mapping) -> dict:
                                "basis": "MONITOR_DIAGNOSTIC_NOT_PRICING_GATE",
                                "first_ledger_capture_utc": next((mapping(o.get("capture")).get("captured_at_utc") for o in observations or []), None)},
             "llm": {key: latest.get(key) for key in ("llm_provider_invocations", "llm_external_requests", "llm_mode")},
+            "maintenance": {key: maintenance_last.get(key) for key in
+                            ("status", "reason_code", "started_at_utc", "finished_at_utc")},
             "units": {"total_reports": "HTML_FILES_INCLUDING_RERUNS", "total_snapshots": "STORED_SNAPSHOTS",
                       "selected_candidates": "UNIQUE_SNAPSHOT_KEYS", "paper_entries": "LEGS_NOT_INDEPENDENT_MATCHES"}}

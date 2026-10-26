@@ -37,8 +37,8 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "factor-calibrated-v2.0"
-CALIBRATION_VERSION = "factor-probability-calibration-v2"
+MODEL_VERSION = "factor-calibrated-v3.0"
+CALIBRATION_VERSION = "factor-probability-calibration-v3"
 CALIBRATION_STATUS = "HISTORICALLY_CALIBRATED_SHADOW"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
@@ -51,6 +51,7 @@ METHOD = (
     "qualidade_da_evidencia); edge = P_fenzobot × odd_mercado - 1. "
     "O mercado não participa na fair probability."
 )
+FEATURE_CONTRACT_VERSION = "pricing-features-v3"
 
 
 @dataclass(frozen=True)
@@ -303,6 +304,32 @@ def _coverage_values(divergence: Mapping[str, Any] | None) -> tuple[float, float
     return coverage_quality, source_reliability, bool(coverage.get("pricing_eligible", True))
 
 
+def evidence_components(divergence: Mapping[str, Any] | None,
+                        parameters: PricingParameters) -> dict[str, float | int | bool]:
+    """Single train/runtime transformation contract for pricing evidence."""
+    index_a, factor_count, intensity, effective_mass = _evidence_values(divergence)
+    signed_strength = min(1.0, max(-1.0, (index_a - 50.0) / 50.0))
+    factor_quality = min(1.0, factor_count / max(1, parameters.full_quality_factors))
+    mass_quality = (min(1.0, effective_mass / parameters.full_quality_mass)
+                    if effective_mass > 0 and parameters.full_quality_mass > 0 else factor_quality)
+    intensity_quality = (0.0, 0.50, 0.75, 1.0)[intensity]
+    coverage_quality, source_reliability, coverage_gate = _coverage_values(divergence)
+    # Finite-sample shrinkage prevents nominal 100/100 confidence. Missingness
+    # and sparse factor mass increase uncertainty instead of disappearing.
+    finite_sample_reliability = factor_count / (factor_count + 2.0) if factor_count else 0.0
+    coverage_score = min(factor_quality, mass_quality) * coverage_quality * source_reliability
+    directional_reliability = coverage_score * intensity_quality * finite_sample_reliability
+    return {"index_a": index_a, "factor_count": factor_count, "intensity": intensity,
+            "effective_mass": effective_mass, "signed_strength": signed_strength,
+            "factor_quality": factor_quality, "mass_quality": mass_quality,
+            "intensity_quality": intensity_quality, "coverage_quality": coverage_quality,
+            "source_reliability": source_reliability, "coverage_gate_passed": coverage_gate,
+            "finite_sample_reliability": finite_sample_reliability,
+            "coverage_score": coverage_score,
+            "directional_reliability": directional_reliability,
+            "uncertainty_score": 1.0 - directional_reliability}
+
+
 def _unavailable(parameters: PricingParameters, reason: str) -> dict[str, Any]:
     return {
         "available": False,
@@ -314,6 +341,9 @@ def _unavailable(parameters: PricingParameters, reason: str) -> dict[str, Any]:
         "method": METHOD,
         "reason": reason,
         "candidate": False,
+        "economic_estimate_available": False,
+        "shadow_classification": "PRICING_UNAVAILABLE",
+        "reason_codes": [reason],
         "candidate_side": None,
         "candidate_threshold_pct": 0.0,
         "disclaimer": DISCLAIMER,
@@ -349,24 +379,22 @@ def estimate_market_residual_pricing(
     except ValueError:
         return _unavailable(parameters, "missing_or_invalid_two_way_moneyline")
 
-    index_a, factor_count, intensity, effective_mass = _evidence_values(divergence)
-    signed_strength = min(1.0, max(-1.0, (index_a - 50.0) / 50.0))
-    factor_quality = min(1.0, factor_count / max(1, parameters.full_quality_factors))
-    mass_quality = (
-        min(1.0, effective_mass / parameters.full_quality_mass)
-        if effective_mass > 0 and parameters.full_quality_mass > 0
-        else factor_quality
-    )
-    # Nivel 0 significa que o proprio motor considera o sinal inconclusivo;
-    # nesse caso nao ha residual utilizavel e o mercado permanece inalterado.
-    intensity_quality = (0.0, 0.50, 0.75, 1.0)[intensity]
+    components = evidence_components(divergence, parameters)
+    index_a, factor_count, intensity, effective_mass = (components[k] for k in ("index_a", "factor_count", "intensity", "effective_mass"))
+    signed_strength = float(components["signed_strength"])
+    factor_quality, mass_quality = float(components["factor_quality"]), float(components["mass_quality"])
+    intensity_quality = float(components["intensity_quality"])
+    coverage_quality, source_reliability = float(components["coverage_quality"]), float(components["source_reliability"])
+    coverage_gate_passed = bool(components["coverage_gate_passed"])
     internal_quality = min(factor_quality, mass_quality, intensity_quality)
-    coverage_quality, source_reliability, coverage_gate_passed = _coverage_values(divergence)
     identity_warning = _has_identity_resolution_warning(payload)
     if identity_warning:
         source_reliability = min(source_reliability, 0.5)
     source_gate_passed = not identity_warning and source_reliability >= 0.75
-    quality = internal_quality * coverage_quality * source_reliability
+    quality = float(components["directional_reliability"])
+    if identity_warning:
+        original_source = float(components["source_reliability"])
+        quality *= source_reliability / original_source if original_source > 0 else 0.0
     tier = str(payload.get("tier") or "").casefold()
     tour = str(payload.get("tour") or "").casefold()
     if experimental_challenger_quote or "challenger" in tier:
@@ -387,13 +415,60 @@ def estimate_market_residual_pricing(
         beta_low = parameters.atp_beta_low
         beta_high = parameters.atp_beta_high
         anomaly_gap_pp = parameters.atp_anomaly_gap_pp
+    if intensity <= 0:
+        common = {"sharp_estimate_pct": None, "sharp_estimate_low_pct": None,
+                  "sharp_estimate_high_pct": None, "adjustment_pp": None,
+                  "fair_odd": None, "fair_odd_low": None, "fair_odd_high": None,
+                  "expected_edge_pct": None, "conservative_edge_pct": None}
+        return {
+            "available": True, "economic_estimate_available": False,
+            "model_version": MODEL_VERSION,
+            "configuration_fingerprint": _configuration_fingerprint(parameters),
+            "parameters": asdict(parameters), "status": "inconclusive",
+            "shadow_classification": "PRICING_INCONCLUSIVE",
+            "reason": "motor sem suporte direcional utilizável",
+            "reason_codes": ["INCONCLUSIVE_DIRECTIONAL_SIGNAL"],
+            "validation_status": VALIDATION_LABEL, "method": METHOD,
+            "market_overround_pct": round(overround * 100.0, 3),
+            "market_used_in_fair_probability": False,
+            "quality_score": None, "quality_gate_passed": False,
+            "active_consensus_score": round(abs(signed_strength), 6),
+            "coverage_score": round(float(components["coverage_score"]), 6),
+            "uncertainty_score": 1.0,
+            "uncertainty_adjusted_index_a": 50.0,
+            "evidence_quality": {"factor_count": factor_count,
+                "effective_mass": round(effective_mass, 3),
+                "factor_quality": round(factor_quality, 6),
+                "mass_quality": round(mass_quality, 6),
+                "intensity_quality": intensity_quality,
+                "directional_support_available": False,
+                "coverage_quality": round(coverage_quality, 6),
+                "source_reliability": round(source_reliability, 6)},
+            "players": {
+                "a": {"market_probability_pct": round(market_a * 100.0, 2), "market_odd": round(odd_a, 3), **common},
+                "b": {"market_probability_pct": round(market_b * 100.0, 2), "market_odd": round(odd_b, 3), **common}},
+            "market_probability_a": market_a, "market_probability_b": market_b,
+            "sharp_estimate_a": None, "sharp_estimate_b": None,
+            "fair_odd_a": None, "fair_odd_b": None,
+            "expected_edge_a": None, "expected_edge_b": None,
+            "conservative_edge_a": None, "conservative_edge_b": None,
+            "candidate": False, "candidate_side": None, "candidate_player": None,
+            "candidate_status": "pricing_inconclusive",
+            "candidate_label": "PRICING INCONCLUSIVO — FAIR ODD E EDGE N/D",
+            "candidate_threshold_pct": 0.0, "disclaimer": DISCLAIMER,
+        }
     residual_predictor = signed_strength * quality
     sharp_a = calibrated_factor_probability(residual_predictor, beta)
     interval_a = sorted((
         calibrated_factor_probability(residual_predictor, beta_low),
         calibrated_factor_probability(residual_predictor, beta_high),
     ))
-    sharp_a_low, sharp_a_high = interval_a
+    # Predictive uncertainty widens with missing/sparse evidence; it never
+    # narrows merely because the directional signal collapsed toward zero.
+    effective_n = max(2.0, float(effective_mass) * coverage_quality * source_reliability)
+    predictive_half_width = 1.96 * math.sqrt(sharp_a * (1.0 - sharp_a) / (effective_n + 2.0))
+    sharp_a_low = max(0.01, min(interval_a[0], sharp_a - predictive_half_width))
+    sharp_a_high = min(0.99, max(interval_a[1], sharp_a + predictive_half_width))
     sharp_b = 1.0 - sharp_a
     sharp_b_low, sharp_b_high = 1.0 - sharp_a_high, 1.0 - sharp_a_low
     adjustment_a = (sharp_a - market_a) * 100.0
@@ -437,19 +512,38 @@ def estimate_market_residual_pricing(
         and anomaly_gate_passed
         else None
     )
+    reason_codes: list[str] = []
     if candidate_side:
+        shadow_classification = "SHADOW_CANDIDATE"
         candidate_status = "historically_supported_shadow_edge"
         visible_label = (
             f"EDGE SHADOW +{fenzobot_edge * 100.0:.1f}% · "
             f"conservador +{conservative_edge * 100.0:.1f}%"
         )
     elif fenzobot_edge is not None and fenzobot_edge > 0 and not anomaly_gate_passed:
+        shadow_classification = "BLOCKED_BY_ANOMALY"
+        reason_codes.append("MARKET_GAP_OUTSIDE_CALIBRATED_RANGE")
         candidate_status = "market_discrepancy_out_of_calibration"
         visible_label = "DISCREPÂNCIA FORA DA CALIBRAÇÃO — REVISÃO OBRIGATÓRIA"
     elif fenzobot_edge is not None and fenzobot_edge > 0:
+        shadow_classification = "CENTRAL_EDGE_ONLY"
+        if conservative_edge is None or conservative_edge <= 0:
+            reason_codes.append("CONSERVATIVE_EDGE_NOT_POSITIVE")
+        if factor_count < parameters.minimum_factors:
+            reason_codes.append("INSUFFICIENT_FACTOR_COUNT")
+        if quality < parameters.minimum_quality:
+            reason_codes.append("QUALITY_BELOW_MINIMUM")
+        if serious_failure:
+            reason_codes.append("SERIOUS_DATA_QUALITY_FAILURE")
+        if not coverage_gate_passed:
+            reason_codes.append("COVERAGE_GATE_FAILED")
+        if not source_gate_passed:
+            reason_codes.append("SOURCE_RELIABILITY_GATE_FAILED")
         candidate_status = "central_edge_not_confirmed"
         visible_label = "EDGE CENTRAL NÃO CONFIRMADO PELO INTERVALO CONSERVADOR"
     else:
+        shadow_classification = "NON_POSITIVE_EDGE"
+        reason_codes.append("NON_POSITIVE_FENZOBOT_EDGE")
         candidate_status = "non_positive_fenzobot_edge"
         visible_label = "SEM EDGE POSITIVO NO LADO FENZOBOT"
 
@@ -483,6 +577,9 @@ def estimate_market_residual_pricing(
     }
     return {
         "available": True,
+        "economic_estimate_available": True,
+        "shadow_classification": shadow_classification,
+        "reason_codes": reason_codes,
         "model_version": MODEL_VERSION,
         "configuration_fingerprint": _configuration_fingerprint(parameters),
         "odds_source_contract_version": payload.get("odds_source_contract_version"),
@@ -510,6 +607,7 @@ def estimate_market_residual_pricing(
             "anomaly_gap_pp": anomaly_gap_pp,
         },
         "probability_basis": "independent_factor_logistic_calibration",
+        "feature_contract_version": FEATURE_CONTRACT_VERSION,
         "market_used_in_fair_probability": False,
         "market_comparison": {
             "absolute_gap_pp": round(anomaly_gap_observed_pp, 2),
@@ -517,6 +615,10 @@ def estimate_market_residual_pricing(
             "within_calibrated_range": anomaly_gate_passed,
         },
         "quality_score": round(quality, 6),
+        "active_consensus_score": round(abs(signed_strength), 6),
+        "coverage_score": round(float(components["coverage_score"]), 6),
+        "uncertainty_score": round(float(components["uncertainty_score"]), 6),
+        "uncertainty_adjusted_index_a": round(50.0 + (float(index_a) - 50.0) * quality, 3),
         "quality_gate_passed": quality_gate_passed,
         "evidence_quality": {
             "factor_count": factor_count,

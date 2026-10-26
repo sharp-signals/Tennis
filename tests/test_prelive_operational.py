@@ -92,6 +92,9 @@ class PreliveOperationalContractTests(unittest.TestCase):
     def test_independent_pricing_stays_shadow_and_never_enters_paper(self):
         pricing = self.pricing(4.2)
         pricing["model_version"] = "market-prior-residual-v1.0"
+        pricing["candidate"] = True
+        pricing["candidate_side"] = "a"
+        pricing["shadow_classification"] = "SHADOW_CANDIDATE"
         decision = build_decision(
             self.payload(), self.divergence(), pricing, self.assessment()
         )
@@ -108,6 +111,8 @@ class PreliveOperationalContractTests(unittest.TestCase):
     def test_shadow_negative_is_not_grouped_with_positive_alerts(self):
         pricing = self.pricing(-4.2)
         pricing["model_version"] = "market-prior-residual-v1.0"
+        pricing["candidate"] = False
+        pricing["shadow_classification"] = "NON_POSITIVE_EDGE"
         decision = build_decision(
             self.payload(), self.divergence(), pricing, self.assessment()
         )
@@ -388,6 +393,7 @@ class PreliveOperationalContractTests(unittest.TestCase):
             "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": 0,
             EDGE_NEGATIVE: 1, EDGE_ZERO: 1, PRICING_UNAVAILABLE: 1,
             PRICING_SHADOW: 0,
+            "PRICING_INCONCLUSIVE": 0,
             EXPERIMENTAL_FACTUAL_PARTIAL: 0,
             "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0,
             REPORT_NULL: 1,

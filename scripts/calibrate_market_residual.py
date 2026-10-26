@@ -24,6 +24,7 @@ from src.pricing import (
     PricingParameters,
     _coverage_values,
     _evidence_values,
+    evidence_components,
     de_vig_market_probabilities,
 )
 
@@ -103,19 +104,10 @@ def _segment(snapshot: Mapping[str, Any]) -> str | None:
 
 
 def _quality(divergence: Mapping[str, Any], parameters: PricingParameters) -> tuple[float, float]:
-    index_a, factor_count, intensity, effective_mass = _evidence_values(divergence)
-    factor_quality = min(1.0, factor_count / max(1, parameters.full_quality_factors))
-    mass_quality = (
-        min(1.0, effective_mass / parameters.full_quality_mass)
-        if effective_mass > 0 and parameters.full_quality_mass > 0
-        else factor_quality
-    )
-    intensity_quality = (0.0, 0.50, 0.75, 1.0)[intensity]
-    internal_quality = min(factor_quality, mass_quality, intensity_quality)
-    coverage_quality, source_reliability, eligible = _coverage_values(divergence)
-    if not eligible:
-        return index_a, 0.0
-    return index_a, internal_quality * coverage_quality * source_reliability
+    components = evidence_components(divergence, parameters)
+    if not components["coverage_gate_passed"]:
+        return float(components["index_a"]), 0.0
+    return float(components["index_a"]), float(components["directional_reliability"])
 
 
 def load_observations(path: Path) -> tuple[list[Observation], dict[str, int]]:
@@ -128,7 +120,26 @@ def load_observations(path: Path) -> tuple[list[Observation], dict[str, int]]:
     def reject(reason: str) -> None:
         exclusions[reason] = exclusions.get(reason, 0) + 1
 
-    for snapshot in snapshots:
+    first_snapshots: dict[str, Mapping[str, Any]] = {}
+    later_snapshots = 0
+    for raw in snapshots:
+        if not isinstance(raw, Mapping):
+            reject("invalid_snapshot")
+            continue
+        raw_key = str(raw.get("canonical_match_instance_id") or raw.get("event_key") or raw.get("key") or "")
+        raw_time = _datetime(raw.get("analyzed_at_utc"))
+        if not raw_key or raw_time is None:
+            reject("missing_identity_or_analysis_time")
+            continue
+        current = first_snapshots.get(raw_key)
+        if current is None or raw_time < _datetime(current.get("analyzed_at_utc")):
+            if current is not None:
+                later_snapshots += 1
+            first_snapshots[raw_key] = raw
+        else:
+            later_snapshots += 1
+
+    for snapshot in first_snapshots.values():
         if not isinstance(snapshot, Mapping):
             reject("invalid_snapshot")
             continue
@@ -140,6 +151,10 @@ def load_observations(path: Path) -> tuple[list[Observation], dict[str, int]]:
         analyzed_at = _datetime(snapshot.get("analyzed_at_utc"))
         if analyzed_at is None:
             reject("missing_analysis_time")
+            continue
+        commence_time = _datetime(snapshot.get("commence_time_utc"))
+        if commence_time is None or analyzed_at >= commence_time:
+            reject("not_strictly_pregame")
             continue
         segment = _segment(snapshot)
         if segment is None:
@@ -182,7 +197,7 @@ def load_observations(path: Path) -> tuple[list[Observation], dict[str, int]]:
             earliest[key] = observation
 
     observations = sorted(earliest.values(), key=lambda item: (item.analyzed_at, item.key))
-    exclusions["later_duplicate_snapshots"] = max(0, len(snapshots) - sum(exclusions.values()) - len(observations))
+    exclusions["later_duplicate_snapshots"] = later_snapshots
     return observations, dict(sorted(exclusions.items()))
 
 

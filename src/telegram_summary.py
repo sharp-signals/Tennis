@@ -71,18 +71,23 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
             edge_value = float(edge)
         except (TypeError, ValueError):
             edge_value = None
-        if edge_value is not None and edge_value > 0:
+        classification = str(decision.get("shadow_classification") or "")
+        if decision.get("shadow_candidate") is True or classification == "SHADOW_CANDIDATE":
             return 2.8, "🟢", (
                 f"{a} vs {b} — <b>EDGE POSITIVO SHADOW {edge_text}</b> em {player} "
                 f"· pricing em calibração · sem PAPER automático"
             )
+        if classification == "BLOCKED_BY_ANOMALY":
+            return 1.4, "🟡", f"{a} vs {b} — <b>DISCREPÂNCIA FORA DA CALIBRAÇÃO</b> · revisão obrigatória · sem PAPER"
         if edge_value is not None and edge_value < 0:
             return 1.8, "🔴", (
                 f"{a} vs {b} — edge negativo SHADOW {edge_text} em {player} · sem PAPER"
             )
         return 0.8, "⚪", (
-            f"{a} vs {b} — pricing SHADOW sem edge positivo · sem PAPER"
+            f"{a} vs {b} — pricing SHADOW sem candidato confirmado · sem PAPER"
         )
+    if state == "PRICING_INCONCLUSIVE":
+        return 0.7, "⚪", f"{a} vs {b} — <b>PRICING INCONCLUSIVO</b> · fair odd e edge N/D · sem PAPER"
     if state == "EXPERIMENTAL_FACTUAL_PARTIAL":
         reason = html.escape(str(decision.get("reason") or "cobertura bilateral parcial"))
         return 0.75, "🟡", (
@@ -94,7 +99,7 @@ def decision_row(payload: dict) -> tuple[int, str, str]:
 
 
 def state_counts(payloads) -> dict[str, int]:
-    counts = {"EDGE_POSITIVE": 0, "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": 0, "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "PRICING_SHADOW": 0, "EXPERIMENTAL_FACTUAL_PARTIAL": 0, "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0, "REPORT_NULL": 0}
+    counts = {"EDGE_POSITIVE": 0, "EDGE_POSITIVE_COVERAGE_INSUFFICIENT": 0, "CHALLENGER_125_MANUAL_PAPER_CANDIDATE": 0, "EDGE_NEGATIVE": 0, "EDGE_ZERO": 0, "PRICING_UNAVAILABLE": 0, "PRICING_SHADOW": 0, "PRICING_INCONCLUSIVE": 0, "EXPERIMENTAL_FACTUAL_PARTIAL": 0, "EXPERIMENTAL_EDGE_BELOW_THRESHOLD": 0, "REPORT_NULL": 0}
     for payload in payloads:
         state = (payload.get("prelive_decision") or {}).get("state")
         if state == "EDGE_POSITIVE_EXPERIMENTAL_TIER":

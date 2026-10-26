@@ -88,6 +88,7 @@ REPORT_DECISION_PRESENTATION = {
     "REPORT_NULL": ("RELATÓRIO NULO / DADOS INSUFICIENTES", "null", "⚫", "UNAVAILABLE"),
     "PRICING_UNAVAILABLE": ("MERCADO PENDENTE DE ATUALIZAÇÃO", "zero", "🟡", "YELLOW"),
     "PRICING_SHADOW": ("FAIR ODD INDEPENDENTE — SHADOW / SEM PAPER", "zero", "🟣", "YELLOW"),
+    "PRICING_INCONCLUSIVE": ("PRICING INCONCLUSIVO — FAIR ODD E EDGE N/D", "zero", "⚪", "YELLOW"),
 }
 
 
@@ -3655,9 +3656,14 @@ def _mod_decision_box(payload):
             shadow_edge = float(decision.get("expected_edge_pct"))
         except (TypeError, ValueError):
             shadow_edge = None
-        if shadow_edge is not None and shadow_edge > 0:
+        classification = str(decision.get("shadow_classification") or "")
+        if decision.get("shadow_candidate") is True or classification == "SHADOW_CANDIDATE":
             label, css_class, ball = (
                 "EDGE POSITIVO SHADOW — SEM PAPER AUTOMÁTICO", "positive", "🟢",
+            )
+        elif classification == "BLOCKED_BY_ANOMALY":
+            label, css_class, ball = (
+                "DISCREPÂNCIA FORA DA CALIBRAÇÃO — REVISÃO", "zero", "🟡",
             )
         elif shadow_edge is not None and shadow_edge < 0:
             label, css_class, ball = (
@@ -3780,6 +3786,12 @@ def _mod_decision_box(payload):
             f'<span>Cobertura ponderada <b>{_esc(coverage_text)}</b></span></div>'
         '<div class="decision-note">A probabilidade independente dos fatores Fenzobot está em calibração SHADOW. '
             'O valor é visível para estudo, mas não cria PAPER automático nem claim de edge validado.</div>'
+        )
+    elif state == "PRICING_INCONCLUSIVE":
+        body = (
+            '<div class="decision-primary">O motor não produziu suporte direcional utilizável.</div>'
+            '<div class="decision-note">Fair odd, edge central e edge conservador ficam N/D. '
+            'A cotação e os fatores permanecem visíveis apenas para diagnóstico; não existe candidato nem PAPER.</div>'
         )
     else:
         assessment = _d(decision.get("report_assessment"))
@@ -4332,7 +4344,10 @@ def _mod_market_residual_pricing(payload):
     if candidate_player:
         candidate_label = f"{candidate_label} · {candidate_player}"
     evidence = _d(pricing.get("evidence_quality"))
-    quality_pct = 100.0 * float(pricing.get("quality_score") or 0.0)
+    quality_raw = pricing.get("quality_score")
+    quality_text = "N/D" if quality_raw is None else f"{100.0 * float(quality_raw):.0f}%"
+    consensus_text = fmt(100.0 * float(pricing.get("active_consensus_score") or 0.0), 0, suffix="%")
+    uncertainty_text = fmt(100.0 * float(pricing.get("uncertainty_score") or 0.0), 0, suffix="%")
     coverage_raw = evidence.get("coverage_quality")
     source_raw = evidence.get("source_reliability")
     # Payloads históricos anteriores à v0.2 não tinham estes campos; nesse
@@ -4353,7 +4368,9 @@ def _mod_market_residual_pricing(payload):
         f'{card("b", payload.get("player_b", "B"))}</div>'
         f'<div class="pricing-candidate{candidate_class}">{_esc(candidate_label)}</div>'
         '<div class="pricing-audit">'
-        f'<span>Qualidade da evidência <b>{quality_pct:.0f}%</b></span>'
+        f'<span>Confiança direcional <b>{quality_text}</b></span>'
+        f'<span>Consenso dos fatores ativos <b>{consensus_text}</b></span>'
+        f'<span>Incerteza total <b>{uncertainty_text}</b></span>'
         f'<span><b>{int(evidence.get("factor_count") or 0)}</b> fatores</span>'
         f'<span>Massa efetiva <b>{fmt(evidence.get("effective_mass"), 1)}</b></span>'
         f'<span>Cobertura do pricing <b>{coverage_pct:.0f}%</b></span>'
