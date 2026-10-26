@@ -268,6 +268,10 @@ def build_decision(
     if pricing.get("economic_estimate_available") is False:
         return {**base, "state": PRICING_INCONCLUSIVE,
                 "reason": pricing.get("reason") or "fair odd e edge não calculáveis",
+                "fenzobot_index_a": pricing.get("index_a"),
+                "fenzobot_index_b": pricing.get("index_b"),
+                "active_factor_count": _mapping(pricing.get("evidence_quality")).get("factor_count"),
+                "effective_mass": _mapping(pricing.get("evidence_quality")).get("effective_mass"),
                 "shadow_classification": "PRICING_INCONCLUSIVE",
                 "shadow_candidate": False,
                 "shadow_reason_codes": list(pricing.get("reason_codes") or []),
