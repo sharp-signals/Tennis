@@ -139,6 +139,10 @@ _V2_ROW_LOCAL_EXCLUSION_REASONS = frozenset(
         "ATP_RANKING_ELIGIBILITY_CONFLICT",
         "ATP_RANKING_CLASSIFICATION_UNSUPPORTED",
         "COMPETITION_MATCH_DATE_UNRESOLVED",
+        # A generic historical "Cup" row cannot be promoted safely to an
+        # individual/ranking event.  Under V2 it is a row-local exclusion,
+        # not grounds for erasing hundreds of independently classified rows.
+        "COMPETITION_CUP_IDENTITY_UNRESOLVED",
     }
 )
 

@@ -3573,6 +3573,7 @@ _HISTORICAL_EXACT_NAME_ALIASES: dict[str, tuple[str, ...]] = {
     "paula badosa gibert": ("paula badosa",),
     "leylah annie fernandez": ("leylah fernandez",),
     "jaume antoni munar clar": ("jaume munar",),
+    "taylor fritz": ("taylor harry fritz",),
 }
 
 
@@ -3705,10 +3706,10 @@ def _normalize_surface_family(surface: object) -> Optional[str]:
         return None
     value = _normalize_name(str(surface)).replace("-", " ").replace("_", " ")
     aliases = (
-        ("hard", ("hard", "hardcourt", "cimento")),
-        ("clay", ("clay", "saibro", "terra batida")),
-        ("grass", ("grass", "relva", "grama")),
-        ("carpet", ("carpet", "alcatifa")),
+        ("hard", ("hard", "hardcourt", "cimento", "dur")),
+        ("clay", ("clay", "saibro", "terra batida", "terre battue")),
+        ("grass", ("grass", "relva", "grama", "gazon")),
+        ("carpet", ("carpet", "alcatifa", "moquette")),
     )
     for family, terms in aliases:
         if any(term in value for term in terms):
@@ -4138,10 +4139,15 @@ def indoor_outdoor_context(surface: object) -> Optional[str]:
     """Resolve the provider's explicit venue context without guessing unknowns."""
     if surface is None or pd.isna(surface):
         return None
-    normalized = str(surface).strip().casefold().replace("_", " ")
+    normalized = _normalize_name(str(surface)).replace("_", " ")
     if not normalized:
         return None
-    if normalized.startswith("i.") or "indoor" in normalized:
+    if (
+        normalized.startswith("i ")
+        or "indoor" in normalized
+        or "interieur" in normalized
+        or "int rieur" in normalized
+    ):
         return "indoor"
     if "outdoor" in normalized:
         return "outdoor"
@@ -7349,7 +7355,20 @@ def _round_stage(value: object) -> Optional[str]:
             return None
     except (TypeError, ValueError):
         return None
-    normalized = unicodedata.normalize("NFKD", str(value))
+    # Valuebetennis uses stable numeric stages.  Only the unambiguous main
+    # draw groups are promoted: 4–7 are early rounds and 9/10/12 are
+    # quarter-final/semi-final/final.  Qualifying (1–3), special round-robin
+    # stage 8 and unknown stage 11 remain outside this factor.
+    raw_text = str(value).strip()
+    if re.fullmatch(r"\d+(?:\.0+)?", raw_text):
+        numeric = int(float(raw_text))
+        if numeric in {4, 5, 6, 7}:
+            return "early_rounds"
+        if numeric in {9, 10, 12}:
+            return "late_rounds"
+        return None
+
+    normalized = unicodedata.normalize("NFKD", raw_text)
     normalized = "".join(char for char in normalized if not unicodedata.combining(char))
     normalized = re.sub(r"[^a-z0-9]+", " ", normalized.casefold()).strip()
     compact = normalized.replace(" ", "")
