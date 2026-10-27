@@ -121,7 +121,7 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(decision["state"], PRICING_SHADOW)
         self.assertEqual(_telegram_decision_row(payload)[:2], (1.8, "🔴"))
 
-    def test_unvalidated_positive_shadow_is_amber_and_not_candidate(self):
+    def test_unvalidated_positive_shadow_is_green_for_manual_review_but_not_candidate(self):
         pricing = self.pricing(12.0)
         pricing.update({
             "model_version": "factor-calibrated-v3.1",
@@ -140,8 +140,9 @@ class PreliveOperationalContractTests(unittest.TestCase):
         payload["prelive_decision"] = decision
         self.assertFalse(decision["shadow_candidate"])
         self.assertFalse(decision["promotion_gate"]["passed"])
-        self.assertEqual(_telegram_decision_row(payload)[:2], (2.2, "🟡"))
-        self.assertIn("walk-forward pendente", _telegram_decision_row(payload)[2])
+        self.assertEqual(_telegram_decision_row(payload)[:2], (2.8, "🟢"))
+        self.assertIn("revisão manual", _telegram_decision_row(payload)[2])
+        self.assertEqual(paper_trading.build_entries(payload), [])
 
     def test_central_edge_only_is_amber_and_not_grouped_as_no_edge(self):
         pricing = self.pricing(5.5)
@@ -236,6 +237,16 @@ class PreliveOperationalContractTests(unittest.TestCase):
         payload = self.payload()
         payload["pressure_profile_a"] = {"matches": 0, "first_serve_won_pct": 0}
         self.assertFalse(_service_block_available(payload))
+
+    def test_missing_service_is_degraded_not_null_when_other_coverage_is_valid(self):
+        payload = self.payload()
+        payload["pressure_profile_a"] = {}
+        payload["pressure_profile_b"] = {}
+        assessment = assess_report(payload, self.divergence())
+        self.assertFalse(assessment["report_null"])
+        self.assertFalse(assessment["essential_blocks"]["service_return_bilateral"])
+        self.assertIn("serviço/resposta", assessment["degraded_reasons"][0])
+        self.assertEqual(assessment["blocking_reasons"], [])
 
     def test_recovery_zero_with_zero_sample_is_missing(self):
         payload = self.payload()

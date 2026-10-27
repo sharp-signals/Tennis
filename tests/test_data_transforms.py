@@ -595,6 +595,34 @@ class MatchInputTests(unittest.TestCase):
         self.assertIs(cached, odds_frame)
         loader.assert_called_once()
 
+    def test_atp_history_uses_licensed_local_fallback_after_primary_sources_fail(self):
+        licensed = pd.DataFrame([
+            {
+                "winner_name": "Hubert Hurkacz", "loser_name": "Zizou Bergs",
+                "date": "2026-10-01", "tourney_date": "20261001",
+                "surface": "Hard", "score": "6-4 6-4", "best_of": 3,
+                "_history_competition_scope": "main",
+            },
+            {
+                "winner_name": "Player C", "loser_name": "Player D",
+                "date": "2026-10-02", "tourney_date": "20261002",
+                "surface": "Hard", "score": "6-4 6-4", "best_of": 3,
+                "_history_competition_scope": "challenger",
+            },
+        ])
+        with patch.dict(fetch_data._HISTORY_CACHE, {}, clear=True), \
+             patch.object(fetch_data, "_load_tennismylife", return_value=None), \
+             patch.object(fetch_data, "_load_sackmann", return_value=None), \
+             patch.object(fetch_data, "_load_tennisdata_couk_multi_year", return_value=None), \
+             patch.object(fetch_data.valuebetennis_history, "load_history", return_value=licensed) as loader:
+            result = fetch_data.get_history("atp")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.iloc[0]["winner_name"], "Hubert Hurkacz")
+        self.assertEqual(result.attrs["history_source"], "Valuebetennis")
+        self.assertTrue(result.attrs["history_fallback"])
+        loader.assert_called_once()
+
     def test_historical_moneyline_history_excludes_same_day_and_future_rows(self):
         history = pd.DataFrame([
             {"winner_name": "A", "loser_name": "B", "PSW": 1.70, "PSL": 2.20, "score": "6-4 6-4", "best_of": 3, "date": "2026-10-01"},

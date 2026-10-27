@@ -22,6 +22,7 @@ class ValuebetennisHistoryTests(unittest.TestCase):
         self.assertEqual(row["closing_winner_odd"], 2.25)
         self.assertEqual(row["PSW"], 2.25)
         self.assertEqual(row["odds_observation"], "closing")
+        self.assertEqual(row["surface"], "Hard")
 
     def test_opening_is_labelled_fallback_when_closing_pair_is_missing(self):
         raw = pd.DataFrame([{

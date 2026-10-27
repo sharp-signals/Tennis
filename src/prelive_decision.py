@@ -172,6 +172,8 @@ def weighted_coverage(divergence: Mapping[str, Any] | None) -> dict[str, Any]:
 def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | None) -> dict[str, Any]:
     coverage = weighted_coverage(divergence)
     reasons: list[str] = []
+    blocking_reasons: list[str] = []
+    degraded_reasons: list[str] = []
     experimental = _is_experimental_tier(payload)
     essential = {
         "ranking_bilateral": _valid_rank(payload, "a") and _valid_rank(payload, "b"),
@@ -179,13 +181,17 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
         "action_map": _action_block_available(payload, divergence),
     }
     if not essential["ranking_bilateral"]:
-        reasons.append("ranking ausente para pelo menos um jogador")
+        blocking_reasons.append("ranking ausente para pelo menos um jogador")
     if not essential["service_return_bilateral"]:
-        reasons.append("serviço/resposta sem amostra bilateral utilizável")
+        # Serviço/resposta é um fator importante, mas a sua fonte pode ficar
+        # temporariamente indisponível. A missingness já reduz a cobertura e a
+        # confiança do pricing; não deve, isoladamente, apagar H2H, forma,
+        # piso, ranking, score e todos os restantes fatores válidos.
+        degraded_reasons.append("serviço/resposta sem amostra bilateral utilizável")
     if not essential["action_map"]:
-        reasons.append("mapa de ações sem informação bilateral utilizável")
+        blocking_reasons.append("mapa de ações sem informação bilateral utilizável")
     if not divergence:
-        reasons.append("índice Fenzobot não calculável")
+        blocking_reasons.append("índice Fenzobot não calculável")
     quality = _mapping(payload.get("data_quality"))
     serious_quality_failure = any(bool(quality.get(key)) for key in ("serious_failure", "fatal", "invalid"))
     for issue in quality.get("issues") or []:
@@ -194,18 +200,19 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
             serious_quality_failure = True
             break
     if serious_quality_failure:
-        reasons.append("falha crítica de qualidade dos dados")
+        blocking_reasons.append("falha crítica de qualidade dos dados")
     minimum_coverage = (
         CHALLENGER_EXPERIMENTAL_MIN_DATA_COVERAGE if experimental else PRICING_MIN_QUALITY
     )
     if coverage["weighted_ratio"] < minimum_coverage:
-        reasons.append(
+        blocking_reasons.append(
             f"cobertura ponderada inferior ao mínimo de {minimum_coverage:.0%}"
         )
+    reasons = [*blocking_reasons, *degraded_reasons]
     # No Challenger 125, estes motivos tornam a cobertura parcial — nunca
     # justificam inventar ranking/edge, mas também não apagam o relatório
     # factual se a identidade e os dados recebidos forem válidos.
-    report_null = serious_quality_failure or (bool(reasons) and not experimental)
+    report_null = serious_quality_failure or (bool(blocking_reasons) and not experimental)
     partial = experimental and bool(reasons)
     coverage_status = "experimental_parcial" if partial else ("insuficiente" if report_null else (
         "suficiente" if coverage["weighted_ratio"] >= 0.999 else "reduzida"
@@ -214,13 +221,15 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
         "report_null": report_null,
         "status": "REPORT_NULL" if report_null else "VALID",
         "reasons": reasons,
-        "primary_reason": reasons[0] if reasons else None,
+        "blocking_reasons": blocking_reasons,
+        "degraded_reasons": degraded_reasons,
+        "primary_reason": blocking_reasons[0] if blocking_reasons else None,
         "coverage": {**coverage, "status": coverage_status},
         "essential_blocks": essential,
         "experimental_partial": partial,
         "partial_reasons": reasons if partial else [],
         "minimum_weighted_coverage": minimum_coverage,
-        "criteria_version": "prelive-validity-v3",
+        "criteria_version": "prelive-validity-v4",
     }
 
 

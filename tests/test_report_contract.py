@@ -212,7 +212,7 @@ class ReportStateTests(unittest.TestCase):
         self.assertIn("🔴", report_html._mod_decision_box(negative))
         self.assertIn("EDGE NEGATIVO SHADOW", report_html._mod_decision_box(negative))
 
-    def test_unvalidated_positive_shadow_is_amber_not_green(self):
+    def test_unvalidated_positive_shadow_is_green_manual_review_without_paper(self):
         payload = {
             "player_a": "A", "player_b": "B",
             "prelive_decision": {
@@ -224,9 +224,8 @@ class ReportStateTests(unittest.TestCase):
             },
         }
         rendered = report_html._mod_decision_box(payload)
-        self.assertIn("🟡", rendered)
-        self.assertIn("VALIDAÇÃO WALK-FORWARD PENDENTE", rendered)
-        self.assertNotIn("🟢", rendered)
+        self.assertIn("🟢", rendered)
+        self.assertIn("REVISÃO MANUAL / SEM PAPER", rendered)
 
     def test_central_edge_only_is_amber_and_explicit(self):
         payload = {
