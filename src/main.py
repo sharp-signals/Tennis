@@ -3427,6 +3427,8 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
                 level, flag = 2.8, "🟢"
             elif classification == "SHADOW_POSITIVE_UNVALIDATED":
                 level, flag = 2.2, "🟡"
+            elif classification == "CENTRAL_EDGE_ONLY":
+                level, flag = 2.2, "🟡"
             elif shadow_edge is not None and shadow_edge < 0:
                 level, flag = 1.8, "🔴"
             else:
@@ -3475,6 +3477,10 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             if classification == "SHADOW_POSITIVE_UNVALIDATED":
                 line = html.escape(
                     f"Edge SHADOW positivo {edge_text} · validação walk-forward pendente · sem candidato/PAPER"
+                )
+            elif classification == "CENTRAL_EDGE_ONLY":
+                line = html.escape(
+                    f"Edge central positivo {edge_text} · intervalo conservador ainda não confirma · sem candidato/PAPER"
                 )
             else:
                 line = html.escape(f"Fair odd independente SHADOW · {classification} · edge {edge_text} · sem PAPER automático")
@@ -4145,6 +4151,7 @@ def run() -> None:
 
     n_high = sum(1 for n, _, _, _ in linhas_dados if n == 3)
     n_shadow_positive = sum(1 for n, _, _, _ in linhas_dados if n == 2.8)
+    n_shadow_central = sum(1 for n, _, _, _ in linhas_dados if n == 2.2)
     n_shadow_negative = sum(1 for n, _, _, _ in linhas_dados if n == 1.8)
     n_shadow_neutral = sum(1 for n, _, _, _ in linhas_dados if n == 0.8)
     n_shadow_inconclusive = sum(1 for n, _, _, _ in linhas_dados if n == 0.7)
@@ -4170,6 +4177,7 @@ def run() -> None:
     cabecalho = (
         f"<b>🎾 Resumo Pré-Live — {today_str}</b>\n"
         f"🟢 {n_high} edge positivo / PAPER · 🟢 {n_shadow_positive} edge positivo SHADOW / sem PAPER · "
+        f"🟡 {n_shadow_central} edge central positivo não confirmado · "
         f"🟡 {n_low_coverage} edge positivo sem PAPER (cobertura/identidade) · 🔴 {n_value} edge negativo · "
         f"🔴 {n_shadow_negative} edge negativo SHADOW · 🟡 {n_shadow_anomaly} discrepância fora da calibração · "
         f"⚪ {n_shadow_neutral} SHADOW sem candidato · ⚪ {n_shadow_inconclusive} pricing inconclusivo · "
@@ -4182,6 +4190,7 @@ def run() -> None:
     previous_group = None
     group_names = {3: "🟢 EDGE POSITIVO / PAPER",
                    2.8: "🟢 EDGE POSITIVO SHADOW / SEM PAPER",
+                   2.2: "🟡 EDGE CENTRAL POSITIVO / INTERVALO CONSERVADOR NÃO CONFIRMA",
                    2.5: "🟡 EDGE POSITIVO / SEM PAPER",
                    2: "🔴 EDGE NEGATIVO / EXCLUÍDO",
                    1.8: "🔴 EDGE NEGATIVO SHADOW / SEM PAPER",

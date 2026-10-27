@@ -3667,6 +3667,12 @@ def _mod_decision_box(payload):
                 "zero",
                 "🟡",
             )
+        elif classification == "CENTRAL_EDGE_ONLY":
+            label, css_class, ball = (
+                "EDGE CENTRAL POSITIVO — INTERVALO CONSERVADOR NÃO CONFIRMA",
+                "zero",
+                "🟡",
+            )
         elif classification == "BLOCKED_BY_ANOMALY":
             label, css_class, ball = (
                 "DISCREPÂNCIA FORA DA CALIBRAÇÃO — REVISÃO", "zero", "🟡",
@@ -3794,10 +3800,23 @@ def _mod_decision_box(payload):
             'O valor é visível para estudo, mas não cria PAPER automático nem claim de edge validado.</div>'
         )
     elif state == "PRICING_INCONCLUSIVE":
+        index_a = decision.get("fenzobot_index_a")
+        index_b = decision.get("fenzobot_index_b")
+        factor_count = decision.get("active_factor_count")
+        effective_mass = decision.get("effective_mass")
+        balance_detail = ""
+        if index_a is not None and index_b is not None:
+            balance_detail = (
+                f'<div class="decision-grid"><span>Índice ponderado <b>'
+                f'{_esc(index_a)}/{_esc(index_b)}</b></span>'
+                f'<span>Fatores ativos <b>{_esc(factor_count)}</b></span>'
+                f'<span>Massa efetiva <b>{_esc(effective_mass)}</b></span></div>'
+            )
         body = (
-            '<div class="decision-primary">O motor não produziu suporte direcional utilizável.</div>'
-            '<div class="decision-note">Fair odd, edge central e edge conservador ficam N/D. '
-            'A cotação e os fatores permanecem visíveis apenas para diagnóstico; não existe candidato nem PAPER.</div>'
+            '<div class="decision-primary">Os dados existem, mas os pesos ficaram dentro da zona neutra.</div>'
+            f'{balance_detail}'
+            '<div class="decision-note">Não se força uma fair odd nem se transforma uma estimativa neutra em edge só porque um dos lados paga acima de 2.00. '
+            'Os fatores permanecem visíveis; não existe candidato nem PAPER.</div>'
         )
     else:
         assessment = _d(decision.get("report_assessment"))
@@ -4369,6 +4388,26 @@ def _mod_market_residual_pricing(payload):
     version = pricing.get("model_version") or "pricing-version-unavailable"
     fingerprint = pricing.get("configuration_fingerprint") or "—"
     overround = pricing.get("market_overround_pct")
+    index_a = pricing.get("index_a")
+    if index_a is None:
+        try:
+            index_a = 50.0 + 50.0 * float(pricing.get("signed_strength"))
+        except (TypeError, ValueError):
+            index_a = None
+    index_b = 100.0 - float(index_a) if index_a is not None else None
+    calibration = _d(pricing.get("residual_calibration"))
+    beta = calibration.get("beta")
+    trace = (
+        '<details class="pricing-trace"><summary>Como este pricing foi calculado</summary>'
+        '<div class="pricing-trace-body">'
+        f'<p><b>Índice dos fatores:</b> {fmt(index_a, 1)} / {fmt(index_b, 1)}. '
+        'É a quota dos pesos efetivos que aponta para cada jogador; não é, por si só, probabilidade de vitória.</p>'
+        f'<p><b>Confiança direcional:</b> {quality_text}; <b>beta histórico:</b> {fmt(beta, 3)}. '
+        'A probabilidade própria resulta de logistic(beta × força assinada do índice × confiança). O mercado não entra nesta conta.</p>'
+        '<p><b>Fair odd:</b> 1 / probabilidade Fenzobot. <b>Edge:</b> probabilidade Fenzobot × odd observada − 1. '
+        'O edge conservador repete a fórmula com o limite inferior do intervalo histórico.</p>'
+        '</div></details>'
+    )
     return (
         '<section class="pricing-block">'
         '<div class="pricing-head"><div>'
@@ -4390,6 +4429,7 @@ def _mod_market_residual_pricing(payload):
         f'<span>Overround observado <b>{fmt(overround, 2, suffix="%")}</b></span>'
         f'<span>{_esc(version)} · config {_esc(fingerprint)}</span>'
         '</div>'
+        f'{trace}'
         f'<div class="pricing-disclaimer">{_esc(pricing.get("disclaimer") or "")}</div>'
         '</section>'
     )
@@ -6067,7 +6107,7 @@ def _css_editorial():
 .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.pricing-player{background:rgba(7,20,38,.66);border:1px solid var(--line);border-top:3px solid var(--a);border-radius:11px;padding:13px}.pricing-player.b{border-top-color:var(--b)}.pricing-player-name{font-size:14px;font-weight:800;margin-bottom:10px}.pricing-player.a .pricing-player-name{color:var(--a)}.pricing-player.b .pricing-player-name{color:var(--b)}
 .pricing-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pricing-metrics div{background:var(--surface2);border-radius:7px;padding:8px}.pricing-metrics span{display:block;color:var(--dim);font-size:9px;line-height:1.2;margin-bottom:3px}.pricing-metrics b{display:block;font-size:14px;font-variant-numeric:tabular-nums}.pricing-edge{grid-column:1/-1;border:1px solid var(--line)}.pricing-edge.positive{border-color:var(--mint);background:rgba(63,185,168,.10)}.pricing-edge.positive b{color:var(--mint)}.pricing-edge.negative b{color:var(--dim)}
 .pricing-candidate{margin-top:11px;padding:10px 12px;border-radius:8px;background:rgba(90,107,122,.12);color:var(--dim);font-size:12px;font-weight:800;text-align:center}.pricing-candidate.promoted{background:rgba(63,185,168,.13);border:1px solid var(--mint);color:var(--mint)}.pricing-candidate.withheld{background:rgba(217,164,65,.10);border:1px solid var(--amber);color:var(--amber)}
-.pricing-audit{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:10px;color:var(--dim);font-size:9px}.pricing-audit b{color:var(--text)}.pricing-disclaimer{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);color:var(--dim);font-size:9px;line-height:1.45}
+.pricing-audit{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:10px;color:var(--dim);font-size:9px}.pricing-audit b{color:var(--text)}.pricing-trace{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:rgba(12,35,60,.45)}.pricing-trace summary{cursor:pointer;padding:9px 11px;color:var(--blue);font-size:10px;font-weight:800}.pricing-trace-body{padding:0 11px 9px;color:var(--dim);font-size:9px;line-height:1.5}.pricing-trace-body p{margin:5px 0}.pricing-trace-body b{color:var(--text)}.pricing-disclaimer{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);color:var(--dim);font-size:9px;line-height:1.45}
 @media(max-width:680px){.pricing-head{display:block}.pricing-status{display:inline-block;margin-top:9px}.pricing-grid{grid-template-columns:1fr}.pricing-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .mh{position:relative;overflow:hidden;border-radius:18px;padding:24px}.mh::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:linear-gradient(90deg,transparent 49.8%,var(--b) 50%,transparent 50.2%)}
 .mh-kicker{text-align:center;color:var(--b);text-transform:uppercase;letter-spacing:1.8px;font-size:10px;font-weight:700;margin-bottom:18px}.mh-name{font-size:28px;letter-spacing:-.7px}.mh-vs{font-size:18px;color:var(--text);font-weight:800;letter-spacing:2px}

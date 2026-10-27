@@ -477,12 +477,20 @@ def estimate_market_residual_pricing(
             "configuration_fingerprint": _configuration_fingerprint(parameters),
             "parameters": asdict(parameters), "status": "inconclusive",
             "shadow_classification": "PRICING_INCONCLUSIVE",
-            "reason": "motor sem suporte direcional utilizável",
+            "reason": (
+                "sinais ponderados equilibrados dentro da zona neutra; "
+                "existem dados, mas não há vantagem direcional robusta"
+            ),
             "reason_codes": ["INCONCLUSIVE_DIRECTIONAL_SIGNAL"],
             "validation_status": VALIDATION_LABEL, "method": METHOD,
             "market_overround_pct": round(overround * 100.0, 3),
             "market_used_in_fair_probability": False,
-            "quality_score": None, "quality_gate_passed": False,
+            "feature_contract_version": FEATURE_CONTRACT_VERSION,
+            "calibration_segment": calibration_segment,
+            "index_a": round(float(index_a), 3),
+            "index_b": round(100.0 - float(index_a), 3),
+            "signed_strength": round(signed_strength, 6),
+            "quality_score": 0.0, "quality_gate_passed": False,
             "active_consensus_score": round(abs(signed_strength), 6),
             "coverage_score": round(float(components["coverage_score"]), 6),
             "uncertainty_score": 1.0,

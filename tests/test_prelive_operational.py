@@ -143,6 +143,27 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(_telegram_decision_row(payload)[:2], (2.2, "🟡"))
         self.assertIn("walk-forward pendente", _telegram_decision_row(payload)[2])
 
+    def test_central_edge_only_is_amber_and_not_grouped_as_no_edge(self):
+        pricing = self.pricing(5.5)
+        pricing.update({
+            "model_version": "factor-calibrated-v3.1",
+            "candidate": False,
+            "candidate_side": None,
+            "shadow_observation_side": None,
+            "shadow_classification": "CENTRAL_EDGE_ONLY",
+            "reason_codes": ["CONSERVATIVE_EDGE_NOT_POSITIVE"],
+            "promotion_gate": {"passed": False},
+        })
+        decision = build_decision(
+            self.payload(), self.divergence(), pricing, self.assessment()
+        )
+        payload = self.payload()
+        payload["prelive_decision"] = decision
+        self.assertFalse(decision["shadow_candidate"])
+        self.assertEqual(_telegram_decision_row(payload)[:2], (2.2, "🟡"))
+        self.assertIn("EDGE CENTRAL POSITIVO", _telegram_decision_row(payload)[2])
+        self.assertNotIn("sem candidato confirmado", _telegram_decision_row(payload)[2])
+
     def test_existing_decision_refresh_never_creates_new_paper(self):
         payload = self.payload()
         payload["prelive_decision"] = self.decision(0.1)
