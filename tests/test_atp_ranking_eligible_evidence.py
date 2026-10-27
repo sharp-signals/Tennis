@@ -91,6 +91,61 @@ class RegistryClassificationTests(unittest.TestCase):
                 self.assertEqual(actual["classification"], expected_class)
                 self.assertEqual(actual["weight"], expected_weight)
 
+    def test_v2_generic_cup_is_audited_row_exclusion_not_sample_blocker(self):
+        records = [
+            # Pre-T0 rows use the grandfathered competition classifier.  The
+            # generic Cup reason was the missing row-local exclusion observed
+            # in the licensed 2021–2026 fallback.
+            row(1, 20261010, "Vienna Open", tier="ATP 500"),
+            row(2, 20261011, "Mystery Cup"),
+        ]
+
+        actual = competition_evidence.weighted_binary_record(
+            records,
+            lambda record: record["winner_name"] == "Alpha",
+            active=True,
+            policy=V2_ACTIVE,
+        )
+
+        evidence = actual["competition_evidence"]
+        self.assertTrue(evidence["eligible_for_performance"])
+        self.assertEqual(evidence["status"], "APPLIED_WITH_EXCLUSIONS")
+        self.assertEqual(actual["weighted_matches"], 1.0)
+        self.assertEqual(
+            evidence["excluded_reason_counts"],
+            {"COMPETITION_CUP_IDENTITY_UNRESOLVED": 1},
+        )
+
+    def test_valuebetennis_numeric_rounds_feed_pressure_factor(self):
+        history = pd.DataFrame([
+            row(10, 20261021, "Vienna Open", tier="ATP 500") | {"round": 4},
+            row(11, 20261022, "Vienna Open", tier="ATP 500") | {"round": 7},
+            row(12, 20261023, "Vienna Open", tier="ATP 500") | {"round": 9},
+            row(13, 20261024, "Vienna Open", tier="ATP 500") | {"round": 10},
+            row(14, 20261025, "Vienna Open", tier="ATP 500") | {"round": 12},
+            row(15, 20261026, "ATP Cup") | {"round": 8},
+        ])
+
+        actual = fetch_data.compute_round_stage_stats(
+            history, "Alpha", competition_policy=V2_ACTIVE,
+        )
+
+        self.assertEqual(actual["early_rounds"]["weighted_matches"], 2.0)
+        self.assertEqual(actual["late_rounds"]["weighted_matches"], 3.0)
+
+    def test_taylor_fritz_audited_full_name_alias(self):
+        history = pd.DataFrame([
+            row(
+                20, 20261021, "Vienna Open", winner="Taylor Harry Fritz",
+                loser="Beta", tier="ATP 500",
+            )
+        ])
+
+        self.assertEqual(
+            fetch_data.resolve_player_name(history, "Taylor Fritz"),
+            "Taylor Harry Fritz",
+        )
+
     def test_tennis_data_exact_field_names_are_supported(self):
         result = competition_evidence.classify_match(
             {

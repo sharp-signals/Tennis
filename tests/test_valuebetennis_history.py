@@ -1,8 +1,10 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pandas as pd
 
-from src import valuebetennis_history as history
+from src import fetch_data, valuebetennis_history as history
 
 
 class ValuebetennisHistoryTests(unittest.TestCase):
@@ -23,6 +25,45 @@ class ValuebetennisHistoryTests(unittest.TestCase):
         self.assertEqual(row["PSW"], 2.25)
         self.assertEqual(row["odds_observation"], "closing")
         self.assertEqual(row["surface"], "Hard")
+        self.assertFalse(row["indoor"])
+        self.assertEqual(row["source_surface"], "dur")
+
+    def test_indoor_surface_is_normalized_without_losing_source_context(self):
+        raw = pd.DataFrame([{
+            "match_id": 12, "date": "2026-10-01", "tournoi": "ATP Indoor",
+            "categorie": "Main tour", "genre": "atp", "surface": "dur intérieur", "tour": 9,
+            "joueur1": "Player A", "joueur1_id": 1, "joueur2": "Player B", "joueur2_id": 2,
+            "cote1_ouverture": 1.50, "cote2_ouverture": 2.60,
+            "cote1_cloture": 1.45, "cote2_cloture": 2.75,
+            "vainqueur_id": 1, "score": "6-3 6-4",
+        }])
+
+        row = history.normalize_frame(raw).iloc[0]
+
+        self.assertEqual(row["surface"], "Hard")
+        self.assertTrue(row["indoor"])
+        self.assertEqual(row["source_surface"], "dur intérieur")
+        self.assertEqual(fetch_data._normalize_surface_family("dur intérieur"), "hard")
+        self.assertEqual(fetch_data.indoor_outdoor_context("dur intérieur"), "indoor")
+        self.assertEqual(fetch_data._normalize_surface_family("terre battue"), "clay")
+
+    def test_load_history_migrates_legacy_mojibake_surfaces_in_memory(self):
+        with TemporaryDirectory() as directory:
+            cache = Path(directory) / history.CACHE_PATTERN.format(year=2026)
+            pd.DataFrame([
+                {"source_match_id": "1", "surface": "dur int�rieur"},
+                {"source_match_id": "2", "surface": "moquette int�rieur"},
+            ]).to_csv(cache, index=False, compression="gzip")
+
+            loaded = history.load_history(
+                Path(directory), refresh_current=False, current_year=2026,
+            ).set_index("source_match_id")
+
+        self.assertEqual(loaded.loc[1, "surface"], "Hard")
+        self.assertEqual(loaded.loc[2, "surface"], "Carpet")
+        self.assertTrue(bool(loaded.loc[1, "indoor"]))
+        self.assertTrue(bool(loaded.loc[2, "indoor"]))
+        self.assertEqual(loaded.loc[1, "source_surface"], "dur int�rieur")
 
     def test_opening_is_labelled_fallback_when_closing_pair_is_missing(self):
         raw = pd.DataFrame([{

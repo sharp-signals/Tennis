@@ -58,18 +58,39 @@ def _number(value: object) -> float | None:
     return parsed if pd.notna(parsed) and parsed > 1 else None
 
 
+def _surface_tokens(value: object) -> tuple[str, bool]:
+    """Return the normalized label and its explicit indoor qualifier.
+
+    Some legacy gzip caches contain a replacement character in
+    ``intérieur`` (``int�rieur``).  ``normalize_name`` safely turns that
+    byte-decoding artefact into ``int rieur``; supporting that exact token
+    sequence recovers the source meaning without guessing a venue.
+    """
+    normalized = normalize_name(value)
+    indoor = any(
+        marker in normalized
+        for marker in ("interieur", "int rieur", "indoor")
+    )
+    return normalized, indoor
+
+
 def _surface(value: object) -> str | None:
     """Normaliza os rótulos franceses da fonte para o contrato do motor."""
-    normalized = normalize_name(value)
-    if normalized in {"dur", "hard", "hardcourt"}:
+    normalized, _indoor = _surface_tokens(value)
+    if normalized in {"dur", "hard", "hardcourt"} or normalized.startswith("dur "):
         return "Hard"
     if normalized in {"terre", "terre battue", "clay"}:
         return "Clay"
     if normalized in {"gazon", "grass"}:
         return "Grass"
-    if normalized in {"moquette", "carpet"}:
+    if normalized in {"moquette", "carpet"} or normalized.startswith("moquette "):
         return "Carpet"
     return str(value or "").strip() or None
+
+
+def _surface_is_indoor(value: object) -> bool:
+    """Use only the explicit venue qualifier supplied by Valuebetennis."""
+    return _surface_tokens(value)[1]
 
 
 def _score_sets(score: object) -> list[tuple[int, int]]:
@@ -154,6 +175,8 @@ def normalize_frame(raw: pd.DataFrame) -> pd.DataFrame:
             # eligibility weight; the original category remains preserved.
             "tier": _CATEGORY_TIER.get(category),
             "surface": _surface(record.get("surface")),
+            "source_surface": str(record.get("surface") or "").strip() or None,
+            "indoor": _surface_is_indoor(record.get("surface")),
             "round": record.get("tour"),
             "winner_name": player1 if winner_is_p1 else player2,
             "winner_id": p1_id if winner_is_p1 else p2_id,
@@ -244,8 +267,27 @@ def load_history(
     combined = combined.drop_duplicates(subset=["source_match_id"], keep="last")
     if "surface" in combined.columns:
         # Migra também caches antigos que preservavam os rótulos franceses
-        # (dur/terre battue/gazon) antes desta normalização existir.
-        combined["surface"] = combined["surface"].map(_surface)
+        # (incluindo os qualificadores indoor) antes desta normalização.
+        source_surface = (
+            combined["source_surface"]
+            if "source_surface" in combined.columns
+            else combined["surface"]
+        )
+        if "source_surface" not in combined.columns:
+            combined["source_surface"] = source_surface
+        detected_indoor = source_surface.map(_surface_is_indoor)
+        if "indoor" in combined.columns:
+            existing_indoor = combined["indoor"].map(
+                lambda value: (
+                    str(value).strip().casefold() in {"true", "1", "yes", "indoor", "i"}
+                    if pd.notna(value)
+                    else False
+                )
+            )
+            combined["indoor"] = existing_indoor | detected_indoor
+        else:
+            combined["indoor"] = detected_indoor
+        combined["surface"] = source_surface.map(_surface)
     combined.attrs.update({
         "source": SOURCE_NAME,
         "source_page": SOURCE_PAGE,
