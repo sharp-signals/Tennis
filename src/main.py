@@ -3426,7 +3426,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             if decision.get("shadow_candidate") is True or classification == "SHADOW_CANDIDATE":
                 level, flag = 2.8, "🟢"
             elif classification == "SHADOW_POSITIVE_UNVALIDATED":
-                level, flag = 2.2, "🟡"
+                level, flag = 2.8, "🟢"
             elif classification == "CENTRAL_EDGE_ONLY":
                 level, flag = 2.2, "🟡"
             elif shadow_edge is not None and shadow_edge < 0:
@@ -3476,7 +3476,7 @@ def _write_site_index(match_reports: list, today_str: str, reports_dir: str) -> 
             classification = str(decision.get("shadow_classification") or "sem candidato confirmado")
             if classification == "SHADOW_POSITIVE_UNVALIDATED":
                 line = html.escape(
-                    f"Edge SHADOW positivo {edge_text} · validação walk-forward pendente · sem candidato/PAPER"
+                    f"Edge positivo SHADOW {edge_text} · revisão manual · sem PAPER automático"
                 )
             elif classification == "CENTRAL_EDGE_ONLY":
                 line = html.escape(

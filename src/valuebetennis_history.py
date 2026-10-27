@@ -58,6 +58,20 @@ def _number(value: object) -> float | None:
     return parsed if pd.notna(parsed) and parsed > 1 else None
 
 
+def _surface(value: object) -> str | None:
+    """Normaliza os rótulos franceses da fonte para o contrato do motor."""
+    normalized = normalize_name(value)
+    if normalized in {"dur", "hard", "hardcourt"}:
+        return "Hard"
+    if normalized in {"terre", "terre battue", "clay"}:
+        return "Clay"
+    if normalized in {"gazon", "grass"}:
+        return "Grass"
+    if normalized in {"moquette", "carpet"}:
+        return "Carpet"
+    return str(value or "").strip() or None
+
+
 def _score_sets(score: object) -> list[tuple[int, int]]:
     raw = str(score or "").strip()
     if not raw or any(marker in raw.upper() for marker in ("RET", "W/O", "DEF", "ABD")):
@@ -139,7 +153,7 @@ def normalize_frame(raw: pd.DataFrame) -> pd.DataFrame:
             # classifier.  Main-tour ATP 250/500 distinctions have the same
             # eligibility weight; the original category remains preserved.
             "tier": _CATEGORY_TIER.get(category),
-            "surface": str(record.get("surface") or "").strip(),
+            "surface": _surface(record.get("surface")),
             "round": record.get("tour"),
             "winner_name": player1 if winner_is_p1 else player2,
             "winner_id": p1_id if winner_is_p1 else p2_id,
@@ -228,6 +242,10 @@ def load_history(
         return pd.DataFrame()
     combined = pd.concat(frames, ignore_index=True)
     combined = combined.drop_duplicates(subset=["source_match_id"], keep="last")
+    if "surface" in combined.columns:
+        # Migra também caches antigos que preservavam os rótulos franceses
+        # (dur/terre battue/gazon) antes desta normalização existir.
+        combined["surface"] = combined["surface"].map(_surface)
     combined.attrs.update({
         "source": SOURCE_NAME,
         "source_page": SOURCE_PAGE,

@@ -3319,6 +3319,38 @@ def get_history(tour: str, tier: Optional[str] = None) -> pd.DataFrame:
                 normalized_tour, HISTORY_YEARS_TO_LOAD
             )
             source = "tennisdata.co.uk (multi-ano)"
+        if (df is None or df.empty) and normalized_tour == "atp":
+            # O histórico Valuebetennis já é persistido no repositório para a
+            # leitura de odds ATP.  Também contém identidade, data, piso,
+            # resultado, score e formato — informação factual suficiente para
+            # H2H, forma, piso, margens e cenários por sets.  Usá-lo apenas
+            # depois de todas as fontes principais falharem impede que um
+            # timeout transitório do TennisMyLife transforme todo o ATP em
+            # relatórios nulos.  O cache é lido sem rede e a proveniência fica
+            # explícita; estatísticas de serviço inexistentes continuam N/D.
+            cache_dir = _SYSTEM_HISTORY_SNAPSHOTS_PATH.parent / "history_cache"
+            licensed = valuebetennis_history.load_history(
+                cache_dir, refresh_current=False,
+            )
+            if not licensed.empty:
+                if scope == "main":
+                    column = licensed.get("_history_competition_scope")
+                    if column is not None:
+                        licensed = licensed[column == "main"].copy()
+                else:
+                    licensed = licensed.copy()
+                licensed.attrs.update({
+                    "history_scope": (
+                        "ATP_MAIN_PLUS_CHALLENGER_LICENSED_FALLBACK"
+                        if scope == "challenger_125"
+                        else "ATP_MAIN_LICENSED_FALLBACK"
+                    ),
+                    "history_fallback": True,
+                    "history_source": valuebetennis_history.SOURCE_NAME,
+                    "history_source_license": valuebetennis_history.SOURCE_LICENSE,
+                })
+                df = licensed
+                source = "Valuebetennis local licenciado (fallback factual)"
         if df is None:
             print(f"[aviso] nenhuma fonte histórica disponível para {normalized_tour}.")
             df = pd.DataFrame()

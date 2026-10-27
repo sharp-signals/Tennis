@@ -3663,9 +3663,9 @@ def _mod_decision_box(payload):
             )
         elif classification == "SHADOW_POSITIVE_UNVALIDATED":
             label, css_class, ball = (
-                "EDGE SHADOW POSITIVO — VALIDAÇÃO WALK-FORWARD PENDENTE",
-                "zero",
-                "🟡",
+                "EDGE POSITIVO SHADOW — REVISÃO MANUAL / SEM PAPER",
+                "positive",
+                "🟢",
             )
         elif classification == "CENTRAL_EDGE_ONLY":
             label, css_class, ball = (
