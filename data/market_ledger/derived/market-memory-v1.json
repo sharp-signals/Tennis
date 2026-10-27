@@ -15,29 +15,29 @@
       "sample_size": 255
     },
     "market_plus_sharp": {
-      "accuracy_pct": 65.65,
-      "brier_score": 0.216767,
-      "log_loss": 0.623179,
-      "sample_size": 655
+      "accuracy_pct": 65.61,
+      "brier_score": 0.216788,
+      "log_loss": 0.623106,
+      "sample_size": 660
     }
   },
   "evaluation_by_cohort": {
     "GREEN_STRONG_V1": {
       "market_only": {
-        "accuracy_pct": 56.0,
-        "brier_score": 0.240617,
-        "log_loss": 0.673411,
-        "sample_size": 25
+        "accuracy_pct": 53.85,
+        "brier_score": 0.242942,
+        "log_loss": 0.678112,
+        "sample_size": 26
       },
       "market_plus_fenzobot": {
-        "accuracy_pct": 60.0,
-        "brier_score": 0.241596,
-        "log_loss": 0.675948,
-        "sample_size": 25
+        "accuracy_pct": 61.54,
+        "brier_score": 0.241273,
+        "log_loss": 0.675316,
+        "sample_size": 26
       },
       "paired_delta": {
-        "brier_score": 0.000979,
-        "log_loss": 0.002537
+        "brier_score": -0.001669,
+        "log_loss": -0.002796
       },
       "sample_size": 30
     }
@@ -147,10 +147,10 @@
         "sample_size": 255
       },
       "market_plus_sharp": {
-        "accuracy_pct": 66.34,
-        "brier_score": 0.215654,
-        "log_loss": 0.620904,
-        "sample_size": 621
+        "accuracy_pct": 66.29,
+        "brier_score": 0.215685,
+        "log_loss": 0.620846,
+        "sample_size": 626
       },
       "pricing_configuration_fingerprint": "f46ec3e2aa6f92a9",
       "pricing_model_version": "market-residual-v0.3"
@@ -106650,7 +106650,7 @@
       },
       "match_format": "BO3",
       "match_id": 693380,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [
         {
           "closing_market_observation_id": null,
@@ -107577,7 +107577,7 @@
       },
       "match_format": "BO3",
       "match_id": 687499,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -110225,7 +110225,7 @@
       },
       "match_format": "BO3",
       "match_id": 492043,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -111730,7 +111730,7 @@
       },
       "match_format": "BO3",
       "match_id": 492083,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [
         {
           "closing_market_observation_id": null,
@@ -113327,7 +113327,7 @@
       },
       "match_format": "BO3",
       "match_id": 752166,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [],
       "players": {
         "a": {
@@ -114129,7 +114129,7 @@
       },
       "match_format": "BO3",
       "match_id": 557541,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -114721,7 +114721,7 @@
       },
       "match_format": "BO3",
       "match_id": 557574,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [
         {
           "closing_market_observation_id": null,
@@ -116717,7 +116717,7 @@
       },
       "match_format": "BO3",
       "match_id": 829670,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [],
       "players": {
         "a": {
@@ -116923,7 +116923,7 @@
       },
       "match_format": "BO3",
       "match_id": 829681,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [],
       "players": {
         "a": {
@@ -117434,23 +117434,23 @@
   "experimental_evaluation_by_tier": {
     "Challenger 125": {
       "market_only": {
-        "accuracy_pct": 63.64,
-        "brier_score": 0.215045,
-        "log_loss": 0.614043,
-        "sample_size": 99
+        "accuracy_pct": 64.71,
+        "brier_score": 0.211124,
+        "log_loss": 0.605443,
+        "sample_size": 102
       },
       "market_plus_sharp": {
-        "accuracy_pct": 72.22,
-        "brier_score": 0.199381,
-        "log_loss": 0.580917,
-        "sample_size": 126
+        "accuracy_pct": 72.31,
+        "brier_score": 0.198741,
+        "log_loss": 0.579443,
+        "sample_size": 130
       },
       "sample_size": 183
     }
   },
-  "generated_at_utc": "2026-10-27T07:07:10+00:00",
+  "generated_at_utc": "2026-10-27T08:00:19+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 26571,
+  "observation_count": 26572,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
