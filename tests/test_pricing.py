@@ -266,6 +266,27 @@ class MarketResidualPricingTests(unittest.TestCase):
             complete["uncertainty_adjusted_index_a"],
         )
 
+    def test_measured_neutral_factor_counts_as_coverage(self):
+        divergence = self._divergence(70, factors=1, intensity=2, weight=5)
+        divergence["fatores_status"] = {
+            "measured_tie": {
+                "peso_base_configurado": 5,
+                "peso_efetivo": 0,
+                "disponivel": True,
+                "lider": "igual",
+            },
+            "directional": {
+                "peso_base_configurado": 5,
+                "peso_efetivo": 5,
+                "disponivel": True,
+                "lider": "Jogador A",
+            },
+        }
+        pricing = self._estimate(self._payload(), divergence)
+        self.assertEqual(
+            pricing["evidence_quality"]["weighted_factor_coverage"], 1.0
+        )
+
     def test_serious_data_quality_failure_blocks_promotion_but_keeps_numbers_visible(self):
         payload = self._payload()
         payload["data_quality"] = {

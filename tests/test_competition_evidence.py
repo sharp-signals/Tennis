@@ -312,6 +312,34 @@ class CompetitionTransformParityTests(unittest.TestCase):
         self.assertEqual(api["weighted_a_wins"], local["weighted_a_wins"])
         self.assertEqual(api["weighted_b_wins"], local["weighted_b_wins"])
 
+    def test_h2h_api_enriches_tournament_tier_before_ranking_policy(self):
+        policy = {
+            **ACTIVE,
+            "version": competition_evidence.RANKING_ELIGIBLE_V2_POLICY_VERSION,
+        }
+        api_rows = [{
+            "match_winner": 10,
+            "tournamentId": 321,
+            "date": "2026-10-20",
+        }]
+        with patch.object(
+            fetch_data,
+            "get_tournament_info",
+            return_value={
+                "name": "Example Challenger",
+                "tier": "Challenger 125",
+                "surface": "Hard",
+            },
+        ):
+            actual = fetch_data.compute_h2h_from_api(
+                api_rows, 10, 20, "Hard", tour="atp",
+                competition_policy=policy,
+            )
+
+        self.assertEqual(actual["overall"]["weighted_a_wins"], 1.0)
+        self.assertEqual(actual["overall"]["weighted_total_matches"], 1.0)
+        self.assertEqual(actual["on_surface"]["weighted_total_matches"], 1.0)
+
     def test_inactive_policy_preserves_legacy_shape(self):
         frame = pd.DataFrame([
             {

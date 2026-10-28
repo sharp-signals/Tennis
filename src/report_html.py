@@ -666,7 +666,7 @@ CAPS_FAMILIAS_PESOS = {
     "resiliencia": 19, "ranking_fam": 9, "contexto": 8, "historial": 6,
 }
 
-FACTOR_MODEL_VERSION = "factor-weights-v2026-10-09"
+FACTOR_MODEL_VERSION = "factor-weights-v2026-10-28-h2h-sample-v1"
 
 
 def _factor_model_fingerprint():
@@ -801,6 +801,43 @@ def _calcular_divergencia(payload):
         )
         return forca, confianca, amostra
 
+    def _confianca_diferenca_taxas(feature):
+        """Fiabilidade do contraste entre duas taxas observadas.
+
+        A quantidade de jogos, por si só, não torna uma diferença precisa.
+        Duas taxas próximas podem continuar compatíveis com ruído amostral,
+        mesmo com 20–30 observações por jogador. O rácio sinal/erro é
+        convertido em z²/(1+z²), um multiplicador conservador entre 0 e 1.
+        Este valor apenas pode reduzir a confiança dada pela amostra; nunca a
+        aumenta.
+        """
+        if not isinstance(feature, dict):
+            return 0.0, None
+        try:
+            p_a = float(feature.get("valor_a")) / 100.0
+            p_b = float(feature.get("valor_b")) / 100.0
+            n_a = float(feature.get("amostra_a"))
+            n_b = float(feature.get("amostra_b"))
+        except (TypeError, ValueError):
+            return 0.0, None
+        if n_a <= 0 or n_b <= 0:
+            return 0.0, None
+
+        # Evita erro-padrão artificialmente nulo em taxas observadas de 0/100%.
+        floor_a = 0.5 / (n_a + 1.0)
+        floor_b = 0.5 / (n_b + 1.0)
+        p_a = min(max(p_a, floor_a), 1.0 - floor_a)
+        p_b = min(max(p_b, floor_b), 1.0 - floor_b)
+        erro = math.sqrt(
+            (p_a * (1.0 - p_a) / n_a)
+            + (p_b * (1.0 - p_b) / n_b)
+        )
+        if erro <= 0:
+            return 0.0, None
+        z_score = abs(p_a - p_b) / erro
+        fiabilidade = (z_score * z_score) / (1.0 + z_score * z_score)
+        return max(0.0, min(fiabilidade, 1.0)), z_score
+
     def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
         # Gate final no ponto real de consumo: dados factuais podem continuar
         # no payload/HTML, mas uma origem não separável nunca inclina o índice.
@@ -870,13 +907,19 @@ def _calcular_divergencia(payload):
             motivo_exclusao=(data_coverage.get("h2h_surface") or {}).get("reason"),
         )
 
-    # H2H global — só conta com amostra mínima (1 jogo não é evidência
-    # fiável) e com força proporcional ao domínio do confronto.
+    # H2H global — um confronto único é contexto factual fraco, não um padrão.
+    # Conta com apenas 10% do peso-base; a força cresce explicitamente com a
+    # amostra. Isto preserva o sinal sem transformar 1-0 numa conclusão forte.
     h = feats.get("h2h")
     if isinstance(h, dict) and h.get("lider") not in (None, "igual"):
         _h_total = (h.get("a_wins", 0) + h.get("b_wins", 0)) or h.get("diff", 0)
-        if _h_total >= 2:  # ignora H2H de 1 só jogo
-            forca = min(_h_total / 4.0, 1.0)  # 4+ jogos = peso total
+        if _h_total >= 1:
+            if _h_total == 1:
+                conf_h2h = 0.10
+                forca = 1.0
+            else:
+                conf_h2h = 1.0
+                forca = min(_h_total / 4.0, 1.0)  # 4+ jogos = peso total
             # NOVO (22/08/2026, a pedido): se o H2H ponderado pela recência
             # aponta para o OUTRO jogador (ex: liderava na carreira mas
             # perdeu os últimos confrontos), o confronto está dividido no
@@ -888,10 +931,11 @@ def _calcular_divergencia(payload):
             if _lider_recente and _lider_recente != h["lider"]:
                 _lider_final = _lider_recente
                 forca *= 0.5  # confronto contraditório no tempo -> metade da força
-            _add("h2h", _lider_final, max(forca, 0.5))
+            _add(
+                "h2h", _lider_final, max(forca, 0.5),
+                conf_amostra=conf_h2h,
+            )
             _reg_status("h2h", True, _lider_final, valor_a=h.get("a_wins"), valor_b=h.get("b_wins"), amostra=_h_total)
-        else:
-            _reg_status("h2h", True, h["lider"], "amostra insuficiente (1 jogo)")
     elif isinstance(h, dict) and h.get("lider") == "igual":
         _reg_status("h2h", True, "igual")
     elif (data_coverage.get("h2h") or {}).get("status") == "NONE_OBSERVED":
@@ -1127,10 +1171,16 @@ def _calcular_divergencia(payload):
         "fonte_velocidade": _cs_context.get("source"),
     }
     if isinstance(vp, dict) and vp.get("lider") not in (None, "igual") and abs(vp.get("diff") or 0) >= 3:
-        forca, conf, amostra = _multiplicadores_percentuais(vp, n_pleno=30)
+        forca, conf_amostra, amostra = _multiplicadores_percentuais(vp, n_pleno=30)
+        conf_sinal, z_diferenca = _confianca_diferenca_taxas(vp)
+        conf = min(conf_amostra, conf_sinal)
         _add("velocidade_piso", vp["lider"], forca, conf_amostra=conf)
         _reg_status("velocidade_piso", True, vp["lider"], valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"),
-                    amostra=amostra, amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"), **_vp_extra)
+                    amostra=amostra, amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"),
+                    confianca_amostra_bilateral=round(conf_amostra, 3),
+                    confianca_sinal_ruido=round(conf_sinal, 3),
+                    z_diferenca=(round(z_diferenca, 3) if z_diferenca is not None else None),
+                    **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") == "igual":
         _reg_status("velocidade_piso", True, "igual", valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"), **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") is not None:
@@ -1857,7 +1907,8 @@ def _build_analysis_body(result: dict, payload: dict) -> str:
             f'<table class="mvm-table"><thead><tr><th></th>'
             f'<th>{_esc(a)}</th><th>{_esc(b)}</th></tr></thead><tbody>'
             f'<tr><td>Mercado (s/ margem)</td><td>{mk["a"]}%</td><td>{mk["b"]}%</td></tr>'
-            f'<tr><td>Índice de evidência</td><td>{md["a"]}/100</td><td>{md["b"]}/100</td></tr>'
+            f'<tr><td>Índice de evidência</td><td>{_format_fenzobot_index(md["a"])}/100</td>'
+            f'<td>{_format_fenzobot_index(md["b"])}/100</td></tr>'
             f'</tbody></table>{box}')
 
     # 3. MARKET OVERVIEW (Python) — mostra só os mercados que SE ADEQUAM à
@@ -2019,7 +2070,9 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
         _label_div = _clf.get("texto", "Mercado eficiente")
         if _nivel_div >= 1 and _fav_head:
             _idx_fav = _idx_head.get("a") if _fav_head == payload.get("player_a") else _idx_head.get("b")
-            _extra = f'<div class="cov-detail">Índice de evidência: {_idx_fav}/100 a favor de {_esc(_fav_head)}</div>'
+            _extra = (f'<div class="cov-detail">Índice de evidência: '
+                      f'{_format_fenzobot_index(_idx_fav)}/100 a favor de '
+                      f'{_esc(_fav_head)}</div>')
         else:
             _extra = '<div class="cov-detail">Indicadores alinhados com o mercado</div>'
         force_bar = _div_bar_html(_nivel_div, _label_div, extra=_extra)
@@ -4261,8 +4314,13 @@ def _mod_fatores_detalhados(
                 f"{recovery} ({int(attempts)} casos)"
                 if isinstance(attempts, (int, float)) else recovery
             )
+            sample = st.get("amostra_a") if player == players[0] else st.get("amostra_b")
+            sample_text = (
+                f" · amostra do fator {int(sample)} jogos"
+                if isinstance(sample, (int, float)) else ""
+            )
             cells.append(
-                f"<span><b>{_esc(player)}</b> · hold {value(profile, 'hold_rate_pct')} · "
+                f"<span><b>{_esc(player)}</b>{sample_text} · hold {value(profile, 'hold_rate_pct')} · "
                 f"break {value(profile, 'break_rate_pct')} · serviço "
                 f"{value(profile, 'service_points_won_pct')} · retorno "
                 f"{value(profile, 'return_points_won_pct')} · recuperação "

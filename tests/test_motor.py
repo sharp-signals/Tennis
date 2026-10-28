@@ -82,14 +82,13 @@ def test_divergencia_quando_discordam():
 
 
 # ---------- TESTES: salvaguardas contra falsos positivos ----------
-def test_h2h_um_jogo_nao_conta():
-    """H2H de 1 só jogo não deve gerar divergência forte."""
+def test_h2h_um_jogo_residual_nao_gera_divergencia_forte():
+    """H2H de 1 só jogo conta, mas não deve gerar divergência forte."""
     r = _calcular_divergencia(_payload(2.75, 1.39, {
         "h2h": {"lider": "A", "diff": 1, "a_wins": 1, "b_wins": 0},
         "ranking": {"lider": "A", "diff": 2},
     }))
-    # H2H de 1 jogo é ignorado e ranking diff 2 também -> sem evidência (None)
-    # ou, se houver algum sinal, no máximo ligeira. Ambos são corretos.
+    # O H2H residual pode produzir sinal, mas no máximo uma leitura ligeira.
     assert r is None or r["classificacao"]["nivel"] <= 1
 
 
@@ -118,14 +117,15 @@ def test_h2h_piso_tambem_distingue_dominio_da_serie():
     assert dividido["peso_efetivo"] == 2.2
 
 
-def test_h2h_global_um_jogo_continua_sem_inclinar_indice():
+def test_h2h_global_um_jogo_contribui_apenas_com_peso_residual():
     r = _calcular_divergencia(_payload(1.80, 2.10, {
         "h2h": {"lider": "A", "diff": 1, "a_wins": 1, "b_wins": 0},
         "ranking": {"lider": "B", "diff": 20},
     }))
     status = r["fatores_status"]["h2h"]
-    assert status["motivo_exclusao"] == "amostra insuficiente (1 jogo)"
-    assert not status.get("peso_efetivo")
+    assert status["confianca_amostra"] == 0.10
+    assert status["peso_antes_cap"] == 0.6
+    assert status["peso_efetivo"] == 0.6
 
 
 def test_h2h_zero_verificado_e_factual_sem_inclinar_indice():
@@ -228,9 +228,27 @@ def test_velocidade_piso_diferenca_pequena_nao_recebe_forca_total():
     }))
     status = r["fatores_status"]["velocidade_piso"]
     assert status["multiplicador_forca"] == 0.3
-    assert status["confianca_amostra"] == 1.0
-    assert status["peso_antes_cap"] == 3.0
-    assert status["peso_efetivo"] == 3.0
+    assert status["confianca_amostra_bilateral"] == 1.0
+    assert 0.08 < status["confianca_sinal_ruido"] < 0.09
+    assert status["confianca_amostra"] == status["confianca_sinal_ruido"]
+    assert 0.26 < status["peso_antes_cap"] < 0.27
+    assert status["peso_efetivo"] == status["peso_antes_cap"]
+
+
+def test_velocidade_piso_hanfmann_struff_atenua_incerteza_do_contraste():
+    r = _calcular_divergencia(_payload(2.00, 1.80, {
+        "velocidade_piso": {
+            "lider": "A", "diff": 14.5, "valor_a": 47.8, "valor_b": 33.3,
+            "amostra_a": 23, "amostra_b": 30,
+        },
+    }))
+    status = r["fatores_status"]["velocidade_piso"]
+    assert status["confianca_amostra_bilateral"] == 0.876
+    assert 0.53 < status["confianca_sinal_ruido"] < 0.54
+    assert status["confianca_amostra"] == status["confianca_sinal_ruido"]
+    assert 5.1 < status["peso_antes_cap"] < 5.3
+    assert status["amostra_a"] == 23
+    assert status["amostra_b"] == 30
 
 
 def test_fator_percentual_combina_magnitude_e_amostra():
