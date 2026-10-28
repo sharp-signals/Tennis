@@ -382,6 +382,7 @@ def build_decision(
     if (
         str(pricing.get("model_version") or "").startswith((
             "factor-independent-v1", "market-prior-residual-v1", "factor-calibrated-v",
+            "structural-elo-factor-v",
         ))
         and not _is_experimental_tier(payload)
     ):
