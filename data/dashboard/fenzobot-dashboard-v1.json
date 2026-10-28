@@ -6,7 +6,7 @@
       "decision_positive": 190,
       "direction_strong": 48,
       "eligible": 30,
-      "eligible_settled": 26,
+      "eligible_settled": 27,
       "exclusion_reason_counts": {
         "DECISION_STATE_NOT_EDGE_POSITIVE": 872,
         "DIVERGENCE_LEVEL_NOT_STRONG": 1014,
@@ -38,10 +38,10 @@
       "llm_provider_invocations": 30
     },
     "maintenance": {
-      "finished_at_utc": "2026-10-28T10:55:40+00:00",
-      "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT",
-      "started_at_utc": "2026-10-28T10:51:10+00:00",
-      "status": "TIMED_OUT"
+      "finished_at_utc": null,
+      "reason_code": null,
+      "started_at_utc": "2026-10-28T15:22:12+00:00",
+      "status": "PARTIAL"
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -662,40 +662,40 @@
           "test": {
             "calibration": [
               {
-                "mean_probability": 0.3633,
-                "n": 4,
-                "observed_rate": 0.25,
+                "mean_probability": 0.3584,
+                "n": 6,
+                "observed_rate": 0.1667,
                 "range": "0.2-0.4"
               },
               {
-                "mean_probability": 0.4578,
-                "n": 4,
-                "observed_rate": 0.5,
+                "mean_probability": 0.4747,
+                "n": 6,
+                "observed_rate": 0.6667,
                 "range": "0.4-0.6"
               },
               {
-                "mean_probability": 0.677,
-                "n": 3,
+                "mean_probability": 0.6875,
+                "n": 4,
                 "observed_rate": 1.0,
                 "range": "0.6-0.8"
               }
             ],
-            "delta_brier": 0.016623,
-            "delta_log_loss": 0.041593,
+            "delta_brier": 0.032394,
+            "delta_log_loss": 0.087371,
             "market": {
-              "brier": 0.165035,
-              "log_loss": 0.509723,
-              "n": 11
+              "brier": 0.138939,
+              "log_loss": 0.443047,
+              "n": 16
             },
             "model": {
-              "brier": 0.181658,
-              "log_loss": 0.551316,
-              "n": 11
+              "brier": 0.171333,
+              "log_loss": 0.530418,
+              "n": 16
             },
             "neutral": {
               "brier": 0.25,
               "log_loss": 0.693147,
-              "n": 11
+              "n": 16
             },
             "shadow_selection": {
               "commission_on_profit": 0.05,
@@ -706,98 +706,47 @@
               "units": -0.1811
             }
           },
-          "test_n": 11,
-          "train_n": 22
+          "test_n": 16,
+          "train_n": 32
         },
         {
           "test": {
             "calibration": [
               {
-                "mean_probability": 0.3794,
+                "mean_probability": 0.3682,
                 "n": 4,
-                "observed_rate": 0.25,
+                "observed_rate": 0.5,
                 "range": "0.2-0.4"
               },
               {
-                "mean_probability": 0.4905,
-                "n": 5,
-                "observed_rate": 0.8,
+                "mean_probability": 0.4781,
+                "n": 9,
+                "observed_rate": 0.7778,
                 "range": "0.4-0.6"
               },
               {
-                "mean_probability": 0.6799,
-                "n": 2,
-                "observed_rate": 1.0,
-                "range": "0.6-0.8"
-              }
-            ],
-            "delta_brier": 0.09472,
-            "delta_log_loss": 0.212991,
-            "market": {
-              "brier": 0.131929,
-              "log_loss": 0.430977,
-              "n": 11
-            },
-            "model": {
-              "brier": 0.226649,
-              "log_loss": 0.643968,
-              "n": 11
-            },
-            "neutral": {
-              "brier": 0.25,
-              "log_loss": 0.693147,
-              "n": 11
-            },
-            "shadow_selection": {
-              "commission_on_profit": 0.05,
-              "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
-              "max_drawdown_units": null,
-              "n": 0,
-              "roi": null,
-              "units": 0.0
-            }
-          },
-          "test_n": 11,
-          "train_n": 33
-        },
-        {
-          "test": {
-            "calibration": [
-              {
-                "mean_probability": 0.3664,
-                "n": 1,
-                "observed_rate": 1.0,
-                "range": "0.2-0.4"
-              },
-              {
-                "mean_probability": 0.4547,
-                "n": 7,
-                "observed_rate": 0.7143,
-                "range": "0.4-0.6"
-              },
-              {
-                "mean_probability": 0.6436,
+                "mean_probability": 0.6473,
                 "n": 3,
                 "observed_rate": 0.6667,
                 "range": "0.6-0.8"
               }
             ],
-            "delta_brier": -0.11492,
-            "delta_log_loss": -0.313664,
+            "delta_brier": 0.070374,
+            "delta_log_loss": 0.142049,
             "market": {
-              "brier": 0.388865,
-              "log_loss": 1.05574,
-              "n": 11
+              "brier": 0.204041,
+              "log_loss": 0.600649,
+              "n": 16
             },
             "model": {
-              "brier": 0.273945,
-              "log_loss": 0.742076,
-              "n": 11
+              "brier": 0.274415,
+              "log_loss": 0.742698,
+              "n": 16
             },
             "neutral": {
               "brier": 0.25,
               "log_loss": 0.693147,
-              "n": 11
+              "n": 16
             },
             "shadow_selection": {
               "commission_on_profit": 0.05,
@@ -808,48 +757,138 @@
               "units": 0.0
             }
           },
-          "test_n": 11,
-          "train_n": 44
+          "test_n": 16,
+          "train_n": 48
+        },
+        {
+          "test": {
+            "calibration": [
+              {
+                "mean_probability": 0.3505,
+                "n": 4,
+                "observed_rate": 0.5,
+                "range": "0.2-0.4"
+              },
+              {
+                "mean_probability": 0.4699,
+                "n": 9,
+                "observed_rate": 0.5556,
+                "range": "0.4-0.6"
+              },
+              {
+                "mean_probability": 0.646,
+                "n": 3,
+                "observed_rate": 0.6667,
+                "range": "0.6-0.8"
+              }
+            ],
+            "delta_brier": -0.055408,
+            "delta_log_loss": -0.151257,
+            "market": {
+              "brier": 0.302806,
+              "log_loss": 0.839562,
+              "n": 16
+            },
+            "model": {
+              "brier": 0.247398,
+              "log_loss": 0.688305,
+              "n": 16
+            },
+            "neutral": {
+              "brier": 0.25,
+              "log_loss": 0.693147,
+              "n": 16
+            },
+            "shadow_selection": {
+              "commission_on_profit": 0.05,
+              "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
+              "max_drawdown_units": null,
+              "n": 0,
+              "roi": null,
+              "units": 0.0
+            }
+          },
+          "test_n": 16,
+          "train_n": 64
+        },
+        {
+          "test": {
+            "calibration": [
+              {
+                "mean_probability": 0.3527,
+                "n": 1,
+                "observed_rate": 1.0,
+                "range": "0.2-0.4"
+              }
+            ],
+            "delta_brier": -0.031108,
+            "delta_log_loss": -0.069258,
+            "market": {
+              "brier": 0.450167,
+              "log_loss": 1.111531,
+              "n": 1
+            },
+            "model": {
+              "brier": 0.419059,
+              "log_loss": 1.042273,
+              "n": 1
+            },
+            "neutral": {
+              "brier": 0.25,
+              "log_loss": 0.693147,
+              "n": 1
+            },
+            "shadow_selection": {
+              "commission_on_profit": 0.05,
+              "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
+              "max_drawdown_units": null,
+              "n": 0,
+              "roi": null,
+              "units": 0.0
+            }
+          },
+          "test_n": 1,
+          "train_n": 80
         }
       ],
-      "holdout_size": 17,
+      "holdout_size": 25,
       "overall": {
         "calibration": [
           {
-            "mean_probability": 0.3805,
-            "n": 3,
-            "observed_rate": 0.3333,
+            "mean_probability": 0.3503,
+            "n": 7,
+            "observed_rate": 0.7143,
             "range": "0.2-0.4"
           },
           {
-            "mean_probability": 0.4724,
-            "n": 11,
-            "observed_rate": 0.7273,
+            "mean_probability": 0.4618,
+            "n": 12,
+            "observed_rate": 0.5833,
             "range": "0.4-0.6"
           },
           {
-            "mean_probability": 0.6436,
-            "n": 3,
+            "mean_probability": 0.6467,
+            "n": 6,
             "observed_rate": 0.6667,
             "range": "0.6-0.8"
           }
         ],
-        "delta_brier": -0.028742,
-        "delta_log_loss": -0.103096,
+        "delta_brier": -0.030699,
+        "delta_log_loss": -0.09279,
         "market": {
-          "brier": 0.290975,
-          "log_loss": 0.82111,
-          "n": 17
+          "brier": 0.302502,
+          "log_loss": 0.83084,
+          "n": 25
         },
         "model": {
-          "brier": 0.262233,
-          "log_loss": 0.718014,
-          "n": 17
+          "brier": 0.271803,
+          "log_loss": 0.73805,
+          "n": 25
         },
         "neutral": {
           "brier": 0.25,
           "log_loss": 0.693147,
-          "n": 17
+          "n": 25
         },
         "shadow_selection": {
           "commission_on_profit": 0.05,
@@ -866,52 +905,17 @@
         "version": "pricing-promotion-gate-v1"
       },
       "segments": {
-        "atp|factor-calibrated-v3.1:d48e4000e7beb337": {
-          "calibration": [
-            {
-              "mean_probability": 0.4547,
-              "n": 1,
-              "observed_rate": 1.0,
-              "range": "0.4-0.6"
-            }
-          ],
-          "delta_brier": 0.113514,
-          "delta_log_loss": 0.228164,
-          "market": {
-            "brier": 0.183858,
-            "log_loss": 0.559993,
-            "n": 1
-          },
-          "model": {
-            "brier": 0.297372,
-            "log_loss": 0.788157,
-            "n": 1
-          },
-          "neutral": {
-            "brier": 0.25,
-            "log_loss": 0.693147,
-            "n": 1
-          },
-          "shadow_selection": {
-            "commission_on_profit": 0.05,
-            "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
-            "max_drawdown_units": null,
-            "n": 0,
-            "roi": null,
-            "units": 0.0
-          }
-        },
         "challenger|factor-calibrated-v3.1:d48e4000e7beb337": {
           "calibration": [
             {
-              "mean_probability": 0.3805,
-              "n": 3,
-              "observed_rate": 0.3333,
+              "mean_probability": 0.3664,
+              "n": 1,
+              "observed_rate": 1.0,
               "range": "0.2-0.4"
             },
             {
-              "mean_probability": 0.4842,
-              "n": 8,
+              "mean_probability": 0.4441,
+              "n": 4,
               "observed_rate": 0.75,
               "range": "0.4-0.6"
             },
@@ -922,22 +926,22 @@
               "range": "0.6-0.8"
             }
           ],
-          "delta_brier": -0.020892,
-          "delta_log_loss": -0.098828,
+          "delta_brier": -0.138574,
+          "delta_log_loss": -0.404024,
           "market": {
-            "brier": 0.294866,
-            "log_loss": 0.841211,
-            "n": 13
+            "brier": 0.452967,
+            "log_loss": 1.229066,
+            "n": 7
           },
           "model": {
-            "brier": 0.273974,
-            "log_loss": 0.742383,
-            "n": 13
+            "brier": 0.314393,
+            "log_loss": 0.825042,
+            "n": 7
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 13
+            "n": 7
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -951,34 +955,40 @@
         "wta|factor-calibrated-v3.1:d48e4000e7beb337": {
           "calibration": [
             {
-              "mean_probability": 0.4344,
-              "n": 2,
+              "mean_probability": 0.3476,
+              "n": 6,
+              "observed_rate": 0.6667,
+              "range": "0.2-0.4"
+            },
+            {
+              "mean_probability": 0.4706,
+              "n": 8,
               "observed_rate": 0.5,
               "range": "0.4-0.6"
             },
             {
-              "mean_probability": 0.6648,
-              "n": 1,
-              "observed_rate": 1.0,
+              "mean_probability": 0.6535,
+              "n": 4,
+              "observed_rate": 0.75,
               "range": "0.6-0.8"
             }
           ],
-          "delta_brier": -0.110175,
-          "delta_log_loss": -0.232009,
+          "delta_brier": 0.011252,
+          "delta_log_loss": 0.028245,
           "market": {
-            "brier": 0.30982,
-            "log_loss": 0.821045,
-            "n": 3
+            "brier": 0.243988,
+            "log_loss": 0.675975,
+            "n": 18
           },
           "model": {
-            "brier": 0.199645,
-            "log_loss": 0.589036,
-            "n": 3
+            "brier": 0.25524,
+            "log_loss": 0.70422,
+            "n": 18
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 3
+            "n": 18
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -991,7 +1001,7 @@
         }
       },
       "status": "SHADOW_ONLY",
-      "train_size": 38
+      "train_size": 56
     }
   },
   "change_id": "CHANGE-2026-09-23-051",
@@ -127526,7 +127536,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-28T15:16:26+00:00",
+  "generated_at_utc": "2026-10-28T15:22:36+00:00",
   "global": {
     "distinct_matchups": 3621,
     "green_strong_candidates": 30,
@@ -127539,7 +127549,7 @@
       "UNAVAILABLE": 1507,
       "YELLOW": 857
     },
-    "settled_snapshots": 1282,
+    "settled_snapshots": 1299,
     "total_reports": 5635,
     "total_snapshots": 1452
   },
@@ -127547,29 +127557,29 @@
     "by_market": {
       "Moneyline": {
         "eligible_entries": 320,
-        "losses": 102,
-        "net_profit_eur": -27.77,
-        "pending_entries": 31,
-        "pending_exposure_eur": 310.0,
-        "resolved_entries": 289,
-        "resolved_stake_eur": 2890.0,
-        "roi_pct": -0.96,
+        "losses": 106,
+        "net_profit_eur": -59.87,
+        "pending_entries": 25,
+        "pending_exposure_eur": 250.0,
+        "resolved_entries": 295,
+        "resolved_stake_eur": 2950.0,
+        "roi_pct": -2.03,
         "void_entries": 0,
-        "wins": 187
+        "wins": 189
       }
     },
     "by_stage": {
       "EARLY_ROUNDS": {
         "eligible_entries": 177,
-        "losses": 57,
-        "net_profit_eur": -93.0,
-        "pending_entries": 26,
-        "pending_exposure_eur": 260.0,
-        "resolved_entries": 151,
-        "resolved_stake_eur": 1510.0,
-        "roi_pct": -6.16,
+        "losses": 61,
+        "net_profit_eur": -125.1,
+        "pending_entries": 20,
+        "pending_exposure_eur": 200.0,
+        "resolved_entries": 157,
+        "resolved_stake_eur": 1570.0,
+        "roi_pct": -7.97,
         "void_entries": 0,
-        "wins": 94
+        "wins": 96
       },
       "LATE_STAGES": {
         "eligible_entries": 41,
@@ -127611,15 +127621,15 @@
     "by_stage_and_alignment": {
       "EARLY_ROUNDS|ALIGNED_WITH_MARKET": {
         "eligible_entries": 136,
-        "losses": 37,
-        "net_profit_eur": -64.8,
-        "pending_entries": 23,
-        "pending_exposure_eur": 230.0,
-        "resolved_entries": 113,
-        "resolved_stake_eur": 1130.0,
-        "roi_pct": -5.73,
+        "losses": 40,
+        "net_profit_eur": -86.9,
+        "pending_entries": 18,
+        "pending_exposure_eur": 180.0,
+        "resolved_entries": 118,
+        "resolved_stake_eur": 1180.0,
+        "roi_pct": -7.36,
         "void_entries": 0,
-        "wins": 76
+        "wins": 78
       },
       "EARLY_ROUNDS|ALIGNMENT_UNRESOLVED": {
         "eligible_entries": 9,
@@ -127635,13 +127645,13 @@
       },
       "EARLY_ROUNDS|DIVERGENT_FROM_MARKET": {
         "eligible_entries": 32,
-        "losses": 18,
-        "net_profit_eur": -35.5,
-        "pending_entries": 2,
-        "pending_exposure_eur": 20.0,
-        "resolved_entries": 30,
-        "resolved_stake_eur": 300.0,
-        "roi_pct": -11.83,
+        "losses": 19,
+        "net_profit_eur": -45.5,
+        "pending_entries": 1,
+        "pending_exposure_eur": 10.0,
+        "resolved_entries": 31,
+        "resolved_stake_eur": 310.0,
+        "roi_pct": -14.68,
         "void_entries": 0,
         "wins": 12
       },
@@ -127768,15 +127778,15 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-28T15:16:26+00:00",
-    "losses": 102,
+    "generated_at_utc": "2026-10-28T15:22:36+00:00",
+    "losses": 106,
     "metric_id": "GREEN_MONETIZATION_V1",
-    "net_profit_eur": -27.77,
-    "pending_entries": 31,
-    "pending_exposure_eur": 310.0,
-    "resolved_entries": 289,
-    "resolved_stake_eur": 2890.0,
-    "roi_pct": -0.96,
+    "net_profit_eur": -59.87,
+    "pending_entries": 25,
+    "pending_exposure_eur": 250.0,
+    "resolved_entries": 295,
+    "resolved_stake_eur": 2950.0,
+    "roi_pct": -2.03,
     "schema_version": 2,
     "source": {
       "exclusion_manifests": [
@@ -127784,7 +127794,7 @@
         "data/validation/market-integrity-exclusions-v1.json",
         "data/validation/green-projection-exclusions-v1.json"
       ],
-      "fingerprint_sha256": "61daccc1cf04ac100dde71de4651b5736fa5e1ae3510aa8cfbbf160f47132988",
+      "fingerprint_sha256": "6e1530aa0024d11b68fcb360505384a4b1b2930e41762548bee50f3c49223382",
       "paper_path": "data/paper_trades.json",
       "physical_entries": 331,
       "universe": "PAPER_TECHNICAL_EDGE_POSITIVE_BASELINE"
@@ -127797,7 +127807,7 @@
       "real": "NOT_INCLUDED"
     },
     "void_entries": 0,
-    "wins": 187
+    "wins": 189
   },
   "green_strong_v1": {
     "claims": "EXPERIMENTAL_NOT_VALIDATED",
@@ -128578,7 +128588,7 @@
   "paper_results_comparison_v1": {
     "change_id": "CHANGE-2026-09-23-051",
     "disclaimer": "Amostras diferentes; comparação descritiva, não prova de desempenho futuro.",
-    "green_win_rate_pct": 64.706,
+    "green_win_rate_pct": 64.068,
     "guerra_win_rate_pct": 54.598,
     "profit_is_never_aggregated": true,
     "statement": "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do Guerra apresenta maior ROI e resultado acumulado, com menos apostas.",
@@ -128590,18 +128600,18 @@
       "Handicap": null,
       "Moneyline": {
         "average_odd": 1.61,
-        "losses": 102,
-        "pending": 39,
+        "losses": 106,
+        "pending": 33,
         "pending_stake_units": null,
         "pushes": 0,
-        "roi_pct": -0.96,
-        "settled": 289,
+        "roi_pct": -2.03,
+        "settled": 295,
         "settled_stake_units": null,
         "total_entries": 328,
-        "units": -2.777,
-        "win_rate_pct": 64.71,
-        "wins": 187,
-        "yield_pct": -0.96
+        "units": -5.987,
+        "win_rate_pct": 64.07,
+        "wins": 189,
+        "yield_pct": -2.03
       }
     },
     "data_quality_exclusions_by_reason": {
@@ -128609,19 +128619,19 @@
     },
     "excluded_data_quality_entries": 1,
     "excluded_integrity_entries": 3,
-    "losses": 102,
-    "pending": 39,
+    "losses": 106,
+    "pending": 33,
     "pending_stake_units": null,
     "pushes": 0,
-    "roi_pct": -0.96,
-    "settled": 289,
+    "roi_pct": -2.03,
+    "settled": 295,
     "settled_stake_units": null,
     "status": "AVAILABLE",
     "total_entries": 328,
-    "units": -2.777,
-    "win_rate_pct": 64.71,
-    "wins": 187,
-    "yield_pct": -0.96
+    "units": -5.987,
+    "win_rate_pct": 64.07,
+    "wins": 189,
+    "yield_pct": -2.03
   },
   "report_grouping": {
     "canonical_precedence": [
@@ -128639,80 +128649,80 @@
   },
   "report_history": {
     "alignment": {
-      "acertos": 530,
+      "acertos": 537,
       "intervalo_pct": [
-        66.5,
-        73.0
+        66.3,
+        72.8
       ],
       "odds_retorno": {
-        "average_odd": 1.414,
+        "average_odd": 1.415,
         "break_even_pct": 72.6,
-        "losses": 229,
+        "losses": 234,
         "median_odd": 1.4,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": -29.901,
-        "odds_sample_size": 759,
-        "roi_pct": -3.94,
-        "stake_units": 759,
-        "win_pct": 69.8,
-        "wins": 530
+        "net_units": -31.801,
+        "odds_sample_size": 771,
+        "roi_pct": -4.12,
+        "stake_units": 771,
+        "win_pct": 69.6,
+        "wins": 537
       },
-      "taxa_pct": 69.8,
-      "total": 759
+      "taxa_pct": 69.6,
+      "total": 771
     },
     "alignment_min_odd": {
-      "acertos": 348,
+      "acertos": 354,
       "intervalo_pct": [
-        59.9,
-        67.9
+        59.7,
+        67.7
       ],
       "minimum_odd": 1.25,
       "odds_retorno": {
         "average_odd": 1.521,
         "break_even_pct": 66.7,
-        "losses": 196,
+        "losses": 201,
         "median_odd": 1.5,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": -22.545,
-        "odds_sample_size": 544,
-        "roi_pct": -4.14,
-        "stake_units": 544,
-        "win_pct": 64.0,
-        "wins": 348
+        "net_units": -24.475,
+        "odds_sample_size": 555,
+        "roi_pct": -4.41,
+        "stake_units": 555,
+        "win_pct": 63.8,
+        "wins": 354
       },
-      "taxa_pct": 64.0,
-      "total": 544
+      "taxa_pct": 63.8,
+      "total": 555
     },
     "divergence": {
-      "acertos": 68,
+      "acertos": 70,
       "intervalo_pct": [
-        40.4,
-        56.8
+        40.9,
+        57.1
       ],
       "odds_retorno": {
-        "average_odd": 2.335,
-        "break_even_pct": 44.8,
-        "losses": 72,
-        "median_odd": 2.18,
+        "average_odd": 2.339,
+        "break_even_pct": 44.7,
+        "losses": 73,
+        "median_odd": 2.2,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": 7.639,
-        "odds_sample_size": 140,
-        "roi_pct": 5.46,
-        "stake_units": 140,
-        "win_pct": 48.6,
-        "wins": 68
+        "net_units": 9.609,
+        "odds_sample_size": 143,
+        "roi_pct": 6.72,
+        "stake_units": 143,
+        "win_pct": 49.0,
+        "wins": 70
       },
-      "taxa_pct": 48.6,
-      "total": 140
+      "taxa_pct": 49.0,
+      "total": 143
     },
     "snapshot_universe": {
-      "settled": 1282,
+      "settled": 1299,
       "total": 1452
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "cb20662232d5fb9b56071f2ee202caba46cf45f2c566149b7fab01a14c42d114",
+  "semantic_fingerprint": "3f3adf81ba05ba5adf2c8a5de01e5346901c57d07f8a5f2398172d317ecc1c40",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 444,
@@ -128721,7 +128731,7 @@
     },
     "change_id": "CHANGE-2026-09-21-047",
     "conversion": {
-      "created_to_settled_pct": 68.0,
+      "created_to_settled_pct": 75.56,
       "eligible_to_snapshot_pct": 0.0
     },
     "counts": {
@@ -128736,7 +128746,7 @@
       "self_described_versions": 665,
       "snapshot_identity_matches": 0,
       "snapshots_created": 225,
-      "snapshots_settled": 153
+      "snapshots_settled": 170
     },
     "integrity": {
       "eligible_identities_reconciled": true,
@@ -128778,7 +128788,7 @@
     },
     "paper_technical": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-28T07:08:52+00:00"
+      "updated_at_utc": "2026-10-28T15:22:36+00:00"
     },
     "reports": {
       "status": "AVAILABLE",
@@ -128790,7 +128800,7 @@
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-28T15:16:24+00:00"
+      "updated_at_utc": "2026-10-28T15:22:32+00:00"
     }
   },
   "system_health": {
