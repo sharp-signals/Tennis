@@ -16,7 +16,9 @@ Filosofia de design (ver frontend-design skill):
 """
 from __future__ import annotations
 
+import hashlib
 import html
+import json
 import math
 import re
 
@@ -652,6 +654,24 @@ CAPS_FAMILIAS_PESOS = {
     "forca_base": 10, "matchup": 18, "superficie": 16,
     "resiliencia": 19, "ranking_fam": 9, "contexto": 8, "historial": 6,
 }
+
+FACTOR_MODEL_VERSION = "factor-weights-v2026-10-09"
+
+
+def _factor_model_fingerprint():
+    """Identifica exatamente pesos, famílias e caps usados neste relatório."""
+    material = {
+        "version": FACTOR_MODEL_VERSION,
+        "weights": PESOS,
+        "families": {
+            key: sorted(values) for key, values in FAMILIAS_PESOS.items()
+        },
+        "family_caps": CAPS_FAMILIAS_PESOS,
+    }
+    encoded = json.dumps(
+        material, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()[:16]
 
 def _nome_fator(chave):
     return {
@@ -1555,6 +1575,8 @@ def _calcular_divergencia(payload):
         "n_fatores": n_fatores,  # nº de sinais que contribuíram (transparência
                                   # quando o índice bate no extremo com poucos)
         "massa_evidencia": round(massa_evidencia, 3),
+        "factor_model_version": FACTOR_MODEL_VERSION,
+        "factor_model_fingerprint": _factor_model_fingerprint(),
         "evidence_coverage": {
             "active_families": familias_ativas,
             "active_family_count": len(familias_ativas),
@@ -1586,15 +1608,27 @@ def _compute_model_vs_market(payload):
         return {"market": None, "model": None, "divergencia": None}
     market = ({"a": r["prob_mercado_a"], "b": r["prob_mercado_b"]}
               if r.get("prob_mercado_a") is not None else None)
-    # "model" agora é o ÍNDICE DE EVIDÊNCIA (0-100), não uma probabilidade
-    model = {"a": r["indice_evidencia_a"], "b": r["indice_evidencia_b"]}
+    # O consenso bruto considera apenas os fatores ativos. O índice principal
+    # incorpora missingness, cobertura e dimensão da amostra; assim, consenso
+    # parcial nunca aparece ao utilizador como certeza 100/100.
+    raw_a = r["indice_evidencia_a"]
+    pricing = payload.get("pricing") or {}
+    adjusted_a = pricing.get("uncertainty_adjusted_index_a")
+    try:
+        visible_a = float(adjusted_a) if adjusted_a is not None else float(raw_a)
+    except (TypeError, ValueError):
+        visible_a = raw_a
+    model = {"a": visible_a, "b": 100.0 - visible_a}
     divergencia = None
     if r["classificacao"]["nivel"] >= 1 and r["favorecido"]:
         divergencia = {"favorecido": r["favorecido"]}
     return {
         "market": market, "model": model, "divergencia": divergencia,
         "classificacao": r["classificacao"], "fatores_chave": r["fatores_chave"],
-        "indice_evidencia": {"a": r["indice_evidencia_a"], "b": r["indice_evidencia_b"]},
+        "indice_evidencia": model,
+        "consenso_fatores_ativos": {
+            "a": r["indice_evidencia_a"], "b": r["indice_evidencia_b"],
+        },
         "favorecido": r["favorecido"],
         "mercado_favorece": r.get("mercado_favorece"),
         "indice_favorece": r.get("indice_favorece"),
@@ -4388,20 +4422,37 @@ def _mod_market_residual_pricing(payload):
     version = pricing.get("model_version") or "pricing-version-unavailable"
     fingerprint = pricing.get("configuration_fingerprint") or "—"
     overround = pricing.get("market_overround_pct")
-    index_a = pricing.get("index_a")
-    if index_a is None:
+    raw_index_a = pricing.get("index_a")
+    if raw_index_a is None:
         try:
-            index_a = 50.0 + 50.0 * float(pricing.get("signed_strength"))
+            raw_index_a = 50.0 + 50.0 * float(pricing.get("signed_strength"))
         except (TypeError, ValueError):
-            index_a = None
-    index_b = 100.0 - float(index_a) if index_a is not None else None
+            raw_index_a = None
+    adjusted_index_a = pricing.get("uncertainty_adjusted_index_a")
+    if adjusted_index_a is None:
+        adjusted_index_a = raw_index_a
+    adjusted_index_b = (
+        100.0 - float(adjusted_index_a)
+        if adjusted_index_a is not None else None
+    )
+    raw_index_b = 100.0 - float(raw_index_a) if raw_index_a is not None else None
     calibration = _d(pricing.get("residual_calibration"))
     beta = calibration.get("beta")
+    validity_code = pricing.get("fair_odd_validity") or "UNAVAILABLE"
+    validity = {
+        "COMPARABLE_SHADOW": "COMPARÁVEL · SHADOW",
+        "INDICATIVE_ONLY": "APENAS INDICATIVA",
+        "OUT_OF_CALIBRATION": "FORA DA CALIBRAÇÃO",
+        "INCONCLUSIVE": "INCONCLUSIVA",
+        "UNAVAILABLE": "INDISPONÍVEL",
+    }.get(validity_code, str(validity_code))
     trace = (
         '<details class="pricing-trace"><summary>Como este pricing foi calculado</summary>'
         '<div class="pricing-trace-body">'
-        f'<p><b>Índice dos fatores:</b> {fmt(index_a, 1)} / {fmt(index_b, 1)}. '
-        'É a quota dos pesos efetivos que aponta para cada jogador; não é, por si só, probabilidade de vitória.</p>'
+        f'<p><b>Índice Fenzobot ajustado:</b> {fmt(adjusted_index_a, 1)} / {fmt(adjusted_index_b, 1)}. '
+        'Inclui a penalização por fatores em falta, cobertura, fonte e dimensão da amostra.</p>'
+        f'<p><b>Consenso bruto dos fatores ativos:</b> {fmt(raw_index_a, 1)} / {fmt(raw_index_b, 1)}. '
+        'É preservado apenas para auditoria e não representa certeza nem probabilidade de vitória.</p>'
         f'<p><b>Confiança direcional:</b> {quality_text}; <b>beta histórico:</b> {fmt(beta, 3)}. '
         'A probabilidade própria resulta de logistic(beta × força assinada do índice × confiança). O mercado não entra nesta conta.</p>'
         '<p><b>Fair odd:</b> 1 / probabilidade Fenzobot. <b>Edge:</b> probabilidade Fenzobot × odd observada − 1. '
@@ -4419,6 +4470,7 @@ def _mod_market_residual_pricing(payload):
         f'{card("b", payload.get("player_b", "B"))}</div>'
         f'<div class="pricing-candidate{candidate_class}">{_esc(candidate_label)}</div>'
         '<div class="pricing-audit">'
+        f'<span>Validade da fair odd <b>{_esc(validity)}</b></span>'
         f'<span>Confiança direcional <b>{quality_text}</b></span>'
         f'<span>Consenso dos fatores ativos <b>{consensus_text}</b></span>'
         f'<span>Incerteza total <b>{uncertainty_text}</b></span>'
@@ -6093,6 +6145,22 @@ def _normalizar_div(raw):
     }
 
 
+def _aplicar_indice_ajustado(div, pricing):
+    """Torna o índice ajustado primário sem apagar o consenso bruto."""
+    if not div or not isinstance(pricing, dict):
+        return div
+    adjusted_a = pricing.get("uncertainty_adjusted_index_a")
+    try:
+        adjusted_a = float(adjusted_a)
+    except (TypeError, ValueError):
+        return div
+    result = dict(div)
+    raw = dict(result.get("indice_evidencia") or {})
+    result["consenso_fatores_ativos"] = raw
+    result["indice_evidencia"] = {"a": adjusted_a, "b": 100.0 - adjusted_a}
+    return result
+
+
 def _css_editorial():
     return """
 .decision-box{border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px;background:var(--surface)}
@@ -6515,6 +6583,7 @@ def build_report_html_v2(payload, result, calcular_divergencia_fn, mvm_fn=None):
         payload["pricing"] = estimate_market_residual_pricing(
             payload, raw
         )
+    div = _aplicar_indice_ajustado(div, payload.get("pricing"))
     if not isinstance(payload.get("prelive_decision"), dict):
         payload = dict(payload)
         payload["prelive_decision"] = build_decision(

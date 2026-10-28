@@ -95,7 +95,11 @@ class PricingParameters:
     challenger_anomaly_gap_pp: float = 37.71
 
 
-def _configuration_fingerprint(parameters: PricingParameters) -> str:
+def _configuration_fingerprint(
+    parameters: PricingParameters,
+    divergence: Mapping[str, Any] | None = None,
+) -> str:
+    divergence = divergence or {}
     material = {
         "model_version": MODEL_VERSION,
         "parameters": asdict(parameters),
@@ -106,6 +110,8 @@ def _configuration_fingerprint(parameters: PricingParameters) -> str:
         "calibration_status": CALIBRATION_STATUS,
         "promotion_gate_version": PROMOTION_GATE_VERSION,
         "promotion_approved": PROMOTION_APPROVED,
+        "factor_model_version": divergence.get("factor_model_version"),
+        "factor_model_fingerprint": divergence.get("factor_model_fingerprint"),
     }
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
@@ -381,11 +387,16 @@ def evidence_components(divergence: Mapping[str, Any] | None,
             "uncertainty_score": 1.0 - directional_reliability}
 
 
-def _unavailable(parameters: PricingParameters, reason: str) -> dict[str, Any]:
+def _unavailable(
+    parameters: PricingParameters,
+    reason: str,
+    divergence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    divergence = divergence or {}
     return {
         "available": False,
         "model_version": MODEL_VERSION,
-        "configuration_fingerprint": _configuration_fingerprint(parameters),
+        "configuration_fingerprint": _configuration_fingerprint(parameters, divergence),
         "parameters": asdict(parameters),
         "status": "unavailable",
         "validation_status": VALIDATION_LABEL,
@@ -394,6 +405,9 @@ def _unavailable(parameters: PricingParameters, reason: str) -> dict[str, Any]:
         "candidate": False,
         "economic_estimate_available": False,
         "shadow_classification": "PRICING_UNAVAILABLE",
+        "fair_odd_validity": "UNAVAILABLE",
+        "factor_model_version": divergence.get("factor_model_version"),
+        "factor_model_fingerprint": divergence.get("factor_model_fingerprint"),
         "reason_codes": [reason],
         "candidate_side": None,
         "candidate_threshold_pct": 0.0,
@@ -411,7 +425,7 @@ def estimate_market_residual_pricing(
     parameters = parameters or PricingParameters()
     assessment = payload.get("report_assessment")
     if isinstance(assessment, Mapping) and assessment.get("report_null"):
-        return _unavailable(parameters, "report_null_insufficient_data")
+        return _unavailable(parameters, "report_null_insufficient_data", divergence)
     operational_quote = market_integrity.is_operational_pricing_payload(payload)
     experimental_challenger_quote = bool(
         payload.get("experimental_challenger_pricing_eligible") is True
@@ -420,15 +434,15 @@ def estimate_market_residual_pricing(
         )
     )
     if not operational_quote and not experimental_challenger_quote:
-        return _unavailable(parameters, "operational_market_quote_ineligible")
+        return _unavailable(parameters, "operational_market_quote_ineligible", divergence)
     observed = _extract_two_way_odds(payload)
     if observed is None:
-        return _unavailable(parameters, "missing_or_invalid_two_way_moneyline")
+        return _unavailable(parameters, "missing_or_invalid_two_way_moneyline", divergence)
     odd_a, odd_b = observed
     try:
         market_a, market_b, overround = de_vig_market_probabilities(odd_a, odd_b)
     except ValueError:
-        return _unavailable(parameters, "missing_or_invalid_two_way_moneyline")
+        return _unavailable(parameters, "missing_or_invalid_two_way_moneyline", divergence)
 
     components = evidence_components(divergence, parameters)
     index_a, factor_count, intensity, effective_mass = (components[k] for k in ("index_a", "factor_count", "intensity", "effective_mass"))
@@ -474,9 +488,12 @@ def estimate_market_residual_pricing(
         return {
             "available": True, "economic_estimate_available": False,
             "model_version": MODEL_VERSION,
-            "configuration_fingerprint": _configuration_fingerprint(parameters),
+            "configuration_fingerprint": _configuration_fingerprint(parameters, divergence),
             "parameters": asdict(parameters), "status": "inconclusive",
             "shadow_classification": "PRICING_INCONCLUSIVE",
+            "fair_odd_validity": "INCONCLUSIVE",
+            "factor_model_version": (divergence or {}).get("factor_model_version"),
+            "factor_model_fingerprint": (divergence or {}).get("factor_model_fingerprint"),
             "reason": (
                 "sinais ponderados equilibrados dentro da zona neutra; "
                 "existem dados, mas não há vantagem direcional robusta"
@@ -547,6 +564,13 @@ def estimate_market_residual_pricing(
         and not serious_failure
         and coverage_gate_passed
         and source_gate_passed
+    )
+    fair_odd_validity = (
+        "OUT_OF_CALIBRATION"
+        if not anomaly_gate_passed
+        else "COMPARABLE_SHADOW"
+        if quality_gate_passed
+        else "INDICATIVE_ONLY"
     )
     mathematical_side, mathematical_edge = max(
         (("a", edge_a), ("b", edge_b)), key=lambda item: item[1]
@@ -650,7 +674,10 @@ def estimate_market_residual_pricing(
         "shadow_classification": shadow_classification,
         "reason_codes": reason_codes,
         "model_version": MODEL_VERSION,
-        "configuration_fingerprint": _configuration_fingerprint(parameters),
+        "configuration_fingerprint": _configuration_fingerprint(parameters, divergence),
+        "factor_model_version": (divergence or {}).get("factor_model_version"),
+        "factor_model_fingerprint": (divergence or {}).get("factor_model_fingerprint"),
+        "fair_odd_validity": fair_odd_validity,
         "odds_source_contract_version": payload.get("odds_source_contract_version"),
         "odds_source_contract_fingerprint": payload.get("odds_source_contract_fingerprint"),
         "parameters": asdict(parameters),
@@ -662,6 +689,8 @@ def estimate_market_residual_pricing(
         "validation_status": VALIDATION_LABEL,
         "method": METHOD,
         "market_overround_pct": round(overround * 100.0, 3),
+        "index_a": round(float(index_a), 3),
+        "index_b": round(100.0 - float(index_a), 3),
         "signed_strength": round(signed_strength, 6),
         "residual_logit": round(beta * residual_predictor, 6),
         "bounded_adjustment_pp": round(adjustment_a, 6),

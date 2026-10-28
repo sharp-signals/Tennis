@@ -117,6 +117,43 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertLess(pricing["uncertainty_adjusted_index_a"], 100.0)
         self.assertGreater(pricing["uncertainty_score"], 0.0)
 
+    def test_partial_consensus_is_not_presented_as_fenzobot_100(self):
+        divergence = self._divergence(100, factors=6, intensity=3, weight=5)
+        divergence["evidence_coverage"] = {
+            "coverage_quality": 0.60,
+            "source_reliability": 1.0,
+            "pricing_eligible": True,
+        }
+        pricing = self._estimate(self._payload(), divergence)
+        self.assertEqual(pricing["index_a"], 100.0)
+        self.assertLess(pricing["uncertainty_adjusted_index_a"], 100.0)
+        self.assertEqual(pricing["fair_odd_validity"], "INDICATIVE_ONLY")
+
+    def test_factor_configuration_is_part_of_pricing_fingerprint(self):
+        first_divergence = self._divergence(80)
+        first_divergence.update({
+            "factor_model_version": "weights-v1",
+            "factor_model_fingerprint": "aaaa1111",
+        })
+        second_divergence = dict(first_divergence)
+        second_divergence["factor_model_fingerprint"] = "bbbb2222"
+        first = self._estimate(self._payload(), first_divergence)
+        second = self._estimate(self._payload(), second_divergence)
+        self.assertNotEqual(
+            first["configuration_fingerprint"],
+            second["configuration_fingerprint"],
+        )
+
+    def test_same_inputs_are_repeatable_and_orientation_is_symmetric(self):
+        divergence_a = self._divergence(78, factors=8, intensity=3, weight=5)
+        first = self._estimate(self._payload(1.80, 2.10), divergence_a)
+        repeated = self._estimate(self._payload(1.80, 2.10), divergence_a)
+        divergence_b = self._divergence(22, factors=8, intensity=3, weight=5)
+        mirrored = self._estimate(self._payload(2.10, 1.80), divergence_b)
+        self.assertEqual(first["sharp_estimate_a"], repeated["sharp_estimate_a"])
+        self.assertAlmostEqual(first["sharp_estimate_a"], mirrored["sharp_estimate_b"])
+        self.assertAlmostEqual(first["fair_odd_a"], mirrored["fair_odd_b"])
+
     def test_missing_coverage_widens_interval_and_reduces_adjusted_index(self):
         full = self._divergence(85, factors=20, intensity=3, weight=5)
         sparse = self._divergence(85, factors=20, intensity=3, weight=5)
@@ -308,6 +345,8 @@ class MarketResidualPricingTests(unittest.TestCase):
             "Market probability", "Probabilidade Fenzobot", "Fair odd central", "Market odd",
             "Faixa de fair odd", "Edge conservador", "EXPERIMENTAL", "Estimativa experimental em desenvolvimento",
             "Cobertura", "Coeficiente de fonte (pricing)",
+            "Índice Fenzobot ajustado", "Consenso bruto dos fatores ativos",
+            "Validade da fair odd",
         ):
             self.assertIn(expected, html)
         self.assertNotIn("Veredicto de mercado", html)
