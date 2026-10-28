@@ -666,7 +666,7 @@ CAPS_FAMILIAS_PESOS = {
     "resiliencia": 19, "ranking_fam": 9, "contexto": 8, "historial": 6,
 }
 
-FACTOR_MODEL_VERSION = "factor-weights-v2026-10-09"
+FACTOR_MODEL_VERSION = "factor-weights-v2026-10-28-h2h-residual-v1"
 
 
 def _factor_model_fingerprint():
@@ -870,13 +870,19 @@ def _calcular_divergencia(payload):
             motivo_exclusao=(data_coverage.get("h2h_surface") or {}).get("reason"),
         )
 
-    # H2H global — só conta com amostra mínima (1 jogo não é evidência
-    # fiável) e com força proporcional ao domínio do confronto.
+    # H2H global — um confronto único é contexto factual fraco, não um padrão.
+    # Conta com apenas 10% do peso-base; a força cresce explicitamente com a
+    # amostra. Isto preserva o sinal sem transformar 1-0 numa conclusão forte.
     h = feats.get("h2h")
     if isinstance(h, dict) and h.get("lider") not in (None, "igual"):
         _h_total = (h.get("a_wins", 0) + h.get("b_wins", 0)) or h.get("diff", 0)
-        if _h_total >= 2:  # ignora H2H de 1 só jogo
-            forca = min(_h_total / 4.0, 1.0)  # 4+ jogos = peso total
+        if _h_total >= 1:
+            if _h_total == 1:
+                conf_h2h = 0.10
+                forca = 1.0
+            else:
+                conf_h2h = 1.0
+                forca = min(_h_total / 4.0, 1.0)  # 4+ jogos = peso total
             # NOVO (22/08/2026, a pedido): se o H2H ponderado pela recência
             # aponta para o OUTRO jogador (ex: liderava na carreira mas
             # perdeu os últimos confrontos), o confronto está dividido no
@@ -888,10 +894,11 @@ def _calcular_divergencia(payload):
             if _lider_recente and _lider_recente != h["lider"]:
                 _lider_final = _lider_recente
                 forca *= 0.5  # confronto contraditório no tempo -> metade da força
-            _add("h2h", _lider_final, max(forca, 0.5))
+            _add(
+                "h2h", _lider_final, max(forca, 0.5),
+                conf_amostra=conf_h2h,
+            )
             _reg_status("h2h", True, _lider_final, valor_a=h.get("a_wins"), valor_b=h.get("b_wins"), amostra=_h_total)
-        else:
-            _reg_status("h2h", True, h["lider"], "amostra insuficiente (1 jogo)")
     elif isinstance(h, dict) and h.get("lider") == "igual":
         _reg_status("h2h", True, "igual")
     elif (data_coverage.get("h2h") or {}).get("status") == "NONE_OBSERVED":
@@ -1857,7 +1864,8 @@ def _build_analysis_body(result: dict, payload: dict) -> str:
             f'<table class="mvm-table"><thead><tr><th></th>'
             f'<th>{_esc(a)}</th><th>{_esc(b)}</th></tr></thead><tbody>'
             f'<tr><td>Mercado (s/ margem)</td><td>{mk["a"]}%</td><td>{mk["b"]}%</td></tr>'
-            f'<tr><td>Índice de evidência</td><td>{md["a"]}/100</td><td>{md["b"]}/100</td></tr>'
+            f'<tr><td>Índice de evidência</td><td>{_format_fenzobot_index(md["a"])}/100</td>'
+            f'<td>{_format_fenzobot_index(md["b"])}/100</td></tr>'
             f'</tbody></table>{box}')
 
     # 3. MARKET OVERVIEW (Python) — mostra só os mercados que SE ADEQUAM à
@@ -2019,7 +2027,9 @@ def _build_report_html_v1(payload: dict, result: dict) -> str:
         _label_div = _clf.get("texto", "Mercado eficiente")
         if _nivel_div >= 1 and _fav_head:
             _idx_fav = _idx_head.get("a") if _fav_head == payload.get("player_a") else _idx_head.get("b")
-            _extra = f'<div class="cov-detail">Índice de evidência: {_idx_fav}/100 a favor de {_esc(_fav_head)}</div>'
+            _extra = (f'<div class="cov-detail">Índice de evidência: '
+                      f'{_format_fenzobot_index(_idx_fav)}/100 a favor de '
+                      f'{_esc(_fav_head)}</div>')
         else:
             _extra = '<div class="cov-detail">Indicadores alinhados com o mercado</div>'
         force_bar = _div_bar_html(_nivel_div, _label_div, extra=_extra)
@@ -4261,8 +4271,13 @@ def _mod_fatores_detalhados(
                 f"{recovery} ({int(attempts)} casos)"
                 if isinstance(attempts, (int, float)) else recovery
             )
+            sample = st.get("amostra_a") if player == players[0] else st.get("amostra_b")
+            sample_text = (
+                f" · amostra do fator {int(sample)} jogos"
+                if isinstance(sample, (int, float)) else ""
+            )
             cells.append(
-                f"<span><b>{_esc(player)}</b> · hold {value(profile, 'hold_rate_pct')} · "
+                f"<span><b>{_esc(player)}</b>{sample_text} · hold {value(profile, 'hold_rate_pct')} · "
                 f"break {value(profile, 'break_rate_pct')} · serviço "
                 f"{value(profile, 'service_points_won_pct')} · retorno "
                 f"{value(profile, 'return_points_won_pct')} · recuperação "

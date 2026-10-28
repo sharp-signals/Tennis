@@ -6098,6 +6098,41 @@ def fetch_player_hand(tour: str, player_id, player_name: str) -> Optional[str]:
     return hand
 
 
+def infer_player_hand_from_history(
+    history: pd.DataFrame, player_name: str,
+) -> Optional[str]:
+    """Recover a player's own hand from match-level historical columns.
+
+    The provider profile is still the primary source.  This fallback is only
+    used when that profile is unavailable and the local history contains an
+    unambiguous L/R observation for the selected player.  A contradictory
+    history fails closed instead of guessing.
+    """
+    required = {"winner_name", "loser_name", "winner_hand", "loser_hand"}
+    if history.empty or not required.issubset(history.columns):
+        return None
+    resolved = resolve_player_name(history, player_name)
+    if resolved is None:
+        return None
+    played = history[
+        (history["winner_name"] == resolved)
+        | (history["loser_name"] == resolved)
+    ]
+    observed: set[str] = set()
+    for _, row in played.iterrows():
+        raw = (
+            row.get("winner_hand")
+            if row.get("winner_name") == resolved
+            else row.get("loser_hand")
+        )
+        if raw is None or pd.isna(raw):
+            continue
+        hand = str(raw).strip().upper()
+        if hand in {"L", "R"}:
+            observed.add(hand)
+    return next(iter(observed)) if len(observed) == 1 else None
+
+
 def _get_cached_hand_by_name(tour: str, player_name: str) -> Optional[str]:
     """Mão do jogador (L/R) com CACHE PERMANENTE por nome — a mão nunca
     muda ao longo da carreira, ao contrário de estatísticas dinâmicas, por
@@ -8609,6 +8644,48 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
     if not h2h_matches:
         return None
 
+    policy_active = bool((competition_policy or {}).get("active"))
+    tournament_info_cache: dict[str, Optional[dict]] = {}
+
+    def _tournament_info_for_match(m):
+        tid = m.get("tournamentId")
+        if tid is None or not tour:
+            return None
+        key = str(tid)
+        if key not in tournament_info_cache:
+            try:
+                tournament_info_cache[key] = get_tournament_info(tid, tour)
+            except Exception:
+                tournament_info_cache[key] = None
+        return tournament_info_cache[key]
+
+    def _enrich_competition_identity(m):
+        """Attach exact tournament metadata needed by the ATP policy.
+
+        The H2H endpoint commonly returns only ``tournamentId``.  Surface
+        resolution already looked that id up, but the resulting name/tier was
+        not carried into the competition-evidence classifier.  Consequently a
+        real ATP or Challenger H2H could be displayed factually and still be
+        discarded by the scoring engine as unresolved.
+        """
+        enriched = dict(m)
+        if not policy_active:
+            return enriched
+        info = _tournament_info_for_match(m)
+        if isinstance(info, dict):
+            if info.get("name") and not any(
+                enriched.get(key)
+                for key in ("tourney_name", "tournament_name", "tournamentName")
+            ):
+                enriched["tournament_name"] = info["name"]
+            if info.get("tier") and not enriched.get("tier"):
+                enriched["tier"] = info["tier"]
+            if info.get("surface") and not any(
+                enriched.get(key) for key in ("surface", "court", "courtName")
+            ):
+                enriched["surface"] = info["surface"]
+        return enriched
+
     def _piso_do_confronto(m):
         # 1) campos diretos, torneio aninhado e courtId conhecidos.
         family = _recent_match_surface_family(m)
@@ -8617,10 +8694,7 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
         # 2) resolver via tournamentId (fallback) — usa cache
         tid = m.get("tournamentId")
         if tid is not None and tour:
-            try:
-                info = get_tournament_info(tid, tour)
-            except Exception:
-                info = None
+            info = _tournament_info_for_match(m)
             if info and info.get("surface"):
                 return _normalize_surface_family(info["surface"])
         return None
@@ -8640,23 +8714,22 @@ def compute_h2h_from_api(h2h_matches: list, player_a_id: int, player_b_id: int,
         # FAMÍLIA de piso (hard/clay/grass), não por igualdade de texto.
         fam_confronto = _piso_do_confronto(m)
         same_surface = bool(_cur and fam_confronto and fam_confronto == _cur)
+        enriched_match = _enrich_competition_identity(m)
         if str(winner) == str(player_a_id):
             a_wins += 1
-            valid_matches.append(m)
+            valid_matches.append(enriched_match)
             if same_surface:
                 a_surf += 1
-                surface_matches.append(m)
+                surface_matches.append(enriched_match)
         elif str(winner) == str(player_b_id):
             b_wins += 1
-            valid_matches.append(m)
+            valid_matches.append(enriched_match)
             if same_surface:
                 b_surf += 1
-                surface_matches.append(m)
+                surface_matches.append(enriched_match)
     total = a_wins + b_wins
     if total == 0:
         return None
-    policy_active = bool((competition_policy or {}).get("active"))
-
     def _weighted(rows):
         record = competition_evidence.weighted_binary_record(
             rows,

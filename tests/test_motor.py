@@ -82,14 +82,13 @@ def test_divergencia_quando_discordam():
 
 
 # ---------- TESTES: salvaguardas contra falsos positivos ----------
-def test_h2h_um_jogo_nao_conta():
-    """H2H de 1 só jogo não deve gerar divergência forte."""
+def test_h2h_um_jogo_residual_nao_gera_divergencia_forte():
+    """H2H de 1 só jogo conta, mas não deve gerar divergência forte."""
     r = _calcular_divergencia(_payload(2.75, 1.39, {
         "h2h": {"lider": "A", "diff": 1, "a_wins": 1, "b_wins": 0},
         "ranking": {"lider": "A", "diff": 2},
     }))
-    # H2H de 1 jogo é ignorado e ranking diff 2 também -> sem evidência (None)
-    # ou, se houver algum sinal, no máximo ligeira. Ambos são corretos.
+    # O H2H residual pode produzir sinal, mas no máximo uma leitura ligeira.
     assert r is None or r["classificacao"]["nivel"] <= 1
 
 
@@ -118,14 +117,15 @@ def test_h2h_piso_tambem_distingue_dominio_da_serie():
     assert dividido["peso_efetivo"] == 2.2
 
 
-def test_h2h_global_um_jogo_continua_sem_inclinar_indice():
+def test_h2h_global_um_jogo_contribui_apenas_com_peso_residual():
     r = _calcular_divergencia(_payload(1.80, 2.10, {
         "h2h": {"lider": "A", "diff": 1, "a_wins": 1, "b_wins": 0},
         "ranking": {"lider": "B", "diff": 20},
     }))
     status = r["fatores_status"]["h2h"]
-    assert status["motivo_exclusao"] == "amostra insuficiente (1 jogo)"
-    assert not status.get("peso_efetivo")
+    assert status["confianca_amostra"] == 0.10
+    assert status["peso_antes_cap"] == 0.6
+    assert status["peso_efetivo"] == 0.6
 
 
 def test_h2h_zero_verificado_e_factual_sem_inclinar_indice():

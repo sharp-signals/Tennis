@@ -2968,6 +2968,14 @@ def _build_match_payload(match: dict) -> dict:
         # -- Matchup de mão (cache permanente; perfil por ID antes do nome) --
         _hand_a = fetch_data.fetch_player_hand(tour, _pid_a, player_a)
         _hand_b = fetch_data.fetch_player_hand(tour, _pid_b, player_b)
+        # O perfil do fornecedor pode omitir a mão de jogadores menos
+        # cobertos. A mão é uma característica estável e o histórico local já
+        # contém colunas winner_hand/loser_hand; usa-se esse registo apenas
+        # quando é inequívoco, sem inventar nem aproximar nomes.
+        if not _hand_a:
+            _hand_a = fetch_data.infer_player_hand_from_history(history, player_a)
+        if not _hand_b:
+            _hand_b = fetch_data.infer_player_hand_from_history(history, player_b)
         # DIAGNÓSTICO (13/08/2026, a pedido — matchup de mão "sem dados" em
         # alguns jogos WTA apesar do pré-aquecimento): há DOIS pontos onde
         # isto pode falhar — a mão de HOJE dos dois jogadores (_hand_a/_b,

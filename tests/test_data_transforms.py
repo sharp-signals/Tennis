@@ -2118,6 +2118,37 @@ class DeterministicStatisticTests(unittest.TestCase):
         self.assertEqual(actual["sample_status"], "robusto")
         self.assertIsNone(fetch_data.compute_surface_momentum(perf, "Grass", 2026))
 
+    def test_player_hand_falls_back_to_unambiguous_local_history(self):
+        history = pd.DataFrame([
+            {
+                "winner_name": "Player A", "loser_name": "Opponent 1",
+                "winner_hand": "L", "loser_hand": "R",
+            },
+            {
+                "winner_name": "Opponent 2", "loser_name": "Player A",
+                "winner_hand": "R", "loser_hand": "L",
+            },
+        ])
+        self.assertEqual(
+            fetch_data.infer_player_hand_from_history(history, "Player A"),
+            "L",
+        )
+
+    def test_player_hand_history_fails_closed_on_conflict(self):
+        history = pd.DataFrame([
+            {
+                "winner_name": "Player A", "loser_name": "Opponent 1",
+                "winner_hand": "L", "loser_hand": "R",
+            },
+            {
+                "winner_name": "Player A", "loser_name": "Opponent 2",
+                "winner_hand": "R", "loser_hand": "R",
+            },
+        ])
+        self.assertIsNone(
+            fetch_data.infer_player_hand_from_history(history, "Player A")
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
