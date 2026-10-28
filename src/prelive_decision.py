@@ -217,6 +217,12 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
     coverage_status = "experimental_parcial" if partial else ("insuficiente" if report_null else (
         "suficiente" if coverage["weighted_ratio"] >= 0.999 else "reduzida"
     ))
+    analytical_validity = (
+        "EXPERIMENTAL_FACTUAL_ONLY" if partial
+        else "INSUFFICIENT" if report_null
+        else "COMPLETE" if coverage["weighted_ratio"] >= 0.999
+        else "VALID_REDUCED"
+    )
     return {
         "report_null": report_null,
         "status": "REPORT_NULL" if report_null else "VALID",
@@ -225,6 +231,7 @@ def assess_report(payload: Mapping[str, Any], divergence: Mapping[str, Any] | No
         "degraded_reasons": degraded_reasons,
         "primary_reason": blocking_reasons[0] if blocking_reasons else None,
         "coverage": {**coverage, "status": coverage_status},
+        "analytical_validity": analytical_validity,
         "essential_blocks": essential,
         "experimental_partial": partial,
         "partial_reasons": reasons if partial else [],

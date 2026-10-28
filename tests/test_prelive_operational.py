@@ -269,14 +269,19 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertEqual(coverage["available_factors"], 1)
 
     def test_reduced_coverage_is_visible(self):
-        assessment = assess_report(self.payload(), self.divergence())
+        divergence = self.divergence()
+        divergence["fatores_status"]["forma"]["disponivel"] = False
+        assessment = assess_report(self.payload(), divergence)
         self.assertIn("weighted_pct", assessment["coverage"])
         self.assertIn(assessment["coverage"]["status"], {"reduzida", "suficiente", "insuficiente"})
+        self.assertEqual(assessment["analytical_validity"], "VALID_REDUCED")
 
     def test_insufficient_coverage_makes_report_null(self):
         divergence = self.divergence(False)
         divergence["fatores_status"]["forma"]["disponivel"] = False
-        self.assertTrue(assess_report(self.payload(), divergence)["report_null"])
+        assessment = assess_report(self.payload(), divergence)
+        self.assertTrue(assessment["report_null"])
+        self.assertEqual(assessment["analytical_validity"], "INSUFFICIENT")
 
     def test_null_report_never_enters_paper(self):
         assessment = {"report_null": True, "primary_reason": "sem ranking", "coverage": {"weighted_pct": 0}}

@@ -38,8 +38,9 @@ e um resumo Telegram.
    cenários, mãos, estatísticas ricas e qualidade dos dados.
 4. Calcula o índice Fenzobot em Python e avalia se há cobertura factual mínima
    para publicar uma decisão pré-live.
-5. Aplica o *Market-Residual Pricing* experimental apenas sobre um par de odds
-   estruturalmente válido, identificado e da mesma casa, sem margem; cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
+5. Aplica o pricing independente calibrado aos fatores ponderados e usa o par
+   de odds estruturalmente válido apenas depois, para medir edge e discrepância;
+   cria uma decisão `EDGE_POSITIVE`, `EDGE_NEGATIVE`,
    `EDGE_ZERO`, `PRICING_UNAVAILABLE` ou `REPORT_NULL`. Um edge positivo só
    entra em PAPER com cobertura ponderada mínima de 60%; abaixo disso fica
    visível como edge positivo sem PAPER.
@@ -60,7 +61,7 @@ publicar. Entre 80% e 95% é publicada como degradada; a partir de 95% é normal
 | `src/main.py` | Orquestra o pipeline, constrói o payload e aplica as guardas operacionais. |
 | `src/report_html.py` | Motor `_calcular_divergencia` e relatório ativo V2. |
 | `src/prelive_decision.py` | Contrato único de validade factual e estado operacional pré-live. |
-| `src/pricing.py` | De-vig, residual em logit, fair odds, expected edge e gates de qualidade. |
+| `src/pricing.py` | Probabilidade calibrada independente, de-vig para comparação, fair odds, expected edge e gates de qualidade. |
 | `src/calibration_store.py` | Snapshots pré-jogo imutáveis, liquidação e métricas de calibração. |
 | `src/paper_trading.py` | Carteira PAPER append-only, liquidação e histórico em unidades. |
 | `src/market_ledger.py` | Ledger temporal append-only das odds já recolhidas, linkage e CLV. |
@@ -78,23 +79,27 @@ cada fator disponível, o motor pondera a direção, a força da diferença e a
 confiança da amostra. Fatores correlacionados têm limites por família, para
 reduzir dupla contagem.
 
-O output inclui índice de 0–100 para ambos os jogadores, classificação, tipo
-de sinal, fatores decisivos e o estado de todos os fatores — inclusive os
-excluídos por falta de dados, empate ou amostra insuficiente. O relatório
-expõe essa informação no Mapa de Forças.
+O output separa o consenso bruto dos fatores ativos do índice ajustado à
+incerteza. O índice principal contrai para 50 quando faltam fatores, cobertura,
+fiabilidade ou amostra; por isso, unanimidade parcial não equivale a 100/100.
+O relatório também expõe classificação, fatores decisivos e o estado de todos
+os fatores — inclusive os excluídos por falta de dados, empate ou amostra
+insuficiente — no Mapa de Forças.
 
 ### Pricing experimental
 
-O baseline são as duas odds observadas, convertidas em probabilidades sem
-margem. O índice apenas define a direção e a magnitude de um residual limitado
-em logit:
+Uma curva logística estimada no histórico liquidado converte a força assinada
+dos fatores, já reduzida pela qualidade da evidência, numa probabilidade própria:
 
-`logit(P_estimado) = logit(P_mercado) + shift_max × força_assinada × qualidade`
+`P_fenzobot = logistic(beta_circuito × força_assinada × qualidade)`
 
-A qualidade reduz o residual em caso de poucos fatores, massa efetiva baixa,
+A qualidade reduz a força em caso de poucos fatores, massa efetiva baixa,
 cobertura insuficiente, resolução de identidade incerta ou falha crítica de
-dados. O resultado apresenta *Fenzobot estimate*, fair odd e expected edge para
-os dois lados, sempre com a etiqueta **EXPERIMENTAL — EM VALIDAÇÃO**.
+dados. O mercado não participa nesta probabilidade nem na fair odd: entra só
+depois para calcular o expected edge e assinalar extrapolações. O resultado
+classifica ainda a fair odd como `COMPARABLE_SHADOW`, `INDICATIVE_ONLY`,
+`OUT_OF_CALIBRATION`, `INCONCLUSIVE` ou `UNAVAILABLE`, sempre com a etiqueta
+**EXPERIMENTAL — EM VALIDAÇÃO**.
 
 O estado PAPER depende da validade factual e de edge positivo no lado escolhido
 pelo Fenzobot; `PRICING_MIN_EDGE_PCT` é diagnóstico de qualidade, não um limiar
