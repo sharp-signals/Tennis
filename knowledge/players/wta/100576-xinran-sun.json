@@ -1,6 +1,19 @@
 {
   "data": {
-    "by_level": null,
+    "by_level": {
+      "main_tour": {
+        "losses": 0,
+        "matches": 1,
+        "win_pct": 100.0,
+        "wins": 1
+      },
+      "masters": {
+        "losses": 1,
+        "matches": 3,
+        "win_pct": 66.7,
+        "wins": 2
+      }
+    },
     "by_round": {
       "1": {
         "losses": 1,
@@ -28,15 +41,21 @@
       },
       "4": {
         "losses": 2,
-        "matches": 10,
-        "win_pct": 80.0,
-        "wins": 8
+        "matches": 12,
+        "win_pct": 83.3,
+        "wins": 10
       },
       "5": {
         "losses": 3,
-        "matches": 8,
-        "win_pct": 62.5,
-        "wins": 5
+        "matches": 9,
+        "win_pct": 66.7,
+        "wins": 6
+      },
+      "6": {
+        "losses": 1,
+        "matches": 1,
+        "win_pct": 0.0,
+        "wins": 0
       },
       "9": {
         "losses": 2,
@@ -53,10 +72,10 @@
         "wins": 10
       },
       "hard": {
-        "losses": 1,
-        "matches": 14,
-        "win_pct": 92.9,
-        "wins": 13
+        "losses": 2,
+        "matches": 18,
+        "win_pct": 88.9,
+        "wins": 16
       }
     },
     "by_year": {
@@ -198,8 +217,10 @@
         "court": {
           "0": 0,
           "1": {
-            "al": 1,
-            "aw": 3
+            "al": 2,
+            "aw": 6,
+            "l": 1,
+            "w": 3
           },
           "2": {
             "al": 6,
@@ -225,15 +246,15 @@
           },
           "mainTour": {
             "al": 0,
-            "aw": 0
+            "aw": 1
           },
           "masters": {
-            "al": 0,
-            "aw": 0
+            "al": 1,
+            "aw": 2
           },
           "total": {
-            "al": 7,
-            "aw": 10
+            "al": 8,
+            "aw": 13
           },
           "tourFinals": {
             "al": 0,
@@ -266,8 +287,8 @@
             "w": 0
           },
           "total": {
-            "l": 7,
-            "w": 10
+            "l": 8,
+            "w": 13
           },
           "tourFinals": {
             "l": 0,
@@ -280,24 +301,24 @@
             "aw": 0
           },
           "top10": {
-            "al": 0,
+            "al": 1,
             "aw": 0
           },
           "top100": {
-            "al": 0,
-            "aw": 0
+            "al": 1,
+            "aw": 2
           },
           "top20": {
-            "al": 0,
+            "al": 1,
             "aw": 0
           },
           "top5": {
-            "al": 0,
+            "al": 1,
             "aw": 0
           },
           "top50": {
-            "al": 0,
-            "aw": 0
+            "al": 1,
+            "aw": 1
           }
         },
         "round": {
@@ -319,15 +340,19 @@
           },
           "4": {
             "al": 1,
-            "aw": 4,
+            "aw": 6,
             "l": 0,
-            "w": 0
+            "w": 2
           },
           "5": {
             "al": 2,
-            "aw": 2,
+            "aw": 3,
             "l": 0,
-            "w": 0
+            "w": 1
+          },
+          "6": {
+            "al": 1,
+            "l": 1
           },
           "9": {
             "al": 1,
@@ -338,12 +363,21 @@
         }
       }
     },
+    "career_service": {
+      "avg_break_points_converted_pct": 52.0,
+      "avg_break_points_saved_pct": null,
+      "avg_first_serve_in_pct": 59.0,
+      "avg_first_serve_won_pct": 61.0,
+      "avg_second_serve_won_pct": 46.0,
+      "matches_used": 37,
+      "source": "rapidapi_career_stats"
+    },
     "domination": {
-      "opp_first_serve_won_pct": 54,
-      "own_first_serve_won_pct": 60
+      "opp_first_serve_won_pct": 55,
+      "own_first_serve_won_pct": 61
     },
     "response_stats": {
-      "break_points_converted_pct": 51,
+      "break_points_converted_pct": 52,
       "return_pts_won_pct": 50
     },
     "scenarios": {
@@ -351,20 +385,58 @@
       "bo5_win_pct": 0,
       "deciding_set_count": 9,
       "deciding_set_win_pct": 78,
-      "first_set_lose_count": 11,
-      "first_set_lose_then_win_pct": 9,
-      "first_set_win_count": 22,
+      "first_set_lose_count": 12,
+      "first_set_lose_then_win_pct": 8,
+      "first_set_win_count": 25,
       "first_set_win_then_win_pct": 100,
       "tiebreak_count": 10,
       "tiebreak_win_pct": 70
     },
     "style": {
-      "aces": 31,
-      "avg_time": "1:42:4",
-      "double_faults": 91,
-      "matches_played": 33
+      "aces": 38,
+      "avg_time": "1:39:18",
+      "double_faults": 102,
+      "matches_played": 37
     },
-    "vs_rank_level": null
+    "vs_rank_level": {
+      "outside_top100": {
+        "losses": 10,
+        "matches": 34,
+        "source": "derived_total_minus_top100",
+        "win_pct": 70.6,
+        "wins": 24
+      },
+      "top10": {
+        "losses": 1,
+        "matches": 1,
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      "top100": {
+        "losses": 1,
+        "matches": 3,
+        "win_pct": 66.7,
+        "wins": 2
+      },
+      "top20": {
+        "losses": 1,
+        "matches": 1,
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      "top5": {
+        "losses": 1,
+        "matches": 1,
+        "win_pct": 0.0,
+        "wins": 0
+      },
+      "top50": {
+        "losses": 1,
+        "matches": 2,
+        "win_pct": 50.0,
+        "wins": 1
+      }
+    }
   },
   "player": {
     "id": 100576,
@@ -372,5 +444,5 @@
     "tour": "wta"
   },
   "schema_version": 1,
-  "updated_at_utc": "2026-09-28T17:37:04.723405+00:00"
+  "updated_at_utc": "2026-10-28T18:38:41.491115+00:00"
 }
