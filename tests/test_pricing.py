@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src import calibration_store, market_integrity, report_html
 from src.pricing import (
@@ -81,6 +82,77 @@ class MarketResidualPricingTests(unittest.TestCase):
             "HISTORICALLY_CALIBRATED_SHADOW",
         )
         self.assertFalse(pricing["market_used_in_fair_probability"])
+
+    def test_atp_structural_prior_prevents_double_compression_toward_fifty(self):
+        structural = {
+            "available": True,
+            "version": "test-elo-v1",
+            "global_logit": 0.682868,
+            "surface_logit": 0.006883,
+            "history_scope": "ATP_MAIN_ONLY",
+        }
+        with patch("src.pricing.atp_main_strength_features", return_value=structural):
+            pricing = self._estimate(
+                self._payload(1.35, 3.18),
+                self._divergence(67, factors=15, intensity=2, weight=3.3),
+            )
+        self.assertEqual(
+            pricing["probability_basis"],
+            "atp_main_elo_global_surface_plus_factor_adjustment",
+        )
+        self.assertEqual(pricing["structural_prior"]["history_scope"], "ATP_MAIN_ONLY")
+        self.assertGreater(pricing["sharp_estimate_a"], 0.61)
+        self.assertLess(pricing["sharp_estimate_b"], 0.39)
+
+    def test_atp_structural_fair_probability_remains_market_independent(self):
+        structural = {
+            "available": True,
+            "global_logit": 0.50,
+            "surface_logit": 0.10,
+            "history_scope": "ATP_MAIN_ONLY",
+        }
+        with patch("src.pricing.atp_main_strength_features", return_value=structural):
+            first = self._estimate(self._payload(1.35, 3.18), self._divergence(67))
+            second = self._estimate(self._payload(2.40, 1.60), self._divergence(67))
+        self.assertEqual(first["sharp_estimate_a"], second["sharp_estimate_a"])
+        self.assertEqual(first["fair_odd_a"], second["fair_odd_a"])
+        self.assertNotEqual(first["expected_edge_a"], second["expected_edge_a"])
+
+    def test_tommy_paul_darderi_regression_uses_main_tour_strength_prior(self):
+        payload = self._payload(1.35, 3.18)
+        payload.update({
+            "player_a": "Tommy Paul",
+            "player_b": "Luciano Darderi",
+            "surface": "Indoor Hard",
+            "analyzed_at_utc": "2026-10-28T12:00:00+00:00",
+            "market_odds_decimal": {"Tommy Paul": 1.35, "Luciano Darderi": 3.18},
+        })
+        pricing = self._estimate(
+            payload,
+            self._divergence(67, factors=15, intensity=2, weight=3.3),
+        )
+        self.assertEqual(
+            pricing["probability_basis"],
+            "atp_main_elo_global_surface_plus_factor_adjustment",
+        )
+        self.assertGreater(pricing["sharp_estimate_a"], 0.60)
+        self.assertLess(pricing["sharp_estimate_a"], 0.66)
+        self.assertLess(pricing["sharp_estimate_b"], 0.40)
+
+        payload["features"] = {
+            "piso": {"lider": "Tommy Paul", "diff": 18, "amostra_a": 100, "amostra_b": 100},
+            "ranking": {"lider": "Tommy Paul", "diff": 30},
+        }
+        payload["divergencia"] = self._divergence(
+            67, factors=15, intensity=2, weight=3.3
+        )
+        payload["pricing"] = pricing
+        html = report_html.build_report_html_v2(
+            payload, {}, lambda _: payload["divergencia"]
+        )
+        self.assertIn("Prior histórico ATP principal", html)
+        self.assertIn("Resultados Challenger são excluídos deste prior ATP", html)
+        self.assertIn("Elo global + superfície", html)
 
     def test_positive_evidence_increases_a_and_decreases_b(self):
         pricing = self._estimate(self._payload(), self._divergence(80))

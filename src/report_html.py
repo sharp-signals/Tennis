@@ -4528,6 +4528,12 @@ def _mod_market_residual_pricing(payload):
     raw_index_b = 100.0 - float(raw_index_a) if raw_index_a is not None else None
     calibration = _d(pricing.get("residual_calibration"))
     beta = calibration.get("beta")
+    structural_prior = _d(pricing.get("structural_prior"))
+    uses_atp_structural_prior = (
+        pricing.get("probability_basis")
+        == "atp_main_elo_global_surface_plus_factor_adjustment"
+        and structural_prior.get("available") is True
+    )
     validity_code = pricing.get("fair_odd_validity") or "UNAVAILABLE"
     validity = {
         "COMPARABLE_SHADOW": "COMPARÁVEL · SHADOW",
@@ -4537,6 +4543,37 @@ def _mod_market_residual_pricing(payload):
         "INCONCLUSIVE": "INCONCLUSIVA",
         "UNAVAILABLE": "INDISPONÍVEL",
     }.get(validity_code, str(validity_code))
+    if uses_atp_structural_prior:
+        pricing_path = (
+            "Força histórica ATP principal (Elo global + superfície) + ajuste dos fatores "
+            "→ probabilidade calibrada → comparação posterior com a odd observada"
+        )
+        probability_explanation = (
+            f'<p><b>Prior histórico ATP principal:</b> Elo global '
+            f'{fmt(structural_prior.get("rating_a"), 0)} / '
+            f'{fmt(structural_prior.get("rating_b"), 0)} '
+            f'({int(structural_prior.get("matches_a") or 0)} / '
+            f'{int(structural_prior.get("matches_b") or 0)} jogos); Elo na superfície '
+            f'{fmt(structural_prior.get("surface_rating_a"), 0)} / '
+            f'{fmt(structural_prior.get("surface_rating_b"), 0)} '
+            f'({int(structural_prior.get("surface_matches_a") or 0)} / '
+            f'{int(structural_prior.get("surface_matches_b") or 0)} jogos). '
+            '<b>Resultados Challenger são excluídos deste prior ATP.</b></p>'
+            '<p><b>Probabilidade própria:</b> combinação calibrada, em log-odds, do Elo '
+            'global, Elo da superfície e força assinada dos fatores. O mercado não entra '
+            'nesta conta; só é consultado depois para calcular edge.</p>'
+        )
+    else:
+        pricing_path = (
+            "Fatores ponderados × qualidade → probabilidade calibrada no histórico → "
+            "comparação posterior com a odd observada"
+        )
+        probability_explanation = (
+            f'<p><b>Confiança direcional:</b> {quality_text}; '
+            f'<b>beta histórico:</b> {fmt(beta, 3)}. A probabilidade própria resulta de '
+            'logistic(beta × força assinada do índice × confiança). O mercado não entra '
+            'nesta conta.</p>'
+        )
     trace = (
         '<details class="pricing-trace"><summary>Como este pricing foi calculado</summary>'
         '<div class="pricing-trace-body">'
@@ -4544,8 +4581,7 @@ def _mod_market_residual_pricing(payload):
         'Inclui a penalização por fatores em falta, cobertura, fonte e dimensão da amostra.</p>'
         f'<p><b>Consenso bruto dos fatores ativos:</b> {fmt(raw_index_a, 1)} / {fmt(raw_index_b, 1)}. '
         'É preservado apenas para auditoria e não representa certeza nem probabilidade de vitória.</p>'
-        f'<p><b>Confiança direcional:</b> {quality_text}; <b>beta histórico:</b> {fmt(beta, 3)}. '
-        'A probabilidade própria resulta de logistic(beta × força assinada do índice × confiança). O mercado não entra nesta conta.</p>'
+        f'{probability_explanation}'
         '<p><b>Fair odd:</b> 1 / probabilidade Fenzobot. <b>Edge:</b> probabilidade Fenzobot × odd observada − 1. '
         'O edge conservador repete a fórmula com o limite inferior do intervalo histórico.</p>'
         '</div></details>'
@@ -4555,7 +4591,7 @@ def _mod_market_residual_pricing(payload):
         '<div class="pricing-head"><div>'
         '<div class="pricing-kicker">FENZOBOT PRICING — FAIR ODD INDEPENDENTE E CALIBRADA</div>'
         '<p class="pricing-disclaimer">PAPER técnico automático e revisão manual 22Bet são estratégias separadas. As coberturas operacional e de pricing têm bases distintas.</p>'
-        '<div class="pricing-path">Fatores ponderados × qualidade → probabilidade calibrada no histórico → comparação posterior com a odd observada</div>'
+        f'<div class="pricing-path">{pricing_path}</div>'
         '</div><span class="pricing-status">EXPERIMENTAL — EM VALIDAÇÃO</span></div>'
         f'<div class="pricing-grid">{card("a", payload.get("player_a", "A"))}'
         f'{card("b", payload.get("player_b", "B"))}</div>'
