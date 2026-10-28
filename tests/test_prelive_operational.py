@@ -200,6 +200,27 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertIn("equilibrado", decision["reason"])
         self.assertFalse(decision["paper_eligible"])
 
+    def test_calibrated_neutral_signal_is_edge_zero_even_if_raw_index_is_47_53(self):
+        divergence = self.divergence()
+        divergence.update({"indice_evidencia_a": 47, "indice_evidencia_b": 53})
+        pricing = self.pricing(0.0)
+        pricing.update({
+            "economic_estimate_available": True,
+            "shadow_classification": "NEUTRAL_DIRECTIONAL_SIGNAL",
+            "index_a": 47,
+            "index_b": 53,
+            "reason_codes": ["NEUTRAL_DIRECTIONAL_SIGNAL"],
+        })
+
+        decision = build_decision(
+            self.payload(), divergence, pricing, self.assessment()
+        )
+
+        self.assertEqual(decision["state"], EDGE_ZERO)
+        self.assertIsNone(decision["side"])
+        self.assertIn("50/50", decision["reason"])
+        self.assertFalse(decision["paper_eligible"])
+
     def test_edge_minus_point_one_is_excluded(self):
         decision = self.decision(-0.1)
         self.assertEqual(decision["state"], EDGE_NEGATIVE)

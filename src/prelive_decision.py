@@ -292,6 +292,24 @@ def build_decision(
                 "shadow_candidate": False,
                 "shadow_reason_codes": list(pricing.get("reason_codes") or []),
                 "pricing_validation_mode": "SHADOW"}
+    if pricing.get("shadow_classification") == "NEUTRAL_DIRECTIONAL_SIGNAL":
+        return {
+            **base,
+            "state": EDGE_ZERO,
+            "reason": (
+                "evidência ponderada neutra; fair probability 50/50 e sem lado preferido"
+            ),
+            "fenzobot_index": 50.0,
+            "fenzobot_index_a": pricing.get("index_a"),
+            "fenzobot_index_b": pricing.get("index_b"),
+            "expected_edge_pct": 0.0,
+            "side": None,
+            "player": None,
+            "pricing_validation_mode": "SHADOW",
+            "shadow_classification": "NEUTRAL_DIRECTIONAL_SIGNAL",
+            "shadow_candidate": False,
+            "shadow_reason_codes": list(pricing.get("reason_codes") or []),
+        }
     if side not in {"a", "b"}:
         # Um empate real 50--50 é uma conclusão válida do modelo, não uma
         # falha de dados. Só índices ausentes, não numéricos ou não finitos

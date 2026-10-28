@@ -123,6 +123,17 @@ def _esc(text) -> str:
     return html.escape(str(text if text is not None else ""))
 
 
+def _format_fenzobot_index(value) -> str:
+    """Índice visível sem casas decimais; o valor bruto fica no payload."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "N/D"
+    if not math.isfinite(number):
+        return "N/D"
+    return str(int(round(number)))
+
+
 def _bar_comparison(label: str, a_name: str, a_val: float, b_name: str,
                     b_val: float, unit: str = "%", max_val: float = 100,
                     label_is_html: bool = False) -> str:
@@ -2649,7 +2660,18 @@ def _operational_entry_model(payload, div):
     if decision.get("state") == "REPORT_NULL":
         return {"status": "unavailable", "reason": "Relatório nulo: sem entrada operacional."}
     pricing = _d(payload.get("pricing"))
-    side = pricing.get("candidate_side") if pricing.get("candidate") else None
+    # A promoção controla PAPER automático, não a leitura manual do relatório.
+    # Uma observação SHADOW confirmada pelo limite conservador pode formular
+    # mercados para validação humana; um edge apenas central fica explicitamente
+    # marcado como cenário condicional.
+    side = pricing.get("shadow_observation_side")
+    guidance_status = "confirmed_shadow"
+    if side not in {"a", "b"}:
+        side = pricing.get("central_observation_side")
+        guidance_status = "central_only"
+    if side not in {"a", "b"} and pricing.get("candidate"):
+        side = pricing.get("candidate_side")
+        guidance_status = "promoted"
     if side not in {"a", "b"}:
         return {
             "status": "withheld",
@@ -2690,6 +2712,7 @@ def _operational_entry_model(payload, div):
     model = {
         "status": "candidate", "side": side, "player": player, "market_odd": odd,
         "edge_pct": player_pricing.get("expected_edge_pct"),
+        "guidance_status": guidance_status,
         "is_underdog": is_underdog, "markets": [],
     }
 
@@ -2917,13 +2940,22 @@ def _mod_operational_entry_card(payload, div):
         )
     edge = model.get("edge_pct")
     edge_text = f" · edge ML do modelo {float(edge):+.1f}%" if isinstance(edge, (int, float)) else ""
+    central_only = model.get("guidance_status") == "central_only"
+    eyebrow = (
+        "CENÁRIO CENTRAL A VALIDAR · INTERVALO CONSERVADOR NÃO CONFIRMA"
+        if central_only else "ENTRADA A VALIDAR NO MERCADO"
+    )
+    validation_note = (
+        "O edge central é positivo, mas o limite conservador ainda não o confirma. "
+        if central_only else ""
+    )
     return (
         '<section class="entry-focus"><div class="entry-focus-head">'
-        '<div><div class="entry-eyebrow">ENTRADA A VALIDAR NO MERCADO</div>'
+        f'<div><div class="entry-eyebrow">{_esc(eyebrow)}</div>'
         f'<div class="entry-main">{_esc(model["player"])}</div></div>'
         f'<div class="entry-profile">PERFIL {INVESTOR_PROFILE_ODDS_LOW:.2f}–{INVESTOR_PROFILE_ODDS_HIGH:.2f}</div>'
         f'</div><div class="entry-markets">{"".join(market_cards)}</div>'
-        '<div class="entry-disclaimer"><b>Decisão manual.</b> Os intervalos são referências analíticas, '
+        f'<div class="entry-disclaimer"><b>Decisão manual.</b> {_esc(validation_note)}Os intervalos são referências analíticas, '
         'não odds capturadas nem garantia de valor. Confirmar linha, preço, liquidez e notícias na casa; '
         f'não cria PAPER automático{_esc(edge_text)}.</div></section>'
     )
@@ -3736,7 +3768,7 @@ def _mod_decision_box(payload):
             f'<div class="decision-grid"><span>Seleção <b>{_esc(decision.get("player"))}</b></span>'
             f'<span>Mercado <b>{_esc(market.get("market"))}</b></span>'
             f'<span>Odd observada <b>{_esc(market.get("odd"))}</b></span>'
-            f'<span>Índice Fenzobot <b>{_esc(decision.get("fenzobot_index"))}/100</b></span>'
+            f'<span>Índice Fenzobot <b>{_esc(_format_fenzobot_index(decision.get("fenzobot_index")))}/100</b></span>'
             f'<span>Edge experimental <b>{_esc(edge_text)}</b></span>'
             f'<span>Cobertura <b>{_esc(coverage_text)}</b></span></div>'
             '<div class="decision-note">Candidato de observação, não entrada automática. '
@@ -3753,7 +3785,7 @@ def _mod_decision_box(payload):
         edge_text = f"{float(decision.get('expected_edge_pct')):+.1f}%"
         body = (
             f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
-            f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
+            f'{_esc(_format_fenzobot_index(decision.get("fenzobot_index")))}/100 · edge {_esc(edge_text)}</div>'
             f'<div class="decision-grid"><span>Mercado <b>{_esc(market.get("market"))}</b></span>'
             f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
             f'<span>Cobertura ponderada operacional <b>{_esc(coverage_text)}</b></span></div>'
@@ -3782,7 +3814,7 @@ def _mod_decision_box(payload):
         edge_text = f"{float(edge):+.1f}%" if edge is not None else "N/D"
         body = (
             f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
-            f'{_esc(decision.get("fenzobot_index"))}/100 · edge {_esc(edge_text)}</div>'
+            f'{_esc(_format_fenzobot_index(decision.get("fenzobot_index")))}/100 · edge {_esc(edge_text)}</div>'
             f'<div class="decision-note">Não entra em PAPER. Cobertura {_esc(coverage_text)}.</div>'
         )
     elif state == "EXPERIMENTAL_FACTUAL_PARTIAL":
@@ -3826,7 +3858,7 @@ def _mod_decision_box(payload):
         edge_text = f"{float(edge):+.1f}%" if edge is not None else "N/D"
         body = (
             f'<div class="decision-primary">{_esc(decision.get("player"))} · índice Fenzobot '
-            f'{_esc(decision.get("fenzobot_index"))}/100 · edge experimental {_esc(edge_text)}</div>'
+            f'{_esc(_format_fenzobot_index(decision.get("fenzobot_index")))}/100 · edge experimental {_esc(edge_text)}</div>'
             f'<div class="decision-grid"><span>Mercado observado <b>{_esc(market.get("market"))}</b></span>'
             f'<span>Odd <b>{_esc(market.get("odd"))}</b></span>'
             f'<span>Cobertura ponderada <b>{_esc(coverage_text)}</b></span></div>'
@@ -3842,7 +3874,7 @@ def _mod_decision_box(payload):
         if index_a is not None and index_b is not None:
             balance_detail = (
                 f'<div class="decision-grid"><span>Índice ponderado <b>'
-                f'{_esc(index_a)}/{_esc(index_b)}</b></span>'
+                f'{_esc(_format_fenzobot_index(index_a))}/{_esc(_format_fenzobot_index(index_b))}</b></span>'
                 f'<span>Fatores ativos <b>{_esc(factor_count)}</b></span>'
                 f'<span>Massa efetiva <b>{_esc(effective_mass)}</b></span></div>'
             )
@@ -4443,6 +4475,7 @@ def _mod_market_residual_pricing(payload):
         "COMPARABLE_SHADOW": "COMPARÁVEL · SHADOW",
         "INDICATIVE_ONLY": "APENAS INDICATIVA",
         "OUT_OF_CALIBRATION": "FORA DA CALIBRAÇÃO",
+        "NEUTRAL_INDICATIVE": "NEUTRA · INDICATIVA",
         "INCONCLUSIVE": "INCONCLUSIVA",
         "UNAVAILABLE": "INDISPONÍVEL",
     }.get(validity_code, str(validity_code))
