@@ -47,8 +47,8 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "factor-calibrated-v3.1"
-CALIBRATION_VERSION = "factor-probability-calibration-v3.1"
+MODEL_VERSION = "factor-calibrated-v3.2"
+CALIBRATION_VERSION = "factor-probability-calibration-v3.2"
 CALIBRATION_STATUS = "HISTORICALLY_CALIBRATED_SHADOW"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
@@ -61,7 +61,7 @@ METHOD = (
     "qualidade_da_evidencia); edge = P_fenzobot × odd_mercado - 1. "
     "O mercado não participa na fair probability."
 )
-FEATURE_CONTRACT_VERSION = "pricing-features-v3.1"
+FEATURE_CONTRACT_VERSION = "pricing-features-v3.2"
 
 
 @dataclass(frozen=True)
@@ -480,7 +480,10 @@ def estimate_market_residual_pricing(
         beta_low = parameters.atp_beta_low
         beta_high = parameters.atp_beta_high
         anomaly_gap_pp = parameters.atp_anomaly_gap_pp
-    if intensity <= 0:
+    # Ausência real de evidência continua inconclusiva. Um sinal equilibrado,
+    # porém, é uma conclusão económica válida: 50/50 (fair odd 2.00), sem lado
+    # operacional. Não confundir neutralidade com falta de dados.
+    if factor_count <= 0 or effective_mass <= 0:
         common = {"sharp_estimate_pct": None, "sharp_estimate_low_pct": None,
                   "sharp_estimate_high_pct": None, "adjustment_pp": None,
                   "fair_odd": None, "fair_odd_low": None, "fair_odd_high": None,
@@ -495,10 +498,9 @@ def estimate_market_residual_pricing(
             "factor_model_version": (divergence or {}).get("factor_model_version"),
             "factor_model_fingerprint": (divergence or {}).get("factor_model_fingerprint"),
             "reason": (
-                "sinais ponderados equilibrados dentro da zona neutra; "
-                "existem dados, mas não há vantagem direcional robusta"
+                "não existe massa de evidência ponderada utilizável para estimar fair odd"
             ),
-            "reason_codes": ["INCONCLUSIVE_DIRECTIONAL_SIGNAL"],
+            "reason_codes": ["NO_USABLE_WEIGHTED_EVIDENCE"],
             "validation_status": VALIDATION_LABEL, "method": METHOD,
             "market_overround_pct": round(overround * 100.0, 3),
             "market_used_in_fair_probability": False,
@@ -539,12 +541,12 @@ def estimate_market_residual_pricing(
         calibrated_factor_probability(residual_predictor, beta_low),
         calibrated_factor_probability(residual_predictor, beta_high),
     ))
-    # Predictive uncertainty widens with missing/sparse evidence; it never
-    # narrows merely because the directional signal collapsed toward zero.
-    effective_n = max(2.0, float(effective_mass) * coverage_quality * source_reliability)
-    predictive_half_width = 1.96 * math.sqrt(sharp_a * (1.0 - sharp_a) / (effective_n + 2.0))
-    sharp_a_low = max(0.01, min(interval_a[0], sharp_a - predictive_half_width))
-    sharp_a_high = min(0.99, max(interval_a[1], sharp_a + predictive_half_width))
+    # O intervalo operacional é o IC histórico do coeficiente de calibração.
+    # A qualidade/cobertura já encolhe o preditor para 50%; acrescentar aqui
+    # um segundo intervalo pseudo-binomial duplicava a incerteza e tornava as
+    # faixas artificialmente largas.
+    sharp_a_low = max(0.01, interval_a[0])
+    sharp_a_high = min(0.99, interval_a[1])
     sharp_b = 1.0 - sharp_a
     sharp_b_low, sharp_b_high = 1.0 - sharp_a_high, 1.0 - sharp_a_low
     adjustment_a = (sharp_a - market_a) * 100.0
@@ -565,13 +567,15 @@ def estimate_market_residual_pricing(
         and coverage_gate_passed
         and source_gate_passed
     )
-    fair_odd_validity = (
-        "OUT_OF_CALIBRATION"
-        if not anomaly_gate_passed
-        else "COMPARABLE_SHADOW"
-        if quality_gate_passed
-        else "INDICATIVE_ONLY"
-    )
+    neutral_signal = intensity <= 0
+    if neutral_signal:
+        fair_odd_validity = "NEUTRAL_INDICATIVE"
+    elif not anomaly_gate_passed:
+        fair_odd_validity = "OUT_OF_CALIBRATION"
+    elif quality_gate_passed:
+        fair_odd_validity = "COMPARABLE_SHADOW"
+    else:
+        fair_odd_validity = "INDICATIVE_ONLY"
     mathematical_side, mathematical_edge = max(
         (("a", edge_a), ("b", edge_b)), key=lambda item: item[1]
     )
@@ -579,26 +583,39 @@ def estimate_market_residual_pricing(
     # O limiar historico de 5% deixa de decidir PAPER: qualquer edge > 0 e
     # elegivel depois do contrato de validade pre-live. O gate abaixo fica
     # apenas como diagnostico de qualidade do pricing.
-    fenzobot_side = "a" if index_a > 50 else "b" if index_a < 50 else None
+    if neutral_signal:
+        fenzobot_side = None
+    else:
+        fenzobot_side = "a" if index_a > 50 else "b" if index_a < 50 else None
     fenzobot_edge = edge_a if fenzobot_side == "a" else edge_b if fenzobot_side == "b" else None
     conservative_edge = (
         conservative_edge_a if fenzobot_side == "a"
         else conservative_edge_b if fenzobot_side == "b" else None
     )
-    observation_side = (
+    central_observation_side = (
         fenzobot_side
         if fenzobot_edge is not None
         and fenzobot_edge > 0
-        and conservative_edge is not None
-        and conservative_edge > 0
         and quality_gate_passed
         and anomaly_gate_passed
+        else None
+    )
+    observation_side = (
+        central_observation_side
+        if central_observation_side is not None
+        and conservative_edge is not None
+        and conservative_edge > 0
         else None
     )
     reason_codes: list[str] = []
     promotion = promotion_gate()
     candidate_side = observation_side if PROMOTION_APPROVED else None
-    if observation_side and not PROMOTION_APPROVED:
+    if neutral_signal:
+        shadow_classification = "NEUTRAL_DIRECTIONAL_SIGNAL"
+        reason_codes.append("NEUTRAL_DIRECTIONAL_SIGNAL")
+        candidate_status = "neutral_directional_signal"
+        visible_label = "PRICING NEUTRO — FAIR ODD CENTRAL 2.00 · SEM ENTRADA"
+    elif observation_side and not PROMOTION_APPROVED:
         shadow_classification = "SHADOW_POSITIVE_UNVALIDATED"
         reason_codes.append("WALK_FORWARD_PROMOTION_NOT_APPROVED")
         candidate_status = "shadow_positive_unvalidated"
@@ -705,6 +722,8 @@ def estimate_market_residual_pricing(
             "anomaly_gap_pp": anomaly_gap_pp,
         },
         "probability_basis": "independent_factor_logistic_calibration",
+        "fair_odd_interval_basis": "historical_beta_ci95",
+        "conservative_edge_basis": "historical_beta_ci95_lower_probability",
         "feature_contract_version": FEATURE_CONTRACT_VERSION,
         "market_used_in_fair_probability": False,
         "market_comparison": {
@@ -762,6 +781,11 @@ def estimate_market_residual_pricing(
         "shadow_observation_side": observation_side,
         "shadow_observation_player": (
             payload.get(f"player_{observation_side}") if observation_side else None
+        ),
+        "central_observation_side": central_observation_side,
+        "central_observation_player": (
+            payload.get(f"player_{central_observation_side}")
+            if central_observation_side else None
         ),
         "promotion_gate": promotion,
         "candidate_status": candidate_status,

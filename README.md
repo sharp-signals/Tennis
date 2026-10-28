@@ -98,8 +98,20 @@ cobertura insuficiente, resolução de identidade incerta ou falha crítica de
 dados. O mercado não participa nesta probabilidade nem na fair odd: entra só
 depois para calcular o expected edge e assinalar extrapolações. O resultado
 classifica ainda a fair odd como `COMPARABLE_SHADOW`, `INDICATIVE_ONLY`,
-`OUT_OF_CALIBRATION`, `INCONCLUSIVE` ou `UNAVAILABLE`, sempre com a etiqueta
+`NEUTRAL_INDICATIVE`, `OUT_OF_CALIBRATION`, `INCONCLUSIVE` ou `UNAVAILABLE`, sempre com a etiqueta
 **EXPERIMENTAL — EM VALIDAÇÃO**.
+
+A faixa de fair odd usa exclusivamente o intervalo de confiança histórico de
+95% do coeficiente `beta` do circuito. Cobertura, missingness e fiabilidade já
+contraem a força para 50%; não se acrescenta um segundo intervalo
+pseudo-binomial que duplique essa incerteza. Evidência ponderada neutra produz
+fair probability 50/50 e fair odd central 2.00, sem lado nem entrada; apenas
+ausência real de massa de evidência permanece `INCONCLUSIVE`.
+
+Enquanto a promoção walk-forward estiver bloqueada, uma observação SHADOW pode
+formular Moneyline e handicaps para **validação manual**, mas nunca cria PAPER
+automático. O relatório distingue uma observação confirmada pelo limite
+conservador de um cenário positivo apenas na estimativa central.
 
 O estado PAPER depende da validade factual e de edge positivo no lado escolhido
 pelo Fenzobot; `PRICING_MIN_EDGE_PCT` é diagnóstico de qualidade, não um limiar

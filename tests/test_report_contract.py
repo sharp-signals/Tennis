@@ -279,6 +279,58 @@ class ReportStateTests(unittest.TestCase):
 
 
 class ReportRenderingTests(unittest.TestCase):
+    def test_shadow_observation_formulates_manual_entry_without_paper_promotion(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.90, "B": 2.10},
+            "pricing": {
+                "available": True, "candidate": False, "candidate_side": None,
+                "shadow_observation_side": "a",
+                "players": {"a": {"fair_odd": 1.82, "expected_edge_pct": 4.4}},
+            },
+            "prelive_decision": {"state": "PRICING_SHADOW"},
+        }
+
+        html = report_html._mod_operational_entry_card(payload, {})
+
+        self.assertIn("ENTRADA A VALIDAR NO MERCADO", html)
+        self.assertIn("Moneyline A", html)
+        self.assertIn("não cria PAPER automático", html)
+
+    def test_central_only_observation_is_visibly_conditional(self):
+        payload = {
+            "player_a": "A", "player_b": "B", "match_format": "bo3",
+            "market_odds_decimal": {"A": 1.90, "B": 2.10},
+            "pricing": {
+                "available": True, "candidate": False, "candidate_side": None,
+                "central_observation_side": "a",
+                "players": {"a": {"fair_odd": 1.82, "expected_edge_pct": 4.4}},
+            },
+            "prelive_decision": {"state": "PRICING_SHADOW"},
+        }
+
+        html = report_html._mod_operational_entry_card(payload, {})
+
+        self.assertIn("CENÁRIO CENTRAL A VALIDAR", html)
+        self.assertIn("limite conservador ainda não o confirma", html)
+
+    def test_visible_fenzobot_index_is_rounded_without_mutating_payload(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "prelive_decision": {
+                "state": "PRICING_SHADOW", "player": "A",
+                "fenzobot_index": 74.03, "expected_edge_pct": 2.0,
+                "market": {"market": "Moneyline A", "odd": 1.9},
+                "coverage": {"weighted_pct": 90},
+            },
+        }
+
+        html = report_html._mod_decision_box(payload)
+
+        self.assertIn("índice Fenzobot 74/100", html)
+        self.assertNotIn("74.03", html)
+        self.assertEqual(payload["prelive_decision"]["fenzobot_index"], 74.03)
+
     def test_handicap_price_message_distinguishes_sample_from_price_above_window(self):
         insufficient = report_html._format_entry_price_zone(None)
         above_window = report_html._contextual_handicap_price_reference(
