@@ -666,7 +666,7 @@ CAPS_FAMILIAS_PESOS = {
     "resiliencia": 19, "ranking_fam": 9, "contexto": 8, "historial": 6,
 }
 
-FACTOR_MODEL_VERSION = "factor-weights-v2026-10-28-h2h-residual-v1"
+FACTOR_MODEL_VERSION = "factor-weights-v2026-10-28-h2h-sample-v1"
 
 
 def _factor_model_fingerprint():
@@ -800,6 +800,43 @@ def _calcular_divergencia(payload):
             else 0.5
         )
         return forca, confianca, amostra
+
+    def _confianca_diferenca_taxas(feature):
+        """Fiabilidade do contraste entre duas taxas observadas.
+
+        A quantidade de jogos, por si só, não torna uma diferença precisa.
+        Duas taxas próximas podem continuar compatíveis com ruído amostral,
+        mesmo com 20–30 observações por jogador. O rácio sinal/erro é
+        convertido em z²/(1+z²), um multiplicador conservador entre 0 e 1.
+        Este valor apenas pode reduzir a confiança dada pela amostra; nunca a
+        aumenta.
+        """
+        if not isinstance(feature, dict):
+            return 0.0, None
+        try:
+            p_a = float(feature.get("valor_a")) / 100.0
+            p_b = float(feature.get("valor_b")) / 100.0
+            n_a = float(feature.get("amostra_a"))
+            n_b = float(feature.get("amostra_b"))
+        except (TypeError, ValueError):
+            return 0.0, None
+        if n_a <= 0 or n_b <= 0:
+            return 0.0, None
+
+        # Evita erro-padrão artificialmente nulo em taxas observadas de 0/100%.
+        floor_a = 0.5 / (n_a + 1.0)
+        floor_b = 0.5 / (n_b + 1.0)
+        p_a = min(max(p_a, floor_a), 1.0 - floor_a)
+        p_b = min(max(p_b, floor_b), 1.0 - floor_b)
+        erro = math.sqrt(
+            (p_a * (1.0 - p_a) / n_a)
+            + (p_b * (1.0 - p_b) / n_b)
+        )
+        if erro <= 0:
+            return 0.0, None
+        z_score = abs(p_a - p_b) / erro
+        fiabilidade = (z_score * z_score) / (1.0 + z_score * z_score)
+        return max(0.0, min(fiabilidade, 1.0)), z_score
 
     def _add(chave, lider, forca_rel=1.0, peso_override=None, conf_amostra=1.0):
         # Gate final no ponto real de consumo: dados factuais podem continuar
@@ -1134,10 +1171,16 @@ def _calcular_divergencia(payload):
         "fonte_velocidade": _cs_context.get("source"),
     }
     if isinstance(vp, dict) and vp.get("lider") not in (None, "igual") and abs(vp.get("diff") or 0) >= 3:
-        forca, conf, amostra = _multiplicadores_percentuais(vp, n_pleno=30)
+        forca, conf_amostra, amostra = _multiplicadores_percentuais(vp, n_pleno=30)
+        conf_sinal, z_diferenca = _confianca_diferenca_taxas(vp)
+        conf = min(conf_amostra, conf_sinal)
         _add("velocidade_piso", vp["lider"], forca, conf_amostra=conf)
         _reg_status("velocidade_piso", True, vp["lider"], valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"),
-                    amostra=amostra, amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"), **_vp_extra)
+                    amostra=amostra, amostra_a=vp.get("amostra_a"), amostra_b=vp.get("amostra_b"),
+                    confianca_amostra_bilateral=round(conf_amostra, 3),
+                    confianca_sinal_ruido=round(conf_sinal, 3),
+                    z_diferenca=(round(z_diferenca, 3) if z_diferenca is not None else None),
+                    **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") == "igual":
         _reg_status("velocidade_piso", True, "igual", valor_a=vp.get("valor_a"), valor_b=vp.get("valor_b"), **_vp_extra)
     elif isinstance(vp, dict) and vp.get("lider") is not None:

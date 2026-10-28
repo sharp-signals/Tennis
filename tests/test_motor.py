@@ -228,9 +228,27 @@ def test_velocidade_piso_diferenca_pequena_nao_recebe_forca_total():
     }))
     status = r["fatores_status"]["velocidade_piso"]
     assert status["multiplicador_forca"] == 0.3
-    assert status["confianca_amostra"] == 1.0
-    assert status["peso_antes_cap"] == 3.0
-    assert status["peso_efetivo"] == 3.0
+    assert status["confianca_amostra_bilateral"] == 1.0
+    assert 0.08 < status["confianca_sinal_ruido"] < 0.09
+    assert status["confianca_amostra"] == status["confianca_sinal_ruido"]
+    assert 0.26 < status["peso_antes_cap"] < 0.27
+    assert status["peso_efetivo"] == status["peso_antes_cap"]
+
+
+def test_velocidade_piso_hanfmann_struff_atenua_incerteza_do_contraste():
+    r = _calcular_divergencia(_payload(2.00, 1.80, {
+        "velocidade_piso": {
+            "lider": "A", "diff": 14.5, "valor_a": 47.8, "valor_b": 33.3,
+            "amostra_a": 23, "amostra_b": 30,
+        },
+    }))
+    status = r["fatores_status"]["velocidade_piso"]
+    assert status["confianca_amostra_bilateral"] == 0.876
+    assert 0.53 < status["confianca_sinal_ruido"] < 0.54
+    assert status["confianca_amostra"] == status["confianca_sinal_ruido"]
+    assert 5.1 < status["peso_antes_cap"] < 5.3
+    assert status["amostra_a"] == 23
+    assert status["amostra_b"] == 30
 
 
 def test_fator_percentual_combina_magnitude_e_amostra():
