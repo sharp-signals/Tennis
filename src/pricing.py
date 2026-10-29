@@ -49,8 +49,8 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "structural-elo-factor-v4.0"
-CALIBRATION_VERSION = "structural-elo-factor-calibration-v4.0"
+MODEL_VERSION = "hierarchical-surface-elo-v4.1"
+CALIBRATION_VERSION = "hierarchical-surface-elo-calibration-v4.1"
 CALIBRATION_STATUS = "HISTORICALLY_CALIBRATED_SHADOW"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
@@ -59,12 +59,13 @@ DISCLAIMER = (
     "modelo e não uma recomendação de aposta."
 )
 METHOD = (
-    "ATP principal: prior Elo histórico global + superfície, separado de "
-    "Challengers, com ajuste calibrado dos fatores; restantes segmentos usam "
+    "ATP principal: prior Elo histórico hierárquico global + superfície, separado de "
+    "Challengers; os fatores entram na faixa de sensibilidade e na decisão, não "
+    "distorcem a fair odd central sem validação temporal positiva. Restantes segmentos usam "
     "a calibração histórica própria. edge = P_fenzobot × odd_mercado - 1. "
     "O mercado não participa na fair probability."
 )
-FEATURE_CONTRACT_VERSION = "pricing-features-v4.0"
+FEATURE_CONTRACT_VERSION = "pricing-features-v4.1"
 
 
 @dataclass(frozen=True)
@@ -92,17 +93,10 @@ class PricingParameters:
     challenger_beta: float = 0.80537
     challenger_beta_low: float = 0.0
     challenger_beta_high: float = 1.67285
-    # Ajuste regularizado em 563 snapshots ATP liquidados, depois de validação
-    # cronológica 60/20/20. O prior Elo usa K=40 e apenas circuito principal.
-    atp_elo_global_coefficient: float = 0.45733118162952946
-    atp_elo_surface_coefficient: float = 0.6389725434911556
-    atp_factor_adjustment_coefficient: float = 0.559423459229921
-    # Covariância dos três coeficientes na ordem global/superfície/fatores.
-    atp_structural_covariance: tuple[tuple[float, float, float], ...] = (
-        (0.021554363822064396, -0.01668710604424756, -0.01322816664073791),
-        (-0.01668710604424754, 0.30188284797728376, 0.0019754765877287575),
-        (-0.013228166640737907, 0.001975476587728773, 0.040321518874395244),
-    )
+    # Sensibilidade contextual estimada com fatores ajustados pela qualidade.
+    # No teste temporal, deslocar a probabilidade central piorou o proper score;
+    # por isso este coeficiente só participa na faixa de sensibilidade.
+    atp_factor_sensitivity_coefficient: float = 0.26299783260258675
     # Percentil 95 da diferença histórica |P_fenzobot - P_mercado sem margem|.
     atp_anomaly_gap_pp: float = 27.93
     wta_anomaly_gap_pp: float = 32.62
@@ -169,14 +163,6 @@ def calibrated_factor_probability(residual_predictor: float, beta: float) -> flo
 def _logistic(value: float) -> float:
     value = min(20.0, max(-20.0, float(value)))
     return 1.0 / (1.0 + math.exp(-value))
-
-
-def _quadratic_form(vector: tuple[float, ...], matrix) -> float:
-    return sum(
-        vector[row] * float(matrix[row][column]) * vector[column]
-        for row in range(len(vector))
-        for column in range(len(vector))
-    )
 
 
 def evidence_probability(index_a: float, quality: float, *, maximum_probability: float = 0.85) -> float:
@@ -508,6 +494,7 @@ def estimate_market_residual_pricing(
         beta_high = parameters.atp_beta_high
         anomaly_gap_pp = parameters.atp_anomaly_gap_pp
     structural_prior = None
+    factor_sensitivity = None
     # Ausência real de evidência continua inconclusiva. Um sinal equilibrado,
     # porém, é uma conclusão económica válida: 50/50 (fair odd 2.00), sem lado
     # operacional. Não confundir neutralidade com falta de dados.
@@ -569,34 +556,36 @@ def estimate_market_residual_pricing(
     if calibration_segment == "atp":
         structural_prior = atp_main_strength_features(payload)
     if isinstance(structural_prior, Mapping) and structural_prior.get("available"):
-        feature_vector = (
-            float(structural_prior["global_logit"]),
-            float(structural_prior["surface_logit"]),
-            signed_strength,
-        )
-        coefficients = (
-            parameters.atp_elo_global_coefficient,
-            parameters.atp_elo_surface_coefficient,
-            parameters.atp_factor_adjustment_coefficient,
-        )
-        structural_logit = sum(
-            coefficient * feature
-            for coefficient, feature in zip(coefficients, feature_vector)
+        global_logit = float(structural_prior["global_logit"])
+        surface_logit = float(structural_prior["surface_logit"])
+        stored_strength_logit = structural_prior.get("strength_logit")
+        structural_logit = (
+            float(stored_strength_logit)
+            if stored_strength_logit is not None
+            else (1.0 - float(structural_prior.get("surface_weight") or 0.0))
+            * global_logit
+            + float(structural_prior.get("surface_weight") or 0.0) * surface_logit
         )
         sharp_a = _logistic(structural_logit)
         model_logit = structural_logit
-        variance = max(
-            0.0,
-            _quadratic_form(feature_vector, parameters.atp_structural_covariance),
+        factor_scenario_logit = (
+            structural_logit
+            + parameters.atp_factor_sensitivity_coefficient * residual_predictor
         )
-        standard_error = math.sqrt(variance)
-        interval_a = sorted((
-            _logistic(structural_logit - 1.96 * standard_error),
-            _logistic(structural_logit + 1.96 * standard_error),
-        ))
+        factor_sensitivity = {
+            "coefficient": parameters.atp_factor_sensitivity_coefficient,
+            "quality_adjusted_predictor": residual_predictor,
+            "scenario_logit": factor_scenario_logit,
+            "scenario_probability_a": _logistic(factor_scenario_logit),
+            "central_probability_changed": False,
+        }
+        scenario_logits = [structural_logit, global_logit, factor_scenario_logit]
+        if float(structural_prior.get("surface_weight") or 0.0) >= 0.5:
+            scenario_logits.append(surface_logit)
+        interval_a = sorted(_logistic(value) for value in scenario_logits)
         residual_predictor = structural_logit
-        probability_basis = "atp_main_elo_global_surface_plus_factor_adjustment"
-        interval_basis = "structural_coefficient_covariance_ci95"
+        probability_basis = "atp_main_hierarchical_global_surface_elo"
+        interval_basis = "structural_global_surface_factor_sensitivity_range"
     else:
         sharp_a = calibrated_factor_probability(residual_predictor, beta)
         model_logit = beta * residual_predictor
@@ -605,7 +594,7 @@ def estimate_market_residual_pricing(
             calibrated_factor_probability(residual_predictor, beta_high),
         ))
     sharp_a_low = max(0.01, interval_a[0])
-    sharp_a_high = min(0.99, interval_a[1])
+    sharp_a_high = min(0.99, interval_a[-1])
     sharp_b = 1.0 - sharp_a
     sharp_b_low, sharp_b_high = 1.0 - sharp_a_high, 1.0 - sharp_a_low
     adjustment_a = (sharp_a - market_a) * 100.0
@@ -781,6 +770,7 @@ def estimate_market_residual_pricing(
             "anomaly_gap_pp": anomaly_gap_pp,
         },
         "structural_prior": structural_prior,
+        "factor_sensitivity": factor_sensitivity,
         "probability_basis": probability_basis,
         "fair_odd_interval_basis": interval_basis,
         "conservative_edge_basis": f"{interval_basis}_lower_probability",

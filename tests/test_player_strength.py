@@ -9,6 +9,13 @@ from src import player_strength
 
 
 class PlayerStrengthTests(unittest.TestCase):
+    def test_normalize_surface_supports_historical_french_labels(self):
+        self.assertEqual(player_strength.normalize_surface("dur"), "hard")
+        self.assertEqual(player_strength.normalize_surface("dur intérieur"), "hard")
+        self.assertEqual(player_strength.normalize_surface("dur int�rieur"), "hard")
+        self.assertEqual(player_strength.normalize_surface("terre battue"), "clay")
+        self.assertEqual(player_strength.normalize_surface("gazon"), "grass")
+
     def test_atp_prior_excludes_challengers_and_same_day_results(self):
         fieldnames = [
             "date", "surface", "winner_name", "loser_name", "score",
