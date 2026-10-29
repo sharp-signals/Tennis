@@ -4475,7 +4475,7 @@ def _mod_market_residual_pricing(payload):
             '<div class="pricing-metrics">'
             f'<div><span>Market probability</span><b>{fmt(data.get("market_probability_pct"), 1, suffix="%")}</b></div>'
             f'<div><span>Probabilidade Fenzobot</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>Intervalo histórico</span><b>{fmt(data.get("sharp_estimate_low_pct"), 1, suffix="%")}–{fmt(data.get("sharp_estimate_high_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>{"Faixa estrutural" if pricing.get("probability_basis") == "atp_main_hierarchical_global_surface_elo" else "Intervalo histórico"}</span><b>{fmt(data.get("sharp_estimate_low_pct"), 1, suffix="%")}–{fmt(data.get("sharp_estimate_high_pct"), 1, suffix="%")}</b></div>'
             f'<div><span>Diferença vs mercado</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
             f'<div><span>Fair odd central</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
             f'<div><span>Faixa de fair odd</span><b>{fmt(data.get("fair_odd_low"), 2)}–{fmt(data.get("fair_odd_high"), 2)}</b></div>'
@@ -4531,7 +4531,7 @@ def _mod_market_residual_pricing(payload):
     structural_prior = _d(pricing.get("structural_prior"))
     uses_atp_structural_prior = (
         pricing.get("probability_basis")
-        == "atp_main_elo_global_surface_plus_factor_adjustment"
+        == "atp_main_hierarchical_global_surface_elo"
         and structural_prior.get("available") is True
     )
     validity_code = pricing.get("fair_odd_validity") or "UNAVAILABLE"
@@ -4545,8 +4545,8 @@ def _mod_market_residual_pricing(payload):
     }.get(validity_code, str(validity_code))
     if uses_atp_structural_prior:
         pricing_path = (
-            "Força histórica ATP principal (Elo global + superfície) + ajuste dos fatores "
-            "→ probabilidade calibrada → comparação posterior com a odd observada"
+            "Força histórica ATP principal (Elo global + superfície com amostra regularizada) "
+            "→ probabilidade central → sensibilidade dos fatores → comparação posterior com a odd observada"
         )
         probability_explanation = (
             f'<p><b>Prior histórico ATP principal:</b> Elo global '
@@ -4559,9 +4559,13 @@ def _mod_market_residual_pricing(payload):
             f'({int(structural_prior.get("surface_matches_a") or 0)} / '
             f'{int(structural_prior.get("surface_matches_b") or 0)} jogos). '
             '<b>Resultados Challenger são excluídos deste prior ATP.</b></p>'
-            '<p><b>Probabilidade própria:</b> combinação calibrada, em log-odds, do Elo '
-            'global, Elo da superfície e força assinada dos fatores. O mercado não entra '
-            'nesta conta; só é consultado depois para calcular edge.</p>'
+            f'<p><b>Regularização do piso:</b> peso de superfície '
+            f'{fmt(100.0 * float(structural_prior.get("surface_weight") or 0.0), 0, suffix="%")}; '
+            f'o restante recua para o Elo global até existir amostra suficiente.</p>'
+            '<p><b>Probabilidade própria central:</b> Elo hierárquico global + superfície. '
+            'Os fatores ponderados continuam no índice e na faixa de sensibilidade, mas não '
+            'deslocam a probabilidade central enquanto não melhorarem a validação temporal. '
+            'O mercado não entra nesta conta; só é consultado depois para calcular edge.</p>'
         )
     else:
         pricing_path = (
@@ -4583,7 +4587,7 @@ def _mod_market_residual_pricing(payload):
         'É preservado apenas para auditoria e não representa certeza nem probabilidade de vitória.</p>'
         f'{probability_explanation}'
         '<p><b>Fair odd:</b> 1 / probabilidade Fenzobot. <b>Edge:</b> probabilidade Fenzobot × odd observada − 1. '
-        'O edge conservador repete a fórmula com o limite inferior do intervalo histórico.</p>'
+        'O edge conservador repete a fórmula com o limite inferior da faixa apresentada.</p>'
         '</div></details>'
     )
     return (

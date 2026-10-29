@@ -1,4 +1,5 @@
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -89,6 +90,8 @@ class MarketResidualPricingTests(unittest.TestCase):
             "version": "test-elo-v1",
             "global_logit": 0.682868,
             "surface_logit": 0.006883,
+            "strength_logit": 0.50,
+            "surface_weight": 0.25,
             "history_scope": "ATP_MAIN_ONLY",
         }
         with patch("src.pricing.atp_main_strength_features", return_value=structural):
@@ -98,7 +101,7 @@ class MarketResidualPricingTests(unittest.TestCase):
             )
         self.assertEqual(
             pricing["probability_basis"],
-            "atp_main_elo_global_surface_plus_factor_adjustment",
+            "atp_main_hierarchical_global_surface_elo",
         )
         self.assertEqual(pricing["structural_prior"]["history_scope"], "ATP_MAIN_ONLY")
         self.assertGreater(pricing["sharp_estimate_a"], 0.61)
@@ -109,6 +112,8 @@ class MarketResidualPricingTests(unittest.TestCase):
             "available": True,
             "global_logit": 0.50,
             "surface_logit": 0.10,
+            "strength_logit": 0.40,
+            "surface_weight": 0.50,
             "history_scope": "ATP_MAIN_ONLY",
         }
         with patch("src.pricing.atp_main_strength_features", return_value=structural):
@@ -117,6 +122,29 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertEqual(first["sharp_estimate_a"], second["sharp_estimate_a"])
         self.assertEqual(first["fair_odd_a"], second["fair_odd_a"])
         self.assertNotEqual(first["expected_edge_a"], second["expected_edge_a"])
+
+    def test_atp_structural_interval_keeps_all_sensitivity_scenarios(self):
+        structural = {
+            "available": True,
+            "global_logit": 0.40,
+            "surface_logit": 1.00,
+            "strength_logit": 0.70,
+            "surface_weight": 0.60,
+            "history_scope": "ATP_MAIN_ONLY",
+        }
+        with patch("src.pricing.atp_main_strength_features", return_value=structural):
+            pricing = self._estimate(
+                self._payload(1.35, 3.18),
+                self._divergence(67, factors=15, intensity=2, weight=3.3),
+            )
+        expected_high = round(100.0 / (1.0 + math.exp(-1.00)), 2)
+        self.assertEqual(
+            pricing["players"]["a"]["sharp_estimate_high_pct"], expected_high
+        )
+        self.assertGreater(
+            pricing["players"]["a"]["sharp_estimate_high_pct"],
+            pricing["players"]["a"]["sharp_estimate_pct"],
+        )
 
     def test_tommy_paul_darderi_regression_uses_main_tour_strength_prior(self):
         payload = self._payload(1.35, 3.18)
@@ -133,11 +161,20 @@ class MarketResidualPricingTests(unittest.TestCase):
         )
         self.assertEqual(
             pricing["probability_basis"],
-            "atp_main_elo_global_surface_plus_factor_adjustment",
+            "atp_main_hierarchical_global_surface_elo",
         )
-        self.assertGreater(pricing["sharp_estimate_a"], 0.60)
-        self.assertLess(pricing["sharp_estimate_a"], 0.66)
-        self.assertLess(pricing["sharp_estimate_b"], 0.40)
+        self.assertGreater(pricing["sharp_estimate_a"], 0.68)
+        self.assertLess(pricing["sharp_estimate_a"], 0.74)
+        self.assertLess(pricing["sharp_estimate_b"], 0.32)
+        self.assertGreater(
+            pricing["structural_prior"]["surface_matches_a"], 100
+        )
+        self.assertGreater(
+            pricing["structural_prior"]["surface_matches_b"], 30
+        )
+        self.assertFalse(
+            pricing["factor_sensitivity"]["central_probability_changed"]
+        )
 
         payload["features"] = {
             "piso": {"lider": "Tommy Paul", "diff": 18, "amostra_a": 100, "amostra_b": 100},

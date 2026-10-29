@@ -24,8 +24,10 @@ ROOT = Path(__file__).resolve().parents[1]
 ATP_HISTORY_FILES = tuple(sorted((ROOT / "data" / "history_cache").glob(
     "valuebetennis_atp_*.csv.gz"
 )))
-ATP_ELO_K = 40.0
-ATP_ELO_VERSION = "atp-main-global-surface-elo-v1"
+ATP_ELO_K = 32.0
+ATP_SURFACE_PRIOR_MATCHES = 40.0
+ATP_ELO_SCALE = 1.0
+ATP_ELO_VERSION = "atp-main-hierarchical-global-surface-elo-v2"
 _CACHE_LOCK = threading.Lock()
 _RATING_CACHE: dict[date, dict[str, Any]] = {}
 
@@ -37,10 +39,21 @@ def normalize_player_name(value: Any) -> str:
 
 
 def normalize_surface(value: Any) -> str:
-    normalized = str(value or "").casefold()
-    for candidate in ("hard", "clay", "grass", "carpet"):
-        if candidate in normalized:
-            return candidate
+    raw = unicodedata.normalize("NFKD", str(value or ""))
+    normalized = "".join(
+        char for char in raw if not unicodedata.combining(char)
+    ).casefold().strip()
+    # O arquivo histórico ValueBetennis mudou de francês para inglês. Sem
+    # estes aliases, mais de 19 mil partidas eram agregadas como ``unknown``
+    # e o Elo de piso via apenas a pequena parcela recente em inglês.
+    if "hard" in normalized or normalized.startswith("dur"):
+        return "hard"
+    if "clay" in normalized or "terre battue" in normalized:
+        return "clay"
+    if "grass" in normalized or "gazon" in normalized:
+        return "grass"
+    if "carpet" in normalized or "moquette" in normalized:
+        return "carpet"
     return "unknown"
 
 
@@ -166,9 +179,20 @@ def atp_main_strength_features(payload: Mapping[str, Any]) -> dict[str, Any]:
     surface_matches_b = int(ratings["surface_matches"].get(surface_key_b, 0))
     surface_rating_a = float(ratings["surface_ratings"].get(surface_key_a, 1500.0))
     surface_rating_b = float(ratings["surface_ratings"].get(surface_key_b, 1500.0))
+    global_logit = (rating_a - rating_b) * math.log(10.0) / 400.0
     surface_logit = (
         (surface_rating_a - surface_rating_b) * math.log(10.0) / 400.0
         if min(surface_matches_a, surface_matches_b) >= 3 else 0.0
+    )
+    surface_effective_matches = min(surface_matches_a, surface_matches_b)
+    surface_weight = (
+        surface_effective_matches
+        / (surface_effective_matches + ATP_SURFACE_PRIOR_MATCHES)
+        if surface_effective_matches >= 3 else 0.0
+    )
+    strength_logit = ATP_ELO_SCALE * (
+        (1.0 - surface_weight) * global_logit
+        + surface_weight * surface_logit
     )
     return {
         "available": True,
@@ -176,8 +200,13 @@ def atp_main_strength_features(payload: Mapping[str, Any]) -> dict[str, Any]:
         "cutoff_date": cutoff.isoformat(),
         "history_scope": "ATP_MAIN_ONLY",
         "processed_matches": ratings["processed_matches"],
-        "global_logit": (rating_a - rating_b) * math.log(10.0) / 400.0,
+        "global_logit": global_logit,
         "surface_logit": surface_logit,
+        "strength_logit": strength_logit,
+        "surface_weight": surface_weight,
+        "surface_prior_matches": ATP_SURFACE_PRIOR_MATCHES,
+        "elo_k": ATP_ELO_K,
+        "elo_scale": ATP_ELO_SCALE,
         "surface": surface,
         "rating_a": round(rating_a, 3),
         "rating_b": round(rating_b, 3),

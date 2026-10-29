@@ -31,10 +31,18 @@ def _name(value: str) -> str:
 
 
 def _surface(value: str) -> str:
-    normalized = str(value or "").casefold()
-    for candidate in ("hard", "clay", "grass", "carpet"):
-        if candidate in normalized:
-            return candidate
+    raw = unicodedata.normalize("NFKD", str(value or ""))
+    normalized = "".join(
+        char for char in raw if not unicodedata.combining(char)
+    ).casefold().strip()
+    if "hard" in normalized or normalized.startswith("dur"):
+        return "hard"
+    if "clay" in normalized or "terre battue" in normalized:
+        return "clay"
+    if "grass" in normalized or "gazon" in normalized:
+        return "grass"
+    if "carpet" in normalized or "moquette" in normalized:
+        return "carpet"
     return "unknown"
 
 
