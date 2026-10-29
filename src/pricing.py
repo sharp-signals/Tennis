@@ -334,7 +334,15 @@ def _weighted_factor_coverage(divergence: Mapping[str, Any] | None) -> float | N
         except (TypeError, ValueError):
             continue
         configured += weight
-        if raw.get("disponivel") is True:
+        # Um fator pode ter sido observado validamente sem produzir um valor
+        # direcional. Ex.: o endpoint H2H respondeu com sucesso e confirmou
+        # zero confrontos anteriores. Isso é cobertura factual, embora a
+        # contribuição para o índice continue a ser zero. Só ausência real da
+        # fonte/observação deve reduzir a cobertura.
+        if (
+            raw.get("disponivel") is True
+            or raw.get("observacao_confirmada") is True
+        ):
             available += weight
     if configured <= 0:
         return None

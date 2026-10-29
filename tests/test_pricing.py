@@ -421,6 +421,58 @@ class MarketResidualPricingTests(unittest.TestCase):
             pricing["evidence_quality"]["weighted_factor_coverage"], 1.0
         )
 
+    def test_confirmed_zero_h2h_counts_as_coverage_without_becoming_signal(self):
+        divergence = self._divergence(70, factors=1, intensity=2, weight=5)
+        divergence["fatores_status"] = {
+            "h2h": {
+                "peso_base_configurado": 6,
+                "disponivel": False,
+                "observacao_confirmada": True,
+                "estado_observacao": "NONE_OBSERVED",
+                "amostra": 0,
+            },
+            "h2h_piso": {
+                "peso_base_configurado": 12,
+                "disponivel": False,
+                "observacao_confirmada": True,
+                "estado_observacao": "NONE_OBSERVED",
+                "amostra": 0,
+            },
+            "directional": {
+                "peso_base_configurado": 5,
+                "peso_efetivo": 5,
+                "disponivel": True,
+                "lider": "Jogador A",
+            },
+        }
+        pricing = self._estimate(self._payload(), divergence)
+        self.assertEqual(
+            pricing["evidence_quality"]["weighted_factor_coverage"], 1.0
+        )
+        self.assertEqual(divergence["n_fatores"], 1)
+        self.assertNotIn("peso_efetivo", divergence["fatores_status"]["h2h"])
+        self.assertNotIn("peso_efetivo", divergence["fatores_status"]["h2h_piso"])
+
+    def test_unavailable_h2h_still_reduces_coverage(self):
+        divergence = self._divergence(70, factors=1, intensity=2, weight=5)
+        divergence["fatores_status"] = {
+            "h2h": {
+                "peso_base_configurado": 6,
+                "disponivel": False,
+                "motivo_exclusao": "http_500",
+            },
+            "directional": {
+                "peso_base_configurado": 6,
+                "peso_efetivo": 5,
+                "disponivel": True,
+                "lider": "Jogador A",
+            },
+        }
+        pricing = self._estimate(self._payload(), divergence)
+        self.assertEqual(
+            pricing["evidence_quality"]["weighted_factor_coverage"], 0.5
+        )
+
     def test_serious_data_quality_failure_blocks_promotion_but_keeps_numbers_visible(self):
         payload = self._payload()
         payload["data_quality"] = {
