@@ -27,7 +27,7 @@
       "total_snapshots": 1458
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-28T08:21:45+00:00",
+      "attempted_at_utc": "2026-10-29T13:30:22+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
@@ -38,10 +38,10 @@
       "llm_provider_invocations": 21
     },
     "maintenance": {
-      "finished_at_utc": null,
-      "reason_code": null,
+      "finished_at_utc": "2026-10-29T07:21:34+00:00",
+      "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT",
       "started_at_utc": "2026-10-29T07:17:04+00:00",
-      "status": "PARTIAL"
+      "status": "TIMED_OUT"
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -129272,7 +129272,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-29T07:17:30+00:00",
+  "generated_at_utc": "2026-10-29T14:01:57+00:00",
   "global": {
     "distinct_matchups": 3657,
     "green_strong_candidates": 30,
@@ -129514,7 +129514,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-29T07:17:30+00:00",
+    "generated_at_utc": "2026-10-29T14:01:57+00:00",
     "losses": 107,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -61.17,
@@ -129558,7 +129558,7 @@
       "average_market_probability": 0.425793,
       "observed_win_rate_pct": 44.44
     },
-    "generated_at_utc": "2026-10-29T07:14:57+00:00",
+    "generated_at_utc": "2026-10-29T14:01:57+00:00",
     "market_movement": {
       "average_probability_pp": -1.4342,
       "comparable_closing_n": 3,
@@ -129587,16 +129587,16 @@
       "Handicap games": {
         "average_odd": 1.884,
         "losses": 54,
-        "pending": 2,
-        "pending_stake_units": 1.5,
+        "pending": 1,
+        "pending_stake_units": 1,
         "pushes": 4,
-        "roi_pct": 5.044,
-        "settled": 123,
-        "settled_stake_units": 117,
+        "roi_pct": 5.376,
+        "settled": 124,
+        "settled_stake_units": 117.5,
         "total_entries": 129,
-        "units": 5.902,
-        "win_rate_pct": 56.098,
-        "wins": 69,
+        "units": 6.317,
+        "win_rate_pct": 56.452,
+        "wins": 70,
         "yield_pct": null
       },
       "Moneyline": {
@@ -129634,16 +129634,16 @@
       "Underdog": {
         "average_odd": 2.096,
         "losses": 21,
-        "pending": 1,
-        "pending_stake_units": 0.5,
+        "pending": 0,
+        "pending_stake_units": 0,
         "pushes": 1,
-        "roi_pct": 18.811,
-        "settled": 50,
-        "settled_stake_units": 50,
+        "roi_pct": 19.447,
+        "settled": 51,
+        "settled_stake_units": 50.5,
         "total_entries": 52,
-        "units": 9.405,
-        "win_rate_pct": 58,
-        "wins": 29,
+        "units": 9.821,
+        "win_rate_pct": 58.824,
+        "wins": 30,
         "yield_pct": null
       }
     },
@@ -129706,12 +129706,12 @@
     "flat_stake_simulation": {
       "excluded_entries": 0,
       "exclusion_reasons": {},
-      "included_resolved_entries": 174,
-      "net_profit_eur": 86.4,
-      "pending_entries": 2,
-      "pending_exposure_eur": 20,
-      "resolved_stake_eur": 1740,
-      "roi_pct": 4.97,
+      "included_resolved_entries": 175,
+      "net_profit_eur": 94.7,
+      "pending_entries": 1,
+      "pending_exposure_eur": 10,
+      "resolved_stake_eur": 1750,
+      "roi_pct": 5.41,
       "stake_per_entry_eur": 10,
       "status": "AVAILABLE",
       "void_entries": 7
@@ -129757,16 +129757,16 @@
     "summary": {
       "average_odd": 1.948,
       "losses": 76,
-      "pending": 2,
-      "pending_stake_units": 1.5,
+      "pending": 1,
+      "pending_stake_units": 1,
       "pushes": 7,
-      "roi_pct": 5.166,
-      "settled": 167,
-      "settled_stake_units": 161,
+      "roi_pct": 5.407,
+      "settled": 168,
+      "settled_stake_units": 161.5,
       "total_entries": 176,
-      "units": 8.317,
-      "win_rate_pct": 54.491,
-      "wins": 91,
+      "units": 8.732,
+      "win_rate_pct": 54.762,
+      "wins": 92,
       "yield_pct": null
     },
     "underdog_pair_completeness": {
@@ -129950,7 +129950,7 @@
     "distinct_events": 1458,
     "events_with_comparable_closing": 92,
     "events_with_entry_market": 396,
-    "generated_at_utc": "2026-10-29T07:14:56+00:00",
+    "generated_at_utc": "2026-10-29T14:01:57+00:00",
     "market_only": {
       "accuracy_pct": 67.84,
       "brier_score": 0.199463,
@@ -129958,10 +129958,10 @@
       "sample_size": 255
     },
     "market_plus_fenzobot": {
-      "accuracy_pct": 65.54,
-      "brier_score": 0.216121,
-      "log_loss": 0.621096,
-      "sample_size": 708
+      "accuracy_pct": 65.49,
+      "brier_score": 0.216155,
+      "log_loss": 0.621134,
+      "sample_size": 710
     },
     "observations_by_day": [
       {
@@ -130124,16 +130124,16 @@
       "Handicap games": {
         "average_odd": 1.883,
         "losses": 55,
-        "pending": 2,
-        "pending_stake_units": 1.5,
+        "pending": 1,
+        "pending_stake_units": 1,
         "pushes": 5,
-        "roi_pct": 5.51,
-        "settled": 126,
-        "settled_stake_units": 120,
+        "roi_pct": 5.831,
+        "settled": 127,
+        "settled_stake_units": 120.5,
         "total_entries": 133,
-        "units": 6.612,
-        "win_rate_pct": 56.349,
-        "wins": 71,
+        "units": 7.027,
+        "win_rate_pct": 56.693,
+        "wins": 72,
         "yield_pct": null
       },
       "Moneyline": {
@@ -130171,16 +130171,16 @@
       "Underdog": {
         "average_odd": 2.099,
         "losses": 22,
-        "pending": 1,
-        "pending_stake_units": 0.5,
+        "pending": 0,
+        "pending_stake_units": 0,
         "pushes": 1,
-        "roi_pct": 21.603,
-        "settled": 54,
-        "settled_stake_units": 54,
+        "roi_pct": 22.166,
+        "settled": 55,
+        "settled_stake_units": 54.5,
         "total_entries": 56,
-        "units": 11.665,
-        "win_rate_pct": 59.259,
-        "wins": 32,
+        "units": 12.08,
+        "win_rate_pct": 60,
+        "wins": 33,
         "yield_pct": null
       }
     },
@@ -130203,16 +130203,16 @@
       "Primeiras rondas": {
         "average_odd": 1.954,
         "losses": 59,
-        "pending": 2,
-        "pending_stake_units": 1.5,
+        "pending": 1,
+        "pending_stake_units": 1,
         "pushes": 4,
-        "roi_pct": 0.212,
-        "settled": 123,
-        "settled_stake_units": 121,
+        "roi_pct": 0.553,
+        "settled": 124,
+        "settled_stake_units": 121.5,
         "total_entries": 129,
-        "units": 0.257,
-        "win_rate_pct": 52.033,
-        "wins": 64,
+        "units": 0.672,
+        "win_rate_pct": 52.419,
+        "wins": 65,
         "yield_pct": null
       },
       "Qualificação": {
@@ -130250,16 +130250,16 @@
       "Primeiras rondas · Alinhado com Fenzobot": {
         "average_odd": 1.956,
         "losses": 55,
-        "pending": 2,
-        "pending_stake_units": 1.5,
+        "pending": 1,
+        "pending_stake_units": 1,
         "pushes": 3,
-        "roi_pct": 2.98,
-        "settled": 118,
-        "settled_stake_units": 116,
+        "roi_pct": 3.323,
+        "settled": 119,
+        "settled_stake_units": 116.5,
         "total_entries": 123,
-        "units": 3.457,
-        "win_rate_pct": 53.39,
-        "wins": 63,
+        "units": 3.872,
+        "win_rate_pct": 53.782,
+        "wins": 64,
         "yield_pct": null
       },
       "Primeiras rondas · N/D": {
@@ -130296,36 +130296,36 @@
     "flat_stake_projection": {
       "basis": "paper_22bet.summary",
       "label": "Simulação €10 por aposta a partir das unidades do PAPER manual",
-      "net_profit_eur": 94.32000000000001,
-      "pending_entries": 2,
-      "pending_exposure_eur": 15.0,
-      "resolved_stake_eur": 1680.0,
-      "roi_pct": 5.614,
-      "settled_entries": 174,
+      "net_profit_eur": 98.47,
+      "pending_entries": 1,
+      "pending_exposure_eur": 10.0,
+      "resolved_stake_eur": 1685.0,
+      "roi_pct": 5.844,
+      "settled_entries": 175,
       "stake_per_entry_eur": 10.0,
       "status": "AVAILABLE"
     },
     "losses": 79,
-    "pending": 2,
-    "pending_stake_units": 1.5,
+    "pending": 1,
+    "pending_stake_units": 1,
     "pushes": 8,
     "reference_bookmaker": "22Bet",
-    "roi_pct": 5.614,
-    "settled": 174,
-    "settled_stake_units": 168,
+    "roi_pct": 5.844,
+    "settled": 175,
+    "settled_stake_units": 168.5,
     "status": "AVAILABLE",
-    "synced_at_utc": "2026-10-28T07:23:15.329Z",
+    "synced_at_utc": "2026-10-28T11:23:17.986Z",
     "total_entries": 184,
-    "units": 9.432,
-    "win_rate_pct": 54.598,
-    "wins": 95,
+    "units": 9.847,
+    "win_rate_pct": 54.857,
+    "wins": 96,
     "yield_pct": null
   },
   "paper_results_comparison_v1": {
     "change_id": "CHANGE-2026-09-23-051",
     "disclaimer": "Amostras diferentes; comparação descritiva, não prova de desempenho futuro.",
     "green_win_rate_pct": 64.094,
-    "guerra_win_rate_pct": 54.598,
+    "guerra_win_rate_pct": 54.857,
     "profit_is_never_aggregated": true,
     "statement": "Os GREEN têm maior win rate global nesta amostra; o PAPER manual do Guerra apresenta maior ROI e resultado acumulado, com menos apostas.",
     "status": "AVAILABLE"
@@ -130458,7 +130458,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "e8da0a532b93a885c1a9bf5a9d8b4bccedc4fd0b51a457303a83b2a2f577b138",
+  "semantic_fingerprint": "3a45db4d9b6fcae9951efa07b0927822dd25a16e2857eb81ddd28e44ec913790",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 476,
@@ -130503,7 +130503,7 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-29T07:14:57+00:00"
+      "updated_at_utc": "2026-10-29T14:01:57+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
@@ -130512,7 +130512,7 @@
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-29T07:14:56+00:00"
+      "updated_at_utc": "2026-10-29T14:01:57+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
@@ -130520,7 +130520,7 @@
     },
     "paper_22bet": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-28T07:23:15.329Z"
+      "updated_at_utc": "2026-10-28T11:23:17.986Z"
     },
     "paper_technical": {
       "status": "AVAILABLE",
@@ -130540,7 +130540,9 @@
     }
   },
   "system_health": {
-    "alerts": [],
+    "alerts": [
+      "manutenção de resultados: TIMED_OUT"
+    ],
     "latest": {
       "analysis_failed": 0,
       "duration_seconds": 2010.503,
@@ -130632,10 +130634,10 @@
         "timestamp": "2026-10-29T00:03:46+00:00"
       },
       {
-        "status": "HEALTHY",
+        "status": "DEGRADED",
         "timestamp": "2026-10-29T07:14:58+00:00"
       }
     ],
-    "status": "HEALTHY"
+    "status": "DEGRADED"
   }
 }
