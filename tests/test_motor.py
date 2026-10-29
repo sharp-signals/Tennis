@@ -129,6 +129,11 @@ def test_h2h_global_um_jogo_contribui_apenas_com_peso_residual():
 
 
 def test_h2h_zero_verificado_e_factual_sem_inclinar_indice():
+    baseline = _calcular_divergencia(_payload(
+        1.65,
+        2.30,
+        {"ranking": {"lider": "A", "diff": 20}},
+    ))
     r = _calcular_divergencia(_payload(
         1.65,
         2.30,
@@ -155,6 +160,9 @@ def test_h2h_zero_verificado_e_factual_sem_inclinar_indice():
     assert r["fatores_status"]["h2h_piso"]["observacao_confirmada"] is True
     assert not r["fatores_status"]["h2h"].get("peso_efetivo")
     assert not r["fatores_status"]["h2h_piso"].get("peso_efetivo")
+    assert r["n_fatores"] == baseline["n_fatores"]
+    assert r["massa_evidencia"] == baseline["massa_evidencia"]
+    assert r["indice_evidencia_a"] == baseline["indice_evidencia_a"]
 
 
 def test_h2h_falha_de_fonte_continua_indisponivel():
