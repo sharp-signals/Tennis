@@ -12,6 +12,7 @@ from src.pricing import (
     apply_logit_residual,
     calculate_expected_edge,
     de_vig_market_probabilities,
+    evidence_components,
     evidence_probability,
     estimate_market_residual_pricing,
     market_prior_probability,
@@ -281,7 +282,7 @@ class MarketResidualPricingTests(unittest.TestCase):
             sparse_pricing["players"]["a"]["sharp_estimate_high_pct"]
             - sparse_pricing["players"]["a"]["sharp_estimate_low_pct"]
         )
-        self.assertLess(sparse_width, complete_width)
+        self.assertGreater(sparse_width, complete_width)
         self.assertLess(
             sparse_pricing["sharp_estimate_a"],
             complete_pricing["sharp_estimate_a"],
@@ -289,6 +290,43 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertLess(
             sparse_pricing["uncertainty_adjusted_index_a"],
             complete_pricing["uncertainty_adjusted_index_a"],
+        )
+
+    def test_directional_intensity_does_not_masquerade_as_evidence_quality(self):
+        weak_direction = self._divergence(59, factors=10, intensity=1, weight=4)
+        strong_direction = self._divergence(59, factors=10, intensity=3, weight=4)
+        weak = evidence_components(weak_direction, PricingParameters())
+        strong = evidence_components(strong_direction, PricingParameters())
+
+        self.assertEqual(weak["evidence_reliability"], strong["evidence_reliability"])
+        self.assertEqual(weak["uncertainty_score"], strong["uncertainty_score"])
+        self.assertNotEqual(weak["intensity_quality"], strong["intensity_quality"])
+
+    def test_wta_partial_coverage_widens_real_conservative_envelope(self):
+        payload = self._payload(2.15, 1.69)
+        payload["tour"] = "wta"
+        divergence = self._divergence(59, factors=10, intensity=1, weight=4)
+        divergence["evidence_coverage"] = {
+            "coverage_quality": 0.762,
+            "source_reliability": 1.0,
+            "pricing_eligible": True,
+        }
+
+        pricing = self._estimate(payload, divergence)
+        interval_width = (
+            pricing["players"]["a"]["sharp_estimate_high_pct"]
+            - pricing["players"]["a"]["sharp_estimate_low_pct"]
+        )
+
+        self.assertAlmostEqual(pricing["quality_score"], 0.635, places=3)
+        self.assertAlmostEqual(pricing["uncertainty_score"], 0.365, places=3)
+        self.assertGreater(interval_width, 10.0)
+        self.assertGreater(pricing["expected_edge_a"], 0.0)
+        self.assertLess(pricing["conservative_edge_a"], 0.0)
+        self.assertEqual(pricing["candidate_status"], "central_edge_not_confirmed")
+        self.assertEqual(
+            pricing["fair_odd_interval_basis"],
+            "calibration_ci95_x_evidence_identification_envelope",
         )
 
     def test_index_is_not_used_directly_as_probability(self):
@@ -496,6 +534,9 @@ class MarketResidualPricingTests(unittest.TestCase):
             payload, self._divergence(100, factors=4, intensity=3, weight=5)
         )
         self.assertEqual(pricing["evidence_quality"]["source_reliability"], 0.5)
+        self.assertAlmostEqual(
+            pricing["uncertainty_score"], 1.0 - pricing["quality_score"]
+        )
         self.assertFalse(pricing["evidence_quality"]["source_gate_passed"])
         self.assertFalse(pricing["quality_gate_passed"])
         self.assertIsNone(pricing["candidate_side"])

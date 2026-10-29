@@ -4475,7 +4475,7 @@ def _mod_market_residual_pricing(payload):
             '<div class="pricing-metrics">'
             f'<div><span>Market probability</span><b>{fmt(data.get("market_probability_pct"), 1, suffix="%")}</b></div>'
             f'<div><span>Probabilidade Fenzobot</span><b>{fmt(data.get("sharp_estimate_pct"), 1, suffix="%")}</b></div>'
-            f'<div><span>{"Faixa estrutural" if pricing.get("probability_basis") == "atp_main_hierarchical_global_surface_elo" else "Intervalo histórico"}</span><b>{fmt(data.get("sharp_estimate_low_pct"), 1, suffix="%")}–{fmt(data.get("sharp_estimate_high_pct"), 1, suffix="%")}</b></div>'
+            f'<div><span>{"Faixa estrutural conservadora" if pricing.get("probability_basis") == "atp_main_hierarchical_global_surface_elo" else "Faixa conservadora da evidência"}</span><b>{fmt(data.get("sharp_estimate_low_pct"), 1, suffix="%")}–{fmt(data.get("sharp_estimate_high_pct"), 1, suffix="%")}</b></div>'
             f'<div><span>Diferença vs mercado</span><b>{fmt(data.get("adjustment_pp"), 1, signed=True, suffix=" p.p.")}</b></div>'
             f'<div><span>Fair odd central</span><b>{fmt(data.get("fair_odd"), 2)}</b></div>'
             f'<div><span>Faixa de fair odd</span><b>{fmt(data.get("fair_odd_low"), 2)}–{fmt(data.get("fair_odd_high"), 2)}</b></div>'
@@ -4581,10 +4581,14 @@ def _mod_market_residual_pricing(payload):
             "comparação posterior com a odd observada"
         )
         probability_explanation = (
-            f'<p><b>Confiança direcional:</b> {quality_text}; '
+            f'<p><b>Fiabilidade da evidência:</b> {quality_text}; '
             f'<b>beta histórico:</b> {fmt(beta, 3)}. A probabilidade própria resulta de '
-            'logistic(beta × força assinada do índice × confiança). O mercado não entra '
-            'nesta conta.</p>'
+            'logistic(beta × força assinada do índice × fiabilidade). A força direcional '
+            'é mostrada separadamente e não volta a penalizar a qualidade. O mercado não '
+            'entra nesta conta.</p>'
+            '<p><b>Faixa conservadora:</b> combina o IC 95% do beta com um envelope em que '
+            'a parcela de evidência realmente não observada pode favorecer qualquer lado. '
+            'Não é a antiga faixa de mera sensibilidade ao beta.</p>'
         )
     trace = (
         '<details class="pricing-trace"><summary>Como este pricing foi calculado</summary>'
@@ -4610,9 +4614,9 @@ def _mod_market_residual_pricing(payload):
         f'<div class="pricing-candidate{candidate_class}">{_esc(candidate_label)}</div>'
         '<div class="pricing-audit">'
         f'<span>Validade da fair odd <b>{_esc(validity)}</b></span>'
-        f'<span>Confiança direcional <b>{quality_text}</b></span>'
-        f'<span>Consenso dos fatores ativos <b>{consensus_text}</b></span>'
-        f'<span>Incerteza total <b>{uncertainty_text}</b></span>'
+        f'<span>Fiabilidade da evidência <b>{quality_text}</b></span>'
+        f'<span>Força direcional dos fatores <b>{consensus_text}</b></span>'
+        f'<span>Evidência por resolver <b>{uncertainty_text}</b></span>'
         f'<span><b>{int(evidence.get("factor_count") or 0)}</b> fatores</span>'
         f'<span>Massa efetiva <b>{fmt(evidence.get("effective_mass"), 1)}</b></span>'
         f'<span>Cobertura do pricing <b>{coverage_pct:.0f}%</b></span>'
