@@ -4567,6 +4567,14 @@ def _mod_market_residual_pricing(payload):
             'deslocam a probabilidade central enquanto não melhorarem a validação temporal. '
             'O mercado não entra nesta conta; só é consultado depois para calcular edge.</p>'
         )
+        if pricing.get("neutral_factor_signal"):
+            probability_explanation += (
+                '<p><b>Fatores ativos equilibrados:</b> o índice de fatores não escolheu '
+                'um lado, mas isso não apaga a probabilidade estrutural obtida do histórico '
+                'bilateral ATP. Se a odd de mercado superar a fair odd conservadora, a '
+                'discrepância é mostrada como oportunidade SHADOW para revisão humana; '
+                'não cria PAPER automático.</p>'
+            )
     else:
         pricing_path = (
             "Fatores ponderados × qualidade → probabilidade calibrada no histórico → "

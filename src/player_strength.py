@@ -38,6 +38,31 @@ def normalize_player_name(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", " ", normalized.casefold()).strip()
 
 
+def _resolve_history_name(
+    requested: str, available_names: Mapping[str, Any]
+) -> tuple[str, str]:
+    """Resolve variantes com nomes intermédios sem criar aliases ambíguos.
+
+    A feed operacional pode fornecer ``Taylor Fritz`` enquanto o arquivo
+    histórico guarda ``Taylor Harry Fritz``. Só aceitamos a variante estrutural
+    quando os tokens de um nome estão contidos no outro e existe exatamente um
+    candidato no universo histórico daquele dia.
+    """
+    if requested in available_names:
+        return requested, "EXACT"
+    requested_tokens = set(requested.split())
+    if len(requested_tokens) < 2:
+        return requested, "UNRESOLVED"
+    candidates = []
+    for candidate in available_names:
+        candidate_tokens = set(str(candidate).split())
+        if requested_tokens <= candidate_tokens or candidate_tokens <= requested_tokens:
+            candidates.append(str(candidate))
+    if len(candidates) == 1:
+        return candidates[0], "UNIQUE_TOKEN_CONTAINMENT"
+    return requested, "AMBIGUOUS" if candidates else "UNRESOLVED"
+
+
 def normalize_surface(value: Any) -> str:
     raw = unicodedata.normalize("NFKD", str(value or ""))
     normalized = "".join(
@@ -162,6 +187,12 @@ def atp_main_strength_features(payload: Mapping[str, Any]) -> dict[str, Any]:
         return {"available": False, "reason": "PLAYER_OR_HISTORY_UNAVAILABLE"}
     cutoff = _analysis_cutoff(payload)
     ratings = _ratings_before(cutoff)
+    player_a, resolution_a = _resolve_history_name(
+        player_a, ratings["global_matches"]
+    )
+    player_b, resolution_b = _resolve_history_name(
+        player_b, ratings["global_matches"]
+    )
     matches_a = int(ratings["global_matches"].get(player_a, 0))
     matches_b = int(ratings["global_matches"].get(player_b, 0))
     if min(matches_a, matches_b) < 5:
@@ -199,6 +230,10 @@ def atp_main_strength_features(payload: Mapping[str, Any]) -> dict[str, Any]:
         "version": ATP_ELO_VERSION,
         "cutoff_date": cutoff.isoformat(),
         "history_scope": "ATP_MAIN_ONLY",
+        "resolved_player_a": player_a,
+        "resolved_player_b": player_b,
+        "name_resolution_a": resolution_a,
+        "name_resolution_b": resolution_b,
         "processed_matches": ratings["processed_matches"],
         "global_logit": global_logit,
         "surface_logit": surface_logit,

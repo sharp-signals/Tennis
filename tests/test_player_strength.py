@@ -62,6 +62,29 @@ class PlayerStrengthTests(unittest.TestCase):
         self.assertGreater(result["global_logit"], 0)
         self.assertGreater(result["surface_logit"], 0)
 
+    def test_unique_middle_name_variant_resolves_without_hardcoded_alias(self):
+        counts = {
+            "taylor harry fritz": 393,
+            "denis shapovalov": 214,
+            "other player": 50,
+        }
+        resolved, basis = player_strength._resolve_history_name(
+            "taylor fritz", counts
+        )
+        self.assertEqual(resolved, "taylor harry fritz")
+        self.assertEqual(basis, "UNIQUE_TOKEN_CONTAINMENT")
+
+    def test_ambiguous_structural_name_variant_fails_closed(self):
+        counts = {
+            "alexander john smith": 20,
+            "alexander paul smith": 20,
+        }
+        resolved, basis = player_strength._resolve_history_name(
+            "alexander smith", counts
+        )
+        self.assertEqual(resolved, "alexander smith")
+        self.assertEqual(basis, "AMBIGUOUS")
+
 
 if __name__ == "__main__":
     unittest.main()

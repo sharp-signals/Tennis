@@ -328,6 +328,31 @@ class MarketResidualPricingTests(unittest.TestCase):
         self.assertEqual(pricing["shadow_classification"], "NEUTRAL_DIRECTIONAL_SIGNAL")
         self.assertIsNone(pricing["shadow_observation_side"])
 
+    def test_neutral_factors_do_not_hide_structural_value(self):
+        structural = {
+            "available": True,
+            "global_logit": 0.40,
+            "surface_logit": 0.40,
+            "strength_logit": 0.40,
+            "surface_weight": 0.60,
+            "history_scope": "ATP_MAIN_ONLY",
+        }
+        with patch("src.pricing.atp_main_strength_features", return_value=structural):
+            pricing = self._estimate(
+                self._payload(1.90, 1.90),
+                self._divergence(50, factors=14, intensity=0, weight=3.0),
+            )
+        self.assertTrue(pricing["structural_probability_available"])
+        self.assertTrue(pricing["neutral_factor_signal"])
+        self.assertTrue(pricing["quality_gate_passed"])
+        self.assertEqual(pricing["shadow_observation_side"], "a")
+        self.assertEqual(
+            pricing["shadow_classification"], "SHADOW_POSITIVE_UNVALIDATED"
+        )
+        self.assertIn(
+            "STRUCTURAL_VALUE_WITH_NEUTRAL_FACTORS", pricing["reason_codes"]
+        )
+
     def test_expected_edge_explicit_example(self):
         self.assertAlmostEqual(calculate_expected_edge(0.442, 2.44), 0.07848, places=5)
         transformed = apply_logit_residual(0.41, 0.1309163)

@@ -277,7 +277,14 @@ def build_decision(
         }
 
     pricing = _mapping(pricing)
-    side = fenzobot_side(payload, divergence)
+    pricing_observation_side = pricing.get("shadow_observation_side") or pricing.get(
+        "central_observation_side"
+    )
+    side = (
+        str(pricing_observation_side)
+        if pricing_observation_side in {"a", "b"}
+        else fenzobot_side(payload, divergence)
+    )
     if not pricing.get("available"):
         reason = pricing.get("reason") or "edge não calculável para o lado Fenzobot"
         return {**base, "state": PRICING_UNAVAILABLE, "reason": reason}
@@ -386,10 +393,18 @@ def build_decision(
         ))
         and not _is_experimental_tier(payload)
     ):
+        structural_neutral_value = "STRUCTURAL_VALUE_WITH_NEUTRAL_FACTORS" in set(
+            pricing.get("reason_codes") or []
+        )
         return {
             **base,
             "state": PRICING_SHADOW,
-            "reason": "fair odd independente calibrada ainda em SHADOW; sem PAPER automático",
+            "reason": (
+                "valor estrutural apesar de fatores equilibrados; fair odd independente "
+                "ainda em SHADOW, sem PAPER automático"
+                if structural_neutral_value
+                else "fair odd independente calibrada ainda em SHADOW; sem PAPER automático"
+            ),
             "side": side,
             "player": payload.get(f"player_{side}"),
             "fenzobot_index": index,

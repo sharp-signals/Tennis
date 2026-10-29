@@ -279,6 +279,46 @@ class ReportStateTests(unittest.TestCase):
 
 
 class ReportRenderingTests(unittest.TestCase):
+    def test_structural_value_with_neutral_factors_is_explained_as_shadow(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "pricing": {
+                "available": True,
+                "probability_basis": "atp_main_hierarchical_global_surface_elo",
+                "neutral_factor_signal": True,
+                "candidate_label": "EDGE SHADOW POSITIVO +7.0%",
+                "model_version": "hierarchical-surface-elo-v4.2",
+                "structural_prior": {
+                    "available": True, "rating_a": 1700, "rating_b": 1600,
+                    "matches_a": 100, "matches_b": 90,
+                    "surface_rating_a": 1680, "surface_rating_b": 1610,
+                    "surface_matches_a": 60, "surface_matches_b": 50,
+                    "surface_weight": 0.60,
+                },
+                "players": {
+                    "a": {"market_probability_pct": 50, "sharp_estimate_pct": 60,
+                          "sharp_estimate_low_pct": 55, "sharp_estimate_high_pct": 65,
+                          "adjustment_pp": 10, "fair_odd": 1.67,
+                          "fair_odd_low": 1.54, "fair_odd_high": 1.82,
+                          "market_odd": 1.90, "expected_edge_pct": 14,
+                          "conservative_edge_pct": 4.5},
+                    "b": {"market_probability_pct": 50, "sharp_estimate_pct": 40,
+                          "sharp_estimate_low_pct": 35, "sharp_estimate_high_pct": 45,
+                          "adjustment_pp": -10, "fair_odd": 2.50,
+                          "fair_odd_low": 2.22, "fair_odd_high": 2.86,
+                          "market_odd": 1.90, "expected_edge_pct": -24,
+                          "conservative_edge_pct": -33.5},
+                },
+                "evidence_quality": {"factor_count": 12, "effective_mass": 30},
+            },
+        }
+
+        html = report_html._mod_market_residual_pricing(payload)
+
+        self.assertIn("Fatores ativos equilibrados", html)
+        self.assertIn("oportunidade SHADOW para revisão humana", html)
+        self.assertIn("não cria PAPER automático", html)
+
     def test_shadow_observation_formulates_manual_entry_without_paper_promotion(self):
         payload = {
             "player_a": "A", "player_b": "B", "match_format": "bo3",

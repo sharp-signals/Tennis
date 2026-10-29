@@ -49,8 +49,8 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "hierarchical-surface-elo-v4.1"
-CALIBRATION_VERSION = "hierarchical-surface-elo-calibration-v4.1"
+MODEL_VERSION = "hierarchical-surface-elo-v4.2"
+CALIBRATION_VERSION = "hierarchical-surface-elo-calibration-v4.2"
 CALIBRATION_STATUS = "HISTORICALLY_CALIBRATED_SHADOW"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
@@ -65,7 +65,7 @@ METHOD = (
     "a calibração histórica própria. edge = P_fenzobot × odd_mercado - 1. "
     "O mercado não participa na fair probability."
 )
-FEATURE_CONTRACT_VERSION = "pricing-features-v4.1"
+FEATURE_CONTRACT_VERSION = "pricing-features-v4.2"
 
 
 @dataclass(frozen=True)
@@ -608,15 +608,32 @@ def estimate_market_residual_pricing(
     anomaly_gate_passed = anomaly_gap_observed_pp <= anomaly_gap_pp
 
     serious_failure = _has_serious_data_failure(payload)
-    quality_gate_passed = (
-        factor_count >= parameters.minimum_factors
-        and quality >= parameters.minimum_quality
-        and not serious_failure
-        and coverage_gate_passed
-        and source_gate_passed
+    structural_probability_available = bool(
+        isinstance(structural_prior, Mapping)
+        and structural_prior.get("available")
+        and probability_basis == "atp_main_hierarchical_global_surface_elo"
     )
+    # No ATP estrutural, a direção central vem do histórico Elo e continua
+    # economicamente utilizável mesmo quando os fatores ativos empatam. Um
+    # empate dos fatores não pode apagar uma discrepância de preço calculada
+    # por um prior independente com amostra bilateral suficiente.
+    if structural_probability_available:
+        quality_gate_passed = (
+            factor_count >= parameters.minimum_factors
+            and not serious_failure
+            and coverage_gate_passed
+            and source_gate_passed
+        )
+    else:
+        quality_gate_passed = (
+            factor_count >= parameters.minimum_factors
+            and quality >= parameters.minimum_quality
+            and not serious_failure
+            and coverage_gate_passed
+            and source_gate_passed
+        )
     neutral_signal = intensity <= 0
-    if neutral_signal:
+    if neutral_signal and not structural_probability_available:
         fair_odd_validity = "NEUTRAL_INDICATIVE"
     elif not anomaly_gate_passed:
         fair_odd_validity = "OUT_OF_CALIBRATION"
@@ -631,7 +648,9 @@ def estimate_market_residual_pricing(
     # O limiar historico de 5% deixa de decidir PAPER: qualquer edge > 0 e
     # elegivel depois do contrato de validade pre-live. O gate abaixo fica
     # apenas como diagnostico de qualidade do pricing.
-    if neutral_signal:
+    if neutral_signal and structural_probability_available:
+        fenzobot_side = mathematical_side
+    elif neutral_signal:
         fenzobot_side = None
     else:
         fenzobot_side = "a" if index_a > 50 else "b" if index_a < 50 else None
@@ -658,13 +677,15 @@ def estimate_market_residual_pricing(
     reason_codes: list[str] = []
     promotion = promotion_gate()
     candidate_side = observation_side if PROMOTION_APPROVED else None
-    if neutral_signal:
+    if neutral_signal and not structural_probability_available:
         shadow_classification = "NEUTRAL_DIRECTIONAL_SIGNAL"
         reason_codes.append("NEUTRAL_DIRECTIONAL_SIGNAL")
         candidate_status = "neutral_directional_signal"
         visible_label = "PRICING NEUTRO — FAIR ODD CENTRAL 2.00 · SEM ENTRADA"
     elif observation_side and not PROMOTION_APPROVED:
         shadow_classification = "SHADOW_POSITIVE_UNVALIDATED"
+        if neutral_signal:
+            reason_codes.append("STRUCTURAL_VALUE_WITH_NEUTRAL_FACTORS")
         reason_codes.append("WALK_FORWARD_PROMOTION_NOT_APPROVED")
         candidate_status = "shadow_positive_unvalidated"
         visible_label = (
@@ -787,6 +808,8 @@ def estimate_market_residual_pricing(
         "uncertainty_score": round(float(components["uncertainty_score"]), 6),
         "uncertainty_adjusted_index_a": round(50.0 + (float(index_a) - 50.0) * quality, 3),
         "quality_gate_passed": quality_gate_passed,
+        "structural_probability_available": structural_probability_available,
+        "neutral_factor_signal": neutral_signal,
         "evidence_quality": {
             "factor_count": factor_count,
             "effective_mass": round(effective_mass, 3),
