@@ -107,7 +107,7 @@ def _quality(divergence: Mapping[str, Any], parameters: PricingParameters) -> tu
     components = evidence_components(divergence, parameters)
     if not components["coverage_gate_passed"]:
         return float(components["index_a"]), 0.0
-    return float(components["index_a"]), float(components["directional_reliability"])
+    return float(components["index_a"]), float(components["evidence_reliability"])
 
 
 def load_observations(path: Path) -> tuple[list[Observation], dict[str, int]]:

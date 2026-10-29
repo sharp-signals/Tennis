@@ -98,7 +98,7 @@ def build_report(path: Path) -> dict[str, Any]:
         "model": "factor-calibrated-v3",
         "source": path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path),
         "deduplication": "earliest pre-match snapshot per canonical match identity",
-        "predictor": "pricing-features-v3:signed_strength_x_directional_reliability",
+        "predictor": "pricing-features-v4.3:signed_strength_x_evidence_reliability",
         "market_role": "comparison_and_out_of_distribution_check_only",
         "exclusions": exclusions,
         "pooled": pooled,

@@ -319,6 +319,39 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("oportunidade SHADOW para revisão humana", html)
         self.assertIn("não cria PAPER automático", html)
 
+    def test_pricing_audit_separates_evidence_reliability_from_direction(self):
+        payload = {
+            "player_a": "A", "player_b": "B",
+            "pricing": {
+                "available": True,
+                "probability_basis": "independent_factor_logistic_calibration",
+                "quality_score": 0.64,
+                "active_consensus_score": 0.18,
+                "uncertainty_score": 0.36,
+                "candidate_label": "EDGE CENTRAL",
+                "residual_calibration": {"beta": 1.24},
+                "players": {
+                    "a": {"sharp_estimate_pct": 53, "sharp_estimate_low_pct": 43,
+                          "sharp_estimate_high_pct": 64, "fair_odd": 1.89,
+                          "fair_odd_low": 1.56, "fair_odd_high": 2.33},
+                    "b": {"sharp_estimate_pct": 47, "sharp_estimate_low_pct": 36,
+                          "sharp_estimate_high_pct": 57, "fair_odd": 2.13,
+                          "fair_odd_low": 1.75, "fair_odd_high": 2.78},
+                },
+                "evidence_quality": {"factor_count": 10, "effective_mass": 39.5,
+                                     "coverage_quality": 0.76,
+                                     "source_reliability": 1.0},
+            },
+        }
+
+        html = report_html._mod_market_residual_pricing(payload)
+
+        self.assertIn("Fiabilidade da evidência", html)
+        self.assertIn("Força direcional dos fatores", html)
+        self.assertIn("Evidência por resolver", html)
+        self.assertIn("Faixa conservadora da evidência", html)
+        self.assertNotIn("Confiança direcional", html)
+
     def test_shadow_observation_formulates_manual_entry_without_paper_promotion(self):
         payload = {
             "player_a": "A", "player_b": "B", "match_format": "bo3",

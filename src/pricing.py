@@ -49,8 +49,8 @@ except ImportError:  # pragma: no cover - compatibilidade com imports diretos
     )
 
 
-MODEL_VERSION = "hierarchical-surface-elo-v4.2"
-CALIBRATION_VERSION = "hierarchical-surface-elo-calibration-v4.2"
+MODEL_VERSION = "hierarchical-surface-elo-v4.3"
+CALIBRATION_VERSION = "hierarchical-surface-elo-calibration-v4.3"
 CALIBRATION_STATUS = "HISTORICALLY_CALIBRATED_SHADOW"
 VALIDATION_LABEL = "EXPERIMENTAL — EM VALIDAÇÃO"
 DISCLAIMER = (
@@ -63,9 +63,11 @@ METHOD = (
     "Challengers; os fatores entram na faixa de sensibilidade e na decisão, não "
     "distorcem a fair odd central sem validação temporal positiva. Restantes segmentos usam "
     "a calibração histórica própria. edge = P_fenzobot × odd_mercado - 1. "
-    "O mercado não participa na fair probability."
+    "A fiabilidade da evidência é separada da força direcional. A faixa conservadora "
+    "combina o IC da calibração com a evidência realmente por resolver. O mercado não "
+    "participa na fair probability."
 )
-FEATURE_CONTRACT_VERSION = "pricing-features-v4.2"
+FEATURE_CONTRACT_VERSION = "pricing-features-v4.3"
 
 
 @dataclass(frozen=True)
@@ -82,25 +84,27 @@ class PricingParameters:
     minimum_quality: float = PRICING_MIN_QUALITY
     full_quality_factors: int = PRICING_FULL_QUALITY_FACTORS
     full_quality_mass: float = PRICING_FULL_QUALITY_MASS
-    # MLE e IC 95% calculados em 1 078 partidas canónicas liquidadas. O limite
-    # inferior produz o edge conservador; o central produz a fair odd visível.
+    # Os coeficientes centrais v4.2 são preservados: no holdout cronológico do
+    # novo preditor superaram o refit in-sample v4.3 nos três segmentos. Os
+    # limites abaixo vêm do IC 95% do refit v4.3 e entram apenas no envelope de
+    # sensibilidade, juntamente com o coeficiente central selecionado.
     atp_beta: float = 1.00911
-    atp_beta_low: float = 0.63706
-    atp_beta_high: float = 1.38116
+    atp_beta_low: float = 1.108728
+    atp_beta_high: float = 2.089179
     wta_beta: float = 1.24198
-    wta_beta_low: float = 0.85680
-    wta_beta_high: float = 1.62715
+    wta_beta_low: float = 1.293781
+    wta_beta_high: float = 2.324701
     challenger_beta: float = 0.80537
-    challenger_beta_low: float = 0.0
-    challenger_beta_high: float = 1.67285
+    challenger_beta_low: float = 0.072019
+    challenger_beta_high: float = 2.193206
     # Sensibilidade contextual estimada com fatores ajustados pela qualidade.
     # No teste temporal, deslocar a probabilidade central piorou o proper score;
     # por isso este coeficiente só participa na faixa de sensibilidade.
     atp_factor_sensitivity_coefficient: float = 0.26299783260258675
     # Percentil 95 da diferença histórica |P_fenzobot - P_mercado sem margem|.
-    atp_anomaly_gap_pp: float = 27.93
-    wta_anomaly_gap_pp: float = 32.62
-    challenger_anomaly_gap_pp: float = 37.71
+    atp_anomaly_gap_pp: float = 27.21
+    wta_anomaly_gap_pp: float = 30.06
+    challenger_anomaly_gap_pp: float = 35.53
 
 
 def _configuration_fingerprint(
@@ -112,6 +116,11 @@ def _configuration_fingerprint(
         "model_version": MODEL_VERSION,
         "parameters": asdict(parameters),
         "intensity_quality": {"0": 0.0, "1": 0.50, "2": 0.75, "3": 1.0},
+        "evidence_reliability": (
+            "coverage_x_source_x_factor_mass_x_finite_sample; "
+            "directional_intensity_excluded"
+        ),
+        "interval_method": "calibration_ci_x_partial_identification_envelope",
         "probability_source": "settled_pre_match_factor_snapshots",
         "market_role": "edge_and_anomaly_check_only",
         "calibration_version": CALIBRATION_VERSION,
@@ -387,6 +396,9 @@ def evidence_components(divergence: Mapping[str, Any] | None,
     factor_quality = min(1.0, factor_count / max(1, parameters.full_quality_factors))
     mass_quality = (min(1.0, effective_mass / parameters.full_quality_mass)
                     if effective_mass > 0 and parameters.full_quality_mass > 0 else factor_quality)
+    # A intensidade descreve a força/direção do confronto; não descreve se os
+    # dados foram observados com fiabilidade. Mantê-la separada evita contar a
+    # mesma proximidade a 50/50 no índice e, novamente, na qualidade.
     intensity_quality = (0.0, 0.50, 0.75, 1.0)[intensity]
     (coverage_quality, source_reliability, coverage_gate, family_coverage,
      weighted_coverage) = _coverage_values(divergence)
@@ -394,7 +406,7 @@ def evidence_components(divergence: Mapping[str, Any] | None,
     # and sparse factor mass increase uncertainty instead of disappearing.
     finite_sample_reliability = factor_count / (factor_count + 2.0) if factor_count else 0.0
     coverage_score = min(factor_quality, mass_quality) * coverage_quality * source_reliability
-    directional_reliability = coverage_score * intensity_quality * finite_sample_reliability
+    evidence_reliability = coverage_score * finite_sample_reliability
     return {"index_a": index_a, "factor_count": factor_count, "intensity": intensity,
             "effective_mass": effective_mass, "signed_strength": signed_strength,
             "factor_quality": factor_quality, "mass_quality": mass_quality,
@@ -404,8 +416,11 @@ def evidence_components(divergence: Mapping[str, Any] | None,
             "source_reliability": source_reliability, "coverage_gate_passed": coverage_gate,
             "finite_sample_reliability": finite_sample_reliability,
             "coverage_score": coverage_score,
-            "directional_reliability": directional_reliability,
-            "uncertainty_score": 1.0 - directional_reliability}
+            "evidence_reliability": evidence_reliability,
+            # Alias temporário para consumidores históricos. Desde v4.3 este
+            # valor já não incorpora a intensidade direcional.
+            "directional_reliability": evidence_reliability,
+            "uncertainty_score": 1.0 - evidence_reliability}
 
 
 def _unavailable(
@@ -472,15 +487,18 @@ def estimate_market_residual_pricing(
     intensity_quality = float(components["intensity_quality"])
     coverage_quality, source_reliability = float(components["coverage_quality"]), float(components["source_reliability"])
     coverage_gate_passed = bool(components["coverage_gate_passed"])
-    internal_quality = min(factor_quality, mass_quality, intensity_quality)
+    internal_quality = min(factor_quality, mass_quality)
     identity_warning = _has_identity_resolution_warning(payload)
     if identity_warning:
         source_reliability = min(source_reliability, 0.5)
     source_gate_passed = not identity_warning and source_reliability >= 0.75
-    quality = float(components["directional_reliability"])
+    quality = float(components["evidence_reliability"])
+    coverage_score = float(components["coverage_score"])
     if identity_warning:
         original_source = float(components["source_reliability"])
-        quality *= source_reliability / original_source if original_source > 0 else 0.0
+        source_ratio = source_reliability / original_source if original_source > 0 else 0.0
+        quality *= source_ratio
+        coverage_score *= source_ratio
     tier = str(payload.get("tier") or "").casefold()
     tour = str(payload.get("tour") or "").casefold()
     if experimental_challenger_quote or "challenger" in tier:
@@ -559,8 +577,18 @@ def estimate_market_residual_pricing(
             "candidate_threshold_pct": 0.0, "disclaimer": DISCLAIMER,
         }
     residual_predictor = signed_strength * quality
+    # Faixa de identificação conservadora: a fração de evidência que não foi
+    # observada/confirmada pode, no pior caso, apontar para qualquer lado. Não
+    # é um IC probabilístico inventado; é um envelope auditável determinado
+    # diretamente pela fiabilidade observada.
+    # Apenas cobertura/fonte realmente não observadas podem apontar para o
+    # lado oposto no envelope. O shrinkage de amostra já atua na estimativa
+    # central e não volta a ser contado como massa factual em falta.
+    unresolved_evidence = 1.0 - coverage_score
+    evidence_predictor_low = max(-1.0, residual_predictor - unresolved_evidence)
+    evidence_predictor_high = min(1.0, residual_predictor + unresolved_evidence)
     probability_basis = "independent_factor_logistic_calibration"
-    interval_basis = "historical_beta_ci95"
+    interval_basis = "calibration_ci95_x_evidence_identification_envelope"
     if calibration_segment == "atp":
         structural_prior = atp_main_strength_features(payload)
     if isinstance(structural_prior, Mapping) and structural_prior.get("available"):
@@ -580,27 +608,48 @@ def estimate_market_residual_pricing(
             structural_logit
             + parameters.atp_factor_sensitivity_coefficient * residual_predictor
         )
+        factor_scenario_low_logit = (
+            structural_logit
+            + parameters.atp_factor_sensitivity_coefficient * evidence_predictor_low
+        )
+        factor_scenario_high_logit = (
+            structural_logit
+            + parameters.atp_factor_sensitivity_coefficient * evidence_predictor_high
+        )
         factor_sensitivity = {
             "coefficient": parameters.atp_factor_sensitivity_coefficient,
             "quality_adjusted_predictor": residual_predictor,
+            "evidence_predictor_low": evidence_predictor_low,
+            "evidence_predictor_high": evidence_predictor_high,
             "scenario_logit": factor_scenario_logit,
             "scenario_probability_a": _logistic(factor_scenario_logit),
             "central_probability_changed": False,
         }
-        scenario_logits = [structural_logit, global_logit, factor_scenario_logit]
+        scenario_logits = [
+            structural_logit,
+            global_logit,
+            factor_scenario_logit,
+            factor_scenario_low_logit,
+            factor_scenario_high_logit,
+        ]
         if float(structural_prior.get("surface_weight") or 0.0) >= 0.5:
             scenario_logits.append(surface_logit)
         interval_a = sorted(_logistic(value) for value in scenario_logits)
         residual_predictor = structural_logit
         probability_basis = "atp_main_hierarchical_global_surface_elo"
-        interval_basis = "structural_global_surface_factor_sensitivity_range"
+        interval_basis = "structural_global_surface_evidence_envelope"
     else:
         sharp_a = calibrated_factor_probability(residual_predictor, beta)
         model_logit = beta * residual_predictor
-        interval_a = sorted((
-            calibrated_factor_probability(residual_predictor, beta_low),
-            calibrated_factor_probability(residual_predictor, beta_high),
-        ))
+        interval_a = sorted(
+            calibrated_factor_probability(predictor, coefficient)
+            for predictor in (
+                evidence_predictor_low,
+                residual_predictor,
+                evidence_predictor_high,
+            )
+            for coefficient in (beta_low, beta, beta_high)
+        )
     sharp_a_low = max(0.01, interval_a[0])
     sharp_a_high = min(0.99, interval_a[-1])
     sharp_b = 1.0 - sharp_a
@@ -812,8 +861,9 @@ def estimate_market_residual_pricing(
         },
         "quality_score": round(quality, 6),
         "active_consensus_score": round(abs(signed_strength), 6),
-        "coverage_score": round(float(components["coverage_score"]), 6),
-        "uncertainty_score": round(float(components["uncertainty_score"]), 6),
+        "coverage_score": round(coverage_score, 6),
+        "evidence_reliability": round(quality, 6),
+        "uncertainty_score": round(1.0 - quality, 6),
         "uncertainty_adjusted_index_a": round(50.0 + (float(index_a) - 50.0) * quality, 3),
         "quality_gate_passed": quality_gate_passed,
         "structural_probability_available": structural_probability_available,
@@ -824,6 +874,8 @@ def estimate_market_residual_pricing(
             "factor_quality": round(factor_quality, 6),
             "mass_quality": round(mass_quality, 6),
             "intensity_quality": intensity_quality,
+            "directional_intensity": intensity_quality,
+            "evidence_reliability": round(quality, 6),
             "internal_quality": round(internal_quality, 6),
             "coverage_quality": round(coverage_quality, 6),
             "family_coverage_quality": round(
