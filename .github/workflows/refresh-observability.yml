@@ -26,7 +26,7 @@ jobs:
     # deliberately offline, but can exceed ten minutes as the history grows.
     # Leave enough room to publish a completed, atomic dashboard rather than
     # cancelling it after the expensive rebuild has already happened.
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       # Never execute code or artifacts from a PR or from the triggering ref.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

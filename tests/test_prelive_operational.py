@@ -221,6 +221,33 @@ class PreliveOperationalContractTests(unittest.TestCase):
         self.assertIn("50/50", decision["reason"])
         self.assertFalse(decision["paper_eligible"])
 
+    def test_structural_shadow_value_can_select_opposite_side_to_factor_index(self):
+        divergence = self.divergence()
+        divergence.update({"indice_evidencia_a": 54, "indice_evidencia_b": 46})
+        pricing = self.pricing(-30.0)
+        pricing.update({
+            "model_version": "hierarchical-surface-elo-v4.2",
+            "economic_estimate_available": True,
+            "shadow_classification": "SHADOW_POSITIVE_UNVALIDATED",
+            "shadow_observation_side": "b",
+            "reason_codes": ["STRUCTURAL_VALUE_WITH_NEUTRAL_FACTORS"],
+        })
+        pricing["players"]["b"].update({
+            "expected_edge_pct": 50.0,
+            "conservative_edge_pct": 30.0,
+            "market_odd": 3.0,
+            "fair_odd": 2.0,
+            "sharp_estimate_pct": 50.0,
+        })
+        decision = build_decision(
+            self.payload(), divergence, pricing, self.assessment()
+        )
+        self.assertEqual(decision["state"], PRICING_SHADOW)
+        self.assertEqual(decision["side"], "b")
+        self.assertEqual(decision["player"], "Beta Two")
+        self.assertEqual(decision["expected_edge_pct"], 50.0)
+        self.assertFalse(decision["paper_eligible"])
+
     def test_edge_minus_point_one_is_excluded(self):
         decision = self.decision(-0.1)
         self.assertEqual(decision["state"], EDGE_NEGATIVE)

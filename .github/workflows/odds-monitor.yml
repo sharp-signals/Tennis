@@ -22,7 +22,10 @@ jobs:
   monitor-odds:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Este workflow só recolhe e preserva observações. As vistas pesadas são
+    # reconstruídas pelo workflow dedicado de observabilidade, evitando que a
+    # mesma leitura integral do ledger seja repetida quatro vezes por dia.
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
@@ -68,22 +71,6 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "chore: preservar observações SHADOW de odds [skip ci]"
             FENZOBOT_WRITER_PROFILE=odds-source bash scripts/publish-generated-changes.sh "chore: preservar observações SHADOW de odds"
-          fi
-
-      - name: Atualizar vistas derivadas sem aquisição
-        run: python -m scripts.refresh_observability
-        continue-on-error: true
-
-      - name: Persistir observações e telemetria
-        run: |
-          git config user.name "tennis-bot"
-          git config user.email "actions@github.com"
-          python scripts/stage_generated_outputs.py --profile odds-derived
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: atualizar histórico SHADOW de odds [skip ci]"
-            FENZOBOT_WRITER_PROFILE=odds-derived bash scripts/publish-generated-changes.sh "chore: atualizar histórico SHADOW de odds"
-          else
-            echo "Sem novas observações de odds a persistir."
           fi
 
       - name: Preservar recuperação de publicação

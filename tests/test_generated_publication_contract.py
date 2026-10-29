@@ -64,11 +64,10 @@ class GeneratedPublicationContractTests(unittest.TestCase):
                 ),
             },
             "odds-monitor.yml": {
-                "profiles": ("odds-source", "odds-derived", "odds"),
+                "profiles": ("odds-source", "odds"),
                 "outputs": (
                     "data/odds_monitor/event-map.json",
                     "data/market_ledger/observations/2026-10-01.jsonl",
-                    "data/market_ledger/derived/market-memory-v1.json",
                 ),
             },
             "pending-market-retry.yml": {
@@ -106,6 +105,20 @@ class GeneratedPublicationContractTests(unittest.TestCase):
                     any(is_allowed(output, profile) for profile in contract["profiles"]),
                     f"{workflow}: {output}",
                 )
+
+    def test_odds_monitor_does_not_repeat_heavy_observability_rebuild(self):
+        text = (self.root / ".github/workflows/odds-monitor.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("scripts.refresh_observability", text)
+        self.assertIn("--profile odds-source", text)
+        self.assertIn("timeout-minutes: 20", text)
+
+    def test_observability_has_room_to_finish_atomic_publication(self):
+        text = (self.root / ".github/workflows/refresh-observability.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("timeout-minutes: 50", text)
 
 
 if __name__ == "__main__":
