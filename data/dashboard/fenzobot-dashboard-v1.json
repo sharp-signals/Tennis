@@ -38,10 +38,10 @@
       "llm_provider_invocations": 12
     },
     "maintenance": {
-      "finished_at_utc": "2026-10-29T23:36:56+00:00",
-      "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT",
-      "started_at_utc": "2026-10-29T23:32:26+00:00",
-      "status": "TIMED_OUT"
+      "finished_at_utc": null,
+      "reason_code": null,
+      "started_at_utc": "2026-10-30T07:08:31+00:00",
+      "status": "PARTIAL"
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -662,40 +662,40 @@
           "test": {
             "calibration": [
               {
-                "mean_probability": 0.3643,
-                "n": 7,
-                "observed_rate": 0.5714,
+                "mean_probability": 0.3404,
+                "n": 14,
+                "observed_rate": 0.4286,
                 "range": "0.2-0.4"
               },
               {
-                "mean_probability": 0.4967,
-                "n": 22,
-                "observed_rate": 0.6818,
+                "mean_probability": 0.49,
+                "n": 21,
+                "observed_rate": 0.619,
                 "range": "0.4-0.6"
               },
               {
-                "mean_probability": 0.6453,
+                "mean_probability": 0.6576,
                 "n": 7,
                 "observed_rate": 0.5714,
                 "range": "0.6-0.8"
               }
             ],
-            "delta_brier": -0.009055,
-            "delta_log_loss": -0.036302,
+            "delta_brier": -0.029784,
+            "delta_log_loss": -0.076085,
             "market": {
-              "brier": 0.26791,
-              "log_loss": 0.747616,
-              "n": 36
+              "brier": 0.273245,
+              "log_loss": 0.755251,
+              "n": 42
             },
             "model": {
-              "brier": 0.258855,
-              "log_loss": 0.711314,
-              "n": 36
+              "brier": 0.243461,
+              "log_loss": 0.679166,
+              "n": 42
             },
             "neutral": {
               "brier": 0.25,
               "log_loss": 0.693147,
-              "n": 36
+              "n": 42
             },
             "shadow_selection": {
               "commission_on_profit": 0.05,
@@ -706,47 +706,47 @@
               "units": 0.0
             }
           },
-          "test_n": 36,
-          "train_n": 72
+          "test_n": 42,
+          "train_n": 84
         },
         {
           "test": {
             "calibration": [
               {
-                "mean_probability": 0.3457,
-                "n": 10,
+                "mean_probability": 0.3399,
+                "n": 6,
                 "observed_rate": 0.5,
                 "range": "0.2-0.4"
               },
               {
-                "mean_probability": 0.486,
-                "n": 19,
-                "observed_rate": 0.4737,
+                "mean_probability": 0.4944,
+                "n": 28,
+                "observed_rate": 0.4643,
                 "range": "0.4-0.6"
               },
               {
-                "mean_probability": 0.6789,
-                "n": 7,
-                "observed_rate": 0.8571,
+                "mean_probability": 0.6669,
+                "n": 8,
+                "observed_rate": 0.75,
                 "range": "0.6-0.8"
               }
             ],
-            "delta_brier": -0.034918,
-            "delta_log_loss": -0.073737,
+            "delta_brier": -0.025518,
+            "delta_log_loss": -0.055244,
             "market": {
-              "brier": 0.273977,
-              "log_loss": 0.743149,
-              "n": 36
+              "brier": 0.26641,
+              "log_loss": 0.728361,
+              "n": 42
             },
             "model": {
-              "brier": 0.239059,
-              "log_loss": 0.669412,
-              "n": 36
+              "brier": 0.240892,
+              "log_loss": 0.673117,
+              "n": 42
             },
             "neutral": {
               "brier": 0.25,
               "log_loss": 0.693147,
-              "n": 36
+              "n": 42
             },
             "shadow_selection": {
               "commission_on_profit": 0.05,
@@ -757,92 +757,59 @@
               "units": 0.0
             }
           },
-          "test_n": 36,
-          "train_n": 108
+          "test_n": 42,
+          "train_n": 126
         },
         {
           "test": {
             "calibration": [
               {
-                "mean_probability": 0.3456,
-                "n": 14,
-                "observed_rate": 0.6429,
-                "range": "0.2-0.4"
-              },
-              {
-                "mean_probability": 0.5037,
-                "n": 15,
-                "observed_rate": 0.3333,
-                "range": "0.4-0.6"
-              },
-              {
-                "mean_probability": 0.6698,
-                "n": 7,
-                "observed_rate": 0.8571,
-                "range": "0.6-0.8"
-              }
-            ],
-            "delta_brier": -0.033661,
-            "delta_log_loss": -0.076576,
-            "market": {
-              "brier": 0.28813,
-              "log_loss": 0.778082,
-              "n": 36
-            },
-            "model": {
-              "brier": 0.254469,
-              "log_loss": 0.701506,
-              "n": 36
-            },
-            "neutral": {
-              "brier": 0.25,
-              "log_loss": 0.693147,
-              "n": 36
-            },
-            "shadow_selection": {
-              "commission_on_profit": 0.05,
-              "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
-              "max_drawdown_units": null,
-              "n": 0,
-              "roi": null,
-              "units": 0.0
-            }
-          },
-          "test_n": 36,
-          "train_n": 144
-        },
-        {
-          "test": {
-            "calibration": [
-              {
-                "mean_probability": 0.3551,
-                "n": 1,
+                "mean_probability": 0.1622,
+                "n": 4,
                 "observed_rate": 0.0,
+                "range": "0.0-0.2"
+              },
+              {
+                "mean_probability": 0.3317,
+                "n": 15,
+                "observed_rate": 0.5333,
                 "range": "0.2-0.4"
               },
               {
-                "mean_probability": 0.7397,
-                "n": 1,
+                "mean_probability": 0.4918,
+                "n": 12,
+                "observed_rate": 0.5833,
+                "range": "0.4-0.6"
+              },
+              {
+                "mean_probability": 0.6826,
+                "n": 7,
                 "observed_rate": 1.0,
                 "range": "0.6-0.8"
+              },
+              {
+                "mean_probability": 0.8531,
+                "n": 4,
+                "observed_rate": 0.5,
+                "range": "0.8-1.0"
               }
             ],
-            "delta_brier": -0.055251,
-            "delta_log_loss": -0.09387,
+            "delta_brier": 0.006157,
+            "delta_log_loss": 0.022751,
             "market": {
-              "brier": 0.152153,
-              "log_loss": 0.463899,
-              "n": 2
+              "brier": 0.217069,
+              "log_loss": 0.61904,
+              "n": 42
             },
             "model": {
-              "brier": 0.096902,
-              "log_loss": 0.370029,
-              "n": 2
+              "brier": 0.223226,
+              "log_loss": 0.641791,
+              "n": 42
             },
             "neutral": {
               "brier": 0.25,
               "log_loss": 0.693147,
-              "n": 2
+              "n": 42
             },
             "shadow_selection": {
               "commission_on_profit": 0.05,
@@ -853,48 +820,99 @@
               "units": 0.0
             }
           },
-          "test_n": 2,
-          "train_n": 180
+          "test_n": 42,
+          "train_n": 168
+        },
+        {
+          "test": {
+            "calibration": [
+              {
+                "mean_probability": 0.4532,
+                "n": 1,
+                "observed_rate": 1.0,
+                "range": "0.4-0.6"
+              }
+            ],
+            "delta_brier": 0.155094,
+            "delta_log_loss": 0.314451,
+            "market": {
+              "brier": 0.143942,
+              "log_loss": 0.477064,
+              "n": 1
+            },
+            "model": {
+              "brier": 0.299036,
+              "log_loss": 0.791515,
+              "n": 1
+            },
+            "neutral": {
+              "brier": 0.25,
+              "log_loss": 0.693147,
+              "n": 1
+            },
+            "shadow_selection": {
+              "commission_on_profit": 0.05,
+              "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
+              "max_drawdown_units": null,
+              "n": 0,
+              "roi": null,
+              "units": 0.0
+            }
+          },
+          "test_n": 1,
+          "train_n": 210
         }
       ],
-      "holdout_size": 55,
+      "holdout_size": 64,
       "overall": {
         "calibration": [
           {
-            "mean_probability": 0.3481,
-            "n": 18,
-            "observed_rate": 0.6111,
+            "mean_probability": 0.1622,
+            "n": 4,
+            "observed_rate": 0.0,
+            "range": "0.0-0.2"
+          },
+          {
+            "mean_probability": 0.3329,
+            "n": 19,
+            "observed_rate": 0.5263,
             "range": "0.2-0.4"
           },
           {
-            "mean_probability": 0.4969,
+            "mean_probability": 0.4977,
             "n": 26,
-            "observed_rate": 0.4231,
+            "observed_rate": 0.5385,
             "range": "0.4-0.6"
           },
           {
-            "mean_probability": 0.6801,
+            "mean_probability": 0.6819,
             "n": 11,
-            "observed_rate": 0.8182,
+            "observed_rate": 0.9091,
             "range": "0.6-0.8"
+          },
+          {
+            "mean_probability": 0.8531,
+            "n": 4,
+            "observed_rate": 0.5,
+            "range": "0.8-1.0"
           }
         ],
-        "delta_brier": -0.032425,
-        "delta_log_loss": -0.072074,
+        "delta_brier": -0.00159,
+        "delta_log_loss": 0.00214,
         "market": {
-          "brier": 0.28276,
-          "log_loss": 0.764647,
-          "n": 55
+          "brier": 0.230054,
+          "log_loss": 0.648303,
+          "n": 64
         },
         "model": {
-          "brier": 0.250335,
-          "log_loss": 0.692573,
-          "n": 55
+          "brier": 0.228464,
+          "log_loss": 0.650443,
+          "n": 64
         },
         "neutral": {
           "brier": 0.25,
           "log_loss": 0.693147,
-          "n": 55
+          "n": 64
         },
         "shadow_selection": {
           "commission_on_profit": 0.05,
@@ -911,65 +929,18 @@
         "version": "pricing-promotion-gate-v1"
       },
       "segments": {
-        "atp|factor-calibrated-v3.2:5f55c5d1efddb21f": {
-          "calibration": [
-            {
-              "mean_probability": 0.3345,
-              "n": 1,
-              "observed_rate": 1.0,
-              "range": "0.2-0.4"
-            },
-            {
-              "mean_probability": 0.4777,
-              "n": 5,
-              "observed_rate": 0.4,
-              "range": "0.4-0.6"
-            },
-            {
-              "mean_probability": 0.6374,
-              "n": 1,
-              "observed_rate": 0.0,
-              "range": "0.6-0.8"
-            }
-          ],
-          "delta_brier": -0.024497,
-          "delta_log_loss": -0.066875,
-          "market": {
-            "brier": 0.345658,
-            "log_loss": 0.906143,
-            "n": 7
-          },
-          "model": {
-            "brier": 0.321161,
-            "log_loss": 0.839268,
-            "n": 7
-          },
-          "neutral": {
-            "brier": 0.25,
-            "log_loss": 0.693147,
-            "n": 7
-          },
-          "shadow_selection": {
-            "commission_on_profit": 0.05,
-            "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
-            "max_drawdown_units": null,
-            "n": 0,
-            "roi": null,
-            "units": 0.0
-          }
-        },
         "atp|factor-calibrated-v3.2:8dcbedfe86a69444": {
           "calibration": [
             {
-              "mean_probability": 0.3052,
-              "n": 1,
+              "mean_probability": 0.304,
+              "n": 2,
               "observed_rate": 0.0,
               "range": "0.2-0.4"
             },
             {
-              "mean_probability": 0.4819,
-              "n": 4,
-              "observed_rate": 0.25,
+              "mean_probability": 0.4952,
+              "n": 5,
+              "observed_rate": 0.4,
               "range": "0.4-0.6"
             },
             {
@@ -979,22 +950,22 @@
               "range": "0.6-0.8"
             }
           ],
-          "delta_brier": -0.075719,
-          "delta_log_loss": -0.171327,
+          "delta_brier": -0.034928,
+          "delta_log_loss": -0.075808,
           "market": {
-            "brier": 0.309825,
-            "log_loss": 0.830621,
-            "n": 7
+            "brier": 0.249863,
+            "log_loss": 0.695427,
+            "n": 9
           },
           "model": {
-            "brier": 0.234106,
-            "log_loss": 0.659294,
-            "n": 7
+            "brier": 0.214935,
+            "log_loss": 0.619619,
+            "n": 9
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 7
+            "n": 9
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -1008,28 +979,52 @@
         "atp|hierarchical-surface-elo-v4.1:95b5794382c5d31e": {
           "calibration": [
             {
-              "mean_probability": 0.3568,
+              "mean_probability": 0.1544,
+              "n": 1,
+              "observed_rate": 0.0,
+              "range": "0.0-0.2"
+            },
+            {
+              "mean_probability": 0.2898,
+              "n": 4,
+              "observed_rate": 0.25,
+              "range": "0.2-0.4"
+            },
+            {
+              "mean_probability": 0.5,
+              "n": 1,
+              "observed_rate": 1.0,
+              "range": "0.4-0.6"
+            },
+            {
+              "mean_probability": 0.7013,
+              "n": 1,
+              "observed_rate": 1.0,
+              "range": "0.6-0.8"
+            },
+            {
+              "mean_probability": 0.8482,
               "n": 2,
               "observed_rate": 0.5,
-              "range": "0.2-0.4"
+              "range": "0.8-1.0"
             }
           ],
-          "delta_brier": -0.0519,
-          "delta_log_loss": -0.122976,
+          "delta_brier": 0.034678,
+          "delta_log_loss": 0.110695,
           "market": {
-            "brier": 0.325554,
-            "log_loss": 0.865779,
-            "n": 2
+            "brier": 0.169488,
+            "log_loss": 0.513672,
+            "n": 9
           },
           "model": {
-            "brier": 0.273654,
-            "log_loss": 0.742803,
-            "n": 2
+            "brier": 0.204166,
+            "log_loss": 0.624367,
+            "n": 9
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 2
+            "n": 9
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -1043,63 +1038,52 @@
         "atp|structural-elo-factor-v4.0:8ff60ca642f526ba": {
           "calibration": [
             {
+              "mean_probability": 0.1647,
+              "n": 3,
+              "observed_rate": 0.0,
+              "range": "0.0-0.2"
+            },
+            {
               "mean_probability": 0.2357,
               "n": 2,
               "observed_rate": 0.5,
               "range": "0.2-0.4"
-            }
-          ],
-          "delta_brier": -0.013179,
-          "delta_log_loss": -0.029836,
-          "market": {
-            "brier": 0.323514,
-            "log_loss": 0.860598,
-            "n": 2
-          },
-          "model": {
-            "brier": 0.310335,
-            "log_loss": 0.830762,
-            "n": 2
-          },
-          "neutral": {
-            "brier": 0.25,
-            "log_loss": 0.693147,
-            "n": 2
-          },
-          "shadow_selection": {
-            "commission_on_profit": 0.05,
-            "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
-            "max_drawdown_units": null,
-            "n": 0,
-            "roi": null,
-            "units": 0.0
-          }
-        },
-        "challenger|factor-calibrated-v3.2:5f55c5d1efddb21f": {
-          "calibration": [
+            },
             {
-              "mean_probability": 0.5005,
-              "n": 3,
-              "observed_rate": 0.6667,
+              "mean_probability": 0.5,
+              "n": 1,
+              "observed_rate": 1.0,
               "range": "0.4-0.6"
+            },
+            {
+              "mean_probability": 0.6319,
+              "n": 1,
+              "observed_rate": 1.0,
+              "range": "0.6-0.8"
+            },
+            {
+              "mean_probability": 0.858,
+              "n": 2,
+              "observed_rate": 0.5,
+              "range": "0.8-1.0"
             }
           ],
-          "delta_brier": 0.079715,
-          "delta_log_loss": 0.161616,
+          "delta_brier": 0.028723,
+          "delta_log_loss": 0.065906,
           "market": {
-            "brier": 0.170517,
-            "log_loss": 0.531994,
-            "n": 3
+            "brier": 0.17137,
+            "log_loss": 0.521725,
+            "n": 9
           },
           "model": {
-            "brier": 0.250232,
-            "log_loss": 0.69361,
-            "n": 3
+            "brier": 0.200093,
+            "log_loss": 0.587631,
+            "n": 9
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 3
+            "n": 9
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -1113,28 +1097,133 @@
         "challenger|factor-calibrated-v3.2:8dcbedfe86a69444": {
           "calibration": [
             {
-              "mean_probability": 0.5005,
-              "n": 3,
-              "observed_rate": 0.6667,
+              "mean_probability": 0.4918,
+              "n": 5,
+              "observed_rate": 0.6,
               "range": "0.4-0.6"
             }
           ],
-          "delta_brier": 0.077277,
-          "delta_log_loss": 0.15648,
+          "delta_brier": 0.036389,
+          "delta_log_loss": 0.073529,
           "market": {
-            "brier": 0.172955,
-            "log_loss": 0.53713,
-            "n": 3
+            "brier": 0.210663,
+            "log_loss": 0.61371,
+            "n": 5
           },
           "model": {
-            "brier": 0.250232,
-            "log_loss": 0.69361,
-            "n": 3
+            "brier": 0.247052,
+            "log_loss": 0.687239,
+            "n": 5
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 3
+            "n": 5
+          },
+          "shadow_selection": {
+            "commission_on_profit": 0.05,
+            "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
+            "max_drawdown_units": null,
+            "n": 0,
+            "roi": null,
+            "units": 0.0
+          }
+        },
+        "challenger|hierarchical-surface-elo-v4.1:95b5794382c5d31e": {
+          "calibration": [
+            {
+              "mean_probability": 0.4692,
+              "n": 1,
+              "observed_rate": 1.0,
+              "range": "0.4-0.6"
+            }
+          ],
+          "delta_brier": 0.133819,
+          "delta_log_loss": 0.271216,
+          "market": {
+            "brier": 0.147929,
+            "log_loss": 0.485508,
+            "n": 1
+          },
+          "model": {
+            "brier": 0.281748,
+            "log_loss": 0.756724,
+            "n": 1
+          },
+          "neutral": {
+            "brier": 0.25,
+            "log_loss": 0.693147,
+            "n": 1
+          },
+          "shadow_selection": {
+            "commission_on_profit": 0.05,
+            "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
+            "max_drawdown_units": null,
+            "n": 0,
+            "roi": null,
+            "units": 0.0
+          }
+        },
+        "challenger|hierarchical-surface-elo-v4.2:8d16ea1f0b71fd3a": {
+          "calibration": [
+            {
+              "mean_probability": 0.4692,
+              "n": 1,
+              "observed_rate": 1.0,
+              "range": "0.4-0.6"
+            }
+          ],
+          "delta_brier": 0.137806,
+          "delta_log_loss": 0.27966,
+          "market": {
+            "brier": 0.143942,
+            "log_loss": 0.477064,
+            "n": 1
+          },
+          "model": {
+            "brier": 0.281748,
+            "log_loss": 0.756724,
+            "n": 1
+          },
+          "neutral": {
+            "brier": 0.25,
+            "log_loss": 0.693147,
+            "n": 1
+          },
+          "shadow_selection": {
+            "commission_on_profit": 0.05,
+            "execution_assumption": "flat_1u_at_frozen_observed_odd_no_slippage",
+            "max_drawdown_units": null,
+            "n": 0,
+            "roi": null,
+            "units": 0.0
+          }
+        },
+        "challenger|hierarchical-surface-elo-v4.3:5e1b4e8b8c059b28": {
+          "calibration": [
+            {
+              "mean_probability": 0.4532,
+              "n": 1,
+              "observed_rate": 1.0,
+              "range": "0.4-0.6"
+            }
+          ],
+          "delta_brier": 0.155094,
+          "delta_log_loss": 0.314451,
+          "market": {
+            "brier": 0.143942,
+            "log_loss": 0.477064,
+            "n": 1
+          },
+          "model": {
+            "brier": 0.299036,
+            "log_loss": 0.791515,
+            "n": 1
+          },
+          "neutral": {
+            "brier": 0.25,
+            "log_loss": 0.693147,
+            "n": 1
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -1148,28 +1237,28 @@
         "challenger|structural-elo-factor-v4.0:8ff60ca642f526ba": {
           "calibration": [
             {
-              "mean_probability": 0.5005,
-              "n": 3,
-              "observed_rate": 0.6667,
+              "mean_probability": 0.4918,
+              "n": 5,
+              "observed_rate": 0.6,
               "range": "0.4-0.6"
             }
           ],
-          "delta_brier": 0.079238,
-          "delta_log_loss": 0.1607,
+          "delta_brier": 0.04025,
+          "delta_log_loss": 0.081642,
           "market": {
-            "brier": 0.170994,
-            "log_loss": 0.53291,
-            "n": 3
+            "brier": 0.206802,
+            "log_loss": 0.605597,
+            "n": 5
           },
           "model": {
-            "brier": 0.250232,
-            "log_loss": 0.69361,
-            "n": 3
+            "brier": 0.247052,
+            "log_loss": 0.687239,
+            "n": 5
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 3
+            "n": 5
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -1183,40 +1272,40 @@
         "wta|factor-calibrated-v3.2:5f55c5d1efddb21f": {
           "calibration": [
             {
-              "mean_probability": 0.3656,
-              "n": 3,
-              "observed_rate": 0.6667,
+              "mean_probability": 0.3708,
+              "n": 2,
+              "observed_rate": 1.0,
               "range": "0.2-0.4"
             },
             {
-              "mean_probability": 0.5083,
-              "n": 4,
+              "mean_probability": 0.5435,
+              "n": 2,
               "observed_rate": 0.5,
               "range": "0.4-0.6"
             },
             {
-              "mean_probability": 0.708,
-              "n": 2,
+              "mean_probability": 0.7397,
+              "n": 1,
               "observed_rate": 1.0,
               "range": "0.6-0.8"
             }
           ],
-          "delta_brier": -0.073257,
-          "delta_log_loss": -0.152594,
+          "delta_brier": -0.033361,
+          "delta_log_loss": -0.071457,
           "market": {
-            "brier": 0.310787,
-            "log_loss": 0.817465,
-            "n": 9
+            "brier": 0.311804,
+            "log_loss": 0.819126,
+            "n": 5
           },
           "model": {
-            "brier": 0.23753,
-            "log_loss": 0.664871,
-            "n": 9
+            "brier": 0.278443,
+            "log_loss": 0.747669,
+            "n": 5
           },
           "neutral": {
             "brier": 0.25,
             "log_loss": 0.693147,
-            "n": 9
+            "n": 5
           },
           "shadow_selection": {
             "commission_on_profit": 0.05,
@@ -1364,7 +1453,7 @@
         }
       },
       "status": "SHADOW_ONLY",
-      "train_size": 127
+      "train_size": 147
     }
   },
   "change_id": "CHANGE-2026-09-23-051",
@@ -130365,7 +130454,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-30T07:06:36+00:00",
+  "generated_at_utc": "2026-10-30T07:08:57+00:00",
   "global": {
     "distinct_matchups": 3683,
     "green_strong_candidates": 30,
@@ -130378,7 +130467,7 @@
       "UNAVAILABLE": 1515,
       "YELLOW": 961
     },
-    "settled_snapshots": 1329,
+    "settled_snapshots": 1338,
     "total_reports": 5758,
     "total_snapshots": 1473
   },
@@ -130607,7 +130696,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-10-30T07:06:36+00:00",
+    "generated_at_utc": "2026-10-30T07:08:57+00:00",
     "losses": 107,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -61.17,
@@ -131478,49 +131567,49 @@
   },
   "report_history": {
     "alignment": {
-      "acertos": 547,
+      "acertos": 553,
       "intervalo_pct": [
-        65.9,
-        72.4
+        66.1,
+        72.5
       ],
       "odds_retorno": {
-        "average_odd": 1.414,
-        "break_even_pct": 72.6,
-        "losses": 243,
+        "average_odd": 1.413,
+        "break_even_pct": 72.7,
+        "losses": 244,
         "median_odd": 1.4,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": -37.427,
-        "odds_sample_size": 790,
-        "roi_pct": -4.74,
-        "stake_units": 790,
-        "win_pct": 69.2,
-        "wins": 547
+        "net_units": -36.911,
+        "odds_sample_size": 797,
+        "roi_pct": -4.63,
+        "stake_units": 797,
+        "win_pct": 69.4,
+        "wins": 553
       },
-      "taxa_pct": 69.2,
-      "total": 790
+      "taxa_pct": 69.4,
+      "total": 797
     },
     "alignment_min_odd": {
-      "acertos": 361,
+      "acertos": 364,
       "intervalo_pct": [
-        59.4,
-        67.3
+        59.6,
+        67.5
       ],
       "minimum_odd": 1.25,
       "odds_retorno": {
-        "average_odd": 1.519,
-        "break_even_pct": 66.7,
+        "average_odd": 1.518,
+        "break_even_pct": 66.8,
         "losses": 208,
         "median_odd": 1.5,
         "method": "FLAT_STAKE_1U_FROZEN_PREMATCH_ODDS",
-        "net_units": -28.455,
-        "odds_sample_size": 569,
-        "roi_pct": -5.0,
-        "stake_units": 569,
-        "win_pct": 63.4,
-        "wins": 361
+        "net_units": -27.485,
+        "odds_sample_size": 572,
+        "roi_pct": -4.81,
+        "stake_units": 572,
+        "win_pct": 63.6,
+        "wins": 364
       },
-      "taxa_pct": 63.4,
-      "total": 569
+      "taxa_pct": 63.6,
+      "total": 572
     },
     "divergence": {
       "acertos": 73,
@@ -131545,13 +131634,13 @@
       "total": 149
     },
     "snapshot_universe": {
-      "settled": 1329,
+      "settled": 1338,
       "total": 1473
     },
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "10dd72c8a1653bce28e2f573aae5edc4dbc714fbb54182899b9ba3b579df45a3",
+  "semantic_fingerprint": "8d19702e976c100b23b9ff104f8d7b40dcdc3afdb90a6a6d490f4f710def1d5b",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 495,
@@ -131560,7 +131649,7 @@
     },
     "change_id": "CHANGE-2026-09-21-047",
     "conversion": {
-      "created_to_settled_pct": 79.02,
+      "created_to_settled_pct": 83.41,
       "eligible_to_snapshot_pct": 0.0
     },
     "counts": {
@@ -131575,7 +131664,7 @@
       "self_described_versions": 722,
       "snapshot_identity_matches": 0,
       "snapshots_created": 205,
-      "snapshots_settled": 162
+      "snapshots_settled": 171
     },
     "integrity": {
       "eligible_identities_reconciled": true,
@@ -131629,7 +131718,7 @@
     },
     "snapshots": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-30T07:06:34+00:00"
+      "updated_at_utc": "2026-10-30T07:08:55+00:00"
     }
   },
   "system_health": {
