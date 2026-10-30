@@ -15,10 +15,10 @@
       "sample_size": 255
     },
     "market_plus_sharp": {
-      "accuracy_pct": 65.23,
-      "brier_score": 0.216619,
-      "log_loss": 0.622083,
-      "sample_size": 719
+      "accuracy_pct": 65.28,
+      "brier_score": 0.216479,
+      "log_loss": 0.621795,
+      "sample_size": 720
     }
   },
   "evaluation_by_cohort": {
@@ -83,10 +83,10 @@
         "sample_size": 0
       },
       "market_plus_sharp": {
-        "accuracy_pct": 50.0,
-        "brier_score": 0.261961,
-        "log_loss": 0.716385,
-        "sample_size": 14
+        "accuracy_pct": 53.33,
+        "brier_score": 0.252195,
+        "log_loss": 0.696307,
+        "sample_size": 15
       },
       "pricing_configuration_fingerprint": "d48e4000e7beb337",
       "pricing_model_version": "factor-calibrated-v3.1"
@@ -119444,7 +119444,7 @@
       },
       "match_format": "BO3",
       "match_id": 647710,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -122725,6 +122725,104 @@
         "reason_code": null,
         "tier": "ATP 500"
       }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-30T06:35:40+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Jiri Lehecka",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "c47a55b3c1d52ac9e233b39c74b82c6cf14a53a6",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.1305,
+              "b": 0.8695
+            },
+            "github_run_id": "41014715387",
+            "market_probabilities": {
+              "a": 0.3093,
+              "b": 0.6907
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_af92871061384a4195464625d2d5e844"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "f30ba3c2163b9aa0beb27ae4"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_af92871061384a4195464625d2d5e844",
+      "fenzobot_probabilities": {
+        "a": 0.1305,
+        "b": 0.8695
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.1305,
+        "b": 0.8695
+      },
+      "match_format": "BO3",
+      "match_id": 1064127,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 76298,
+          "name": "Jerome Kym"
+        },
+        "b": {
+          "id": 61838,
+          "name": "Jiri Lehecka"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.3093,
+        "b": 0.6907
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "d9ddf79d4d2f0fb93a92",
+      "scheduled_start_utc": "2026-10-30T18:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_af92871061384a4195464625d2d5e844",
+      "surface": "I.hard",
+      "tier": "ATP 500",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP 500"
+      }
     }
   ],
   "experimental_evaluation_by_tier": {
@@ -122744,9 +122842,9 @@
       "sample_size": 194
     }
   },
-  "generated_at_utc": "2026-10-29T23:30:07+00:00",
+  "generated_at_utc": "2026-10-30T07:06:32+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 28056,
+  "observation_count": 28117,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
