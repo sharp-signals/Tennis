@@ -15,10 +15,10 @@
       "sample_size": 255
     },
     "market_plus_sharp": {
-      "accuracy_pct": 65.35,
-      "brier_score": 0.216245,
-      "log_loss": 0.621109,
-      "sample_size": 733
+      "accuracy_pct": 65.4,
+      "brier_score": 0.216331,
+      "log_loss": 0.6213,
+      "sample_size": 737
     }
   },
   "evaluation_by_cohort": {
@@ -99,10 +99,10 @@
         "sample_size": 0
       },
       "market_plus_sharp": {
-        "accuracy_pct": null,
-        "brier_score": null,
-        "log_loss": null,
-        "sample_size": 0
+        "accuracy_pct": 0.0,
+        "brier_score": 0.405769,
+        "log_loss": 1.013352,
+        "sample_size": 1
       },
       "pricing_configuration_fingerprint": "8dcbedfe86a69444",
       "pricing_model_version": "factor-calibrated-v3.2"
@@ -131,10 +131,10 @@
         "sample_size": 0
       },
       "market_plus_sharp": {
-        "accuracy_pct": 50.0,
-        "brier_score": 0.231112,
-        "log_loss": 0.624608,
-        "sample_size": 2
+        "accuracy_pct": 75.0,
+        "brier_score": 0.201884,
+        "log_loss": 0.578978,
+        "sample_size": 4
       },
       "pricing_configuration_fingerprint": "8d16ea1f0b71fd3a",
       "pricing_model_version": "hierarchical-surface-elo-v4.2"
@@ -148,9 +148,9 @@
       },
       "market_plus_sharp": {
         "accuracy_pct": 100.0,
-        "brier_score": 0.020832,
-        "log_loss": 0.150242,
-        "sample_size": 2
+        "brier_score": 0.072828,
+        "log_loss": 0.282024,
+        "sample_size": 3
       },
       "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
       "pricing_model_version": "hierarchical-surface-elo-v4.3"
@@ -120623,7 +120623,7 @@
       },
       "match_format": "BO3",
       "match_id": 699326,
-      "outcome_side": null,
+      "outcome_side": "b",
       "paper": [],
       "players": {
         "a": {
@@ -122105,7 +122105,7 @@
       },
       "match_format": "BO3",
       "match_id": 750844,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -122203,7 +122203,7 @@
       },
       "match_format": "BO3",
       "match_id": 755324,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -123857,7 +123857,7 @@
       },
       "match_format": "BO3",
       "match_id": 812377,
-      "outcome_side": null,
+      "outcome_side": "a",
       "paper": [],
       "players": {
         "a": {
@@ -128286,6 +128286,3900 @@
         "reason_code": null,
         "tier": "ATP 500"
       }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:36+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "PRICING_UNAVAILABLE",
+            "PROBABILITIES_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE",
+            "INTEGRITY_CONFLICT"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "REPORT_NULL",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": "UNAVAILABLE",
+            "github_run_id": "41229946488",
+            "market_probabilities": "UNAVAILABLE",
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_f6125800c3774095a61b4a81c16fe478"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "676f2ee007b923ea1b40c1e0"
+        }
+      },
+      "entry_market_observation_id": "0fb246f8727f224d651188af4951a3156ec91af02b819b67259af9fe4850958c",
+      "entry_market_probabilities": {
+        "a": 0.4205128205128206,
+        "b": 0.5794871794871795
+      },
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_f6125800c3774095a61b4a81c16fe478",
+      "fenzobot_probabilities": null,
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "b",
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_format": "BO3",
+      "match_id": 1123514,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 83223,
+          "name": "Daniel Merida Aguilar"
+        },
+        "b": {
+          "id": 88766,
+          "name": "Alexander Blockx"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": null,
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "b16b26afc025b8ee2c4d",
+      "scheduled_start_utc": "2026-11-02T09:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_f6125800c3774095a61b4a81c16fe478",
+      "surface": "I.hard",
+      "tier": "ATP Masters 1000",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP Masters 1000"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:36+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Yannick Hanfmann",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.4218,
+              "b": 0.5782
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.4743,
+              "b": 0.5257000000000001
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_1c15cf82ae8b4730832273ba8166c1d1"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "1383ec198dcb00d42e461d99"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_1c15cf82ae8b4730832273ba8166c1d1",
+      "fenzobot_probabilities": {
+        "a": 0.4218,
+        "b": 0.5782
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4218,
+        "b": 0.5782
+      },
+      "match_format": "BO3",
+      "match_id": 1187460,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 28899,
+          "name": "Benjamin Bonzi"
+        },
+        "b": {
+          "id": 14856,
+          "name": "Yannick Hanfmann"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.4743,
+        "b": 0.5257000000000001
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "f65735c34552e963d0e9",
+      "scheduled_start_utc": "2026-11-01T11:10:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_1c15cf82ae8b4730832273ba8166c1d1",
+      "surface": "I.hard",
+      "tier": "ATP Masters 1000",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP Masters 1000"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:36+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Tomas Machac",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.21969999999999998,
+              "b": 0.7803
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.3105,
+              "b": 0.6895
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_11f4b3fb0b69456ab8c766322afc1cad"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "fd16a074282b4bba98ccc2c5"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_11f4b3fb0b69456ab8c766322afc1cad",
+      "fenzobot_probabilities": {
+        "a": 0.21969999999999998,
+        "b": 0.7803
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.21969999999999998,
+        "b": 0.7803
+      },
+      "match_format": "BO3",
+      "match_id": 1187478,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 52721,
+          "name": "Sebastian Baez"
+        },
+        "b": {
+          "id": 58327,
+          "name": "Tomas Machac"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.3105,
+        "b": 0.6895
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "9afad8e26e915e3943b8",
+      "scheduled_start_utc": "2026-11-01T11:10:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_11f4b3fb0b69456ab8c766322afc1cad",
+      "surface": "I.hard",
+      "tier": "ATP Masters 1000",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP Masters 1000"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:36+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Juan Manuel Cerundolo",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5115,
+              "b": 0.4885
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.5362,
+              "b": 0.46380000000000005
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_dab89dd08c3b4d0a8f81d4d48fb5c062"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "d1a909373cfa0c726a5cf2c2"
+        }
+      },
+      "entry_market_observation_id": "16f62bcff4bbb71a265a5b8fc6190cfe500ac2a99d4c8822e3dff5c0e9731d01",
+      "entry_market_probabilities": {
+        "a": 0.5361930294906166,
+        "b": 0.4638069705093834
+      },
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_dab89dd08c3b4d0a8f81d4d48fb5c062",
+      "fenzobot_probabilities": {
+        "a": 0.5115,
+        "b": 0.4885
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "a",
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5115,
+        "b": 0.4885
+      },
+      "match_format": "BO3",
+      "match_id": 1175756,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 52934,
+          "name": "Juan Manuel Cerundolo"
+        },
+        "b": {
+          "id": 34337,
+          "name": "Miomir Kecmanovic"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.5362,
+        "b": 0.46380000000000005
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "058225b4a319cc2d47cb",
+      "scheduled_start_utc": "2026-11-01T11:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_dab89dd08c3b4d0a8f81d4d48fb5c062",
+      "surface": "I.hard",
+      "tier": "ATP Masters 1000",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP Masters 1000"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:36+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE"
+          ],
+          "selected_player": "Thiago Agustin Tirante",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 3,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.525,
+              "b": 0.475
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.38270000000000004,
+              "b": 0.6173
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_be3f182b16944b2d892fcec2cf9eca39"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "9331f07fc4dac5cc01da26cd"
+        }
+      },
+      "entry_market_observation_id": "e045fcfaf9036aee4636faf3d3d8b2fde5ba2f579f5e12ab6b8487204054d37c",
+      "entry_market_probabilities": {
+        "a": 0.3826530612244898,
+        "b": 0.6173469387755102
+      },
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_be3f182b16944b2d892fcec2cf9eca39",
+      "fenzobot_probabilities": {
+        "a": 0.525,
+        "b": 0.475
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "b",
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.525,
+        "b": 0.475
+      },
+      "match_format": "BO3",
+      "match_id": 1169926,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 52394,
+          "name": "Thiago Agustin Tirante"
+        },
+        "b": {
+          "id": 72578,
+          "name": "Mattia Bellucci"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.38270000000000004,
+        "b": 0.6173
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "6cbf8ecd921c5fef8c80",
+      "scheduled_start_utc": "2026-11-01T10:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_be3f182b16944b2d892fcec2cf9eca39",
+      "surface": "I.hard",
+      "tier": "ATP Masters 1000",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP Masters 1000"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Rinky Hijikata",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5654,
+              "b": 0.4346
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.6808,
+              "b": 0.31920000000000004
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_fc17686805ba47478b6d85e893759414"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "4c6f3df79a9e313e112fdad3"
+        }
+      },
+      "entry_market_observation_id": "4441cea1b1c62f56b002867d4f9c793171815707a25c67c1e3d71ca1985b2879",
+      "entry_market_probabilities": {
+        "a": 0.6807511737089202,
+        "b": 0.31924882629107987
+      },
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_fc17686805ba47478b6d85e893759414",
+      "fenzobot_probabilities": {
+        "a": 0.5654,
+        "b": 0.4346
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "a",
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5654,
+        "b": 0.4346
+      },
+      "match_format": "BO3",
+      "match_id": 1172844,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 58149,
+          "name": "Rinky Hijikata"
+        },
+        "b": {
+          "id": 42971,
+          "name": "Vit Kopriva"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.6808,
+        "b": 0.31920000000000004
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "99b432d273effc9176b3",
+      "scheduled_start_utc": "2026-11-01T10:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_fc17686805ba47478b6d85e893759414",
+      "surface": "I.hard",
+      "tier": "ATP Masters 1000",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "ATP Masters 1000"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "AVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "EXPERIMENTAL_TIER_CHALLENGER_125",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "EXPERIMENTAL_FACTUAL_PARTIAL",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5028,
+              "b": 0.4972
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.5054,
+              "b": 0.4946
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_24fa06a5d6c04efea44dd7f094af2507"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "22b5f3ef3a77d217fe032e58"
+        }
+      },
+      "entry_market_observation_id": "3e8020f1e8cd243c7ae809f5860cebf6e2b876c4dff81a17f15d0fe0867f235c",
+      "entry_market_probabilities": {
+        "a": 0.5054054054054055,
+        "b": 0.4945945945945946
+      },
+      "evaluation_scope": "EXPERIMENTAL",
+      "event_key": "mi2_24fa06a5d6c04efea44dd7f094af2507",
+      "fenzobot_probabilities": {
+        "a": 0.5028,
+        "b": 0.4972
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": "a",
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5028,
+        "b": 0.4972
+      },
+      "match_format": "BO3",
+      "match_id": 1155425,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 67535,
+          "name": "Terence Atmane"
+        },
+        "b": {
+          "id": 71166,
+          "name": "Chak Lam Coleman Wong"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.5054,
+        "b": 0.4946
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "18e168b1f2591f199059",
+      "scheduled_start_utc": "2026-11-01T05:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_24fa06a5d6c04efea44dd7f094af2507",
+      "surface": "Hard",
+      "tier": "Challenger 125",
+      "tour": "atp",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": false,
+        "label": "Challenger 125 · EXPERIMENTAL",
+        "mode": "EXPERIMENTAL_REPORT_ONLY",
+        "paper_allowed": false,
+        "pricing_allowed": true,
+        "reason_code": "EXPERIMENTAL_TIER_CHALLENGER_125",
+        "tier": "Challenger 125"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "EDGE_ZERO",
+            "divergence_level": 1,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.5046,
+              "b": 0.4954
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.16190000000000002,
+              "b": 0.8381000000000001
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_8437740d4a6748368b0c08b764222fe5"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "d8876d95269c0e83124db8ba"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_8437740d4a6748368b0c08b764222fe5",
+      "fenzobot_probabilities": {
+        "a": 0.5046,
+        "b": 0.4954
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5046,
+        "b": 0.4954
+      },
+      "match_format": "BO3",
+      "match_id": 861267,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 151,
+          "name": "Venus Williams"
+        },
+        "b": {
+          "id": 70519,
+          "name": "Mary Stoiana"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.16190000000000002,
+        "b": 0.8381000000000001
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "7502d514b3dc99929d80",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_8437740d4a6748368b0c08b764222fe5",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Sorana Cirstea",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.6243,
+              "b": 0.3757
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.7115,
+              "b": 0.28850000000000003
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_f34b314456a94c13909a620fd27bc8a8"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "2dcc237baf9ed618de2e3f5f"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_f34b314456a94c13909a620fd27bc8a8",
+      "fenzobot_probabilities": {
+        "a": 0.6243,
+        "b": 0.3757
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.6243,
+        "b": 0.3757
+      },
+      "match_format": "BO3",
+      "match_id": 861275,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 6019,
+          "name": "Sorana Cirstea"
+        },
+        "b": {
+          "id": 60792,
+          "name": "Maria Timofeeva"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.7115,
+        "b": 0.28850000000000003
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "7e7fd9cc9081fdde16c9",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_f34b314456a94c13909a620fd27bc8a8",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Katie Boulter",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.2841,
+              "b": 0.7159
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.4154,
+              "b": 0.5846
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_9f51478ae71b4371b08401891d578a88"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "17227f42a960cad3500915e9"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_9f51478ae71b4371b08401891d578a88",
+      "fenzobot_probabilities": {
+        "a": 0.2841,
+        "b": 0.7159
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.2841,
+        "b": 0.7159
+      },
+      "match_format": "BO3",
+      "match_id": 861276,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 10749,
+          "name": "Viktorija Golubic"
+        },
+        "b": {
+          "id": 14175,
+          "name": "Katie Boulter"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.4154,
+        "b": 0.5846
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "1be0e885112220e18232",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_9f51478ae71b4371b08401891d578a88",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Maya Joint",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.396,
+              "b": 0.604
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.2366,
+              "b": 0.7634000000000001
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_7cb961a305634ab7bfd816c7112e40e2"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "808f202c037d8080ecf6a15a"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_7cb961a305634ab7bfd816c7112e40e2",
+      "fenzobot_probabilities": {
+        "a": 0.396,
+        "b": 0.604
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.396,
+        "b": 0.604
+      },
+      "match_format": "BO3",
+      "match_id": 861278,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 25513,
+          "name": "Maddison Inglis"
+        },
+        "b": {
+          "id": 72414,
+          "name": "Maya Joint"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.2366,
+        "b": 0.7634000000000001
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "c027decb56c8b1ad9340",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_7cb961a305634ab7bfd816c7112e40e2",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Zeynep Sonmez",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 2,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.4391,
+              "b": 0.5609000000000001
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.5172,
+              "b": 0.4828
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_68189fe4826d403581a559ce22c59c3c"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "13acbf6860d05df70f0d41c2"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_68189fe4826d403581a559ce22c59c3c",
+      "fenzobot_probabilities": {
+        "a": 0.4391,
+        "b": 0.5609000000000001
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4391,
+        "b": 0.5609000000000001
+      },
+      "match_format": "BO3",
+      "match_id": 861280,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 37266,
+          "name": "Dayana Yastremska"
+        },
+        "b": {
+          "id": 49991,
+          "name": "Zeynep Sonmez"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.5172,
+        "b": 0.4828
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "3ebd3a667746d772dd17",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_68189fe4826d403581a559ce22c59c3c",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Alexandra Eala",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.3815,
+              "b": 0.6185
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.21760000000000002,
+              "b": 0.7824
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_2a6e182d6d41408c938914eca1ce1a69"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "93b686f30f8e0bda1743061e"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_2a6e182d6d41408c938914eca1ce1a69",
+      "fenzobot_probabilities": {
+        "a": 0.3815,
+        "b": 0.6185
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.3815,
+        "b": 0.6185
+      },
+      "match_format": "BO3",
+      "match_id": 861281,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 45540,
+          "name": "Alycia Parks"
+        },
+        "b": {
+          "id": 67792,
+          "name": "Alexandra Eala"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.21760000000000002,
+        "b": 0.7824
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "713e2bf6d9ac75ef3d2f",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_2a6e182d6d41408c938914eca1ce1a69",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "PRICING_UNAVAILABLE",
+            "PROBABILITIES_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE",
+            "INTEGRITY_CONFLICT"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "REPORT_NULL",
+            "divergence_level": 2,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": "UNAVAILABLE",
+            "github_run_id": "41229946488",
+            "market_probabilities": "UNAVAILABLE",
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_82e2a8bf2c6a464d8c1b893226370389"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "bad0a3d0cbed3770a88924b6"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_82e2a8bf2c6a464d8c1b893226370389",
+      "fenzobot_probabilities": null,
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_format": "BO3",
+      "match_id": 861282,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 47152,
+          "name": "Xinyu Wang"
+        },
+        "b": {
+          "id": 52789,
+          "name": "Adithya Karunaratne"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": null,
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "f0f093a615e75792c042",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_82e2a8bf2c6a464d8c1b893226370389",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Leylah Annie Fernandez",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.6183,
+              "b": 0.38170000000000004
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.6570999999999999,
+              "b": 0.3429
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_735647cfd8c547dba71c0a8b1fc8cb5d"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "e9c8e00ef654d6486102a4e4"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_735647cfd8c547dba71c0a8b1fc8cb5d",
+      "fenzobot_probabilities": {
+        "a": 0.6183,
+        "b": 0.38170000000000004
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.6183,
+        "b": 0.38170000000000004
+      },
+      "match_format": "BO3",
+      "match_id": 861285,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 49081,
+          "name": "Leylah Annie Fernandez"
+        },
+        "b": {
+          "id": 23432,
+          "name": "Sofia Kenin"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.6570999999999999,
+        "b": 0.3429
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "74206603bbe62978747e",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_735647cfd8c547dba71c0a8b1fc8cb5d",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Talia Gibson",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5596,
+              "b": 0.4404
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.8247,
+              "b": 0.1753
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_21a921b0430c4c399c5772e50c9a6188"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "2e019c5d2d2c46e8825e0db7"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_21a921b0430c4c399c5772e50c9a6188",
+      "fenzobot_probabilities": {
+        "a": 0.5596,
+        "b": 0.4404
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5596,
+        "b": 0.4404
+      },
+      "match_format": "BO3",
+      "match_id": 861287,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 63749,
+          "name": "Talia Gibson"
+        },
+        "b": {
+          "id": 51696,
+          "name": "Oleksandra Oliynykova"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.8247,
+        "b": 0.1753
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "d4efc75b23057f381be1",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_21a921b0430c4c399c5772e50c9a6188",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Alina Charaeva",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.4514,
+              "b": 0.5486
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.4646,
+              "b": 0.5354
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_8f35ba5c103347b295ea4a0206d65c31"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "c4bec920d481455868ea141f"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_8f35ba5c103347b295ea4a0206d65c31",
+      "fenzobot_probabilities": {
+        "a": 0.4514,
+        "b": 0.5486
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4514,
+        "b": 0.5486
+      },
+      "match_format": "BO3",
+      "match_id": 861289,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 65417,
+          "name": "Antonia Ruzic"
+        },
+        "b": {
+          "id": 52646,
+          "name": "Alina Charaeva"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.4646,
+        "b": 0.5354
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "e1b8bd268bbb4fe9393d",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_8f35ba5c103347b295ea4a0206d65c31",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Kaitlin Quevedo",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 2,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.5795,
+              "b": 0.4205
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.4082,
+              "b": 0.5918
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_ca1e14a0d63248c09042bbc55491a849"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "5c1b8b3e03260dc60aa5a5e5"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_ca1e14a0d63248c09042bbc55491a849",
+      "fenzobot_probabilities": {
+        "a": 0.5795,
+        "b": 0.4205
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5795,
+        "b": 0.4205
+      },
+      "match_format": "BO3",
+      "match_id": 861293,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 77673,
+          "name": "Kaitlin Quevedo"
+        },
+        "b": {
+          "id": 17142,
+          "name": "Paula Badosa Gibert"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.4082,
+        "b": 0.5918
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "54473a3adb50ec5563b2",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_ca1e14a0d63248c09042bbc55491a849",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Xinran Sun",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 1,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.5346,
+              "b": 0.4654
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.249,
+              "b": 0.7509999999999999
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_49454fb4fa574de3b347ff0c6063e6a5"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "732b8cc053c2f16ca0860e2b"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_49454fb4fa574de3b347ff0c6063e6a5",
+      "fenzobot_probabilities": {
+        "a": 0.5346,
+        "b": 0.4654
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5346,
+        "b": 0.4654
+      },
+      "match_format": "BO3",
+      "match_id": 861298,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 100576,
+          "name": "Xinran Sun"
+        },
+        "b": {
+          "id": 73274,
+          "name": "Tereza Valentova"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.249,
+        "b": 0.7509999999999999
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "3aca506b55e4fe34f9ae",
+      "scheduled_start_utc": "2026-11-02T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_49454fb4fa574de3b347ff0c6063e6a5",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Himeno Sakatsume",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.6591,
+              "b": 0.34090000000000004
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.5109,
+              "b": 0.4891
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_120ea6f544f644a38e00a462858e2cd8"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "9205fd689fca54cca6ef7a67"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_120ea6f544f644a38e00a462858e2cd8",
+      "fenzobot_probabilities": {
+        "a": 0.6591,
+        "b": 0.34090000000000004
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.6591,
+        "b": 0.34090000000000004
+      },
+      "match_format": "BO3",
+      "match_id": 856601,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 48220,
+          "name": "Himeno Sakatsume"
+        },
+        "b": {
+          "id": 73771,
+          "name": "Elena Pridankina"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.5109,
+        "b": 0.4891
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "0566defee5b5e7675165",
+      "scheduled_start_utc": "2026-11-01T03:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_120ea6f544f644a38e00a462858e2cd8",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Alexandra Shubladze",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.48119999999999996,
+              "b": 0.5188
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.46490000000000004,
+              "b": 0.5351
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_2cf8953e064d48f1aa2f188de748214e"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "3e146f21d9e4aceda59c33a6"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_2cf8953e064d48f1aa2f188de748214e",
+      "fenzobot_probabilities": {
+        "a": 0.48119999999999996,
+        "b": 0.5188
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.48119999999999996,
+        "b": 0.5188
+      },
+      "match_format": "BO3",
+      "match_id": 858942,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 84356,
+          "name": "Emerson Jones"
+        },
+        "b": {
+          "id": 79766,
+          "name": "Alexandra Shubladze"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.46490000000000004,
+        "b": 0.5351
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "e9cabb79f0fd43c97bee",
+      "scheduled_start_utc": "2026-11-01T03:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_2cf8953e064d48f1aa2f188de748214e",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Tatiana Prozorova",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5999,
+              "b": 0.40009999999999996
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.7604000000000001,
+              "b": 0.2396
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_652a4162e2d34972a2a201f4eae08d56"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "f79f88d7011d46f80f338084"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_652a4162e2d34972a2a201f4eae08d56",
+      "fenzobot_probabilities": {
+        "a": 0.5999,
+        "b": 0.40009999999999996
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5999,
+        "b": 0.40009999999999996
+      },
+      "match_format": "BO3",
+      "match_id": 849601,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 72881,
+          "name": "Tatiana Prozorova"
+        },
+        "b": {
+          "id": 84425,
+          "name": "Mika Stojsavljevic"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.7604000000000001,
+        "b": 0.2396
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "df93965b9dd940b6f4b1",
+      "scheduled_start_utc": "2026-11-01T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_652a4162e2d34972a2a201f4eae08d56",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Aliaksandra Sasnovich",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5259,
+              "b": 0.47409999999999997
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.6618,
+              "b": 0.3382
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_c2728ec9137b4d999cc8a07de224d53c"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "9aaf713300ebb2a7d26419b4"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_c2728ec9137b4d999cc8a07de224d53c",
+      "fenzobot_probabilities": {
+        "a": 0.5259,
+        "b": 0.47409999999999997
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5259,
+        "b": 0.47409999999999997
+      },
+      "match_format": "BO3",
+      "match_id": 868349,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 12842,
+          "name": "Aliaksandra Sasnovich"
+        },
+        "b": {
+          "id": 63750,
+          "name": "Carol Young Suh Lee"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.6618,
+        "b": 0.3382
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "a002357cf59f956d782e",
+      "scheduled_start_utc": "2026-11-01T02:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_c2728ec9137b4d999cc8a07de224d53c",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Diana Shnaider",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.3496,
+              "b": 0.6504000000000001
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.4046,
+              "b": 0.5954
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_067951a6436f4409b0c8f57f2d843ecc"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "e8d62a1bcd0a603827aba925"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_067951a6436f4409b0c8f57f2d843ecc",
+      "fenzobot_probabilities": {
+        "a": 0.3496,
+        "b": 0.6504000000000001
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.3496,
+        "b": 0.6504000000000001
+      },
+      "match_format": "BO3",
+      "match_id": 856493,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 49081,
+          "name": "Leylah Annie Fernandez"
+        },
+        "b": {
+          "id": 65911,
+          "name": "Diana Shnaider"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.4046,
+        "b": 0.5954
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "ad4ee9f965b3ced42045",
+      "scheduled_start_utc": "2026-11-01T03:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_067951a6436f4409b0c8f57f2d843ecc",
+      "surface": "Hard",
+      "tier": "WTA 500",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 500"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE"
+          ],
+          "selected_player": "Joanna Garland",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 3,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.2849,
+              "b": 0.7151000000000001
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.5263,
+              "b": 0.47369999999999995
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_20122473a8b6492892d5d3892203a49e"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "c8c8c8093efbf3ebe547b77a"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_20122473a8b6492892d5d3892203a49e",
+      "fenzobot_probabilities": {
+        "a": 0.2849,
+        "b": 0.7151000000000001
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.2849,
+        "b": 0.7151000000000001
+      },
+      "match_format": "BO3",
+      "match_id": 873074,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 17021,
+          "name": "Jil Teichmann"
+        },
+        "b": {
+          "id": 47998,
+          "name": "Joanna Garland"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.5263,
+        "b": 0.47369999999999995
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "715b0a8a20f0cbf229db",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_20122473a8b6492892d5d3892203a49e",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Vaishnavi Adkar",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 2,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.4729,
+              "b": 0.5271
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.728,
+              "b": 0.272
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_847d3cb8cd604074bde6f13ec4a9f701"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "b77db959cf78cdc7c9d9d351"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_847d3cb8cd604074bde6f13ec4a9f701",
+      "fenzobot_probabilities": {
+        "a": 0.4729,
+        "b": 0.5271
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4729,
+        "b": 0.5271
+      },
+      "match_format": "BO3",
+      "match_id": 873076,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 33355,
+          "name": "Jodie Anna Burrage"
+        },
+        "b": {
+          "id": 83823,
+          "name": "Vaishnavi Adkar"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.728,
+        "b": 0.272
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "c382945faf9302d62e53",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_847d3cb8cd604074bde6f13ec4a9f701",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Robin Montgomery",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.4375,
+              "b": 0.5625
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.2939,
+              "b": 0.7061
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_6635dea9b43a4ec6af2dcce6e63d1fc5"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "8eebc525093c2de69afddca6"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_6635dea9b43a4ec6af2dcce6e63d1fc5",
+      "fenzobot_probabilities": {
+        "a": 0.4375,
+        "b": 0.5625
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4375,
+        "b": 0.5625
+      },
+      "match_format": "BO3",
+      "match_id": 873083,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 43866,
+          "name": "Panna Udvardy"
+        },
+        "b": {
+          "id": 64341,
+          "name": "Robin Montgomery"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.2939,
+        "b": 0.7061
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "e03574c0b74b089e379e",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_6635dea9b43a4ec6af2dcce6e63d1fc5",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Mananchaya Sawangkaew",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.6586,
+              "b": 0.3414
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.6071,
+              "b": 0.39289999999999997
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_b49c682842364e17a5b4e7d3dbfc9e05"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "637c2d284266b7b85632ea49"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_b49c682842364e17a5b4e7d3dbfc9e05",
+      "fenzobot_probabilities": {
+        "a": 0.6586,
+        "b": 0.3414
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.6586,
+        "b": 0.3414
+      },
+      "match_format": "BO3",
+      "match_id": 873086,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 49995,
+          "name": "Mananchaya Sawangkaew"
+        },
+        "b": {
+          "id": 39326,
+          "name": "Mai Hontama"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.6071,
+        "b": 0.39289999999999997
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "27d9f10d4e66e2e730f7",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_b49c682842364e17a5b4e7d3dbfc9e05",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Rebecca Sramkova",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.3994,
+              "b": 0.6006
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.3643,
+              "b": 0.6357
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_7504eba6b96243eebf4cce82875cdd1e"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "2743dd950841d0dfabc6987f"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_7504eba6b96243eebf4cce82875cdd1e",
+      "fenzobot_probabilities": {
+        "a": 0.3994,
+        "b": 0.6006
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.3994,
+        "b": 0.6006
+      },
+      "match_format": "BO3",
+      "match_id": 873087,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 52254,
+          "name": "Moyuka Uchijima"
+        },
+        "b": {
+          "id": 17062,
+          "name": "Rebecca Sramkova"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.3643,
+        "b": 0.6357
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "d1af0ffe14961fb6f476",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_7504eba6b96243eebf4cce82875cdd1e",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE"
+          ],
+          "selected_player": "Polina Iatcenko",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 3,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.3385,
+              "b": 0.6615000000000001
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.5954,
+              "b": 0.4046
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_c0aaf9772d0f49f58c1456fc56e92585"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "73c90dbb51d24e0e38398924"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_c0aaf9772d0f49f58c1456fc56e92585",
+      "fenzobot_probabilities": {
+        "a": 0.3385,
+        "b": 0.6615000000000001
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.3385,
+        "b": 0.6615000000000001
+      },
+      "match_format": "BO3",
+      "match_id": 873088,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 52660,
+          "name": "Anastasia Zakharova"
+        },
+        "b": {
+          "id": 71437,
+          "name": "Polina Iatcenko"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.5954,
+        "b": 0.4046
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "cc47094ebde2475efb6c",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_c0aaf9772d0f49f58c1456fc56e92585",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE"
+          ],
+          "selected_player": "Lilli Tagger",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 3,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.3011,
+              "b": 0.6989
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.728,
+              "b": 0.272
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_2c77861602d7481a884f374be957fd7d"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "6fb4c6d7efb093eb9539da76"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_2c77861602d7481a884f374be957fd7d",
+      "fenzobot_probabilities": {
+        "a": 0.3011,
+        "b": 0.6989
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.3011,
+        "b": 0.6989
+      },
+      "match_format": "BO3",
+      "match_id": 873089,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 57147,
+          "name": "Elsa Jacquemot"
+        },
+        "b": {
+          "id": 79778,
+          "name": "Lilli Tagger"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.728,
+        "b": 0.272
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "365028a4a9b6594f100e",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_2c77861602d7481a884f374be957fd7d",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Teodora Kostovic",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.4154,
+              "b": 0.5846
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.39289999999999997,
+              "b": 0.6071
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_8f2a91f03a314906955a0a6f876a64d0"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "b687ce2fe4fde696be742d79"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_8f2a91f03a314906955a0a6f876a64d0",
+      "fenzobot_probabilities": {
+        "a": 0.4154,
+        "b": 0.5846
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4154,
+        "b": 0.5846
+      },
+      "match_format": "BO3",
+      "match_id": 873090,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 59448,
+          "name": "Oksana Selekhmeteva"
+        },
+        "b": {
+          "id": 87188,
+          "name": "Teodora Kostovic"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.39289999999999997,
+        "b": 0.6071
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "04e9fc48979cb1674ae3",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_8f2a91f03a314906955a0a6f876a64d0",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "UNAVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG",
+            "SELECTED_SIDE_UNAVAILABLE",
+            "PRICING_UNAVAILABLE",
+            "PROBABILITIES_UNAVAILABLE",
+            "SELECTED_PLAYER_UNAVAILABLE"
+          ],
+          "selected_player": null,
+          "selected_side": null,
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_UNAVAILABLE",
+            "divergence_level": 0,
+            "divergence_type": "evidence_only",
+            "fenzobot_probabilities": "UNAVAILABLE",
+            "github_run_id": "41229946488",
+            "market_probabilities": "UNAVAILABLE",
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_9377a777f06049f58eed8fe8ace6d30d"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "b72887f261f5037def4ab08b"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_9377a777f06049f58eed8fe8ace6d30d",
+      "fenzobot_probabilities": null,
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": null,
+      "market_plus_sharp_probabilities": null,
+      "match_format": "BO3",
+      "match_id": 873091,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 60341,
+          "name": "Janice Tjen"
+        },
+        "b": {
+          "id": 68944,
+          "name": "Katherine Hui"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": null,
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "761721685d77c6b64cee",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_9377a777f06049f58eed8fe8ace6d30d",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Simona Waltert",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.3555,
+              "b": 0.6445000000000001
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.1007,
+              "b": 0.8993000000000001
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_5b2b6fc14a4e43bcbfd546ef3a5ecaa2"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "8a76f483e09dcd1a852b8b53"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_5b2b6fc14a4e43bcbfd546ef3a5ecaa2",
+      "fenzobot_probabilities": {
+        "a": 0.3555,
+        "b": 0.6445000000000001
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.3555,
+        "b": 0.6445000000000001
+      },
+      "match_format": "BO3",
+      "match_id": 873095,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 75089,
+          "name": "Sahaja Yamalapalli"
+        },
+        "b": {
+          "id": 44349,
+          "name": "Simona Waltert"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.1007,
+        "b": 0.8993000000000001
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "a9e871f20e40f5693ee8",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_5b2b6fc14a4e43bcbfd546ef3a5ecaa2",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Maaya Rajeshwaran Revathi",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 2,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.5402,
+              "b": 0.4598
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.2545,
+              "b": 0.7454999999999999
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_c549982aa3664301819cbe0e8e642ec0"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "377c9a8ba6d2cd28ca3fd8c0"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_c549982aa3664301819cbe0e8e642ec0",
+      "fenzobot_probabilities": {
+        "a": 0.5402,
+        "b": 0.4598
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5402,
+        "b": 0.4598
+      },
+      "match_format": "BO3",
+      "match_id": 873100,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 92116,
+          "name": "Maaya Rajeshwaran Revathi"
+        },
+        "b": {
+          "id": 11066,
+          "name": "Katarzyna Kawa"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.2545,
+        "b": 0.7454999999999999
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "eda3cdb53f0843753566",
+      "scheduled_start_utc": "2026-11-02T04:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_c549982aa3664301819cbe0e8e642ec0",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Mei Yamaguchi",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5965,
+              "b": 0.4035
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.6434000000000001,
+              "b": 0.3566
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_cd79cea9de53452289d7267fcc235d6f"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "163dd91a1ac5fb1e1880b910"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_cd79cea9de53452289d7267fcc235d6f",
+      "fenzobot_probabilities": {
+        "a": 0.5965,
+        "b": 0.4035
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5965,
+        "b": 0.4035
+      },
+      "match_format": "BO3",
+      "match_id": 880281,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 42435,
+          "name": "Mei Yamaguchi"
+        },
+        "b": {
+          "id": 36822,
+          "name": "Zhibek Kulambayeva"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.6434000000000001,
+        "b": 0.3566
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "9b87e643060274a14826",
+      "scheduled_start_utc": "2026-11-01T10:00:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_cd79cea9de53452289d7267fcc235d6f",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Aliona Falei",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.5332,
+              "b": 0.4668
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.6618,
+              "b": 0.3382
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_9a209b0c0e8b49349e588be1d60e579a"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "6f76accee67a161d95679b67"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_9a209b0c0e8b49349e588be1d60e579a",
+      "fenzobot_probabilities": {
+        "a": 0.5332,
+        "b": 0.4668
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.5332,
+        "b": 0.4668
+      },
+      "match_format": "BO3",
+      "match_id": 865975,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 62886,
+          "name": "Aliona Falei"
+        },
+        "b": {
+          "id": 83250,
+          "name": "Rada Zolotareva"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.6618,
+        "b": 0.3382
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "645a931c22f46f22ce01",
+      "scheduled_start_utc": "2026-11-01T08:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_9a209b0c0e8b49349e588be1d60e579a",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Kyoka Okamura",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.6163000000000001,
+              "b": 0.3837
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.6862,
+              "b": 0.31379999999999997
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_e48fd1f19d7e4eca91d3d4f8c1ed6ec6"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "85157cb8cf58bab55e915150"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_e48fd1f19d7e4eca91d3d4f8c1ed6ec6",
+      "fenzobot_probabilities": {
+        "a": 0.6163000000000001,
+        "b": 0.3837
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.6163000000000001,
+        "b": 0.3837
+      },
+      "match_format": "BO3",
+      "match_id": 870695,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 15642,
+          "name": "Kyoka Okamura"
+        },
+        "b": {
+          "id": 36391,
+          "name": "Momoko Kobori"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.6862,
+        "b": 0.31379999999999997
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "00623498136d0a201ca5",
+      "scheduled_start_utc": "2026-11-01T08:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_e48fd1f19d7e4eca91d3d4f8c1ed6ec6",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Weronika Falkowska",
+          "selected_side": "b",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 1,
+            "divergence_type": "direcao",
+            "fenzobot_probabilities": {
+              "a": 0.4783,
+              "b": 0.5217
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.5,
+              "b": 0.5
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_59a5009a69d34e0d83068adc2fd13f02"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "92c25ddd11e865a29f58b816"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_59a5009a69d34e0d83068adc2fd13f02",
+      "fenzobot_probabilities": {
+        "a": 0.4783,
+        "b": 0.5217
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "b",
+      "market_plus_sharp_probabilities": {
+        "a": 0.4783,
+        "b": 0.5217
+      },
+      "match_format": "BO3",
+      "match_id": 873079,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 37909,
+          "name": "Viktoria Morvayova"
+        },
+        "b": {
+          "id": 44823,
+          "name": "Weronika Falkowska"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.5,
+        "b": 0.5
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "2cd3003c2e3cf753253b",
+      "scheduled_start_utc": "2026-11-01T08:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_59a5009a69d34e0d83068adc2fd13f02",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
+    },
+    {
+      "availability": {
+        "closing_market": "UNAVAILABLE",
+        "entry_market": "UNAVAILABLE",
+        "market_plus_sharp": "AVAILABLE"
+      },
+      "cohort_code_revision": null,
+      "cohort_memberships": {
+        "GREEN_STRONG_V1": {
+          "classified_at_utc": "2026-10-31T18:39:37+00:00",
+          "contract_version": "green-strong-v1",
+          "eligible": false,
+          "prospective": true,
+          "reason_codes": [
+            "DECISION_STATE_NOT_EDGE_POSITIVE",
+            "PAPER_NOT_ELIGIBLE",
+            "DIVERGENCE_TYPE_NOT_DIRECTION",
+            "DIVERGENCE_LEVEL_NOT_STRONG"
+          ],
+          "selected_player": "Lilli Tagger",
+          "selected_side": "a",
+          "source": {
+            "code_revision": "1e3af9a5a3392f23fc8c67cce27a9feb5ef6701e",
+            "decision_contract_version": "fenzobot-prelive-v1",
+            "decision_state": "PRICING_SHADOW",
+            "divergence_level": 0,
+            "divergence_type": "alinhamento",
+            "fenzobot_probabilities": {
+              "a": 0.6556000000000001,
+              "b": 0.3444
+            },
+            "github_run_id": "41229946488",
+            "market_probabilities": {
+              "a": 0.7020000000000001,
+              "b": 0.298
+            },
+            "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+            "pricing_model_version": "hierarchical-surface-elo-v4.3",
+            "snapshot_key": "mi2_9bb84666297e4228af6870fcfd75e72f"
+          },
+          "status": "INELIGIBLE",
+          "validation_id": "72c90a4223b972cc2b4d099f"
+        }
+      },
+      "entry_market_observation_id": null,
+      "entry_market_probabilities": null,
+      "evaluation_scope": "STANDARD",
+      "event_key": "mi2_9bb84666297e4228af6870fcfd75e72f",
+      "fenzobot_probabilities": {
+        "a": 0.6556000000000001,
+        "b": 0.3444
+      },
+      "last_valid_prestart_market_observation_id": null,
+      "last_valid_prestart_market_probabilities": null,
+      "market_only_prediction": null,
+      "market_plus_sharp_prediction": "a",
+      "market_plus_sharp_probabilities": {
+        "a": 0.6556000000000001,
+        "b": 0.3444
+      },
+      "match_format": "BO3",
+      "match_id": 870675,
+      "outcome_side": null,
+      "paper": [],
+      "players": {
+        "a": {
+          "id": 79778,
+          "name": "Lilli Tagger"
+        },
+        "b": {
+          "id": 14609,
+          "name": "Harriet Dart"
+        }
+      },
+      "pricing_configuration_fingerprint": "5e1b4e8b8c059b28",
+      "pricing_market_probabilities": {
+        "a": 0.7020000000000001,
+        "b": 0.298
+      },
+      "pricing_model_version": "hierarchical-surface-elo-v4.3",
+      "report_id": "4e6dee912affc440890c",
+      "scheduled_start_utc": "2026-11-01T08:30:00+00:00",
+      "selected_side": null,
+      "selected_side_market_position": null,
+      "snapshot_key": "mi2_9bb84666297e4228af6870fcfd75e72f",
+      "surface": "Hard",
+      "tier": "WTA 250",
+      "tour": "wta",
+      "tournament_coverage": {
+        "analysis_allowed": true,
+        "green_allowed": true,
+        "mode": "STANDARD",
+        "paper_allowed": true,
+        "pricing_allowed": true,
+        "reason_code": null,
+        "tier": "WTA 250"
+      }
     }
   ],
   "experimental_evaluation_by_tier": {
@@ -128302,12 +132196,12 @@
         "log_loss": 0.600997,
         "sample_size": 147
       },
-      "sample_size": 196
+      "sample_size": 197
     }
   },
-  "generated_at_utc": "2026-10-31T07:06:25+00:00",
+  "generated_at_utc": "2026-10-31T19:06:24+00:00",
   "mode": "SHADOW_ANALYTICS",
-  "observation_count": 28391,
+  "observation_count": 28735,
   "schema_version": 1,
   "source_of_truth": "append_only_market_ledger",
   "unavailable_semantics": "Missing linkage or incomparable market data remains UNAVAILABLE; it is never inferred."
