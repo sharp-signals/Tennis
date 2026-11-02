@@ -3362,6 +3362,48 @@ def _build_match_payload(match: dict) -> dict:
             f"{payload.get('player_b')}; decisão automática bloqueada."
         )
 
+    # Novo modelo contextual: observação prospetiva estritamente SHADOW.
+    # É calculado depois da decisão atual para que não possa alterar pricing,
+    # cor, Telegram, PAPER ou GREEN desta execução.
+    try:
+        from .contextual_family_replay import build_contextual_target_row
+        from .contextual_shadow_runtime import load_contract, predict_contextual_shadow
+
+        contextual_universe = (
+            "challenger"
+            if str(match.get("tier") or "").strip() == "Challenger 125"
+            else str(tour).strip().casefold()
+        )
+        contextual_row = build_contextual_target_row(
+            history,
+            universe=contextual_universe,
+            player_a=_resolved_a or player_a,
+            player_b=_resolved_b or player_b,
+            cutoff=start.date(),
+            surface=surface,
+            rank_a=(rank_a or {}).get("rank") if isinstance(rank_a, dict) else rank_a,
+            rank_b=(rank_b or {}).get("rank") if isinstance(rank_b, dict) else rank_b,
+        )
+        payload["contextual_shadow_v1"] = predict_contextual_shadow(
+            contextual_row, load_contract(), universe=contextual_universe,
+        )
+    except Exception as exc:
+        payload["contextual_shadow_v1"] = {
+            "schema_version": 1,
+            "mode": "PROSPECTIVE_SHADOW_ONLY",
+            "status": "UNAVAILABLE",
+            "reason_code": type(exc).__name__,
+            "market_used": False,
+            "edge_calculated": False,
+            "production_effect": False,
+            "paper_eligible": False,
+            "green_eligible": False,
+        }
+        print(
+            "[contextual-shadow] indisponível sem afetar produção: "
+            f"{player_a} vs {player_b} ({type(exc).__name__}: {exc})"
+        )
+
     return payload
 
 
@@ -3970,6 +4012,18 @@ def run() -> None:
     shadow_rows = [row for row in (shadow_pricing_store.build_observation(payload) for payload, _ in analyses) if row]
     added_shadow = shadow_pricing_store.append_observations(shadow_rows)
     print(f"[pricing-shadow] {added_shadow} observação(ões) versionada(s) acrescentada(s).")
+    from . import contextual_shadow_store
+    contextual_rows = [
+        row for row in (
+            contextual_shadow_store.build_observation(payload)
+            for payload, _ in analyses
+        ) if row
+    ]
+    added_contextual = contextual_shadow_store.append_observations(contextual_rows)
+    print(
+        "[contextual-shadow] "
+        f"{added_contextual} observação(ões) prospetiva(s) isolada(s) acrescentada(s)."
+    )
     persisted_snapshots = calibration_store.read_snapshots_by_key(
         (
             str(payload.get("snapshot_key"))

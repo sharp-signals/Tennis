@@ -229,6 +229,10 @@ def combine_contextual_families(
         "family_coefficients": {
             family: coefficients[f"{family}__logit"] for family in FAMILY_ORDER
         },
+        # Equações exatas usadas para produzir os logits que alimentaram este
+        # meta-modelo. O runtime deve consumir estas, nunca uma calibração
+        # familiar paralela com hiperparâmetros potencialmente diferentes.
+        "runtime_family_models": final_family_models,
         "holdout": {
             "combined": model_metrics,
             "intercept_only_baseline": baseline_metrics,

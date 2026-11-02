@@ -10,7 +10,9 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, timedelta
 import math
+import threading
 from typing import Any
+import weakref
 
 import pandas as pd
 
@@ -46,6 +48,8 @@ FEATURE_FAMILIES = {
     "service_points_won_recent_margin": "serve_return",
     "return_points_won_recent_margin": "serve_return",
 }
+_MATERIAL_CACHE: dict[int, tuple[weakref.ReferenceType[pd.DataFrame], pd.DataFrame]] = {}
+_MATERIAL_CACHE_LOCK = threading.Lock()
 
 
 def _surface(value: Any) -> str | None:
@@ -71,6 +75,8 @@ def _material(frame: pd.DataFrame) -> pd.DataFrame:
     material["_date_source"] = date_source
     material["_winner"] = _column(frame, "winner_name").astype("string").str.strip()
     material["_loser"] = _column(frame, "loser_name").astype("string").str.strip()
+    material["_winner_key"] = material["_winner"].map(_name_key)
+    material["_loser_key"] = material["_loser"].map(_name_key)
     material["_surface"] = _column(frame, "surface").map(_surface)
     material["_winner_rank"] = _column(frame, "winner_rank")
     material["_loser_rank"] = _column(frame, "loser_rank")
@@ -83,6 +89,21 @@ def _material(frame: pd.DataFrame) -> pd.DataFrame:
         & (material["_winner"] != "")
         & (material["_loser"] != "")
     ].sort_values("_event_date")
+
+
+def _cached_material(frame: pd.DataFrame) -> pd.DataFrame:
+    """Reuse parsed history inside one bot run; never persist provider data."""
+    key = id(frame)
+    with _MATERIAL_CACHE_LOCK:
+        cached = _MATERIAL_CACHE.get(key)
+        if cached is not None and cached[0]() is frame:
+            return cached[1]
+        material = _material(frame)
+        _MATERIAL_CACHE[key] = (weakref.ref(frame), material)
+        stale = [item for item, (reference, _) in _MATERIAL_CACHE.items() if reference() is None]
+        for item in stale:
+            _MATERIAL_CACHE.pop(item, None)
+        return material
 
 
 def _difference(a: Any, b: Any) -> float | None:
@@ -177,6 +198,153 @@ def _family_payloads(
         "serve_return": {
             "status": "READY" if service_a and service_b else "INSUFFICIENT_SAMPLE",
         },
+    }
+
+
+def build_contextual_target_row(
+    frame: pd.DataFrame,
+    *,
+    universe: str,
+    player_a: str,
+    player_b: str,
+    cutoff: date,
+    surface: str | None,
+    rank_a: float | None,
+    rank_b: float | None,
+) -> dict[str, Any]:
+    """Build one future, market-free row with the exact replay definitions.
+
+    Only completed matches strictly before ``cutoff`` are visible.  The
+    alphabetical model orientation is returned explicitly so callers can map
+    it back to the provider's left/right orientation without changing the
+    learned equation.
+    """
+    names = {_name_key(player_a): (player_a, rank_a), _name_key(player_b): (player_b, rank_b)}
+    if None in names or "" in names or len(names) != 2:
+        raise ValueError("two distinct resolved player names are required")
+    model_a, model_b = sorted(names)
+    current_ranks = {key: _positive_rank(value[1]) for key, value in names.items()}
+    target_surface = _surface(surface)
+    material = _cached_material(frame)
+    material = material[material["_event_date"] < cutoff]
+
+    match_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    rank_history: dict[str, list[tuple[date, float]]] = defaultdict(list)
+    service_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    pair_history: list[dict[str, Any]] = []
+    wanted = {model_a, model_b}
+    material = material[
+        material["_winner_key"].isin(wanted)
+        | material["_loser_key"].isin(wanted)
+    ]
+    for _, match in material.iterrows():
+        if bool(match["_non_standard"]):
+            continue
+        winner, loser = _name_key(match["_winner"]), _name_key(match["_loser"])
+        if not winner or not loser or winner == loser:
+            continue
+        event_date, match_surface = match["_event_date"], match["_surface"]
+        rank_w = _positive_rank(match["_winner_rank"])
+        rank_l = _positive_rank(match["_loser_rank"])
+        winner_margin = _game_margin(match["_score"], won=True)
+        loser_margin = -winner_margin if winner_margin is not None else None
+        if winner in wanted:
+            match_history[winner].append(_player_observation(
+                event_date=event_date, surface=match_surface, won=True,
+                player_rank=rank_w, opponent_rank=rank_l, game_margin=winner_margin,
+            ))
+            if rank_w:
+                rank_history[winner].append((event_date, rank_w))
+            service = _extract_match(match, player_won=True)
+            if service is not None:
+                service_history[winner].append({
+                    **service, "event_date": event_date, "surface": match_surface,
+                })
+        if loser in wanted:
+            match_history[loser].append(_player_observation(
+                event_date=event_date, surface=match_surface, won=False,
+                player_rank=rank_l, opponent_rank=rank_w, game_margin=loser_margin,
+            ))
+            if rank_l:
+                rank_history[loser].append((event_date, rank_l))
+            service = _extract_match(match, player_won=False)
+            if service is not None:
+                service_history[loser].append({
+                    **service, "event_date": event_date, "surface": match_surface,
+                })
+        if {winner, loser} == wanted:
+            pair_history.append({
+                "event_date": event_date, "surface": match_surface, "winner": winner,
+            })
+
+    recent_a = _summarize_player_history(
+        match_history[model_a], cutoff=cutoff, target_surface=target_surface,
+        half_life_days=None, window_days=WINDOW_DAYS,
+    )
+    recent_b = _summarize_player_history(
+        match_history[model_b], cutoff=cutoff, target_surface=target_surface,
+        half_life_days=None, window_days=WINDOW_DAYS,
+    )
+    surface_rate_a, surface_sample_a = _surface_record(match_history[model_a], target_surface)
+    surface_rate_b, surface_sample_b = _surface_record(match_history[model_b], target_surface)
+    h2h_global, h2h_surface, h2h_sample, h2h_surface_sample = _h2h_feature(
+        pair_history, player_a=model_a, surface=target_surface,
+    )
+    service_surface_a, service_recent_a = _service_view(
+        service_history[model_a], cutoff=cutoff, surface=target_surface,
+    )
+    service_surface_b, service_recent_b = _service_view(
+        service_history[model_b], cutoff=cutoff, surface=target_surface,
+    )
+    model_rank_a, model_rank_b = current_ranks[model_a], current_ranks[model_b]
+    features = {
+        "recent_result_balance_90d": _difference(recent_a["result_balance"], recent_b["result_balance"]),
+        "recent_game_margin_balance_90d": _difference(recent_a["game_margin_balance"], recent_b["game_margin_balance"]),
+        "recent_win_opponent_strength_90d": _difference(recent_a["win_opponent_strength"], recent_b["win_opponent_strength"]),
+        "recent_loss_opponent_strength_90d": _difference(recent_a["loss_opponent_strength"], recent_b["loss_opponent_strength"]),
+        "current_rank_log_ratio": math.log(model_rank_b / model_rank_a) if model_rank_a and model_rank_b else None,
+        "rank_change_from_last_observation": _difference(
+            _last_rank_change(rank_history[model_a], model_rank_a),
+            _last_rank_change(rank_history[model_b], model_rank_b),
+        ),
+        "same_surface_result_balance_90d": _difference(recent_a["same_surface_result_balance"], recent_b["same_surface_result_balance"]),
+        "career_surface_win_rate_margin": _difference(surface_rate_a, surface_rate_b),
+        "h2h_win_share_margin": h2h_global,
+        "same_surface_h2h_win_share_margin": h2h_surface,
+        "service_points_won_surface_margin": _metric_margin(service_surface_a, service_surface_b, "service_points_won_pct"),
+        "return_points_won_surface_margin": _metric_margin(service_surface_a, service_surface_b, "return_points_won_pct"),
+        "hold_surface_margin": _metric_margin(service_surface_a, service_surface_b, "hold_pct"),
+        "break_surface_margin": _metric_margin(service_surface_a, service_surface_b, "break_pct"),
+        "service_points_won_recent_margin": _metric_margin(service_recent_a, service_recent_b, "service_points_won_pct"),
+        "return_points_won_recent_margin": _metric_margin(service_recent_a, service_recent_b, "return_points_won_pct"),
+    }
+    vector = build_contextual_family_vector(_family_payloads(
+        recent_a=recent_a, recent_b=recent_b, rank_a=model_rank_a, rank_b=model_rank_b,
+        surface_sample_a=surface_sample_a, surface_sample_b=surface_sample_b,
+        h2h_sample=h2h_sample, service_a=service_surface_a or service_recent_a,
+        service_b=service_surface_b or service_recent_b,
+    ))
+    return {
+        "event_date": cutoff.isoformat(), "date_source": "prospective_cutoff",
+        "universe": str(universe).strip().casefold(),
+        "player_a": model_a, "player_b": model_b, "target_a_win": False,
+        "surface": target_surface, "features": features,
+        "samples": {
+            "recent_a": recent_a["sample"], "recent_b": recent_b["sample"],
+            "surface_a": surface_sample_a, "surface_b": surface_sample_b,
+            "h2h": h2h_sample, "same_surface_h2h": h2h_surface_sample,
+            "service_surface_a": (service_surface_a or {}).get("matches", 0),
+            "service_surface_b": (service_surface_b or {}).get("matches", 0),
+        },
+        "family_states": {
+            row["key"]: {"data_state": row["data_state"], "signal_state": row["signal_state"]}
+            for row in vector["families"]
+        },
+        "orientation": {
+            "model_a_input_side": "a" if _name_key(player_a) == model_a else "b",
+            "model_b_input_side": "b" if _name_key(player_b) == model_b else "a",
+        },
+        "market_used": False,
     }
 
 

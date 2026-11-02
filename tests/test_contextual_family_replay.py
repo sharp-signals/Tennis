@@ -1,4 +1,5 @@
 from src.contextual_family_replay import (
+    build_contextual_target_row,
     build_contextual_family_replay_rows,
     evaluate_contextual_family_replay,
     replay_contextual_families,
@@ -144,3 +145,21 @@ def test_wrapper_is_observational_and_has_no_production_effect():
     assert report["production_effect"] is False
     assert report["market_used"] is False
     assert report["result"]["player_orientation"] == "alphabetical_name_order_independent_of_result"
+
+
+def test_prospective_target_uses_exactly_the_replay_feature_definitions():
+    frame = pd.DataFrame([
+        _match("20260101", "Alpha", "Other A", winner_rank=15, loser_rank=80),
+        _match("20260102", "Other B", "Beta", winner_rank=25, loser_rank=45),
+        _match("20260105", "Alpha", "Beta", winner_rank=14, loser_rank=44),
+    ])
+    replay = build_contextual_family_replay_rows(frame, universe="atp")[-1]
+    target = build_contextual_target_row(
+        frame, universe="atp", player_a="Alpha", player_b="Beta",
+        cutoff=pd.Timestamp("2026-01-05").date(), surface="Hard",
+        rank_a=14, rank_b=44,
+    )
+    assert target["features"] == replay["features"]
+    assert target["samples"] == replay["samples"]
+    assert target["family_states"] == replay["family_states"]
+    assert target["market_used"] is False
