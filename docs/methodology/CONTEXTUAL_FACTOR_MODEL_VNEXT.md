@@ -404,3 +404,37 @@ para replay e decisão humana:
 - transformação calibrada do vetor de famílias em probabilidade.
 
 Nenhum destes valores será escolhido apenas por conveniência de implementação.
+
+## 13. Auditoria factual inicial — 2 de novembro de 2026
+
+Foi executada uma auditoria read-only com cutoff em
+`2026-11-02T12:00:00Z`, janela de 90 dias e exclusão integral do dia do cutoff
+por as fontes terem precisão diária.
+
+### 13.1 Fonte operacional primária
+
+| Universo | Partidas | Resultado | Ranking bilateral | Score completo | Contexto completo |
+|---|---:|---:|---:|---:|---:|
+| ATP principal | 823 | 100,0% | 98,3% | 97,0% | 95,3% |
+| WTA principal | 644 | 100,0% | 99,1% | 96,3% | 95,3% |
+| Challenger | 1 911 | 100,0% | 99,2% | 95,1% | 94,2% |
+
+`Contexto completo` exige identidade/resultado, rankings bilaterais, piso,
+circuito, tier, ronda e score completo. A cobertura demonstra que é viável
+construir qualidade de vitórias e derrotas sem inventar dados na grande maioria
+dos casos.
+
+### 13.2 Fallbacks locais
+
+- ATP e Challenger Valuebetennis têm resultado, piso, ronda e circuito, mas
+  não expõem rankings históricos no esquema atual;
+- o cache local WTA tennis-data termina em 3 de agosto de 2026 e, por isso, não
+  tem partidas dentro da janela iniciada em 4 de agosto;
+- um fallback não pode herdar a classificação de qualidade calculada pela
+  fonte primária se os factos necessários não estiverem presentes.
+
+Consequência metodológica: em falha da fonte primária, o sistema pode mostrar
+forma bruta quando factual, mas `qualidade_vitorias`, `qualidade_derrotas` e
+performance ajustada ao adversário ficam N/D ou usam apenas um enriquecimento
+ex ante com proveniência explícita. Nunca são reconstruídas por reputação ou
+ranking atual.
