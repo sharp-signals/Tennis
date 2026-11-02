@@ -214,6 +214,13 @@ classificado. A qualidade de vitória/derrota exposta nesta fase é apenas a
 magnitude factual do desvio perante esse contexto de ranking; não é ainda uma
 probabilidade, contribuição ou peso.
 
+O replay ex ante de 02/11/2026 rejeitou expressamente a utilização autónoma
+dessa magnitude relativa como proxy de qualidade: ficou abaixo de 50% de
+direção correta no holdout ATP/WTA e praticamente neutra em Challenger. O campo
+continua disponível para auditoria factual, mas não será promovido a sinal. A
+qualidade v2 terá de medir força absoluta do adversário, expectativa estrutural,
+competitividade e repetição antes de novo replay.
+
 ### 6.3 Qualidade das vitórias
 
 Uma vitória tem valor contextual superior quando:
