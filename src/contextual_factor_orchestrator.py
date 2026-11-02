@@ -10,51 +10,23 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from .contextual_family_methodology import FAMILY_METHODOLOGY, METHODOLOGY_VERSION
+
 
 SCHEMA_VERSION = 1
 
-FAMILY_DEFINITIONS: tuple[dict[str, Any], ...] = (
-    {
-        "key": "recent_form",
-        "label": "Forma recente ajustada",
-        "role": "PRIMARY",
-        "role_label": "Família principal",
-        "optional": False,
-        "owns": ("recent_results", "opponent_quality", "competitiveness"),
-    },
-    {
-        "key": "structural_strength",
-        "label": "Força estrutural",
-        "role": "PRIMARY_CONTEXT",
-        "role_label": "Contexto estrutural principal",
-        "optional": False,
-        "owns": ("current_rank", "ranking_points", "trajectory", "inactivity"),
-    },
-    {
-        "key": "surface_conditions",
-        "label": "Superfície e condições",
-        "role": "CONTEXTUAL",
-        "role_label": "Família contextual",
-        "optional": False,
-        "owns": ("surface", "pace", "indoor_outdoor", "surface_transition"),
-    },
-    {
-        "key": "matchup_h2h",
-        "label": "Matchup e confronto direto",
-        "role": "MATCHUP_OPTIONAL",
-        "role_label": "Contexto de matchup",
-        "optional": True,
-        "owns": ("pair_history", "style_interaction", "handedness_matchup"),
-    },
-    {
-        "key": "serve_return",
-        "label": "Serviço e resposta",
-        "role": "SECONDARY",
-        "role_label": "Contexto secundário",
-        "optional": True,
-        "owns": ("serve_baseline", "return_baseline", "recent_deviation"),
-    },
-)
+_OWNERSHIP = {
+    "recent_form": ("recent_results", "opponent_quality", "competitiveness"),
+    "structural_strength": ("current_rank", "ranking_points", "trajectory", "inactivity"),
+    "surface_conditions": ("surface", "pace", "indoor_outdoor", "surface_transition"),
+    "matchup_h2h": ("pair_history", "style_interaction", "handedness_matchup"),
+    "serve_return": ("serve_baseline", "return_baseline", "recent_deviation"),
+}
+FAMILY_DEFINITIONS: tuple[dict[str, Any], ...] = tuple({
+    **definition,
+    "optional": definition["key"] in {"matchup_h2h", "serve_return"},
+    "owns": _OWNERSHIP[definition["key"]],
+} for definition in FAMILY_METHODOLOGY)
 
 _OBSERVED_STATUSES = {
     "AVAILABLE", "READY", "BILATERAL", "COMPLETE",
@@ -147,6 +119,11 @@ def normalise_family_observation(
         "label": definition["label"],
         "role": definition["role"],
         "role_label": definition["role_label"],
+        "priority_tier": definition["priority_tier"],
+        "contribution_mode": definition["contribution_mode"],
+        "can_lead": definition["can_lead"],
+        "standalone_signal": definition["standalone_signal"],
+        "context_gates": list(definition["context_gates"]),
         "optional": definition["optional"],
         "owns": list(definition["owns"]),
         "data_state": data_state,
@@ -200,6 +177,7 @@ def build_contextual_family_vector(
 
     return {
         "schema_version": SCHEMA_VERSION,
+        "methodology_version": METHODOLOGY_VERSION,
         "model_status": "OBSERVATIONAL_ONLY",
         "families": families,
         "coverage": {
@@ -229,6 +207,9 @@ def build_contextual_family_vector(
             "h2h_context_tags_are_modifiers_not_extra_families": True,
             "surface_components_form_one_family": True,
             "serve_return_is_secondary_and_cannot_create_a_standalone_signal": True,
+            "family_roles_are_human_governed": True,
+            "history_may_refine_but_not_reorder_roles": True,
+            "fixed_global_family_weights_are_prohibited": True,
         },
     }
 
