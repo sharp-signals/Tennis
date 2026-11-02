@@ -50,6 +50,26 @@ O relatório não deve mostrar 20–23 caixas como se fossem votos independentes
 Subcomponentes da mesma família não são somados visualmente nem apresentados
 como vantagens autónomas.
 
+### Visual principal das famílias
+
+A leitura das cinco famílias deve ter um elemento gráfico central, preferindo
+um **radar de cinco eixos com anel de incerteza/cobertura** ou, caso os testes
+de legibilidade móvel o desaconselhem, cinco barras divergentes horizontais.
+O gráfico deve permitir perceber imediatamente:
+
+- para que lado aponta cada família;
+- quão material é a diferença;
+- quanta evidência suporta essa leitura;
+- onde existem dados em falta ou conflito.
+
+Um gráfico circular do tipo donut pode resumir cobertura, mas não deve fingir
+que as famílias são fatias aditivas de uma probabilidade. Cor, transparência e
+tracejado devem distinguir direção, fiabilidade e ausência de dados.
+
+O atual mapa visual de pesos pode ser preservado na camada expansível, depois
+de adaptado às cinco famílias. Deve continuar útil para quem quer inspecionar
+os componentes, sem dominar a decisão inicial.
+
 ## Camada 3 — detalhe auditável
 
 Cada família pode ser expandida para revelar:
