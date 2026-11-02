@@ -1,0 +1,315 @@
+"""Chronological, market-free calibration of each contextual family.
+
+Each family is fitted independently per universe.  Train estimates candidate
+equations, validation selects regularisation, and holdout is touched once for
+final descriptive evaluation.  No family is combined into production pricing.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Any, Iterable
+
+import numpy as np
+
+from .contextual_family_replay import FEATURE_FAMILIES, _split
+
+
+SCHEMA_VERSION = 1
+DEFAULT_L1_GRID = (0.0, 0.0005, 0.001, 0.003, 0.01, 0.03, 0.1)
+DEFAULT_L2 = 0.01
+CALIBRATION_FEATURES = {
+    "structural_strength": ("current_rank_log_ratio",),
+}
+
+
+def _sigmoid(values: np.ndarray) -> np.ndarray:
+    clipped = np.clip(values, -35.0, 35.0)
+    return 1.0 / (1.0 + np.exp(-clipped))
+
+
+def _soft_threshold(values: np.ndarray, threshold: float) -> np.ndarray:
+    return np.sign(values) * np.maximum(np.abs(values) - threshold, 0.0)
+
+
+def _fit_logistic_elastic_net(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    l1: float,
+    l2: float = DEFAULT_L2,
+    max_iter: int = 5000,
+    tolerance: float = 1e-9,
+) -> tuple[float, np.ndarray, int]:
+    if x.ndim != 2 or y.ndim != 1 or len(x) != len(y) or not len(y):
+        raise ValueError("invalid calibration matrix")
+    if not 0.0 < float(y.mean()) < 1.0:
+        raise ValueError("both outcomes are required")
+    design = np.column_stack([np.ones(len(x)), x])
+    spectral = float(np.linalg.norm(design, ord=2))
+    lipschitz = 0.25 * spectral * spectral / len(x) + float(l2) + 1e-12
+    step = 1.0 / lipschitz
+    intercept = math.log(float(y.mean()) / (1.0 - float(y.mean())))
+    weights = np.zeros(x.shape[1], dtype=float)
+
+    for iteration in range(1, max_iter + 1):
+        probability = _sigmoid(intercept + x @ weights)
+        residual = probability - y
+        next_intercept = intercept - step * float(residual.mean())
+        gradient = (x.T @ residual) / len(x) + float(l2) * weights
+        next_weights = _soft_threshold(weights - step * gradient, step * float(l1))
+        delta = max(
+            abs(next_intercept - intercept),
+            float(np.max(np.abs(next_weights - weights))) if len(weights) else 0.0,
+        )
+        intercept, weights = next_intercept, next_weights
+        if delta <= tolerance:
+            return intercept, weights, iteration
+    return intercept, weights, max_iter
+
+
+def _family_features(family: str) -> tuple[str, ...]:
+    if family in CALIBRATION_FEATURES:
+        return CALIBRATION_FEATURES[family]
+    return tuple(key for key, owner in FEATURE_FAMILIES.items() if owner == family)
+
+
+def _covered_rows(rows: Iterable[dict[str, Any]], features: tuple[str, ...]) -> list[dict[str, Any]]:
+    return [
+        row for row in rows
+        if any(row.get("features", {}).get(feature) is not None for feature in features)
+    ]
+
+
+def _fit_preprocessor(
+    rows: list[dict[str, Any]], features: tuple[str, ...],
+) -> dict[str, Any]:
+    parameters = {}
+    for feature in features:
+        material = np.array([
+            float(row["features"][feature])
+            for row in rows if row["features"].get(feature) is not None
+        ], dtype=float)
+        if not len(material):
+            parameters[feature] = {
+                "available": False, "median": 0.0, "lower": 0.0,
+                "upper": 0.0, "scale": 1.0,
+            }
+            continue
+        lower, upper = np.quantile(material, [0.01, 0.99])
+        median = float(np.median(material))
+        clipped = np.clip(material, lower, upper)
+        q25, q75 = np.quantile(clipped, [0.25, 0.75])
+        scale = float((q75 - q25) / 1.349)
+        if not math.isfinite(scale) or scale <= 1e-12:
+            scale = float(np.std(clipped))
+        if not math.isfinite(scale) or scale <= 1e-12:
+            scale = 1.0
+        parameters[feature] = {
+            "available": True,
+            "median": median,
+            "lower": float(lower),
+            "upper": float(upper),
+            "scale": scale,
+        }
+    return {
+        "method": "train_only_median_winsor_1_99_robust_scale",
+        "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+        "features": parameters,
+    }
+
+
+def _transform(
+    rows: list[dict[str, Any]],
+    features: tuple[str, ...],
+    preprocessor: dict[str, Any],
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    columns: list[np.ndarray] = []
+    names: list[str] = []
+    for feature in features:
+        params = preprocessor["features"][feature]
+        missing = np.array([
+            row["features"].get(feature) is None for row in rows
+        ], dtype=float)
+        raw = np.array([
+            params["median"] if row["features"].get(feature) is None
+            else float(row["features"][feature])
+            for row in rows
+        ], dtype=float)
+        if params["available"]:
+            raw = np.clip(raw, params["lower"], params["upper"])
+            standard = (raw - params["median"]) / params["scale"]
+        else:
+            standard = np.zeros(len(rows), dtype=float)
+        columns.extend([standard, missing])
+        names.extend([feature, f"{feature}__missing"])
+    x = np.column_stack(columns) if columns else np.empty((len(rows), 0))
+    y = np.array([1.0 if row["target_a_win"] else 0.0 for row in rows], dtype=float)
+    return x, y, names
+
+
+def _metrics(y: np.ndarray, probability: np.ndarray, *, total_targets: int) -> dict[str, Any]:
+    if not len(y):
+        return {
+            "covered": 0, "coverage_pct": 0.0, "log_loss": None,
+            "brier": None, "accuracy_pct": None, "ece_10": None,
+        }
+    p = np.clip(probability, 1e-9, 1.0 - 1e-9)
+    log_loss = -float(np.mean(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
+    brier = float(np.mean((p - y) ** 2))
+    accuracy = float(np.mean((p >= 0.5) == (y >= 0.5)))
+    ece = 0.0
+    for low in np.linspace(0.0, 0.9, 10):
+        high = low + 0.1
+        selected = (p >= low) & ((p < high) if high < 1.0 else (p <= high))
+        if selected.any():
+            ece += float(selected.mean()) * abs(float(p[selected].mean() - y[selected].mean()))
+    return {
+        "covered": int(len(y)),
+        "coverage_pct": round(100.0 * len(y) / max(1, total_targets), 2),
+        "log_loss": round(log_loss, 6),
+        "brier": round(brier, 6),
+        "accuracy_pct": round(100.0 * accuracy, 2),
+        "ece_10": round(ece, 6),
+        "predicted_mean": round(float(p.mean()), 6),
+        "observed_rate": round(float(y.mean()), 6),
+    }
+
+
+def _predict(x: np.ndarray, intercept: float, weights: np.ndarray) -> np.ndarray:
+    return _sigmoid(float(intercept) + x @ weights)
+
+
+def calibrate_family(
+    split: dict[str, list[dict[str, Any]]],
+    *,
+    family: str,
+    l1_grid: Iterable[float] = DEFAULT_L1_GRID,
+) -> dict[str, Any]:
+    features = _family_features(family)
+    covered = {name: _covered_rows(rows, features) for name, rows in split.items()}
+    if min(len(covered["train"]), len(covered["validation"]), len(covered["holdout"])) == 0:
+        return {
+            "family": family, "status": "INSUFFICIENT_COVERAGE",
+            "features": list(features),
+        }
+
+    train_preprocessor = _fit_preprocessor(covered["train"], features)
+    x_train, y_train, column_names = _transform(
+        covered["train"], features, train_preprocessor,
+    )
+    x_validation, y_validation, _ = _transform(
+        covered["validation"], features, train_preprocessor,
+    )
+    baseline_rate = float(np.clip(y_train.mean(), 1e-9, 1.0 - 1e-9))
+    candidates = []
+    fitted = {}
+    for l1 in tuple(float(value) for value in l1_grid):
+        intercept, weights, iterations = _fit_logistic_elastic_net(
+            x_train, y_train, l1=l1,
+        )
+        validation_metrics = _metrics(
+            y_validation, _predict(x_validation, intercept, weights),
+            total_targets=len(split["validation"]),
+        )
+        item = {
+            "l1": l1,
+            "validation_log_loss": validation_metrics["log_loss"],
+            "validation_brier": validation_metrics["brier"],
+            "nonzero_coefficients": int(np.sum(np.abs(weights) > 1e-8)),
+            "iterations": iterations,
+        }
+        candidates.append(item)
+        fitted[l1] = (intercept, weights)
+    selected = min(
+        candidates,
+        key=lambda item: (
+            item["validation_log_loss"], item["nonzero_coefficients"], -item["l1"],
+        ),
+    )
+
+    development = covered["train"] + covered["validation"]
+    final_preprocessor = _fit_preprocessor(development, features)
+    x_development, y_development, final_columns = _transform(
+        development, features, final_preprocessor,
+    )
+    x_holdout, y_holdout, _ = _transform(
+        covered["holdout"], features, final_preprocessor,
+    )
+    intercept, weights, iterations = _fit_logistic_elastic_net(
+        x_development, y_development, l1=selected["l1"],
+    )
+    holdout_probability = _predict(x_holdout, intercept, weights)
+    holdout_metrics = _metrics(
+        y_holdout, holdout_probability, total_targets=len(split["holdout"]),
+    )
+    development_rate = float(np.clip(y_development.mean(), 1e-9, 1.0 - 1e-9))
+    baseline_holdout = _metrics(
+        y_holdout, np.full(len(y_holdout), development_rate),
+        total_targets=len(split["holdout"]),
+    )
+    validation_baseline = _metrics(
+        y_validation, np.full(len(y_validation), baseline_rate),
+        total_targets=len(split["validation"]),
+    )
+    validation_supported = selected["validation_log_loss"] < validation_baseline["log_loss"]
+    holdout_supported = holdout_metrics["log_loss"] < baseline_holdout["log_loss"]
+    coefficients = {
+        name: round(float(value), 8)
+        for name, value in zip(final_columns, weights)
+    }
+    return {
+        "family": family,
+        "status": (
+            "HOLDOUT_SUPPORTED" if validation_supported and holdout_supported
+            else "NOT_SUPPORTED"
+        ),
+        "features": list(features),
+        "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+        "intercept": round(float(intercept), 8),
+        "coefficients": coefficients,
+        "active_coefficients": [
+            name for name, value in coefficients.items() if abs(value) > 1e-8
+        ],
+        "selected_l1_on_validation": selected["l1"],
+        "fixed_l2": DEFAULT_L2,
+        "selection_candidates": candidates,
+        "preprocessor": final_preprocessor,
+        "validation": {
+            "model": next(
+                item for item in candidates if item["l1"] == selected["l1"]
+            ),
+            "baseline": validation_baseline,
+        },
+        "holdout": {
+            "model": holdout_metrics,
+            "intercept_only_baseline": baseline_holdout,
+            "log_loss_improvement": round(
+                baseline_holdout["log_loss"] - holdout_metrics["log_loss"], 6,
+            ),
+        },
+        "iterations_final": iterations,
+        "market_used": False,
+        "production_effect": False,
+    }
+
+
+def calibrate_contextual_families(
+    rows: list[dict[str, Any]], *, universe: str,
+) -> dict[str, Any]:
+    split = _split(rows)
+    families = tuple(dict.fromkeys(FEATURE_FAMILIES.values()))
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "universe": str(universe).strip().casefold(),
+        "mode": "FAMILY_LEVEL_CHRONOLOGICAL_CALIBRATION",
+        "split_targets": {name: len(items) for name, items in split.items()},
+        "families": {
+            family: calibrate_family(split, family=family) for family in families
+        },
+        "families_combined": False,
+        "overall_probability_fitted": False,
+        "fair_odd_fitted": False,
+        "market_used": False,
+        "production_effect": False,
+    }
