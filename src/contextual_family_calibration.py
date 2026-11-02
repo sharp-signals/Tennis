@@ -40,6 +40,7 @@ def _fit_logistic_elastic_net(
     l2: float = DEFAULT_L2,
     max_iter: int = 5000,
     tolerance: float = 1e-9,
+    nonnegative_mask: np.ndarray | None = None,
 ) -> tuple[float, np.ndarray, int]:
     if x.ndim != 2 or y.ndim != 1 or len(x) != len(y) or not len(y):
         raise ValueError("invalid calibration matrix")
@@ -51,6 +52,10 @@ def _fit_logistic_elastic_net(
     step = 1.0 / lipschitz
     intercept = math.log(float(y.mean()) / (1.0 - float(y.mean())))
     weights = np.zeros(x.shape[1], dtype=float)
+    if nonnegative_mask is not None:
+        nonnegative_mask = np.asarray(nonnegative_mask, dtype=bool)
+        if nonnegative_mask.shape != weights.shape:
+            raise ValueError("nonnegative_mask has invalid shape")
 
     for iteration in range(1, max_iter + 1):
         probability = _sigmoid(intercept + x @ weights)
@@ -58,6 +63,10 @@ def _fit_logistic_elastic_net(
         next_intercept = intercept - step * float(residual.mean())
         gradient = (x.T @ residual) / len(x) + float(l2) * weights
         next_weights = _soft_threshold(weights - step * gradient, step * float(l1))
+        if nonnegative_mask is not None:
+            next_weights[nonnegative_mask] = np.maximum(
+                next_weights[nonnegative_mask], 0.0,
+            )
         delta = max(
             abs(next_intercept - intercept),
             float(np.max(np.abs(next_weights - weights))) if len(weights) else 0.0,
@@ -178,6 +187,58 @@ def _metrics(y: np.ndarray, probability: np.ndarray, *, total_targets: int) -> d
 
 def _predict(x: np.ndarray, intercept: float, weights: np.ndarray) -> np.ndarray:
     return _sigmoid(float(intercept) + x @ weights)
+
+
+def fit_family_equation(
+    rows: list[dict[str, Any]], *, family: str, l1: float,
+) -> dict[str, Any]:
+    """Fit one frozen family equation for later out-of-sample prediction."""
+    features = _family_features(family)
+    covered = _covered_rows(rows, features)
+    if not covered:
+        return {"family": family, "status": "INSUFFICIENT_COVERAGE"}
+    preprocessor = _fit_preprocessor(covered, features)
+    x, y, columns = _transform(covered, features, preprocessor)
+    intercept, weights, iterations = _fit_logistic_elastic_net(x, y, l1=l1)
+    return {
+        "family": family,
+        "status": "FITTED",
+        "features": list(features),
+        "preprocessor": preprocessor,
+        "intercept": float(intercept),
+        "columns": columns,
+        "weights": [float(value) for value in weights],
+        "l1": float(l1),
+        "l2": DEFAULT_L2,
+        "iterations": iterations,
+        "market_used": False,
+    }
+
+
+def predict_family_equation(
+    rows: list[dict[str, Any]], model: dict[str, Any],
+) -> list[float | None]:
+    """Predict only rows with at least one observed family component."""
+    if model.get("status") != "FITTED":
+        return [None] * len(rows)
+    features = tuple(model["features"])
+    wanted = [
+        index for index, row in enumerate(rows)
+        if any(row.get("features", {}).get(feature) is not None for feature in features)
+    ]
+    result: list[float | None] = [None] * len(rows)
+    if not wanted:
+        return result
+    selected = [rows[index] for index in wanted]
+    x, _, columns = _transform(selected, features, model["preprocessor"])
+    if columns != model["columns"]:
+        raise ValueError("family equation column mismatch")
+    probability = _predict(
+        x, float(model["intercept"]), np.asarray(model["weights"], dtype=float),
+    )
+    for index, value in zip(wanted, probability):
+        result[index] = float(value)
+    return result
 
 
 def calibrate_family(
