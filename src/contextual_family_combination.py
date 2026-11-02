@@ -149,6 +149,7 @@ def _primary_readiness(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def combine_contextual_families(
     rows: list[dict[str, Any]], *, universe: str,
     l1_grid: Iterable[float] = DEFAULT_L1_GRID,
+    include_diagnostics: bool = False,
 ) -> dict[str, Any]:
     """Fit a leakage-safe family stack and evaluate the frozen holdout once."""
     split = _split(rows)
@@ -213,7 +214,7 @@ def combine_contextual_families(
     coefficients = {
         name: round(float(value), 8) for name, value in zip(columns, meta_weights)
     }
-    return {
+    report = {
         "schema_version": SCHEMA_VERSION,
         "universe": str(universe).strip().casefold(),
         "status": "HOLDOUT_SUPPORTED" if supported else "NOT_SUPPORTED",
@@ -254,3 +255,9 @@ def combine_contextual_families(
         "production_effect": False,
         "iterations_final": meta_iterations,
     }
+    if include_diagnostics:
+        report["_diagnostics"] = {
+            "holdout_rows": holdout,
+            "holdout_probabilities": [float(value) for value in probability],
+        }
+    return report
