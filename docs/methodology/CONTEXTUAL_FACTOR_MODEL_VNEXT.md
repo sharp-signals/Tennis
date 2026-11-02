@@ -206,6 +206,14 @@ Para cada partida recente devem ser preservados, quando conhecidos:
 Walkovers não contam como vitória/derrota competitiva. Retiradas exigem regra
 própria e não podem ser tratadas silenciosamente como uma partida normal.
 
+A implementação isolada `build_recent_form_observations` concretiza este
+contrato factual sem produzir score. Para ranking, preserva uma magnitude
+contínua `log(ranking_adversário / ranking_jogador)`: positiva quando o jogador
+estava melhor classificado e negativa quando enfrentava alguém melhor
+classificado. A qualidade de vitória/derrota exposta nesta fase é apenas a
+magnitude factual do desvio perante esse contexto de ranking; não é ainda uma
+probabilidade, contribuição ou peso.
+
 ### 6.3 Qualidade das vitórias
 
 Uma vitória tem valor contextual superior quando:

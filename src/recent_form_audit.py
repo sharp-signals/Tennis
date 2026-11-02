@@ -9,6 +9,7 @@ is designed.
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+import math
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -257,6 +258,82 @@ def audit_recent_form_coverage(
             },
         },
     }
+
+
+def build_recent_form_observations(
+    frame: pd.DataFrame,
+    *,
+    player_name: str,
+    universe: str,
+    as_of: datetime,
+    window_days: int = DEFAULT_WINDOW_DAYS,
+) -> list[dict[str, Any]]:
+    """Build ex-ante factual observations for one player's recent form.
+
+    This is intentionally not a score.  It preserves the evidence needed by
+    the future contextual equation and exposes continuous ranking magnitudes,
+    avoiding arbitrary ranking buckets at this stage.  Non-standard endings
+    remain visible but cannot silently become an ordinary win or loss.
+    """
+    if int(window_days) <= 0:
+        raise ValueError("window_days tem de ser positivo")
+    canonical = str(player_name or "").strip()
+    if not canonical:
+        raise ValueError("player_name é obrigatório")
+    if as_of.tzinfo is None:
+        as_of = as_of.replace(tzinfo=timezone.utc)
+    cutoff = as_of.astimezone(timezone.utc).date()
+    start = cutoff - timedelta(days=int(window_days))
+
+    dates = _parse_history_dates(_column(frame, "event_date"))
+    winner = _column(frame, "winner_name").astype("string").str.strip()
+    loser = _column(frame, "loser_name").astype("string").str.strip()
+    key = canonical.casefold()
+    participates = (winner.str.casefold() == key) | (loser.str.casefold() == key)
+    safe = dates.notna() & (dates.dt.date >= start) & (dates.dt.date < cutoff)
+    selected = frame.loc[participates & safe].copy()
+    selected_dates = dates.loc[selected.index]
+    non_standard = _is_non_standard_completion(selected)
+
+    observations: list[dict[str, Any]] = []
+    for position, (index, row) in enumerate(selected.iterrows()):
+        base = normalize_recent_match_record(row, universe=universe)
+        player_won = str(base.get("winner_name") or "").strip().casefold() == key
+        player_rank = base.get("winner_rank") if player_won else base.get("loser_rank")
+        opponent_rank = base.get("loser_rank") if player_won else base.get("winner_rank")
+        opponent_name = base.get("loser_name") if player_won else base.get("winner_name")
+        rank_log_ratio = None
+        if player_rank and opponent_rank:
+            # Positive: player was structurally better ranked (smaller rank).
+            # Negative: opponent was better ranked.
+            rank_log_ratio = math.log(float(opponent_rank) / float(player_rank))
+        irregular = bool(non_standard.iloc[position])
+        event_date = selected_dates.loc[index].date()
+        base.update({
+            "player_name": canonical,
+            "opponent_name": opponent_name,
+            "outcome": "NON_STANDARD" if irregular else ("WIN" if player_won else "LOSS"),
+            "competitive_result_eligible": not irregular,
+            "player_rank_at_match": player_rank,
+            "opponent_rank_at_match": opponent_rank,
+            "ranking_context_log_ratio": rank_log_ratio,
+            "quality_win_ranking_magnitude": (
+                max(0.0, -rank_log_ratio)
+                if player_won and not irregular and rank_log_ratio is not None else None
+            ),
+            "quality_loss_ranking_magnitude": (
+                max(0.0, rank_log_ratio)
+                if not player_won and not irregular and rank_log_ratio is not None else None
+            ),
+            "days_before_cutoff": (cutoff - event_date).days,
+        })
+        observations.append(base)
+
+    observations.sort(
+        key=lambda item: (item.get("event_date") or "", item.get("tournament") or ""),
+        reverse=True,
+    )
+    return observations
 
 
 def load_local_audit_universes(cache_dir: Path) -> dict[str, tuple[pd.DataFrame, str]]:

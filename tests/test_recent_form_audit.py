@@ -4,6 +4,7 @@ import pandas as pd
 
 from src.recent_form_audit import (
     audit_recent_form_coverage,
+    build_recent_form_observations,
     normalize_recent_match_record,
 )
 
@@ -100,3 +101,44 @@ def test_invalid_window_is_rejected():
         assert "positivo" in str(exc)
     else:
         raise AssertionError("window_days=0 devia ser rejeitado")
+
+
+def test_observations_preserve_quality_of_wins_and_losses_without_scoring():
+    frame = pd.DataFrame([
+        _row(
+            tourney_date="20261020", winner_name="A", loser_name="Elite",
+            winner_rank=80, loser_rank=10,
+        ),
+        _row(
+            tourney_date="20261025", winner_name="Lower", loser_name="A",
+            winner_rank=150, loser_rank=80,
+        ),
+    ])
+
+    observations = build_recent_form_observations(
+        frame, player_name="A", universe="atp", as_of=AS_OF,
+    )
+
+    assert len(observations) == 2
+    loss, win = observations
+    assert loss["outcome"] == "LOSS"
+    assert loss["quality_loss_ranking_magnitude"] > 0
+    assert loss["quality_win_ranking_magnitude"] is None
+    assert win["outcome"] == "WIN"
+    assert win["quality_win_ranking_magnitude"] > 0
+    assert win["quality_loss_ranking_magnitude"] is None
+    assert "recent_form_score" not in win
+
+
+def test_non_standard_result_is_visible_but_not_competitively_eligible():
+    frame = pd.DataFrame([
+        _row(winner_name="A", loser_name="B", score="6-4 2-1 RET"),
+    ])
+
+    observation = build_recent_form_observations(
+        frame, player_name="A", universe="atp", as_of=AS_OF,
+    )[0]
+
+    assert observation["outcome"] == "NON_STANDARD"
+    assert observation["competitive_result_eligible"] is False
+    assert observation["quality_win_ranking_magnitude"] is None

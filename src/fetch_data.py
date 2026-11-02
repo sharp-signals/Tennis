@@ -14,10 +14,10 @@ não-oficial tipo Sofascore):
 2. The Odds API      -> fonte SECUNDÁRIA/opcional, só para odds de mercado
    quando o jogo também aparecer lá (por nomes dos jogadores). Nunca decide
    que jogos existem — isso sub-representava torneios menores (ex: Umag).
-3. TennisMyLife       -> histórico ATP apenas (dataset "vivo", inclui
-                          torneio da semana atual). Confirmado
-                          (15/07/2026): é uma base de dados só de ATP, não
-                          tem WTA — por isso o WTA vai direto ao Sackmann.
+3. TennisMyLife       -> histórico rico ATP, WTA e Challenger (dataset
+                          "vivo", incluindo torneios em curso). Cada resposta
+                          válida atualiza uma última cópia boa operacional;
+                          uma falha transitória não apaga o histórico.
                           NOTA sobre licença: a documentação deles refere-se
                           como inspirada no tennis_atp do Sackmann (CC
                           BY-NC-SA — não comercial). Não confirmámos os
@@ -25,8 +25,7 @@ não-oficial tipo Sofascore):
                           uso pessoal como este projeto não é preocupação,
                           mas antes de qualquer uso comercial, ler os termos
                           deles diretamente em stats.tennismylife.org.
-4. Jeff Sackmann GitHub -> histórico ATP (fallback) e WTA (fonte principal
-                          para este tour). Licença CC BY-NC-SA.
+4. Jeff Sackmann GitHub -> fallback histórico ATP/WTA. Licença CC BY-NC-SA.
 5. Cache local tennis-data.co.uk -> histórico legado de resultados + odds.
                           A produção não automatiza downloads dessa fonte;
                           só lê cópias previamente obtidas de forma legítima.
@@ -46,6 +45,7 @@ import os
 import re
 import threading
 import time
+import tempfile
 import unicodedata
 from collections import Counter
 from contextlib import contextmanager
@@ -2902,43 +2902,107 @@ def _load_tennismylife(
         return None
     include_challenger = bool(include_challenger and tour == "atp")
 
+    cache_root_value = os.getenv("TENNISMYLIFE_CACHE_DIR", "").strip()
+    cache_root = Path(cache_root_value) if cache_root_value else None
+
+    def cache_path(name: str) -> Optional[Path]:
+        if cache_root is None or Path(name).name != name:
+            return None
+        return cache_root / f"{name}.gz"
+
+    def validate_frame(frame: pd.DataFrame) -> None:
+        if frame.empty or not {
+            "winner_name", "loser_name"
+        }.issubset(frame.columns):
+            raise ValueError("ficheiro sem linhas/colunas de partidas")
+
+    def write_last_known_good(name: str, frame: pd.DataFrame) -> None:
+        target = cache_path(name)
+        if target is None:
+            return
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary_name = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", prefix=f".{target.name}.", suffix=".tmp",
+                dir=target.parent, delete=False,
+            ) as temporary:
+                temporary_name = temporary.name
+            frame.to_csv(
+                temporary_name, index=False,
+                compression={"method": "gzip", "mtime": 0},
+            )
+            # Não substituir uma cópia boa por bytes truncados ou por uma
+            # resposta que deixou de ter o contrato mínimo de partidas.
+            validate_frame(pd.read_csv(temporary_name, compression="gzip"))
+            os.replace(temporary_name, target)
+            temporary_name = None
+        finally:
+            if temporary_name:
+                Path(temporary_name).unlink(missing_ok=True)
+
+    def read_last_known_good(name: str) -> Optional[pd.DataFrame]:
+        target = cache_path(name)
+        if target is None or not target.exists():
+            return None
+        try:
+            cached = pd.read_csv(target, compression="gzip")
+            validate_frame(cached)
+            return cached
+        except Exception as exc:
+            print(f"[aviso] cache TennisMyLife inválida para {name}: {exc}")
+            return None
+
+    listing_available = False
     try:
         resp = requests.get(TENNISMYLIFE_FILES_ENDPOINT, headers=_BROWSER_HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         files = resp.json().get("files", [])
         by_name = {f.get("name"): f for f in files}
+        listing_available = True
     except Exception as exc:
         print(f"[aviso] TennisMyLife (listagem de ficheiros) indisponível: {exc}")
-        return None
+        by_name = {}
 
     current_year = datetime.now(timezone.utc).year
     frames = []
+    remote_files = 0
+    cached_files = 0
 
     def load_file(name: str, scope: str) -> bool:
+        nonlocal remote_files, cached_files
         metadata = by_name.get(name)
-        if not metadata or not metadata.get("url"):
-            return False
-        for attempt in (1, 2):
-            try:
-                csv_resp = requests.get(
-                    metadata["url"], headers=_BROWSER_HEADERS,
-                    timeout=REQUEST_TIMEOUT,
-                )
-                csv_resp.raise_for_status()
-                frame = pd.read_csv(io.StringIO(csv_resp.text))
-                if frame.empty or not {
-                    "winner_name", "loser_name"
-                }.issubset(frame.columns):
-                    raise ValueError("ficheiro sem linhas/colunas de partidas")
-                frame["_history_competition_scope"] = scope
-                frame["_history_source_file"] = name
-                frames.append(frame)
-                return True
-            except Exception as exc:
-                print(
-                    f"[aviso] falha a carregar TennisMyLife {name}, "
-                    f"tentativa {attempt}: {exc}"
-                )
+        if metadata and metadata.get("url"):
+            for attempt in (1, 2):
+                try:
+                    csv_resp = requests.get(
+                        metadata["url"], headers=_BROWSER_HEADERS,
+                        timeout=REQUEST_TIMEOUT,
+                    )
+                    csv_resp.raise_for_status()
+                    raw_frame = pd.read_csv(io.StringIO(csv_resp.text))
+                    validate_frame(raw_frame)
+                    write_last_known_good(name, raw_frame)
+                    frame = raw_frame.copy()
+                    frame["_history_competition_scope"] = scope
+                    frame["_history_source_file"] = name
+                    frames.append(frame)
+                    remote_files += 1
+                    return True
+                except Exception as exc:
+                    print(
+                        f"[aviso] falha a carregar TennisMyLife {name}, "
+                        f"tentativa {attempt}: {exc}"
+                    )
+
+        cached = read_last_known_good(name)
+        if cached is not None:
+            cached["_history_competition_scope"] = scope
+            cached["_history_source_file"] = name
+            frames.append(cached)
+            cached_files += 1
+            print(f"[info] TennisMyLife {name}: última cópia válida utilizada.")
+            return True
         return False
 
     main_years = 0
@@ -2946,9 +3010,9 @@ def _load_tennismylife(
     for offset in range(HISTORY_YEARS_TO_LOAD):
         year = current_year - offset
         name = f"{year}.csv" if tour == "atp" else f"{year}_wta.csv"
-        if name not in by_name:
+        if listing_available and name not in by_name:
             print(f"[aviso] TennisMyLife não tem ficheiro para o ano {year} — a saltar.")
-        elif load_file(name, "main"):
+        if load_file(name, "main"):
             main_years += 1
 
         if include_challenger:
@@ -2986,12 +3050,16 @@ def _load_tennismylife(
         "ATP_MAIN_PLUS_CHALLENGER" if include_challenger
         else f"{tour.upper()}_MAIN"
     )
+    combined.attrs["history_provider_remote_files"] = remote_files
+    combined.attrs["history_provider_cached_files"] = cached_files
+    combined.attrs["history_provider_degraded"] = bool(cached_files)
     print(
         f"[info] TennisMyLife: {tour.upper()} principal {main_years}/"
         f"{HISTORY_YEARS_TO_LOAD} anos; Challenger {challenger_years}/"
         f"{HISTORY_YEARS_TO_LOAD} anos; ongoing "
         f"{', '.join(ongoing_loaded) if ongoing_loaded else 'não'}; "
-        f"{len(combined)} jogos únicos."
+        f"{len(combined)} jogos únicos; ficheiros remotos {remote_files}; "
+        f"últimas cópias válidas {cached_files}."
     )
     return combined
 
