@@ -135,6 +135,17 @@ Exemplo: pesquisar H2H e confirmar que nunca se defrontaram é
 `OBSERVED_NONE`, não `MISSING_DATA`. Conta como pesquisa concluída, mas não dá
 vantagem a ninguém.
 
+### 4.1 Estado observacional antes da calibração
+
+Durante a construção do modelo, a camada comum separa deliberadamente duas
+dimensões: `data_state` indica se os factos foram observados; `signal_state`
+indica se já existe transformação calibrada. Assim, `OBSERVED + UNSCORED`
+significa «há dados factuais, mas ainda não existe direção validada». Não é
+`OBSERVED_NEUTRAL` e não pode ser usado como voto zero disfarçado.
+
+Só depois do replay e da calibração o estado final pode passar para
+`OBSERVED_DIRECTIONAL`, `OBSERVED_NEUTRAL` ou `CONFLICTING_EVIDENCE`.
+
 ## 5. Famílias propostas
 
 ### 5.1 Força estrutural
