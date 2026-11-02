@@ -7,6 +7,7 @@ from src.recent_form_replay import (
     evaluate_recent_form_replay,
     replay_recent_form,
 )
+from scripts.replay_recent_form_candidates import _source_health
 
 
 def _match(day, winner, loser, winner_rank, loser_rank, surface="Hard", score="6-4 6-4"):
@@ -58,7 +59,7 @@ def test_quality_win_and_bad_loss_point_towards_actual_winner():
     )
     target = rows[-1]["candidates"]["half_life_30d"]
 
-    assert target["winner_minus_loser"]["ranking_quality_balance"] > 0
+    assert target["winner_minus_loser"]["ranking_surprise_balance_v1"] > 0
     assert target["winner_minus_loser"]["result_balance"] > 0
 
 
@@ -91,7 +92,10 @@ def test_evaluation_selects_candidate_on_validation_not_holdout():
             candidates[name] = {
                 "winner_minus_loser": {
                     "result_balance": margin,
-                    "ranking_quality_balance": margin,
+                    "ranking_surprise_balance_v1": margin,
+                    "win_opponent_strength": margin,
+                    "loss_opponent_strength": margin,
+                    "game_margin_balance": margin,
                     "same_surface_result_balance": margin,
                 }
             }
@@ -116,7 +120,9 @@ def test_chronological_partitions_follow_target_volume_without_splitting_dates()
                 "candidates": {
                     "uniform": {
                         "winner_minus_loser": {feature: 1.0 for feature in (
-                            "result_balance", "ranking_quality_balance",
+                            "result_balance", "ranking_surprise_balance_v1",
+                            "win_opponent_strength", "loss_opponent_strength",
+                            "game_margin_balance",
                             "same_surface_result_balance",
                         )}
                     }
@@ -138,3 +144,50 @@ def test_replay_is_observational_and_never_claims_market_or_production_use():
     assert report["market_used"] is False
     assert report["production_effect"] is False
     assert report["result"]["status"] == "INSUFFICIENT"
+
+
+def test_v2_separates_strength_of_wins_losses_and_competitiveness():
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    frame = pd.DataFrame([
+        _match(start, "A", "Top", 60, 10, score="7-6 7-6"),
+        _match(start, "Low", "A", 120, 60, score="7-6 7-6"),
+        _match(start, "B", "Low2", 50, 150, score="6-4 6-4"),
+        _match(start, "Top2", "B", 10, 50, score="6-0 6-0"),
+        _match(start + timedelta(days=5), "A", "B", 55, 45),
+    ])
+
+    target = build_recent_form_replay_rows(
+        frame, universe="atp", half_life_candidates=(None,),
+    )[-1]["candidates"]["uniform_90d"]
+
+    # A venceu oposição mais forte; B perdeu contra oposição mais forte, pelo
+    # que cada componente é preservada separadamente em vez de ser somada.
+    assert target["winner_minus_loser"]["win_opponent_strength"] > 0
+    assert target["winner_minus_loser"]["loss_opponent_strength"] < 0
+    assert target["winner_minus_loser"]["game_margin_balance"] > 0
+
+
+def test_quality_replay_source_health_rejects_rankless_fallback():
+    today = datetime.now(timezone.utc)
+    frame = pd.DataFrame([
+        _match(today, "A", "B", None, None),
+    ])
+    frame.attrs["history_source"] = "rankless-fallback"
+
+    health = _source_health(frame, universe="atp")
+
+    assert health["healthy_for_quality_replay"] is False
+    assert health["bilateral_rank_coverage_pct"] == 0.0
+
+
+def test_quality_replay_source_health_accepts_fresh_rich_history():
+    today = datetime.now(timezone.utc)
+    frame = pd.DataFrame([
+        _match(today, "A", "B", 10, 20),
+    ])
+    frame.attrs["history_source"] = "tennismylife"
+
+    health = _source_health(frame, universe="wta")
+
+    assert health["healthy_for_quality_replay"] is True
+    assert health["bilateral_rank_coverage_pct"] == 100.0

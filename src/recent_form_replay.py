@@ -28,7 +28,10 @@ SCHEMA_VERSION = 1
 DEFAULT_HALF_LIFE_CANDIDATES: tuple[int | None, ...] = (None, 21, 30, 45, 60, 90)
 FEATURES = (
     "result_balance",
-    "ranking_quality_balance",
+    "ranking_surprise_balance_v1",
+    "win_opponent_strength",
+    "loss_opponent_strength",
+    "game_margin_balance",
     "same_surface_result_balance",
 )
 
@@ -60,6 +63,7 @@ def _player_observation(
     won: bool,
     player_rank: float | None,
     opponent_rank: float | None,
+    game_margin: int | None,
 ) -> dict[str, Any]:
     ranking_context = None
     if player_rank is not None and opponent_rank is not None:
@@ -68,6 +72,9 @@ def _player_observation(
         "event_date": event_date,
         "surface": surface,
         "result": 1.0 if won else -1.0,
+        "won": bool(won),
+        "opponent_rank": opponent_rank,
+        "game_margin": game_margin,
         "ranking_available": ranking_context is not None,
         "quality_win": (
             max(0.0, -ranking_context)
@@ -78,6 +85,14 @@ def _player_observation(
             if not won and ranking_context is not None else 0.0
         ),
     }
+
+
+def _game_margin(score: Any, *, won: bool) -> int | None:
+    # Reuse the production-tested score parser without coupling this replay to
+    # any production decision or feature calculation.
+    from .fetch_data import _game_differential_from_score
+
+    return _game_differential_from_score(score, won)
 
 
 def _summarize_player_history(
@@ -98,6 +113,9 @@ def _summarize_player_history(
             "sample": 0,
             "ranked_sample": 0,
             "same_surface_sample": 0,
+            "wins_sample": 0,
+            "losses_sample": 0,
+            "game_margin_sample": 0,
             **{feature: None for feature in FEATURES},
         }
 
@@ -116,12 +134,44 @@ def _summarize_player_history(
     ]
     if ranked:
         ranked_weight = sum(weight for weight, _ in ranked)
-        ranking_quality = sum(
+        ranking_surprise = sum(
             weight * (item["quality_win"] - item["quality_loss"])
             for weight, item in ranked
         ) / ranked_weight
     else:
-        ranking_quality = None
+        ranking_surprise = None
+
+    wins = [
+        (weight, item) for weight, item in zip(weights, eligible)
+        if item["won"] and item["opponent_rank"] is not None
+    ]
+    losses = [
+        (weight, item) for weight, item in zip(weights, eligible)
+        if not item["won"] and item["opponent_rank"] is not None
+    ]
+
+    def opponent_strength(items: list[tuple[float, dict[str, Any]]]) -> float | None:
+        if not items:
+            return None
+        total = sum(weight for weight, _ in items)
+        # Lower numerical rank means stronger opponent, therefore -log(rank)
+        # is higher for stronger opposition.  No arbitrary rank bucket is used.
+        return sum(
+            weight * -math.log(float(item["opponent_rank"]))
+            for weight, item in items
+        ) / total
+
+    margins = [
+        (weight, item) for weight, item in zip(weights, eligible)
+        if item["game_margin"] is not None
+    ]
+    if margins:
+        margin_weight = sum(weight for weight, _ in margins)
+        game_margin_balance = sum(
+            weight * float(item["game_margin"]) for weight, item in margins
+        ) / margin_weight
+    else:
+        game_margin_balance = None
 
     same_surface = [
         (weight, item) for weight, item in zip(weights, eligible)
@@ -139,8 +189,14 @@ def _summarize_player_history(
         "sample": len(eligible),
         "ranked_sample": len(ranked),
         "same_surface_sample": len(same_surface),
+        "wins_sample": len(wins),
+        "losses_sample": len(losses),
+        "game_margin_sample": len(margins),
         "result_balance": result_balance,
-        "ranking_quality_balance": ranking_quality,
+        "ranking_surprise_balance_v1": ranking_surprise,
+        "win_opponent_strength": opponent_strength(wins),
+        "loss_opponent_strength": opponent_strength(losses),
+        "game_margin_balance": game_margin_balance,
         "same_surface_result_balance": surface_balance,
     }
 
@@ -165,6 +221,7 @@ def build_recent_form_replay_rows(
     surfaces = _column(frame, "surface")
     winner_ranks = _column(frame, "winner_rank")
     loser_ranks = _column(frame, "loser_rank")
+    scores = _column(frame, "score")
     non_standard = _is_non_standard_completion(frame)
 
     material = pd.DataFrame({
@@ -174,6 +231,7 @@ def build_recent_form_replay_rows(
         "surface": surfaces,
         "winner_rank": winner_ranks,
         "loser_rank": loser_ranks,
+        "score": scores,
         "non_standard": non_standard,
     }, index=frame.index)
     material = material[
@@ -242,13 +300,17 @@ def build_recent_form_replay_rows(
             winner_rank = _positive_rank(match["winner_rank"])
             loser_rank = _positive_rank(match["loser_rank"])
             surface = _surface_key(match["surface"])
+            winner_margin = _game_margin(match["score"], won=True)
+            loser_margin = -winner_margin if winner_margin is not None else None
             history[winner_key].append(_player_observation(
                 event_date=event_date, surface=surface, won=True,
                 player_rank=winner_rank, opponent_rank=loser_rank,
+                game_margin=winner_margin,
             ))
             history[loser_key].append(_player_observation(
                 event_date=event_date, surface=surface, won=False,
                 player_rank=loser_rank, opponent_rank=winner_rank,
+                game_margin=loser_margin,
             ))
     return replay_rows
 

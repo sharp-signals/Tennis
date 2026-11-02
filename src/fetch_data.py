@@ -3053,6 +3053,7 @@ def _load_tennismylife(
     combined.attrs["history_provider_remote_files"] = remote_files
     combined.attrs["history_provider_cached_files"] = cached_files
     combined.attrs["history_provider_degraded"] = bool(cached_files)
+    combined.attrs["history_source"] = "tennismylife"
     print(
         f"[info] TennisMyLife: {tour.upper()} principal {main_years}/"
         f"{HISTORY_YEARS_TO_LOAD} anos; Challenger {challenger_years}/"
@@ -3429,6 +3430,8 @@ def get_history(tour: str, tier: Optional[str] = None) -> pd.DataFrame:
                 "ATP_MAIN_PLUS_CHALLENGER_FALLBACK_UNAVAILABLE"
                 if scope == "challenger_125" else f"{normalized_tour.upper()}_MAIN"
             )
+        df.attrs.setdefault("history_source", source)
+        df.attrs.setdefault("history_fallback", not source.startswith("tennismylife"))
         df.attrs["history_cache_key"] = cache_key
         print(
             f"[info] histórico {normalized_tour}/{scope} carregado de: "
