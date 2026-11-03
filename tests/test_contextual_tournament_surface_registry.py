@@ -46,3 +46,21 @@ def test_conflicting_observed_contexts_are_not_propagated():
     enriched, audit = enrich_tournament_surface_contexts(frame)
     assert pd.isna(enriched.loc[2, "surface_context"])
     assert audit["counts"]["unresolved"] == 1
+
+
+def test_provider_indoor_codes_are_observed_fields():
+    frame = pd.DataFrame([
+        {
+            "date": "2025-10-01", "tourney_name": "Metz",
+            "surface": "Hard", "indoor": "I",
+        },
+        {
+            "date": "2025-08-01", "tourney_name": "Cincinnati",
+            "surface": "Hard", "indoor": "O",
+        },
+    ])
+    enriched, audit = enrich_tournament_surface_contexts(frame)
+    assert enriched["surface_context"].tolist() == [
+        "hard_indoor", "hard_outdoor",
+    ]
+    assert audit["counts"]["observed_fields"] == 2

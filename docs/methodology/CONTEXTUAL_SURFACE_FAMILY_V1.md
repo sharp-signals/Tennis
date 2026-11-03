@@ -3,6 +3,9 @@
 **CHANGE-ID:** CHANGE-2026-11-02-175
 **Estado:** candidato exploratório; insuficiente para fechar a família
 
+> **SUPERSEDED:** a decisão fechada encontra-se em
+> `CONTEXTUAL_SURFACE_FAMILY_V2.md`.
+
 > Nota de revisão de 03/11/2026: esta versão não deve ser promovida nem
 > tratada como contrato final. Ao reduzir o sinal ao piso físico genérico,
 > volta a misturar hard outdoor e hard indoor. A família será reavaliada com

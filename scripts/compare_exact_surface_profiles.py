@@ -16,9 +16,23 @@ from scripts.replay_recent_form_candidates import _scope
 
 
 def build_report() -> dict:
+    atp_history = fetch_data.get_history("atp")
+    # TennisMyLife is authoritative for ATP indoor/outdoor.  Its WTA indoor
+    # field is sparse, while the existing tennis-data cache carries an
+    # explicit Court column throughout the replay period.
+    wta_surface_history = fetch_data._load_tennisdata_couk_multi_year(
+        "wta", fetch_data.HISTORY_YEARS_TO_LOAD,
+    )
+    if wta_surface_history is None or wta_surface_history.empty:
+        wta_surface_history = fetch_data.get_history("wta")
+        wta_source = str(
+            wta_surface_history.attrs.get("history_source") or "fallback"
+        )
+    else:
+        wta_source = "tennisdata.co.uk (explicit Court field)"
     raw_frames = {
-        "atp": _scope(fetch_data.get_history("atp"), "main"),
-        "wta": _scope(fetch_data.get_history("wta"), "main"),
+        "atp": _scope(atp_history, "main"),
+        "wta": _scope(wta_surface_history, "main"),
     }
     enriched = {
         tour: enrich_tournament_surface_contexts(frame)
@@ -29,17 +43,47 @@ def build_report() -> dict:
         tour: build_contextual_family_replay_rows(frame, universe=tour)
         for tour, frame in frames.items()
     }
+    contexts = ["hard_outdoor", "hard_indoor", "clay", "grass"]
+    context_rows = {
+        tour: {
+            context: [
+                row for row in items
+                if row.get("diagnostics", {}).get("surface_context") == context
+            ]
+            for context in contexts
+        }
+        for tour, items in rows.items()
+    }
     return {
         "mode": "READ_ONLY_EXACT_SURFACE_PROFILE_COMPARISON",
+        "history_sources": {
+            "atp": str(atp_history.attrs.get("history_source") or "unknown"),
+            "wta": wta_source,
+        },
         "comparisons": {
             tour: compare_exact_surface_profiles(items, universe=tour)
             for tour, items in rows.items()
         },
         "replay_rows": {tour: len(items) for tour, items in rows.items()},
+        "context_comparisons": {
+            tour: {
+                context: compare_exact_surface_profiles(
+                    items, universe=f"{tour}:{context}",
+                )
+                for context, items in grouped.items()
+            }
+            for tour, grouped in context_rows.items()
+        },
+        "context_rows": {
+            tour: {
+                context: len(items) for context, items in grouped.items()
+            }
+            for tour, grouped in context_rows.items()
+        },
         "surface_context_recovery": {
             tour: value[1] for tour, value in enriched.items()
         },
-        "four_contexts": ["hard_outdoor", "hard_indoor", "clay", "grass"],
+        "four_contexts": contexts,
         "market_used": False,
         "rapidapi_used": False,
         "production_effect": False,

@@ -1,68 +1,78 @@
 # Replay dos quatro contextos de piso
 
 **Data:** 03/11/2026
+**Estado:** família fechada para SHADOW; sem promoção operacional
 
-**Estado:** exploratório, sem promoção operacional
+## Desenho
 
-## Candidatos comparados
+Foram comparados cronologicamente:
 
 1. carreira no contexto exato;
 2. carreira + época anterior;
 3. carreira + época anterior + época atual;
-4. os três anteriores com redução para 50% conforme a amostra.
+4. as três anteriores com redução para 50% conforme a amostra.
 
-Hard outdoor e hard indoor são contextos distintos. A fonte ATP omitia o piso
-em 2021–2025. Antes do replay, recuperou-se apenas metadata factual através de
-nomes de torneio exatos cujo contexto observado era único. Não foram usados
-resultado, odds, ranking ou score para resolver o piso.
+Hard outdoor e hard indoor são contextos distintos. ATP usa TennisMyLife;
+WTA usa a cache tennis-data com `Court` explícito. Resultado, odds e ranking
+não são utilizados para identificar o contexto.
 
-## WTA
+## Resultado global
 
-Foram comparados 4 114 alvos no holdout comum.
+### ATP — 4 661 jogos no holdout emparelhado
+
+| Candidato | Log loss | Acerto |
+|---|---:|---:|
+| Carreira | 0,660869 | 60,24% |
+| + época anterior | 0,656790 | 61,68% |
+| + época atual | 0,655740 | 61,21% |
+| + redução pela amostra | **0,644625** | 61,17% |
+
+A época anterior e a redução pela amostra foram suportadas. O incremento bruto
+da época atual ficou inconclusivo, mas permanece na candidata reduzida para
+observação prospetiva; não recebe força manual adicional.
+
+### WTA — 4 114 jogos no holdout emparelhado
 
 | Candidato | Log loss | Acerto |
 |---|---:|---:|
 | Carreira | 0,668966 | 60,82% |
 | + época anterior | 0,663565 | 61,18% |
 | + época atual | 0,661189 | 61,35% |
-| + redução pela amostra | 0,641867 | 62,40% |
+| + redução pela amostra | **0,641867** | **62,40%** |
 
-Os três incrementos foram suportados no holdout emparelhado. A redução pela
-amostra produziu o maior ganho. Isto sustenta usar carreira, época anterior e
-época atual no WTA, sem tratar percentagens de poucos jogos como certezas.
+Os três incrementos foram suportados no WTA.
 
-## ATP
+## Auditoria por contexto
 
-O histórico tem 22 842 partidas. Dessas, 3 481 já traziam o contexto, 13 844
-foram recuperadas por identidade exata e não ambígua do torneio e 5 517
-continuam deliberadamente por resolver. O replay passou a ter 17 325 alvos com
-contexto exato e 3 257 jogos no holdout emparelhado.
+O valor abaixo é o log loss da candidata reduzida; menor é melhor.
 
-| Candidato | Log loss | Acerto |
-|---|---:|---:|
-| Carreira bruta | 0,674001 | 59,93% |
-| + época anterior | 0,666695 | 61,01% |
-| + época atual | 0,668986 | 60,45% |
-| + redução pela amostra | 0,659517 | 60,06% |
+| Circuito | Contexto | Jogos históricos | Holdout | Log loss | Ganho vs constante | Decisão |
+|---|---|---:|---:|---:|---:|---|
+| ATP | Hard outdoor | 10 558 | 2 008 | 0,640236 | 0,051495 | SHADOW |
+| ATP | Hard indoor | 4 111 | 700 | 0,655767 | 0,037061 | SHADOW |
+| ATP | Terra | 7 962 | 1 472 | 0,647869 | 0,044543 | SHADOW |
+| ATP | Relva | 2 792 | 479 | 0,648162 | 0,044974 | SHADOW |
+| WTA | Hard outdoor | 11 735 | 2 277 | 0,634769 | 0,058541 | SHADOW |
+| WTA | Hard indoor | 1 357 | 226 | 0,695279 | 0,000097 | diagnóstico |
+| WTA | Terra | 5 907 | 1 099 | 0,635836 | 0,058122 | SHADOW |
+| WTA | Relva | 2 647 | 491 | 0,673052 | 0,020100 | SHADOW |
 
-A conclusão anterior de que as épocas não acrescentavam valor estava
-contaminada pela ausência de metadata de piso. Com a recuperação, carreira,
-época anterior e época atual permanecem ativas. A versão reduzida pela amostra
-tem o melhor log loss. A época anterior melhora a exatidão para 61,01%; incluir
-a época atual melhora o log loss face à carreira isolada, mas não face ao perfil
-carreira + época anterior. A escolha final exige validação prospetiva.
+WTA indoor não demonstrou informação probabilística material contra a
+referência. Continua visível, mas fica sem voto autónomo até existir evidência
+prospetiva melhor. Isto não é empate nem dado ausente.
 
-## Decisão provisória
+## Decisão fechada da família
 
-- WTA: carreira + época anterior + época atual, sempre reduzidas pela amostra,
-  é o candidato principal para validação futura.
-- ATP: carreira e épocas voltam a ser candidatas legítimas. O candidato com
-  redução pela amostra lidera em log loss, mas ainda não é promovido.
-- As 5 517 linhas ATP não resolvidas continuam excluídas do contexto exato; não
-  são convertidas em hard outdoor por defeito.
-- A família continua aberta: falta testar adaptação às mudanças de piso e
-  segmentar os resultados por hard outdoor, indoor, terra e relva.
+- perfil: carreira + época anterior + época atual, reduzidas pela amostra;
+- parâmetros definidos antes desta auditoria: dez pseudojogos na carreira e
+  oito em cada época;
+- equação separada por circuito e contexto;
+- transição de piso apenas diagnóstica: o voto fixo foi rejeitado;
+- velocidade apenas diagnóstica até existir histórico cronológico próprio;
+- serviço e resposta permanecem na família própria;
+- Challenger fica fora desta decisão;
+- mercado, fair odd, PAPER e GREEN continuam desligados.
 
-O holdout foi consultado durante o desenvolvimento desta família. Estes
-resultados orientam o desenho, mas exigem confirmação em dados futuros antes de
-qualquer efeito na fair odd.
+O holdout já foi consultado durante o desenvolvimento. O contrato fica
+congelado para observação SHADOW e necessita de confirmação futura antes de
+entrar na combinação final ou na fair odd.

@@ -1,0 +1,634 @@
+{
+  "schema_version": 1,
+  "model_version": "contextual-surface-family-v2",
+  "mode": "FAMILY_SHADOW_ONLY",
+  "contexts": {
+    "atp": {
+      "hard_outdoor": {
+        "status": "READY_FOR_FAMILY_SHADOW",
+        "reason": "POSITIVE_HOLDOUT_INFORMATION_GAIN",
+        "source_rows": 10558,
+        "paired_holdout_targets": 2008,
+        "holdout": {
+          "model": {
+            "covered": 2008,
+            "coverage_pct": 95.53,
+            "log_loss": 0.640236,
+            "brier": 0.225088,
+            "accuracy_pct": 62.3,
+            "ece_10": 0.018992,
+            "predicted_mean": 0.519104,
+            "observed_rate": 0.532869
+          },
+          "intercept_only_baseline": {
+            "covered": 2008,
+            "coverage_pct": 95.53,
+            "log_loss": 0.691731,
+            "brier": 0.249292,
+            "accuracy_pct": 53.29,
+            "ece_10": 0.019303,
+            "predicted_mean": 0.513566,
+            "observed_rate": 0.532869
+          },
+          "log_loss_improvement": 0.051495
+        },
+        "model": {
+          "intercept": 0.04987811,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.48197038,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.14038404,
+            "exact_surface_previous_margin_shrunk__missing": 0.03131948,
+            "exact_surface_current_margin_shrunk": 0.23818173,
+            "exact_surface_current_margin_shrunk__missing": 0.03802058
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": 0.01155462184873951,
+                "lower": -0.3392752386299831,
+                "upper": 0.3227136007623812,
+                "scale": 0.135822375323455
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": 0.007797270955165692,
+                "lower": -0.33720930232558144,
+                "upper": 0.33798157601361273,
+                "scale": 0.14499955196767653
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.3142857142857143,
+                "upper": 0.2996720647773278,
+                "scale": 0.12766658430112846
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.0005,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": true
+      },
+      "hard_indoor": {
+        "status": "READY_FOR_FAMILY_SHADOW",
+        "reason": "POSITIVE_HOLDOUT_INFORMATION_GAIN",
+        "source_rows": 4111,
+        "paired_holdout_targets": 700,
+        "holdout": {
+          "model": {
+            "covered": 700,
+            "coverage_pct": 86.85,
+            "log_loss": 0.655767,
+            "brier": 0.232337,
+            "accuracy_pct": 60.43,
+            "ece_10": 0.028671,
+            "predicted_mean": 0.506904,
+            "observed_rate": 0.515714
+          },
+          "intercept_only_baseline": {
+            "covered": 700,
+            "coverage_pct": 86.85,
+            "log_loss": 0.692828,
+            "brier": 0.24984,
+            "accuracy_pct": 51.57,
+            "ece_10": 0.009339,
+            "predicted_mean": 0.506375,
+            "observed_rate": 0.515714
+          },
+          "log_loss_improvement": 0.037061
+        },
+        "model": {
+          "intercept": 0.02636119,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.37508716,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.0534878,
+            "exact_surface_previous_margin_shrunk__missing": 0.04820106,
+            "exact_surface_current_margin_shrunk": 0.30261991,
+            "exact_surface_current_margin_shrunk__missing": -0.06655574
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.27116666666666667,
+                "upper": 0.2836802413273002,
+                "scale": 0.11315230706819265
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.2966029411764706,
+                "upper": 0.30371666666666663,
+                "scale": 0.13081585488161168
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.2550457516339869,
+                "upper": 0.2680393329580636,
+                "scale": 0.12636488486045658
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": true
+      },
+      "clay": {
+        "status": "READY_FOR_FAMILY_SHADOW",
+        "reason": "POSITIVE_HOLDOUT_INFORMATION_GAIN",
+        "source_rows": 7962,
+        "paired_holdout_targets": 1472,
+        "holdout": {
+          "model": {
+            "covered": 1472,
+            "coverage_pct": 92.99,
+            "log_loss": 0.647869,
+            "brier": 0.228565,
+            "accuracy_pct": 60.73,
+            "ece_10": 0.027314,
+            "predicted_mean": 0.501853,
+            "observed_rate": 0.525815
+          },
+          "intercept_only_baseline": {
+            "covered": 1472,
+            "coverage_pct": 92.99,
+            "log_loss": 0.692412,
+            "brier": 0.249632,
+            "accuracy_pct": 52.58,
+            "ece_10": 0.017286,
+            "predicted_mean": 0.508529,
+            "observed_rate": 0.525815
+          },
+          "log_loss_improvement": 0.044543
+        },
+        "model": {
+          "intercept": 0.00950782,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.36291789,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.17156764,
+            "exact_surface_previous_margin_shrunk__missing": -0.0278528,
+            "exact_surface_current_margin_shrunk": 0.22839392,
+            "exact_surface_current_margin_shrunk__missing": 0.06091626
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": 0.005565862708719838,
+                "lower": -0.33385969171908914,
+                "upper": 0.3211584573161923,
+                "scale": 0.12867827019289274
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.3243362068965517,
+                "upper": 0.35153958614484715,
+                "scale": 0.14029294978145979
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.29108791208791207,
+                "upper": 0.2976574248120301,
+                "scale": 0.12761239644701075
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": true
+      },
+      "grass": {
+        "status": "READY_FOR_FAMILY_SHADOW",
+        "reason": "POSITIVE_HOLDOUT_INFORMATION_GAIN",
+        "source_rows": 2792,
+        "paired_holdout_targets": 479,
+        "holdout": {
+          "model": {
+            "covered": 479,
+            "coverage_pct": 90.72,
+            "log_loss": 0.648162,
+            "brier": 0.229035,
+            "accuracy_pct": 59.29,
+            "ece_10": 0.043176,
+            "predicted_mean": 0.514405,
+            "observed_rate": 0.505219
+          },
+          "intercept_only_baseline": {
+            "covered": 479,
+            "coverage_pct": 90.72,
+            "log_loss": 0.693136,
+            "brier": 0.249994,
+            "accuracy_pct": 50.52,
+            "ece_10": 0.00465,
+            "predicted_mean": 0.500569,
+            "observed_rate": 0.505219
+          },
+          "log_loss_improvement": 0.044974
+        },
+        "model": {
+          "intercept": 0.02223898,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.46799809,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.11644037,
+            "exact_surface_previous_margin_shrunk__missing": -0.0,
+            "exact_surface_current_margin_shrunk": 0.08888109,
+            "exact_surface_current_margin_shrunk__missing": -0.00630867
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.34770833333333334,
+                "upper": 0.27068136604774534,
+                "scale": 0.12141360453704358
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": -0.006993006993007034,
+                "lower": -0.3106060606060606,
+                "upper": 0.2698412698412699,
+                "scale": 0.13590313812700766
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.2687373737373738,
+                "upper": 0.2241666666666667,
+                "scale": 0.0941320437243343
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.003,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": true
+      }
+    },
+    "wta": {
+      "hard_outdoor": {
+        "status": "READY_FOR_FAMILY_SHADOW",
+        "reason": "POSITIVE_HOLDOUT_INFORMATION_GAIN",
+        "source_rows": 11735,
+        "paired_holdout_targets": 2277,
+        "holdout": {
+          "model": {
+            "covered": 2277,
+            "coverage_pct": 97.1,
+            "log_loss": 0.634769,
+            "brier": 0.22244,
+            "accuracy_pct": 63.77,
+            "ece_10": 0.016788,
+            "predicted_mean": 0.49932,
+            "observed_rate": 0.511638
+          },
+          "intercept_only_baseline": {
+            "covered": 2277,
+            "coverage_pct": 97.1,
+            "log_loss": 0.69331,
+            "brier": 0.250081,
+            "accuracy_pct": 48.84,
+            "ece_10": 0.014722,
+            "predicted_mean": 0.496916,
+            "observed_rate": 0.511638
+          },
+          "log_loss_improvement": 0.058541
+        },
+        "model": {
+          "intercept": 0.01085082,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.40025937,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.17262325,
+            "exact_surface_previous_margin_shrunk__missing": -0.07488387,
+            "exact_surface_current_margin_shrunk": 0.20947283,
+            "exact_surface_current_margin_shrunk__missing": 0.04410985
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": -0.005050505050505083,
+                "lower": -0.31554195933932416,
+                "upper": 0.28916600516600516,
+                "scale": 0.1266095317504848
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": -0.0006142506142506887,
+                "lower": -0.3363636363636363,
+                "upper": 0.3095238095238096,
+                "scale": 0.13932935492765386
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.26785714285714285,
+                "upper": 0.27243372665826515,
+                "scale": 0.10320015928034754
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": true
+      },
+      "hard_indoor": {
+        "status": "DIAGNOSTIC_ONLY_INCONCLUSIVE",
+        "reason": "NO_MATERIAL_GAIN_VS_INTERCEPT_ON_HOLDOUT",
+        "source_rows": 1357,
+        "paired_holdout_targets": 226,
+        "holdout": {
+          "model": {
+            "covered": 226,
+            "coverage_pct": 84.96,
+            "log_loss": 0.695279,
+            "brier": 0.25107,
+            "accuracy_pct": 49.12,
+            "ece_10": 0.046182,
+            "predicted_mean": 0.482948,
+            "observed_rate": 0.522124
+          },
+          "intercept_only_baseline": {
+            "covered": 226,
+            "coverage_pct": 84.96,
+            "log_loss": 0.695376,
+            "brier": 0.251114,
+            "accuracy_pct": 47.79,
+            "ece_10": 0.040043,
+            "predicted_mean": 0.482081,
+            "observed_rate": 0.522124
+          },
+          "log_loss_improvement": 9.7e-05
+        },
+        "model": {
+          "intercept": -0.06237184,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.10951913,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.0,
+            "exact_surface_previous_margin_shrunk__missing": -0.0,
+            "exact_surface_current_margin_shrunk": 0.03026055,
+            "exact_surface_current_margin_shrunk__missing": 0.0
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.25721052631578945,
+                "upper": 0.23532307692307694,
+                "scale": 0.08677797780837071
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.2960187553282182,
+                "upper": 0.28260869565217395,
+                "scale": 0.1151398813883007
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.20892045454545452,
+                "upper": 0.19899999999999998,
+                "scale": 0.05990220964275817
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.03,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": false
+      },
+      "clay": {
+        "status": "READY_FOR_FAMILY_SHADOW",
+        "reason": "POSITIVE_HOLDOUT_INFORMATION_GAIN",
+        "source_rows": 5907,
+        "paired_holdout_targets": 1099,
+        "holdout": {
+          "model": {
+            "covered": 1099,
+            "coverage_pct": 94.58,
+            "log_loss": 0.635836,
+            "brier": 0.22264,
+            "accuracy_pct": 63.69,
+            "ece_10": 0.039509,
+            "predicted_mean": 0.494603,
+            "observed_rate": 0.510464
+          },
+          "intercept_only_baseline": {
+            "covered": 1099,
+            "coverage_pct": 94.58,
+            "log_loss": 0.693958,
+            "brier": 0.250405,
+            "accuracy_pct": 48.95,
+            "ece_10": 0.022693,
+            "predicted_mean": 0.487771,
+            "observed_rate": 0.510464
+          },
+          "log_loss_improvement": 0.058122
+        },
+        "model": {
+          "intercept": -0.05133007,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.3736713,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.13552,
+            "exact_surface_previous_margin_shrunk__missing": -0.05903371,
+            "exact_surface_current_margin_shrunk": 0.16429949,
+            "exact_surface_current_margin_shrunk__missing": 0.12978377
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": -0.003577817531305927,
+                "lower": -0.2781539888682745,
+                "upper": 0.26797909617264454,
+                "scale": 0.1119155122120282
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.29843356643356633,
+                "upper": 0.29475514343668513,
+                "scale": 0.13146807068230343
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.23345021645021646,
+                "upper": 0.22785026737967912,
+                "scale": 0.08236553825879256
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": true
+      },
+      "grass": {
+        "status": "READY_FOR_FAMILY_SHADOW",
+        "reason": "POSITIVE_HOLDOUT_INFORMATION_GAIN",
+        "source_rows": 2647,
+        "paired_holdout_targets": 491,
+        "holdout": {
+          "model": {
+            "covered": 491,
+            "coverage_pct": 92.99,
+            "log_loss": 0.673052,
+            "brier": 0.240207,
+            "accuracy_pct": 57.84,
+            "ece_10": 0.038942,
+            "predicted_mean": 0.516477,
+            "observed_rate": 0.505092
+          },
+          "intercept_only_baseline": {
+            "covered": 491,
+            "coverage_pct": 92.99,
+            "log_loss": 0.693152,
+            "brier": 0.250002,
+            "accuracy_pct": 50.51,
+            "ece_10": 0.005325,
+            "predicted_mean": 0.510417,
+            "observed_rate": 0.505092
+          },
+          "log_loss_improvement": 0.0201
+        },
+        "model": {
+          "intercept": 0.11108298,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.41807579,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.14407051,
+            "exact_surface_previous_margin_shrunk__missing": -0.16455859,
+            "exact_surface_current_margin_shrunk": 0.00302906,
+            "exact_surface_current_margin_shrunk__missing": -0.05914725
+          },
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.25366341991341995,
+                "upper": 0.28723863636363633,
+                "scale": 0.10384152594968982
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.259967320261438,
+                "upper": 0.2674242424242424,
+                "scale": 0.1284598916831943
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.19909523809523813,
+                "upper": 0.23333333333333328,
+                "scale": 0.06177415369409445
+              }
+            }
+          },
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ]
+        },
+        "numeric_vote_enabled": true
+      }
+    }
+  },
+  "source_hash_sha256": "dede77d39b426f183ea95a404136b085e769d22d531eb14817fb9912d95995fe",
+  "feature_profile": "surface_exact_career_seasons_shrunk",
+  "shrinkage_policy": {
+    "career_prior_matches": 10.0,
+    "season_prior_matches": 8.0,
+    "chosen_before_segment_holdout_audit": true
+  },
+  "transition_policy": {
+    "status": "DIAGNOSTIC_ONLY",
+    "automatic_vote": false,
+    "reason": "FIXED_TRANSITION_VOTE_REJECTED_IN_REPLAY"
+  },
+  "pace_policy": {
+    "status": "DIAGNOSTIC_ONLY",
+    "automatic_vote": false,
+    "reason": "NO_LEAKAGE_SAFE_HISTORICAL_PACE_LEDGER"
+  },
+  "service_return_owned_by_separate_family": true,
+  "market_used": false,
+  "production_effect": false,
+  "paper_eligible": false,
+  "fair_odd_eligible": false,
+  "promotion_authorized": false
+}

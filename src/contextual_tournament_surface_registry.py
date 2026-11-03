@@ -53,7 +53,15 @@ def _year(value: Any) -> int | None:
 
 def _row_context(row: Mapping[str, Any]) -> str | None:
     indoor = row.get("indoor")
-    if not isinstance(indoor, bool):
+    if isinstance(indoor, str):
+        normalized_indoor = normalize_tournament_name(indoor)
+        if normalized_indoor in {"i", "indoor", "inside", "interior", "1", "true"}:
+            indoor = True
+        elif normalized_indoor in {"o", "outdoor", "outside", "exterior", "0", "false"}:
+            indoor = False
+        else:
+            indoor = None
+    elif not isinstance(indoor, bool):
         indoor = None
     venue = row.get("venue") or row.get("Court") or row.get("court")
     return exact_surface_context(
