@@ -143,6 +143,26 @@ def test_v2_profile_selects_continuous_structural_feature():
     assert result["coefficients"]["contextual_structural_signal_v2"] >= 0
 
 
+def test_v3_profile_keeps_rank_anchor_and_separate_modifiers():
+    split = _split_rows()
+    names = (
+        "contextual_structural_rank_core_v3",
+        "contextual_structural_trajectory_margin_v3",
+        "contextual_structural_inactivity_margin_v3",
+        "contextual_structural_recovery_margin_v3",
+    )
+    for part in split.values():
+        for row in part:
+            direction = 1.0 if row["target_a_win"] else -1.0
+            for index, name in enumerate(names, start=1):
+                row["features"][name] = direction / index
+    result = calibrate_family(
+        split, family="structural_strength", feature_profile="contextual_v3",
+    )
+    assert result["features"] == list(names)
+    assert all(result["coefficients"][name] >= 0 for name in names)
+
+
 def test_structural_segments_are_ex_ante_and_can_overlap():
     row = {
         "diagnostics": {"rank_a": 10, "rank_b": 120},

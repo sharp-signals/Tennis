@@ -20,6 +20,7 @@ from .contextual_factor_orchestrator import build_contextual_family_vector
 from .contextual_structural_equation import (
     evaluate_structural_strength,
     evaluate_structural_strength_v2,
+    evaluate_structural_strength_v3,
 )
 from .contextual_surface import (
     _pace as _surface_pace,
@@ -50,6 +51,10 @@ FEATURE_FAMILIES = {
     "rank_change_from_last_observation": "structural_strength",
     "contextual_structural_signal_v1": "structural_strength",
     "contextual_structural_signal_v2": "structural_strength",
+    "contextual_structural_rank_core_v3": "structural_strength",
+    "contextual_structural_trajectory_margin_v3": "structural_strength",
+    "contextual_structural_inactivity_margin_v3": "structural_strength",
+    "contextual_structural_recovery_margin_v3": "structural_strength",
     "same_surface_result_balance_90d": "surface_conditions",
     "career_surface_win_rate_margin": "surface_conditions",
     "contextual_surface_signal_v1": "surface_conditions",
@@ -270,17 +275,21 @@ def _candidate_equation_features(
     )
     structural = evaluate_structural_strength(context_a, context_b)
     structural_v2 = evaluate_structural_strength_v2(context_a, context_b)
+    structural_v3 = evaluate_structural_strength_v3(context_a, context_b)
     surface_result = evaluate_surface_conditions(_surface_equation_pair(
         observations_a=match_history_a, observations_b=match_history_b,
         cutoff=cutoff, surface=surface, venue=venue, pace=pace,
     ))
-    return {
+    features = {
         "contextual_structural_signal_v1": structural.get("family_signal"),
         "contextual_structural_signal_v2": structural_v2.get("family_signal"),
         "contextual_surface_signal_v1": surface_result.get("family_signal"),
-    }, {
+    }
+    features.update(structural_v3.get("candidate_features", {}))
+    return features, {
         "structural_strength": structural,
         "structural_strength_v2": structural_v2,
+        "structural_strength_v3": structural_v3,
         "surface_conditions": surface_result,
     }
 

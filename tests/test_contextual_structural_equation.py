@@ -1,6 +1,7 @@
 from src.contextual_structural_equation import (
     evaluate_structural_strength,
     evaluate_structural_strength_v2,
+    evaluate_structural_strength_v3,
 )
 
 
@@ -110,3 +111,24 @@ def test_v2_exposes_ex_ante_context_needed_for_segment_audit():
     assert components["trajectory_a"] == 0.3
     assert components["days_since_last_match_a"] == 120.0
     assert components["days_since_last_match_b"] == 15.0
+
+
+def test_v3_preserves_full_rank_distance_without_saturation():
+    gap_8x = evaluate_structural_strength_v3(_player(10), _player(80))
+    gap_20x = evaluate_structural_strength_v3(_player(10), _player(200))
+    key = "contextual_structural_rank_core_v3"
+    assert gap_20x["candidate_features"][key] > gap_8x["candidate_features"][key]
+
+
+def test_v3_inactivity_is_separate_and_does_not_change_rank_core():
+    active = evaluate_structural_strength_v3(
+        _player(20, inactive=10), _player(100, inactive=10),
+    )
+    inactive = evaluate_structural_strength_v3(
+        _player(20, inactive=240), _player(100, inactive=10),
+    )
+    core = "contextual_structural_rank_core_v3"
+    modifier = "contextual_structural_inactivity_margin_v3"
+    assert active["candidate_features"][core] == inactive["candidate_features"][core]
+    assert inactive["candidate_features"][modifier] < 0
+    assert inactive["production_effect"] is False

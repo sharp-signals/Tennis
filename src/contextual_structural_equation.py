@@ -15,6 +15,7 @@ from typing import Any
 SCHEMA_VERSION = 1
 EQUATION_VERSION = "structural-context-v1"
 EQUATION_VERSION_V2 = "structural-context-v2"
+EQUATION_VERSION_V3 = "structural-context-v3-components"
 
 
 @dataclass(frozen=True)
@@ -324,6 +325,91 @@ def evaluate_structural_strength_v2(
             "recovery_adjustment_is_capped": True,
         },
         "candidate_parameters": asdict(cfg),
+        "market_used": False,
+        "production_effect": False,
+    }
+
+
+def _inactivity_penalty_v3(player: dict[str, Any]) -> float | None:
+    days = _positive(player.get("days_since_last_match"))
+    if days is None:
+        return None
+    if days <= 45.0:
+        return 0.0
+    return min(1.0, (days - 45.0) / 195.0)
+
+
+def evaluate_structural_strength_v3(
+    player_a: dict[str, Any], player_b: dict[str, Any],
+    *, config: StructuralEquationV2Config | None = None,
+) -> dict[str, Any]:
+    """Expose independent structural components; calibration combines them later."""
+    cfg = config or StructuralEquationV2Config()
+    rank_a = _positive(player_a.get("current_rank"))
+    rank_b = _positive(player_b.get("current_rank"))
+    if rank_a is None or rank_b is None:
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "equation_version": EQUATION_VERSION_V3,
+            "status": "INSUFFICIENT_BILATERAL_LEVEL",
+            "candidate_features": {},
+            "market_used": False,
+            "production_effect": False,
+        }
+
+    # Preserve the complete current-ranking distance. No saturation: a 20x gap
+    # remains larger than an 8x gap and calibration determines its probability.
+    rank_core = math.log(rank_b / rank_a)
+    trajectory_a = _trajectory_v2(player_a, cfg)
+    trajectory_b = _trajectory_v2(player_b, cfg)
+    trajectory_margin = (
+        trajectory_a - trajectory_b
+        if trajectory_a is not None and trajectory_b is not None else None
+    )
+    inactivity_a = _inactivity_penalty_v3(player_a)
+    inactivity_b = _inactivity_penalty_v3(player_b)
+    # Positive means B carries more inactivity uncertainty, therefore relative
+    # evidence in favour of A. It never changes rank_core directly.
+    inactivity_margin = (
+        inactivity_b - inactivity_a
+        if inactivity_a is not None and inactivity_b is not None else None
+    )
+    recovery_a = _supported_recovery_v2(player_a, cfg)
+    recovery_b = _supported_recovery_v2(player_b, cfg)
+    recovery_margin = recovery_a - recovery_b
+    features = {
+        "contextual_structural_rank_core_v3": rank_core,
+        "contextual_structural_trajectory_margin_v3": trajectory_margin,
+        "contextual_structural_inactivity_margin_v3": inactivity_margin,
+        "contextual_structural_recovery_margin_v3": recovery_margin,
+    }
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "equation_version": EQUATION_VERSION_V3,
+        "status": "READY",
+        "candidate_features": {
+            key: None if value is None else round(float(value), 6)
+            for key, value in features.items()
+        },
+        "components": {
+            "rank_core_log_ratio": round(rank_core, 6),
+            "trajectory_a": None if trajectory_a is None else round(trajectory_a, 6),
+            "trajectory_b": None if trajectory_b is None else round(trajectory_b, 6),
+            "days_since_last_match_a": _positive(player_a.get("days_since_last_match")),
+            "days_since_last_match_b": _positive(player_b.get("days_since_last_match")),
+            "inactivity_penalty_a": inactivity_a,
+            "inactivity_penalty_b": inactivity_b,
+            "supported_recovery_a": round(recovery_a, 6),
+            "supported_recovery_b": round(recovery_b, 6),
+            "supported_recovery": round(recovery_margin, 6),
+        },
+        "governance": {
+            "current_rank_is_unsaturated_anchor": True,
+            "modifiers_are_separate_features": True,
+            "historical_peak_is_not_direct_vote": True,
+            "market_is_forbidden": True,
+            "requires_chronological_calibration": True,
+        },
         "market_used": False,
         "production_effect": False,
     }
