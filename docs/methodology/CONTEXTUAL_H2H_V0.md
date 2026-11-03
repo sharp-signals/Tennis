@@ -2,7 +2,7 @@
 
 **CHANGE-ID:** CHANGE-2026-11-02-175
 
-**Estado:** observacional; sem ligação ao índice, pricing ou relatórios
+**Estado:** família SHADOW isolada; sem ligação ao índice, pricing ou relatórios
 
 **Auditoria cronológica:** `scripts/audit_contextual_h2h_replay.py`. Esta
 auditoria separa zero, um, dois a três e quatro ou mais confrontos e mede,
@@ -50,9 +50,27 @@ Um único encontro nunca recebe contribuição nesta fase. Repetição, recênci
 coincidência contextual serão avaliadas por replay antes de qualquer curva.
 Retiradas ficam visíveis, mas não entram no registo competitivo.
 
-O replay mantém três leituras concorrentes — líder global, líder no mesmo
-contexto de piso e líder recente no mesmo contexto — sem as somar. A equação
-interna só será escolhida depois de comparar estas leituras no holdout.
+O replay manteve três leituras concorrentes — líder global, líder no mesmo
+contexto de piso e líder recente no mesmo contexto — sem as somar. O contexto
+teve melhoria residual no ATP e não no WTA. Para evitar sobreajuste, a equação
+SHADOW escolhida usa apenas o balanço global com prior simétrico de dois jogos.
+Piso e recência permanecem diagnósticos visíveis, não um segundo voto.
+
+## Equação SHADOW escolhida
+
+Para `A` vitórias do jogador A, `B` vitórias do jogador B e `N=A+B`:
+
+`sinal_h2h = (A - B) / (N + 2)`
+
+Isto não é uma probabilidade. É um sinal limitado da família, sujeito a nova
+calibração quando as famílias forem combinadas. Um único encontro produz
+apenas `±1/3` antes do limite adicional da família; ausência confirmada produz
+zero; identidade ou fonte não resolvida produz `null` e aumenta incerteza.
+
+Artefactos:
+
+- `data/validation/contextual-h2h-equation-comparison-2026-11-03.json`;
+- `data/models/contextual-h2h-family-v1.json`.
 
 ## Proteções
 

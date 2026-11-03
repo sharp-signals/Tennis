@@ -40,19 +40,43 @@ do número de alvos.
 5. **A família continuará limitada.** H2H nunca poderá liderar sozinho a
    probabilidade nem compensar forma recente forte em sentido contrário.
 
-## Próximo teste
+## Comparação das equações candidatas
 
-Construir candidatos limitados e monotónicos:
+Foram comparados candidatos limitados e monotónicos:
 
-- baseline global com shrinkage por número de confrontos;
-- desconto por antiguidade e mudança estrutural dos jogadores;
-- ajuste contextual pequeno, sem duplicar partidas;
-- estado neutro explícito quando o H2H é inexistente ou empatado.
+- balanço global com shrinkage;
+- modificador pequeno pelo mesmo contexto;
+- modificador pequeno pelo mesmo contexto nos 730 dias anteriores.
 
-Os candidatos serão comparados primeiro na validação e apenas uma configuração
-congelada será confirmada no holdout. Nenhuma configuração fica autorizada por
-este documento.
+| Circuito | Candidato | Log loss validação | Log loss holdout | Baseline holdout |
+|---|---|---:|---:|---:|
+| ATP | global shrunk | 0,674268 | 0,673667 | 0,692329 |
+| ATP | mesmo contexto | 0,674276 | 0,673579 | 0,692329 |
+| ATP | recente + contexto | 0,674166 | 0,673562 | 0,692329 |
+| WTA | global shrunk | 0,683980 | 0,678776 | 0,693167 |
+| WTA | mesmo contexto | 0,684083 | 0,678799 | 0,693167 |
+| WTA | recente + contexto | 0,684005 | 0,678809 | 0,693167 |
+
+No ATP, a melhoria do candidato contextual sobre o global foi apenas
+`0,000102` na validação e `0,000105` no holdout. No WTA, o global foi o melhor.
+Esta diferença é demasiado pequena e inconsistente para justificar maior
+complexidade.
+
+## Equação escolhida para SHADOW
+
+Foi escolhida a estrutura global com prior simétrico de dois jogos:
+
+`(vitórias_A - vitórias_B) / (total + 2)`
+
+A escolha privilegia estabilidade entre circuitos e impede que as mesmas
+partidas sejam contabilizadas uma vez no H2H global e novamente no H2H de
+piso. Contexto e recência continuam visíveis, mas não votam automaticamente.
+
+Esta é apenas uma família SHADOW isolada. A equação não está autorizada a
+alterar índice, probabilidade, fair odd, relatório, PAPER ou produção.
 
 ## Artefacto
 
 `data/validation/contextual-h2h-audit-2026-11-03.json`
+
+`data/validation/contextual-h2h-equation-comparison-2026-11-03.json`

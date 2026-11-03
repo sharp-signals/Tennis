@@ -1,0 +1,809 @@
+{
+  "mode": "READ_ONLY_CONTEXTUAL_H2H_EQUATION_COMPARISON",
+  "candidate_profiles": [
+    "h2h_global_shrunk_v1",
+    "h2h_same_context_modifier_v1",
+    "h2h_recent_context_modifier_v1"
+  ],
+  "universes": {
+    "atp": {
+      "selected_on_validation": "h2h_recent_context_modifier_v1",
+      "selected_holdout_status": "HOLDOUT_SUPPORTED",
+      "candidates": {
+        "h2h_global_shrunk_v1": {
+          "family": "matchup_h2h",
+          "feature_profile": "h2h_global_shrunk_v1",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "contextual_h2h_global_shrunk_v1"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.03307977,
+          "coefficients": {
+            "contextual_h2h_global_shrunk_v1": 0.46668822,
+            "contextual_h2h_global_shrunk_v1__missing": 0.0
+          },
+          "active_coefficients": [
+            "contextual_h2h_global_shrunk_v1"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.674268,
+              "validation_brier": 0.240631,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.674325,
+              "validation_brier": 0.240659,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.674384,
+              "validation_brier": 0.240687,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.674636,
+              "validation_brier": 0.24081,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.675737,
+              "validation_brier": 0.241347,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.680745,
+              "validation_brier": 0.243815,
+              "nonzero_coefficients": 1,
+              "iterations": 27
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.692909,
+              "validation_brier": 0.249881,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "contextual_h2h_global_shrunk_v1": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6,
+                "scale": 0.49419322955275513
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.674268,
+              "validation_brier": 0.240631,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            "baseline": {
+              "covered": 1645,
+              "coverage_pct": 36.02,
+              "log_loss": 0.692909,
+              "brier": 0.249881,
+              "accuracy_pct": 52.58,
+              "ece_10": 0.02342,
+              "predicted_mean": 0.502415,
+              "observed_rate": 0.525836
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 1742,
+              "coverage_pct": 38.14,
+              "log_loss": 0.673667,
+              "brier": 0.240356,
+              "accuracy_pct": 58.9,
+              "ece_10": 0.017638,
+              "predicted_mean": 0.511456,
+              "observed_rate": 0.524684
+            },
+            "intercept_only_baseline": {
+              "covered": 1742,
+              "coverage_pct": 38.14,
+              "log_loss": 0.692329,
+              "brier": 0.249591,
+              "accuracy_pct": 52.47,
+              "ece_10": 0.014158,
+              "predicted_mean": 0.510526,
+              "observed_rate": 0.524684
+            },
+            "log_loss_improvement": 0.018662
+          },
+          "iterations_final": 29,
+          "market_used": false,
+          "production_effect": false
+        },
+        "h2h_same_context_modifier_v1": {
+          "family": "matchup_h2h",
+          "feature_profile": "h2h_same_context_modifier_v1",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "contextual_h2h_same_context_modifier_v1"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.03299124,
+          "coefficients": {
+            "contextual_h2h_same_context_modifier_v1": 0.46904723,
+            "contextual_h2h_same_context_modifier_v1__missing": 0.0
+          },
+          "active_coefficients": [
+            "contextual_h2h_same_context_modifier_v1"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.674276,
+              "validation_brier": 0.240636,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.674332,
+              "validation_brier": 0.240663,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.67439,
+              "validation_brier": 0.240691,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.674641,
+              "validation_brier": 0.240813,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.675738,
+              "validation_brier": 0.241348,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.680738,
+              "validation_brier": 0.243811,
+              "nonzero_coefficients": 1,
+              "iterations": 27
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.692909,
+              "validation_brier": 0.249881,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "contextual_h2h_same_context_modifier_v1": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6,
+                "scale": 0.49419322955275513
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.674276,
+              "validation_brier": 0.240636,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            "baseline": {
+              "covered": 1645,
+              "coverage_pct": 36.02,
+              "log_loss": 0.692909,
+              "brier": 0.249881,
+              "accuracy_pct": 52.58,
+              "ece_10": 0.02342,
+              "predicted_mean": 0.502415,
+              "observed_rate": 0.525836
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 1742,
+              "coverage_pct": 38.14,
+              "log_loss": 0.673579,
+              "brier": 0.240311,
+              "accuracy_pct": 58.9,
+              "ece_10": 0.01777,
+              "predicted_mean": 0.511457,
+              "observed_rate": 0.524684
+            },
+            "intercept_only_baseline": {
+              "covered": 1742,
+              "coverage_pct": 38.14,
+              "log_loss": 0.692329,
+              "brier": 0.249591,
+              "accuracy_pct": 52.47,
+              "ece_10": 0.014158,
+              "predicted_mean": 0.510526,
+              "observed_rate": 0.524684
+            },
+            "log_loss_improvement": 0.01875
+          },
+          "iterations_final": 29,
+          "market_used": false,
+          "production_effect": false
+        },
+        "h2h_recent_context_modifier_v1": {
+          "family": "matchup_h2h",
+          "feature_profile": "h2h_recent_context_modifier_v1",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "contextual_h2h_recent_context_modifier_v1"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.0329609,
+          "coefficients": {
+            "contextual_h2h_recent_context_modifier_v1": 0.46933287,
+            "contextual_h2h_recent_context_modifier_v1__missing": 0.0
+          },
+          "active_coefficients": [
+            "contextual_h2h_recent_context_modifier_v1"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.674166,
+              "validation_brier": 0.240582,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.674224,
+              "validation_brier": 0.24061,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.674283,
+              "validation_brier": 0.240639,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.674539,
+              "validation_brier": 0.240763,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.675652,
+              "validation_brier": 0.241305,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.6807,
+              "validation_brier": 0.243792,
+              "nonzero_coefficients": 1,
+              "iterations": 27
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.692909,
+              "validation_brier": 0.249881,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "contextual_h2h_recent_context_modifier_v1": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6,
+                "scale": 0.49419322955275513
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.674166,
+              "validation_brier": 0.240582,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            "baseline": {
+              "covered": 1645,
+              "coverage_pct": 36.02,
+              "log_loss": 0.692909,
+              "brier": 0.249881,
+              "accuracy_pct": 52.58,
+              "ece_10": 0.02342,
+              "predicted_mean": 0.502415,
+              "observed_rate": 0.525836
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 1742,
+              "coverage_pct": 38.14,
+              "log_loss": 0.673562,
+              "brier": 0.240303,
+              "accuracy_pct": 58.9,
+              "ece_10": 0.017321,
+              "predicted_mean": 0.511418,
+              "observed_rate": 0.524684
+            },
+            "intercept_only_baseline": {
+              "covered": 1742,
+              "coverage_pct": 38.14,
+              "log_loss": 0.692329,
+              "brier": 0.249591,
+              "accuracy_pct": 52.47,
+              "ece_10": 0.014158,
+              "predicted_mean": 0.510526,
+              "observed_rate": 0.524684
+            },
+            "log_loss_improvement": 0.018767
+          },
+          "iterations_final": 29,
+          "market_used": false,
+          "production_effect": false
+        }
+      },
+      "split_targets": {
+        "train": 13708,
+        "validation": 4567,
+        "holdout": 4567
+      }
+    },
+    "wta": {
+      "selected_on_validation": "h2h_global_shrunk_v1",
+      "selected_holdout_status": "HOLDOUT_SUPPORTED",
+      "candidates": {
+        "h2h_global_shrunk_v1": {
+          "family": "matchup_h2h",
+          "feature_profile": "h2h_global_shrunk_v1",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "contextual_h2h_global_shrunk_v1"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.01929404,
+          "coefficients": {
+            "contextual_h2h_global_shrunk_v1": 0.33132608,
+            "contextual_h2h_global_shrunk_v1__missing": 0.0
+          },
+          "active_coefficients": [
+            "contextual_h2h_global_shrunk_v1"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.68398,
+              "validation_brier": 0.24543,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.684064,
+              "validation_brier": 0.245472,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.68415,
+              "validation_brier": 0.245515,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.684511,
+              "validation_brier": 0.245694,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.685999,
+              "validation_brier": 0.246433,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.692162,
+              "validation_brier": 0.249508,
+              "nonzero_coefficients": 1,
+              "iterations": 26
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.695271,
+              "validation_brier": 0.251061,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "contextual_h2h_global_shrunk_v1": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6,
+                "scale": 0.49419322955275513
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.68398,
+              "validation_brier": 0.24543,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            "baseline": {
+              "covered": 1932,
+              "coverage_pct": 42.96,
+              "log_loss": 0.695271,
+              "brier": 0.251061,
+              "accuracy_pct": 47.62,
+              "ece_10": 0.040351,
+              "predicted_mean": 0.516542,
+              "observed_rate": 0.47619
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 1952,
+              "coverage_pct": 43.34,
+              "log_loss": 0.678776,
+              "brier": 0.242856,
+              "accuracy_pct": 57.99,
+              "ece_10": 0.027545,
+              "predicted_mean": 0.504831,
+              "observed_rate": 0.500512
+            },
+            "intercept_only_baseline": {
+              "covered": 1952,
+              "coverage_pct": 43.34,
+              "log_loss": 0.693167,
+              "brier": 0.25001,
+              "accuracy_pct": 50.05,
+              "ece_10": 0.003193,
+              "predicted_mean": 0.503705,
+              "observed_rate": 0.500512
+            },
+            "log_loss_improvement": 0.014391
+          },
+          "iterations_final": 29,
+          "market_used": false,
+          "production_effect": false
+        },
+        "h2h_same_context_modifier_v1": {
+          "family": "matchup_h2h",
+          "feature_profile": "h2h_same_context_modifier_v1",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "contextual_h2h_same_context_modifier_v1"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.01942282,
+          "coefficients": {
+            "contextual_h2h_same_context_modifier_v1": 0.33230431,
+            "contextual_h2h_same_context_modifier_v1__missing": 0.0
+          },
+          "active_coefficients": [
+            "contextual_h2h_same_context_modifier_v1"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.684083,
+              "validation_brier": 0.245482,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.684166,
+              "validation_brier": 0.245523,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.684251,
+              "validation_brier": 0.245565,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.684609,
+              "validation_brier": 0.245743,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.686087,
+              "validation_brier": 0.246477,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.692235,
+              "validation_brier": 0.249545,
+              "nonzero_coefficients": 1,
+              "iterations": 26
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.695271,
+              "validation_brier": 0.251061,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "contextual_h2h_same_context_modifier_v1": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6,
+                "scale": 0.49419322955275513
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.684083,
+              "validation_brier": 0.245482,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            "baseline": {
+              "covered": 1932,
+              "coverage_pct": 42.96,
+              "log_loss": 0.695271,
+              "brier": 0.251061,
+              "accuracy_pct": 47.62,
+              "ece_10": 0.040351,
+              "predicted_mean": 0.516542,
+              "observed_rate": 0.47619
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 1952,
+              "coverage_pct": 43.34,
+              "log_loss": 0.678799,
+              "brier": 0.242867,
+              "accuracy_pct": 58.04,
+              "ece_10": 0.028235,
+              "predicted_mean": 0.504857,
+              "observed_rate": 0.500512
+            },
+            "intercept_only_baseline": {
+              "covered": 1952,
+              "coverage_pct": 43.34,
+              "log_loss": 0.693167,
+              "brier": 0.25001,
+              "accuracy_pct": 50.05,
+              "ece_10": 0.003193,
+              "predicted_mean": 0.503705,
+              "observed_rate": 0.500512
+            },
+            "log_loss_improvement": 0.014368
+          },
+          "iterations_final": 29,
+          "market_used": false,
+          "production_effect": false
+        },
+        "h2h_recent_context_modifier_v1": {
+          "family": "matchup_h2h",
+          "feature_profile": "h2h_recent_context_modifier_v1",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "contextual_h2h_recent_context_modifier_v1"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.01929619,
+          "coefficients": {
+            "contextual_h2h_recent_context_modifier_v1": 0.33245969,
+            "contextual_h2h_recent_context_modifier_v1__missing": 0.0
+          },
+          "active_coefficients": [
+            "contextual_h2h_recent_context_modifier_v1"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.684005,
+              "validation_brier": 0.245443,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.68409,
+              "validation_brier": 0.245485,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.684176,
+              "validation_brier": 0.245528,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.684541,
+              "validation_brier": 0.245709,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.686042,
+              "validation_brier": 0.246455,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.692254,
+              "validation_brier": 0.249554,
+              "nonzero_coefficients": 1,
+              "iterations": 26
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.695271,
+              "validation_brier": 0.251061,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "contextual_h2h_recent_context_modifier_v1": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6,
+                "scale": 0.49419322955275513
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.684005,
+              "validation_brier": 0.245443,
+              "nonzero_coefficients": 1,
+              "iterations": 29
+            },
+            "baseline": {
+              "covered": 1932,
+              "coverage_pct": 42.96,
+              "log_loss": 0.695271,
+              "brier": 0.251061,
+              "accuracy_pct": 47.62,
+              "ece_10": 0.040351,
+              "predicted_mean": 0.516542,
+              "observed_rate": 0.47619
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 1952,
+              "coverage_pct": 43.34,
+              "log_loss": 0.678809,
+              "brier": 0.242872,
+              "accuracy_pct": 58.04,
+              "ece_10": 0.028172,
+              "predicted_mean": 0.504853,
+              "observed_rate": 0.500512
+            },
+            "intercept_only_baseline": {
+              "covered": 1952,
+              "coverage_pct": 43.34,
+              "log_loss": 0.693167,
+              "brier": 0.25001,
+              "accuracy_pct": 50.05,
+              "ece_10": 0.003193,
+              "predicted_mean": 0.503705,
+              "observed_rate": 0.500512
+            },
+            "log_loss_improvement": 0.014358
+          },
+          "iterations_final": 29,
+          "market_used": false,
+          "production_effect": false
+        }
+      },
+      "split_targets": {
+        "train": 13528,
+        "validation": 4497,
+        "holdout": 4504
+      }
+    }
+  },
+  "selection_rule": "minimum validation log loss; holdout reported only after selection",
+  "guards": {
+    "same_matches_never_summed_as_global_and_context_votes": true,
+    "context_is_bounded_modifier": true,
+    "single_h2h_is_shrunk": true,
+    "market_used": false,
+    "production_effect": false,
+    "fair_odd_fitted": false
+  }
+}

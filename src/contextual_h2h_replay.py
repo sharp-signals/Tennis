@@ -60,6 +60,34 @@ def _leader(records: Iterable[dict[str, Any]]) -> str | None:
     return "a" if a_wins > b_wins else "b"
 
 
+def _counts(records: Iterable[dict[str, Any]]) -> tuple[int, int]:
+    material = list(records)
+    return (
+        sum(record["winner_side"] == "a" for record in material),
+        sum(record["winner_side"] == "b" for record in material),
+    )
+
+
+def _shrunk_balance(a_wins: int, b_wins: int, *, prior: float = 2.0) -> float:
+    return (a_wins - b_wins) / (a_wins + b_wins + prior)
+
+
+def _context_adjusted_signal(
+    baseline: float,
+    a_wins: int,
+    b_wins: int,
+    *,
+    prior: float = 2.0,
+    max_modifier: float = 0.25,
+) -> float:
+    sample = a_wins + b_wins
+    if sample <= 0:
+        return baseline
+    contextual = _shrunk_balance(a_wins, b_wins, prior=prior)
+    reliability = sample / (sample + prior)
+    return baseline + max_modifier * reliability * (contextual - baseline)
+
+
 def build_contextual_h2h_replay_rows(
     history: pd.DataFrame,
     *,
@@ -116,28 +144,59 @@ def build_contextual_h2h_replay_rows(
             global_leader = _leader(previous)
             context_leader = _leader(same_context)
             recent_context_leader = _leader(recent_same_context)
+            prior_a_wins, prior_b_wins = _counts(previous)
+            context_a_wins, context_b_wins = _counts(same_context)
+            recent_context_a_wins, recent_context_b_wins = _counts(
+                recent_same_context,
+            )
+            global_signal = (
+                _shrunk_balance(prior_a_wins, prior_b_wins)
+                if previous else None
+            )
             result.append({
                 "event_date": row["_date"].date().isoformat(),
                 "pair_key": "::".join(pair),
                 "winner_side": winner_side,
                 "surface_context": row["_context"],
                 "prior_matches": len(previous),
+                "prior_a_wins": prior_a_wins,
+                "prior_b_wins": prior_b_wins,
                 "prior_leader": global_leader,
                 "prior_leader_correct": (
                     global_leader == winner_side if global_leader else None
                 ),
                 "same_context_matches": len(same_context),
+                "same_context_a_wins": context_a_wins,
+                "same_context_b_wins": context_b_wins,
                 "same_context_leader": context_leader,
                 "same_context_leader_correct": (
                     context_leader == winner_side if context_leader else None
                 ),
                 "recent_matches": len(recent),
                 "recent_same_context_matches": len(recent_same_context),
+                "recent_same_context_a_wins": recent_context_a_wins,
+                "recent_same_context_b_wins": recent_context_b_wins,
                 "recent_same_context_leader": recent_context_leader,
                 "recent_same_context_leader_correct": (
                     recent_context_leader == winner_side
                     if recent_context_leader else None
                 ),
+                "target_a_win": winner_side == "a",
+                "features": {
+                    "contextual_h2h_global_shrunk_v1": global_signal,
+                    "contextual_h2h_same_context_modifier_v1": (
+                        _context_adjusted_signal(
+                            global_signal, context_a_wins, context_b_wins,
+                        ) if global_signal is not None else None
+                    ),
+                    "contextual_h2h_recent_context_modifier_v1": (
+                        _context_adjusted_signal(
+                            global_signal,
+                            recent_context_a_wins,
+                            recent_context_b_wins,
+                        ) if global_signal is not None else None
+                    ),
+                },
             })
             pending.append((pair, {
                 "date": row["_date"],

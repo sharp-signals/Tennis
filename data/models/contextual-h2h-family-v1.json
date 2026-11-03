@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "model_id": "contextual-h2h-family-v1",
+  "status": "FAMILY_SHADOW_ONLY",
+  "equation_version": "contextual-h2h-global-shrunk-v1",
+  "selected_structure": "global H2H balance with two-match symmetric shrinkage",
+  "selection": {
+    "atp": {
+      "validation_winner": "h2h_recent_context_modifier_v1",
+      "deployed_family_candidate": "h2h_global_shrunk_v1",
+      "holdout_status": "HOLDOUT_SUPPORTED",
+      "holdout": {
+        "model": {
+          "covered": 1742,
+          "coverage_pct": 38.14,
+          "log_loss": 0.673667,
+          "brier": 0.240356,
+          "accuracy_pct": 58.9,
+          "ece_10": 0.017638,
+          "predicted_mean": 0.511456,
+          "observed_rate": 0.524684
+        },
+        "intercept_only_baseline": {
+          "covered": 1742,
+          "coverage_pct": 38.14,
+          "log_loss": 0.692329,
+          "brier": 0.249591,
+          "accuracy_pct": 52.47,
+          "ece_10": 0.014158,
+          "predicted_mean": 0.510526,
+          "observed_rate": 0.524684
+        },
+        "log_loss_improvement": 0.018662
+      }
+    },
+    "wta": {
+      "validation_winner": "h2h_global_shrunk_v1",
+      "deployed_family_candidate": "h2h_global_shrunk_v1",
+      "holdout_status": "HOLDOUT_SUPPORTED",
+      "holdout": {
+        "model": {
+          "covered": 1952,
+          "coverage_pct": 43.34,
+          "log_loss": 0.678776,
+          "brier": 0.242856,
+          "accuracy_pct": 57.99,
+          "ece_10": 0.027545,
+          "predicted_mean": 0.504831,
+          "observed_rate": 0.500512
+        },
+        "intercept_only_baseline": {
+          "covered": 1952,
+          "coverage_pct": 43.34,
+          "log_loss": 0.693167,
+          "brier": 0.25001,
+          "accuracy_pct": 50.05,
+          "ece_10": 0.003193,
+          "predicted_mean": 0.503705,
+          "observed_rate": 0.500512
+        },
+        "log_loss_improvement": 0.014391
+      }
+    }
+  },
+  "decision_rationale": [
+    "global H2H is supported on ATP and WTA holdout",
+    "context modifiers add negligible and circuit-inconsistent improvement",
+    "same matches cannot become global plus surface votes",
+    "recency and context remain visible diagnostics",
+    "one prior match remains low evidence and the family stays bounded"
+  ],
+  "states": {
+    "OBSERVED_NONE": "neutral coverage with zero impact",
+    "AVAILABLE": "shrunk global balance candidate",
+    "SOURCE_OR_IDENTITY_UNAVAILABLE": "missing, never neutral or opponent vote"
+  },
+  "guards": {
+    "market_used": false,
+    "production_effect": false,
+    "overall_probability_fitted": false,
+    "fair_odd_fitted": false,
+    "paper_allowed": false,
+    "promotion_authorized": false
+  }
+}

@@ -28,6 +28,12 @@ def test_exact_surface_margins_are_directionally_constrained():
     assert mask.tolist() == [True, False]
 
 
+def test_h2h_candidate_signal_is_directionally_constrained():
+    columns = ["contextual_h2h_global_shrunk_v1"]
+    mask = _directional_mask(columns, "h2h_global_shrunk_v1")
+    assert mask.tolist() == [True]
+
+
 def _row(index, *, signal=None, won=None, missing=False):
     features = {key: None for key in FEATURE_FAMILIES}
     if not missing:

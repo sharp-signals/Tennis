@@ -63,6 +63,15 @@ CALIBRATION_FEATURE_PROFILES = {
             "exact_surface_current_margin_shrunk",
         ),
     },
+    "h2h_global_shrunk_v1": {
+        "matchup_h2h": ("contextual_h2h_global_shrunk_v1",),
+    },
+    "h2h_same_context_modifier_v1": {
+        "matchup_h2h": ("contextual_h2h_same_context_modifier_v1",),
+    },
+    "h2h_recent_context_modifier_v1": {
+        "matchup_h2h": ("contextual_h2h_recent_context_modifier_v1",),
+    },
     "contextual_v2": {
         "structural_strength": ("contextual_structural_signal_v2",),
         "surface_conditions": ("contextual_surface_signal_v1",),
@@ -215,6 +224,9 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "surface_exact_career_previous_raw",
         "surface_exact_career_seasons_raw",
         "surface_exact_career_seasons_shrunk",
+        "h2h_global_shrunk_v1",
+        "h2h_same_context_modifier_v1",
+        "h2h_recent_context_modifier_v1",
         *(f"recent_capped_loss_{int(round(value * 100)):03d}"
           for value in RECENT_LOSS_CONTEXT_GRID_V2),
     }:
@@ -231,6 +243,9 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "exact_surface_career_margin_shrunk",
             "exact_surface_previous_margin_shrunk",
             "exact_surface_current_margin_shrunk",
+            "contextual_h2h_global_shrunk_v1",
+            "contextual_h2h_same_context_modifier_v1",
+            "contextual_h2h_recent_context_modifier_v1",
             "contextual_structural_rank_core_v3",
             "contextual_structural_trajectory_margin_v3",
             "contextual_structural_inactivity_margin_v3",
