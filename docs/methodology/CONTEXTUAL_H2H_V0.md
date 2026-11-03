@@ -4,6 +4,11 @@
 
 **Estado:** observacional; sem ligação ao índice, pricing ou relatórios
 
+**Auditoria cronológica:** `scripts/audit_contextual_h2h_replay.py`. Esta
+auditoria separa zero, um, dois a três e quatro ou mais confrontos e mede,
+sem mercado, se a direção histórica se repete. Validação e holdout são
+cronológicos e os resultados do mesmo dia nunca alimentam outro jogo.
+
 ## Princípio
 
 H2H pertence à família de matchup. H2H global e H2H no piso não são duas
@@ -44,6 +49,10 @@ O módulo permite distinguir sem ainda pontuar:
 Um único encontro nunca recebe contribuição nesta fase. Repetição, recência e
 coincidência contextual serão avaliadas por replay antes de qualquer curva.
 Retiradas ficam visíveis, mas não entram no registo competitivo.
+
+O replay mantém três leituras concorrentes — líder global, líder no mesmo
+contexto de piso e líder recente no mesmo contexto — sem as somar. A equação
+interna só será escolhida depois de comparar estas leituras no holdout.
 
 ## Proteções
 
