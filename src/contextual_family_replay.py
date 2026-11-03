@@ -86,6 +86,38 @@ RECENT_FORM_DECAYS_V1 = {
         "win_quality": 60, "loss_context": 90,
     },
 }
+RECENT_LOSS_CONTEXT_GRID_V2 = (0.0, 0.10, 0.25, 0.50, 1.0)
+
+
+def recent_loss_context_feature(alpha: float) -> str:
+    return f"contextual_recent_adjusted_result_loss_{int(round(alpha * 100)):03d}_v5"
+
+
+for _alpha in RECENT_LOSS_CONTEXT_GRID_V2:
+    FEATURE_FAMILIES[recent_loss_context_feature(_alpha)] = "recent_form"
+
+
+def adjust_recent_result_for_loss_context(
+    result_balance: float | None,
+    *,
+    bad_loss_penalty: float | None,
+    strong_loss_relief: float | None,
+    alpha: float,
+) -> float | None:
+    """Apply loss context without ever rewarding a strong-opponent loss."""
+    if result_balance is None:
+        return None
+    if not 0.0 <= float(alpha) <= 1.0:
+        raise ValueError("alpha must be between zero and one")
+    value = (
+        float(result_balance)
+        - float(alpha) * float(bad_loss_penalty or 0.0)
+    )
+    relief_room = max(0.0, -value)
+    relief = min(
+        float(alpha) * float(strong_loss_relief or 0.0), relief_room,
+    )
+    return value + relief
 _MATERIAL_CACHE: dict[int, tuple[weakref.ReferenceType[pd.DataFrame], pd.DataFrame]] = {}
 _MATERIAL_CACHE_LOCK = threading.Lock()
 
@@ -349,6 +381,21 @@ def _candidate_equation_features(
                 summaries_a["loss_context"]["bad_loss_penalty"],
             ),
         }
+        for alpha in RECENT_LOSS_CONTEXT_GRID_V2:
+            def adjusted(
+                result_summary: dict[str, Any], loss_summary: dict[str, Any],
+            ) -> float | None:
+                return adjust_recent_result_for_loss_context(
+                    result_summary.get("result_balance"),
+                    bad_loss_penalty=loss_summary.get("bad_loss_penalty"),
+                    strong_loss_relief=loss_summary.get("strong_loss_relief"),
+                    alpha=alpha,
+                )
+
+            recent_features[recent_loss_context_feature(alpha)] = _difference(
+                adjusted(summaries_a["result"], summaries_a["loss_context"]),
+                adjusted(summaries_b["result"], summaries_b["loss_context"]),
+            )
         recent_audit = {
             "status": "READY",
             "equation_stage": "COMPONENTS_ONLY",
@@ -365,6 +412,8 @@ def _candidate_equation_features(
                 "only losses against a lower-ranked opponent are penalized; "
                 "strong-opponent losses contribute zero"
             ),
+            "capped_loss_context_grid": list(RECENT_LOSS_CONTEXT_GRID_V2),
+            "strong_loss_relief_cannot_cross_zero": True,
             "same_surface_excluded_to_avoid_double_counting": True,
         }
     features = {

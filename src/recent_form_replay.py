@@ -84,6 +84,10 @@ def _player_observation(
             max(0.0, ranking_context)
             if not won and ranking_context is not None else 0.0
         ),
+        "strong_loss_context": (
+            max(0.0, -ranking_context)
+            if not won and ranking_context is not None else 0.0
+        ),
     }
 
 
@@ -118,6 +122,7 @@ def _summarize_player_history(
             "game_margin_sample": 0,
             **{feature: None for feature in FEATURES},
             "bad_loss_penalty": None,
+            "strong_loss_relief": None,
         }
 
     weights = [
@@ -148,9 +153,14 @@ def _summarize_player_history(
             weight * float(item["quality_loss"])
             for weight, item in ranked
         ) / ranked_weight
+        strong_loss_relief = sum(
+            weight * float(item["strong_loss_context"])
+            for weight, item in ranked
+        ) / ranked_weight
     else:
         ranking_surprise = None
         bad_loss_penalty = None
+        strong_loss_relief = None
 
     wins = [
         (weight, item) for weight, item in zip(weights, eligible)
@@ -206,6 +216,7 @@ def _summarize_player_history(
         "result_balance": result_balance,
         "ranking_surprise_balance_v1": ranking_surprise,
         "bad_loss_penalty": bad_loss_penalty,
+        "strong_loss_relief": strong_loss_relief,
         "win_opponent_strength": opponent_strength(wins),
         "loss_opponent_strength": opponent_strength(losses),
         "game_margin_balance": game_margin_balance,

@@ -1,4 +1,7 @@
+import math
+
 from src.contextual_family_replay import (
+    adjust_recent_result_for_loss_context,
     build_contextual_target_row,
     build_contextual_family_replay_rows,
     evaluate_contextual_family_replay,
@@ -222,3 +225,15 @@ def test_recent_form_candidate_uses_tour_specific_decay_without_surface_vote():
         "result": 90, "competitiveness": 90,
         "win_quality": 60, "loss_context": 90,
     }
+
+
+def test_strong_loss_relief_is_capped_at_zero_and_bad_loss_can_only_penalize():
+    assert adjust_recent_result_for_loss_context(
+        -0.4, bad_loss_penalty=0.0, strong_loss_relief=2.0, alpha=1.0,
+    ) == 0.0
+    assert adjust_recent_result_for_loss_context(
+        0.3, bad_loss_penalty=0.0, strong_loss_relief=2.0, alpha=1.0,
+    ) == 0.3
+    assert math.isclose(adjust_recent_result_for_loss_context(
+        0.3, bad_loss_penalty=0.5, strong_loss_relief=0.0, alpha=0.5,
+    ), 0.05)

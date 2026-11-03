@@ -12,7 +12,12 @@ from typing import Any, Iterable
 
 import numpy as np
 
-from .contextual_family_replay import FEATURE_FAMILIES, _split
+from .contextual_family_replay import (
+    FEATURE_FAMILIES,
+    RECENT_LOSS_CONTEXT_GRID_V2,
+    _split,
+    recent_loss_context_feature,
+)
 
 
 SCHEMA_VERSION = 1
@@ -95,6 +100,16 @@ CALIBRATION_FEATURE_PROFILES = {
         ),
     },
 }
+for _alpha in RECENT_LOSS_CONTEXT_GRID_V2:
+    CALIBRATION_FEATURE_PROFILES[
+        f"recent_capped_loss_{int(round(_alpha * 100)):03d}"
+    ] = {
+        "recent_form": (
+            recent_loss_context_feature(_alpha),
+            "contextual_recent_competitiveness_v1",
+            "contextual_recent_win_quality_v1",
+        ),
+    }
 
 
 def _sigmoid(values: np.ndarray) -> np.ndarray:
@@ -165,6 +180,8 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
         "contextual_v5", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
         "recent_guarded_v4",
+        *(f"recent_capped_loss_{int(round(value * 100)):03d}"
+          for value in RECENT_LOSS_CONTEXT_GRID_V2),
     }:
         return None
     return np.asarray([
@@ -183,7 +200,7 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_recent_loss_context_v1",
             "contextual_recent_competitiveness_residual_v2",
             "contextual_recent_bad_loss_penalty_v2",
-        }
+        } or name.startswith("contextual_recent_adjusted_result_loss_")
         for name in columns
     ], dtype=bool)
 
@@ -770,6 +787,80 @@ def compare_recent_form_feature_profiles(
         guard_verdict = "RAW_BETTER"
     else:
         guard_verdict = "INCONCLUSIVE"
+    capped_profiles = {}
+    capped_candidates = []
+    for alpha in RECENT_LOSS_CONTEXT_GRID_V2:
+        name = f"recent_capped_loss_{int(round(alpha * 100)):03d}"
+        model = calibrate_family(
+            split, family="recent_form", feature_profile=name,
+        )
+        capped_profiles[name] = model
+        validation = model.get("validation", {}).get("model", {})
+        capped_candidates.append({
+            "profile": name,
+            "alpha": alpha,
+            "validation_log_loss": validation.get("validation_log_loss"),
+            "validation_brier": validation.get("validation_brier"),
+        })
+    selectable = [
+        item for item in capped_candidates
+        if item["validation_log_loss"] is not None
+    ]
+    selected_capped = min(
+        selectable,
+        key=lambda item: (item["validation_log_loss"], item["alpha"]),
+    ) if selectable else None
+    capped_comparison: dict[str, Any]
+    if selected_capped is None:
+        capped_comparison = {
+            "status": "INSUFFICIENT_COVERAGE",
+            "candidates": capped_candidates,
+        }
+    else:
+        selected_name = selected_capped["profile"]
+        selected_prediction = predict_family_equation(
+            holdout, _runtime_model(capped_profiles[selected_name]),
+        )
+        baseline_prediction = predictions["recent_v2"]
+        capped_wanted = [
+            index for index in range(len(holdout))
+            if selected_prediction[index] is not None
+            and baseline_prediction[index] is not None
+        ]
+        capped_targets = np.asarray([
+            float(holdout[index]["target_a_win"]) for index in capped_wanted
+        ])
+        baseline_values = np.asarray([
+            baseline_prediction[index] for index in capped_wanted
+        ])
+        selected_values = np.asarray([
+            selected_prediction[index] for index in capped_wanted
+        ])
+        baseline_metrics = _metrics(
+            capped_targets, baseline_values, total_targets=len(holdout),
+        )
+        selected_metrics = _metrics(
+            capped_targets, selected_values, total_targets=len(holdout),
+        )
+        capped_gain = _paired_probability_gain(
+            capped_targets, baseline_values, selected_values,
+        )
+        capped_comparison = {
+            "status": "OBSERVATIONAL_ONLY",
+            "selection_partition": "validation",
+            "selected_profile": selected_name,
+            "selected_alpha": selected_capped["alpha"],
+            "candidates": capped_candidates,
+            "paired_holdout_targets": len(capped_wanted),
+            "baseline_profile": "recent_v2_without_loss_context",
+            "baseline_holdout": baseline_metrics,
+            "selected_holdout": selected_metrics,
+            "paired_gain": capped_gain,
+            "selected_model": capped_profiles[selected_name],
+            "strong_loss_relief_cannot_cross_zero": True,
+            "bad_loss_is_penalty_only": True,
+            "promotion_authorized": False,
+        }
     return {
         "schema_version": SCHEMA_VERSION,
         "universe": str(universe).strip().casefold(),
@@ -792,11 +883,42 @@ def compare_recent_form_feature_profiles(
             "status": guard_verdict,
             "audit": guarded_audit,
         },
+        "capped_loss_context_comparison": capped_comparison,
         "loss_context_promotion_blocked": True,
         "loss_context_requires_asymmetric_guard": True,
         "market_used": False,
         "production_effect": False,
         "promotion_authorized": False,
+    }
+
+
+def _paired_probability_gain(
+    targets: np.ndarray, baseline: np.ndarray, candidate: np.ndarray,
+) -> dict[str, Any]:
+    old = np.clip(np.asarray(baseline, dtype=float), 1e-9, 1.0 - 1e-9)
+    new = np.clip(np.asarray(candidate, dtype=float), 1e-9, 1.0 - 1e-9)
+    truth = np.asarray(targets, dtype=float)
+    old_loss = -(truth * np.log(old) + (1.0 - truth) * np.log(1.0 - old))
+    new_loss = -(truth * np.log(new) + (1.0 - truth) * np.log(1.0 - new))
+    gain = old_loss - new_loss
+    mean = float(gain.mean()) if len(gain) else 0.0
+    standard_error = (
+        float(gain.std(ddof=1) / np.sqrt(len(gain))) if len(gain) > 1 else None
+    )
+    lower = mean - 1.96 * standard_error if standard_error is not None else None
+    upper = mean + 1.96 * standard_error if standard_error is not None else None
+    if lower is not None and lower > 0:
+        status = "SUPPORTED"
+    elif upper is not None and upper < 0:
+        status = "REJECTED"
+    else:
+        status = "INCONCLUSIVE"
+    return {
+        "log_loss_gain": round(mean, 6),
+        "gain_95pct_ci": (
+            None if lower is None else [round(lower, 6), round(upper, 6)]
+        ),
+        "status": status,
     }
 
 

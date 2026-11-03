@@ -98,3 +98,10 @@ classificados recebeu coeficiente zero. Resultado e margem permanecem, por
 isso, dentro de uma única equação calibrada — não como votos somados. O próximo
 ensaio deverá limitar o alívio de derrotas fortes ao nível do próprio jogador,
 sem permitir que a sua forma atravesse zero por essa via.
+
+O ensaio dessa modulação limitada também não justificou promoção: o ATP
+escolheu intensidade zero; o WTA escolheu 0,25 na validação, mas teve ganho
+inconclusivo no holdout e coeficiente zero para a componente ajustada. A
+qualidade das derrotas fica, portanto, como diagnóstico factual. A equação v1
+da forma recente avança apenas com resultados, competitividade e qualidade das
+vitórias.
