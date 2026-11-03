@@ -1,0 +1,1339 @@
+{
+  "mode": "READ_ONLY_EXACT_SURFACE_PROFILE_COMPARISON",
+  "comparisons": {
+    "atp": {
+      "schema_version": 1,
+      "universe": "atp",
+      "status": "POST_AUDIT_EXPLORATORY",
+      "mode": "PAIRED_EXACT_SURFACE_CAREER_SEASON_COMPARISON",
+      "split_targets": {
+        "train": 2102,
+        "validation": 692,
+        "holdout": 687
+      },
+      "source_targets": 22842,
+      "exact_context_targets": 3481,
+      "paired_holdout_targets": 601,
+      "profiles": {
+        "surface_exact_career_raw": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_raw",
+          "status": "NOT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_raw"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.06068303,
+          "coefficients": {
+            "exact_surface_career_margin_raw": 0.0,
+            "exact_surface_career_margin_raw__missing": 0.0
+          },
+          "active_coefficients": [],
+          "selected_l1_on_validation": 0.1,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.693531,
+              "validation_brier": 0.250182,
+              "nonzero_coefficients": 1,
+              "iterations": 21
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.693501,
+              "validation_brier": 0.250167,
+              "nonzero_coefficients": 1,
+              "iterations": 21
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.693471,
+              "validation_brier": 0.250153,
+              "nonzero_coefficients": 1,
+              "iterations": 21
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.693355,
+              "validation_brier": 0.250096,
+              "nonzero_coefficients": 1,
+              "iterations": 21
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.693,
+              "validation_brier": 0.249922,
+              "nonzero_coefficients": 1,
+              "iterations": 21
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.692394,
+              "validation_brier": 0.249623,
+              "nonzero_coefficients": 1,
+              "iterations": 20
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.692328,
+              "validation_brier": 0.24959,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.75,
+                "upper": 0.75,
+                "scale": 0.2347417840375587
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.1,
+              "validation_log_loss": 0.692328,
+              "validation_brier": 0.24959,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            },
+            "baseline": {
+              "covered": 587,
+              "coverage_pct": 84.83,
+              "log_loss": 0.692328,
+              "brier": 0.24959,
+              "accuracy_pct": 52.3,
+              "ece_10": 0.010918,
+              "predicted_mean": 0.512081,
+              "observed_rate": 0.522998
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.690023,
+              "brier": 0.248438,
+              "accuracy_pct": 55.91,
+              "ece_10": 0.043902,
+              "predicted_mean": 0.515166,
+              "observed_rate": 0.559068
+            },
+            "intercept_only_baseline": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.690023,
+              "brier": 0.248438,
+              "accuracy_pct": 55.91,
+              "ece_10": 0.043902,
+              "predicted_mean": 0.515166,
+              "observed_rate": 0.559068
+            },
+            "log_loss_improvement": 0.0
+          },
+          "iterations_final": 1,
+          "market_used": false,
+          "production_effect": false
+        },
+        "surface_exact_career_previous_raw": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_previous_raw",
+          "status": "NOT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.06068303,
+          "coefficients": {
+            "exact_surface_career_margin_raw": 0.0,
+            "exact_surface_career_margin_raw__missing": 0.0,
+            "exact_surface_previous_margin_raw": 0.0,
+            "exact_surface_previous_margin_raw__missing": 0.0
+          },
+          "active_coefficients": [],
+          "selected_l1_on_validation": 0.1,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.693531,
+              "validation_brier": 0.250182,
+              "nonzero_coefficients": 2,
+              "iterations": 1084
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.693501,
+              "validation_brier": 0.250167,
+              "nonzero_coefficients": 1,
+              "iterations": 28
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.693471,
+              "validation_brier": 0.250153,
+              "nonzero_coefficients": 1,
+              "iterations": 26
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.693355,
+              "validation_brier": 0.250096,
+              "nonzero_coefficients": 1,
+              "iterations": 26
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.693,
+              "validation_brier": 0.249922,
+              "nonzero_coefficients": 1,
+              "iterations": 25
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.692394,
+              "validation_brier": 0.249623,
+              "nonzero_coefficients": 1,
+              "iterations": 24
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.692328,
+              "validation_brier": 0.24959,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.75,
+                "upper": 0.75,
+                "scale": 0.2347417840375587
+              },
+              "exact_surface_previous_margin_raw": {
+                "available": false,
+                "median": 0.0,
+                "lower": 0.0,
+                "upper": 0.0,
+                "scale": 1.0
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.1,
+              "validation_log_loss": 0.692328,
+              "validation_brier": 0.24959,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            },
+            "baseline": {
+              "covered": 587,
+              "coverage_pct": 84.83,
+              "log_loss": 0.692328,
+              "brier": 0.24959,
+              "accuracy_pct": 52.3,
+              "ece_10": 0.010918,
+              "predicted_mean": 0.512081,
+              "observed_rate": 0.522998
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.690023,
+              "brier": 0.248438,
+              "accuracy_pct": 55.91,
+              "ece_10": 0.043902,
+              "predicted_mean": 0.515166,
+              "observed_rate": 0.559068
+            },
+            "intercept_only_baseline": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.690023,
+              "brier": 0.248438,
+              "accuracy_pct": 55.91,
+              "ece_10": 0.043902,
+              "predicted_mean": 0.515166,
+              "observed_rate": 0.559068
+            },
+            "log_loss_improvement": 0.0
+          },
+          "iterations_final": 1,
+          "market_used": false,
+          "production_effect": false
+        },
+        "surface_exact_career_seasons_raw": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_seasons_raw",
+          "status": "NOT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw",
+            "exact_surface_current_margin_raw"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.06068303,
+          "coefficients": {
+            "exact_surface_career_margin_raw": 0.0,
+            "exact_surface_career_margin_raw__missing": 0.0,
+            "exact_surface_previous_margin_raw": 0.0,
+            "exact_surface_previous_margin_raw__missing": 0.0,
+            "exact_surface_current_margin_raw": 0.0,
+            "exact_surface_current_margin_raw__missing": 0.0
+          },
+          "active_coefficients": [],
+          "selected_l1_on_validation": 0.1,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.693562,
+              "validation_brier": 0.250197,
+              "nonzero_coefficients": 3,
+              "iterations": 1768
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.693531,
+              "validation_brier": 0.250182,
+              "nonzero_coefficients": 2,
+              "iterations": 51
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.6935,
+              "validation_brier": 0.250167,
+              "nonzero_coefficients": 2,
+              "iterations": 47
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.693382,
+              "validation_brier": 0.250109,
+              "nonzero_coefficients": 2,
+              "iterations": 46
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.693017,
+              "validation_brier": 0.249931,
+              "nonzero_coefficients": 2,
+              "iterations": 46
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.692397,
+              "validation_brier": 0.249624,
+              "nonzero_coefficients": 2,
+              "iterations": 43
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.692328,
+              "validation_brier": 0.24959,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.75,
+                "upper": 0.75,
+                "scale": 0.2347417840375587
+              },
+              "exact_surface_previous_margin_raw": {
+                "available": false,
+                "median": 0.0,
+                "lower": 0.0,
+                "upper": 0.0,
+                "scale": 1.0
+              },
+              "exact_surface_current_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.75,
+                "upper": 0.75,
+                "scale": 0.2347417840375587
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.1,
+              "validation_log_loss": 0.692328,
+              "validation_brier": 0.24959,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            },
+            "baseline": {
+              "covered": 587,
+              "coverage_pct": 84.83,
+              "log_loss": 0.692328,
+              "brier": 0.24959,
+              "accuracy_pct": 52.3,
+              "ece_10": 0.010918,
+              "predicted_mean": 0.512081,
+              "observed_rate": 0.522998
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.690023,
+              "brier": 0.248438,
+              "accuracy_pct": 55.91,
+              "ece_10": 0.043902,
+              "predicted_mean": 0.515166,
+              "observed_rate": 0.559068
+            },
+            "intercept_only_baseline": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.690023,
+              "brier": 0.248438,
+              "accuracy_pct": 55.91,
+              "ece_10": 0.043902,
+              "predicted_mean": 0.515166,
+              "observed_rate": 0.559068
+            },
+            "log_loss_improvement": 0.0
+          },
+          "iterations_final": 1,
+          "market_used": false,
+          "production_effect": false
+        },
+        "surface_exact_career_seasons_shrunk": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_seasons_shrunk",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.05800927,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.06199229,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.0,
+            "exact_surface_previous_margin_shrunk__missing": -0.0,
+            "exact_surface_current_margin_shrunk": 0.0,
+            "exact_surface_current_margin_shrunk__missing": 0.0
+          },
+          "active_coefficients": [
+            "exact_surface_career_margin_shrunk"
+          ],
+          "selected_l1_on_validation": 0.03,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.690833,
+              "validation_brier": 0.248838,
+              "nonzero_coefficients": 3,
+              "iterations": 1473
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.690795,
+              "validation_brier": 0.24882,
+              "nonzero_coefficients": 2,
+              "iterations": 881
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.690759,
+              "validation_brier": 0.248802,
+              "nonzero_coefficients": 2,
+              "iterations": 882
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.690621,
+              "validation_brier": 0.248735,
+              "nonzero_coefficients": 2,
+              "iterations": 887
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.690248,
+              "validation_brier": 0.248553,
+              "nonzero_coefficients": 2,
+              "iterations": 901
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.690212,
+              "validation_brier": 0.248536,
+              "nonzero_coefficients": 1,
+              "iterations": 70
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.692328,
+              "validation_brier": 0.24959,
+              "nonzero_coefficients": 0,
+              "iterations": 1
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.19871794871794873,
+                "upper": 0.2201411764705881,
+                "scale": 0.07075948514050813
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": false,
+                "median": 0.0,
+                "lower": 0.0,
+                "upper": 0.0,
+                "scale": 1.0
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.22499999999999998,
+                "upper": 0.24208198757763705,
+                "scale": 0.08236553825879256
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.03,
+              "validation_log_loss": 0.690212,
+              "validation_brier": 0.248536,
+              "nonzero_coefficients": 1,
+              "iterations": 70
+            },
+            "baseline": {
+              "covered": 587,
+              "coverage_pct": 84.83,
+              "log_loss": 0.692328,
+              "brier": 0.24959,
+              "accuracy_pct": 52.3,
+              "ece_10": 0.010918,
+              "predicted_mean": 0.512081,
+              "observed_rate": 0.522998
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.683506,
+              "brier": 0.245195,
+              "accuracy_pct": 55.57,
+              "ece_10": 0.041682,
+              "predicted_mean": 0.517386,
+              "observed_rate": 0.559068
+            },
+            "intercept_only_baseline": {
+              "covered": 601,
+              "coverage_pct": 87.48,
+              "log_loss": 0.690023,
+              "brier": 0.248438,
+              "accuracy_pct": 55.91,
+              "ece_10": 0.043902,
+              "predicted_mean": 0.515166,
+              "observed_rate": 0.559068
+            },
+            "log_loss_improvement": 0.006517
+          },
+          "iterations_final": 48,
+          "market_used": false,
+          "production_effect": false
+        }
+      },
+      "paired_holdout_metrics": {
+        "surface_exact_career_raw": {
+          "covered": 601,
+          "coverage_pct": 87.48,
+          "log_loss": 0.690023,
+          "brier": 0.248438,
+          "accuracy_pct": 55.91,
+          "ece_10": 0.043902,
+          "predicted_mean": 0.515166,
+          "observed_rate": 0.559068
+        },
+        "surface_exact_career_previous_raw": {
+          "covered": 601,
+          "coverage_pct": 87.48,
+          "log_loss": 0.690023,
+          "brier": 0.248438,
+          "accuracy_pct": 55.91,
+          "ece_10": 0.043902,
+          "predicted_mean": 0.515166,
+          "observed_rate": 0.559068
+        },
+        "surface_exact_career_seasons_raw": {
+          "covered": 601,
+          "coverage_pct": 87.48,
+          "log_loss": 0.690023,
+          "brier": 0.248438,
+          "accuracy_pct": 55.91,
+          "ece_10": 0.043902,
+          "predicted_mean": 0.515166,
+          "observed_rate": 0.559068
+        },
+        "surface_exact_career_seasons_shrunk": {
+          "covered": 601,
+          "coverage_pct": 87.48,
+          "log_loss": 0.683506,
+          "brier": 0.245195,
+          "accuracy_pct": 55.57,
+          "ece_10": 0.041682,
+          "predicted_mean": 0.517386,
+          "observed_rate": 0.559068
+        }
+      },
+      "incremental_comparisons": [
+        {
+          "baseline": "surface_exact_career_raw",
+          "candidate": "surface_exact_career_previous_raw",
+          "log_loss_gain": 0.0,
+          "gain_95pct_ci": [
+            0.0,
+            0.0
+          ],
+          "status": "INCONCLUSIVE"
+        },
+        {
+          "baseline": "surface_exact_career_previous_raw",
+          "candidate": "surface_exact_career_seasons_raw",
+          "log_loss_gain": 0.0,
+          "gain_95pct_ci": [
+            0.0,
+            0.0
+          ],
+          "status": "INCONCLUSIVE"
+        },
+        {
+          "baseline": "surface_exact_career_seasons_raw",
+          "candidate": "surface_exact_career_seasons_shrunk",
+          "log_loss_gain": 0.006517,
+          "gain_95pct_ci": [
+            0.003245,
+            0.00979
+          ],
+          "status": "SUPPORTED"
+        }
+      ],
+      "four_exact_contexts": true,
+      "holdout_reused_after_method_design": true,
+      "future_confirmation_required": true,
+      "market_used": false,
+      "production_effect": false,
+      "promotion_authorized": false
+    },
+    "wta": {
+      "schema_version": 1,
+      "universe": "wta",
+      "status": "POST_AUDIT_EXPLORATORY",
+      "mode": "PAIRED_EXACT_SURFACE_CAREER_SEASON_COMPARISON",
+      "split_targets": {
+        "train": 12992,
+        "validation": 4330,
+        "holdout": 4324
+      },
+      "source_targets": 21646,
+      "exact_context_targets": 21646,
+      "paired_holdout_targets": 4114,
+      "profiles": {
+        "surface_exact_career_raw": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_raw",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_raw"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": -0.0073307,
+          "coefficients": {
+            "exact_surface_career_margin_raw": 0.39451954,
+            "exact_surface_career_margin_raw__missing": 0.0
+          },
+          "active_coefficients": [
+            "exact_surface_career_margin_raw"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.663965,
+              "validation_brier": 0.235594,
+              "nonzero_coefficients": 1,
+              "iterations": 15
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.664025,
+              "validation_brier": 0.235623,
+              "nonzero_coefficients": 1,
+              "iterations": 15
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.664085,
+              "validation_brier": 0.235653,
+              "nonzero_coefficients": 1,
+              "iterations": 15
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.664333,
+              "validation_brier": 0.235775,
+              "nonzero_coefficients": 1,
+              "iterations": 15
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.665278,
+              "validation_brier": 0.236235,
+              "nonzero_coefficients": 1,
+              "iterations": 14
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.668602,
+              "validation_brier": 0.237848,
+              "nonzero_coefficients": 1,
+              "iterations": 14
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.687146,
+              "validation_brier": 0.247001,
+              "nonzero_coefficients": 1,
+              "iterations": 12
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6042995997712969,
+                "scale": 0.20740228161720733
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.663965,
+              "validation_brier": 0.235594,
+              "nonzero_coefficients": 1,
+              "iterations": 15
+            },
+            "baseline": {
+              "covered": 4111,
+              "coverage_pct": 94.94,
+              "log_loss": 0.693049,
+              "brier": 0.249951,
+              "accuracy_pct": 51.28,
+              "ece_10": 0.010689,
+              "predicted_mean": 0.497918,
+              "observed_rate": 0.487229
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.668966,
+              "brier": 0.237879,
+              "accuracy_pct": 60.82,
+              "ece_10": 0.049121,
+              "predicted_mean": 0.495249,
+              "observed_rate": 0.511181
+            },
+            "intercept_only_baseline": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.693411,
+              "brier": 0.250132,
+              "accuracy_pct": 48.88,
+              "ece_10": 0.016031,
+              "predicted_mean": 0.495151,
+              "observed_rate": 0.511181
+            },
+            "log_loss_improvement": 0.024445
+          },
+          "iterations_final": 15,
+          "market_used": false,
+          "production_effect": false
+        },
+        "surface_exact_career_previous_raw": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_previous_raw",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.02436537,
+          "coefficients": {
+            "exact_surface_career_margin_raw": 0.30227146,
+            "exact_surface_career_margin_raw__missing": 0.0,
+            "exact_surface_previous_margin_raw": 0.23409097,
+            "exact_surface_previous_margin_raw__missing": -0.09777101
+          },
+          "active_coefficients": [
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw",
+            "exact_surface_previous_margin_raw__missing"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.657382,
+              "validation_brier": 0.232564,
+              "nonzero_coefficients": 3,
+              "iterations": 113
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.657439,
+              "validation_brier": 0.232588,
+              "nonzero_coefficients": 3,
+              "iterations": 112
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.6575,
+              "validation_brier": 0.232615,
+              "nonzero_coefficients": 3,
+              "iterations": 112
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.657786,
+              "validation_brier": 0.23274,
+              "nonzero_coefficients": 3,
+              "iterations": 109
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.65924,
+              "validation_brier": 0.233402,
+              "nonzero_coefficients": 2,
+              "iterations": 39
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.665071,
+              "validation_brier": 0.236145,
+              "nonzero_coefficients": 2,
+              "iterations": 49
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.687146,
+              "validation_brier": 0.247001,
+              "nonzero_coefficients": 1,
+              "iterations": 17
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6042995997712969,
+                "scale": 0.20740228161720733
+              },
+              "exact_surface_previous_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.7349824561403508,
+                "upper": 0.7333333333333333,
+                "scale": 0.2776226738420956
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.657382,
+              "validation_brier": 0.232564,
+              "nonzero_coefficients": 3,
+              "iterations": 113
+            },
+            "baseline": {
+              "covered": 4111,
+              "coverage_pct": 94.94,
+              "log_loss": 0.693049,
+              "brier": 0.249951,
+              "accuracy_pct": 51.28,
+              "ece_10": 0.010689,
+              "predicted_mean": 0.497918,
+              "observed_rate": 0.487229
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.663565,
+              "brier": 0.235448,
+              "accuracy_pct": 61.18,
+              "ece_10": 0.025447,
+              "predicted_mean": 0.497694,
+              "observed_rate": 0.511181
+            },
+            "intercept_only_baseline": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.693411,
+              "brier": 0.250132,
+              "accuracy_pct": 48.88,
+              "ece_10": 0.016031,
+              "predicted_mean": 0.495151,
+              "observed_rate": 0.511181
+            },
+            "log_loss_improvement": 0.029846
+          },
+          "iterations_final": 119,
+          "market_used": false,
+          "production_effect": false
+        },
+        "surface_exact_career_seasons_raw": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_seasons_raw",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw",
+            "exact_surface_current_margin_raw"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.01318239,
+          "coefficients": {
+            "exact_surface_career_margin_raw": 0.25009167,
+            "exact_surface_career_margin_raw__missing": 0.0,
+            "exact_surface_previous_margin_raw": 0.2542821,
+            "exact_surface_previous_margin_raw__missing": -0.09481035,
+            "exact_surface_current_margin_raw": 0.09834002,
+            "exact_surface_current_margin_raw__missing": 0.06071689
+          },
+          "active_coefficients": [
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw",
+            "exact_surface_previous_margin_raw__missing",
+            "exact_surface_current_margin_raw",
+            "exact_surface_current_margin_raw__missing"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.656945,
+              "validation_brier": 0.232369,
+              "nonzero_coefficients": 5,
+              "iterations": 185
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.656983,
+              "validation_brier": 0.232384,
+              "nonzero_coefficients": 5,
+              "iterations": 180
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.657028,
+              "validation_brier": 0.232402,
+              "nonzero_coefficients": 5,
+              "iterations": 173
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.657294,
+              "validation_brier": 0.232516,
+              "nonzero_coefficients": 5,
+              "iterations": 182
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.658737,
+              "validation_brier": 0.233165,
+              "nonzero_coefficients": 3,
+              "iterations": 58
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.665054,
+              "validation_brier": 0.236137,
+              "nonzero_coefficients": 3,
+              "iterations": 87
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.687146,
+              "validation_brier": 0.247001,
+              "nonzero_coefficients": 1,
+              "iterations": 23
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6,
+                "upper": 0.6042995997712969,
+                "scale": 0.20740228161720733
+              },
+              "exact_surface_previous_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.7349824561403508,
+                "upper": 0.7333333333333333,
+                "scale": 0.2776226738420956
+              },
+              "exact_surface_current_margin_raw": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.6666666666666667,
+                "upper": 0.7079037433155054,
+                "scale": 0.2470966147763775
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.656945,
+              "validation_brier": 0.232369,
+              "nonzero_coefficients": 5,
+              "iterations": 185
+            },
+            "baseline": {
+              "covered": 4111,
+              "coverage_pct": 94.94,
+              "log_loss": 0.693049,
+              "brier": 0.249951,
+              "accuracy_pct": 51.28,
+              "ece_10": 0.010689,
+              "predicted_mean": 0.497918,
+              "observed_rate": 0.487229
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.661189,
+              "brier": 0.234334,
+              "accuracy_pct": 61.35,
+              "ece_10": 0.025924,
+              "predicted_mean": 0.498152,
+              "observed_rate": 0.511181
+            },
+            "intercept_only_baseline": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.693411,
+              "brier": 0.250132,
+              "accuracy_pct": 48.88,
+              "ece_10": 0.016031,
+              "predicted_mean": 0.495151,
+              "observed_rate": 0.511181
+            },
+            "log_loss_improvement": 0.032222
+          },
+          "iterations_final": 178,
+          "market_used": false,
+          "production_effect": false
+        },
+        "surface_exact_career_seasons_shrunk": {
+          "family": "surface_conditions",
+          "feature_profile": "surface_exact_career_seasons_shrunk",
+          "status": "HOLDOUT_SUPPORTED",
+          "features": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk"
+          ],
+          "equation": "logit(P(player_a wins | family observed)) = intercept + sum(coefficient * transformed_component)",
+          "intercept": 0.00937317,
+          "coefficients": {
+            "exact_surface_career_margin_shrunk": 0.37222503,
+            "exact_surface_career_margin_shrunk__missing": 0.0,
+            "exact_surface_previous_margin_shrunk": 0.16611659,
+            "exact_surface_previous_margin_shrunk__missing": -0.09384616,
+            "exact_surface_current_margin_shrunk": 0.15894261,
+            "exact_surface_current_margin_shrunk__missing": 0.06000596
+          },
+          "active_coefficients": [
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_previous_margin_shrunk__missing",
+            "exact_surface_current_margin_shrunk",
+            "exact_surface_current_margin_shrunk__missing"
+          ],
+          "selected_l1_on_validation": 0.0,
+          "fixed_l2": 0.01,
+          "selection_candidates": [
+            {
+              "l1": 0.0,
+              "validation_log_loss": 0.645086,
+              "validation_brier": 0.227127,
+              "nonzero_coefficients": 5,
+              "iterations": 192
+            },
+            {
+              "l1": 0.0005,
+              "validation_log_loss": 0.645133,
+              "validation_brier": 0.227141,
+              "nonzero_coefficients": 5,
+              "iterations": 188
+            },
+            {
+              "l1": 0.001,
+              "validation_log_loss": 0.645188,
+              "validation_brier": 0.22716,
+              "nonzero_coefficients": 5,
+              "iterations": 181
+            },
+            {
+              "l1": 0.003,
+              "validation_log_loss": 0.645491,
+              "validation_brier": 0.227275,
+              "nonzero_coefficients": 5,
+              "iterations": 185
+            },
+            {
+              "l1": 0.01,
+              "validation_log_loss": 0.647146,
+              "validation_brier": 0.227964,
+              "nonzero_coefficients": 3,
+              "iterations": 149
+            },
+            {
+              "l1": 0.03,
+              "validation_log_loss": 0.651711,
+              "validation_brier": 0.22992,
+              "nonzero_coefficients": 2,
+              "iterations": 67
+            },
+            {
+              "l1": 0.1,
+              "validation_log_loss": 0.674802,
+              "validation_brier": 0.240866,
+              "nonzero_coefficients": 1,
+              "iterations": 27
+            }
+          ],
+          "preprocessor": {
+            "method": "train_only_median_winsor_1_99_robust_scale",
+            "missing_policy": "median_imputation_plus_explicit_missing_indicator",
+            "features": {
+              "exact_surface_career_margin_shrunk": {
+                "available": true,
+                "median": -0.002372509287402902,
+                "lower": -0.2978430458430458,
+                "upper": 0.2818593957216168,
+                "scale": 0.11716490014590775
+              },
+              "exact_surface_previous_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.32153586102876164,
+                "upper": 0.2994421052631572,
+                "scale": 0.1351018444290149
+              },
+              "exact_surface_current_margin_shrunk": {
+                "available": true,
+                "median": 0.0,
+                "lower": -0.251993006993007,
+                "upper": 0.2559400135036805,
+                "scale": 0.08236553825879256
+              }
+            }
+          },
+          "validation": {
+            "model": {
+              "l1": 0.0,
+              "validation_log_loss": 0.645086,
+              "validation_brier": 0.227127,
+              "nonzero_coefficients": 5,
+              "iterations": 192
+            },
+            "baseline": {
+              "covered": 4111,
+              "coverage_pct": 94.94,
+              "log_loss": 0.693049,
+              "brier": 0.249951,
+              "accuracy_pct": 51.28,
+              "ece_10": 0.010689,
+              "predicted_mean": 0.497918,
+              "observed_rate": 0.487229
+            }
+          },
+          "holdout": {
+            "model": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.641867,
+              "brier": 0.225668,
+              "accuracy_pct": 62.4,
+              "ece_10": 0.024356,
+              "predicted_mean": 0.498868,
+              "observed_rate": 0.511181
+            },
+            "intercept_only_baseline": {
+              "covered": 4114,
+              "coverage_pct": 95.14,
+              "log_loss": 0.693411,
+              "brier": 0.250132,
+              "accuracy_pct": 48.88,
+              "ece_10": 0.016031,
+              "predicted_mean": 0.495151,
+              "observed_rate": 0.511181
+            },
+            "log_loss_improvement": 0.051544
+          },
+          "iterations_final": 181,
+          "market_used": false,
+          "production_effect": false
+        }
+      },
+      "paired_holdout_metrics": {
+        "surface_exact_career_raw": {
+          "covered": 4114,
+          "coverage_pct": 95.14,
+          "log_loss": 0.668966,
+          "brier": 0.237879,
+          "accuracy_pct": 60.82,
+          "ece_10": 0.049121,
+          "predicted_mean": 0.495249,
+          "observed_rate": 0.511181
+        },
+        "surface_exact_career_previous_raw": {
+          "covered": 4114,
+          "coverage_pct": 95.14,
+          "log_loss": 0.663565,
+          "brier": 0.235448,
+          "accuracy_pct": 61.18,
+          "ece_10": 0.025447,
+          "predicted_mean": 0.497694,
+          "observed_rate": 0.511181
+        },
+        "surface_exact_career_seasons_raw": {
+          "covered": 4114,
+          "coverage_pct": 95.14,
+          "log_loss": 0.661189,
+          "brier": 0.234334,
+          "accuracy_pct": 61.35,
+          "ece_10": 0.025924,
+          "predicted_mean": 0.498152,
+          "observed_rate": 0.511181
+        },
+        "surface_exact_career_seasons_shrunk": {
+          "covered": 4114,
+          "coverage_pct": 95.14,
+          "log_loss": 0.641867,
+          "brier": 0.225668,
+          "accuracy_pct": 62.4,
+          "ece_10": 0.024356,
+          "predicted_mean": 0.498868,
+          "observed_rate": 0.511181
+        }
+      },
+      "incremental_comparisons": [
+        {
+          "baseline": "surface_exact_career_raw",
+          "candidate": "surface_exact_career_previous_raw",
+          "log_loss_gain": 0.0054,
+          "gain_95pct_ci": [
+            0.002622,
+            0.008178
+          ],
+          "status": "SUPPORTED"
+        },
+        {
+          "baseline": "surface_exact_career_previous_raw",
+          "candidate": "surface_exact_career_seasons_raw",
+          "log_loss_gain": 0.002377,
+          "gain_95pct_ci": [
+            0.000985,
+            0.003769
+          ],
+          "status": "SUPPORTED"
+        },
+        {
+          "baseline": "surface_exact_career_seasons_raw",
+          "candidate": "surface_exact_career_seasons_shrunk",
+          "log_loss_gain": 0.019322,
+          "gain_95pct_ci": [
+            0.014946,
+            0.023698
+          ],
+          "status": "SUPPORTED"
+        }
+      ],
+      "four_exact_contexts": true,
+      "holdout_reused_after_method_design": true,
+      "future_confirmation_required": true,
+      "market_used": false,
+      "production_effect": false,
+      "promotion_authorized": false
+    }
+  },
+  "replay_rows": {
+    "atp": 22842,
+    "wta": 21646
+  },
+  "four_contexts": [
+    "hard_outdoor",
+    "hard_indoor",
+    "clay",
+    "grass"
+  ],
+  "market_used": false,
+  "rapidapi_used": false,
+  "production_effect": false,
+  "promotion_authorized": false
+}

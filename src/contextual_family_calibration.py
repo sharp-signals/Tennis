@@ -40,6 +40,29 @@ CALIBRATION_FEATURE_PROFILES = {
     "surface_v3": {
         "surface_conditions": ("contextual_surface_signal_v3",),
     },
+    "surface_exact_career_raw": {
+        "surface_conditions": ("exact_surface_career_margin_raw",),
+    },
+    "surface_exact_career_previous_raw": {
+        "surface_conditions": (
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw",
+        ),
+    },
+    "surface_exact_career_seasons_raw": {
+        "surface_conditions": (
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw",
+            "exact_surface_current_margin_raw",
+        ),
+    },
+    "surface_exact_career_seasons_shrunk": {
+        "surface_conditions": (
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk",
+        ),
+    },
     "contextual_v2": {
         "structural_strength": ("contextual_structural_signal_v2",),
         "surface_conditions": ("contextual_surface_signal_v1",),
@@ -188,6 +211,10 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "recent_guarded_v4",
         "surface_v2",
         "surface_v3",
+        "surface_exact_career_raw",
+        "surface_exact_career_previous_raw",
+        "surface_exact_career_seasons_raw",
+        "surface_exact_career_seasons_shrunk",
         *(f"recent_capped_loss_{int(round(value * 100)):03d}"
           for value in RECENT_LOSS_CONTEXT_GRID_V2),
     }:
@@ -198,6 +225,12 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_surface_signal_v1",
             "contextual_surface_signal_v2",
             "contextual_surface_signal_v3",
+            "exact_surface_career_margin_raw",
+            "exact_surface_previous_margin_raw",
+            "exact_surface_current_margin_raw",
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk",
             "contextual_structural_rank_core_v3",
             "contextual_structural_trajectory_margin_v3",
             "contextual_structural_inactivity_margin_v3",
@@ -1048,6 +1081,95 @@ def compare_surface_feature_profiles(
         "transition_numeric_vote_v2": False,
         "transition_remains_diagnostic": True,
         "holdout_reused_after_v1_segment_audit": True,
+        "future_confirmation_required": True,
+        "market_used": False,
+        "production_effect": False,
+        "promotion_authorized": False,
+    }
+
+
+def compare_exact_surface_profiles(
+    rows: list[dict[str, Any]], *, universe: str,
+) -> dict[str, Any]:
+    """Compare the four-context career and season candidates pairwise."""
+    exact_contexts = {"hard_outdoor", "hard_indoor", "clay", "grass"}
+    eligible_rows = [
+        row for row in rows
+        if row.get("diagnostics", {}).get("surface_context") in exact_contexts
+    ]
+    split = _split(eligible_rows)
+    profile_names = (
+        "surface_exact_career_raw",
+        "surface_exact_career_previous_raw",
+        "surface_exact_career_seasons_raw",
+        "surface_exact_career_seasons_shrunk",
+    )
+    profiles = {
+        name: calibrate_family(
+            split, family="surface_conditions", feature_profile=name,
+        )
+        for name in profile_names
+    }
+    if any(
+        item.get("status") == "INSUFFICIENT_COVERAGE"
+        for item in profiles.values()
+    ):
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "universe": str(universe).strip().casefold(),
+            "status": "INSUFFICIENT_PAIRED_COVERAGE",
+            "profiles": profiles,
+            "production_effect": False,
+        }
+    holdout = split["holdout"]
+    predictions = {
+        name: predict_family_equation(holdout, _runtime_model(model))
+        for name, model in profiles.items()
+    }
+    wanted = [
+        index for index in range(len(holdout))
+        if all(predictions[name][index] is not None for name in profile_names)
+    ]
+    targets = np.asarray([
+        float(holdout[index]["target_a_win"]) for index in wanted
+    ])
+    metrics = {
+        name: _metrics(
+            targets,
+            np.asarray([predictions[name][index] for index in wanted]),
+            total_targets=len(holdout),
+        )
+        for name in profile_names
+    }
+    incremental = []
+    for baseline, candidate in zip(profile_names, profile_names[1:]):
+        incremental.append({
+            "baseline": baseline,
+            "candidate": candidate,
+            **_paired_probability_gain(
+                targets,
+                np.asarray([
+                    predictions[baseline][index] for index in wanted
+                ]),
+                np.asarray([
+                    predictions[candidate][index] for index in wanted
+                ]),
+            ),
+        })
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "universe": str(universe).strip().casefold(),
+        "status": "POST_AUDIT_EXPLORATORY",
+        "mode": "PAIRED_EXACT_SURFACE_CAREER_SEASON_COMPARISON",
+        "split_targets": {name: len(items) for name, items in split.items()},
+        "source_targets": len(rows),
+        "exact_context_targets": len(eligible_rows),
+        "paired_holdout_targets": len(wanted),
+        "profiles": profiles,
+        "paired_holdout_metrics": metrics,
+        "incremental_comparisons": incremental,
+        "four_exact_contexts": True,
+        "holdout_reused_after_method_design": True,
         "future_confirmation_required": True,
         "market_used": False,
         "production_effect": False,

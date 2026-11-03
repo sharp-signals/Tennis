@@ -169,6 +169,19 @@ def test_prospective_target_uses_exactly_the_replay_feature_definitions():
     assert target["market_used"] is False
 
 
+def test_exact_surface_features_do_not_mix_indoor_and_outdoor_hard():
+    frame = pd.DataFrame([
+        _match("20260101", "Alpha", "Other A", indoor=True),
+        _match("20260102", "Beta", "Other B", indoor=False),
+        _match("20260105", "Alpha", "Beta", indoor=True),
+    ])
+    target = build_contextual_family_replay_rows(frame, universe="atp")[-1]
+    assert target["diagnostics"]["surface_context"] == "hard_indoor"
+    assert target["samples"]["exact_surface_career_a"] == 1
+    assert target["samples"]["exact_surface_career_b"] == 0
+    assert target["features"]["exact_surface_career_margin_shrunk"] is None
+
+
 def test_replay_exposes_candidate_structural_signal_without_replacing_legacy():
     rows = build_contextual_family_replay_rows(pd.DataFrame([
         _match("20260101", "Alpha", "Other A", winner_rank=40, loser_rank=100),

@@ -35,6 +35,10 @@ from .contextual_surface_equation import (
     evaluate_surface_conditions_v2,
     evaluate_surface_conditions_v3,
 )
+from .contextual_surface_ledger import (
+    build_chronological_surface_ledger,
+    exact_surface_context,
+)
 from .recent_form_audit import _column, _is_non_standard_completion, _parse_history_dates
 from .recent_form_replay import (
     _game_margin,
@@ -73,6 +77,12 @@ FEATURE_FAMILIES = {
     "contextual_surface_signal_v1": "surface_conditions",
     "contextual_surface_signal_v2": "surface_conditions",
     "contextual_surface_signal_v3": "surface_conditions",
+    "exact_surface_career_margin_raw": "surface_conditions",
+    "exact_surface_previous_margin_raw": "surface_conditions",
+    "exact_surface_current_margin_raw": "surface_conditions",
+    "exact_surface_career_margin_shrunk": "surface_conditions",
+    "exact_surface_previous_margin_shrunk": "surface_conditions",
+    "exact_surface_current_margin_shrunk": "surface_conditions",
     "h2h_win_share_margin": "matchup_h2h",
     "same_surface_h2h_win_share_margin": "matchup_h2h",
     "service_points_won_surface_margin": "serve_return",
@@ -163,6 +173,12 @@ def _material(frame: pd.DataFrame) -> pd.DataFrame:
         "loser_rank_points", pd.Series(index=frame.index, dtype="float64"),
     )
     material["_venue"] = frame.apply(_row_venue, axis=1)
+    material["_surface_context"] = frame.apply(
+        lambda row: exact_surface_context(
+            row.get("surface"), venue=_row_venue(row),
+        ),
+        axis=1,
+    )
     material["_pace"] = frame.apply(_row_pace, axis=1)
     material["_score"] = _column(frame, "score")
     material["_non_standard"] = _is_non_standard_completion(frame)
@@ -217,6 +233,92 @@ def _surface_record(
         return None, 0
     wins = sum(row["result"] > 0 for row in rows)
     return wins / len(rows), len(rows)
+
+
+def _ledger_rate(ledger: dict[str, Any] | None, period: str) -> float | None:
+    record = (ledger or {}).get(period)
+    if not isinstance(record, dict) or not record.get("matches"):
+        return None
+    return float(record["wins"]) / float(record["matches"])
+
+
+def _ledger_shrunk_rate(
+    ledger: dict[str, Any] | None, period: str, *, prior_matches: float,
+) -> float | None:
+    record = (ledger or {}).get(period)
+    if not isinstance(record, dict) or not record.get("matches"):
+        return None
+    return (
+        float(record["wins"]) + 0.5 * float(prior_matches)
+    ) / (float(record["matches"]) + float(prior_matches))
+
+
+def _exact_surface_features(
+    observations_a: list[dict[str, Any]],
+    observations_b: list[dict[str, Any]],
+    *,
+    context: str | None,
+    cutoff: date,
+) -> tuple[dict[str, float | None], dict[str, Any]]:
+    names = (
+        "exact_surface_career_margin_raw",
+        "exact_surface_previous_margin_raw",
+        "exact_surface_current_margin_raw",
+        "exact_surface_career_margin_shrunk",
+        "exact_surface_previous_margin_shrunk",
+        "exact_surface_current_margin_shrunk",
+    )
+    if context not in {
+        "hard_outdoor", "hard_indoor", "clay", "grass",
+    }:
+        return {name: None for name in names}, {
+            "status": "EXACT_CONTEXT_UNRESOLVED",
+        }
+    ledger_a = build_chronological_surface_ledger(
+        observations_a, context=context, cutoff=cutoff,
+    )
+    ledger_b = build_chronological_surface_ledger(
+        observations_b, context=context, cutoff=cutoff,
+    )
+    features = {
+        names[0]: _difference(
+            _ledger_rate(ledger_a, "career"), _ledger_rate(ledger_b, "career"),
+        ),
+        names[1]: _difference(
+            _ledger_rate(ledger_a, "previous_season"),
+            _ledger_rate(ledger_b, "previous_season"),
+        ),
+        names[2]: _difference(
+            _ledger_rate(ledger_a, "current_season"),
+            _ledger_rate(ledger_b, "current_season"),
+        ),
+        names[3]: _difference(
+            _ledger_shrunk_rate(ledger_a, "career", prior_matches=10.0),
+            _ledger_shrunk_rate(ledger_b, "career", prior_matches=10.0),
+        ),
+        names[4]: _difference(
+            _ledger_shrunk_rate(
+                ledger_a, "previous_season", prior_matches=8.0,
+            ),
+            _ledger_shrunk_rate(
+                ledger_b, "previous_season", prior_matches=8.0,
+            ),
+        ),
+        names[5]: _difference(
+            _ledger_shrunk_rate(
+                ledger_a, "current_season", prior_matches=8.0,
+            ),
+            _ledger_shrunk_rate(
+                ledger_b, "current_season", prior_matches=8.0,
+            ),
+        ),
+    }
+    return features, {
+        "status": "READY",
+        "context": context,
+        "a": ledger_a,
+        "b": ledger_b,
+    }
 
 
 def _record(rows: list[dict[str, Any]]) -> dict[str, int] | None:
@@ -549,6 +651,9 @@ def build_contextual_target_row(
     current_ranks = {key: _positive_rank(value[1]) for key, value in names.items()}
     target_surface = _surface(surface)
     target_venue = _surface_venue(venue)
+    target_surface_context = exact_surface_context(
+        surface, venue=target_venue,
+    )
     target_pace = _surface_pace(pace_bucket)
     material = _cached_material(frame)
     material = material[material["_event_date"] < cutoff]
@@ -569,6 +674,7 @@ def build_contextual_target_row(
         if not winner or not loser or winner == loser:
             continue
         event_date, match_surface = match["_event_date"], match["_surface"]
+        match_surface_context = match["_surface_context"]
         match_venue, match_pace = match["_venue"], match["_pace"]
         rank_w = _positive_rank(match["_winner_rank"])
         rank_l = _positive_rank(match["_loser_rank"])
@@ -578,7 +684,8 @@ def build_contextual_target_row(
             match_history[winner].append({**_player_observation(
                 event_date=event_date, surface=match_surface, won=True,
                 player_rank=rank_w, opponent_rank=rank_l, game_margin=winner_margin,
-            ), "venue": match_venue, "pace_bucket": match_pace})
+            ), "venue": match_venue, "pace_bucket": match_pace,
+                "surface_context": match_surface_context})
             if rank_w:
                 rank_history[winner].append((event_date, rank_w))
             service = _extract_match(match, player_won=True)
@@ -590,7 +697,8 @@ def build_contextual_target_row(
             match_history[loser].append({**_player_observation(
                 event_date=event_date, surface=match_surface, won=False,
                 player_rank=rank_l, opponent_rank=rank_w, game_margin=loser_margin,
-            ), "venue": match_venue, "pace_bucket": match_pace})
+            ), "venue": match_venue, "pace_bucket": match_pace,
+                "surface_context": match_surface_context})
             if rank_l:
                 rank_history[loser].append((event_date, rank_l))
             service = _extract_match(match, player_won=False)
@@ -622,6 +730,10 @@ def build_contextual_target_row(
     service_surface_b, service_recent_b = _service_view(
         service_history[model_b], cutoff=cutoff, surface=target_surface,
     )
+    exact_surface_features, exact_surface_audit = _exact_surface_features(
+        match_history[model_a], match_history[model_b],
+        context=target_surface_context, cutoff=cutoff,
+    )
     model_rank_a, model_rank_b = current_ranks[model_a], current_ranks[model_b]
     candidate_features, equation_audit = _candidate_equation_features(
         rank_a=model_rank_a, rank_b=model_rank_b,
@@ -652,6 +764,7 @@ def build_contextual_target_row(
         "break_surface_margin": _metric_margin(service_surface_a, service_surface_b, "break_pct"),
         "service_points_won_recent_margin": _metric_margin(service_recent_a, service_recent_b, "service_points_won_pct"),
         "return_points_won_recent_margin": _metric_margin(service_recent_a, service_recent_b, "return_points_won_pct"),
+        **exact_surface_features,
         **candidate_features,
     }
     vector = build_contextual_family_vector(_family_payloads(
@@ -668,6 +781,7 @@ def build_contextual_target_row(
         "diagnostics": {
             "rank_a": model_rank_a, "rank_b": model_rank_b,
             "venue": target_venue, "pace": target_pace,
+            "surface_context": target_surface_context,
         },
         "samples": {
             "recent_a": recent_a["sample"], "recent_b": recent_b["sample"],
@@ -675,12 +789,21 @@ def build_contextual_target_row(
             "h2h": h2h_sample, "same_surface_h2h": h2h_surface_sample,
             "service_surface_a": (service_surface_a or {}).get("matches", 0),
             "service_surface_b": (service_surface_b or {}).get("matches", 0),
+            "exact_surface_career_a": (
+                (exact_surface_audit.get("a") or {}).get("career") or {}
+            ).get("matches", 0),
+            "exact_surface_career_b": (
+                (exact_surface_audit.get("b") or {}).get("career") or {}
+            ).get("matches", 0),
         },
         "family_states": {
             row["key"]: {"data_state": row["data_state"], "signal_state": row["signal_state"]}
             for row in vector["families"]
         },
-        "candidate_equation_audit": equation_audit,
+        "candidate_equation_audit": {
+            **equation_audit,
+            "exact_surface_ledger": exact_surface_audit,
+        },
         "orientation": {
             "model_a_input_side": "a" if _name_key(player_a) == model_a else "b",
             "model_b_input_side": "b" if _name_key(player_b) == model_b else "a",
@@ -711,6 +834,7 @@ def build_contextual_family_replay_rows(
             player_a, player_b = sorted((winner, loser))
             a_won = winner == player_a
             surface = match["_surface"]
+            surface_context = match["_surface_context"]
             venue = match["_venue"]
             pace = match["_pace"]
             rank_w = _positive_rank(match["_winner_rank"])
@@ -744,6 +868,10 @@ def build_contextual_family_replay_rows(
             )
             service_surface_b, service_recent_b = _service_view(
                 service_history[player_b], cutoff=event_date, surface=surface,
+            )
+            exact_surface_features, exact_surface_audit = _exact_surface_features(
+                match_history[player_a], match_history[player_b],
+                context=surface_context, cutoff=event_date,
             )
 
             candidate_features, equation_audit = _candidate_equation_features(
@@ -800,6 +928,7 @@ def build_contextual_family_replay_rows(
                 "return_points_won_recent_margin": _metric_margin(
                     service_recent_a, service_recent_b, "return_points_won_pct",
                 ),
+                **exact_surface_features,
                 **candidate_features,
             }
             vector = build_contextual_family_vector(_family_payloads(
@@ -819,6 +948,7 @@ def build_contextual_family_replay_rows(
                 "diagnostics": {
                     "rank_a": rank_a, "rank_b": rank_b,
                     "venue": venue, "pace": pace,
+                    "surface_context": surface_context,
                 },
                 "features": features,
                 "samples": {
@@ -827,6 +957,12 @@ def build_contextual_family_replay_rows(
                     "h2h": h2h_sample, "same_surface_h2h": h2h_surface_sample,
                     "service_surface_a": (service_surface_a or {}).get("matches", 0),
                     "service_surface_b": (service_surface_b or {}).get("matches", 0),
+                    "exact_surface_career_a": (
+                        (exact_surface_audit.get("a") or {}).get("career") or {}
+                    ).get("matches", 0),
+                    "exact_surface_career_b": (
+                        (exact_surface_audit.get("b") or {}).get("career") or {}
+                    ).get("matches", 0),
                 },
                 "family_states": {
                     row["key"]: {
@@ -835,7 +971,10 @@ def build_contextual_family_replay_rows(
                     }
                     for row in vector["families"]
                 },
-                "candidate_equation_audit": equation_audit,
+                "candidate_equation_audit": {
+                    **equation_audit,
+                    "exact_surface_ledger": exact_surface_audit,
+                },
                 "market_used": False,
             })
 
@@ -848,6 +987,7 @@ def build_contextual_family_replay_rows(
             if not winner or not loser or winner == loser:
                 continue
             surface = match["_surface"]
+            surface_context = match["_surface_context"]
             venue = match["_venue"]
             pace = match["_pace"]
             rank_w = _positive_rank(match["_winner_rank"])
@@ -857,11 +997,13 @@ def build_contextual_family_replay_rows(
             match_history[winner].append({**_player_observation(
                 event_date=event_date, surface=surface, won=True,
                 player_rank=rank_w, opponent_rank=rank_l, game_margin=winner_margin,
-            ), "venue": venue, "pace_bucket": pace})
+            ), "venue": venue, "pace_bucket": pace,
+                "surface_context": surface_context})
             match_history[loser].append({**_player_observation(
                 event_date=event_date, surface=surface, won=False,
                 player_rank=rank_l, opponent_rank=rank_w, game_margin=loser_margin,
-            ), "venue": venue, "pace_bucket": pace})
+            ), "venue": venue, "pace_bucket": pace,
+                "surface_context": surface_context})
             if rank_w:
                 rank_history[winner].append((event_date, rank_w))
             if rank_l:

@@ -2,6 +2,7 @@ import math
 
 from src.contextual_family_calibration import (
     _fit_logistic_elastic_net,
+    _directional_mask,
     _build_guarded_recent_split,
     _paired_segment_diagnostics,
     _structural_segment_labels,
@@ -14,6 +15,17 @@ from src.contextual_family_calibration import (
 from src.contextual_family_replay import FEATURE_FAMILIES
 
 import numpy as np
+
+
+def test_exact_surface_margins_are_directionally_constrained():
+    columns = [
+        "exact_surface_career_margin_shrunk",
+        "exact_surface_career_margin_shrunk__missing",
+    ]
+    mask = _directional_mask(
+        columns, "surface_exact_career_seasons_shrunk",
+    )
+    assert mask.tolist() == [True, False]
 
 
 def _row(index, *, signal=None, won=None, missing=False):
