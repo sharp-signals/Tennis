@@ -4,6 +4,7 @@ from src.contextual_family_calibration import (
     _fit_logistic_elastic_net,
     calibrate_contextual_families,
     calibrate_family,
+    compare_family_feature_profiles,
 )
 from src.contextual_family_replay import FEATURE_FAMILIES
 
@@ -93,3 +94,34 @@ def test_coefficients_and_metrics_are_finite():
     assert math.isfinite(result["intercept"])
     assert all(math.isfinite(value) for value in result["coefficients"].values())
     assert math.isfinite(result["holdout"]["model"]["brier"])
+
+
+def test_contextual_profile_uses_engineered_structural_signal_only():
+    split = _split_rows()
+    for part in split.values():
+        for row in part:
+            row["features"]["contextual_structural_signal_v1"] = (
+                1.0 if row["target_a_win"] else -1.0
+            )
+    result = calibrate_family(
+        split, family="structural_strength", feature_profile="contextual_v1",
+    )
+    assert result["features"] == ["contextual_structural_signal_v1"]
+    assert result["coefficients"]["contextual_structural_signal_v1"] >= 0
+    assert result["feature_profile"] == "contextual_v1"
+
+
+def test_profile_comparison_uses_same_holdout_targets_and_stays_market_free():
+    rows = _split_rows()["train"] + _split_rows()["validation"] + _split_rows()["holdout"]
+    for i, row in enumerate(rows):
+        row["event_date"] = f"{2020 + i // 60:04d}-{(i % 12) + 1:02d}-{(i % 27) + 1:02d}"
+        direction = 1.0 if row["target_a_win"] else -1.0
+        row["features"]["contextual_structural_signal_v1"] = direction
+        row["features"]["contextual_surface_signal_v1"] = direction
+        row["features"]["same_surface_result_balance_90d"] = -direction
+        row["features"]["career_surface_win_rate_margin"] = -direction
+    result = compare_family_feature_profiles(rows, universe="atp")
+    assert result["comparisons"]["structural_strength"]["paired_holdout_targets"] > 0
+    assert result["comparisons"]["surface_conditions"]["paired_holdout_targets"] > 0
+    assert result["market_used"] is False
+    assert result["production_effect"] is False

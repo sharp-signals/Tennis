@@ -3383,6 +3383,15 @@ def _build_match_payload(match: dict) -> dict:
             surface=surface,
             rank_a=(rank_a or {}).get("rank") if isinstance(rank_a, dict) else rank_a,
             rank_b=(rank_b or {}).get("rank") if isinstance(rank_b, dict) else rank_b,
+            points_a=(rank_a or {}).get("points") if isinstance(rank_a, dict) else None,
+            points_b=(rank_b or {}).get("points") if isinstance(rank_b, dict) else None,
+            venue=(
+                match.get("indoor") if match.get("indoor") is not None
+                else match.get("venue_context")
+            ),
+            pace_bucket=(
+                match.get("court_pace_bucket") or match.get("pace_bucket")
+            ),
         )
         payload["contextual_shadow_v1"] = predict_contextual_shadow(
             contextual_row, load_contract(), universe=contextual_universe,

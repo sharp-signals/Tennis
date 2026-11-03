@@ -9,11 +9,12 @@ import pandas as pd
 
 
 def _match(day, winner, loser, *, surface="Hard", winner_rank=20, loser_rank=40,
-           score="6-4 6-4", service=True):
+           score="6-4 6-4", service=True, indoor=None, pace=None):
     row = {
         "tourney_date": day, "winner_name": winner, "loser_name": loser,
         "surface": surface, "winner_rank": winner_rank,
         "loser_rank": loser_rank, "score": score,
+        "indoor": indoor, "court_pace_bucket": pace,
     }
     if service:
         row.update({
@@ -163,3 +164,29 @@ def test_prospective_target_uses_exactly_the_replay_feature_definitions():
     assert target["samples"] == replay["samples"]
     assert target["family_states"] == replay["family_states"]
     assert target["market_used"] is False
+
+
+def test_replay_exposes_candidate_structural_signal_without_replacing_legacy():
+    rows = build_contextual_family_replay_rows(pd.DataFrame([
+        _match("20260101", "Alpha", "Other A", winner_rank=40, loser_rank=100),
+        _match("20260101", "Beta", "Other B", winner_rank=60, loser_rank=100),
+        _match("20260105", "Alpha", "Beta", winner_rank=40, loser_rank=60),
+    ]), universe="atp")
+    target = rows[-1]
+    assert target["features"]["current_rank_log_ratio"] > 0
+    assert target["features"]["contextual_structural_signal_v1"] == 0.0
+    assert target["candidate_equation_audit"]["structural_strength"]["status"] == "READY"
+
+
+def test_replay_surface_candidate_shrinks_small_sample_and_uses_conditions_once():
+    rows = build_contextual_family_replay_rows(pd.DataFrame([
+        _match("20260101", "Alpha", "Other A", indoor=True, pace="fast"),
+        _match("20260102", "Other B", "Beta", indoor=True, pace="fast"),
+        _match("20260105", "Alpha", "Beta", indoor=True, pace="fast"),
+    ]), universe="atp")
+    target = rows[-1]
+    signal = target["features"]["contextual_surface_signal_v1"]
+    assert signal is not None and 0.0 < signal < 0.2
+    audit = target["candidate_equation_audit"]["surface_conditions"]
+    assert audit["components"]["selected_specific_context"] == "pace_component"
+    assert audit["governance"]["overlapping_components_are_not_summed"] is True

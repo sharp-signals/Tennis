@@ -53,7 +53,11 @@ também como voto completo na família serviço/resposta.
 
 ## Próximo passo
 
-Ligar estas duas equações ao replay cronológico SHADOW, acrescentando as
-features factuais que hoje são recolhidas mas não entram na calibração. Só
-depois se decide, por ATP/WTA/Challenger, que curvas sobrevivem e com que
-incerteza.
+As duas equações estão agora ligadas ao replay cronológico SHADOW sem substituir
+as features anteriores. O comparador usa exatamente os mesmos alvos do holdout
+para o perfil legado e o perfil contextual, separadamente em ATP, WTA e
+Challenger. A direção dos novos sinais não pode ser invertida pela calibração.
+
+O passo seguinte é executar o replay completo sobre a fonte histórica saudável,
+registar cobertura, log loss, Brier e calibração, e rever os casos-limite. Só
+depois se decide que curvas sobrevivem e com que incerteza.

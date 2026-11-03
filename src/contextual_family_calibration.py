@@ -18,8 +18,17 @@ from .contextual_family_replay import FEATURE_FAMILIES, _split
 SCHEMA_VERSION = 1
 DEFAULT_L1_GRID = (0.0, 0.0005, 0.001, 0.003, 0.01, 0.03, 0.1)
 DEFAULT_L2 = 0.01
-CALIBRATION_FEATURES = {
-    "structural_strength": ("current_rank_log_ratio",),
+CALIBRATION_FEATURE_PROFILES = {
+    "legacy_v0": {
+        "structural_strength": ("current_rank_log_ratio",),
+        "surface_conditions": (
+            "same_surface_result_balance_90d", "career_surface_win_rate_margin",
+        ),
+    },
+    "contextual_v1": {
+        "structural_strength": ("contextual_structural_signal_v1",),
+        "surface_conditions": ("contextual_surface_signal_v1",),
+    },
 }
 
 
@@ -77,10 +86,22 @@ def _fit_logistic_elastic_net(
     return intercept, weights, max_iter
 
 
-def _family_features(family: str) -> tuple[str, ...]:
-    if family in CALIBRATION_FEATURES:
-        return CALIBRATION_FEATURES[family]
+def _family_features(family: str, feature_profile: str = "legacy_v0") -> tuple[str, ...]:
+    profile = CALIBRATION_FEATURE_PROFILES.get(feature_profile)
+    if profile is None:
+        raise ValueError(f"unknown feature profile: {feature_profile}")
+    if family in profile:
+        return profile[family]
     return tuple(key for key, owner in FEATURE_FAMILIES.items() if owner == family)
+
+
+def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | None:
+    if feature_profile != "contextual_v1":
+        return None
+    return np.asarray([
+        name in {"contextual_structural_signal_v1", "contextual_surface_signal_v1"}
+        for name in columns
+    ], dtype=bool)
 
 
 def _covered_rows(rows: Iterable[dict[str, Any]], features: tuple[str, ...]) -> list[dict[str, Any]]:
@@ -191,17 +212,25 @@ def _predict(x: np.ndarray, intercept: float, weights: np.ndarray) -> np.ndarray
 
 def fit_family_equation(
     rows: list[dict[str, Any]], *, family: str, l1: float,
+    feature_profile: str = "legacy_v0",
 ) -> dict[str, Any]:
     """Fit one frozen family equation for later out-of-sample prediction."""
-    features = _family_features(family)
+    features = _family_features(family, feature_profile)
     covered = _covered_rows(rows, features)
     if not covered:
-        return {"family": family, "status": "INSUFFICIENT_COVERAGE"}
+        return {
+            "family": family, "status": "INSUFFICIENT_COVERAGE",
+            "feature_profile": feature_profile,
+        }
     preprocessor = _fit_preprocessor(covered, features)
     x, y, columns = _transform(covered, features, preprocessor)
-    intercept, weights, iterations = _fit_logistic_elastic_net(x, y, l1=l1)
+    intercept, weights, iterations = _fit_logistic_elastic_net(
+        x, y, l1=l1,
+        nonnegative_mask=_directional_mask(columns, feature_profile),
+    )
     return {
         "family": family,
+        "feature_profile": feature_profile,
         "status": "FITTED",
         "features": list(features),
         "preprocessor": preprocessor,
@@ -246,13 +275,14 @@ def calibrate_family(
     *,
     family: str,
     l1_grid: Iterable[float] = DEFAULT_L1_GRID,
+    feature_profile: str = "legacy_v0",
 ) -> dict[str, Any]:
-    features = _family_features(family)
+    features = _family_features(family, feature_profile)
     covered = {name: _covered_rows(rows, features) for name, rows in split.items()}
     if min(len(covered["train"]), len(covered["validation"]), len(covered["holdout"])) == 0:
         return {
             "family": family, "status": "INSUFFICIENT_COVERAGE",
-            "features": list(features),
+            "features": list(features), "feature_profile": feature_profile,
         }
 
     train_preprocessor = _fit_preprocessor(covered["train"], features)
@@ -268,6 +298,7 @@ def calibrate_family(
     for l1 in tuple(float(value) for value in l1_grid):
         intercept, weights, iterations = _fit_logistic_elastic_net(
             x_train, y_train, l1=l1,
+            nonnegative_mask=_directional_mask(column_names, feature_profile),
         )
         validation_metrics = _metrics(
             y_validation, _predict(x_validation, intercept, weights),
@@ -299,6 +330,7 @@ def calibrate_family(
     )
     intercept, weights, iterations = _fit_logistic_elastic_net(
         x_development, y_development, l1=selected["l1"],
+        nonnegative_mask=_directional_mask(final_columns, feature_profile),
     )
     holdout_probability = _predict(x_holdout, intercept, weights)
     holdout_metrics = _metrics(
@@ -321,6 +353,7 @@ def calibrate_family(
     }
     return {
         "family": family,
+        "feature_profile": feature_profile,
         "status": (
             "HOLDOUT_SUPPORTED" if validation_supported and holdout_supported
             else "NOT_SUPPORTED"
@@ -357,6 +390,7 @@ def calibrate_family(
 
 def calibrate_contextual_families(
     rows: list[dict[str, Any]], *, universe: str,
+    feature_profile: str = "legacy_v0",
 ) -> dict[str, Any]:
     split = _split(rows)
     families = tuple(dict.fromkeys(FEATURE_FAMILIES.values()))
@@ -364,13 +398,80 @@ def calibrate_contextual_families(
         "schema_version": SCHEMA_VERSION,
         "universe": str(universe).strip().casefold(),
         "mode": "FAMILY_LEVEL_CHRONOLOGICAL_CALIBRATION",
+        "feature_profile": feature_profile,
         "split_targets": {name: len(items) for name, items in split.items()},
         "families": {
-            family: calibrate_family(split, family=family) for family in families
+            family: calibrate_family(
+                split, family=family, feature_profile=feature_profile,
+            ) for family in families
         },
         "families_combined": False,
         "overall_probability_fitted": False,
         "fair_odd_fitted": False,
+        "market_used": False,
+        "production_effect": False,
+    }
+
+
+def _runtime_model(calibration: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "FITTED",
+        "features": calibration["features"],
+        "preprocessor": calibration["preprocessor"],
+        "intercept": calibration["intercept"],
+        "columns": list(calibration["coefficients"]),
+        "weights": list(calibration["coefficients"].values()),
+    }
+
+
+def compare_family_feature_profiles(
+    rows: list[dict[str, Any]], *, universe: str,
+) -> dict[str, Any]:
+    """Compare legacy and contextual equations on the same chronological holdout."""
+    split = _split(rows)
+    comparisons = {}
+    for family in ("structural_strength", "surface_conditions"):
+        legacy = calibrate_family(split, family=family, feature_profile="legacy_v0")
+        contextual = calibrate_family(
+            split, family=family, feature_profile="contextual_v1",
+        )
+        profiles = {"legacy_v0": legacy, "contextual_v1": contextual}
+        if any(item.get("status") == "INSUFFICIENT_COVERAGE" for item in profiles.values()):
+            comparisons[family] = {"status": "INSUFFICIENT_PAIRED_COVERAGE", "profiles": profiles}
+            continue
+        holdout = split["holdout"]
+        legacy_prediction = predict_family_equation(holdout, _runtime_model(legacy))
+        contextual_prediction = predict_family_equation(holdout, _runtime_model(contextual))
+        paired = [
+            (row, old, new) for row, old, new in zip(
+                holdout, legacy_prediction, contextual_prediction,
+            ) if old is not None and new is not None
+        ]
+        if not paired:
+            comparisons[family] = {"status": "INSUFFICIENT_PAIRED_COVERAGE", "profiles": profiles}
+            continue
+        targets = np.asarray([float(row["target_a_win"]) for row, _, _ in paired])
+        legacy_metrics = _metrics(
+            targets, np.asarray([old for _, old, _ in paired]), total_targets=len(holdout),
+        )
+        contextual_metrics = _metrics(
+            targets, np.asarray([new for _, _, new in paired]), total_targets=len(holdout),
+        )
+        delta = legacy_metrics["log_loss"] - contextual_metrics["log_loss"]
+        comparisons[family] = {
+            "status": "CONTEXTUAL_BETTER" if delta > 0 else "LEGACY_BETTER_OR_EQUAL",
+            "paired_holdout_targets": len(paired),
+            "legacy_v0": legacy_metrics,
+            "contextual_v1": contextual_metrics,
+            "contextual_log_loss_gain": round(delta, 6),
+            "profiles": profiles,
+        }
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "universe": str(universe).strip().casefold(),
+        "mode": "PAIRED_CHRONOLOGICAL_FAMILY_PROFILE_COMPARISON",
+        "split_targets": {name: len(items) for name, items in split.items()},
+        "comparisons": comparisons,
         "market_used": False,
         "production_effect": False,
     }
