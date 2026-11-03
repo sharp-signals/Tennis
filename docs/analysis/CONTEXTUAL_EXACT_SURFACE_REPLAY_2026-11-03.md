@@ -11,8 +11,10 @@
 3. carreira + época anterior + época atual;
 4. os três anteriores com redução para 50% conforme a amostra.
 
-Hard outdoor e hard indoor são contextos distintos. Jogos cujo recinto não
-estava identificado foram excluídos deste teste, sem imputação.
+Hard outdoor e hard indoor são contextos distintos. A fonte ATP omitia o piso
+em 2021–2025. Antes do replay, recuperou-se apenas metadata factual através de
+nomes de torneio exatos cujo contexto observado era único. Não foram usados
+resultado, odds, ranking ou score para resolver o piso.
 
 ## WTA
 
@@ -31,29 +33,33 @@ amostra produziu o maior ganho. Isto sustenta usar carreira, época anterior e
 
 ## ATP
 
-O histórico tinha 22 842 partidas, mas apenas 3 481 com contexto exato de piso
-identificado. O holdout emparelhado ficou em 601 jogos.
+O histórico tem 22 842 partidas. Dessas, 3 481 já traziam o contexto, 13 844
+foram recuperadas por identidade exata e não ambígua do torneio e 5 517
+continuam deliberadamente por resolver. O replay passou a ter 17 325 alvos com
+contexto exato e 3 257 jogos no holdout emparelhado.
 
 | Candidato | Log loss | Acerto |
 |---|---:|---:|
-| Carreira bruta | 0,690023 | 55,91% |
-| + época anterior | 0,690023 | 55,91% |
-| + época atual | 0,690023 | 55,91% |
-| + redução pela amostra | 0,683506 | 55,57% |
+| Carreira bruta | 0,674001 | 59,93% |
+| + época anterior | 0,666695 | 61,01% |
+| + época atual | 0,668986 | 60,45% |
+| + redução pela amostra | 0,659517 | 60,06% |
 
-A redução pela amostra melhorou o log loss de forma suportada. Os componentes
-anuais brutos foram reduzidos a coeficiente zero; a fonte cronológica ATP ainda
-é demasiado curta para confirmar evolução anual. Isso não prova irrelevância:
-os agregados atuais têm cobertura ampla, mas não podem ser usados no replay
-passado sem fuga temporal.
+A conclusão anterior de que as épocas não acrescentavam valor estava
+contaminada pela ausência de metadata de piso. Com a recuperação, carreira,
+época anterior e época atual permanecem ativas. A versão reduzida pela amostra
+tem o melhor log loss. A época anterior melhora a exatidão para 61,01%; incluir
+a época atual melhora o log loss face à carreira isolada, mas não face ao perfil
+carreira + época anterior. A escolha final exige validação prospetiva.
 
 ## Decisão provisória
 
 - WTA: carreira + época anterior + época atual, sempre reduzidas pela amostra,
   é o candidato principal para validação futura.
-- ATP: carreira no contexto exato, reduzida pela amostra, é o único componente
-  confirmado neste replay. Épocas ficam visíveis e armazenadas, mas sem voto
-  até existir validação cronológica suficiente.
+- ATP: carreira e épocas voltam a ser candidatas legítimas. O candidato com
+  redução pela amostra lidera em log loss, mas ainda não é promovido.
+- As 5 517 linhas ATP não resolvidas continuam excluídas do contexto exato; não
+  são convertidas em hard outdoor por defeito.
 - A família continua aberta: falta testar adaptação às mudanças de piso e
   segmentar os resultados por hard outdoor, indoor, terra e relva.
 

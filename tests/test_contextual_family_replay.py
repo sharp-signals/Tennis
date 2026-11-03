@@ -118,6 +118,20 @@ def test_service_family_degrades_without_point_aggregates():
     assert rows[-1]["features"]["hold_surface_margin"] is None
 
 
+def test_precomputed_surface_context_recovers_missing_raw_surface():
+    first = _match("20260101", "Alpha", "Other A", surface=None)
+    second = _match("20260101", "Beta", "Other B", surface=None)
+    target = _match("20260102", "Alpha", "Beta", surface=None)
+    for row in (first, second, target):
+        row["surface_context"] = "hard_indoor"
+    rows = build_contextual_family_replay_rows(
+        pd.DataFrame([first, second, target]), universe="atp",
+    )
+    assert rows[-1]["surface"] == "hard"
+    assert rows[-1]["samples"]["exact_surface_career_a"] == 1
+    assert rows[-1]["samples"]["exact_surface_career_b"] == 1
+
+
 def test_retirement_is_excluded_from_targets_and_future_history():
     rows = build_contextual_family_replay_rows(pd.DataFrame([
         _match("20260101", "Alpha", "Beta", score="6-4 2-1 RET"),

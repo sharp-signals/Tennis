@@ -59,6 +59,18 @@ Conclusão: carreira por piso tem cobertura forte. A evolução anual é robusta
 para hard outdoor e terra, mas muito mais limitada em indoor e relva. A futura
 equação tem de reduzir a confiança de acordo com a amostra.
 
+## Recuperação factual por torneio
+
+Quando a fonte histórica omite o piso, o replay pode anexar o contexto através
+de uma identidade normalizada de torneio apenas se todas as ocorrências já
+observadas desse nome apontarem para um único contexto. A recuperação altera
+somente metadata numa cópia de análise: nunca consulta vencedor, score, odds ou
+ranking e nunca reescreve o histórico bruto.
+
+Regras de calendário fornecidas para uma época são limitadas a essa época. Por
+exemplo, Lyon indoor em 2026 não autoriza classificar automaticamente antigas
+edições de Lyon como indoor.
+
 ## Transição de piso
 
 A métrica anterior marcava transição quando, nos últimos 35 dias, o piso

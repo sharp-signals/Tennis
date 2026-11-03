@@ -9,14 +9,22 @@ from pathlib import Path
 from src import fetch_data
 from src.contextual_family_calibration import compare_exact_surface_profiles
 from src.contextual_family_replay import build_contextual_family_replay_rows
+from src.contextual_tournament_surface_registry import (
+    enrich_tournament_surface_contexts,
+)
 from scripts.replay_recent_form_candidates import _scope
 
 
 def build_report() -> dict:
-    frames = {
+    raw_frames = {
         "atp": _scope(fetch_data.get_history("atp"), "main"),
         "wta": _scope(fetch_data.get_history("wta"), "main"),
     }
+    enriched = {
+        tour: enrich_tournament_surface_contexts(frame)
+        for tour, frame in raw_frames.items()
+    }
+    frames = {tour: value[0] for tour, value in enriched.items()}
     rows = {
         tour: build_contextual_family_replay_rows(frame, universe=tour)
         for tour, frame in frames.items()
@@ -28,6 +36,9 @@ def build_report() -> dict:
             for tour, items in rows.items()
         },
         "replay_rows": {tour: len(items) for tour, items in rows.items()},
+        "surface_context_recovery": {
+            tour: value[1] for tour, value in enriched.items()
+        },
         "four_contexts": ["hard_outdoor", "hard_indoor", "clay", "grass"],
         "market_used": False,
         "rapidapi_used": False,

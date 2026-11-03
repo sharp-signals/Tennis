@@ -143,6 +143,14 @@ def _surface(value: Any) -> str | None:
     return text or None
 
 
+def _surface_from_context(context: Any) -> str | None:
+    if context in {"hard_outdoor", "hard_indoor"}:
+        return "hard"
+    if context in {"clay", "grass"}:
+        return str(context)
+    return None
+
+
 def _material(frame: pd.DataFrame) -> pd.DataFrame:
     fallback_dates = _parse_history_dates(_column(frame, "event_date"))
     if "date" in frame.columns:
@@ -174,11 +182,19 @@ def _material(frame: pd.DataFrame) -> pd.DataFrame:
     )
     material["_venue"] = frame.apply(_row_venue, axis=1)
     material["_surface_context"] = frame.apply(
-        lambda row: exact_surface_context(
-            row.get("surface"), venue=_row_venue(row),
+        lambda row: (
+            row.get("surface_context")
+            if row.get("surface_context") in {
+                "hard_outdoor", "hard_indoor", "clay", "grass",
+            }
+            else exact_surface_context(
+                row.get("surface"), venue=_row_venue(row),
+            )
         ),
         axis=1,
     )
+    recovered_surface = material["_surface_context"].map(_surface_from_context)
+    material["_surface"] = material["_surface"].fillna(recovered_surface)
     material["_pace"] = frame.apply(_row_pace, axis=1)
     material["_score"] = _column(frame, "score")
     material["_non_standard"] = _is_non_standard_completion(frame)
