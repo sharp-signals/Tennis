@@ -60,8 +60,10 @@ def main() -> int:
         default=("atp", "wta"),
     )
     parser.add_argument(
-        "--contextual-profile", choices=("contextual_v1", "contextual_v2", "contextual_v3"),
-        default="contextual_v3",
+        "--contextual-profile", choices=(
+            "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
+        ),
+        default="contextual_v4",
     )
     args = parser.parse_args()
     if args.provider_cache:

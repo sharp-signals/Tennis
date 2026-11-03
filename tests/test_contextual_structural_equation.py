@@ -2,6 +2,7 @@ from src.contextual_structural_equation import (
     evaluate_structural_strength,
     evaluate_structural_strength_v2,
     evaluate_structural_strength_v3,
+    evaluate_structural_strength_v4,
 )
 
 
@@ -132,3 +133,18 @@ def test_v3_inactivity_is_separate_and_does_not_change_rank_core():
     assert active["candidate_features"][core] == inactive["candidate_features"][core]
     assert inactive["candidate_features"][modifier] < 0
     assert inactive["production_effect"] is False
+
+
+def test_v4_adjacent_rank_bands_do_not_create_second_vote():
+    result = evaluate_structural_strength_v4(_player(40), _player(60))
+    assert result["candidate_features"][
+        "contextual_structural_material_band_gap_v4"
+    ] == 0.0
+
+
+def test_v4_top20_vs_rank100_plus_creates_material_context():
+    result = evaluate_structural_strength_v4(_player(15), _player(110))
+    assert result["candidate_features"][
+        "contextual_structural_material_band_gap_v4"
+    ] > 0
+    assert result["governance"]["rank_bands_are_residual_not_replacement"] is True

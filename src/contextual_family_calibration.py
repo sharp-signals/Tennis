@@ -42,6 +42,16 @@ CALIBRATION_FEATURE_PROFILES = {
         ),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "contextual_v4": {
+        "structural_strength": (
+            "contextual_structural_rank_core_v3",
+            "contextual_structural_trajectory_margin_v3",
+            "contextual_structural_inactivity_margin_v3",
+            "contextual_structural_recovery_margin_v3",
+            "contextual_structural_material_band_gap_v4",
+        ),
+        "surface_conditions": ("contextual_surface_signal_v1",),
+    },
 }
 
 
@@ -109,7 +119,7 @@ def _family_features(family: str, feature_profile: str = "legacy_v0") -> tuple[s
 
 
 def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | None:
-    if feature_profile not in {"contextual_v1", "contextual_v2", "contextual_v3"}:
+    if feature_profile not in {"contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4"}:
         return None
     return np.asarray([
         name in {
@@ -119,6 +129,7 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_structural_trajectory_margin_v3",
             "contextual_structural_inactivity_margin_v3",
             "contextual_structural_recovery_margin_v3",
+            "contextual_structural_material_band_gap_v4",
         }
         for name in columns
     ], dtype=bool)
@@ -464,7 +475,11 @@ def _structural_segment_labels(row: dict[str, Any]) -> tuple[str, ...]:
             labels.append("elite_top20_vs_rank100_plus")
 
     audit_root = row.get("candidate_equation_audit", {})
-    audit = audit_root.get("structural_strength_v3") or audit_root.get("structural_strength_v2", {})
+    audit = (
+        audit_root.get("structural_strength_v4")
+        or audit_root.get("structural_strength_v3")
+        or audit_root.get("structural_strength_v2", {})
+    )
     components = audit.get("components", {})
     days = [
         value for value in (
@@ -567,7 +582,9 @@ def compare_family_feature_profiles(
             "contextual_log_loss_gain": round(delta, 6),
             "profiles": profiles,
         }
-        if family == "structural_strength" and contextual_profile in {"contextual_v2", "contextual_v3"}:
+        if family == "structural_strength" and contextual_profile in {
+            "contextual_v2", "contextual_v3", "contextual_v4",
+        }:
             comparisons[family]["segment_diagnostics"] = _paired_segment_diagnostics(paired)
     return {
         "schema_version": SCHEMA_VERSION,

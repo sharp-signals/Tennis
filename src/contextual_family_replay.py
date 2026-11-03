@@ -21,6 +21,7 @@ from .contextual_structural_equation import (
     evaluate_structural_strength,
     evaluate_structural_strength_v2,
     evaluate_structural_strength_v3,
+    evaluate_structural_strength_v4,
 )
 from .contextual_surface import (
     _pace as _surface_pace,
@@ -55,6 +56,7 @@ FEATURE_FAMILIES = {
     "contextual_structural_trajectory_margin_v3": "structural_strength",
     "contextual_structural_inactivity_margin_v3": "structural_strength",
     "contextual_structural_recovery_margin_v3": "structural_strength",
+    "contextual_structural_material_band_gap_v4": "structural_strength",
     "same_surface_result_balance_90d": "surface_conditions",
     "career_surface_win_rate_margin": "surface_conditions",
     "contextual_surface_signal_v1": "surface_conditions",
@@ -276,6 +278,7 @@ def _candidate_equation_features(
     structural = evaluate_structural_strength(context_a, context_b)
     structural_v2 = evaluate_structural_strength_v2(context_a, context_b)
     structural_v3 = evaluate_structural_strength_v3(context_a, context_b)
+    structural_v4 = evaluate_structural_strength_v4(context_a, context_b)
     surface_result = evaluate_surface_conditions(_surface_equation_pair(
         observations_a=match_history_a, observations_b=match_history_b,
         cutoff=cutoff, surface=surface, venue=venue, pace=pace,
@@ -286,10 +289,12 @@ def _candidate_equation_features(
         "contextual_surface_signal_v1": surface_result.get("family_signal"),
     }
     features.update(structural_v3.get("candidate_features", {}))
+    features.update(structural_v4.get("candidate_features", {}))
     return features, {
         "structural_strength": structural,
         "structural_strength_v2": structural_v2,
         "structural_strength_v3": structural_v3,
+        "structural_strength_v4": structural_v4,
         "surface_conditions": surface_result,
     }
 

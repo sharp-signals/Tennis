@@ -16,6 +16,7 @@ SCHEMA_VERSION = 1
 EQUATION_VERSION = "structural-context-v1"
 EQUATION_VERSION_V2 = "structural-context-v2"
 EQUATION_VERSION_V3 = "structural-context-v3-components"
+EQUATION_VERSION_V4 = "structural-context-v4-rank-bands"
 
 
 @dataclass(frozen=True)
@@ -412,4 +413,58 @@ def evaluate_structural_strength_v3(
         },
         "market_used": False,
         "production_effect": False,
+    }
+
+
+def _rank_band_v4(rank: float) -> int:
+    if rank <= 10:
+        return 5
+    if rank <= 20:
+        return 4
+    if rank <= 50:
+        return 3
+    if rank <= 100:
+        return 2
+    if rank <= 200:
+        return 1
+    return 0
+
+
+def evaluate_structural_strength_v4(
+    player_a: dict[str, Any], player_b: dict[str, Any],
+    *, config: StructuralEquationV2Config | None = None,
+) -> dict[str, Any]:
+    """Add one auditable rank-band residual to the unsaturated v3 components."""
+    base = evaluate_structural_strength_v3(player_a, player_b, config=config)
+    if base.get("status") != "READY":
+        return {
+            **base,
+            "equation_version": EQUATION_VERSION_V4,
+        }
+    rank_a = float(_positive(player_a.get("current_rank")))
+    rank_b = float(_positive(player_b.get("current_rank")))
+    band_a = _rank_band_v4(rank_a)
+    band_b = _rank_band_v4(rank_b)
+    raw_gap = band_a - band_b
+    # Adjacent bands are deliberately neutral: #40 vs #60 must not receive a
+    # second vote merely because they sit on opposite sides of the top-50 cut.
+    material_gap = 0.0 if abs(raw_gap) < 2 else raw_gap / 5.0
+    features = dict(base["candidate_features"])
+    features["contextual_structural_material_band_gap_v4"] = round(material_gap, 6)
+    return {
+        **base,
+        "equation_version": EQUATION_VERSION_V4,
+        "candidate_features": features,
+        "components": {
+            **base["components"],
+            "rank_band_a": band_a,
+            "rank_band_b": band_b,
+            "raw_rank_band_gap": raw_gap,
+            "material_rank_band_gap": round(material_gap, 6),
+        },
+        "governance": {
+            **base["governance"],
+            "rank_bands_are_residual_not_replacement": True,
+            "adjacent_rank_bands_are_neutral": True,
+        },
     }
