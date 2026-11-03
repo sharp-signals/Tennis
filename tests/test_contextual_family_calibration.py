@@ -5,6 +5,7 @@ from src.contextual_family_calibration import (
     _build_guarded_recent_split,
     _paired_segment_diagnostics,
     _structural_segment_labels,
+    _surface_segment_labels,
     calibrate_contextual_families,
     calibrate_family,
     compare_family_feature_profiles,
@@ -226,6 +227,29 @@ def test_structural_segments_are_ex_ante_and_can_overlap():
     assert "inactivity_over_90d" in labels
     assert "ranking_trajectory_material" in labels
     assert "supported_ranking_recovery" in labels
+
+
+def test_surface_segments_are_ex_ante_and_include_sample_transition_and_context():
+    row = {
+        "surface": "hard",
+        "diagnostics": {"venue": "indoor", "pace": "fast"},
+        "samples": {"surface_a": 12, "surface_b": 20},
+        "candidate_equation_audit": {
+            "surface_conditions": {"components": {
+                "transition_signal": -1.0,
+                "selected_specific_context": "pace_component",
+            }}
+        },
+    }
+
+    labels = _surface_segment_labels(row)
+
+    assert "surface_hard" in labels
+    assert "venue_indoor" in labels
+    assert "pace_fast" in labels
+    assert "bilateral_surface_sample_5_14" in labels
+    assert "surface_transition_present" in labels
+    assert "specific_context_available" in labels
 
 
 def test_segment_diagnostics_report_paired_gain_and_confidence():

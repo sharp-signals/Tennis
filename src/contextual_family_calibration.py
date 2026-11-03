@@ -34,6 +34,12 @@ CALIBRATION_FEATURE_PROFILES = {
         "structural_strength": ("contextual_structural_signal_v1",),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "surface_v2": {
+        "surface_conditions": ("contextual_surface_signal_v2",),
+    },
+    "surface_v3": {
+        "surface_conditions": ("contextual_surface_signal_v3",),
+    },
     "contextual_v2": {
         "structural_strength": ("contextual_structural_signal_v2",),
         "surface_conditions": ("contextual_surface_signal_v1",),
@@ -180,6 +186,8 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
         "contextual_v5", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
         "recent_guarded_v4",
+        "surface_v2",
+        "surface_v3",
         *(f"recent_capped_loss_{int(round(value * 100)):03d}"
           for value in RECENT_LOSS_CONTEXT_GRID_V2),
     }:
@@ -188,6 +196,8 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         name in {
             "contextual_structural_signal_v1", "contextual_structural_signal_v2",
             "contextual_surface_signal_v1",
+            "contextual_surface_signal_v2",
+            "contextual_surface_signal_v3",
             "contextual_structural_rank_core_v3",
             "contextual_structural_trajectory_margin_v3",
             "contextual_structural_inactivity_margin_v3",
@@ -610,6 +620,66 @@ def _paired_segment_diagnostics(
     return result
 
 
+def _surface_segment_labels(row: dict[str, Any]) -> tuple[str, ...]:
+    """Return ex-ante surface/condition segments without using the result."""
+    labels = ["all"]
+    surface = str(row.get("surface") or "unknown").strip().casefold()
+    labels.append(f"surface_{surface}")
+    diagnostics = row.get("diagnostics", {})
+    venue = str(diagnostics.get("venue") or "unknown").strip().casefold()
+    labels.append(f"venue_{venue}")
+    pace = str(diagnostics.get("pace") or "unknown").strip().casefold()
+    labels.append(f"pace_{pace}")
+    samples = row.get("samples", {})
+    bilateral = min(
+        int(samples.get("surface_a") or 0),
+        int(samples.get("surface_b") or 0),
+    )
+    if bilateral < 5:
+        labels.append("bilateral_surface_sample_lt5")
+    elif bilateral < 15:
+        labels.append("bilateral_surface_sample_5_14")
+    elif bilateral < 30:
+        labels.append("bilateral_surface_sample_15_29")
+    else:
+        labels.append("bilateral_surface_sample_ge30")
+    audit = row.get("candidate_equation_audit", {}).get("surface_conditions", {})
+    components = audit.get("components", {})
+    if abs(float(components.get("transition_signal") or 0.0)) > 1e-12:
+        labels.append("surface_transition_present")
+    else:
+        labels.append("surface_transition_absent")
+    if components.get("selected_specific_context"):
+        labels.append("specific_context_available")
+    else:
+        labels.append("specific_context_unavailable")
+    return tuple(labels)
+
+
+def _paired_diagnostics_by_labels(
+    paired: list[tuple[dict[str, Any], float, float]], labeler,
+) -> dict[str, Any]:
+    buckets: dict[str, list[tuple[dict[str, Any], float, float]]] = {}
+    for item in paired:
+        for label in labeler(item[0]):
+            buckets.setdefault(label, []).append(item)
+    result = {}
+    for label, items in buckets.items():
+        targets = np.asarray([float(row["target_a_win"]) for row, _, _ in items])
+        old = np.asarray([value for _, value, _ in items])
+        new = np.asarray([value for _, _, value in items])
+        old_metrics = _metrics(targets, old, total_targets=len(items))
+        new_metrics = _metrics(targets, new, total_targets=len(items))
+        gain = _paired_probability_gain(targets, old, new)
+        result[label] = {
+            "paired_targets": len(items),
+            "legacy": old_metrics,
+            "contextual": new_metrics,
+            **gain,
+        }
+    return result
+
+
 def compare_family_feature_profiles(
     rows: list[dict[str, Any]], *, universe: str,
     contextual_profile: str = "contextual_v1",
@@ -658,6 +728,10 @@ def compare_family_feature_profiles(
             "contextual_v5",
         }:
             comparisons[family]["segment_diagnostics"] = _paired_segment_diagnostics(paired)
+        if family == "surface_conditions":
+            comparisons[family]["segment_diagnostics"] = (
+                _paired_diagnostics_by_labels(paired, _surface_segment_labels)
+            )
     return {
         "schema_version": SCHEMA_VERSION,
         "universe": str(universe).strip().casefold(),
@@ -886,6 +960,95 @@ def compare_recent_form_feature_profiles(
         "capped_loss_context_comparison": capped_comparison,
         "loss_context_promotion_blocked": True,
         "loss_context_requires_asymmetric_guard": True,
+        "market_used": False,
+        "production_effect": False,
+        "promotion_authorized": False,
+    }
+
+
+def compare_surface_feature_profiles(
+    rows: list[dict[str, Any]], *, universe: str,
+) -> dict[str, Any]:
+    """Compare surface v1 with the no-transition-vote candidate v2."""
+    split = _split(rows)
+    profile_names = ("legacy_v0", "contextual_v1", "surface_v2", "surface_v3")
+    profiles = {
+        name: calibrate_family(
+            split, family="surface_conditions", feature_profile=name,
+        )
+        for name in profile_names
+    }
+    if any(item.get("status") == "INSUFFICIENT_COVERAGE" for item in profiles.values()):
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "universe": str(universe).strip().casefold(),
+            "status": "INSUFFICIENT_PAIRED_COVERAGE",
+            "profiles": profiles,
+            "production_effect": False,
+        }
+    holdout = split["holdout"]
+    predictions = {
+        name: predict_family_equation(holdout, _runtime_model(model))
+        for name, model in profiles.items()
+    }
+    wanted = [
+        index for index in range(len(holdout))
+        if all(predictions[name][index] is not None for name in profile_names)
+    ]
+    targets = np.asarray([
+        float(holdout[index]["target_a_win"]) for index in wanted
+    ])
+    metrics = {
+        name: _metrics(
+            targets,
+            np.asarray([predictions[name][index] for index in wanted]),
+            total_targets=len(holdout),
+        )
+        for name in profile_names
+    }
+    paired_v1_v2 = [
+        (
+            holdout[index], predictions["contextual_v1"][index],
+            predictions["surface_v2"][index],
+        )
+        for index in wanted
+    ]
+    paired_v2_v3 = [
+        (
+            holdout[index], predictions["surface_v2"][index],
+            predictions["surface_v3"][index],
+        )
+        for index in wanted
+    ]
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "universe": str(universe).strip().casefold(),
+        "status": "POST_AUDIT_EXPLORATORY",
+        "mode": "PAIRED_SURFACE_V1_V2_COMPARISON",
+        "split_targets": {name: len(items) for name, items in split.items()},
+        "paired_holdout_targets": len(wanted),
+        "profiles": profiles,
+        "paired_holdout_metrics": metrics,
+        "v1_to_v2_gain": _paired_probability_gain(
+            targets,
+            np.asarray([predictions["contextual_v1"][index] for index in wanted]),
+            np.asarray([predictions["surface_v2"][index] for index in wanted]),
+        ),
+        "v2_segment_diagnostics": _paired_diagnostics_by_labels(
+            paired_v1_v2, _surface_segment_labels,
+        ),
+        "v2_to_v3_baseline_only_gain": _paired_probability_gain(
+            targets,
+            np.asarray([predictions["surface_v2"][index] for index in wanted]),
+            np.asarray([predictions["surface_v3"][index] for index in wanted]),
+        ),
+        "v3_segment_diagnostics": _paired_diagnostics_by_labels(
+            paired_v2_v3, _surface_segment_labels,
+        ),
+        "transition_numeric_vote_v2": False,
+        "transition_remains_diagnostic": True,
+        "holdout_reused_after_v1_segment_audit": True,
+        "future_confirmation_required": True,
         "market_used": False,
         "production_effect": False,
         "promotion_authorized": False,

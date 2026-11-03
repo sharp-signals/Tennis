@@ -8,6 +8,8 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 EQUATION_VERSION = "surface-conditions-context-v1"
+EQUATION_VERSION_V2 = "surface-conditions-context-v2-no-transition-vote"
+EQUATION_VERSION_V3 = "surface-conditions-context-v3-surface-baseline-only"
 
 
 @dataclass(frozen=True)
@@ -149,3 +151,49 @@ def evaluate_surface_conditions(
         "market_used": False,
         "production_effect": False,
     }
+
+
+def evaluate_surface_conditions_v2(
+    pair: dict[str, Any], *, config: SurfaceEquationConfig | None = None,
+) -> dict[str, Any]:
+    """Keep observed transition as an alert, never as an automatic vote."""
+    base = config or SurfaceEquationConfig()
+    guarded = SurfaceEquationConfig(
+        prior_matches_surface=base.prior_matches_surface,
+        prior_matches_specific_context=base.prior_matches_specific_context,
+        contextual_max_adjustment=base.contextual_max_adjustment,
+        transition_max_adjustment=0.0,
+    )
+    result = evaluate_surface_conditions(pair, config=guarded)
+    result["equation_version"] = EQUATION_VERSION_V2
+    governance = dict(result.get("governance", {}))
+    governance.update({
+        "transition_is_diagnostic_only": True,
+        "transition_automatic_vote_prohibited": True,
+    })
+    result["governance"] = governance
+    return result
+
+
+def evaluate_surface_conditions_v3(
+    pair: dict[str, Any], *, config: SurfaceEquationConfig | None = None,
+) -> dict[str, Any]:
+    """Isolate the shrunk surface baseline; all other context is diagnostic."""
+    base = config or SurfaceEquationConfig()
+    baseline_only = SurfaceEquationConfig(
+        prior_matches_surface=base.prior_matches_surface,
+        prior_matches_specific_context=base.prior_matches_specific_context,
+        contextual_max_adjustment=0.0,
+        transition_max_adjustment=0.0,
+    )
+    result = evaluate_surface_conditions(pair, config=baseline_only)
+    result["equation_version"] = EQUATION_VERSION_V3
+    governance = dict(result.get("governance", {}))
+    governance.update({
+        "specific_context_is_diagnostic_only": True,
+        "specific_context_automatic_vote_prohibited": True,
+        "transition_is_diagnostic_only": True,
+        "transition_automatic_vote_prohibited": True,
+    })
+    result["governance"] = governance
+    return result

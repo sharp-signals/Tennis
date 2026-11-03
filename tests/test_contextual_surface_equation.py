@@ -1,4 +1,8 @@
-from src.contextual_surface_equation import evaluate_surface_conditions
+from src.contextual_surface_equation import (
+    evaluate_surface_conditions,
+    evaluate_surface_conditions_v2,
+    evaluate_surface_conditions_v3,
+)
 
 
 def _record(matches, wins):
@@ -41,6 +45,36 @@ def test_transition_is_a_limited_modifier_not_a_full_vote():
     ))
     assert baseline["family_signal"] == 0.0
     assert transition["family_signal"] == -0.12
+
+
+def test_v2_keeps_transition_as_diagnostic_without_numeric_vote():
+    baseline = evaluate_surface_conditions_v2(_pair(
+        _record(30, 15), _record(30, 15),
+    ))
+    transition = evaluate_surface_conditions_v2(_pair(
+        _record(30, 15), _record(30, 15), transition_a=True,
+    ))
+
+    assert transition["components"]["transition_signal"] == -1.0
+    assert transition["components"]["transition_adjustment"] == 0.0
+    assert transition["family_signal"] == baseline["family_signal"] == 0.0
+    assert transition["governance"]["transition_is_diagnostic_only"] is True
+
+
+def test_v3_keeps_specific_context_visible_without_numeric_vote():
+    plain = evaluate_surface_conditions_v3(_pair(
+        _record(40, 24), _record(40, 20),
+    ))
+    contextual = evaluate_surface_conditions_v3(_pair(
+        _record(40, 24), _record(40, 20),
+        a_venue=_record(20, 14), b_venue=_record(20, 8),
+        a_pace=_record(12, 8), b_pace=_record(12, 5),
+    ))
+
+    assert contextual["components"]["selected_specific_context"] == "pace_component"
+    assert contextual["components"]["specific_context_adjustment"] == 0.0
+    assert contextual["family_signal"] == plain["family_signal"]
+    assert contextual["governance"]["specific_context_is_diagnostic_only"] is True
 
 
 def test_missing_bilateral_surface_sample_is_not_neutral():

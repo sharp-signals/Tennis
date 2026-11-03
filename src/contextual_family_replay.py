@@ -30,7 +30,11 @@ from .contextual_surface import (
     _row_venue,
     _venue as _surface_venue,
 )
-from .contextual_surface_equation import evaluate_surface_conditions
+from .contextual_surface_equation import (
+    evaluate_surface_conditions,
+    evaluate_surface_conditions_v2,
+    evaluate_surface_conditions_v3,
+)
 from .recent_form_audit import _column, _is_non_standard_completion, _parse_history_dates
 from .recent_form_replay import (
     _game_margin,
@@ -67,6 +71,8 @@ FEATURE_FAMILIES = {
     "same_surface_result_balance_90d": "surface_conditions",
     "career_surface_win_rate_margin": "surface_conditions",
     "contextual_surface_signal_v1": "surface_conditions",
+    "contextual_surface_signal_v2": "surface_conditions",
+    "contextual_surface_signal_v3": "surface_conditions",
     "h2h_win_share_margin": "matchup_h2h",
     "same_surface_h2h_win_share_margin": "matchup_h2h",
     "service_points_won_surface_margin": "serve_return",
@@ -334,6 +340,14 @@ def _candidate_equation_features(
         observations_a=match_history_a, observations_b=match_history_b,
         cutoff=cutoff, surface=surface, venue=venue, pace=pace,
     ))
+    surface_result_v2 = evaluate_surface_conditions_v2(_surface_equation_pair(
+        observations_a=match_history_a, observations_b=match_history_b,
+        cutoff=cutoff, surface=surface, venue=venue, pace=pace,
+    ))
+    surface_result_v3 = evaluate_surface_conditions_v3(_surface_equation_pair(
+        observations_a=match_history_a, observations_b=match_history_b,
+        cutoff=cutoff, surface=surface, venue=venue, pace=pace,
+    ))
     recent_decays = RECENT_FORM_DECAYS_V1.get(str(universe).strip().casefold())
     recent_features: dict[str, float | None] = {}
     recent_audit: dict[str, Any]
@@ -420,6 +434,8 @@ def _candidate_equation_features(
         "contextual_structural_signal_v1": structural.get("family_signal"),
         "contextual_structural_signal_v2": structural_v2.get("family_signal"),
         "contextual_surface_signal_v1": surface_result.get("family_signal"),
+        "contextual_surface_signal_v2": surface_result_v2.get("family_signal"),
+        "contextual_surface_signal_v3": surface_result_v3.get("family_signal"),
         **recent_features,
     }
     features.update(structural_v3.get("candidate_features", {}))
@@ -432,6 +448,8 @@ def _candidate_equation_features(
         "structural_strength_v4": structural_v4,
         "structural_strength_v5": structural_v5,
         "surface_conditions": surface_result,
+        "surface_conditions_v2": surface_result_v2,
+        "surface_conditions_v3": surface_result_v3,
         "recent_form_v1": recent_audit,
     }
 
@@ -647,7 +665,10 @@ def build_contextual_target_row(
         "universe": str(universe).strip().casefold(),
         "player_a": model_a, "player_b": model_b, "target_a_win": False,
         "surface": target_surface, "features": features,
-        "diagnostics": {"rank_a": model_rank_a, "rank_b": model_rank_b},
+        "diagnostics": {
+            "rank_a": model_rank_a, "rank_b": model_rank_b,
+            "venue": target_venue, "pace": target_pace,
+        },
         "samples": {
             "recent_a": recent_a["sample"], "recent_b": recent_b["sample"],
             "surface_a": surface_sample_a, "surface_b": surface_sample_b,
@@ -795,7 +816,10 @@ def build_contextual_family_replay_rows(
                 "player_b": player_b,
                 "target_a_win": a_won,
                 "surface": surface,
-                "diagnostics": {"rank_a": rank_a, "rank_b": rank_b},
+                "diagnostics": {
+                    "rank_a": rank_a, "rank_b": rank_b,
+                    "venue": venue, "pace": pace,
+                },
                 "features": features,
                 "samples": {
                     "recent_a": recent_a["sample"], "recent_b": recent_b["sample"],
