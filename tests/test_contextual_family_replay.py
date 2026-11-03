@@ -212,6 +212,7 @@ def test_recent_form_candidate_uses_tour_specific_decay_without_surface_vote():
         assert audit["status"] == "READY"
         assert audit["same_surface_excluded_to_avoid_double_counting"] is True
         assert target["features"]["contextual_recent_result_core_v1"] > 0
+        assert target["features"]["contextual_recent_bad_loss_penalty_v2"] > 0
         assert "probability" not in target
     assert atp["candidate_equation_audit"]["recent_form_v1"]["decay_days"] == {
         "result": 90, "competitiveness": 45,

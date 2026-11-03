@@ -168,6 +168,22 @@ def test_v2_separates_strength_of_wins_losses_and_competitiveness():
     assert target["winner_minus_loser"]["game_margin_balance"] > 0
 
 
+def test_bad_loss_penalty_never_rewards_a_loss_to_stronger_opposition():
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    frame = pd.DataFrame([
+        _match(start, "Elite", "A", 10, 80),
+        _match(start, "Weak", "B", 150, 50),
+        _match(start + timedelta(days=5), "A", "B", 70, 55),
+    ])
+
+    target = build_recent_form_replay_rows(
+        frame, universe="atp", half_life_candidates=(None,),
+    )[-1]["candidates"]["uniform_90d"]
+
+    assert target["winner"]["bad_loss_penalty"] == 0.0
+    assert target["loser"]["bad_loss_penalty"] > 0.0
+
+
 def test_quality_replay_source_health_rejects_rankless_fallback():
     today = datetime.now(timezone.utc)
     frame = pd.DataFrame([

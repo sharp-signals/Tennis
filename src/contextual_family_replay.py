@@ -53,6 +53,7 @@ FEATURE_FAMILIES = {
     "contextual_recent_competitiveness_v1": "recent_form",
     "contextual_recent_win_quality_v1": "recent_form",
     "contextual_recent_loss_context_v1": "recent_form",
+    "contextual_recent_bad_loss_penalty_v2": "recent_form",
     "current_rank_log_ratio": "structural_strength",
     "rank_change_from_last_observation": "structural_strength",
     "contextual_structural_signal_v1": "structural_strength",
@@ -341,6 +342,12 @@ def _candidate_equation_features(
                 summaries_a["loss_context"]["loss_opponent_strength"],
                 summaries_b["loss_context"]["loss_opponent_strength"],
             ),
+            # Positive favours A: B has accumulated the larger penalty from
+            # defeats against structurally weaker opponents.
+            "contextual_recent_bad_loss_penalty_v2": _difference(
+                summaries_b["loss_context"]["bad_loss_penalty"],
+                summaries_a["loss_context"]["bad_loss_penalty"],
+            ),
         }
         recent_audit = {
             "status": "READY",
@@ -353,6 +360,10 @@ def _candidate_equation_features(
             "loss_context_rule": (
                 "diagnostic only; strong losses may reduce a penalty but must "
                 "not create standalone positive credit"
+            ),
+            "bad_loss_rule": (
+                "only losses against a lower-ranked opponent are penalized; "
+                "strong-opponent losses contribute zero"
             ),
             "same_surface_excluded_to_avoid_double_counting": True,
         }

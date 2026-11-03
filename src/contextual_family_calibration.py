@@ -86,6 +86,14 @@ CALIBRATION_FEATURE_PROFILES = {
             "contextual_recent_loss_context_v1",
         ),
     },
+    "recent_guarded_v4": {
+        "recent_form": (
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_residual_v2",
+            "contextual_recent_win_quality_v1",
+            "contextual_recent_bad_loss_penalty_v2",
+        ),
+    },
 }
 
 
@@ -156,6 +164,7 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
     if feature_profile not in {
         "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
         "contextual_v5", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
+        "recent_guarded_v4",
     }:
         return None
     return np.asarray([
@@ -172,6 +181,8 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_recent_competitiveness_v1",
             "contextual_recent_win_quality_v1",
             "contextual_recent_loss_context_v1",
+            "contextual_recent_competitiveness_residual_v2",
+            "contextual_recent_bad_loss_penalty_v2",
         }
         for name in columns
     ], dtype=bool)
@@ -659,6 +670,10 @@ def compare_recent_form_feature_profiles(
         )
         for name in profile_names
     }
+    guarded_split, guarded_audit = _build_guarded_recent_split(split)
+    profiles["recent_guarded_v4"] = calibrate_family(
+        guarded_split, family="recent_form", feature_profile="recent_guarded_v4",
+    )
     if any(item.get("status") == "INSUFFICIENT_COVERAGE" for item in profiles.values()):
         return {
             "schema_version": SCHEMA_VERSION,
@@ -672,10 +687,15 @@ def compare_recent_form_feature_profiles(
     predictions = {
         name: predict_family_equation(holdout, _runtime_model(model))
         for name, model in profiles.items()
+        if name != "recent_guarded_v4"
     }
+    predictions["recent_guarded_v4"] = predict_family_equation(
+        guarded_split["holdout"], _runtime_model(profiles["recent_guarded_v4"]),
+    )
+    all_profile_names = profile_names + ("recent_guarded_v4",)
     wanted = [
         index for index in range(len(holdout))
-        if all(predictions[name][index] is not None for name in profile_names)
+        if all(predictions[name][index] is not None for name in all_profile_names)
     ]
     if not wanted:
         return {
@@ -695,7 +715,7 @@ def compare_recent_form_feature_profiles(
             np.asarray([predictions[name][index] for index in wanted]),
             total_targets=len(holdout),
         )
-        for name in profile_names
+        for name in all_profile_names
     }
     incremental = {}
     for previous, current in zip(profile_names, profile_names[1:]):
@@ -728,6 +748,28 @@ def compare_recent_form_feature_profiles(
             ),
             "status": verdict,
         }
+    guard_old = np.clip(np.asarray([
+        predictions["recent_v3"][index] for index in wanted
+    ]), 1e-9, 1.0 - 1e-9)
+    guard_new = np.clip(np.asarray([
+        predictions["recent_guarded_v4"][index] for index in wanted
+    ]), 1e-9, 1.0 - 1e-9)
+    old_loss = -(targets * np.log(guard_old) + (1.0 - targets) * np.log(1.0 - guard_old))
+    new_loss = -(targets * np.log(guard_new) + (1.0 - targets) * np.log(1.0 - guard_new))
+    guard_gain = old_loss - new_loss
+    guard_mean = float(guard_gain.mean())
+    guard_se = (
+        float(guard_gain.std(ddof=1) / np.sqrt(len(guard_gain)))
+        if len(guard_gain) > 1 else None
+    )
+    guard_lower = guard_mean - 1.96 * guard_se if guard_se is not None else None
+    guard_upper = guard_mean + 1.96 * guard_se if guard_se is not None else None
+    if guard_lower is not None and guard_lower > 0:
+        guard_verdict = "GUARDED_BETTER"
+    elif guard_upper is not None and guard_upper < 0:
+        guard_verdict = "RAW_BETTER"
+    else:
+        guard_verdict = "INCONCLUSIVE"
     return {
         "schema_version": SCHEMA_VERSION,
         "universe": str(universe).strip().casefold(),
@@ -738,9 +780,63 @@ def compare_recent_form_feature_profiles(
         "profiles": profiles,
         "paired_holdout_metrics": paired_metrics,
         "incremental_comparisons": incremental,
+        "guarded_comparison": {
+            "baseline": "recent_v3",
+            "candidate": "recent_guarded_v4",
+            "log_loss_gain": round(guard_mean, 6),
+            "gain_95pct_ci": (
+                None if guard_lower is None else [
+                    round(guard_lower, 6), round(guard_upper, 6),
+                ]
+            ),
+            "status": guard_verdict,
+            "audit": guarded_audit,
+        },
         "loss_context_promotion_blocked": True,
         "loss_context_requires_asymmetric_guard": True,
         "market_used": False,
         "production_effect": False,
         "promotion_authorized": False,
+    }
+
+
+def _build_guarded_recent_split(
+    split: dict[str, list[dict[str, Any]]],
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any]]:
+    """Remove result duplication from margin using train-only information."""
+    result_key = "contextual_recent_result_core_v1"
+    margin_key = "contextual_recent_competitiveness_v1"
+    residual_key = "contextual_recent_competitiveness_residual_v2"
+    pairs = [
+        (float(row["features"][result_key]), float(row["features"][margin_key]))
+        for row in split["train"]
+        if row.get("features", {}).get(result_key) is not None
+        and row.get("features", {}).get(margin_key) is not None
+    ]
+    if pairs:
+        x = np.asarray([item[0] for item in pairs], dtype=float)
+        y = np.asarray([item[1] for item in pairs], dtype=float)
+        denominator = float(x @ x)
+        slope = float((x @ y) / denominator) if denominator > 1e-12 else 0.0
+    else:
+        slope = 0.0
+    guarded: dict[str, list[dict[str, Any]]] = {}
+    for part, rows in split.items():
+        guarded[part] = []
+        for row in rows:
+            features = dict(row.get("features", {}))
+            result = features.get(result_key)
+            margin = features.get(margin_key)
+            features[residual_key] = (
+                float(margin) - slope * float(result)
+                if result is not None and margin is not None else None
+            )
+            guarded[part].append({**row, "features": features})
+    return guarded, {
+        "fit_partition": "train_only",
+        "intercept_forced_to_zero_for_antisymmetry": True,
+        "result_to_margin_slope": round(slope, 8),
+        "meaning": "margin component unexplained by win/loss balance",
+        "bad_loss_is_penalty_only": True,
+        "strong_loss_positive_credit_prohibited": True,
     }

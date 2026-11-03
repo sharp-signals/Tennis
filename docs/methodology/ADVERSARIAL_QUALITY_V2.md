@@ -90,3 +90,11 @@ Isto autoriza a construção da equação seguinte, não a promoção do ajuste
 estatístico atual. Em particular, o contexto das derrotas continua bloqueado
 até existir uma barreira assimétrica que impeça uma derrota contra oposição
 forte de gerar crédito positivo autónomo.
+
+O primeiro candidato de barreira foi rejeitado: remover integralmente da
+margem de games a parte associada ao resultado piorou significativamente o
+holdout ATP e WTA, e a penalização isolada por derrotas contra jogadores pior
+classificados recebeu coeficiente zero. Resultado e margem permanecem, por
+isso, dentro de uma única equação calibrada — não como votos somados. O próximo
+ensaio deverá limitar o alívio de derrotas fortes ao nível do próprio jogador,
+sem permitir que a sua forma atravesse zero por essa via.

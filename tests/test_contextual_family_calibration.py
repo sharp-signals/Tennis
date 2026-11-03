@@ -2,6 +2,7 @@ import math
 
 from src.contextual_family_calibration import (
     _fit_logistic_elastic_net,
+    _build_guarded_recent_split,
     _paired_segment_diagnostics,
     _structural_segment_labels,
     calibrate_contextual_families,
@@ -251,6 +252,7 @@ def test_recent_form_profiles_follow_human_order_and_remain_shadow_only():
         direction = 1.0 if row["target_a_win"] else -1.0
         for index, name in enumerate(names, start=1):
             row["features"][name] = direction / index
+        row["features"]["contextual_recent_bad_loss_penalty_v2"] = direction / 5
 
     result = compare_recent_form_feature_profiles(rows, universe="atp")
 
@@ -258,6 +260,12 @@ def test_recent_form_profiles_follow_human_order_and_remain_shadow_only():
     assert result["paired_holdout_targets"] > 0
     assert result["profiles"]["recent_v0"]["features"] == [names[0]]
     assert result["profiles"]["recent_v3"]["features"] == list(names)
+    assert result["profiles"]["recent_guarded_v4"]["features"] == [
+        "contextual_recent_result_core_v1",
+        "contextual_recent_competitiveness_residual_v2",
+        "contextual_recent_win_quality_v1",
+        "contextual_recent_bad_loss_penalty_v2",
+    ]
     assert all(
         result["profiles"]["recent_v3"]["coefficients"][name] >= 0
         for name in names
@@ -269,3 +277,27 @@ def test_recent_form_profiles_follow_human_order_and_remain_shadow_only():
     )
     assert result["market_used"] is False
     assert result["production_effect"] is False
+
+
+def test_guarded_competitiveness_removes_train_fitted_result_component():
+    split = {"train": [], "validation": [], "holdout": []}
+    for part in split:
+        for result in (-1.0, -0.5, 0.5, 1.0):
+            split[part].append({
+                "target_a_win": result > 0,
+                "features": {
+                    "contextual_recent_result_core_v1": result,
+                    "contextual_recent_competitiveness_v1": 4.0 * result + 0.25,
+                },
+            })
+
+    guarded, audit = _build_guarded_recent_split(split)
+
+    assert audit["fit_partition"] == "train_only"
+    assert audit["intercept_forced_to_zero_for_antisymmetry"] is True
+    assert math.isclose(audit["result_to_margin_slope"], 4.0)
+    # The common result-driven part is removed; only the small residual stays.
+    assert all(
+        abs(row["features"]["contextual_recent_competitiveness_residual_v2"]) < 0.5
+        for row in guarded["holdout"]
+    )

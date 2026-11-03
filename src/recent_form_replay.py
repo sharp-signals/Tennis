@@ -117,6 +117,7 @@ def _summarize_player_history(
             "losses_sample": 0,
             "game_margin_sample": 0,
             **{feature: None for feature in FEATURES},
+            "bad_loss_penalty": None,
         }
 
     weights = [
@@ -138,8 +139,18 @@ def _summarize_player_history(
             weight * (item["quality_win"] - item["quality_loss"])
             for weight, item in ranked
         ) / ranked_weight
+        # Only losses against a structurally weaker opponent carry a penalty.
+        # Wins and losses against stronger opposition contribute zero, so this
+        # component can never turn a strong loss into standalone positive
+        # credit.  Dividing by all ranked recent matches also preserves the
+        # frequency of bad losses rather than only their average severity.
+        bad_loss_penalty = sum(
+            weight * float(item["quality_loss"])
+            for weight, item in ranked
+        ) / ranked_weight
     else:
         ranking_surprise = None
+        bad_loss_penalty = None
 
     wins = [
         (weight, item) for weight, item in zip(weights, eligible)
@@ -194,6 +205,7 @@ def _summarize_player_history(
         "game_margin_sample": len(margins),
         "result_balance": result_balance,
         "ranking_surprise_balance_v1": ranking_surprise,
+        "bad_loss_penalty": bad_loss_penalty,
         "win_opponent_strength": opponent_strength(wins),
         "loss_opponent_strength": opponent_strength(losses),
         "game_margin_balance": game_margin_balance,
