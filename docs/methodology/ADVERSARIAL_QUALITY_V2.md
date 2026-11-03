@@ -2,7 +2,8 @@
 
 **CHANGE-ID:** CHANGE-2026-11-02-175
 
-**Estado:** implementação observacional; replay real pendente de fonte rica
+**Estado:** replay ATP/WTA concluído; componentes aprovadas para construção da
+equação observacional da forma recente
 
 ## Objetivo
 
@@ -52,3 +53,30 @@ Foi também criado um workflow diário exclusivamente para atualizar a última
 cópia válida de ATP, WTA e Challenger, sem executar o bot, sem odds e sem APIs
 pagas. Assim, o histórico pode continuar atualizado enquanto o workflow do bot
 permanece desativado.
+
+## Decisão após replay cronológico de 03/11/2026
+
+O replay usou 26 627 alvos ATP e 24 436 WTA entre 2017 e 2026. A escolha do
+decaimento foi feita apenas na validação; o holdout permaneceu intocado até à
+avaliação final.
+
+- `result_balance` é o núcleo factual e mantém uma janela uniforme de 90 dias
+  nos dois circuitos.
+- `game_margin_balance` é uma medida de competitividade, não um segundo voto
+  completo. O decaimento selecionado foi 45 dias no ATP e 90 dias no WTA.
+- `win_opponent_strength` confirmou sinal adicional com meia-vida de 60 dias
+  nos dois circuitos.
+- `loss_opponent_strength` confirmou que a qualidade das derrotas contém
+  informação. Usa meia-vida de 45 dias no ATP e 90 dias no WTA, mas apenas para
+  modular a penalização de uma derrota: perder com oposição forte nunca vale
+  como vitória nem produz crédito positivo autónomo.
+- `same_surface_result_balance` mostrou sinal, mas pertence à família
+  `surface_conditions`. Na equação de forma recente será apenas contexto de
+  transferência/relevância, sem novo voto independente.
+- `ranking_surprise_balance_v1` ficou abaixo de 50% fora da amostra nos dois
+  circuitos e continua formalmente rejeitada.
+
+Os Challengers não participaram nesta decisão. Podem ser observados em replay
+separado, mas não determinam a equação principal ATP/WTA.
+
+Este contrato continua sem efeito em produção, PAPER, fair odds ou relatórios.

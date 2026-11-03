@@ -1,0 +1,2580 @@
+{
+  "mode": "READ_ONLY_EX_ANTE_REPLAY",
+  "primary_decision_scope": [
+    "atp",
+    "wta"
+  ],
+  "challenger_role": "OBSERVATIONAL_ONLY",
+  "rapidapi_used": false,
+  "market_used": false,
+  "source_health": {
+    "atp": {
+      "universe": "atp",
+      "source": "tennismylife",
+      "rows": 27533,
+      "bilateral_rank_coverage_pct": 98.43,
+      "latest_event_date": "2026-11-02",
+      "staleness_days": 1,
+      "required_rank_coverage_pct": 90.0,
+      "maximum_staleness_days": 14,
+      "healthy_for_quality_replay": true
+    },
+    "wta": {
+      "universe": "wta",
+      "source": "tennismylife",
+      "rows": 25389,
+      "bilateral_rank_coverage_pct": 97.93,
+      "latest_event_date": "2026-11-03",
+      "staleness_days": 0,
+      "required_rank_coverage_pct": 90.0,
+      "maximum_staleness_days": 14,
+      "healthy_for_quality_replay": true
+    }
+  },
+  "reports": {
+    "atp": {
+      "schema_version": 1,
+      "change_id": "CHANGE-2026-11-02-175",
+      "universe": "atp",
+      "window_days": 90,
+      "market_used": false,
+      "production_effect": false,
+      "same_day_policy": "all matches on cutoff date excluded from prior history",
+      "result": {
+        "status": "OBSERVATIONAL_ONLY",
+        "targets": 26627,
+        "date_range": [
+          "2017-01-02",
+          "2026-11-02"
+        ],
+        "split_targets": {
+          "train": 16002,
+          "validation": 5410,
+          "holdout": 5215
+        },
+        "features": {
+          "result_balance": {
+            "selected_on_validation": "uniform_90d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12750,
+                  "coverage_pct": 79.7,
+                  "correct": 7420,
+                  "incorrect": 4659,
+                  "ties": 671,
+                  "directional_accuracy_with_half_ties_pct": 60.83,
+                  "mean_winner_minus_loser": 0.155229
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4527,
+                  "coverage_pct": 83.7,
+                  "correct": 2684,
+                  "incorrect": 1675,
+                  "ties": 168,
+                  "directional_accuracy_with_half_ties_pct": 61.14,
+                  "mean_winner_minus_loser": 0.149815
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4430,
+                  "coverage_pct": 84.9,
+                  "correct": 2563,
+                  "incorrect": 1663,
+                  "ties": 204,
+                  "directional_accuracy_with_half_ties_pct": 60.16,
+                  "mean_winner_minus_loser": 0.119229
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12750,
+                  "coverage_pct": 79.7,
+                  "correct": 7605,
+                  "incorrect": 4889,
+                  "ties": 256,
+                  "directional_accuracy_with_half_ties_pct": 60.65,
+                  "mean_winner_minus_loser": 0.162902
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4527,
+                  "coverage_pct": 83.7,
+                  "correct": 2711,
+                  "incorrect": 1772,
+                  "ties": 44,
+                  "directional_accuracy_with_half_ties_pct": 60.37,
+                  "mean_winner_minus_loser": 0.153911
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4430,
+                  "coverage_pct": 84.9,
+                  "correct": 2545,
+                  "incorrect": 1831,
+                  "ties": 54,
+                  "directional_accuracy_with_half_ties_pct": 58.06,
+                  "mean_winner_minus_loser": 0.114369
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12750,
+                  "coverage_pct": 79.7,
+                  "correct": 7628,
+                  "incorrect": 4867,
+                  "ties": 255,
+                  "directional_accuracy_with_half_ties_pct": 60.83,
+                  "mean_winner_minus_loser": 0.160699
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4527,
+                  "coverage_pct": 83.7,
+                  "correct": 2730,
+                  "incorrect": 1753,
+                  "ties": 44,
+                  "directional_accuracy_with_half_ties_pct": 60.79,
+                  "mean_winner_minus_loser": 0.152657
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4430,
+                  "coverage_pct": 84.9,
+                  "correct": 2589,
+                  "incorrect": 1787,
+                  "ties": 54,
+                  "directional_accuracy_with_half_ties_pct": 59.05,
+                  "mean_winner_minus_loser": 0.115803
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12750,
+                  "coverage_pct": 79.7,
+                  "correct": 7660,
+                  "incorrect": 4835,
+                  "ties": 255,
+                  "directional_accuracy_with_half_ties_pct": 61.08,
+                  "mean_winner_minus_loser": 0.158872
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4527,
+                  "coverage_pct": 83.7,
+                  "correct": 2726,
+                  "incorrect": 1757,
+                  "ties": 44,
+                  "directional_accuracy_with_half_ties_pct": 60.7,
+                  "mean_winner_minus_loser": 0.151654
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4430,
+                  "coverage_pct": 84.9,
+                  "correct": 2609,
+                  "incorrect": 1767,
+                  "ties": 54,
+                  "directional_accuracy_with_half_ties_pct": 59.5,
+                  "mean_winner_minus_loser": 0.116936
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12750,
+                  "coverage_pct": 79.7,
+                  "correct": 7676,
+                  "incorrect": 4819,
+                  "ties": 255,
+                  "directional_accuracy_with_half_ties_pct": 61.2,
+                  "mean_winner_minus_loser": 0.157942
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4527,
+                  "coverage_pct": 83.7,
+                  "correct": 2738,
+                  "incorrect": 1745,
+                  "ties": 44,
+                  "directional_accuracy_with_half_ties_pct": 60.97,
+                  "mean_winner_minus_loser": 0.151162
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4430,
+                  "coverage_pct": 84.9,
+                  "correct": 2608,
+                  "incorrect": 1768,
+                  "ties": 54,
+                  "directional_accuracy_with_half_ties_pct": 59.48,
+                  "mean_winner_minus_loser": 0.117509
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12750,
+                  "coverage_pct": 79.7,
+                  "correct": 7667,
+                  "incorrect": 4828,
+                  "ties": 255,
+                  "directional_accuracy_with_half_ties_pct": 61.13,
+                  "mean_winner_minus_loser": 0.157017
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4527,
+                  "coverage_pct": 83.7,
+                  "correct": 2731,
+                  "incorrect": 1752,
+                  "ties": 44,
+                  "directional_accuracy_with_half_ties_pct": 60.81,
+                  "mean_winner_minus_loser": 0.150687
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4430,
+                  "coverage_pct": 84.9,
+                  "correct": 2609,
+                  "incorrect": 1767,
+                  "ties": 54,
+                  "directional_accuracy_with_half_ties_pct": 59.5,
+                  "mean_winner_minus_loser": 0.118085
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 5215,
+              "covered": 4430,
+              "coverage_pct": 84.9,
+              "correct": 2563,
+              "incorrect": 1663,
+              "ties": 204,
+              "directional_accuracy_with_half_ties_pct": 60.16,
+              "mean_winner_minus_loser": 0.119229
+            }
+          },
+          "ranking_surprise_balance_v1": {
+            "selected_on_validation": "half_life_21d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12717,
+                  "coverage_pct": 79.5,
+                  "correct": 5872,
+                  "incorrect": 6700,
+                  "ties": 145,
+                  "directional_accuracy_with_half_ties_pct": 46.74,
+                  "mean_winner_minus_loser": -0.041301
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4520,
+                  "coverage_pct": 83.5,
+                  "correct": 2089,
+                  "incorrect": 2403,
+                  "ties": 28,
+                  "directional_accuracy_with_half_ties_pct": 46.53,
+                  "mean_winner_minus_loser": -0.04791
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4426,
+                  "coverage_pct": 84.9,
+                  "correct": 1907,
+                  "incorrect": 2488,
+                  "ties": 31,
+                  "directional_accuracy_with_half_ties_pct": 43.44,
+                  "mean_winner_minus_loser": -0.083069
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12717,
+                  "coverage_pct": 79.5,
+                  "correct": 5878,
+                  "incorrect": 6694,
+                  "ties": 145,
+                  "directional_accuracy_with_half_ties_pct": 46.79,
+                  "mean_winner_minus_loser": -0.041224
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4520,
+                  "coverage_pct": 83.5,
+                  "correct": 2095,
+                  "incorrect": 2398,
+                  "ties": 27,
+                  "directional_accuracy_with_half_ties_pct": 46.65,
+                  "mean_winner_minus_loser": -0.04306
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4426,
+                  "coverage_pct": 84.9,
+                  "correct": 1909,
+                  "incorrect": 2486,
+                  "ties": 31,
+                  "directional_accuracy_with_half_ties_pct": 43.48,
+                  "mean_winner_minus_loser": -0.088609
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12717,
+                  "coverage_pct": 79.5,
+                  "correct": 5835,
+                  "incorrect": 6737,
+                  "ties": 145,
+                  "directional_accuracy_with_half_ties_pct": 46.45,
+                  "mean_winner_minus_loser": -0.040814
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4520,
+                  "coverage_pct": 83.5,
+                  "correct": 2077,
+                  "incorrect": 2416,
+                  "ties": 27,
+                  "directional_accuracy_with_half_ties_pct": 46.25,
+                  "mean_winner_minus_loser": -0.043954
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4426,
+                  "coverage_pct": 84.9,
+                  "correct": 1909,
+                  "incorrect": 2486,
+                  "ties": 31,
+                  "directional_accuracy_with_half_ties_pct": 43.48,
+                  "mean_winner_minus_loser": -0.087139
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12717,
+                  "coverage_pct": 79.5,
+                  "correct": 5881,
+                  "incorrect": 6691,
+                  "ties": 145,
+                  "directional_accuracy_with_half_ties_pct": 46.82,
+                  "mean_winner_minus_loser": -0.040698
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4520,
+                  "coverage_pct": 83.5,
+                  "correct": 2060,
+                  "incorrect": 2433,
+                  "ties": 27,
+                  "directional_accuracy_with_half_ties_pct": 45.87,
+                  "mean_winner_minus_loser": -0.045004
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4426,
+                  "coverage_pct": 84.9,
+                  "correct": 1906,
+                  "incorrect": 2489,
+                  "ties": 31,
+                  "directional_accuracy_with_half_ties_pct": 43.41,
+                  "mean_winner_minus_loser": -0.085863
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12717,
+                  "coverage_pct": 79.5,
+                  "correct": 5870,
+                  "incorrect": 6702,
+                  "ties": 145,
+                  "directional_accuracy_with_half_ties_pct": 46.73,
+                  "mean_winner_minus_loser": -0.040736
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4520,
+                  "coverage_pct": 83.5,
+                  "correct": 2072,
+                  "incorrect": 2421,
+                  "ties": 27,
+                  "directional_accuracy_with_half_ties_pct": 46.14,
+                  "mean_winner_minus_loser": -0.045642
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4426,
+                  "coverage_pct": 84.9,
+                  "correct": 1913,
+                  "incorrect": 2482,
+                  "ties": 31,
+                  "directional_accuracy_with_half_ties_pct": 43.57,
+                  "mean_winner_minus_loser": -0.085184
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12717,
+                  "coverage_pct": 79.5,
+                  "correct": 5863,
+                  "incorrect": 6709,
+                  "ties": 145,
+                  "directional_accuracy_with_half_ties_pct": 46.67,
+                  "mean_winner_minus_loser": -0.040847
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4520,
+                  "coverage_pct": 83.5,
+                  "correct": 2070,
+                  "incorrect": 2423,
+                  "ties": 27,
+                  "directional_accuracy_with_half_ties_pct": 46.1,
+                  "mean_winner_minus_loser": -0.046347
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4426,
+                  "coverage_pct": 84.9,
+                  "correct": 1917,
+                  "incorrect": 2478,
+                  "ties": 31,
+                  "directional_accuracy_with_half_ties_pct": 43.66,
+                  "mean_winner_minus_loser": -0.084484
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 5215,
+              "covered": 4426,
+              "coverage_pct": 84.9,
+              "correct": 1909,
+              "incorrect": 2486,
+              "ties": 31,
+              "directional_accuracy_with_half_ties_pct": 43.48,
+              "mean_winner_minus_loser": -0.088609
+            }
+          },
+          "win_opponent_strength": {
+            "selected_on_validation": "half_life_60d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 10451,
+                  "coverage_pct": 65.3,
+                  "correct": 6013,
+                  "incorrect": 4437,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.54,
+                  "mean_winner_minus_loser": 0.133798
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3837,
+                  "coverage_pct": 70.9,
+                  "correct": 2202,
+                  "incorrect": 1635,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 57.39,
+                  "mean_winner_minus_loser": 0.129304
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3907,
+                  "coverage_pct": 74.9,
+                  "correct": 2212,
+                  "incorrect": 1694,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 56.63,
+                  "mean_winner_minus_loser": 0.104184
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 10451,
+                  "coverage_pct": 65.3,
+                  "correct": 5969,
+                  "incorrect": 4481,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.12,
+                  "mean_winner_minus_loser": 0.137464
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3837,
+                  "coverage_pct": 70.9,
+                  "correct": 2175,
+                  "incorrect": 1662,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 56.68,
+                  "mean_winner_minus_loser": 0.142549
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3907,
+                  "coverage_pct": 74.9,
+                  "correct": 2174,
+                  "incorrect": 1732,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 55.66,
+                  "mean_winner_minus_loser": 0.097664
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 10451,
+                  "coverage_pct": 65.3,
+                  "correct": 5978,
+                  "incorrect": 4472,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.21,
+                  "mean_winner_minus_loser": 0.13682
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3837,
+                  "coverage_pct": 70.9,
+                  "correct": 2176,
+                  "incorrect": 1661,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 56.71,
+                  "mean_winner_minus_loser": 0.139137
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3907,
+                  "coverage_pct": 74.9,
+                  "correct": 2178,
+                  "incorrect": 1728,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 55.76,
+                  "mean_winner_minus_loser": 0.099183
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 10451,
+                  "coverage_pct": 65.3,
+                  "correct": 5992,
+                  "incorrect": 4458,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.34,
+                  "mean_winner_minus_loser": 0.136078
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3837,
+                  "coverage_pct": 70.9,
+                  "correct": 2197,
+                  "incorrect": 1640,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 57.26,
+                  "mean_winner_minus_loser": 0.136054
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3907,
+                  "coverage_pct": 74.9,
+                  "correct": 2208,
+                  "incorrect": 1698,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 56.53,
+                  "mean_winner_minus_loser": 0.100774
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 10451,
+                  "coverage_pct": 65.3,
+                  "correct": 6003,
+                  "incorrect": 4447,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.44,
+                  "mean_winner_minus_loser": 0.135609
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3837,
+                  "coverage_pct": 70.9,
+                  "correct": 2218,
+                  "incorrect": 1619,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 57.81,
+                  "mean_winner_minus_loser": 0.134406
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3907,
+                  "coverage_pct": 74.9,
+                  "correct": 2199,
+                  "incorrect": 1707,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 56.3,
+                  "mean_winner_minus_loser": 0.101649
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 10451,
+                  "coverage_pct": 65.3,
+                  "correct": 6005,
+                  "incorrect": 4445,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.46,
+                  "mean_winner_minus_loser": 0.135071
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3837,
+                  "coverage_pct": 70.9,
+                  "correct": 2214,
+                  "incorrect": 1623,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 57.7,
+                  "mean_winner_minus_loser": 0.132714
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3907,
+                  "coverage_pct": 74.9,
+                  "correct": 2197,
+                  "incorrect": 1709,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 56.25,
+                  "mean_winner_minus_loser": 0.102533
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 5215,
+              "covered": 3907,
+              "coverage_pct": 74.9,
+              "correct": 2199,
+              "incorrect": 1707,
+              "ties": 1,
+              "directional_accuracy_with_half_ties_pct": 56.3,
+              "mean_winner_minus_loser": 0.101649
+            }
+          },
+          "loss_opponent_strength": {
+            "selected_on_validation": "half_life_45d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12476,
+                  "coverage_pct": 78.0,
+                  "correct": 7129,
+                  "incorrect": 5339,
+                  "ties": 8,
+                  "directional_accuracy_with_half_ties_pct": 57.17,
+                  "mean_winner_minus_loser": 0.179763
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4460,
+                  "coverage_pct": 82.4,
+                  "correct": 2616,
+                  "incorrect": 1843,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.67,
+                  "mean_winner_minus_loser": 0.21613
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4254,
+                  "coverage_pct": 81.6,
+                  "correct": 2412,
+                  "incorrect": 1840,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 56.72,
+                  "mean_winner_minus_loser": 0.184754
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12476,
+                  "coverage_pct": 78.0,
+                  "correct": 7123,
+                  "incorrect": 5345,
+                  "ties": 8,
+                  "directional_accuracy_with_half_ties_pct": 57.13,
+                  "mean_winner_minus_loser": 0.189081
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4460,
+                  "coverage_pct": 82.4,
+                  "correct": 2593,
+                  "incorrect": 1866,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.15,
+                  "mean_winner_minus_loser": 0.225082
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4254,
+                  "coverage_pct": 81.6,
+                  "correct": 2348,
+                  "incorrect": 1904,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 55.22,
+                  "mean_winner_minus_loser": 0.173559
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12476,
+                  "coverage_pct": 78.0,
+                  "correct": 7154,
+                  "incorrect": 5314,
+                  "ties": 8,
+                  "directional_accuracy_with_half_ties_pct": 57.37,
+                  "mean_winner_minus_loser": 0.186551
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4460,
+                  "coverage_pct": 82.4,
+                  "correct": 2616,
+                  "incorrect": 1843,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.67,
+                  "mean_winner_minus_loser": 0.222641
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4254,
+                  "coverage_pct": 81.6,
+                  "correct": 2350,
+                  "incorrect": 1902,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 55.27,
+                  "mean_winner_minus_loser": 0.175953
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12476,
+                  "coverage_pct": 78.0,
+                  "correct": 7153,
+                  "incorrect": 5315,
+                  "ties": 8,
+                  "directional_accuracy_with_half_ties_pct": 57.37,
+                  "mean_winner_minus_loser": 0.18445
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4460,
+                  "coverage_pct": 82.4,
+                  "correct": 2633,
+                  "incorrect": 1826,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 59.05,
+                  "mean_winner_minus_loser": 0.220554
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4254,
+                  "coverage_pct": 81.6,
+                  "correct": 2381,
+                  "incorrect": 1871,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 55.99,
+                  "mean_winner_minus_loser": 0.17843
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12476,
+                  "coverage_pct": 78.0,
+                  "correct": 7163,
+                  "incorrect": 5305,
+                  "ties": 8,
+                  "directional_accuracy_with_half_ties_pct": 57.45,
+                  "mean_winner_minus_loser": 0.183342
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4460,
+                  "coverage_pct": 82.4,
+                  "correct": 2622,
+                  "incorrect": 1837,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.8,
+                  "mean_winner_minus_loser": 0.219469
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4254,
+                  "coverage_pct": 81.6,
+                  "correct": 2395,
+                  "incorrect": 1857,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 56.32,
+                  "mean_winner_minus_loser": 0.179859
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12476,
+                  "coverage_pct": 78.0,
+                  "correct": 7148,
+                  "incorrect": 5320,
+                  "ties": 8,
+                  "directional_accuracy_with_half_ties_pct": 57.33,
+                  "mean_winner_minus_loser": 0.182192
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4460,
+                  "coverage_pct": 82.4,
+                  "correct": 2632,
+                  "incorrect": 1827,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 59.02,
+                  "mean_winner_minus_loser": 0.218366
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4254,
+                  "coverage_pct": 81.6,
+                  "correct": 2402,
+                  "incorrect": 1850,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 56.49,
+                  "mean_winner_minus_loser": 0.181401
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 5215,
+              "covered": 4254,
+              "coverage_pct": 81.6,
+              "correct": 2381,
+              "incorrect": 1871,
+              "ties": 2,
+              "directional_accuracy_with_half_ties_pct": 55.99,
+              "mean_winner_minus_loser": 0.17843
+            }
+          },
+          "game_margin_balance": {
+            "selected_on_validation": "half_life_45d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12746,
+                  "coverage_pct": 79.7,
+                  "correct": 7833,
+                  "incorrect": 4835,
+                  "ties": 78,
+                  "directional_accuracy_with_half_ties_pct": 61.76,
+                  "mean_winner_minus_loser": 1.007298
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4517,
+                  "coverage_pct": 83.5,
+                  "correct": 2766,
+                  "incorrect": 1728,
+                  "ties": 23,
+                  "directional_accuracy_with_half_ties_pct": 61.49,
+                  "mean_winner_minus_loser": 0.9548
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4420,
+                  "coverage_pct": 84.8,
+                  "correct": 2656,
+                  "incorrect": 1738,
+                  "ties": 26,
+                  "directional_accuracy_with_half_ties_pct": 60.38,
+                  "mean_winner_minus_loser": 0.814813
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12746,
+                  "coverage_pct": 79.7,
+                  "correct": 7832,
+                  "incorrect": 4903,
+                  "ties": 11,
+                  "directional_accuracy_with_half_ties_pct": 61.49,
+                  "mean_winner_minus_loser": 1.041119
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4517,
+                  "coverage_pct": 83.5,
+                  "correct": 2760,
+                  "incorrect": 1757,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 61.1,
+                  "mean_winner_minus_loser": 0.9579
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4420,
+                  "coverage_pct": 84.8,
+                  "correct": 2664,
+                  "incorrect": 1754,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 60.29,
+                  "mean_winner_minus_loser": 0.804391
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12746,
+                  "coverage_pct": 79.7,
+                  "correct": 7852,
+                  "incorrect": 4883,
+                  "ties": 11,
+                  "directional_accuracy_with_half_ties_pct": 61.65,
+                  "mean_winner_minus_loser": 1.030869
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4517,
+                  "coverage_pct": 83.5,
+                  "correct": 2776,
+                  "incorrect": 1741,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 61.46,
+                  "mean_winner_minus_loser": 0.956169
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4420,
+                  "coverage_pct": 84.8,
+                  "correct": 2679,
+                  "incorrect": 1739,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 60.63,
+                  "mean_winner_minus_loser": 0.808845
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12746,
+                  "coverage_pct": 79.7,
+                  "correct": 7874,
+                  "incorrect": 4861,
+                  "ties": 11,
+                  "directional_accuracy_with_half_ties_pct": 61.82,
+                  "mean_winner_minus_loser": 1.022687
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4517,
+                  "coverage_pct": 83.5,
+                  "correct": 2780,
+                  "incorrect": 1737,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 61.55,
+                  "mean_winner_minus_loser": 0.955168
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4420,
+                  "coverage_pct": 84.8,
+                  "correct": 2660,
+                  "incorrect": 1758,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 60.2,
+                  "mean_winner_minus_loser": 0.811226
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12746,
+                  "coverage_pct": 79.7,
+                  "correct": 7885,
+                  "incorrect": 4850,
+                  "ties": 11,
+                  "directional_accuracy_with_half_ties_pct": 61.91,
+                  "mean_winner_minus_loser": 1.01864
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4517,
+                  "coverage_pct": 83.5,
+                  "correct": 2779,
+                  "incorrect": 1738,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 61.52,
+                  "mean_winner_minus_loser": 0.95485
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4420,
+                  "coverage_pct": 84.8,
+                  "correct": 2662,
+                  "incorrect": 1756,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 60.25,
+                  "mean_winner_minus_loser": 0.812176
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 12746,
+                  "coverage_pct": 79.7,
+                  "correct": 7891,
+                  "incorrect": 4844,
+                  "ties": 11,
+                  "directional_accuracy_with_half_ties_pct": 61.95,
+                  "mean_winner_minus_loser": 1.014691
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 4517,
+                  "coverage_pct": 83.5,
+                  "correct": 2777,
+                  "incorrect": 1740,
+                  "ties": 0,
+                  "directional_accuracy_with_half_ties_pct": 61.48,
+                  "mean_winner_minus_loser": 0.954679
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 4420,
+                  "coverage_pct": 84.8,
+                  "correct": 2672,
+                  "incorrect": 1746,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 60.48,
+                  "mean_winner_minus_loser": 0.813046
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 5215,
+              "covered": 4420,
+              "coverage_pct": 84.8,
+              "correct": 2660,
+              "incorrect": 1758,
+              "ties": 2,
+              "directional_accuracy_with_half_ties_pct": 60.2,
+              "mean_winner_minus_loser": 0.811226
+            }
+          },
+          "same_surface_result_balance": {
+            "selected_on_validation": "half_life_30d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 9996,
+                  "coverage_pct": 62.5,
+                  "correct": 5545,
+                  "incorrect": 3586,
+                  "ties": 865,
+                  "directional_accuracy_with_half_ties_pct": 59.8,
+                  "mean_winner_minus_loser": 0.16095
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3534,
+                  "coverage_pct": 65.3,
+                  "correct": 1993,
+                  "incorrect": 1262,
+                  "ties": 279,
+                  "directional_accuracy_with_half_ties_pct": 60.34,
+                  "mean_winner_minus_loser": 0.170057
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3631,
+                  "coverage_pct": 69.6,
+                  "correct": 1899,
+                  "incorrect": 1343,
+                  "ties": 389,
+                  "directional_accuracy_with_half_ties_pct": 57.66,
+                  "mean_winner_minus_loser": 0.109801
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 9996,
+                  "coverage_pct": 62.5,
+                  "correct": 5708,
+                  "incorrect": 3802,
+                  "ties": 486,
+                  "directional_accuracy_with_half_ties_pct": 59.53,
+                  "mean_winner_minus_loser": 0.167884
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3534,
+                  "coverage_pct": 65.3,
+                  "correct": 2057,
+                  "incorrect": 1322,
+                  "ties": 155,
+                  "directional_accuracy_with_half_ties_pct": 60.4,
+                  "mean_winner_minus_loser": 0.17275
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3631,
+                  "coverage_pct": 69.6,
+                  "correct": 1952,
+                  "incorrect": 1450,
+                  "ties": 229,
+                  "directional_accuracy_with_half_ties_pct": 56.91,
+                  "mean_winner_minus_loser": 0.106703
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 9996,
+                  "coverage_pct": 62.5,
+                  "correct": 5733,
+                  "incorrect": 3781,
+                  "ties": 482,
+                  "directional_accuracy_with_half_ties_pct": 59.76,
+                  "mean_winner_minus_loser": 0.165869
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3534,
+                  "coverage_pct": 65.3,
+                  "correct": 2062,
+                  "incorrect": 1318,
+                  "ties": 154,
+                  "directional_accuracy_with_half_ties_pct": 60.53,
+                  "mean_winner_minus_loser": 0.17219
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3631,
+                  "coverage_pct": 69.6,
+                  "correct": 1970,
+                  "incorrect": 1432,
+                  "ties": 229,
+                  "directional_accuracy_with_half_ties_pct": 57.41,
+                  "mean_winner_minus_loser": 0.107877
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 9996,
+                  "coverage_pct": 62.5,
+                  "correct": 5744,
+                  "incorrect": 3770,
+                  "ties": 482,
+                  "directional_accuracy_with_half_ties_pct": 59.87,
+                  "mean_winner_minus_loser": 0.164207
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3534,
+                  "coverage_pct": 65.3,
+                  "correct": 2058,
+                  "incorrect": 1322,
+                  "ties": 154,
+                  "directional_accuracy_with_half_ties_pct": 60.41,
+                  "mean_winner_minus_loser": 0.171559
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3631,
+                  "coverage_pct": 69.6,
+                  "correct": 1977,
+                  "incorrect": 1425,
+                  "ties": 229,
+                  "directional_accuracy_with_half_ties_pct": 57.6,
+                  "mean_winner_minus_loser": 0.108637
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 9996,
+                  "coverage_pct": 62.5,
+                  "correct": 5758,
+                  "incorrect": 3756,
+                  "ties": 482,
+                  "directional_accuracy_with_half_ties_pct": 60.01,
+                  "mean_winner_minus_loser": 0.163366
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3534,
+                  "coverage_pct": 65.3,
+                  "correct": 2059,
+                  "incorrect": 1321,
+                  "ties": 154,
+                  "directional_accuracy_with_half_ties_pct": 60.44,
+                  "mean_winner_minus_loser": 0.171198
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3631,
+                  "coverage_pct": 69.6,
+                  "correct": 1971,
+                  "incorrect": 1431,
+                  "ties": 229,
+                  "directional_accuracy_with_half_ties_pct": 57.44,
+                  "mean_winner_minus_loser": 0.108967
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 16002,
+                  "covered": 9996,
+                  "coverage_pct": 62.5,
+                  "correct": 5742,
+                  "incorrect": 3772,
+                  "ties": 482,
+                  "directional_accuracy_with_half_ties_pct": 59.85,
+                  "mean_winner_minus_loser": 0.162534
+                },
+                "validation": {
+                  "targets": 5410,
+                  "covered": 3534,
+                  "coverage_pct": 65.3,
+                  "correct": 2054,
+                  "incorrect": 1326,
+                  "ties": 154,
+                  "directional_accuracy_with_half_ties_pct": 60.3,
+                  "mean_winner_minus_loser": 0.170822
+                },
+                "holdout": {
+                  "targets": 5215,
+                  "covered": 3631,
+                  "coverage_pct": 69.6,
+                  "correct": 1967,
+                  "incorrect": 1435,
+                  "ties": 229,
+                  "directional_accuracy_with_half_ties_pct": 57.33,
+                  "mean_winner_minus_loser": 0.109267
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 5215,
+              "covered": 3631,
+              "coverage_pct": 69.6,
+              "correct": 1970,
+              "incorrect": 1432,
+              "ties": 229,
+              "directional_accuracy_with_half_ties_pct": 57.41,
+              "mean_winner_minus_loser": 0.107877
+            }
+          }
+        }
+      }
+    },
+    "wta": {
+      "schema_version": 1,
+      "change_id": "CHANGE-2026-11-02-175",
+      "universe": "wta",
+      "window_days": 90,
+      "market_used": false,
+      "production_effect": false,
+      "same_day_policy": "all matches on cutoff date excluded from prior history",
+      "result": {
+        "status": "OBSERVATIONAL_ONLY",
+        "targets": 24436,
+        "date_range": [
+          "2017-01-02",
+          "2026-11-03"
+        ],
+        "split_targets": {
+          "train": 14666,
+          "validation": 4931,
+          "holdout": 4839
+        },
+        "features": {
+          "result_balance": {
+            "selected_on_validation": "uniform_90d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11747,
+                  "coverage_pct": 80.1,
+                  "correct": 6679,
+                  "incorrect": 4206,
+                  "ties": 862,
+                  "directional_accuracy_with_half_ties_pct": 60.53,
+                  "mean_winner_minus_loser": 0.164484
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2384,
+                  "incorrect": 1459,
+                  "ties": 244,
+                  "directional_accuracy_with_half_ties_pct": 61.32,
+                  "mean_winner_minus_loser": 0.162522
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2345,
+                  "incorrect": 1468,
+                  "ties": 205,
+                  "directional_accuracy_with_half_ties_pct": 60.91,
+                  "mean_winner_minus_loser": 0.154716
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11747,
+                  "coverage_pct": 80.1,
+                  "correct": 6825,
+                  "incorrect": 4477,
+                  "ties": 445,
+                  "directional_accuracy_with_half_ties_pct": 59.99,
+                  "mean_winner_minus_loser": 0.170195
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2431,
+                  "incorrect": 1570,
+                  "ties": 86,
+                  "directional_accuracy_with_half_ties_pct": 60.53,
+                  "mean_winner_minus_loser": 0.166665
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2428,
+                  "incorrect": 1531,
+                  "ties": 59,
+                  "directional_accuracy_with_half_ties_pct": 61.16,
+                  "mean_winner_minus_loser": 0.161628
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11747,
+                  "coverage_pct": 80.1,
+                  "correct": 6867,
+                  "incorrect": 4437,
+                  "ties": 443,
+                  "directional_accuracy_with_half_ties_pct": 60.34,
+                  "mean_winner_minus_loser": 0.169073
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2455,
+                  "incorrect": 1549,
+                  "ties": 83,
+                  "directional_accuracy_with_half_ties_pct": 61.08,
+                  "mean_winner_minus_loser": 0.165408
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2448,
+                  "incorrect": 1511,
+                  "ties": 59,
+                  "directional_accuracy_with_half_ties_pct": 61.66,
+                  "mean_winner_minus_loser": 0.159576
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11747,
+                  "coverage_pct": 80.1,
+                  "correct": 6885,
+                  "incorrect": 4419,
+                  "ties": 443,
+                  "directional_accuracy_with_half_ties_pct": 60.5,
+                  "mean_winner_minus_loser": 0.167803
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2458,
+                  "incorrect": 1546,
+                  "ties": 83,
+                  "directional_accuracy_with_half_ties_pct": 61.16,
+                  "mean_winner_minus_loser": 0.164382
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2445,
+                  "incorrect": 1514,
+                  "ties": 59,
+                  "directional_accuracy_with_half_ties_pct": 61.59,
+                  "mean_winner_minus_loser": 0.157873
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11747,
+                  "coverage_pct": 80.1,
+                  "correct": 6887,
+                  "incorrect": 4417,
+                  "ties": 443,
+                  "directional_accuracy_with_half_ties_pct": 60.51,
+                  "mean_winner_minus_loser": 0.167053
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2453,
+                  "incorrect": 1551,
+                  "ties": 83,
+                  "directional_accuracy_with_half_ties_pct": 61.03,
+                  "mean_winner_minus_loser": 0.163879
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2432,
+                  "incorrect": 1527,
+                  "ties": 59,
+                  "directional_accuracy_with_half_ties_pct": 61.26,
+                  "mean_winner_minus_loser": 0.157028
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11747,
+                  "coverage_pct": 80.1,
+                  "correct": 6893,
+                  "incorrect": 4411,
+                  "ties": 443,
+                  "directional_accuracy_with_half_ties_pct": 60.56,
+                  "mean_winner_minus_loser": 0.16624
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2463,
+                  "incorrect": 1541,
+                  "ties": 83,
+                  "directional_accuracy_with_half_ties_pct": 61.28,
+                  "mean_winner_minus_loser": 0.163394
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2424,
+                  "incorrect": 1535,
+                  "ties": 59,
+                  "directional_accuracy_with_half_ties_pct": 61.06,
+                  "mean_winner_minus_loser": 0.156209
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 4839,
+              "covered": 4018,
+              "coverage_pct": 83.0,
+              "correct": 2345,
+              "incorrect": 1468,
+              "ties": 205,
+              "directional_accuracy_with_half_ties_pct": 60.91,
+              "mean_winner_minus_loser": 0.154716
+            }
+          },
+          "ranking_surprise_balance_v1": {
+            "selected_on_validation": "half_life_21d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11554,
+                  "coverage_pct": 78.8,
+                  "correct": 5336,
+                  "incorrect": 5927,
+                  "ties": 291,
+                  "directional_accuracy_with_half_ties_pct": 47.44,
+                  "mean_winner_minus_loser": -0.031843
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4044,
+                  "coverage_pct": 82.0,
+                  "correct": 1874,
+                  "incorrect": 2090,
+                  "ties": 80,
+                  "directional_accuracy_with_half_ties_pct": 47.33,
+                  "mean_winner_minus_loser": -0.029827
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4011,
+                  "coverage_pct": 82.9,
+                  "correct": 1896,
+                  "incorrect": 2085,
+                  "ties": 30,
+                  "directional_accuracy_with_half_ties_pct": 47.64,
+                  "mean_winner_minus_loser": -0.038113
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11554,
+                  "coverage_pct": 78.8,
+                  "correct": 5301,
+                  "incorrect": 5962,
+                  "ties": 291,
+                  "directional_accuracy_with_half_ties_pct": 47.14,
+                  "mean_winner_minus_loser": -0.034577
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4044,
+                  "coverage_pct": 82.0,
+                  "correct": 1888,
+                  "incorrect": 2076,
+                  "ties": 80,
+                  "directional_accuracy_with_half_ties_pct": 47.68,
+                  "mean_winner_minus_loser": -0.03455
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4011,
+                  "coverage_pct": 82.9,
+                  "correct": 1888,
+                  "incorrect": 2093,
+                  "ties": 30,
+                  "directional_accuracy_with_half_ties_pct": 47.44,
+                  "mean_winner_minus_loser": -0.037843
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11554,
+                  "coverage_pct": 78.8,
+                  "correct": 5322,
+                  "incorrect": 5941,
+                  "ties": 291,
+                  "directional_accuracy_with_half_ties_pct": 47.32,
+                  "mean_winner_minus_loser": -0.033486
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4044,
+                  "coverage_pct": 82.0,
+                  "correct": 1867,
+                  "incorrect": 2097,
+                  "ties": 80,
+                  "directional_accuracy_with_half_ties_pct": 47.16,
+                  "mean_winner_minus_loser": -0.033261
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4011,
+                  "coverage_pct": 82.9,
+                  "correct": 1885,
+                  "incorrect": 2096,
+                  "ties": 30,
+                  "directional_accuracy_with_half_ties_pct": 47.37,
+                  "mean_winner_minus_loser": -0.03767
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11554,
+                  "coverage_pct": 78.8,
+                  "correct": 5331,
+                  "incorrect": 5932,
+                  "ties": 291,
+                  "directional_accuracy_with_half_ties_pct": 47.4,
+                  "mean_winner_minus_loser": -0.03277
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4044,
+                  "coverage_pct": 82.0,
+                  "correct": 1866,
+                  "incorrect": 2098,
+                  "ties": 80,
+                  "directional_accuracy_with_half_ties_pct": 47.13,
+                  "mean_winner_minus_loser": -0.032125
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4011,
+                  "coverage_pct": 82.9,
+                  "correct": 1881,
+                  "incorrect": 2100,
+                  "ties": 30,
+                  "directional_accuracy_with_half_ties_pct": 47.27,
+                  "mean_winner_minus_loser": -0.037653
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11554,
+                  "coverage_pct": 78.8,
+                  "correct": 5337,
+                  "incorrect": 5926,
+                  "ties": 291,
+                  "directional_accuracy_with_half_ties_pct": 47.45,
+                  "mean_winner_minus_loser": -0.032469
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4044,
+                  "coverage_pct": 82.0,
+                  "correct": 1873,
+                  "incorrect": 2091,
+                  "ties": 80,
+                  "directional_accuracy_with_half_ties_pct": 47.3,
+                  "mean_winner_minus_loser": -0.031536
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4011,
+                  "coverage_pct": 82.9,
+                  "correct": 1889,
+                  "incorrect": 2092,
+                  "ties": 30,
+                  "directional_accuracy_with_half_ties_pct": 47.47,
+                  "mean_winner_minus_loser": -0.0377
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11554,
+                  "coverage_pct": 78.8,
+                  "correct": 5325,
+                  "incorrect": 5938,
+                  "ties": 291,
+                  "directional_accuracy_with_half_ties_pct": 47.35,
+                  "mean_winner_minus_loser": -0.032212
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4044,
+                  "coverage_pct": 82.0,
+                  "correct": 1867,
+                  "incorrect": 2097,
+                  "ties": 80,
+                  "directional_accuracy_with_half_ties_pct": 47.16,
+                  "mean_winner_minus_loser": -0.030949
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4011,
+                  "coverage_pct": 82.9,
+                  "correct": 1886,
+                  "incorrect": 2095,
+                  "ties": 30,
+                  "directional_accuracy_with_half_ties_pct": 47.39,
+                  "mean_winner_minus_loser": -0.03779
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 4839,
+              "covered": 4011,
+              "coverage_pct": 82.9,
+              "correct": 1888,
+              "incorrect": 2093,
+              "ties": 30,
+              "directional_accuracy_with_half_ties_pct": 47.44,
+              "mean_winner_minus_loser": -0.037843
+            }
+          },
+          "win_opponent_strength": {
+            "selected_on_validation": "half_life_60d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 8942,
+                  "coverage_pct": 61.0,
+                  "correct": 5109,
+                  "incorrect": 3828,
+                  "ties": 5,
+                  "directional_accuracy_with_half_ties_pct": 57.16,
+                  "mean_winner_minus_loser": 0.149954
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3248,
+                  "coverage_pct": 65.9,
+                  "correct": 1899,
+                  "incorrect": 1348,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.48,
+                  "mean_winner_minus_loser": 0.165645
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3314,
+                  "coverage_pct": 68.5,
+                  "correct": 1941,
+                  "incorrect": 1372,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.58,
+                  "mean_winner_minus_loser": 0.161121
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 8942,
+                  "coverage_pct": 61.0,
+                  "correct": 5117,
+                  "incorrect": 3821,
+                  "ties": 4,
+                  "directional_accuracy_with_half_ties_pct": 57.25,
+                  "mean_winner_minus_loser": 0.149434
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3248,
+                  "coverage_pct": 65.9,
+                  "correct": 1901,
+                  "incorrect": 1346,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.54,
+                  "mean_winner_minus_loser": 0.163524
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3314,
+                  "coverage_pct": 68.5,
+                  "correct": 1883,
+                  "incorrect": 1430,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 56.83,
+                  "mean_winner_minus_loser": 0.146612
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 8942,
+                  "coverage_pct": 61.0,
+                  "correct": 5143,
+                  "incorrect": 3795,
+                  "ties": 4,
+                  "directional_accuracy_with_half_ties_pct": 57.54,
+                  "mean_winner_minus_loser": 0.149737
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3248,
+                  "coverage_pct": 65.9,
+                  "correct": 1911,
+                  "incorrect": 1336,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.85,
+                  "mean_winner_minus_loser": 0.164198
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3314,
+                  "coverage_pct": 68.5,
+                  "correct": 1900,
+                  "incorrect": 1413,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.35,
+                  "mean_winner_minus_loser": 0.150658
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 8942,
+                  "coverage_pct": 61.0,
+                  "correct": 5146,
+                  "incorrect": 3792,
+                  "ties": 4,
+                  "directional_accuracy_with_half_ties_pct": 57.57,
+                  "mean_winner_minus_loser": 0.149913
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3248,
+                  "coverage_pct": 65.9,
+                  "correct": 1911,
+                  "incorrect": 1336,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.85,
+                  "mean_winner_minus_loser": 0.164666
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3314,
+                  "coverage_pct": 68.5,
+                  "correct": 1911,
+                  "incorrect": 1402,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 57.68,
+                  "mean_winner_minus_loser": 0.154117
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 8942,
+                  "coverage_pct": 61.0,
+                  "correct": 5127,
+                  "incorrect": 3811,
+                  "ties": 4,
+                  "directional_accuracy_with_half_ties_pct": 57.36,
+                  "mean_winner_minus_loser": 0.14997
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3248,
+                  "coverage_pct": 65.9,
+                  "correct": 1918,
+                  "incorrect": 1329,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 59.07,
+                  "mean_winner_minus_loser": 0.164902
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3314,
+                  "coverage_pct": 68.5,
+                  "correct": 1924,
+                  "incorrect": 1389,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.07,
+                  "mean_winner_minus_loser": 0.155896
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 8942,
+                  "coverage_pct": 61.0,
+                  "correct": 5124,
+                  "incorrect": 3814,
+                  "ties": 4,
+                  "directional_accuracy_with_half_ties_pct": 57.32,
+                  "mean_winner_minus_loser": 0.15
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3248,
+                  "coverage_pct": 65.9,
+                  "correct": 1914,
+                  "incorrect": 1333,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.94,
+                  "mean_winner_minus_loser": 0.165145
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3314,
+                  "coverage_pct": 68.5,
+                  "correct": 1927,
+                  "incorrect": 1386,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 58.16,
+                  "mean_winner_minus_loser": 0.157674
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 4839,
+              "covered": 3314,
+              "coverage_pct": 68.5,
+              "correct": 1924,
+              "incorrect": 1389,
+              "ties": 1,
+              "directional_accuracy_with_half_ties_pct": 58.07,
+              "mean_winner_minus_loser": 0.155896
+            }
+          },
+          "loss_opponent_strength": {
+            "selected_on_validation": "half_life_90d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11249,
+                  "coverage_pct": 76.7,
+                  "correct": 6371,
+                  "incorrect": 4860,
+                  "ties": 18,
+                  "directional_accuracy_with_half_ties_pct": 56.72,
+                  "mean_winner_minus_loser": 0.169244
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3978,
+                  "coverage_pct": 80.7,
+                  "correct": 2280,
+                  "incorrect": 1695,
+                  "ties": 3,
+                  "directional_accuracy_with_half_ties_pct": 57.35,
+                  "mean_winner_minus_loser": 0.216035
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3960,
+                  "coverage_pct": 81.8,
+                  "correct": 2379,
+                  "incorrect": 1579,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 60.1,
+                  "mean_winner_minus_loser": 0.271713
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11249,
+                  "coverage_pct": 76.7,
+                  "correct": 6328,
+                  "incorrect": 4908,
+                  "ties": 13,
+                  "directional_accuracy_with_half_ties_pct": 56.31,
+                  "mean_winner_minus_loser": 0.171207
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3978,
+                  "coverage_pct": 80.7,
+                  "correct": 2252,
+                  "incorrect": 1724,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 56.64,
+                  "mean_winner_minus_loser": 0.22588
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3960,
+                  "coverage_pct": 81.8,
+                  "correct": 2343,
+                  "incorrect": 1616,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 59.18,
+                  "mean_winner_minus_loser": 0.292291
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11249,
+                  "coverage_pct": 76.7,
+                  "correct": 6349,
+                  "incorrect": 4887,
+                  "ties": 13,
+                  "directional_accuracy_with_half_ties_pct": 56.5,
+                  "mean_winner_minus_loser": 0.170143
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3978,
+                  "coverage_pct": 80.7,
+                  "correct": 2244,
+                  "incorrect": 1732,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 56.44,
+                  "mean_winner_minus_loser": 0.222463
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3960,
+                  "coverage_pct": 81.8,
+                  "correct": 2348,
+                  "incorrect": 1611,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 59.31,
+                  "mean_winner_minus_loser": 0.286743
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11249,
+                  "coverage_pct": 76.7,
+                  "correct": 6364,
+                  "incorrect": 4872,
+                  "ties": 13,
+                  "directional_accuracy_with_half_ties_pct": 56.63,
+                  "mean_winner_minus_loser": 0.169533
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3978,
+                  "coverage_pct": 80.7,
+                  "correct": 2255,
+                  "incorrect": 1721,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 56.71,
+                  "mean_winner_minus_loser": 0.219986
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3960,
+                  "coverage_pct": 81.8,
+                  "correct": 2356,
+                  "incorrect": 1603,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 59.51,
+                  "mean_winner_minus_loser": 0.28199
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11249,
+                  "coverage_pct": 76.7,
+                  "correct": 6376,
+                  "incorrect": 4860,
+                  "ties": 13,
+                  "directional_accuracy_with_half_ties_pct": 56.74,
+                  "mean_winner_minus_loser": 0.169335
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3978,
+                  "coverage_pct": 80.7,
+                  "correct": 2279,
+                  "incorrect": 1697,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 57.32,
+                  "mean_winner_minus_loser": 0.218859
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3960,
+                  "coverage_pct": 81.8,
+                  "correct": 2379,
+                  "incorrect": 1580,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 60.09,
+                  "mean_winner_minus_loser": 0.279487
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11249,
+                  "coverage_pct": 76.7,
+                  "correct": 6381,
+                  "incorrect": 4855,
+                  "ties": 13,
+                  "directional_accuracy_with_half_ties_pct": 56.78,
+                  "mean_winner_minus_loser": 0.169218
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3978,
+                  "coverage_pct": 80.7,
+                  "correct": 2288,
+                  "incorrect": 1688,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 57.54,
+                  "mean_winner_minus_loser": 0.217824
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3960,
+                  "coverage_pct": 81.8,
+                  "correct": 2386,
+                  "incorrect": 1573,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 60.27,
+                  "mean_winner_minus_loser": 0.276921
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 4839,
+              "covered": 3960,
+              "coverage_pct": 81.8,
+              "correct": 2386,
+              "incorrect": 1573,
+              "ties": 1,
+              "directional_accuracy_with_half_ties_pct": 60.27,
+              "mean_winner_minus_loser": 0.276921
+            }
+          },
+          "game_margin_balance": {
+            "selected_on_validation": "half_life_90d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11746,
+                  "coverage_pct": 80.1,
+                  "correct": 7127,
+                  "incorrect": 4525,
+                  "ties": 94,
+                  "directional_accuracy_with_half_ties_pct": 61.08,
+                  "mean_winner_minus_loser": 1.079571
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2502,
+                  "incorrect": 1568,
+                  "ties": 17,
+                  "directional_accuracy_with_half_ties_pct": 61.43,
+                  "mean_winner_minus_loser": 1.109828
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2474,
+                  "incorrect": 1528,
+                  "ties": 16,
+                  "directional_accuracy_with_half_ties_pct": 61.77,
+                  "mean_winner_minus_loser": 1.006037
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11746,
+                  "coverage_pct": 80.1,
+                  "correct": 7083,
+                  "incorrect": 4637,
+                  "ties": 26,
+                  "directional_accuracy_with_half_ties_pct": 60.41,
+                  "mean_winner_minus_loser": 1.123251
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2512,
+                  "incorrect": 1574,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 61.48,
+                  "mean_winner_minus_loser": 1.13448
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2479,
+                  "incorrect": 1538,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 61.71,
+                  "mean_winner_minus_loser": 1.036033
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11746,
+                  "coverage_pct": 80.1,
+                  "correct": 7123,
+                  "incorrect": 4599,
+                  "ties": 24,
+                  "directional_accuracy_with_half_ties_pct": 60.74,
+                  "mean_winner_minus_loser": 1.112895
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2513,
+                  "incorrect": 1573,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 61.5,
+                  "mean_winner_minus_loser": 1.126848
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2490,
+                  "incorrect": 1527,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 61.98,
+                  "mean_winner_minus_loser": 1.027518
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11746,
+                  "coverage_pct": 80.1,
+                  "correct": 7145,
+                  "incorrect": 4577,
+                  "ties": 24,
+                  "directional_accuracy_with_half_ties_pct": 60.93,
+                  "mean_winner_minus_loser": 1.102788
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2522,
+                  "incorrect": 1564,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 61.72,
+                  "mean_winner_minus_loser": 1.120688
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2509,
+                  "incorrect": 1507,
+                  "ties": 2,
+                  "directional_accuracy_with_half_ties_pct": 62.47,
+                  "mean_winner_minus_loser": 1.020016
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11746,
+                  "coverage_pct": 80.1,
+                  "correct": 7165,
+                  "incorrect": 4557,
+                  "ties": 24,
+                  "directional_accuracy_with_half_ties_pct": 61.1,
+                  "mean_winner_minus_loser": 1.097224
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2529,
+                  "incorrect": 1557,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 61.89,
+                  "mean_winner_minus_loser": 1.117698
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2505,
+                  "incorrect": 1512,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 62.36,
+                  "mean_winner_minus_loser": 1.016236
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 11746,
+                  "coverage_pct": 80.1,
+                  "correct": 7153,
+                  "incorrect": 4569,
+                  "ties": 24,
+                  "directional_accuracy_with_half_ties_pct": 61.0,
+                  "mean_winner_minus_loser": 1.091431
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 4087,
+                  "coverage_pct": 82.9,
+                  "correct": 2530,
+                  "incorrect": 1556,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 61.92,
+                  "mean_winner_minus_loser": 1.114851
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 4018,
+                  "coverage_pct": 83.0,
+                  "correct": 2502,
+                  "incorrect": 1515,
+                  "ties": 1,
+                  "directional_accuracy_with_half_ties_pct": 62.28,
+                  "mean_winner_minus_loser": 1.012578
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 4839,
+              "covered": 4018,
+              "coverage_pct": 83.0,
+              "correct": 2502,
+              "incorrect": 1515,
+              "ties": 1,
+              "directional_accuracy_with_half_ties_pct": 62.28,
+              "mean_winner_minus_loser": 1.012578
+            }
+          },
+          "same_surface_result_balance": {
+            "selected_on_validation": "half_life_45d",
+            "selection_rule": "highest validation directional accuracy; ties count as half",
+            "candidates": {
+              "uniform_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 9072,
+                  "coverage_pct": 61.9,
+                  "correct": 4856,
+                  "incorrect": 3128,
+                  "ties": 1088,
+                  "directional_accuracy_with_half_ties_pct": 59.52,
+                  "mean_winner_minus_loser": 0.170266
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3100,
+                  "coverage_pct": 62.9,
+                  "correct": 1718,
+                  "incorrect": 1072,
+                  "ties": 310,
+                  "directional_accuracy_with_half_ties_pct": 60.42,
+                  "mean_winner_minus_loser": 0.173171
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3137,
+                  "coverage_pct": 64.8,
+                  "correct": 1743,
+                  "incorrect": 1075,
+                  "ties": 319,
+                  "directional_accuracy_with_half_ties_pct": 60.65,
+                  "mean_winner_minus_loser": 0.167241
+                }
+              },
+              "half_life_21d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 9072,
+                  "coverage_pct": 61.9,
+                  "correct": 5059,
+                  "incorrect": 3323,
+                  "ties": 690,
+                  "directional_accuracy_with_half_ties_pct": 59.57,
+                  "mean_winner_minus_loser": 0.176116
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3100,
+                  "coverage_pct": 62.9,
+                  "correct": 1764,
+                  "incorrect": 1154,
+                  "ties": 182,
+                  "directional_accuracy_with_half_ties_pct": 59.84,
+                  "mean_winner_minus_loser": 0.175834
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3137,
+                  "coverage_pct": 64.8,
+                  "correct": 1828,
+                  "incorrect": 1128,
+                  "ties": 181,
+                  "directional_accuracy_with_half_ties_pct": 61.16,
+                  "mean_winner_minus_loser": 0.173923
+                }
+              },
+              "half_life_30d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 9072,
+                  "coverage_pct": 61.9,
+                  "correct": 5062,
+                  "incorrect": 3323,
+                  "ties": 687,
+                  "directional_accuracy_with_half_ties_pct": 59.58,
+                  "mean_winner_minus_loser": 0.175021
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3100,
+                  "coverage_pct": 62.9,
+                  "correct": 1782,
+                  "incorrect": 1138,
+                  "ties": 180,
+                  "directional_accuracy_with_half_ties_pct": 60.39,
+                  "mean_winner_minus_loser": 0.175162
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3137,
+                  "coverage_pct": 64.8,
+                  "correct": 1836,
+                  "incorrect": 1120,
+                  "ties": 181,
+                  "directional_accuracy_with_half_ties_pct": 61.41,
+                  "mean_winner_minus_loser": 0.172094
+                }
+              },
+              "half_life_45d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 9072,
+                  "coverage_pct": 61.9,
+                  "correct": 5066,
+                  "incorrect": 3319,
+                  "ties": 687,
+                  "directional_accuracy_with_half_ties_pct": 59.63,
+                  "mean_winner_minus_loser": 0.173752
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3100,
+                  "coverage_pct": 62.9,
+                  "correct": 1785,
+                  "incorrect": 1135,
+                  "ties": 180,
+                  "directional_accuracy_with_half_ties_pct": 60.48,
+                  "mean_winner_minus_loser": 0.174514
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3137,
+                  "coverage_pct": 64.8,
+                  "correct": 1832,
+                  "incorrect": 1124,
+                  "ties": 181,
+                  "directional_accuracy_with_half_ties_pct": 61.28,
+                  "mean_winner_minus_loser": 0.170488
+                }
+              },
+              "half_life_60d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 9072,
+                  "coverage_pct": 61.9,
+                  "correct": 5050,
+                  "incorrect": 3335,
+                  "ties": 687,
+                  "directional_accuracy_with_half_ties_pct": 59.45,
+                  "mean_winner_minus_loser": 0.172984
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3100,
+                  "coverage_pct": 62.9,
+                  "correct": 1779,
+                  "incorrect": 1141,
+                  "ties": 180,
+                  "directional_accuracy_with_half_ties_pct": 60.29,
+                  "mean_winner_minus_loser": 0.174169
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3137,
+                  "coverage_pct": 64.8,
+                  "correct": 1825,
+                  "incorrect": 1131,
+                  "ties": 181,
+                  "directional_accuracy_with_half_ties_pct": 61.06,
+                  "mean_winner_minus_loser": 0.169658
+                }
+              },
+              "half_life_90d": {
+                "train": {
+                  "targets": 14666,
+                  "covered": 9072,
+                  "coverage_pct": 61.9,
+                  "correct": 5053,
+                  "incorrect": 3332,
+                  "ties": 687,
+                  "directional_accuracy_with_half_ties_pct": 59.49,
+                  "mean_winner_minus_loser": 0.172138
+                },
+                "validation": {
+                  "targets": 4931,
+                  "covered": 3100,
+                  "coverage_pct": 62.9,
+                  "correct": 1779,
+                  "incorrect": 1141,
+                  "ties": 180,
+                  "directional_accuracy_with_half_ties_pct": 60.29,
+                  "mean_winner_minus_loser": 0.173822
+                },
+                "holdout": {
+                  "targets": 4839,
+                  "covered": 3137,
+                  "coverage_pct": 64.8,
+                  "correct": 1814,
+                  "incorrect": 1142,
+                  "ties": 181,
+                  "directional_accuracy_with_half_ties_pct": 60.71,
+                  "mean_winner_minus_loser": 0.16883
+                }
+              }
+            },
+            "selected_holdout": {
+              "targets": 4839,
+              "covered": 3137,
+              "coverage_pct": 64.8,
+              "correct": 1832,
+              "incorrect": 1124,
+              "ties": 181,
+              "directional_accuracy_with_half_ties_pct": 61.28,
+              "mean_winner_minus_loser": 0.170488
+            }
+          }
+        }
+      }
+    }
+  }
+}

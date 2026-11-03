@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -7,7 +8,7 @@ from src.recent_form_replay import (
     evaluate_recent_form_replay,
     replay_recent_form,
 )
-from scripts.replay_recent_form_candidates import _source_health
+from scripts.replay_recent_form_candidates import _source_health, build_report
 
 
 def _match(day, winner, loser, winner_rank, loser_rank, surface="Hard", score="6-4 6-4"):
@@ -191,3 +192,32 @@ def test_quality_replay_source_health_accepts_fresh_rich_history():
 
     assert health["healthy_for_quality_replay"] is True
     assert health["bilateral_rank_coverage_pct"] == 100.0
+
+
+def test_report_defaults_to_primary_tours_and_does_not_fetch_challenger():
+    today = datetime.now(timezone.utc)
+    frames = {
+        "atp": pd.DataFrame([_match(today, "A", "B", 10, 20)]),
+        "wta": pd.DataFrame([_match(today, "C", "D", 30, 40)]),
+    }
+    for frame in frames.values():
+        frame.attrs["history_source"] = "tennismylife"
+    calls = []
+
+    def fake_history(tour, **kwargs):
+        calls.append((tour, kwargs))
+        return frames[tour]
+
+    with patch(
+        "scripts.replay_recent_form_candidates.fetch_data.get_history",
+        side_effect=fake_history,
+    ), patch(
+        "scripts.replay_recent_form_candidates.replay_recent_form",
+        side_effect=lambda frame, universe: {"universe": universe},
+    ):
+        report = build_report()
+
+    assert calls == [("atp", {}), ("wta", {})]
+    assert report["primary_decision_scope"] == ["atp", "wta"]
+    assert report["challenger_role"] == "OBSERVATIONAL_ONLY"
+    assert set(report["reports"]) == {"atp", "wta"}

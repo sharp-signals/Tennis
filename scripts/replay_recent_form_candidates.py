@@ -56,18 +56,20 @@ def _source_health(frame, *, universe: str) -> dict:
     }
 
 
-def build_report() -> dict:
+def build_report(*, universes: tuple[str, ...] = ("atp", "wta")) -> dict:
     atp = fetch_data.get_history("atp")
     wta = fetch_data.get_history("wta")
-    combined = fetch_data.get_history("atp", tier="Challenger 125")
-    universes = {
+    available = {
         "atp": _scope(atp, "main"),
         "wta": _scope(wta, "main"),
-        "challenger": _scope(combined, "challenger"),
     }
+    if "challenger" in universes:
+        combined = fetch_data.get_history("atp", tier="Challenger 125")
+        available["challenger"] = _scope(combined, "challenger")
+    frames = {name: available[name] for name in universes}
     health = {
         universe: _source_health(frame, universe=universe)
-        for universe, frame in universes.items()
+        for universe, frame in frames.items()
     }
     unhealthy = [name for name, status in health.items() if not status["healthy_for_quality_replay"]]
     if unhealthy:
@@ -82,12 +84,16 @@ def build_report() -> dict:
         )
     return {
         "mode": "READ_ONLY_EX_ANTE_REPLAY",
+        "primary_decision_scope": [
+            name for name in universes if name in {"atp", "wta"}
+        ],
+        "challenger_role": "OBSERVATIONAL_ONLY",
         "rapidapi_used": False,
         "market_used": False,
         "source_health": health,
         "reports": {
             universe: replay_recent_form(frame, universe=universe)
-            for universe, frame in universes.items()
+            for universe, frame in frames.items()
         },
     }
 
@@ -96,13 +102,17 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
     parser.add_argument(
+        "--universes", nargs="+", choices=("atp", "wta", "challenger"),
+        default=("atp", "wta"),
+    )
+    parser.add_argument(
         "--provider-cache", type=Path,
         help="Optional last-known-good cache directory for the public provider.",
     )
     args = parser.parse_args()
     if args.provider_cache:
         os.environ["TENNISMYLIFE_CACHE_DIR"] = str(args.provider_cache)
-    report = build_report()
+    report = build_report(universes=tuple(args.universes))
     encoded = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
