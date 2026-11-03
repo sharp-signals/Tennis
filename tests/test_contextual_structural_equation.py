@@ -3,6 +3,7 @@ from src.contextual_structural_equation import (
     evaluate_structural_strength_v2,
     evaluate_structural_strength_v3,
     evaluate_structural_strength_v4,
+    evaluate_structural_strength_v5,
 )
 
 
@@ -148,3 +149,22 @@ def test_v4_top20_vs_rank100_plus_creates_material_context():
         "contextual_structural_material_band_gap_v4"
     ] > 0
     assert result["governance"]["rank_bands_are_residual_not_replacement"] is True
+
+
+def test_v5_points_can_distinguish_similar_rankings_without_changing_rank_core():
+    result = evaluate_structural_strength_v5(
+        _player(20, points=2800), _player(25, points=1600),
+    )
+    assert result["candidate_features"]["contextual_structural_rank_core_v3"] > 0
+    assert result["candidate_features"][
+        "contextual_structural_points_log_ratio_v5"
+    ] > 0
+
+
+def test_v5_missing_points_remain_missing_and_rank_survives():
+    result = evaluate_structural_strength_v5(_player(20), _player(80))
+    assert result["candidate_features"][
+        "contextual_structural_points_log_ratio_v5"
+    ] is None
+    assert result["candidate_features"]["contextual_structural_rank_core_v3"] > 0
+    assert result["governance"]["missing_points_do_not_change_rank_core"] is True

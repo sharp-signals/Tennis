@@ -17,6 +17,7 @@ EQUATION_VERSION = "structural-context-v1"
 EQUATION_VERSION_V2 = "structural-context-v2"
 EQUATION_VERSION_V3 = "structural-context-v3-components"
 EQUATION_VERSION_V4 = "structural-context-v4-rank-bands"
+EQUATION_VERSION_V5 = "structural-context-v5-points-residual"
 
 
 @dataclass(frozen=True)
@@ -466,5 +467,43 @@ def evaluate_structural_strength_v4(
             **base["governance"],
             "rank_bands_are_residual_not_replacement": True,
             "adjacent_rank_bands_are_neutral": True,
+        },
+    }
+
+
+def evaluate_structural_strength_v5(
+    player_a: dict[str, Any], player_b: dict[str, Any],
+    *, config: StructuralEquationV2Config | None = None,
+) -> dict[str, Any]:
+    """Test ranking points as a separate residual beyond the v3 rank anchor."""
+    base = evaluate_structural_strength_v3(player_a, player_b, config=config)
+    if base.get("status") != "READY":
+        return {**base, "equation_version": EQUATION_VERSION_V5}
+    points_a = _positive(player_a.get("current_points"))
+    points_b = _positive(player_b.get("current_points"))
+    points_margin = (
+        math.log(points_a / points_b)
+        if points_a is not None and points_b is not None else None
+    )
+    features = dict(base["candidate_features"])
+    features["contextual_structural_points_log_ratio_v5"] = (
+        None if points_margin is None else round(points_margin, 6)
+    )
+    return {
+        **base,
+        "equation_version": EQUATION_VERSION_V5,
+        "candidate_features": features,
+        "components": {
+            **base["components"],
+            "points_a": points_a,
+            "points_b": points_b,
+            "points_log_ratio": (
+                None if points_margin is None else round(points_margin, 6)
+            ),
+        },
+        "governance": {
+            **base["governance"],
+            "points_are_residual_not_rank_replacement": True,
+            "missing_points_do_not_change_rank_core": True,
         },
     }

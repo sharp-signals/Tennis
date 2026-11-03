@@ -52,6 +52,16 @@ CALIBRATION_FEATURE_PROFILES = {
         ),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "contextual_v5": {
+        "structural_strength": (
+            "contextual_structural_rank_core_v3",
+            "contextual_structural_trajectory_margin_v3",
+            "contextual_structural_inactivity_margin_v3",
+            "contextual_structural_recovery_margin_v3",
+            "contextual_structural_points_log_ratio_v5",
+        ),
+        "surface_conditions": ("contextual_surface_signal_v1",),
+    },
 }
 
 
@@ -119,7 +129,10 @@ def _family_features(family: str, feature_profile: str = "legacy_v0") -> tuple[s
 
 
 def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | None:
-    if feature_profile not in {"contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4"}:
+    if feature_profile not in {
+        "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
+        "contextual_v5",
+    }:
         return None
     return np.asarray([
         name in {
@@ -130,6 +143,7 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_structural_inactivity_margin_v3",
             "contextual_structural_recovery_margin_v3",
             "contextual_structural_material_band_gap_v4",
+            "contextual_structural_points_log_ratio_v5",
         }
         for name in columns
     ], dtype=bool)
@@ -476,7 +490,8 @@ def _structural_segment_labels(row: dict[str, Any]) -> tuple[str, ...]:
 
     audit_root = row.get("candidate_equation_audit", {})
     audit = (
-        audit_root.get("structural_strength_v4")
+        audit_root.get("structural_strength_v5")
+        or audit_root.get("structural_strength_v4")
         or audit_root.get("structural_strength_v3")
         or audit_root.get("structural_strength_v2", {})
     )
@@ -584,6 +599,7 @@ def compare_family_feature_profiles(
         }
         if family == "structural_strength" and contextual_profile in {
             "contextual_v2", "contextual_v3", "contextual_v4",
+            "contextual_v5",
         }:
             comparisons[family]["segment_diagnostics"] = _paired_segment_diagnostics(paired)
     return {

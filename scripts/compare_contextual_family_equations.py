@@ -62,8 +62,9 @@ def main() -> int:
     parser.add_argument(
         "--contextual-profile", choices=(
             "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
+            "contextual_v5",
         ),
-        default="contextual_v4",
+        default="contextual_v5",
     )
     args = parser.parse_args()
     if args.provider_cache:
