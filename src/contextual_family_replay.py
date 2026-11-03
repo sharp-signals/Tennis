@@ -495,6 +495,7 @@ def build_contextual_target_row(
         "universe": str(universe).strip().casefold(),
         "player_a": model_a, "player_b": model_b, "target_a_win": False,
         "surface": target_surface, "features": features,
+        "diagnostics": {"rank_a": model_rank_a, "rank_b": model_rank_b},
         "samples": {
             "recent_a": recent_a["sample"], "recent_b": recent_b["sample"],
             "surface_a": surface_sample_a, "surface_b": surface_sample_b,
@@ -641,6 +642,7 @@ def build_contextual_family_replay_rows(
                 "player_b": player_b,
                 "target_a_win": a_won,
                 "surface": surface,
+                "diagnostics": {"rank_a": rank_a, "rank_b": rank_b},
                 "features": features,
                 "samples": {
                     "recent_a": recent_a["sample"], "recent_b": recent_b["sample"],

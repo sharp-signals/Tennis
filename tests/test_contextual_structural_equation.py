@@ -99,3 +99,14 @@ def test_v2_historical_peak_never_votes_without_supported_recovery():
     result = evaluate_structural_strength_v2(former, stable)
     assert result["components"]["supported_recovery"] == 0.0
     assert result["direction"] == "b"
+
+
+def test_v2_exposes_ex_ante_context_needed_for_segment_audit():
+    result = evaluate_structural_strength_v2(
+        _player(25, change_6m=0.3, change_12m=0.3, inactive=120),
+        _player(80, inactive=15),
+    )
+    components = result["components"]
+    assert components["trajectory_a"] == 0.3
+    assert components["days_since_last_match_a"] == 120.0
+    assert components["days_since_last_match_b"] == 15.0

@@ -2,6 +2,8 @@ import math
 
 from src.contextual_family_calibration import (
     _fit_logistic_elastic_net,
+    _paired_segment_diagnostics,
+    _structural_segment_labels,
     calibrate_contextual_families,
     calibrate_family,
     compare_family_feature_profiles,
@@ -139,3 +141,35 @@ def test_v2_profile_selects_continuous_structural_feature():
     )
     assert result["features"] == ["contextual_structural_signal_v2"]
     assert result["coefficients"]["contextual_structural_signal_v2"] >= 0
+
+
+def test_structural_segments_are_ex_ante_and_can_overlap():
+    row = {
+        "diagnostics": {"rank_a": 10, "rank_b": 120},
+        "candidate_equation_audit": {
+            "structural_strength_v2": {"components": {
+                "days_since_last_match_a": 12,
+                "days_since_last_match_b": 120,
+                "trajectory_a": 0.3,
+                "trajectory_b": 0.0,
+                "supported_recovery": 0.2,
+            }}
+        },
+    }
+    labels = _structural_segment_labels(row)
+    assert "rank_gap_extreme_ge_8x" in labels
+    assert "elite_top20_vs_rank100_plus" in labels
+    assert "inactivity_over_90d" in labels
+    assert "ranking_trajectory_material" in labels
+    assert "supported_ranking_recovery" in labels
+
+
+def test_segment_diagnostics_report_paired_gain_and_confidence():
+    rows = [
+        ({"target_a_win": True}, 0.6, 0.8),
+        ({"target_a_win": False}, 0.4, 0.2),
+    ]
+    result = _paired_segment_diagnostics(rows)["all"]
+    assert result["paired_targets"] == 2
+    assert result["contextual_log_loss_gain"] > 0
+    assert result["verdict"] == "CONTEXTUAL_BETTER"

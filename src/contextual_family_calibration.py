@@ -431,6 +431,85 @@ def _runtime_model(calibration: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _structural_segment_labels(row: dict[str, Any]) -> tuple[str, ...]:
+    """Return overlapping, ex-ante diagnostic segments for structural v2."""
+    labels = ["all"]
+    ranks = row.get("diagnostics", {})
+    rank_a = ranks.get("rank_a")
+    rank_b = ranks.get("rank_b")
+    if rank_a and rank_b:
+        ratio = max(float(rank_a), float(rank_b)) / min(float(rank_a), float(rank_b))
+        if ratio < 1.5:
+            labels.append("rank_gap_close_lt_1_5x")
+        elif ratio < 3.0:
+            labels.append("rank_gap_moderate_1_5_to_3x")
+        elif ratio < 8.0:
+            labels.append("rank_gap_large_3_to_8x")
+        else:
+            labels.append("rank_gap_extreme_ge_8x")
+        if min(float(rank_a), float(rank_b)) <= 20 and max(float(rank_a), float(rank_b)) >= 100:
+            labels.append("elite_top20_vs_rank100_plus")
+
+    audit = row.get("candidate_equation_audit", {}).get("structural_strength_v2", {})
+    components = audit.get("components", {})
+    days = [
+        value for value in (
+            components.get("days_since_last_match_a"),
+            components.get("days_since_last_match_b"),
+        ) if value is not None
+    ]
+    if days and max(float(value) for value in days) > 90:
+        labels.append("inactivity_over_90d")
+    trajectories = [
+        abs(float(value)) for value in (
+            components.get("trajectory_a"), components.get("trajectory_b"),
+        ) if value is not None
+    ]
+    if trajectories and max(trajectories) >= 0.25:
+        labels.append("ranking_trajectory_material")
+    if abs(float(components.get("supported_recovery") or 0.0)) > 1e-9:
+        labels.append("supported_ranking_recovery")
+    return tuple(labels)
+
+
+def _paired_segment_diagnostics(
+    paired: list[tuple[dict[str, Any], float, float]],
+) -> dict[str, Any]:
+    buckets: dict[str, list[tuple[dict[str, Any], float, float]]] = {}
+    for item in paired:
+        for label in _structural_segment_labels(item[0]):
+            buckets.setdefault(label, []).append(item)
+    result = {}
+    for label, items in buckets.items():
+        targets = np.asarray([float(row["target_a_win"]) for row, _, _ in items])
+        old = np.clip(np.asarray([value for _, value, _ in items]), 1e-9, 1.0 - 1e-9)
+        new = np.clip(np.asarray([value for _, _, value in items]), 1e-9, 1.0 - 1e-9)
+        old_loss = -(targets * np.log(old) + (1.0 - targets) * np.log(1.0 - old))
+        new_loss = -(targets * np.log(new) + (1.0 - targets) * np.log(1.0 - new))
+        gain = old_loss - new_loss
+        mean = float(gain.mean())
+        standard_error = float(gain.std(ddof=1) / np.sqrt(len(gain))) if len(gain) > 1 else None
+        lower = mean - 1.96 * standard_error if standard_error is not None else None
+        upper = mean + 1.96 * standard_error if standard_error is not None else None
+        if lower is not None and lower > 0:
+            verdict = "CONTEXTUAL_BETTER"
+        elif upper is not None and upper < 0:
+            verdict = "LEGACY_BETTER"
+        else:
+            verdict = "INCONCLUSIVE"
+        result[label] = {
+            "paired_targets": len(items),
+            "legacy_log_loss": round(float(old_loss.mean()), 6),
+            "contextual_log_loss": round(float(new_loss.mean()), 6),
+            "contextual_log_loss_gain": round(mean, 6),
+            "gain_95pct_ci": (
+                None if lower is None else [round(lower, 6), round(upper, 6)]
+            ),
+            "verdict": verdict,
+        }
+    return result
+
+
 def compare_family_feature_profiles(
     rows: list[dict[str, Any]], *, universe: str,
     contextual_profile: str = "contextual_v1",
@@ -474,6 +553,8 @@ def compare_family_feature_profiles(
             "contextual_log_loss_gain": round(delta, 6),
             "profiles": profiles,
         }
+        if family == "structural_strength" and contextual_profile == "contextual_v2":
+            comparisons[family]["segment_diagnostics"] = _paired_segment_diagnostics(paired)
     return {
         "schema_version": SCHEMA_VERSION,
         "universe": str(universe).strip().casefold(),

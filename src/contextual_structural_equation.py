@@ -284,6 +284,8 @@ def evaluate_structural_strength_v2(
 
     representative_a = _representativeness_v2(player_a, cfg)
     representative_b = _representativeness_v2(player_b, cfg)
+    trajectory_a = _trajectory_v2(player_a, cfg)
+    trajectory_b = _trajectory_v2(player_b, cfg)
     pair_representativeness = math.sqrt(representative_a * representative_b)
     recovery = (
         _supported_recovery_v2(player_a, cfg)
@@ -308,6 +310,10 @@ def evaluate_structural_strength_v2(
             "current_level": round(float(level), 6),
             "representativeness_a": round(representative_a, 6),
             "representativeness_b": round(representative_b, 6),
+            "trajectory_a": None if trajectory_a is None else round(trajectory_a, 6),
+            "trajectory_b": None if trajectory_b is None else round(trajectory_b, 6),
+            "days_since_last_match_a": _positive(player_a.get("days_since_last_match")),
+            "days_since_last_match_b": _positive(player_b.get("days_since_last_match")),
             "supported_recovery": round(recovery, 6),
         },
         "governance": {
