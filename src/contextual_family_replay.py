@@ -17,7 +17,10 @@ import weakref
 import pandas as pd
 
 from .contextual_factor_orchestrator import build_contextual_family_vector
-from .contextual_structural_equation import evaluate_structural_strength
+from .contextual_structural_equation import (
+    evaluate_structural_strength,
+    evaluate_structural_strength_v2,
+)
 from .contextual_surface import (
     _pace as _surface_pace,
     _row_pace,
@@ -46,6 +49,7 @@ FEATURE_FAMILIES = {
     "current_rank_log_ratio": "structural_strength",
     "rank_change_from_last_observation": "structural_strength",
     "contextual_structural_signal_v1": "structural_strength",
+    "contextual_structural_signal_v2": "structural_strength",
     "same_surface_result_balance_90d": "surface_conditions",
     "career_surface_win_rate_margin": "surface_conditions",
     "contextual_surface_signal_v1": "surface_conditions",
@@ -256,24 +260,29 @@ def _candidate_equation_features(
     match_history_a: list[dict[str, Any]], match_history_b: list[dict[str, Any]],
     cutoff: date, surface: str | None, venue: str | None, pace: str | None,
 ) -> tuple[dict[str, float | None], dict[str, Any]]:
-    structural = evaluate_structural_strength(
-        _ranking_equation_context(
-            current_rank=rank_a, current_points=points_a,
-            rank_history=rank_history_a, match_history=match_history_a, cutoff=cutoff,
-        ),
-        _ranking_equation_context(
-            current_rank=rank_b, current_points=points_b,
-            rank_history=rank_history_b, match_history=match_history_b, cutoff=cutoff,
-        ),
+    context_a = _ranking_equation_context(
+        current_rank=rank_a, current_points=points_a,
+        rank_history=rank_history_a, match_history=match_history_a, cutoff=cutoff,
     )
+    context_b = _ranking_equation_context(
+        current_rank=rank_b, current_points=points_b,
+        rank_history=rank_history_b, match_history=match_history_b, cutoff=cutoff,
+    )
+    structural = evaluate_structural_strength(context_a, context_b)
+    structural_v2 = evaluate_structural_strength_v2(context_a, context_b)
     surface_result = evaluate_surface_conditions(_surface_equation_pair(
         observations_a=match_history_a, observations_b=match_history_b,
         cutoff=cutoff, surface=surface, venue=venue, pace=pace,
     ))
     return {
         "contextual_structural_signal_v1": structural.get("family_signal"),
+        "contextual_structural_signal_v2": structural_v2.get("family_signal"),
         "contextual_surface_signal_v1": surface_result.get("family_signal"),
-    }, {"structural_strength": structural, "surface_conditions": surface_result}
+    }, {
+        "structural_strength": structural,
+        "structural_strength_v2": structural_v2,
+        "surface_conditions": surface_result,
+    }
 
 
 def _h2h_feature(

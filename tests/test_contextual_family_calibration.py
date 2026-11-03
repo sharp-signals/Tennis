@@ -125,3 +125,17 @@ def test_profile_comparison_uses_same_holdout_targets_and_stays_market_free():
     assert result["comparisons"]["surface_conditions"]["paired_holdout_targets"] > 0
     assert result["market_used"] is False
     assert result["production_effect"] is False
+
+
+def test_v2_profile_selects_continuous_structural_feature():
+    split = _split_rows()
+    for part in split.values():
+        for row in part:
+            row["features"]["contextual_structural_signal_v2"] = (
+                0.5 if row["target_a_win"] else -0.5
+            )
+    result = calibrate_family(
+        split, family="structural_strength", feature_profile="contextual_v2",
+    )
+    assert result["features"] == ["contextual_structural_signal_v2"]
+    assert result["coefficients"]["contextual_structural_signal_v2"] >= 0

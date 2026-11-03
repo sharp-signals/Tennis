@@ -29,6 +29,10 @@ CALIBRATION_FEATURE_PROFILES = {
         "structural_strength": ("contextual_structural_signal_v1",),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "contextual_v2": {
+        "structural_strength": ("contextual_structural_signal_v2",),
+        "surface_conditions": ("contextual_surface_signal_v1",),
+    },
 }
 
 
@@ -96,10 +100,13 @@ def _family_features(family: str, feature_profile: str = "legacy_v0") -> tuple[s
 
 
 def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | None:
-    if feature_profile != "contextual_v1":
+    if feature_profile not in {"contextual_v1", "contextual_v2"}:
         return None
     return np.asarray([
-        name in {"contextual_structural_signal_v1", "contextual_surface_signal_v1"}
+        name in {
+            "contextual_structural_signal_v1", "contextual_structural_signal_v2",
+            "contextual_surface_signal_v1",
+        }
         for name in columns
     ], dtype=bool)
 
@@ -426,6 +433,7 @@ def _runtime_model(calibration: dict[str, Any]) -> dict[str, Any]:
 
 def compare_family_feature_profiles(
     rows: list[dict[str, Any]], *, universe: str,
+    contextual_profile: str = "contextual_v1",
 ) -> dict[str, Any]:
     """Compare legacy and contextual equations on the same chronological holdout."""
     split = _split(rows)
@@ -433,9 +441,9 @@ def compare_family_feature_profiles(
     for family in ("structural_strength", "surface_conditions"):
         legacy = calibrate_family(split, family=family, feature_profile="legacy_v0")
         contextual = calibrate_family(
-            split, family=family, feature_profile="contextual_v1",
+            split, family=family, feature_profile=contextual_profile,
         )
-        profiles = {"legacy_v0": legacy, "contextual_v1": contextual}
+        profiles = {"legacy_v0": legacy, contextual_profile: contextual}
         if any(item.get("status") == "INSUFFICIENT_COVERAGE" for item in profiles.values()):
             comparisons[family] = {"status": "INSUFFICIENT_PAIRED_COVERAGE", "profiles": profiles}
             continue
@@ -462,7 +470,7 @@ def compare_family_feature_profiles(
             "status": "CONTEXTUAL_BETTER" if delta > 0 else "LEGACY_BETTER_OR_EQUAL",
             "paired_holdout_targets": len(paired),
             "legacy_v0": legacy_metrics,
-            "contextual_v1": contextual_metrics,
+            contextual_profile: contextual_metrics,
             "contextual_log_loss_gain": round(delta, 6),
             "profiles": profiles,
         }
@@ -470,6 +478,7 @@ def compare_family_feature_profiles(
         "schema_version": SCHEMA_VERSION,
         "universe": str(universe).strip().casefold(),
         "mode": "PAIRED_CHRONOLOGICAL_FAMILY_PROFILE_COMPARISON",
+        "contextual_profile": contextual_profile,
         "split_targets": {name: len(items) for name, items in split.items()},
         "comparisons": comparisons,
         "market_used": False,

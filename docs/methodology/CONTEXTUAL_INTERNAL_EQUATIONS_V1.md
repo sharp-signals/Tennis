@@ -61,3 +61,18 @@ Challenger. A direção dos novos sinais não pode ser invertida pela calibraç�
 O passo seguinte é executar o replay completo sobre a fonte histórica saudável,
 registar cobertura, log loss, Brier e calibração, e rever os casos-limite. Só
 depois se decide que curvas sobrevivem e com que incerteza.
+
+## Resultado das iterações v1 e v2
+
+O replay cronológico rejeitou a força estrutural v1 nos três universos. Uma v2
+removeu a zona neutra rígida, tornou a curva contínua e passou a usar trajetória
+e inatividade principalmente para modular a representatividade do ranking. A v2
+reduziu claramente o défice, mas continuou ligeiramente pior do que a referência
+histórica em ATP e WTA. Por esse motivo, nenhuma das duas versões foi promovida.
+
+A equação de superfície v1 melhorou log loss em ATP e WTA e permanece candidata
+SHADOW. O resultado Challenger foi excluído da decisão principal desta iteração:
+esse circuito exige validação própria e não deve determinar os parâmetros ATP/WTA.
+
+Resultados completos: `docs/analysis/CONTEXTUAL_EQUATION_REPLAY_2026-11-03.md`
+e `docs/analysis/CONTEXTUAL_STRUCTURAL_V2_REPLAY_2026-11-03.md`.

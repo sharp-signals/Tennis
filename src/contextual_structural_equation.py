@@ -14,6 +14,7 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 EQUATION_VERSION = "structural-context-v1"
+EQUATION_VERSION_V2 = "structural-context-v2"
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,19 @@ class StructuralEquationConfig:
     recovery_max_adjustment: float = 0.12
     inactivity_full_reliability_days: float = 45.0
     inactivity_zero_recovery_days: float = 180.0
+    minimum_history_for_trajectory: int = 4
+
+
+@dataclass(frozen=True)
+class StructuralEquationV2Config:
+    rank_ratio_full_signal: float = 8.0
+    points_ratio_full_signal: float = 3.0
+    rank_share_when_points_available: float = 0.70
+    recovery_max_adjustment: float = 0.08
+    recovery_saturation_log: float = 0.80
+    inactivity_full_reliability_days: float = 45.0
+    inactivity_floor_days: float = 240.0
+    minimum_representativeness: float = 0.72
     minimum_history_for_trajectory: int = 4
 
 
@@ -65,6 +79,16 @@ def _signed_ratio_signal(
         return 0.0
     scaled = min(1.0, (magnitude - floor) / max(1e-9, ceiling - floor))
     return math.copysign(scaled, raw)
+
+
+def _continuous_ratio_signal(
+    a: Any, b: Any, *, lower_is_better: bool, full_signal_ratio: float,
+) -> float | None:
+    left, right = _positive(a), _positive(b)
+    if left is None or right is None:
+        return None
+    raw = math.log(right / left) if lower_is_better else math.log(left / right)
+    return max(-1.0, min(1.0, raw / math.log(full_signal_ratio)))
 
 
 def _trajectory(player: dict[str, Any], config: StructuralEquationConfig) -> float | None:
@@ -171,6 +195,127 @@ def evaluate_structural_strength(
             "rank_and_points_are_dependent_views": True,
             "historical_peak_is_not_direct_vote": True,
             "trajectory_cannot_replace_current_level": True,
+        },
+        "candidate_parameters": asdict(cfg),
+        "market_used": False,
+        "production_effect": False,
+    }
+
+
+def _trajectory_v2(
+    player: dict[str, Any], config: StructuralEquationV2Config,
+) -> float | None:
+    history = int(_positive(player.get("historical_observation_count")) or 0)
+    if history < config.minimum_history_for_trajectory:
+        return None
+    six = _finite(player.get("ranking_strength_change_6m"))
+    twelve = _finite(player.get("ranking_strength_change_12m"))
+    if six is not None and twelve is not None:
+        return 0.65 * six + 0.35 * twelve
+    return six if six is not None else twelve
+
+
+def _representativeness_v2(
+    player: dict[str, Any], config: StructuralEquationV2Config,
+) -> float:
+    days = _positive(player.get("days_since_last_match"))
+    if days is None or days <= config.inactivity_full_reliability_days:
+        inactivity = 1.0
+    else:
+        span = config.inactivity_floor_days - config.inactivity_full_reliability_days
+        inactivity = max(
+            config.minimum_representativeness,
+            1.0 - (days - config.inactivity_full_reliability_days)
+            / span * (1.0 - config.minimum_representativeness),
+        )
+    trajectory = _trajectory_v2(player, config)
+    # A rapidly moving ranking is less representative, regardless of direction.
+    volatility = min(1.0, abs(trajectory or 0.0) / config.recovery_saturation_log)
+    trajectory_reliability = 1.0 - 0.12 * volatility
+    return max(
+        config.minimum_representativeness,
+        min(1.0, inactivity * trajectory_reliability),
+    )
+
+
+def _supported_recovery_v2(
+    player: dict[str, Any], config: StructuralEquationV2Config,
+) -> float:
+    current = _positive(player.get("current_rank"))
+    best_365 = _positive(player.get("observed_best_rank_365d"))
+    trajectory = _trajectory_v2(player, config)
+    if current is None or best_365 is None or trajectory is None or trajectory <= 0:
+        return 0.0
+    gap = max(0.0, math.log(current / best_365))
+    supported = min(gap, trajectory) / config.recovery_saturation_log
+    return min(1.0, supported) * _representativeness_v2(player, config)
+
+
+def evaluate_structural_strength_v2(
+    player_a: dict[str, Any], player_b: dict[str, Any],
+    *, config: StructuralEquationV2Config | None = None,
+) -> dict[str, Any]:
+    """Continuous structural curve with context acting on representativeness."""
+    cfg = config or StructuralEquationV2Config()
+    rank_signal = _continuous_ratio_signal(
+        player_a.get("current_rank"), player_b.get("current_rank"),
+        lower_is_better=True, full_signal_ratio=cfg.rank_ratio_full_signal,
+    )
+    points_signal = _continuous_ratio_signal(
+        player_a.get("current_points"), player_b.get("current_points"),
+        lower_is_better=False, full_signal_ratio=cfg.points_ratio_full_signal,
+    )
+    if rank_signal is None and points_signal is None:
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "equation_version": EQUATION_VERSION_V2,
+            "status": "INSUFFICIENT_BILATERAL_LEVEL",
+            "family_signal": None,
+            "market_used": False,
+            "production_effect": False,
+        }
+    if rank_signal is not None and points_signal is not None:
+        level = (
+            cfg.rank_share_when_points_available * rank_signal
+            + (1.0 - cfg.rank_share_when_points_available) * points_signal
+        )
+    else:
+        level = rank_signal if rank_signal is not None else points_signal
+
+    representative_a = _representativeness_v2(player_a, cfg)
+    representative_b = _representativeness_v2(player_b, cfg)
+    pair_representativeness = math.sqrt(representative_a * representative_b)
+    recovery = (
+        _supported_recovery_v2(player_a, cfg)
+        - _supported_recovery_v2(player_b, cfg)
+    )
+    signal = float(level) * pair_representativeness
+    signal += cfg.recovery_max_adjustment * recovery
+    signal = max(-1.0, min(1.0, signal))
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "equation_version": EQUATION_VERSION_V2,
+        "status": "READY",
+        "direction": "a" if signal > 0 else "b" if signal < 0 else "neutral",
+        "magnitude": round(abs(signal), 6),
+        "reliability": round(pair_representativeness, 6),
+        "applicability": 1.0,
+        "family_signal": round(signal, 6),
+        "components": {
+            "continuous_rank": None if rank_signal is None else round(rank_signal, 6),
+            "continuous_points": None if points_signal is None else round(points_signal, 6),
+            "current_level": round(float(level), 6),
+            "representativeness_a": round(representative_a, 6),
+            "representativeness_b": round(representative_b, 6),
+            "supported_recovery": round(recovery, 6),
+        },
+        "governance": {
+            "no_hard_rank_deadzone": True,
+            "current_level_is_anchor": True,
+            "trajectory_mainly_controls_representativeness": True,
+            "historical_peak_is_not_direct_vote": True,
+            "recovery_adjustment_is_capped": True,
         },
         "candidate_parameters": asdict(cfg),
         "market_used": False,
