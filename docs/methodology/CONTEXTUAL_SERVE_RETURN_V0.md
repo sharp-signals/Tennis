@@ -2,7 +2,7 @@
 
 **CHANGE-ID:** CHANGE-2026-11-02-175
 
-**Estado:** observacional; sem ligação ao índice, pricing ou relatórios
+**Estado:** família SHADOW secundária fechada; sem índice, pricing ou relatórios
 
 ## Decisão metodológica
 
@@ -53,3 +53,24 @@ Esta família tende a ser mais útil em matchups específicos — por exemplo,
 servidor muito forte em hard indoor contra resposta comprovadamente fraca — do
 que como vantagem geral autónoma. Mesmo nesses casos, deve permanecer abaixo
 da forma recente e depender de amostra e contexto suficientes.
+
+## Equação SHADOW selecionada
+
+A baseline usa as diferenças bilaterais de pontos ganhos no serviço e na
+resposta no piso atual. Cada diferença é reduzida pela menor amostra dos dois
+jogadores com prior de 1 000 pontos. Assim, 100 pontos não têm o mesmo valor
+de 5 000 pontos.
+
+No ATP, o desvio dos últimos 90 dias face à baseline do piso permanece como
+modificador reduzido com prior de 500 pontos. No WTA, esse desvio não confirmou
+ganho no holdout e fica apenas visível.
+
+Hold e break foram preditivos isoladamente, mas não são somados aos pontos:
+são consequências fortemente relacionadas da mesma performance. O replay
+incremental confirmou ganho pequeno depois de forma, força estrutural e
+superfície, validando o papel secundário — não um novo pilar.
+
+Artefactos:
+
+- `data/validation/contextual-serve-return-equation-comparison-2026-11-03.json`;
+- `data/models/contextual-serve-return-family-v1.json`.

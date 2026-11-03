@@ -91,6 +91,12 @@ FEATURE_FAMILIES = {
     "break_surface_margin": "serve_return",
     "service_points_won_recent_margin": "serve_return",
     "return_points_won_recent_margin": "serve_return",
+    "service_points_won_surface_margin_shrunk_v1": "serve_return",
+    "return_points_won_surface_margin_shrunk_v1": "serve_return",
+    "hold_surface_margin_shrunk_v1": "serve_return",
+    "break_surface_margin_shrunk_v1": "serve_return",
+    "service_points_won_recent_deviation_v1": "serve_return",
+    "return_points_won_recent_deviation_v1": "serve_return",
 }
 RECENT_FORM_DECAYS_V1 = {
     "atp": {
@@ -610,6 +616,52 @@ def _metric_margin(
     return _difference((a or {}).get(key), (b or {}).get(key))
 
 
+def _metric_margin_shrunk(
+    a: dict[str, Any] | None,
+    b: dict[str, Any] | None,
+    key: str,
+    sample_key: str,
+    *,
+    prior_sample: float,
+) -> float | None:
+    margin = _metric_margin(a, b, key)
+    sample_a = _positive_rank((a or {}).get(sample_key))
+    sample_b = _positive_rank((b or {}).get(sample_key))
+    if margin is None or sample_a is None or sample_b is None:
+        return None
+    reliability = min(
+        sample_a / (sample_a + prior_sample),
+        sample_b / (sample_b + prior_sample),
+    )
+    return margin * reliability
+
+
+def _recent_metric_deviation(
+    surface_a: dict[str, Any] | None,
+    surface_b: dict[str, Any] | None,
+    recent_a: dict[str, Any] | None,
+    recent_b: dict[str, Any] | None,
+    key: str,
+    sample_key: str,
+    *,
+    prior_sample: float,
+) -> float | None:
+    surface_margin = _metric_margin(surface_a, surface_b, key)
+    recent_margin = _metric_margin(recent_a, recent_b, key)
+    recent_sample_a = _positive_rank((recent_a or {}).get(sample_key))
+    recent_sample_b = _positive_rank((recent_b or {}).get(sample_key))
+    if (
+        surface_margin is None or recent_margin is None
+        or recent_sample_a is None or recent_sample_b is None
+    ):
+        return None
+    reliability = min(
+        recent_sample_a / (recent_sample_a + prior_sample),
+        recent_sample_b / (recent_sample_b + prior_sample),
+    )
+    return (recent_margin - surface_margin) * reliability
+
+
 def _family_payloads(
     *, recent_a: dict[str, Any], recent_b: dict[str, Any],
     rank_a: float | None, rank_b: float | None,
@@ -780,6 +832,32 @@ def build_contextual_target_row(
         "break_surface_margin": _metric_margin(service_surface_a, service_surface_b, "break_pct"),
         "service_points_won_recent_margin": _metric_margin(service_recent_a, service_recent_b, "service_points_won_pct"),
         "return_points_won_recent_margin": _metric_margin(service_recent_a, service_recent_b, "return_points_won_pct"),
+        "service_points_won_surface_margin_shrunk_v1": _metric_margin_shrunk(
+            service_surface_a, service_surface_b,
+            "service_points_won_pct", "service_points_sample",
+            prior_sample=1_000.0,
+        ),
+        "return_points_won_surface_margin_shrunk_v1": _metric_margin_shrunk(
+            service_surface_a, service_surface_b,
+            "return_points_won_pct", "return_points_sample",
+            prior_sample=1_000.0,
+        ),
+        "hold_surface_margin_shrunk_v1": _metric_margin_shrunk(
+            service_surface_a, service_surface_b,
+            "hold_pct", "service_games_sample", prior_sample=100.0,
+        ),
+        "break_surface_margin_shrunk_v1": _metric_margin_shrunk(
+            service_surface_a, service_surface_b,
+            "break_pct", "return_games_sample", prior_sample=100.0,
+        ),
+        "service_points_won_recent_deviation_v1": _recent_metric_deviation(
+            service_surface_a, service_surface_b, service_recent_a, service_recent_b,
+            "service_points_won_pct", "service_points_sample", prior_sample=500.0,
+        ),
+        "return_points_won_recent_deviation_v1": _recent_metric_deviation(
+            service_surface_a, service_surface_b, service_recent_a, service_recent_b,
+            "return_points_won_pct", "return_points_sample", prior_sample=500.0,
+        ),
         **exact_surface_features,
         **candidate_features,
     }
@@ -943,6 +1021,36 @@ def build_contextual_family_replay_rows(
                 ),
                 "return_points_won_recent_margin": _metric_margin(
                     service_recent_a, service_recent_b, "return_points_won_pct",
+                ),
+                "service_points_won_surface_margin_shrunk_v1": _metric_margin_shrunk(
+                    service_surface_a, service_surface_b,
+                    "service_points_won_pct", "service_points_sample",
+                    prior_sample=1_000.0,
+                ),
+                "return_points_won_surface_margin_shrunk_v1": _metric_margin_shrunk(
+                    service_surface_a, service_surface_b,
+                    "return_points_won_pct", "return_points_sample",
+                    prior_sample=1_000.0,
+                ),
+                "hold_surface_margin_shrunk_v1": _metric_margin_shrunk(
+                    service_surface_a, service_surface_b,
+                    "hold_pct", "service_games_sample", prior_sample=100.0,
+                ),
+                "break_surface_margin_shrunk_v1": _metric_margin_shrunk(
+                    service_surface_a, service_surface_b,
+                    "break_pct", "return_games_sample", prior_sample=100.0,
+                ),
+                "service_points_won_recent_deviation_v1": _recent_metric_deviation(
+                    service_surface_a, service_surface_b,
+                    service_recent_a, service_recent_b,
+                    "service_points_won_pct", "service_points_sample",
+                    prior_sample=500.0,
+                ),
+                "return_points_won_recent_deviation_v1": _recent_metric_deviation(
+                    service_surface_a, service_surface_b,
+                    service_recent_a, service_recent_b,
+                    "return_points_won_pct", "return_points_sample",
+                    prior_sample=500.0,
                 ),
                 **exact_surface_features,
                 **candidate_features,

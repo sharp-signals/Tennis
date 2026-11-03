@@ -6,6 +6,38 @@ from src.contextual_serve_return import (
     build_pair_serve_return_context,
     build_player_serve_return_context,
 )
+from src.contextual_family_replay import (
+    _metric_margin_shrunk,
+    _recent_metric_deviation,
+)
+
+
+def test_small_point_samples_are_shrunk_more_than_large_samples():
+    small_a = {"service_points_won_pct": 70.0, "service_points_sample": 100.0}
+    small_b = {"service_points_won_pct": 60.0, "service_points_sample": 100.0}
+    large_a = {"service_points_won_pct": 70.0, "service_points_sample": 5_000.0}
+    large_b = {"service_points_won_pct": 60.0, "service_points_sample": 5_000.0}
+    small = _metric_margin_shrunk(
+        small_a, small_b, "service_points_won_pct", "service_points_sample",
+        prior_sample=1_000.0,
+    )
+    large = _metric_margin_shrunk(
+        large_a, large_b, "service_points_won_pct", "service_points_sample",
+        prior_sample=1_000.0,
+    )
+    assert 0 < small < large < 10
+
+
+def test_recent_form_is_a_deviation_from_surface_baseline():
+    surface_a = {"return_points_won_pct": 40.0, "return_points_sample": 2_000.0}
+    surface_b = {"return_points_won_pct": 38.0, "return_points_sample": 2_000.0}
+    recent_a = {"return_points_won_pct": 41.0, "return_points_sample": 500.0}
+    recent_b = {"return_points_won_pct": 37.0, "return_points_sample": 500.0}
+    value = _recent_metric_deviation(
+        surface_a, surface_b, recent_a, recent_b,
+        "return_points_won_pct", "return_points_sample", prior_sample=500.0,
+    )
+    assert value == 1.0
 
 
 def _match(day, winner="A", loser="B", *, surface="Hard", score="6-4 6-4",

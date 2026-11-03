@@ -72,6 +72,71 @@ CALIBRATION_FEATURE_PROFILES = {
     "h2h_recent_context_modifier_v1": {
         "matchup_h2h": ("contextual_h2h_recent_context_modifier_v1",),
     },
+    "serve_return_surface_points_raw_v0": {
+        "serve_return": (
+            "service_points_won_surface_margin",
+            "return_points_won_surface_margin",
+        ),
+    },
+    "serve_return_surface_points_shrunk_v1": {
+        "serve_return": (
+            "service_points_won_surface_margin_shrunk_v1",
+            "return_points_won_surface_margin_shrunk_v1",
+        ),
+    },
+    "serve_return_surface_games_shrunk_v1": {
+        "serve_return": (
+            "hold_surface_margin_shrunk_v1",
+            "break_surface_margin_shrunk_v1",
+        ),
+    },
+    "serve_return_points_recent_deviation_v1": {
+        "serve_return": (
+            "service_points_won_surface_margin_shrunk_v1",
+            "return_points_won_surface_margin_shrunk_v1",
+            "service_points_won_recent_deviation_v1",
+            "return_points_won_recent_deviation_v1",
+        ),
+    },
+    "primary_base_for_serve_v1": {
+        "serve_return": (
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_v1",
+            "contextual_recent_win_quality_v1",
+            "current_rank_log_ratio",
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk",
+        ),
+    },
+    "primary_plus_serve_v1": {
+        "serve_return": (
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_v1",
+            "contextual_recent_win_quality_v1",
+            "current_rank_log_ratio",
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk",
+            "service_points_won_surface_margin_shrunk_v1",
+            "return_points_won_surface_margin_shrunk_v1",
+            "service_points_won_recent_deviation_v1",
+            "return_points_won_recent_deviation_v1",
+        ),
+    },
+    "primary_plus_serve_surface_v1": {
+        "serve_return": (
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_v1",
+            "contextual_recent_win_quality_v1",
+            "current_rank_log_ratio",
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk",
+            "service_points_won_surface_margin_shrunk_v1",
+            "return_points_won_surface_margin_shrunk_v1",
+        ),
+    },
     "contextual_v2": {
         "structural_strength": ("contextual_structural_signal_v2",),
         "surface_conditions": ("contextual_surface_signal_v1",),
@@ -227,6 +292,13 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "h2h_global_shrunk_v1",
         "h2h_same_context_modifier_v1",
         "h2h_recent_context_modifier_v1",
+        "serve_return_surface_points_raw_v0",
+        "serve_return_surface_points_shrunk_v1",
+        "serve_return_surface_games_shrunk_v1",
+        "serve_return_points_recent_deviation_v1",
+        "primary_base_for_serve_v1",
+        "primary_plus_serve_v1",
+        "primary_plus_serve_surface_v1",
         *(f"recent_capped_loss_{int(round(value * 100)):03d}"
           for value in RECENT_LOSS_CONTEXT_GRID_V2),
     }:
@@ -246,6 +318,15 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_h2h_global_shrunk_v1",
             "contextual_h2h_same_context_modifier_v1",
             "contextual_h2h_recent_context_modifier_v1",
+            "service_points_won_surface_margin",
+            "return_points_won_surface_margin",
+            "service_points_won_surface_margin_shrunk_v1",
+            "return_points_won_surface_margin_shrunk_v1",
+            "hold_surface_margin_shrunk_v1",
+            "break_surface_margin_shrunk_v1",
+            "service_points_won_recent_deviation_v1",
+            "return_points_won_recent_deviation_v1",
+            "current_rank_log_ratio",
             "contextual_structural_rank_core_v3",
             "contextual_structural_trajectory_margin_v3",
             "contextual_structural_inactivity_margin_v3",

@@ -34,6 +34,38 @@ def test_h2h_candidate_signal_is_directionally_constrained():
     assert mask.tolist() == [True]
 
 
+def test_serve_return_candidate_components_are_directionally_constrained():
+    columns = [
+        "service_points_won_surface_margin_shrunk_v1",
+        "return_points_won_recent_deviation_v1",
+    ]
+    mask = _directional_mask(
+        columns, "serve_return_points_recent_deviation_v1",
+    )
+    assert mask.tolist() == [True, True]
+
+
+def test_incremental_serve_return_profile_keeps_all_directions_nonnegative():
+    columns = [
+        "contextual_recent_result_core_v1",
+        "current_rank_log_ratio",
+        "exact_surface_career_margin_shrunk",
+        "service_points_won_surface_margin_shrunk_v1",
+    ]
+    mask = _directional_mask(columns, "primary_plus_serve_v1")
+    assert mask.tolist() == [True, True, True, True]
+
+
+def test_surface_only_incremental_serve_profile_is_directional():
+    columns = [
+        "current_rank_log_ratio",
+        "service_points_won_surface_margin_shrunk_v1",
+        "return_points_won_surface_margin_shrunk_v1",
+    ]
+    mask = _directional_mask(columns, "primary_plus_serve_surface_v1")
+    assert mask.tolist() == [True, True, True]
+
+
 def _row(index, *, signal=None, won=None, missing=False):
     features = {key: None for key in FEATURE_FAMILIES}
     if not missing:
