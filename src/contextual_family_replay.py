@@ -49,6 +49,10 @@ FEATURE_FAMILIES = {
     "recent_game_margin_balance_90d": "recent_form",
     "recent_win_opponent_strength_90d": "recent_form",
     "recent_loss_opponent_strength_90d": "recent_form",
+    "contextual_recent_result_core_v1": "recent_form",
+    "contextual_recent_competitiveness_v1": "recent_form",
+    "contextual_recent_win_quality_v1": "recent_form",
+    "contextual_recent_loss_context_v1": "recent_form",
     "current_rank_log_ratio": "structural_strength",
     "rank_change_from_last_observation": "structural_strength",
     "contextual_structural_signal_v1": "structural_strength",
@@ -70,6 +74,16 @@ FEATURE_FAMILIES = {
     "break_surface_margin": "serve_return",
     "service_points_won_recent_margin": "serve_return",
     "return_points_won_recent_margin": "serve_return",
+}
+RECENT_FORM_DECAYS_V1 = {
+    "atp": {
+        "result": None, "competitiveness": 45,
+        "win_quality": 60, "loss_context": 45,
+    },
+    "wta": {
+        "result": None, "competitiveness": 90,
+        "win_quality": 60, "loss_context": 90,
+    },
 }
 _MATERIAL_CACHE: dict[int, tuple[weakref.ReferenceType[pd.DataFrame], pd.DataFrame]] = {}
 _MATERIAL_CACHE_LOCK = threading.Lock()
@@ -268,6 +282,7 @@ def _candidate_equation_features(
     rank_history_a: list[tuple[date, float]], rank_history_b: list[tuple[date, float]],
     match_history_a: list[dict[str, Any]], match_history_b: list[dict[str, Any]],
     cutoff: date, surface: str | None, venue: str | None, pace: str | None,
+    universe: str,
 ) -> tuple[dict[str, float | None], dict[str, Any]]:
     context_a = _ranking_equation_context(
         current_rank=rank_a, current_points=points_a,
@@ -286,10 +301,66 @@ def _candidate_equation_features(
         observations_a=match_history_a, observations_b=match_history_b,
         cutoff=cutoff, surface=surface, venue=venue, pace=pace,
     ))
+    recent_decays = RECENT_FORM_DECAYS_V1.get(str(universe).strip().casefold())
+    recent_features: dict[str, float | None] = {}
+    recent_audit: dict[str, Any]
+    if recent_decays is None:
+        recent_audit = {
+            "status": "OBSERVATIONAL_UNIVERSE_ONLY",
+            "reason": "ATP_WTA_DECAYS_NOT_AUTHORIZED",
+        }
+    else:
+        summaries_a = {
+            key: _summarize_player_history(
+                match_history_a, cutoff=cutoff, target_surface=surface,
+                half_life_days=half_life, window_days=WINDOW_DAYS,
+            )
+            for key, half_life in recent_decays.items()
+        }
+        summaries_b = {
+            key: _summarize_player_history(
+                match_history_b, cutoff=cutoff, target_surface=surface,
+                half_life_days=half_life, window_days=WINDOW_DAYS,
+            )
+            for key, half_life in recent_decays.items()
+        }
+        recent_features = {
+            "contextual_recent_result_core_v1": _difference(
+                summaries_a["result"]["result_balance"],
+                summaries_b["result"]["result_balance"],
+            ),
+            "contextual_recent_competitiveness_v1": _difference(
+                summaries_a["competitiveness"]["game_margin_balance"],
+                summaries_b["competitiveness"]["game_margin_balance"],
+            ),
+            "contextual_recent_win_quality_v1": _difference(
+                summaries_a["win_quality"]["win_opponent_strength"],
+                summaries_b["win_quality"]["win_opponent_strength"],
+            ),
+            "contextual_recent_loss_context_v1": _difference(
+                summaries_a["loss_context"]["loss_opponent_strength"],
+                summaries_b["loss_context"]["loss_opponent_strength"],
+            ),
+        }
+        recent_audit = {
+            "status": "READY",
+            "equation_stage": "COMPONENTS_ONLY",
+            "decay_days": {
+                key: (90 if value is None else value)
+                for key, value in recent_decays.items()
+            },
+            "uniform_result_window": recent_decays["result"] is None,
+            "loss_context_rule": (
+                "diagnostic only; strong losses may reduce a penalty but must "
+                "not create standalone positive credit"
+            ),
+            "same_surface_excluded_to_avoid_double_counting": True,
+        }
     features = {
         "contextual_structural_signal_v1": structural.get("family_signal"),
         "contextual_structural_signal_v2": structural_v2.get("family_signal"),
         "contextual_surface_signal_v1": surface_result.get("family_signal"),
+        **recent_features,
     }
     features.update(structural_v3.get("candidate_features", {}))
     features.update(structural_v4.get("candidate_features", {}))
@@ -301,6 +372,7 @@ def _candidate_equation_features(
         "structural_strength_v4": structural_v4,
         "structural_strength_v5": structural_v5,
         "surface_conditions": surface_result,
+        "recent_form_v1": recent_audit,
     }
 
 
@@ -480,6 +552,7 @@ def build_contextual_target_row(
         rank_history_a=rank_history[model_a], rank_history_b=rank_history[model_b],
         match_history_a=match_history[model_a], match_history_b=match_history[model_b],
         cutoff=cutoff, surface=target_surface, venue=target_venue, pace=target_pace,
+        universe=universe,
     )
     features = {
         "recent_result_balance_90d": _difference(recent_a["result_balance"], recent_b["result_balance"]),
@@ -599,6 +672,7 @@ def build_contextual_family_replay_rows(
                 match_history_a=match_history[player_a],
                 match_history_b=match_history[player_b],
                 cutoff=event_date, surface=surface, venue=venue, pace=pace,
+                universe=universe,
             )
             features = {
                 "recent_result_balance_90d": _difference(

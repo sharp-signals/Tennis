@@ -62,6 +62,30 @@ CALIBRATION_FEATURE_PROFILES = {
         ),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "recent_v0": {
+        "recent_form": ("contextual_recent_result_core_v1",),
+    },
+    "recent_v1": {
+        "recent_form": (
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_v1",
+        ),
+    },
+    "recent_v2": {
+        "recent_form": (
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_v1",
+            "contextual_recent_win_quality_v1",
+        ),
+    },
+    "recent_v3": {
+        "recent_form": (
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_v1",
+            "contextual_recent_win_quality_v1",
+            "contextual_recent_loss_context_v1",
+        ),
+    },
 }
 
 
@@ -131,7 +155,7 @@ def _family_features(family: str, feature_profile: str = "legacy_v0") -> tuple[s
 def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | None:
     if feature_profile not in {
         "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
-        "contextual_v5",
+        "contextual_v5", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
     }:
         return None
     return np.asarray([
@@ -144,6 +168,10 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_structural_recovery_margin_v3",
             "contextual_structural_material_band_gap_v4",
             "contextual_structural_points_log_ratio_v5",
+            "contextual_recent_result_core_v1",
+            "contextual_recent_competitiveness_v1",
+            "contextual_recent_win_quality_v1",
+            "contextual_recent_loss_context_v1",
         }
         for name in columns
     ], dtype=bool)
@@ -611,4 +639,108 @@ def compare_family_feature_profiles(
         "comparisons": comparisons,
         "market_used": False,
         "production_effect": False,
+    }
+
+
+def compare_recent_form_feature_profiles(
+    rows: list[dict[str, Any]], *, universe: str,
+) -> dict[str, Any]:
+    """Compare nested recent-form equations on one untouched holdout.
+
+    The hierarchy is human-defined: results, competitiveness, win quality and
+    finally loss context. History may reject an addition or refine its size;
+    it does not reorder those roles.
+    """
+    split = _split(rows)
+    profile_names = ("recent_v0", "recent_v1", "recent_v2", "recent_v3")
+    profiles = {
+        name: calibrate_family(
+            split, family="recent_form", feature_profile=name,
+        )
+        for name in profile_names
+    }
+    if any(item.get("status") == "INSUFFICIENT_COVERAGE" for item in profiles.values()):
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "universe": str(universe).strip().casefold(),
+            "status": "INSUFFICIENT_PAIRED_COVERAGE",
+            "profiles": profiles,
+            "market_used": False,
+            "production_effect": False,
+        }
+    holdout = split["holdout"]
+    predictions = {
+        name: predict_family_equation(holdout, _runtime_model(model))
+        for name, model in profiles.items()
+    }
+    wanted = [
+        index for index in range(len(holdout))
+        if all(predictions[name][index] is not None for name in profile_names)
+    ]
+    if not wanted:
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "universe": str(universe).strip().casefold(),
+            "status": "INSUFFICIENT_PAIRED_COVERAGE",
+            "profiles": profiles,
+            "market_used": False,
+            "production_effect": False,
+        }
+    targets = np.asarray([
+        float(holdout[index]["target_a_win"]) for index in wanted
+    ])
+    paired_metrics = {
+        name: _metrics(
+            targets,
+            np.asarray([predictions[name][index] for index in wanted]),
+            total_targets=len(holdout),
+        )
+        for name in profile_names
+    }
+    incremental = {}
+    for previous, current in zip(profile_names, profile_names[1:]):
+        old = np.clip(np.asarray([
+            predictions[previous][index] for index in wanted
+        ]), 1e-9, 1.0 - 1e-9)
+        new = np.clip(np.asarray([
+            predictions[current][index] for index in wanted
+        ]), 1e-9, 1.0 - 1e-9)
+        old_loss = -(targets * np.log(old) + (1.0 - targets) * np.log(1.0 - old))
+        new_loss = -(targets * np.log(new) + (1.0 - targets) * np.log(1.0 - new))
+        paired_gain = old_loss - new_loss
+        gain = float(paired_gain.mean())
+        standard_error = (
+            float(paired_gain.std(ddof=1) / np.sqrt(len(paired_gain)))
+            if len(paired_gain) > 1 else None
+        )
+        lower = gain - 1.96 * standard_error if standard_error is not None else None
+        upper = gain + 1.96 * standard_error if standard_error is not None else None
+        if lower is not None and lower > 0:
+            verdict = "SUPPORTED"
+        elif upper is not None and upper < 0:
+            verdict = "REJECTED"
+        else:
+            verdict = "INCONCLUSIVE"
+        incremental[f"{previous}_to_{current}"] = {
+            "log_loss_gain": round(gain, 6),
+            "gain_95pct_ci": (
+                None if lower is None else [round(lower, 6), round(upper, 6)]
+            ),
+            "status": verdict,
+        }
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "universe": str(universe).strip().casefold(),
+        "status": "OBSERVATIONAL_ONLY",
+        "mode": "PAIRED_CHRONOLOGICAL_RECENT_FORM_COMPARISON",
+        "split_targets": {name: len(items) for name, items in split.items()},
+        "paired_holdout_targets": len(wanted),
+        "profiles": profiles,
+        "paired_holdout_metrics": paired_metrics,
+        "incremental_comparisons": incremental,
+        "loss_context_promotion_blocked": True,
+        "loss_context_requires_asymmetric_guard": True,
+        "market_used": False,
+        "production_effect": False,
+        "promotion_authorized": False,
     }

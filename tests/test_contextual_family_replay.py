@@ -196,3 +196,28 @@ def test_replay_surface_candidate_shrinks_small_sample_and_uses_conditions_once(
     audit = target["candidate_equation_audit"]["surface_conditions"]
     assert audit["components"]["selected_specific_context"] == "pace_component"
     assert audit["governance"]["overlapping_components_are_not_summed"] is True
+
+
+def test_recent_form_candidate_uses_tour_specific_decay_without_surface_vote():
+    frame = pd.DataFrame([
+        _match("20260101", "Alpha", "Strong", winner_rank=40, loser_rank=10),
+        _match("20260102", "Weak", "Beta", winner_rank=150, loser_rank=50),
+        _match("20260105", "Alpha", "Beta", winner_rank=35, loser_rank=55),
+    ])
+    atp = build_contextual_family_replay_rows(frame, universe="atp")[-1]
+    wta = build_contextual_family_replay_rows(frame, universe="wta")[-1]
+
+    for target in (atp, wta):
+        audit = target["candidate_equation_audit"]["recent_form_v1"]
+        assert audit["status"] == "READY"
+        assert audit["same_surface_excluded_to_avoid_double_counting"] is True
+        assert target["features"]["contextual_recent_result_core_v1"] > 0
+        assert "probability" not in target
+    assert atp["candidate_equation_audit"]["recent_form_v1"]["decay_days"] == {
+        "result": 90, "competitiveness": 45,
+        "win_quality": 60, "loss_context": 45,
+    }
+    assert wta["candidate_equation_audit"]["recent_form_v1"]["decay_days"] == {
+        "result": 90, "competitiveness": 90,
+        "win_quality": 60, "loss_context": 90,
+    }

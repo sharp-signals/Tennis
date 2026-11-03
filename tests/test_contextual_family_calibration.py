@@ -7,6 +7,7 @@ from src.contextual_family_calibration import (
     calibrate_contextual_families,
     calibrate_family,
     compare_family_feature_profiles,
+    compare_recent_form_feature_profiles,
 )
 from src.contextual_family_replay import FEATURE_FAMILIES
 
@@ -235,3 +236,36 @@ def test_segment_diagnostics_report_paired_gain_and_confidence():
     assert result["paired_targets"] == 2
     assert result["contextual_log_loss_gain"] > 0
     assert result["verdict"] == "CONTEXTUAL_BETTER"
+
+
+def test_recent_form_profiles_follow_human_order_and_remain_shadow_only():
+    rows = _split_rows()["train"] + _split_rows()["validation"] + _split_rows()["holdout"]
+    names = (
+        "contextual_recent_result_core_v1",
+        "contextual_recent_competitiveness_v1",
+        "contextual_recent_win_quality_v1",
+        "contextual_recent_loss_context_v1",
+    )
+    for i, row in enumerate(rows):
+        row["event_date"] = f"{2020 + i // 60:04d}-{(i % 12) + 1:02d}-{(i % 27) + 1:02d}"
+        direction = 1.0 if row["target_a_win"] else -1.0
+        for index, name in enumerate(names, start=1):
+            row["features"][name] = direction / index
+
+    result = compare_recent_form_feature_profiles(rows, universe="atp")
+
+    assert result["status"] == "OBSERVATIONAL_ONLY"
+    assert result["paired_holdout_targets"] > 0
+    assert result["profiles"]["recent_v0"]["features"] == [names[0]]
+    assert result["profiles"]["recent_v3"]["features"] == list(names)
+    assert all(
+        result["profiles"]["recent_v3"]["coefficients"][name] >= 0
+        for name in names
+    )
+    assert result["loss_context_promotion_blocked"] is True
+    assert all(
+        item["gain_95pct_ci"] is not None
+        for item in result["incremental_comparisons"].values()
+    )
+    assert result["market_used"] is False
+    assert result["production_effect"] is False

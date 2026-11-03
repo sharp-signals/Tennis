@@ -80,3 +80,13 @@ Os Challengers não participaram nesta decisão. Podem ser observados em replay
 separado, mas não determinam a equação principal ATP/WTA.
 
 Este contrato continua sem efeito em produção, PAPER, fair odds ou relatórios.
+
+## Comparação das equações aninhadas
+
+A comparação posterior confirmou, com intervalos de confiança inteiramente
+positivos no ATP e no WTA, ganho incremental da competitividade, da qualidade
+das vitórias e do contexto das derrotas sobre o saldo simples de resultados.
+Isto autoriza a construção da equação seguinte, não a promoção do ajuste
+estatístico atual. Em particular, o contexto das derrotas continua bloqueado
+até existir uma barreira assimétrica que impeça uma derrota contra oposição
+forte de gerar crédito positivo autónomo.
