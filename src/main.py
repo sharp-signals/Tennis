@@ -3366,12 +3366,27 @@ def _build_match_payload(match: dict) -> dict:
     # É calculado depois da decisão atual para que não possa alterar pricing,
     # cor, Telegram, PAPER ou GREEN desta execução.
     try:
+        from .contextual_shadow_activation_v2 import activation_state
         from .contextual_family_replay import build_contextual_target_row
         from .contextual_shadow_runtime_v2 import (
             load_contract,
             predict_contextual_shadow_v2,
         )
 
+        contextual_activation = activation_state()
+        if contextual_activation["active"] is not True:
+            payload["contextual_shadow_v2"] = {
+                "schema_version": 2,
+                "mode": "DISABLED",
+                "status": "DISABLED",
+                "reason_code": contextual_activation["reason_code"],
+                "market_used": False,
+                "edge_calculated": False,
+                "production_effect": False,
+                "paper_eligible": False,
+                "green_eligible": False,
+            }
+            return payload
         contextual_universe = str(tour).strip().casefold()
         if str(match.get("tier") or "").strip() == "Challenger 125":
             payload["contextual_shadow_v2"] = {

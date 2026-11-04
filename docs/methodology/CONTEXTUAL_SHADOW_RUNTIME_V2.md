@@ -40,6 +40,23 @@ O runtime é executado depois da decisão atual. A saída declara e testa:
 Não existe painel visual v2 no relatório nesta fase. O objetivo é recolher uma
 coorte prospetiva limpa antes de decidir sobre promoção ou redesenho visual.
 
+## Ativação controlada
+
+O runtime falha fechado. Sem configuração explícita, o payload recebe
+`DISABLED / ACTIVATION_NOT_CONFIGURED` e nenhuma observação é persistida.
+
+O único valor que permite observação é:
+
+`CONTEXTUAL_SHADOW_V2_MODE=observe`
+
+Qualquer outro valor permanece desativado. Mesmo em `observe`, continuam
+obrigatoriamente falsos mercado, edge, efeito em produção, PAPER e GREEN.
+
+O auditor read-only `scripts/audit_contextual_shadow_v2.py` verifica identidade,
+deduplicação, versão, fingerprint, isolamento, probabilidades, intervalos e fair
+odds. Ausência de observações é `WAITING_FOR_DATA`; violações de contrato fazem
+o comando terminar com erro.
+
 ## Persistência
 
 O identificador da observação deriva de:
