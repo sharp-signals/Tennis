@@ -337,6 +337,7 @@ def _fit_and_evaluate_meta(
     )
     if columns != holdout_columns:
         raise ValueError("holdout meta columns mismatch")
+    probabilities = _predict(x_holdout, intercept, weights)
     return {
         "selected_l1": selected_l1,
         "candidates": candidates,
@@ -346,10 +347,9 @@ def _fit_and_evaluate_meta(
             for name, value in zip(columns, weights)
         },
         "metrics": _metrics(
-            y_holdout,
-            _predict(x_holdout, intercept, weights),
-            total_targets=len(holdout),
+            y_holdout, probabilities, total_targets=len(holdout),
         ),
+        "_probabilities": [float(value) for value in probabilities],
         "iterations": iterations,
     }
 
@@ -359,6 +359,7 @@ def combine_contextual_families_v2(
     *,
     universe: str,
     l1_grid: Iterable[float] = DEFAULT_L1_GRID,
+    include_diagnostics: bool = False,
 ) -> dict[str, Any]:
     universe = str(universe).casefold()
     split = _split(rows)
@@ -428,7 +429,7 @@ def combine_contextual_families_v2(
     }
     primary_total = sum(family_coefficients[name] for name in PRIMARY_FAMILIES)
     modifier_total = sum(family_coefficients[name] for name in FAMILY_ORDER[2:])
-    return {
+    result = {
         "schema_version": SCHEMA_VERSION,
         "model_version": "contextual-family-combination-v2-hierarchical",
         "universe": universe,
@@ -513,3 +514,9 @@ def combine_contextual_families_v2(
         "promotion_authorized": False,
         "iterations_final": iterations,
     }
+    if include_diagnostics:
+        result["_diagnostics"] = {
+            "holdout_rows": holdout,
+            "holdout_probabilities": hierarchical["_probabilities"],
+        }
+    return result
