@@ -8,7 +8,7 @@ final descriptive evaluation.  No family is combined into production pricing.
 from __future__ import annotations
 
 import math
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import numpy as np
 
@@ -233,6 +233,7 @@ def _fit_logistic_elastic_net(
     max_iter: int = 5000,
     tolerance: float = 1e-9,
     nonnegative_mask: np.ndarray | None = None,
+    weight_projector: Callable[[np.ndarray], np.ndarray] | None = None,
 ) -> tuple[float, np.ndarray, int]:
     if x.ndim != 2 or y.ndim != 1 or len(x) != len(y) or not len(y):
         raise ValueError("invalid calibration matrix")
@@ -259,6 +260,10 @@ def _fit_logistic_elastic_net(
             next_weights[nonnegative_mask] = np.maximum(
                 next_weights[nonnegative_mask], 0.0,
             )
+        if weight_projector is not None:
+            next_weights = np.asarray(weight_projector(next_weights), dtype=float)
+            if next_weights.shape != weights.shape:
+                raise ValueError("weight_projector returned invalid shape")
         delta = max(
             abs(next_intercept - intercept),
             float(np.max(np.abs(next_weights - weights))) if len(weights) else 0.0,

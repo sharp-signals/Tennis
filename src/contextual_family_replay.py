@@ -85,6 +85,7 @@ FEATURE_FAMILIES = {
     "exact_surface_current_margin_shrunk": "surface_conditions",
     "h2h_win_share_margin": "matchup_h2h",
     "same_surface_h2h_win_share_margin": "matchup_h2h",
+    "contextual_h2h_global_shrunk_v1": "matchup_h2h",
     "service_points_won_surface_margin": "serve_return",
     "return_points_won_surface_margin": "serve_return",
     "hold_surface_margin": "serve_return",
@@ -826,6 +827,10 @@ def build_contextual_target_row(
         "career_surface_win_rate_margin": _difference(surface_rate_a, surface_rate_b),
         "h2h_win_share_margin": h2h_global,
         "same_surface_h2h_win_share_margin": h2h_surface,
+        "contextual_h2h_global_shrunk_v1": (
+            h2h_global * h2h_sample / (h2h_sample + 2.0)
+            if h2h_global is not None and h2h_sample > 0 else None
+        ),
         "service_points_won_surface_margin": _metric_margin(service_surface_a, service_surface_b, "service_points_won_pct"),
         "return_points_won_surface_margin": _metric_margin(service_surface_a, service_surface_b, "return_points_won_pct"),
         "hold_surface_margin": _metric_margin(service_surface_a, service_surface_b, "hold_pct"),
@@ -1004,6 +1009,10 @@ def build_contextual_family_replay_rows(
                 "career_surface_win_rate_margin": _difference(surface_rate_a, surface_rate_b),
                 "h2h_win_share_margin": h2h_global,
                 "same_surface_h2h_win_share_margin": h2h_surface,
+                "contextual_h2h_global_shrunk_v1": (
+                    h2h_global * h2h_sample / (h2h_sample + 2.0)
+                    if h2h_global is not None and h2h_sample > 0 else None
+                ),
                 "service_points_won_surface_margin": _metric_margin(
                     service_surface_a, service_surface_b, "service_points_won_pct",
                 ),
