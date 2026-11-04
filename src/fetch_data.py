@@ -4651,7 +4651,8 @@ def _enrich_exact_current_competition(
 def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
                         window_days: Optional[int] = None, *,
                         competition_policy: Optional[dict] = None,
-                        competition_context: Optional[dict] = None) -> Optional[dict]:
+                        competition_context: Optional[dict] = None,
+                        reference_date: Optional[datetime] = None) -> Optional[dict]:
     """Forma recente do jogador (qualquer piso). None se não há dados.
 
     CORREÇÃO (14/08/2026, a pedido): antes usava sempre os últimos
@@ -4689,7 +4690,14 @@ def compute_recent_form(history: pd.DataFrame, player: str, n_matches: int,
 
     if window_days is not None and "tourney_date" in played.columns:
         played["_date"] = pd.to_datetime(played["tourney_date"], format="%Y%m%d", errors="coerce")
-        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=window_days)
+        # A janela tem de ser relativa ao encontro analisado, não ao relógio
+        # da máquina. Caso contrário, reconstruir o mesmo relatório dias mais
+        # tarde altera silenciosamente a amostra e pode apagar jogos que eram
+        # factualmente anteriores ao encontro.
+        anchor = reference_date or datetime.now(timezone.utc)
+        if anchor.tzinfo is not None:
+            anchor = anchor.astimezone(timezone.utc).replace(tzinfo=None)
+        cutoff = anchor - timedelta(days=window_days)
         janela = played[played["_date"] >= cutoff]
         if len(janela) >= max(3, n_matches // 3):  # amostra mínima na janela
             played = janela

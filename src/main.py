@@ -2444,12 +2444,14 @@ def _build_match_payload(match: dict) -> dict:
         window_days=RECENT_FORM_WINDOW_DAYS,
         competition_policy=competition_policy,
         competition_context=current_competition_context,
+        reference_date=start,
     )
     form_b = fetch_data.compute_recent_form(
         history, player_b, RECENT_FORM_MATCHES,
         window_days=RECENT_FORM_WINDOW_DAYS,
         competition_policy=competition_policy,
         competition_context=current_competition_context,
+        reference_date=start,
     )
     season_a = fetch_data.compute_current_season_record(
         history, player_a, competition_policy=competition_policy,
