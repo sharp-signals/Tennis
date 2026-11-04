@@ -39,6 +39,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.lock
 
+      - name: Settle previous SHADOW observations and evaluate calibration
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          RAPIDAPI_MAX_CALLS_PER_RUN: "500"
+          RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
+        run: python scripts/settle_contextual_shadow_v2.py --max-observations 50
+
       - name: Collect contextual SHADOW v2 observations
         env:
           CONTEXTUAL_SHADOW_V2_MODE: observe
@@ -52,6 +59,9 @@ jobs:
           python scripts/run_contextual_shadow_v2.py
           --max-matches "${{ inputs.max_matches || '0' }}"
 
+      - name: Refresh SHADOW evaluation with new pending observations
+        run: python scripts/settle_contextual_shadow_v2.py --evaluate-only
+
       - name: Publish only generated SHADOW data
         run: |
           git config user.name "tennis-bot"
@@ -63,3 +73,17 @@ jobs:
           else
             echo "Sem observações SHADOW novas para publicar."
           fi
+
+      - name: Preserve generated-data recovery bundle
+        if: failure()
+        continue-on-error: true
+        run: python scripts/recover_generated_outputs.py --profile bot --target "$RUNNER_TEMP/fenzobot-data-recovery" --reason CONTEXTUAL_SHADOW_V2_WORKFLOW_FAILED
+
+      - name: Upload generated-data recovery bundle
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: contextual-shadow-v2-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/fenzobot-data-recovery/
+          if-no-files-found: ignore
+          retention-days: 30

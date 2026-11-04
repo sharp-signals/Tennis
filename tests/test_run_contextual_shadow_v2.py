@@ -107,5 +107,6 @@ def test_shadow_workflow_is_manual_and_does_not_publish_reports():
     assert "workflow_dispatch:" in workflow
     assert "schedule:" not in workflow
     assert "python scripts/run_contextual_shadow_v2.py" in workflow
+    assert "python scripts/settle_contextual_shadow_v2.py" in workflow
     assert "src.report_notifications" not in workflow
     assert "TELEGRAM_BOT_TOKEN" not in workflow
