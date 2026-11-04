@@ -57,6 +57,18 @@ deduplicação, versão, fingerprint, isolamento, probabilidades, intervalos e f
 odds. Ausência de observações é `WAITING_FOR_DATA`; violações de contrato fazem
 o comando terminar com erro.
 
+## Execução SHADOW-only
+
+`scripts/run_contextual_shadow_v2.py` é um ponto de entrada separado do bot.
+Faz somente descoberta factual, construção das cinco famílias, probabilidade,
+fair odd, persistência v2 e auditoria. Não consulta preços de mercado e não
+gera HTML, dashboard, Telegram, email, PAPER, GREEN ou settlement.
+
+O workflow `Contextual Shadow V2 Observation` é exclusivamente manual, sem
+cron. Partilha a fila `tennis-data-writers` para impedir escritas concorrentes.
+O resumo de cada execução é guardado em
+`data/validation/contextual-shadow-v2-latest.json`.
+
 ## Persistência
 
 O identificador da observação deriva de:

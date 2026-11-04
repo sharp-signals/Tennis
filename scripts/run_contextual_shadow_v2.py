@@ -1,0 +1,306 @@
+"""Collect prospective contextual v2 observations without running the bot.
+
+This entry point deliberately avoids market prices, reports, notifications,
+PAPER, GREEN, dashboards and settlement.  It is the only supported way to
+start the prospective v2 cohort while the operational bot remains paused.
+"""
+
+from __future__ import annotations
+
+import argparse
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import sys
+from typing import Any, Mapping
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.audit_contextual_shadow_v2 import audit_ledger  # noqa: E402
+from src import fetch_data, match_identity_v2  # noqa: E402
+from src.contextual_family_replay import build_contextual_target_row  # noqa: E402
+from src.contextual_shadow_activation_v2 import activation_state  # noqa: E402
+from src.contextual_shadow_runtime_v2 import (  # noqa: E402
+    load_contract,
+    predict_contextual_shadow_v2,
+)
+from src.contextual_shadow_store_v2 import (  # noqa: E402
+    DEFAULT_PATH as LEDGER_PATH,
+    append_observations,
+    build_observation,
+)
+from src.main import (  # noqa: E402
+    _deduplicate_matches,
+    _filter_and_enrich_with_tournament_info,
+    _filter_matches_in_window,
+    _filter_prelive_matches,
+    _parse_utc,
+)
+
+
+SUMMARY_PATH = Path("data/validation/contextual-shadow-v2-latest.json")
+MODEL_PATH = Path("data/models/contextual-family-shadow-v2.json")
+
+
+def _write_json_atomic(path: Path, value: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary, path)
+
+
+def _player(match: Mapping[str, Any], side: int) -> tuple[str, Any]:
+    player = match.get(f"player{side}") or {}
+    name = str(player.get("name") or "").strip()
+    player_id = match.get(f"player{side}Id") or player.get("id")
+    return name, player_id
+
+
+def _ranking(
+    history, official: Any, player_name: str, player_id: Any,
+) -> tuple[dict[str, Any] | None, str | None]:
+    entry, source = fetch_data.resolve_official_ranking(
+        official, player_name, player_id,
+    )
+    if entry:
+        return {
+            "rank": entry.get("rank"),
+            "points": entry.get("points"),
+        }, source
+    historical = fetch_data.get_player_ranking(history, player_name)
+    return historical, "local_history" if historical is not None else None
+
+
+def _model_player_id(
+    model_name: str, *, original_a: str, original_b: str,
+    resolved_a: str, resolved_b: str, id_a: Any, id_b: Any,
+) -> Any:
+    normalized = fetch_data._normalize_name(model_name)
+    if normalized in {
+        fetch_data._normalize_name(original_a),
+        fetch_data._normalize_name(resolved_a),
+    }:
+        return id_a
+    if normalized in {
+        fetch_data._normalize_name(original_b),
+        fetch_data._normalize_name(resolved_b),
+    }:
+        return id_b
+    return None
+
+
+def build_match_observation(
+    match: Mapping[str, Any], *, official_rankings: Mapping[str, Any],
+    contract: Mapping[str, Any], analyzed_at_utc: str,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    tour = str(match.get("_tour") or "").strip().casefold()
+    if tour not in {"atp", "wta"}:
+        return None, {"status": "SKIPPED", "reason_code": "UNSUPPORTED_TOUR"}
+    if str(match.get("tier") or "").strip() == "Challenger 125":
+        return None, {
+            "status": "SKIPPED",
+            "reason_code": "CHALLENGER_MODEL_NOT_CALIBRATED",
+        }
+    original_a, id_a = _player(match, 1)
+    original_b, id_b = _player(match, 2)
+    if not original_a or not original_b:
+        return None, {
+            "status": "SKIPPED", "reason_code": "PLAYER_IDENTITY_MISSING",
+        }
+    history = fetch_data.get_history(tour, tier=match.get("tier"))
+    if history.empty:
+        return None, {"status": "SKIPPED", "reason_code": "HISTORY_EMPTY"}
+    resolved_a = fetch_data.resolve_player_name(history, original_a) or original_a
+    resolved_b = fetch_data.resolve_player_name(history, original_b) or original_b
+    rank_a, rank_source_a = _ranking(
+        history, official_rankings.get(tour), original_a, id_a,
+    )
+    rank_b, rank_source_b = _ranking(
+        history, official_rankings.get(tour), original_b, id_b,
+    )
+    start = _parse_utc(str(match["date"]))
+    row = build_contextual_target_row(
+        history,
+        universe=tour,
+        player_a=resolved_a,
+        player_b=resolved_b,
+        cutoff=start.date(),
+        surface=match.get("surface"),
+        rank_a=(rank_a or {}).get("rank"),
+        rank_b=(rank_b or {}).get("rank"),
+        points_a=(rank_a or {}).get("points"),
+        points_b=(rank_b or {}).get("points"),
+        venue=(
+            match.get("indoor") if match.get("indoor") is not None
+            else match.get("venue_context")
+        ),
+        pace_bucket=(
+            match.get("court_pace_bucket") or match.get("pace_bucket")
+        ),
+    )
+    shadow = predict_contextual_shadow_v2(row, contract, universe=tour)
+    identity = match_identity_v2.resolve_observation(
+        match,
+        provider="RapidAPI",
+        observed_at_utc=analyzed_at_utc,
+        runtime_metadata={
+            "runtime_sha": os.environ.get("GITHUB_SHA"),
+            "github_run_id": os.environ.get("GITHUB_RUN_ID"),
+        },
+    )
+    canonical = identity.get("canonical_match_instance_id")
+    if not canonical:
+        return None, {
+            "status": "SKIPPED",
+            "reason_code": identity.get("identity_reason_code")
+            or identity.get("reason_code") or "CANONICAL_IDENTITY_UNAVAILABLE",
+        }
+    model_a = str(row["player_a"])
+    model_b = str(row["player_b"])
+    payload = {
+        "canonical_match_instance_id": canonical,
+        "event_key": canonical,
+        "tour": tour,
+        "tier": match.get("tier"),
+        "commence_time_utc": start.isoformat(),
+        "analyzed_at_utc": analyzed_at_utc,
+        "player_a_id": _model_player_id(
+            model_a, original_a=original_a, original_b=original_b,
+            resolved_a=resolved_a, resolved_b=resolved_b,
+            id_a=id_a, id_b=id_b,
+        ),
+        "player_b_id": _model_player_id(
+            model_b, original_a=original_a, original_b=original_b,
+            resolved_a=resolved_a, resolved_b=resolved_b,
+            id_a=id_a, id_b=id_b,
+        ),
+        "player_a": model_a,
+        "player_b": model_b,
+        "contextual_shadow_v2": shadow,
+    }
+    observation = build_observation(payload)
+    return observation, {
+        "status": shadow["status"],
+        "reason_code": ",".join(shadow["reason_codes"]) or "READY",
+        "tour": tour,
+        "quality_group": shadow["quality_group"],
+        "rank_sources": {"a": rank_source_a, "b": rank_source_b},
+    }
+
+
+def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]:
+    activation = activation_state()
+    if activation["active"] is not True:
+        raise RuntimeError(
+            "CONTEXTUAL_SHADOW_V2_DISABLED: set "
+            "CONTEXTUAL_SHADOW_V2_MODE=observe explicitly"
+        )
+    reset_calls = getattr(fetch_data, "reset_rapidapi_call_count", None)
+    if callable(reset_calls):
+        reset_calls()
+    raw = fetch_data.fetch_resilient_discovery_fixtures()
+    if not raw and fetch_data.discovery_unavailable():
+        raise RuntimeError("DISCOVERY_UNAVAILABLE")
+    eligible = _filter_and_enrich_with_tournament_info(
+        _filter_prelive_matches(
+            _filter_matches_in_window(_deduplicate_matches(raw))
+        )
+    )
+    eligible = [
+        match for match in eligible
+        if str(match.get("_tour") or "").casefold() in {"atp", "wta"}
+        and str(match.get("tier") or "").strip() != "Challenger 125"
+    ]
+    if max_matches > 0:
+        eligible = eligible[:max_matches]
+    official_rankings = {
+        tour: fetch_data.fetch_official_ranking(tour) for tour in ("atp", "wta")
+    }
+    contract = load_contract(MODEL_PATH)
+    analyzed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    def process(match):
+        try:
+            return build_match_observation(
+                match,
+                official_rankings=official_rankings,
+                contract=contract,
+                analyzed_at_utc=analyzed_at,
+            )
+        except Exception as exc:
+            return None, {
+                "status": "FAILED",
+                "reason_code": type(exc).__name__,
+                "detail": str(exc)[:160],
+            }
+
+    observations = []
+    diagnostics = []
+    with ThreadPoolExecutor(max_workers=max(1, min(workers, 8))) as executor:
+        for observation, diagnostic in executor.map(process, eligible):
+            diagnostics.append(diagnostic)
+            if observation is not None:
+                observations.append(observation)
+    added = append_observations(observations, LEDGER_PATH)
+    audit = audit_ledger(LEDGER_PATH, MODEL_PATH)
+    reason_counts: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
+    for item in diagnostics:
+        reason = str(item.get("reason_code") or "UNKNOWN")
+        status = str(item.get("status") or "UNKNOWN")
+        reason_counts[reason] = reason_counts.get(reason, 0) + 1
+        status_counts[status] = status_counts.get(status, 0) + 1
+    summary = {
+        "schema_version": 1,
+        "mode": "PROSPECTIVE_SHADOW_ONLY",
+        "model_version": contract["model_version"],
+        "configuration_fingerprint": contract["configuration_fingerprint"],
+        "analyzed_at_utc": analyzed_at,
+        "fixtures_discovered": len(raw),
+        "eligible_main_tour": len(eligible),
+        "observations_built": len(observations),
+        "observations_added": added,
+        "status_counts": dict(sorted(status_counts.items())),
+        "reason_counts": dict(sorted(reason_counts.items())),
+        "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
+        "ledger_audit": audit,
+        "isolation": {
+            "market_used": False,
+            "reports_published": False,
+            "notifications_sent": False,
+            "paper_created": False,
+            "green_created": False,
+        },
+    }
+    _write_json_atomic(SUMMARY_PATH, summary)
+    fetch_data.flush_tournament_cache()
+    fetch_data.flush_fixtures_cache()
+    fetch_data.persist_rapidapi_usage(
+        status="shadow_v2_success", matches=len(observations),
+    )
+    if audit["status"] == "CONTRACT_VIOLATION":
+        raise RuntimeError("CONTEXTUAL_SHADOW_V2_CONTRACT_VIOLATION")
+    return summary
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-matches", type=int, default=0)
+    parser.add_argument("--workers", type=int, default=4)
+    args = parser.parse_args()
+    summary = run_shadow_only(
+        max_matches=max(0, args.max_matches), workers=max(1, args.workers),
+    )
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
