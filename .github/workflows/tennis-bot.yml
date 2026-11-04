@@ -52,6 +52,21 @@ jobs:
           cache: "pip"
           cache-dependency-path: requirements.lock
 
+      - name: Definir chave diária do histórico operacional
+        id: provider_cache_date
+        shell: bash
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Restaurar última cópia válida da TennisMyLife
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: data/provider_cache/tennismylife
+          # Uma chave por execução evita que a primeira corrida do dia congele
+          # a cópia das 06:30; a próxima restaura sempre a versão mais recente.
+          key: tennismylife-v1-${{ runner.os }}-${{ steps.provider_cache_date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            tennismylife-v1-${{ runner.os }}-
+
       - name: Configurar manifesto temporário
         run: |
           echo "FENZOBOT_REPORT_NOTIFICATION_MANIFEST=$RUNNER_TEMP/fenzobot-report-notifications.json" >> "$GITHUB_ENV"
@@ -91,6 +106,9 @@ jobs:
           TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
           RAPIDAPI_MAX_CALLS_PER_RUN: "2250"
           RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
+          # Última cópia válida privada no cache do GitHub Actions. Nunca é
+          # publicada no repositório nem substituída por respostas inválidas.
+          TENNISMYLIFE_CACHE_DIR: data/provider_cache/tennismylife
         run: python -m src.main
 
       # CHANGE-058/PR #167: publicar antes de qualquer manutenção posterior.

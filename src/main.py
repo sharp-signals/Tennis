@@ -2444,12 +2444,14 @@ def _build_match_payload(match: dict) -> dict:
         window_days=RECENT_FORM_WINDOW_DAYS,
         competition_policy=competition_policy,
         competition_context=current_competition_context,
+        reference_date=start,
     )
     form_b = fetch_data.compute_recent_form(
         history, player_b, RECENT_FORM_MATCHES,
         window_days=RECENT_FORM_WINDOW_DAYS,
         competition_policy=competition_policy,
         competition_context=current_competition_context,
+        reference_date=start,
     )
     season_a = fetch_data.compute_current_season_record(
         history, player_a, competition_policy=competition_policy,
@@ -3362,6 +3364,84 @@ def _build_match_payload(match: dict) -> dict:
             f"{payload.get('player_b')}; decisão automática bloqueada."
         )
 
+    # Modelo contextual v2: observação prospetiva estritamente SHADOW.
+    # É calculado depois da decisão atual para que não possa alterar pricing,
+    # cor, Telegram, PAPER ou GREEN desta execução.
+    try:
+        from .contextual_shadow_activation_v2 import activation_state
+        from .contextual_family_replay import build_contextual_target_row
+        from .contextual_shadow_runtime_v2 import (
+            load_contract,
+            predict_contextual_shadow_v2,
+        )
+
+        contextual_activation = activation_state()
+        if contextual_activation["active"] is not True:
+            payload["contextual_shadow_v2"] = {
+                "schema_version": 2,
+                "mode": "DISABLED",
+                "status": "DISABLED",
+                "reason_code": contextual_activation["reason_code"],
+                "market_used": False,
+                "edge_calculated": False,
+                "production_effect": False,
+                "paper_eligible": False,
+                "green_eligible": False,
+            }
+            return payload
+        contextual_universe = str(tour).strip().casefold()
+        if str(match.get("tier") or "").strip() == "Challenger 125":
+            payload["contextual_shadow_v2"] = {
+                "schema_version": 2,
+                "mode": "PROSPECTIVE_SHADOW_ONLY",
+                "status": "OUT_OF_SCOPE",
+                "reason_code": "CHALLENGER_MODEL_NOT_CALIBRATED",
+                "market_used": False,
+                "edge_calculated": False,
+                "production_effect": False,
+                "paper_eligible": False,
+                "green_eligible": False,
+            }
+            return payload
+        contextual_row = build_contextual_target_row(
+            history,
+            universe=contextual_universe,
+            player_a=_resolved_a or player_a,
+            player_b=_resolved_b or player_b,
+            cutoff=start.date(),
+            surface=surface,
+            rank_a=(rank_a or {}).get("rank") if isinstance(rank_a, dict) else rank_a,
+            rank_b=(rank_b or {}).get("rank") if isinstance(rank_b, dict) else rank_b,
+            points_a=(rank_a or {}).get("points") if isinstance(rank_a, dict) else None,
+            points_b=(rank_b or {}).get("points") if isinstance(rank_b, dict) else None,
+            venue=(
+                match.get("indoor") if match.get("indoor") is not None
+                else match.get("venue_context")
+            ),
+            pace_bucket=(
+                match.get("court_pace_bucket") or match.get("pace_bucket")
+            ),
+        )
+        payload["contextual_shadow_v2"] = predict_contextual_shadow_v2(
+            contextual_row, load_contract(), universe=contextual_universe,
+        )
+    except Exception as exc:
+        payload["contextual_shadow_v2"] = {
+            "schema_version": 2,
+            "mode": "PROSPECTIVE_SHADOW_ONLY",
+            "status": "UNAVAILABLE",
+            "reason_code": type(exc).__name__,
+            "market_used": False,
+            "edge_calculated": False,
+            "production_effect": False,
+            "paper_eligible": False,
+            "green_eligible": False,
+        }
+        print(
+            "[contextual-shadow] indisponível sem afetar produção: "
+            f"{player_a} vs {player_b} ({type(exc).__name__}: {exc})"
+        )
+
     return payload
 
 
@@ -3970,6 +4050,20 @@ def run() -> None:
     shadow_rows = [row for row in (shadow_pricing_store.build_observation(payload) for payload, _ in analyses) if row]
     added_shadow = shadow_pricing_store.append_observations(shadow_rows)
     print(f"[pricing-shadow] {added_shadow} observação(ões) versionada(s) acrescentada(s).")
+    from . import contextual_shadow_store_v2
+    contextual_rows = [
+        row for row in (
+            contextual_shadow_store_v2.build_observation(payload)
+            for payload, _ in analyses
+        ) if row
+    ]
+    added_contextual = contextual_shadow_store_v2.append_observations(
+        contextual_rows,
+    )
+    print(
+        "[contextual-shadow] "
+        f"{added_contextual} observação(ões) prospetiva(s) isolada(s) acrescentada(s)."
+    )
     persisted_snapshots = calibration_store.read_snapshots_by_key(
         (
             str(payload.get("snapshot_key"))

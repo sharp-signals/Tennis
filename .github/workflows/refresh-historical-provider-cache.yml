@@ -1,0 +1,42 @@
+name: Refresh Historical Provider Cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Não é operacionalmente sensível à hora; atraso do cron não afeta jogos.
+    - cron: "17 03 * * *"
+
+concurrency:
+  group: tennis-historical-provider-cache
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.lock
+
+      - name: Restaurar a última cópia válida
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: data/provider_cache/tennismylife
+          key: tennismylife-v1-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            tennismylife-v1-${{ runner.os }}-
+
+      - name: Instalar dependências
+        run: pip install -r requirements.lock
+
+      - name: Atualizar e validar histórico público
+        env:
+          TENNISMYLIFE_CACHE_DIR: data/provider_cache/tennismylife
+        run: python -m scripts.refresh_tennismylife_cache

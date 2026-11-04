@@ -22,3 +22,18 @@ data/historical_warehouse/*.sqlite3-*
 data/historical_warehouse/*.db
 data/historical_warehouse/*.db-*
 data/historical_warehouse/dumps/
+
+# Cache operacional da fonte TennisMyLife. É restaurada/persistida pelo
+# GitHub Actions e nunca publicada no repositório (dados de terceiro).
+data/provider_cache/
+
+# Saídas locais dos replays metodológicos; os resumos auditados ficam em docs/.
+artifacts/provider_cache/
+artifacts/contextual_family_replay_*.json
+artifacts/contextual_family_calibration_*.json
+artifacts/contextual_family_calibration_*.log
+artifacts/contextual_family_combination_*.json
+artifacts/contextual_family_combination_*.log
+artifacts/contextual_uncertainty_*.json
+artifacts/contextual_uncertainty_*.log
+artifacts/contextual_shadow_dry_run_*.json

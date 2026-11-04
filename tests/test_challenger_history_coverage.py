@@ -1,6 +1,8 @@
 """Regressões do histórico ATP + Challenger isolado por tier."""
 
 from datetime import datetime, timezone
+import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -191,6 +193,65 @@ class ChallengerHistoryCoverageTests(unittest.TestCase):
         updated = history[history["tourney_id"] == "wta-1"].iloc[0]
         self.assertEqual(float(updated["w_ace"]), 8.0)
         self.assertEqual(history.attrs["history_scope"], "WTA_MAIN")
+
+    def test_loader_uses_last_known_good_when_listing_is_unavailable(self):
+        year = datetime.now(timezone.utc).year
+        listing = {"files": [{
+            "name": f"{year}.csv", "url": "https://test/main.csv",
+        }]}
+        valid_csv = (
+            "tourney_id,match_num,tourney_date,winner_name,loser_name,score\n"
+            "main-1,1,20260101,Winner,Loser,6-4 6-4\n"
+        )
+
+        with tempfile.TemporaryDirectory(dir=".") as directory, patch.dict(
+            os.environ, {"TENNISMYLIFE_CACHE_DIR": directory}
+        ), patch.object(fetch_data, "HISTORY_YEARS_TO_LOAD", 1):
+            with patch.object(fetch_data.requests, "get", side_effect=[
+                _Response(json_body=listing), _Response(text=valid_csv),
+            ]):
+                fresh = fetch_data._load_tennismylife("atp")
+            self.assertEqual(len(fresh), 1)
+            self.assertEqual(fresh.attrs["history_provider_remote_files"], 1)
+
+            with patch.object(
+                fetch_data.requests, "get", side_effect=RuntimeError("offline")
+            ):
+                recovered = fetch_data._load_tennismylife("atp")
+
+        self.assertEqual(len(recovered), 1)
+        self.assertEqual(recovered.iloc[0]["winner_name"], "Winner")
+        self.assertEqual(recovered.attrs["history_provider_remote_files"], 0)
+        self.assertEqual(recovered.attrs["history_provider_cached_files"], 1)
+        self.assertTrue(recovered.attrs["history_provider_degraded"])
+
+    def test_invalid_remote_file_does_not_replace_last_known_good(self):
+        year = datetime.now(timezone.utc).year
+        listing = {"files": [{
+            "name": f"{year}.csv", "url": "https://test/main.csv",
+        }]}
+        valid_csv = (
+            "tourney_id,match_num,tourney_date,winner_name,loser_name,score\n"
+            "main-1,1,20260101,Stable Winner,Stable Loser,6-4 6-4\n"
+        )
+        invalid_csv = "message\nprovider temporarily unavailable\n"
+
+        with tempfile.TemporaryDirectory(dir=".") as directory, patch.dict(
+            os.environ, {"TENNISMYLIFE_CACHE_DIR": directory}
+        ), patch.object(fetch_data, "HISTORY_YEARS_TO_LOAD", 1):
+            with patch.object(fetch_data.requests, "get", side_effect=[
+                _Response(json_body=listing), _Response(text=valid_csv),
+            ]):
+                fetch_data._load_tennismylife("atp")
+            with patch.object(fetch_data.requests, "get", side_effect=[
+                _Response(json_body=listing),
+                _Response(text=invalid_csv), _Response(text=invalid_csv),
+            ]):
+                recovered = fetch_data._load_tennismylife("atp")
+
+        self.assertEqual(len(recovered), 1)
+        self.assertEqual(recovered.iloc[0]["winner_name"], "Stable Winner")
+        self.assertEqual(recovered.attrs["history_provider_cached_files"], 1)
 
     def test_filter_history_scope_is_a_non_mutating_challenger_view(self):
         history = pd.DataFrame([
