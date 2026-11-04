@@ -3362,18 +3362,30 @@ def _build_match_payload(match: dict) -> dict:
             f"{payload.get('player_b')}; decisão automática bloqueada."
         )
 
-    # Novo modelo contextual: observação prospetiva estritamente SHADOW.
+    # Modelo contextual v2: observação prospetiva estritamente SHADOW.
     # É calculado depois da decisão atual para que não possa alterar pricing,
     # cor, Telegram, PAPER ou GREEN desta execução.
     try:
         from .contextual_family_replay import build_contextual_target_row
-        from .contextual_shadow_runtime import load_contract, predict_contextual_shadow
-
-        contextual_universe = (
-            "challenger"
-            if str(match.get("tier") or "").strip() == "Challenger 125"
-            else str(tour).strip().casefold()
+        from .contextual_shadow_runtime_v2 import (
+            load_contract,
+            predict_contextual_shadow_v2,
         )
+
+        contextual_universe = str(tour).strip().casefold()
+        if str(match.get("tier") or "").strip() == "Challenger 125":
+            payload["contextual_shadow_v2"] = {
+                "schema_version": 2,
+                "mode": "PROSPECTIVE_SHADOW_ONLY",
+                "status": "OUT_OF_SCOPE",
+                "reason_code": "CHALLENGER_MODEL_NOT_CALIBRATED",
+                "market_used": False,
+                "edge_calculated": False,
+                "production_effect": False,
+                "paper_eligible": False,
+                "green_eligible": False,
+            }
+            return payload
         contextual_row = build_contextual_target_row(
             history,
             universe=contextual_universe,
@@ -3393,12 +3405,12 @@ def _build_match_payload(match: dict) -> dict:
                 match.get("court_pace_bucket") or match.get("pace_bucket")
             ),
         )
-        payload["contextual_shadow_v1"] = predict_contextual_shadow(
+        payload["contextual_shadow_v2"] = predict_contextual_shadow_v2(
             contextual_row, load_contract(), universe=contextual_universe,
         )
     except Exception as exc:
-        payload["contextual_shadow_v1"] = {
-            "schema_version": 1,
+        payload["contextual_shadow_v2"] = {
+            "schema_version": 2,
             "mode": "PROSPECTIVE_SHADOW_ONLY",
             "status": "UNAVAILABLE",
             "reason_code": type(exc).__name__,
@@ -4021,14 +4033,16 @@ def run() -> None:
     shadow_rows = [row for row in (shadow_pricing_store.build_observation(payload) for payload, _ in analyses) if row]
     added_shadow = shadow_pricing_store.append_observations(shadow_rows)
     print(f"[pricing-shadow] {added_shadow} observação(ões) versionada(s) acrescentada(s).")
-    from . import contextual_shadow_store
+    from . import contextual_shadow_store_v2
     contextual_rows = [
         row for row in (
-            contextual_shadow_store.build_observation(payload)
+            contextual_shadow_store_v2.build_observation(payload)
             for payload, _ in analyses
         ) if row
     ]
-    added_contextual = contextual_shadow_store.append_observations(contextual_rows)
+    added_contextual = contextual_shadow_store_v2.append_observations(
+        contextual_rows,
+    )
     print(
         "[contextual-shadow] "
         f"{added_contextual} observação(ões) prospetiva(s) isolada(s) acrescentada(s)."
