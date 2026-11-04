@@ -22,6 +22,10 @@ OUTCOMES_PATH = Path("data/contextual_shadow_outcomes-v2.jsonl")
 EVALUATION_PATH = Path(
     "data/validation/contextual-shadow-v2-evaluation-latest.json"
 )
+MARKET_PATH = Path("data/contextual_shadow_market-v2.jsonl")
+VALIDATION_CONTRACT_PATH = Path(
+    "data/models/contextual-shadow-validation-v2.json"
+)
 MODEL_VERSION = "contextual-family-shadow-v2"
 LINKAGE_WINDOW_SECONDS = 48 * 60 * 60
 
@@ -53,6 +57,20 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
             raise ValueError(f"invalid row at {path}:{line_number}")
         rows.append(row)
     return rows
+
+
+def load_validation_contract(
+    path: Path = VALIDATION_CONTRACT_PATH,
+) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        not isinstance(value, dict)
+        or value.get("contract_version") != "contextual-shadow-validation-v2.0"
+        or value.get("model_version") != MODEL_VERSION
+        or (value.get("governance") or {}).get("automatic_promotion") is not False
+    ):
+        raise ValueError("invalid contextual SHADOW validation contract")
+    return value
 
 
 def _player_id(match: Mapping[str, Any], side: int) -> Any:
@@ -180,6 +198,17 @@ def append_outcomes(
     return len(additions)
 
 
+def _mean_ci95(values: list[float]) -> list[float] | None:
+    if not values:
+        return None
+    mean = sum(values) / len(values)
+    if len(values) == 1:
+        return [round(mean, 6), round(mean, 6)]
+    variance = sum((value - mean) ** 2 for value in values) / (len(values) - 1)
+    margin = 1.96 * math.sqrt(variance / len(values))
+    return [round(mean - margin, 6), round(mean + margin, 6)]
+
+
 def _metric_block(pairs: list[tuple[float, int, float, float]]) -> dict[str, Any]:
     count = len(pairs)
     if not count:
@@ -233,6 +262,19 @@ def _metric_block(pairs: list[tuple[float, int, float, float]]) -> dict[str, Any
             "interval_consistent": interval_consistent,
         })
     neutral_log_loss = math.log(2.0)
+    brier_improvements = [
+        0.25 - (probability - outcome) ** 2
+        for probability, outcome, _, _ in pairs
+    ]
+    log_loss_improvements = [
+        neutral_log_loss - -(
+            outcome * math.log(min(1 - epsilon, max(epsilon, probability)))
+            + (1 - outcome) * math.log(
+                min(1 - epsilon, max(epsilon, 1 - probability))
+            )
+        )
+        for probability, outcome, _, _ in pairs
+    ]
     return {
         "sample_size": count,
         "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE",
@@ -247,6 +289,8 @@ def _metric_block(pairs: list[tuple[float, int, float, float]]) -> dict[str, Any
             "log_loss": round(neutral_log_loss, 6),
             "brier_improvement": round(0.25 - brier, 6),
             "log_loss_improvement": round(neutral_log_loss - log_loss, 6),
+            "brier_improvement_ci95": _mean_ci95(brier_improvements),
+            "log_loss_improvement_ci95": _mean_ci95(log_loss_improvements),
         },
         "probability_interval_diagnostic": {
             "mean_width": round(
@@ -264,9 +308,192 @@ def _metric_block(pairs: list[tuple[float, int, float, float]]) -> dict[str, Any
     }
 
 
+def _market_comparison_block(
+    rows: list[tuple[Mapping[str, Any], int, Mapping[str, Any]]],
+) -> dict[str, Any]:
+    if not rows:
+        return {
+            "status": "WAITING_FOR_PAIRED_MARKET_RESULTS",
+            "sample_size": 0,
+            "model": _metric_block([]),
+            "devig_market": _metric_block([]),
+            "paired_difference": None,
+            "hypothetical_edge_bands": {},
+        }
+    model_pairs = []
+    market_pairs = []
+    brier_differences = []
+    log_loss_differences = []
+    edge_rows: dict[str, list[tuple[float, float, float]]] = defaultdict(list)
+    for observation, outcome_a, market in rows:
+        shadow = observation.get("contextual_shadow") or {}
+        model_a = float(shadow["probability_model_a"])
+        lower, upper = map(float, shadow["probability_interval_90_model_a"])
+        market_a = float((market.get("market_probability_devig") or {})["a"])
+        market_b = 1.0 - market_a
+        model_pairs.append((model_a, outcome_a, lower, upper))
+        market_pairs.append((market_a, outcome_a, market_a, market_a))
+        model_brier = (model_a - outcome_a) ** 2
+        market_brier = (market_a - outcome_a) ** 2
+        epsilon = 1e-12
+        model_log_loss = -(
+            outcome_a * math.log(min(1 - epsilon, max(epsilon, model_a)))
+            + (1 - outcome_a) * math.log(
+                min(1 - epsilon, max(epsilon, 1 - model_a))
+            )
+        )
+        market_log_loss = -(
+            outcome_a * math.log(min(1 - epsilon, max(epsilon, market_a)))
+            + (1 - outcome_a) * math.log(
+                min(1 - epsilon, max(epsilon, 1 - market_a))
+            )
+        )
+        brier_differences.append(market_brier - model_brier)
+        log_loss_differences.append(market_log_loss - model_log_loss)
+        select_a = model_a >= market_a
+        selected_probability = model_a if select_a else 1.0 - model_a
+        selected_market_probability = market_a if select_a else market_b
+        selected_odd = float((market.get("odds") or {})["a" if select_a else "b"])
+        won = bool(outcome_a) if select_a else not bool(outcome_a)
+        edge_pp = 100.0 * (selected_probability - selected_market_probability)
+        expected_return = selected_probability * selected_odd - 1.0
+        realized_return = selected_odd - 1.0 if won else -1.0
+        if edge_pp < 2.0:
+            band = "0-2pp"
+        elif edge_pp < 5.0:
+            band = "2-5pp"
+        elif edge_pp < 10.0:
+            band = "5-10pp"
+        else:
+            band = "10pp+"
+        edge_rows[band].append((edge_pp, expected_return, realized_return))
+    model_metrics = _metric_block(model_pairs)
+    market_metrics = _metric_block(market_pairs)
+    bands = {}
+    for name in ("0-2pp", "2-5pp", "5-10pp", "10pp+"):
+        values = edge_rows.get(name, [])
+        if not values:
+            continue
+        bands[name] = {
+            "sample_size": len(values),
+            "mean_probability_edge_pp": round(
+                sum(item[0] for item in values) / len(values), 4,
+            ),
+            "mean_model_expected_return_pct": round(
+                100.0 * sum(item[1] for item in values) / len(values), 4,
+            ),
+            "hypothetical_flat_stake_roi_pct": round(
+                100.0 * sum(item[2] for item in values) / len(values), 4,
+            ),
+            "status": "DESCRIPTIVE_SHADOW_NOT_A_STRATEGY",
+        }
+    return {
+        "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE",
+        "sample_size": len(rows),
+        "model": model_metrics,
+        "devig_market": market_metrics,
+        "paired_difference": {
+            "brier_market_minus_model": round(
+                market_metrics["brier"] - model_metrics["brier"], 6,
+            ),
+            "log_loss_market_minus_model": round(
+                market_metrics["log_loss"] - model_metrics["log_loss"], 6,
+            ),
+            "brier_market_minus_model_ci95": _mean_ci95(brier_differences),
+            "log_loss_market_minus_model_ci95": _mean_ci95(
+                log_loss_differences
+            ),
+            "positive_means_model_better": True,
+        },
+        "hypothetical_edge_bands": bands,
+    }
+
+
+def _validation_gate(
+    *, contract: Mapping[str, Any], overall: Mapping[str, Any],
+    by_tour: Mapping[str, Mapping[str, Any]],
+    market: Mapping[str, Any], audits_healthy: bool,
+) -> dict[str, Any]:
+    gates = contract["sample_gates"]
+    sample_checks = {
+        "overall": int(overall.get("sample_size") or 0) >= int(
+            gates["overall_settled"]
+        ),
+        "atp": int((by_tour.get("atp") or {}).get("sample_size") or 0) >= int(
+            gates["per_tour_settled"]
+        ),
+        "wta": int((by_tour.get("wta") or {}).get("sample_size") or 0) >= int(
+            gates["per_tour_settled"]
+        ),
+        "paired_market": int(market.get("sample_size") or 0) >= int(
+            gates["paired_market_settled"]
+        ),
+        "calibration_bins": sum(
+            int(item.get("sample_size") or 0)
+            >= int(gates["calibration_bin_settled"])
+            for item in (overall.get("calibration_bins") or [])
+        ) >= int(gates["minimum_populated_calibration_bins"]),
+    }
+    neutral = overall.get("neutral_baseline") or {}
+    brier_neutral_ci = neutral.get("brier_improvement_ci95") or []
+    log_neutral_ci = neutral.get("log_loss_improvement_ci95") or []
+    probability_checks = {
+        "brier_better_than_neutral_with_95pct_confidence": (
+            len(brier_neutral_ci) == 2 and brier_neutral_ci[0] > 0.0
+        ),
+        "log_loss_better_than_neutral_with_95pct_confidence": (
+            len(log_neutral_ci) == 2 and log_neutral_ci[0] > 0.0
+        ),
+        "ece_within_limit": (
+            overall.get("ece_10") is not None
+            and overall["ece_10"]
+            <= float(contract["probability_checks"]["maximum_ece_10"])
+        ),
+        "both_tours_better_than_neutral": all(
+            (by_tour.get(tour) or {}).get("brier") is not None
+            and by_tour[tour]["brier"] < 0.25
+            and by_tour[tour]["log_loss"] < math.log(2.0)
+            for tour in ("atp", "wta")
+        ),
+    }
+    difference = market.get("paired_difference") or {}
+    brier_market_ci = difference.get("brier_market_minus_model_ci95") or []
+    log_market_ci = difference.get("log_loss_market_minus_model_ci95") or []
+    market_checks = {
+        "model_brier_not_worse_than_market_with_95pct_confidence": (
+            len(brier_market_ci) == 2 and brier_market_ci[0] >= 0.0
+        ),
+        "model_log_loss_not_worse_than_market_with_95pct_confidence": (
+            len(log_market_ci) == 2 and log_market_ci[0] >= 0.0
+        ),
+    }
+    sufficient = audits_healthy and all(sample_checks.values())
+    passed = (
+        sufficient
+        and all(probability_checks.values())
+        and all(market_checks.values())
+    )
+    status = (
+        "INSUFFICIENT_SAMPLE"
+        if not sufficient else "REVIEW_REQUIRED_PASS"
+        if passed else "REVIEW_REQUIRED_FAIL"
+    )
+    return {
+        "contract_version": contract["contract_version"],
+        "status": status,
+        "sample_checks": sample_checks,
+        "probability_checks": probability_checks,
+        "market_checks": market_checks,
+        "automatic_promotion": False,
+        "human_review_required": True,
+    }
+
+
 def build_evaluation(
     observations: Iterable[Mapping[str, Any]],
     outcomes: Iterable[Mapping[str, Any]],
+    markets: Iterable[Mapping[str, Any]] = (),
+    validation_contract: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     observations = list(observations)
     observation_by_id = {
@@ -303,6 +530,62 @@ def build_evaluation(
             settlement_violations.append({"line": line_number, "code": code})
             continue
         outcome_by_observation[key] = row
+    market_by_observation: dict[str, Mapping[str, Any]] = {}
+    market_violations: list[dict[str, Any]] = []
+    for line_number, row in enumerate(markets, start=1):
+        key = str(row.get("observation_id") or "")
+        observation = observation_by_id.get(key)
+        code = None
+        analyzed = _parse_time((observation or {}).get("analyzed_at_utc"))
+        captured = _parse_time(row.get("captured_at_utc"))
+        commence = _parse_time((observation or {}).get("commence_time_utc"))
+        try:
+            odd_a = float((row.get("odds") or {})["a"])
+            odd_b = float((row.get("odds") or {})["b"])
+            probability_a = float(
+                (row.get("market_probability_devig") or {})["a"]
+            )
+            probability_b = float(
+                (row.get("market_probability_devig") or {})["b"]
+            )
+        except (KeyError, TypeError, ValueError):
+            odd_a = odd_b = probability_a = probability_b = math.nan
+        if not key or observation is None:
+            code = "ORPHAN_OR_MISSING_OBSERVATION_ID"
+        elif key in market_by_observation:
+            code = "DUPLICATE_MARKET_OBSERVATION"
+        elif row.get("model_version") != MODEL_VERSION:
+            code = "MODEL_VERSION_MISMATCH"
+        elif (
+            row.get("configuration_fingerprint")
+            != (observation.get("contextual_shadow") or {}).get(
+                "configuration_fingerprint"
+            )
+        ):
+            code = "FINGERPRINT_MISMATCH"
+        elif (
+            row.get("canonical_match_instance_id")
+            != observation.get("canonical_match_instance_id")
+        ):
+            code = "CANONICAL_IDENTITY_MISMATCH"
+        elif not analyzed or not captured or not commence:
+            code = "INVALID_MARKET_TIMESTAMPS"
+        elif not (analyzed <= captured < commence):
+            code = "MARKET_NOT_POST_PREDICTION_PRESTART"
+        elif not all(math.isfinite(item) for item in (
+            odd_a, odd_b, probability_a, probability_b,
+        )) or odd_a <= 1.0 or odd_b <= 1.0:
+            code = "INVALID_MARKET_VALUES"
+        elif not math.isclose(probability_a + probability_b, 1.0, abs_tol=1e-6):
+            code = "INVALID_DEVIG_PROBABILITIES"
+        elif row.get("first_valid_quote_frozen") is not True:
+            code = "MARKET_QUOTE_NOT_FROZEN"
+        elif row.get("production_effect") is not False:
+            code = "MARKET_ISOLATION_VIOLATION"
+        if code:
+            market_violations.append({"line": line_number, "code": code})
+            continue
+        market_by_observation[key] = row
     pairs: list[tuple[Mapping[str, Any], tuple[float, int, float, float]]] = []
     excluded_settled = 0
     excluded_by_reason: dict[str, int] = defaultdict(int)
@@ -347,13 +630,30 @@ def build_evaluation(
         == "READY_FOR_PROSPECTIVE_SHADOW"
         for row in observations
     )
+    overall = _metric_block([pair for _, pair in pairs])
+    by_tour = grouped(lambda row: row.get("tour"))
+    market_rows = []
+    for observation, pair in pairs:
+        market = market_by_observation.get(str(observation.get("observation_id")))
+        if market is not None:
+            market_rows.append((observation, pair[1], market))
+    market_benchmark = _market_comparison_block(market_rows)
+    contract = dict(validation_contract or load_validation_contract())
+    audits_healthy = not settlement_violations and not market_violations
+    validation_gate = _validation_gate(
+        contract=contract,
+        overall=overall,
+        by_tour=by_tour,
+        market=market_benchmark,
+        audits_healthy=audits_healthy,
+    )
     return {
         "schema_version": 1,
         "model_version": MODEL_VERSION,
         "generated_at_utc": _utc_now(),
         "evaluation_state": (
             "CONTRACT_VIOLATION"
-            if settlement_violations
+            if settlement_violations or market_violations
             else "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
             if pairs else "WAITING_FOR_SETTLED_RESULTS"
         ),
@@ -364,13 +664,12 @@ def build_evaluation(
             ),
             "violations": settlement_violations,
         },
-        "market_benchmark": {
-            "status": "NOT_AVAILABLE_IN_ISOLATED_SHADOW_LEDGER",
-            "note": (
-                "Market comparison may only be joined after the prediction "
-                "is frozen and only from an independently timestamped source."
-            ),
+        "market_audit": {
+            "status": "CONTRACT_VIOLATION" if market_violations else "HEALTHY",
+            "violations": market_violations,
         },
+        "market_benchmark": market_benchmark,
+        "validation_gate": validation_gate,
         "counts": {
             "observations": len(observations),
             "ready_observations": ready_total,
@@ -379,9 +678,11 @@ def build_evaluation(
             "ready_pending": max(0, ready_total - len(pairs)),
             "settled_excluded_from_primary_metrics": excluded_settled,
             "settled_excluded_by_reason": dict(sorted(excluded_by_reason.items())),
+            "market_observations": len(market_by_observation),
+            "ready_settled_with_market": len(market_rows),
         },
-        "overall": _metric_block([pair for _, pair in pairs]),
-        "by_tour": grouped(lambda row: row.get("tour")),
+        "overall": overall,
+        "by_tour": by_tour,
         "by_surface_context": grouped(
             lambda row: (row.get("contextual_shadow") or {}).get("surface_context")
         ),

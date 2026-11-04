@@ -59,6 +59,21 @@ jobs:
           python scripts/run_contextual_shadow_v2.py
           --max-matches "${{ inputs.max_matches || '0' }}"
 
+      - name: Freeze post-prediction market benchmark
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          RAPIDAPI_MAX_CALLS_PER_RUN: "500"
+          RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
+          THE_ODDS_API_ENABLED: "1"
+          THE_ODDS_API_MAX_COMPETITIONS_PER_RUN: "4"
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          LLM_MODE: disabled
+          LLM_POLICY: never
+          ALLOW_PAID_LLM: "0"
+        run: >-
+          python scripts/capture_contextual_shadow_market_v2.py
+          --max-observations 50
+
       - name: Refresh SHADOW evaluation with new pending observations
         run: python scripts/settle_contextual_shadow_v2.py --evaluate-only
 

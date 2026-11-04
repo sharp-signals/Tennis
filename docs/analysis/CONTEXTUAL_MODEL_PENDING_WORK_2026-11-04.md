@@ -10,6 +10,15 @@
 6. **Só no fim**, atualizar o ficheiro Google Sheets/Excel de Histórico &
    Aprendizagem.
 
+## Estado atual
+
+- runtime e previsão market-free: concluídos em SHADOW;
+- liquidação de resultados: concluída e a acumular observações;
+- benchmark pós-previsão e contrato pré-declarado: implementados em
+  `CHANGE-2026-11-04-177`, ainda sujeitos a CI/revisão;
+- calibração final, redesenho do relatório, integração operacional e Excel:
+  ainda pendentes.
+
 ## Atualização final do Excel
 
 Quando modelo, fair odds e relatório estiverem estabilizados, acrescentar sem

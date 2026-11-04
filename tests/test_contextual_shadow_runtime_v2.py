@@ -130,3 +130,4 @@ def test_append_only_v2_store_deduplicates_canonical_model_pair():
 def test_v2_store_is_allowed_for_bot_generated_publication():
     assert is_allowed("data/contextual_shadow_observations-v2.jsonl", "bot")
     assert is_allowed("data/contextual_shadow_outcomes-v2.jsonl", "bot")
+    assert is_allowed("data/contextual_shadow_market-v2.jsonl", "bot")
