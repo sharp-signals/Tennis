@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 from src import fetch_data  # noqa: E402
 from src.contextual_shadow_settlement_v2 import (  # noqa: E402
     EVALUATION_PATH,
+    MARKET_PATH,
     OBSERVATIONS_PATH,
     OUTCOMES_PATH,
     append_outcomes,
@@ -51,12 +52,14 @@ def _bounded_pending_batch(
 def settle(
     *, observations_path: Path = OBSERVATIONS_PATH,
     outcomes_path: Path = OUTCOMES_PATH,
+    market_path: Path = MARKET_PATH,
     evaluation_path: Path = EVALUATION_PATH,
     max_observations: int = 0,
     evaluate_only: bool = False,
 ) -> dict[str, Any]:
     observations = read_jsonl(observations_path)
     outcomes = read_jsonl(outcomes_path)
+    markets = read_jsonl(market_path)
     settled_ids = {
         str(row.get("observation_id")) for row in outcomes
         if row.get("observation_id")
@@ -104,9 +107,12 @@ def settle(
             additions.append(result)
     added = append_outcomes(additions, outcomes_path)
     final_outcomes = read_jsonl(outcomes_path)
-    evaluation = build_evaluation(observations, final_outcomes)
+    evaluation = build_evaluation(observations, final_outcomes, markets)
     write_evaluation_atomic(evaluation, evaluation_path)
-    if evaluation["settlement_audit"]["status"] != "HEALTHY":
+    if (
+        evaluation["settlement_audit"]["status"] != "HEALTHY"
+        or evaluation["market_audit"]["status"] != "HEALTHY"
+    ):
         raise RuntimeError("CONTEXTUAL_SHADOW_SETTLEMENT_CONTRACT_VIOLATION")
     return {
         "status": "COMPLETED",
@@ -119,6 +125,11 @@ def settle(
         "evaluation_state": evaluation["evaluation_state"],
         "ready_settled": evaluation["counts"]["ready_settled"],
         "ready_pending": evaluation["counts"]["ready_pending"],
+        "market_observations": evaluation["counts"]["market_observations"],
+        "ready_settled_with_market": evaluation["counts"][
+            "ready_settled_with_market"
+        ],
+        "validation_gate": evaluation["validation_gate"]["status"],
         "isolation": {
             "predictions_rewritten": False,
             "market_used_for_prediction": False,

@@ -23,6 +23,7 @@ PROFILES: dict[str, tuple[str, ...]] = {
         "data/contextual_shadow_observations-v1.jsonl",
         "data/contextual_shadow_observations-v2.jsonl",
         "data/contextual_shadow_outcomes-v2.jsonl",
+        "data/contextual_shadow_market-v2.jsonl",
         "data/calibration_delivery_recovery/",
         "data/paper_trades.json", "data/market_ledger/", "data/match_identity/",
         "data/validation/", "data/dashboard/", "data/player_images.json",
