@@ -17,7 +17,11 @@ concurrency:
 jobs:
   observe:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # A execução normal deve ser bastante mais curta porque não consulta
+    # mercados nem produz relatórios. A margem cobre, contudo, calendários
+    # extensos e carregamento do histórico sem transformar latência normal
+    # num falso timeout.
+    timeout-minutes: 75
     permissions:
       contents: write
     steps:
