@@ -9,6 +9,8 @@ import math
 from pathlib import Path
 from typing import Any, Mapping
 
+from .contextual_shadow_handicap_v2 import build_market_review
+
 
 CONTRACT_PATH = Path("data/models/contextual-shadow-report-v2.json")
 MODEL_VERSION = "contextual-family-shadow-v2"
@@ -22,6 +24,8 @@ def load_report_contract(path: Path = CONTRACT_PATH) -> dict[str, Any]:
         or value.get("model_version") != MODEL_VERSION
         or value.get("mode") != "SHADOW_PREVIEW_ONLY"
         or rules.get("market_must_not_enter_model_probability") is not True
+        or rules.get("handicap_evidence_must_be_frozen_with_prediction") is not True
+        or rules.get("handicap_requires_own_line_probability") is not True
         or rules.get("no_betting_recommendation") is not True
         or rules.get("no_automatic_publication") is not True
     ):
@@ -145,6 +149,7 @@ def build_report_view_model(
     observation: Mapping[str, Any],
     market: Mapping[str, Any] | None = None,
     outcome: Mapping[str, Any] | None = None,
+    handicap_evidence: Mapping[str, Any] | None = None,
     *,
     contract: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -170,6 +175,15 @@ def build_report_view_model(
     player_a = (observation.get("players") or {}).get("a") or {}
     player_b = (observation.get("players") or {}).get("b") or {}
     competition = observation.get("competition") or {}
+    valid_handicap_evidence = bool(
+        isinstance(handicap_evidence, Mapping)
+        and handicap_evidence.get("observation_id")
+        == observation.get("observation_id")
+        and handicap_evidence.get("model_version") == MODEL_VERSION
+        and handicap_evidence.get("configuration_fingerprint")
+        == shadow.get("configuration_fingerprint")
+        and handicap_evidence.get("production_effect") is False
+    )
 
     family_rows = []
     absolute_total = sum(
@@ -225,6 +239,15 @@ def build_report_view_model(
         outcome.get("observation_id") == observation.get("observation_id")
     ):
         winner_side = outcome.get("winner_side")
+    market_review = build_market_review(
+        probabilities={"a": probability_a, "b": probability_b},
+        intervals={"a": interval_a, "b": interval_b},
+        odds={
+            side: float(value) for side, value in odds.items()
+            if side in {"a", "b"} and _number(value) is not None
+        },
+        evidence_record=handicap_evidence if valid_handicap_evidence else None,
+    )
 
     return {
         "contract_version": contract["contract_version"],
@@ -288,6 +311,7 @@ def build_report_view_model(
             "available": winner_side in {"a", "b"},
             "winner_side": winner_side,
         },
+        "market_review": market_review,
         "isolation": {
             "production_effect": False,
             "paper_eligible": False,
@@ -340,6 +364,105 @@ def _player_card(side: str, player: Mapping[str, Any]) -> str:
           <span>EV no limite conservador <b>{_signed(market.get('conservative_expected_value_pct'), '%')}</b></span>
         </div>
       </article>"""
+
+
+def _market_review_html(view: Mapping[str, Any]) -> str:
+    review = view.get("market_review") or {}
+    status = review.get("status")
+    if status == "MARKET_UNAVAILABLE":
+        body = (
+            '<div class="review-empty"><b>Mercado ainda indisponível.</b> '
+            "A previsão permanece guardada; não é formulado qualquer mercado."
+            "</div>"
+        )
+    elif status == "NO_POSITIVE_EDGE":
+        body = (
+            '<div class="review-empty"><b>Sem edge central positivo.</b> '
+            "O relatório mantém a leitura factual, mas não destaca um mercado."
+            "</div>"
+        )
+    else:
+        side = str(review.get("candidate_side") or "")
+        player = (view.get("players") or {}).get(side) or {}
+        confidence = (
+            "Edge também positivo no limite conservador"
+            if status == "CONSERVATIVE_POSITIVE"
+            else "Edge positivo apenas na estimativa central"
+        )
+        cards = []
+        moneyline = review.get("moneyline")
+        if isinstance(moneyline, Mapping):
+            minimum = moneyline.get("minimum_odd")
+            zone = (
+                f"{float(minimum):.2f}–{float(moneyline['maximum_odd']):.2f}"
+                if minimum is not None else "Fora da janela operacional"
+            )
+            cards.append(f"""
+              <article class="review-card moneyline-card">
+                <div class="review-type">MONEYLINE</div>
+                <h3>{_e(player.get('name'))}</h3>
+                <div class="review-big">{_odd(moneyline.get('observed_odd'))}</div>
+                <p>Odd observada · fair odd {_odd(moneyline.get('fair_odd'))}</p>
+                <div class="price-zone"><span>FAIXA PARA CONSIDERAR</span><b>{_e(zone)}</b></div>
+              </article>""")
+        handicap = review.get("handicap")
+        if isinstance(handicap, Mapping):
+            positive = handicap.get("type") == "positive"
+            line_cards = []
+            for line in handicap.get("lines") or []:
+                price = line.get("price") or {}
+                if price.get("status") != "READY":
+                    zone = "Sem preço validado · amostra relevante curta"
+                elif price.get("minimum_odd") is None:
+                    zone = (
+                        f"Fair {_odd(price.get('fair_odd'))} · acima da janela"
+                    )
+                else:
+                    zone = (
+                        f"{float(price['minimum_odd']):.2f}–"
+                        f"{float(price['maximum_odd']):.2f}"
+                    )
+                if positive:
+                    primary = f"{_e(line.get('cover_pct'))}% cobre no total"
+                    secondary = (
+                        f"Quando vence: {_e(line.get('win_cover_pct'))}% "
+                        f"({_e(line.get('win_cover'))}/{_e(line.get('win_total'))})"
+                    )
+                else:
+                    primary = f"{_e(line.get('win_cover_pct'))}% cobre quando vence"
+                    secondary = (
+                        f"Total: {_e(line.get('cover_pct'))}% "
+                        f"({_e(line.get('cover'))}/{_e(line.get('total'))})"
+                    )
+                line_cards.append(f"""
+                  <div class="line-card">
+                    <div class="line-name">{_e(player.get('name'))} {_e(line.get('line'))}</div>
+                    <strong>{primary}</strong><small>{secondary}</small>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>{_e(zone)}</b></div>
+                  </div>""")
+            cards.append(f"""
+              <article class="review-card handicap-card">
+                <div class="review-type">HANDICAP {'POSITIVO' if positive else 'NEGATIVO'} · {_e(handicap.get('format'))}</div>
+                <div class="line-grid">{''.join(line_cards)}</div>
+              </article>""")
+        if not cards:
+            cards.append(
+                '<div class="review-empty">Edge identificado, mas a odd não '
+                "está na janela Moneyline e não existe evidência de handicap "
+                "congelada para esta observação.</div>"
+            )
+        body = f"""
+          <div class="review-lead"><div><b>{_e(player.get('name'))}</b><span>{_e(confidence)}</span></div>
+            <div><strong>{_signed(review.get('central_ev_pct'), '%')}</strong><span>EV central</span></div>
+            <div><strong>{_signed(review.get('conservative_ev_pct'), '%')}</strong><span>EV conservador</span></div></div>
+          <div class="review-grid">{''.join(cards)}</div>"""
+    return f"""
+      <section class="section market-review">
+        <div class="section-head"><div><div class="eyebrow">VALIDAÇÃO HUMANA</div>
+          <h2>Mercados a consultar</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
+        {body}
+        <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>
+      </section>"""
 
 
 def render_report_html(view: Mapping[str, Any]) -> str:
@@ -427,6 +550,14 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .player-grid span,.ev-row span{{display:block;color:var(--muted);font-size:11px}} .player-grid strong{{font-size:18px}}
     .positive strong{{color:var(--cyan)}} .negative strong{{color:#b8c9d8}} .ev-row{{display:flex;gap:18px;margin-top:12px}}
     .market-note{{margin-top:14px;padding:13px 15px;border-left:3px solid var(--gold);background:#152a3d;color:#c8d8e7}}
+    .review-lead{{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:14px}}.review-lead>div{{padding:14px;background:#132f4d;border-radius:11px}}
+    .review-lead b,.review-lead strong{{display:block;font-size:21px}}.review-lead span{{color:var(--muted);font-size:11px}}
+    .review-grid{{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(0,2fr);gap:14px}}.review-card{{background:#0b2137;border:1px solid var(--line);border-radius:16px;padding:18px}}
+    .review-type{{color:var(--cyan);font-size:10px;font-weight:900;letter-spacing:.12em}}.review-big{{font-size:38px;font-weight:950}}
+    .review-card p,.line-card small{{color:var(--muted)}}.price-zone,.line-zone{{margin-top:12px;padding:10px;background:#132f4d;border-radius:9px}}
+    .price-zone span,.line-zone span{{display:block;color:var(--muted);font-size:9px;letter-spacing:.08em}}.price-zone b,.line-zone b{{font-size:16px}}
+    .line-grid{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}}.line-card{{padding:13px;background:#102a45;border:1px solid #285171;border-radius:11px}}
+    .line-card strong,.line-card small{{display:block}}.line-name{{font-weight:900;font-size:17px;margin-bottom:7px}}.review-empty{{padding:20px;border:1px dashed #54718a;border-radius:14px;color:var(--muted)}}
     .quality{{display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:center}} .ring{{width:140px;height:140px;border-radius:50%;
       display:grid;place-content:center;text-align:center;background:conic-gradient(var(--cyan) {float(coverage_pct):.1f}%,#16334d 0);
       position:relative}} .ring:after{{content:"";position:absolute;inset:12px;border-radius:50%;background:#0b2137}}
@@ -442,7 +573,8 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .trace div{{padding:10px;background:#091b2c;border-radius:8px;overflow-wrap:anywhere}} .foot{{color:var(--muted);text-align:center;margin-top:18px;font-size:12px}}
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
-      .versus .right{{text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}}}
+      .versus .right{{text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
+      .review-lead,.review-grid,.line-grid{{grid-template-columns:1fr}}}}
   </style>
 </head>
 <body><main class="shell">
@@ -459,6 +591,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <div class="pricing-grid">{_player_card('a', players['a'])}{_player_card('b', players['b'])}</div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> {_e(market_copy)}</div>
   </section>
+  {_market_review_html(view)}
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">QUALIDADE DA EVIDÊNCIA</div><h2>O que foi realmente medido</h2></div></div>
     <div class="quality"><div class="ring"><strong>{float(coverage_pct):.0f}%</strong><small>{observed}/{total} famílias</small></div>

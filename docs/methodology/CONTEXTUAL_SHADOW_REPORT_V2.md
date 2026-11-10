@@ -11,9 +11,10 @@ GREEN ou notificações.
 1. contexto do jogo e identificação dos jogadores;
 2. probabilidade, intervalo de 90% e fair odd independente;
 3. benchmark de mercado recolhido **depois** da previsão;
-4. cobertura e qualidade da evidência;
-5. direção e contributo das cinco famílias;
-6. rastreabilidade técnica expansível.
+4. Moneyline e handicaps para validação humana, quando calculáveis;
+5. cobertura e qualidade da evidência;
+6. direção e contributo das cinco famílias;
+7. rastreabilidade técnica expansível.
 
 ## Regras de interpretação
 
@@ -29,6 +30,14 @@ GREEN ou notificações.
   modelo;
 - o resultado real pode ser associado para auditoria, mas nunca reescreve a
   página pré-jogo.
+- a Moneyline é comparada diretamente com a fair odd independente;
+- cada handicap usa contagens de margem congeladas antes do jogo e calcula a
+  sua própria probabilidade de cobertura; a probabilidade Moneyline nunca é
+  apresentada como se fosse a probabilidade da linha;
+- handicap negativo destaca a cobertura quando o jogador vence; handicap
+  positivo destaca a cobertura total;
+- qualquer faixa de preço é condicional à confirmação da odd real da linha e
+  nunca cria PAPER automaticamente.
 
 ## Distribuição
 

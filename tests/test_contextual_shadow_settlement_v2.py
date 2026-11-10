@@ -86,6 +86,9 @@ class ContextualShadowSettlementTests(unittest.TestCase):
         self.assertIn("actions/upload-artifact@v7", workflow)
         self.assertTrue(is_allowed(settlement.OUTCOMES_PATH.as_posix(), "bot"))
         self.assertTrue(is_allowed(settlement.EVALUATION_PATH.as_posix(), "bot"))
+        self.assertTrue(is_allowed(
+            "data/contextual_shadow_handicap_evidence-v2.jsonl", "bot",
+        ))
 
     def test_confirmed_outcome_requires_exact_pair_time_and_winner(self):
         row = observation()

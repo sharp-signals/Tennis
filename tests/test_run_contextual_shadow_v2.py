@@ -80,6 +80,14 @@ def test_shadow_only_empty_run_has_no_operational_side_effects():
         patch("scripts.run_contextual_shadow_v2.load_contract", return_value=fake_contract),
         patch("scripts.run_contextual_shadow_v2.append_observations", return_value=0),
         patch(
+            "scripts.run_contextual_shadow_v2.existing_observation_ids",
+            return_value=set(),
+        ),
+        patch(
+            "scripts.run_contextual_shadow_v2.append_frozen_handicap_evidence",
+            return_value=0,
+        ),
+        patch(
             "scripts.run_contextual_shadow_v2.audit_ledger",
             return_value={"status": "WAITING_FOR_DATA", "rows": 0},
         ),
@@ -88,6 +96,7 @@ def test_shadow_only_empty_run_has_no_operational_side_effects():
         summary = run_shadow_only(max_matches=1)
     assert summary["eligible_main_tour"] == 0
     assert summary["observations_added"] == 0
+    assert summary["handicap_evidence_added"] == 0
     assert summary["isolation"] == {
         "market_used": False,
         "reports_published": False,

@@ -7,6 +7,8 @@
     "match_context",
     "pricing_core",
     "market_benchmark",
+    "human_market_review",
+    "handicap_evidence",
     "family_map",
     "evidence_quality",
     "technical_trace"
@@ -21,6 +23,8 @@
   "rules": {
     "market_must_not_enter_model_probability": true,
     "market_capture_must_follow_prediction": true,
+    "handicap_evidence_must_be_frozen_with_prediction": true,
+    "handicap_requires_own_line_probability": true,
     "missing_market_remains_not_available": true,
     "missing_family_is_not_neutral_evidence": true,
     "observed_none_is_distinct_from_unavailable": true,
