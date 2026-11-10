@@ -19,7 +19,9 @@ def _read_contract(path: Path) -> dict[str, Any]:
 
 def audit_ledger(path: Path, contract_path: Path) -> dict[str, Any]:
     contract = _read_contract(contract_path)
-    expected_version = contract["model_version"]
+    expected_version = (
+        contract.get("model_version") or contract["global_release_id"]
+    )
     expected_fingerprint = contract["configuration_fingerprint"]
     violations: list[dict[str, Any]] = []
     counts = Counter()
@@ -54,7 +56,10 @@ def audit_ledger(path: Path, contract_path: Path) -> dict[str, Any]:
             })
         seen.add(observation_id)
         checks = {
-            "MODEL_VERSION_MISMATCH": shadow.get("model_version") == expected_version,
+            "MODEL_VERSION_MISMATCH": (
+                shadow.get("model_version") == expected_version
+                or shadow.get("global_release_id") == expected_version
+            ),
             "FINGERPRINT_MISMATCH": (
                 shadow.get("configuration_fingerprint") == expected_fingerprint
             ),
