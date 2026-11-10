@@ -16,12 +16,17 @@ CONTRACT_PATH = Path("data/models/contextual-shadow-report-v2.json")
 MODEL_VERSION = "contextual-family-shadow-v2"
 
 
-def load_report_contract(path: Path = CONTRACT_PATH) -> dict[str, Any]:
+def load_report_contract(
+    path: Path = CONTRACT_PATH,
+    *,
+    expected_model_version: str = MODEL_VERSION,
+    expected_contract_version: str = "contextual-shadow-report-v2.0",
+) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     rules = value.get("rules") or {}
     if (
-        value.get("contract_version") != "contextual-shadow-report-v2.0"
-        or value.get("model_version") != MODEL_VERSION
+        value.get("contract_version") != expected_contract_version
+        or value.get("model_version") != expected_model_version
         or value.get("mode") != "SHADOW_PREVIEW_ONLY"
         or rules.get("market_must_not_enter_model_probability") is not True
         or rules.get("handicap_evidence_must_be_frozen_with_prediction") is not True
@@ -111,12 +116,13 @@ def _status_label(value: Any) -> str:
 
 def _market_is_valid(
     observation: Mapping[str, Any], market: Mapping[str, Any] | None,
+    *, expected_model_version: str = MODEL_VERSION,
 ) -> bool:
     if not isinstance(market, Mapping):
         return False
     return (
         market.get("observation_id") == observation.get("observation_id")
-        and market.get("model_version") == MODEL_VERSION
+        and market.get("model_version") == expected_model_version
         and market.get("first_valid_quote_frozen") is True
         and market.get("production_effect") is False
     )
@@ -152,12 +158,15 @@ def build_report_view_model(
     handicap_evidence: Mapping[str, Any] | None = None,
     *,
     contract: Mapping[str, Any] | None = None,
+    expected_model_version: str = MODEL_VERSION,
 ) -> dict[str, Any]:
     """Join frozen ledgers without changing or recalculating the prediction."""
     contract = dict(contract or load_report_contract())
     shadow = observation.get("contextual_shadow") or {}
     if (
-        shadow.get("model_version") != MODEL_VERSION
+        (
+            shadow.get("model_version") or shadow.get("global_release_id")
+        ) != expected_model_version
         or shadow.get("market_used") is not False
         or shadow.get("production_effect") is not False
         or observation.get("paper_eligible") is not False
@@ -168,7 +177,10 @@ def build_report_view_model(
     probability_b = float(shadow["probability_model_b"])
     interval_a = list(map(float, shadow["probability_interval_90_model_a"]))
     interval_b = [1.0 - interval_a[1], 1.0 - interval_a[0]]
-    valid_market = _market_is_valid(observation, market)
+    valid_market = _market_is_valid(
+        observation, market,
+        expected_model_version=expected_model_version,
+    )
     market = market if valid_market else None
     odds = (market or {}).get("odds") or {}
     market_probabilities = (market or {}).get("market_probability_devig") or {}
@@ -179,7 +191,7 @@ def build_report_view_model(
         isinstance(handicap_evidence, Mapping)
         and handicap_evidence.get("observation_id")
         == observation.get("observation_id")
-        and handicap_evidence.get("model_version") == MODEL_VERSION
+        and handicap_evidence.get("model_version") == expected_model_version
         and handicap_evidence.get("configuration_fingerprint")
         == shadow.get("configuration_fingerprint")
         and handicap_evidence.get("production_effect") is False
@@ -256,7 +268,11 @@ def build_report_view_model(
         "canonical_match_instance_id": observation.get(
             "canonical_match_instance_id"
         ),
-        "model_version": shadow.get("model_version"),
+        "model_version": (
+            shadow.get("model_version") or shadow.get("global_release_id")
+        ),
+        "global_release_id": shadow.get("global_release_id"),
+        "component_versions": dict(shadow.get("component_versions") or {}),
         "configuration_fingerprint": shadow.get("configuration_fingerprint"),
         "tour": str(observation.get("tour") or "").upper(),
         "tier": observation.get("tier") or "Tier N/D",
@@ -467,6 +483,10 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
 
 def render_report_html(view: Mapping[str, Any]) -> str:
     """Render a standalone, responsive preview with no operational actions."""
+    release_label = (
+        view.get("global_release_id") or "CONTEXTUAL V2"
+    )
+    components = view.get("component_versions") or {}
     players = view["players"]
     families = []
     for family in view["families"]:
@@ -523,7 +543,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{_e(title)} · Contextual SHADOW v2</title>
+  <title>{_e(title)} · {_e(release_label)}</title>
   <style>
     :root{{--ink:#eef7ff;--muted:#8ba9c4;--panel:#0c2035;--panel2:#102a45;--line:#244866;
       --cyan:#43d9d0;--blue:#55a7ff;--orange:#ff9b55;--red:#ff6475;--navy:#061522;--gold:#ffc857}}
@@ -578,7 +598,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
   </style>
 </head>
 <body><main class="shell">
-  <div class="topline"><div class="brand">FENZOBOT · CONTEXTUAL V2</div><div class="shadow-badge">SHADOW · SEM DECISÃO</div></div>
+  <div class="topline"><div class="brand">FENZOBOT · {_e(release_label)}</div><div class="shadow-badge">SHADOW · SEM DECISÃO</div></div>
   <section class="hero">
     <div class="context">{_e(view['tour'])} · {_e(view['tier'])} · {_e(view['tournament_name'])} · {_e(view['round_stage'])} · {_e(view['surface_context'])} · {_e(view['commence_time'])}</div>
     <div class="versus"><div><h1>{_e(players['a']['name'])}</h1><span>Modelo A</span></div><div class="vs">VS</div>
@@ -609,6 +629,8 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <details><summary>Ver identificação técnica completa</summary><div class="trace">
       <div>observation_id<br>{_e(view['observation_id'])}</div><div>canonical_match_instance_id<br>{_e(view['canonical_match_instance_id'])}</div>
       <div>model_version<br>{_e(view['model_version'])}</div><div>contract_version<br>{_e(view['contract_version'])}</div>
+      <div>ranking_model<br>{_e(components.get('ranking_model'))}</div><div>family_combination<br>{_e(components.get('family_combination'))}</div>
+      <div>probability_calibration<br>{_e(components.get('probability_calibration'))}</div><div>runtime_generation<br>{_e(components.get('runtime_generation'))}</div>
       <div>configuration_fingerprint<br>{_e(view['configuration_fingerprint'])}</div><div>previsão congelada<br>{_e(view['analyzed_at'])}</div>
     </div></details>
   </section>
@@ -617,6 +639,9 @@ def render_report_html(view: Mapping[str, Any]) -> str:
 
 
 def render_index_html(views: list[Mapping[str, Any]]) -> str:
+    release_label = (
+        views[0].get("global_release_id") if views else None
+    ) or "CONTEXTUAL V2"
     cards = []
     for view in views:
         a = view["players"]["a"]
@@ -628,14 +653,14 @@ def render_index_html(views: list[Mapping[str, Any]]) -> str:
           <div><b>{_pct(a['probability'])}</b><i>{'mercado congelado' if view['market']['available'] else 'mercado N/D'}</i><b>{_pct(b['probability'])}</b></div>
           <p>{_e(view['quality_label'])}</p></a>""")
     return f"""<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Fenzobot · previews SHADOW v2</title><style>
+    <title>Fenzobot · {_e(release_label)}</title><style>
     body{{margin:0;background:#061522;color:#eef7ff;font:15px Inter,Segoe UI,Arial,sans-serif}}main{{max-width:1120px;margin:auto;padding:35px 18px}}
     h1{{font-size:38px}}header p,.card p,.card small{{color:#8ba9c4}}.notice{{padding:14px 16px;border:1px solid #ffc857;border-radius:12px;color:#ffc857}}
     .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;margin-top:22px}}.card{{display:block;color:inherit;text-decoration:none;
     background:#0c2035;border:1px solid #244866;border-radius:16px;padding:18px;transition:.15s}}.card:hover{{transform:translateY(-2px);border-color:#43d9d0}}
     .card h2{{font-size:19px;display:flex;flex-direction:column;gap:3px}}.card h2 span{{color:#8ba9c4;font-size:11px;text-transform:uppercase}}
     .card div{{display:flex;justify-content:space-between;align-items:center}}.card b{{font-size:23px}}.card i{{font-size:10px;color:#43d9d0}}
-    </style></head><body><main><header><small>FENZOBOT · DESIGN LAB</small><h1>Novo relatório contextual</h1>
+    </style></head><body><main><header><small>FENZOBOT · {_e(release_label)}</small><h1>Novo relatório contextual</h1>
     <p>Previews construídos exclusivamente a partir das previsões congeladas. Nenhuma página abaixo cria PAPER, GREEN ou decisão.</p></header>
     <div class="notice">SHADOW PREVIEW ONLY · mercado observado posteriormente e nunca usado para formar a fair odd.</div>
     <section class="grid">{''.join(cards) or '<p>Sem observações disponíveis.</p>'}</section></main></body></html>"""

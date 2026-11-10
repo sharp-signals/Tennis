@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.contextual_shadow_report_v2 import (  # noqa: E402
+    MODEL_VERSION,
     build_report_view_model,
+    load_report_contract,
     render_index_html,
     render_report_html,
 )
@@ -48,7 +50,10 @@ def build_previews(
     outcomes_path: Path = OUTCOMES_PATH,
     handicap_evidence_path: Path | None = None,
     max_observations: int = 50,
+    expected_model_version: str = MODEL_VERSION,
+    report_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    report_contract = report_contract or load_report_contract()
     observations = read_jsonl(observations_path)
     markets = {
         str(row.get("observation_id")): row for row in read_jsonl(market_path)
@@ -77,6 +82,8 @@ def build_previews(
             markets.get(str(row.get("observation_id"))),
             outcomes.get(str(row.get("observation_id"))),
             handicap_evidence.get(str(row.get("observation_id"))),
+            contract=report_contract,
+            expected_model_version=expected_model_version,
         )
         for row in observations
     ]
@@ -91,6 +98,7 @@ def build_previews(
         "schema_version": 1,
         "status": "COMPLETED",
         "mode": "SHADOW_PREVIEW_ONLY",
+        "model_version": expected_model_version,
         "reports_built": len(views),
         "with_market": sum(view["market"]["available"] for view in views),
         "with_outcome": sum(view["outcome"]["available"] for view in views),

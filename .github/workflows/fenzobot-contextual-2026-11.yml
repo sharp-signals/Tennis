@@ -35,6 +35,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.lock
 
+      - name: Settle previous global observations and evaluate calibration
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          RAPIDAPI_MAX_CALLS_PER_RUN: "500"
+          RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
+        run: >-
+          python scripts/settle_fenzobot_contextual_2026_11.py
+          --max-observations 50
+
       - name: Collect globally identified contextual observations
         env:
           FENZOBOT_CONTEXTUAL_2026_11_MODE: observe
@@ -47,6 +56,40 @@ jobs:
         run: >-
           python scripts/run_fenzobot_contextual_2026_11.py
           --max-matches "${{ inputs.max_matches || '0' }}"
+
+      - name: Freeze post-prediction global market benchmark
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          RAPIDAPI_MAX_CALLS_PER_RUN: "500"
+          RAPIDAPI_MAX_CALLS_PER_DAY: "4500"
+          THE_ODDS_API_ENABLED: "1"
+          THE_ODDS_API_MAX_COMPETITIONS_PER_RUN: "4"
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          LLM_MODE: disabled
+          LLM_POLICY: never
+          ALLOW_PAID_LLM: "0"
+        run: >-
+          python scripts/capture_fenzobot_contextual_market.py
+          --max-observations 50
+
+      - name: Refresh global evaluation with new pending observations
+        run: >-
+          python scripts/settle_fenzobot_contextual_2026_11.py
+          --evaluate-only
+
+      - name: Build private global report previews
+        run: >-
+          python scripts/build_fenzobot_contextual_report_preview.py
+          --output-dir "$RUNNER_TEMP/fenzobot-contextual-2026-11-report-preview"
+          --max-observations 50
+
+      - name: Upload private global report previews
+        uses: actions/upload-artifact@v7
+        with:
+          name: fenzobot-contextual-2026-11-report-preview-${{ github.run_id }}
+          path: ${{ runner.temp }}/fenzobot-contextual-2026-11-report-preview/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Publish only generated SHADOW data
         run: |

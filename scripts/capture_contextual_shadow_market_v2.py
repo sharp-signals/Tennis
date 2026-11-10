@@ -63,7 +63,11 @@ def capture(
     observations_path: Path = OBSERVATIONS_PATH,
     market_path: Path = MARKET_PATH,
     summary_path: Path = SUMMARY_PATH,
+    market_builder=None,
+    model_version: str | None = None,
+    usage_status: str = "contextual_shadow_market_v2",
 ) -> dict[str, Any]:
+    market_builder = market_builder or build_market_observation
     observations = read_jsonl(observations_path)
     existing = read_markets(market_path)
     frozen_ids = {
@@ -117,7 +121,10 @@ def capture(
                 )
             )
         market = (
-            build_market_observation(observation, fixture, odds, provenance)
+            market_builder(
+                observation, fixture, odds, provenance,
+                **({"model_version": model_version} if model_version else {}),
+            )
             if odds and provenance else None
         )
         if market is None:
@@ -154,7 +161,7 @@ def capture(
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
     fetch_data.persist_rapidapi_usage(
-        status="contextual_shadow_market_v2", matches=added,
+        status=usage_status, matches=added,
     )
     return report
 
