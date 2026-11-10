@@ -106,6 +106,10 @@ def _model_player_id(
 def build_match_observation(
     match: Mapping[str, Any], *, official_rankings: Mapping[str, Any],
     contract: Mapping[str, Any], analyzed_at_utc: str,
+    predictor=predict_contextual_shadow_v2,
+    observation_builder=build_observation,
+    payload_key: str = "contextual_shadow_v2",
+    model_version: str = "contextual-family-shadow-v2",
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     tour = str(match.get("_tour") or "").strip().casefold()
     if tour not in {"atp", "wta"}:
@@ -152,7 +156,7 @@ def build_match_observation(
             match.get("court_pace_bucket") or match.get("pace_bucket")
         ),
     )
-    shadow = predict_contextual_shadow_v2(row, contract, universe=tour)
+    shadow = predictor(row, contract, universe=tour)
     identity = match_identity_v2.resolve_observation(
         match,
         provider="RapidAPI",
@@ -208,9 +212,9 @@ def build_match_observation(
                 match.get("court_pace_bucket") or match.get("pace_bucket")
             ),
         },
-        "contextual_shadow_v2": shadow,
+        payload_key: shadow,
     }
-    observation = build_observation(payload)
+    observation = observation_builder(payload)
     if observation is None:
         return None, {
             "status": "FAILED",
@@ -225,6 +229,7 @@ def build_match_observation(
         cutoff=start.date(),
         match_format=infer_match_format(match),
         captured_at_utc=analyzed_at_utc,
+        model_version=model_version,
     )
     return observation, {
         "status": shadow["status"],
@@ -236,12 +241,28 @@ def build_match_observation(
     }
 
 
-def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]:
-    activation = activation_state()
+def _run_shadow_only(
+    *, max_matches: int = 0, workers: int = 4,
+    activation_loader=activation_state,
+    disabled_code: str = "CONTEXTUAL_SHADOW_V2_DISABLED",
+    activation_env: str = "CONTEXTUAL_SHADOW_V2_MODE",
+    model_path: Path = MODEL_PATH,
+    ledger_path: Path = LEDGER_PATH,
+    summary_path: Path = SUMMARY_PATH,
+    contract_loader=load_contract,
+    predictor=predict_contextual_shadow_v2,
+    observation_builder=build_observation,
+    observation_ids_loader=existing_observation_ids,
+    observation_appender=append_observations,
+    payload_key: str = "contextual_shadow_v2",
+    model_version: str = "contextual-family-shadow-v2",
+    handicap_path: Path | None = None,
+    usage_status: str = "shadow_v2_success",
+) -> dict[str, Any]:
+    activation = activation_loader()
     if activation["active"] is not True:
         raise RuntimeError(
-            "CONTEXTUAL_SHADOW_V2_DISABLED: set "
-            "CONTEXTUAL_SHADOW_V2_MODE=observe explicitly"
+            f"{disabled_code}: set {activation_env}=observe explicitly"
         )
     reset_calls = getattr(fetch_data, "reset_rapidapi_call_count", None)
     if callable(reset_calls):
@@ -264,7 +285,7 @@ def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]
     official_rankings = {
         tour: fetch_data.fetch_official_ranking(tour) for tour in ("atp", "wta")
     }
-    contract = load_contract(MODEL_PATH)
+    contract = contract_loader(model_path)
     analyzed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def process(match):
@@ -274,6 +295,10 @@ def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]
                 official_rankings=official_rankings,
                 contract=contract,
                 analyzed_at_utc=analyzed_at,
+                predictor=predictor,
+                observation_builder=observation_builder,
+                payload_key=payload_key,
+                model_version=model_version,
             )
         except Exception as exc:
             return None, {
@@ -293,17 +318,20 @@ def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]
                 observations.append(observation)
                 if evidence is not None:
                     handicap_evidence.append(evidence)
-    existing_ids = existing_observation_ids(LEDGER_PATH)
+    existing_ids = observation_ids_loader(ledger_path)
     new_ids = {
         str(row.get("observation_id")) for row in observations
         if str(row.get("observation_id") or "") not in existing_ids
     }
-    added = append_observations(observations, LEDGER_PATH)
+    added = observation_appender(observations, ledger_path)
     handicap_added = append_frozen_handicap_evidence(
-        row for row in handicap_evidence
-        if str(row.get("observation_id") or "") in new_ids
+        (
+            row for row in handicap_evidence
+            if str(row.get("observation_id") or "") in new_ids
+        ),
+        **({"path": handicap_path} if handicap_path is not None else {}),
     )
-    audit = audit_ledger(LEDGER_PATH, MODEL_PATH)
+    audit = audit_ledger(ledger_path, model_path)
     reason_counts: dict[str, int] = {}
     status_counts: dict[str, int] = {}
     for item in diagnostics:
@@ -314,7 +342,10 @@ def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]
     summary = {
         "schema_version": 1,
         "mode": "PROSPECTIVE_SHADOW_ONLY",
-        "model_version": contract["model_version"],
+        "model_version": (
+            contract.get("global_release_id") or contract["model_version"]
+        ),
+        "component_versions": dict(contract.get("components") or {}),
         "configuration_fingerprint": contract["configuration_fingerprint"],
         "analyzed_at_utc": analyzed_at,
         "fixtures_discovered": len(raw),
@@ -334,15 +365,31 @@ def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]
             "green_created": False,
         },
     }
-    _write_json_atomic(SUMMARY_PATH, summary)
+    _write_json_atomic(summary_path, summary)
     fetch_data.flush_tournament_cache()
     fetch_data.flush_fixtures_cache()
     fetch_data.persist_rapidapi_usage(
-        status="shadow_v2_success", matches=len(observations),
+        status=usage_status, matches=len(observations),
     )
     if audit["status"] == "CONTRACT_VIOLATION":
         raise RuntimeError("CONTEXTUAL_SHADOW_V2_CONTRACT_VIOLATION")
     return summary
+
+
+def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]:
+    return _run_shadow_only(
+        max_matches=max_matches,
+        workers=workers,
+        activation_loader=activation_state,
+        model_path=MODEL_PATH,
+        ledger_path=LEDGER_PATH,
+        summary_path=SUMMARY_PATH,
+        contract_loader=load_contract,
+        predictor=predict_contextual_shadow_v2,
+        observation_builder=build_observation,
+        observation_ids_loader=existing_observation_ids,
+        observation_appender=append_observations,
+    )
 
 
 def main() -> int:

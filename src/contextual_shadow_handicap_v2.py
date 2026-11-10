@@ -127,6 +127,7 @@ def build_frozen_handicap_evidence(
     cutoff: date,
     match_format: str,
     captured_at_utc: str,
+    model_version: str = MODEL_VERSION,
 ) -> dict[str, Any]:
     """Build pre-match BO3/BO5 margin counts with a strict chronological cut."""
     wanted = {"a": _name_key(player_a), "b": _name_key(player_b)}
@@ -168,7 +169,7 @@ def build_frozen_handicap_evidence(
         "schema_version": 1,
         "evidence_version": EVIDENCE_VERSION,
         "observation_id": observation_id,
-        "model_version": MODEL_VERSION,
+        "model_version": model_version,
         "configuration_fingerprint": configuration_fingerprint,
         "captured_at_utc": captured_at_utc,
         "evidence_hash": material_hash,
