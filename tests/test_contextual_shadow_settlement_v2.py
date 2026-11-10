@@ -231,6 +231,17 @@ class ContextualShadowSettlementTests(unittest.TestCase):
             self.assertEqual(report["pending_examined"], 0)
             self.assertEqual(report["market_observations"], 0)
 
+    def test_cli_parser_accepts_evaluate_only(self):
+        report = {"status": "COMPLETED"}
+        with (
+            patch("sys.argv", ["settle_contextual_shadow_v2.py", "--evaluate-only"]),
+            patch.object(runner, "settle", return_value=report) as settle,
+            patch("builtins.print") as output,
+        ):
+            self.assertEqual(runner.main(), 0)
+        settle.assert_called_once_with(max_observations=50, evaluate_only=True)
+        output.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
