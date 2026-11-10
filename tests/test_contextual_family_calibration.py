@@ -258,6 +258,28 @@ def test_v5_profile_tests_points_beyond_rank_anchor():
     assert result["coefficients"]["contextual_structural_points_log_ratio_v5"] >= 0
 
 
+def test_v6_profile_keeps_level_context_and_friction_in_one_family():
+    split = _split_rows()
+    names = (
+        "contextual_structural_material_rank_core_v6",
+        "contextual_structural_representative_rank_core_v6",
+        "contextual_structural_points_log_ratio_v6",
+        "contextual_structural_trajectory_margin_v3",
+        "contextual_structural_inactivity_margin_v3",
+        "contextual_structural_recovery_margin_v3",
+    )
+    for part in split.values():
+        for row in part:
+            direction = 1.0 if row["target_a_win"] else -1.0
+            for index, name in enumerate(names, start=1):
+                row["features"][name] = direction / index
+    result = calibrate_family(
+        split, family="structural_strength", feature_profile="contextual_v6",
+    )
+    assert result["features"] == list(names)
+    assert all(result["coefficients"][name] >= 0 for name in names)
+
+
 def test_structural_segments_are_ex_ante_and_can_overlap():
     row = {
         "diagnostics": {"rank_a": 10, "rank_b": 120},
@@ -277,6 +299,22 @@ def test_structural_segments_are_ex_ante_and_can_overlap():
     assert "inactivity_over_90d" in labels
     assert "ranking_trajectory_material" in labels
     assert "supported_ranking_recovery" in labels
+
+
+def test_v6_structural_segments_expose_materiality_and_representativeness():
+    row = {
+        "diagnostics": {"rank_a": 70, "rank_b": 80},
+        "candidate_equation_audit": {
+            "structural_strength_v6": {"components": {
+                "material_rank_core": 0.0,
+                "bilateral_representativeness": 0.42,
+                "supported_recovery": 0.0,
+            }}
+        },
+    }
+    labels = _structural_segment_labels(row)
+    assert "ranking_material_gap_neutral" in labels
+    assert "ranking_representativeness_low" in labels
 
 
 def test_surface_segments_are_ex_ante_and_include_sample_transition_and_context():

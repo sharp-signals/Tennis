@@ -55,3 +55,16 @@ As experiências v1–v5 estão registadas em `docs/analysis/`. A arquitetura v3
 removeu a degradação da v2; patamares e pontos não melhoraram o benchmark fora
 da amostra. A validação final exigirá cortes temporais repetidos e observação
 prospetiva nova.
+
+### Candidato v6
+
+A v6 acrescenta uma leitura semanal da representatividade do ranking atual:
+nível típico, persistência no patamar atual e dispersão nas semanas ativas.
+Este histórico não substitui o ranking atual nem oferece bónus de reputação;
+serve apenas para distinguir um nível sustentado de uma posição instável.
+
+No replay de 2026-11-10, a v6 melhorou ligeiramente log loss em ATP e WTA, mas
+sem significância por intervalo de confiança. A calibração melhorou no WTA e
+piorou ligeiramente no ATP. Por isso, a v6 permanece SHADOW e `legacy_v0`
+continua ativo. Ver
+`docs/analysis/CONTEXTUAL_RANKING_V6_REPLAY_2026-11-10.md`.

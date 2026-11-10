@@ -4,11 +4,13 @@ from src.contextual_structural_equation import (
     evaluate_structural_strength_v3,
     evaluate_structural_strength_v4,
     evaluate_structural_strength_v5,
+    evaluate_structural_strength_v6,
 )
 
 
 def _player(rank, points=None, *, history=20, change_6m=0.0, change_12m=0.0,
-            best_365=None, inactive=10):
+            best_365=None, inactive=10, typical=None, persistence=1.0,
+            dispersion=0.0, active_weeks=20):
     return {
         "current_rank": rank,
         "current_points": points,
@@ -17,6 +19,10 @@ def _player(rank, points=None, *, history=20, change_6m=0.0, change_12m=0.0,
         "ranking_strength_change_12m": change_12m,
         "observed_best_rank_365d": best_365 or rank,
         "days_since_last_match": inactive,
+        "typical_rank_365d": typical or rank,
+        "current_band_persistence_365d": persistence,
+        "rank_log_iqr_365d": dispersion,
+        "weekly_rank_observations_365d": active_weeks,
     }
 
 
@@ -168,3 +174,37 @@ def test_v5_missing_points_remain_missing_and_rank_survives():
     ] is None
     assert result["candidate_features"]["contextual_structural_rank_core_v3"] > 0
     assert result["governance"]["missing_points_do_not_change_rank_core"] is True
+
+
+def test_v6_neutralises_nearby_rankings_but_keeps_material_gap():
+    nearby = evaluate_structural_strength_v6(_player(70), _player(80))
+    material = evaluate_structural_strength_v6(_player(90), _player(190))
+    key = "contextual_structural_material_rank_core_v6"
+    assert nearby["candidate_features"][key] == 0.0
+    assert material["candidate_features"][key] > 0.4
+
+
+def test_v6_unrepresentative_current_rank_reduces_context_not_direction():
+    stable = evaluate_structural_strength_v6(
+        _player(30, typical=32, persistence=0.9, dispersion=0.05),
+        _player(100, typical=105, persistence=0.9, dispersion=0.05),
+    )
+    unstable = evaluate_structural_strength_v6(
+        _player(30, typical=80, persistence=0.1, dispersion=0.7),
+        _player(100, typical=105, persistence=0.9, dispersion=0.05),
+    )
+    key = "contextual_structural_representative_rank_core_v6"
+    assert 0 < unstable["candidate_features"][key] < stable["candidate_features"][key]
+    assert unstable["governance"]["old_peak_never_restores_strength_automatically"]
+
+
+def test_v6_missing_history_preserves_material_rank_but_not_fake_representativeness():
+    result = evaluate_structural_strength_v6(
+        _player(20, active_weeks=0), _player(100, active_weeks=0),
+    )
+    assert result["candidate_features"][
+        "contextual_structural_material_rank_core_v6"
+    ] > 0
+    assert result["candidate_features"][
+        "contextual_structural_representative_rank_core_v6"
+    ] is None

@@ -8,7 +8,7 @@ alphabetical and therefore independent of the eventual winner.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import math
 import threading
 from typing import Any
@@ -23,7 +23,9 @@ from .contextual_structural_equation import (
     evaluate_structural_strength_v3,
     evaluate_structural_strength_v4,
     evaluate_structural_strength_v5,
+    evaluate_structural_strength_v6,
 )
+from .contextual_ranking import summarize_weekly_rank_history
 from .contextual_surface import (
     _pace as _surface_pace,
     _row_pace,
@@ -72,6 +74,9 @@ FEATURE_FAMILIES = {
     "contextual_structural_recovery_margin_v3": "structural_strength",
     "contextual_structural_material_band_gap_v4": "structural_strength",
     "contextual_structural_points_log_ratio_v5": "structural_strength",
+    "contextual_structural_material_rank_core_v6": "structural_strength",
+    "contextual_structural_representative_rank_core_v6": "structural_strength",
+    "contextual_structural_points_log_ratio_v6": "structural_strength",
     "same_surface_result_balance_90d": "surface_conditions",
     "career_surface_win_rate_margin": "surface_conditions",
     "contextual_surface_signal_v1": "surface_conditions",
@@ -385,6 +390,14 @@ def _ranking_equation_context(
         (row["event_date"] for row in match_history if row["event_date"] < cutoff),
         default=None,
     )
+    weekly_summary = summarize_weekly_rank_history(
+        [
+            {"observed_at": day, "rank": rank}
+            for day, rank in ranked
+        ],
+        cutoff=datetime.combine(cutoff, datetime.min.time(), tzinfo=timezone.utc),
+        current_rank=current_rank,
+    )
     return {
         "current_rank": current_rank,
         "current_points": current_points,
@@ -393,6 +406,7 @@ def _ranking_equation_context(
         "ranking_strength_change_6m": change(anchor_6m),
         "ranking_strength_change_12m": change(anchor_12m),
         "days_since_last_match": (cutoff - last_match).days if last_match else None,
+        **weekly_summary,
     }
 
 
@@ -461,6 +475,7 @@ def _candidate_equation_features(
     structural_v3 = evaluate_structural_strength_v3(context_a, context_b)
     structural_v4 = evaluate_structural_strength_v4(context_a, context_b)
     structural_v5 = evaluate_structural_strength_v5(context_a, context_b)
+    structural_v6 = evaluate_structural_strength_v6(context_a, context_b)
     surface_result = evaluate_surface_conditions(_surface_equation_pair(
         observations_a=match_history_a, observations_b=match_history_b,
         cutoff=cutoff, surface=surface, venue=venue, pace=pace,
@@ -566,12 +581,14 @@ def _candidate_equation_features(
     features.update(structural_v3.get("candidate_features", {}))
     features.update(structural_v4.get("candidate_features", {}))
     features.update(structural_v5.get("candidate_features", {}))
+    features.update(structural_v6.get("candidate_features", {}))
     return features, {
         "structural_strength": structural,
         "structural_strength_v2": structural_v2,
         "structural_strength_v3": structural_v3,
         "structural_strength_v4": structural_v4,
         "structural_strength_v5": structural_v5,
+        "structural_strength_v6": structural_v6,
         "surface_conditions": surface_result,
         "surface_conditions_v2": surface_result_v2,
         "surface_conditions_v3": surface_result_v3,

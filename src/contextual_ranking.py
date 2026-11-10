@@ -6,9 +6,10 @@ not know market prices and is not connected to the production index.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 import math
 import re
+import statistics
 import unicodedata
 from typing import Any
 
@@ -16,6 +17,96 @@ import pandas as pd
 
 
 SCHEMA_VERSION = 1
+
+
+def _rank_band(rank: float) -> str:
+    if rank <= 10:
+        return "top_10"
+    if rank <= 20:
+        return "top_20"
+    if rank <= 50:
+        return "top_50"
+    if rank <= 100:
+        return "top_100"
+    if rank <= 200:
+        return "top_200"
+    return "outside_top_200"
+
+
+def _quantile(values: list[float], fraction: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * fraction
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
+
+
+def summarize_weekly_rank_history(
+    observations: list[dict[str, Any]], *, cutoff: datetime,
+    current_rank: Any,
+) -> dict[str, Any]:
+    """Summarise one rank per active ISO week without inventing missing weeks."""
+    cutoff_utc = cutoff if cutoff.tzinfo else cutoff.replace(tzinfo=timezone.utc)
+    current = _number(current_rank)
+    weekly: dict[tuple[int, int], tuple[datetime, float]] = {}
+    for item in observations:
+        rank = _number(item.get("rank"))
+        raw_observed = item.get("observed_at")
+        if isinstance(raw_observed, datetime):
+            observed = raw_observed
+        elif isinstance(raw_observed, date):
+            observed = datetime.combine(raw_observed, time.min, tzinfo=timezone.utc)
+        else:
+            parsed = pd.to_datetime(raw_observed, errors="coerce", utc=True)
+            observed = None if pd.isna(parsed) else parsed.to_pydatetime()
+        if observed is not None and observed.tzinfo is None:
+            observed = observed.replace(tzinfo=timezone.utc)
+        if rank is None or observed is None or observed >= cutoff_utc:
+            continue
+        iso = observed.isocalendar()
+        key = (int(iso.year), int(iso.week))
+        candidate = (observed, rank)
+        if key not in weekly or candidate[0] > weekly[key][0]:
+            weekly[key] = candidate
+
+    def window(days: int) -> dict[str, Any]:
+        start = cutoff_utc - pd.Timedelta(days=days)
+        ranks = [rank for observed, rank in weekly.values() if observed >= start]
+        logs = [math.log(rank) for rank in ranks]
+        q25, q75 = _quantile(logs, 0.25), _quantile(logs, 0.75)
+        typical = math.exp(statistics.median(logs)) if logs else None
+        persistence = None
+        if current is not None and ranks:
+            band = _rank_band(current)
+            persistence = sum(_rank_band(rank) == band for rank in ranks) / len(ranks)
+        return {
+            "active_weeks": len(ranks),
+            "typical_rank": typical,
+            "rank_log_iqr": (
+                q75 - q25 if q25 is not None and q75 is not None else None
+            ),
+            "current_band_persistence": persistence,
+        }
+
+    one_year, two_year = window(365), window(730)
+    return {
+        "weekly_rank_observations_365d": one_year["active_weeks"],
+        "weekly_rank_observations_730d": two_year["active_weeks"],
+        "typical_rank_365d": one_year["typical_rank"],
+        "typical_rank_730d": two_year["typical_rank"],
+        "rank_log_iqr_365d": one_year["rank_log_iqr"],
+        "rank_log_iqr_730d": two_year["rank_log_iqr"],
+        "current_band_persistence_365d": one_year["current_band_persistence"],
+        "current_vs_typical_365d_log_ratio": (
+            math.log(current / one_year["typical_rank"])
+            if current is not None and one_year["typical_rank"] is not None
+            else None
+        ),
+    }
 
 
 def _number(value: Any) -> float | None:
@@ -137,6 +228,9 @@ def build_player_ranking_context(
         return math.log(anchor_rank / rank)
 
     inactivity = _number(days_since_last_match)
+    weekly_summary = summarize_weekly_rank_history(
+        observations, cutoff=cutoff, current_rank=rank,
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "mode": "OBSERVATIONAL_ONLY",
@@ -160,6 +254,7 @@ def build_player_ranking_context(
         "ranking_strength_change_6m": strength_change(anchor_6m),
         "ranking_strength_change_12m": strength_change(anchor_12m),
         "days_since_last_match": inactivity,
+        **weekly_summary,
         "evidence_status": (
             "COMPLETE_CURRENT_AND_HISTORY" if rank is not None and ranked
             else "CURRENT_ONLY" if rank is not None

@@ -97,3 +97,34 @@ def test_returning_former_top_player_is_exposed_but_not_auto_promoted():
     assert context["days_since_last_match"] == 190
     assert context["current_vs_observed_peak_log_ratio"] > 0
     assert context["production_effect"] is False
+
+
+def test_weekly_history_does_not_overweight_multiple_matches_in_same_week():
+    cutoff = datetime(2026, 11, 2, 12, tzinfo=timezone.utc)
+    frame = pd.DataFrame([
+        _match(cutoff - timedelta(days=20), "A", "X", 40, 90),
+        _match(cutoff - timedelta(days=19), "A", "Y", 39, 80),
+        _match(cutoff - timedelta(days=12), "Z", "A", 20, 42),
+        _match(cutoff, "A", "Q", 15, 30),
+    ])
+    context = build_player_ranking_context(
+        frame, "A", cutoff=cutoff, current_rank=41,
+    )
+    assert context["weekly_rank_observations_365d"] == 2
+    assert 39 <= context["typical_rank_365d"] <= 42
+    assert context["current_band_persistence_365d"] == 1.0
+
+
+def test_rank_outside_current_band_reduces_persistence_without_becoming_vote():
+    cutoff = datetime(2026, 11, 2, 12, tzinfo=timezone.utc)
+    frame = pd.DataFrame([
+        _match(cutoff - timedelta(days=120), "A", "X", 85, 100),
+        _match(cutoff - timedelta(days=60), "A", "Y", 70, 100),
+        _match(cutoff - timedelta(days=10), "A", "Z", 38, 100),
+    ])
+    context = build_player_ranking_context(
+        frame, "A", cutoff=cutoff, current_rank=35,
+    )
+    assert context["weekly_rank_observations_365d"] == 3
+    assert context["current_band_persistence_365d"] == 1 / 3
+    assert context["current_vs_typical_365d_log_ratio"] < 0
