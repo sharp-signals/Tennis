@@ -1,0 +1,82 @@
+{
+  "by_quality_group": {},
+  "by_surface_context": {},
+  "by_tour": {},
+  "counts": {
+    "market_observations": 5,
+    "observations": 5,
+    "outcomes": 0,
+    "ready_observations": 5,
+    "ready_pending": 5,
+    "ready_settled": 0,
+    "ready_settled_with_market": 0,
+    "settled_excluded_by_reason": {},
+    "settled_excluded_from_primary_metrics": 0
+  },
+  "evaluation_state": "WAITING_FOR_SETTLED_RESULTS",
+  "generated_at_utc": "2026-11-10T21:57:13+00:00",
+  "market_audit": {
+    "status": "HEALTHY",
+    "violations": []
+  },
+  "market_benchmark": {
+    "devig_market": {
+      "accuracy_pct": null,
+      "brier": null,
+      "ece_10": null,
+      "log_loss": null,
+      "sample_size": 0,
+      "status": "WAITING_FOR_SETTLED_RESULTS"
+    },
+    "hypothetical_edge_bands": {},
+    "model": {
+      "accuracy_pct": null,
+      "brier": null,
+      "ece_10": null,
+      "log_loss": null,
+      "sample_size": 0,
+      "status": "WAITING_FOR_SETTLED_RESULTS"
+    },
+    "paired_difference": null,
+    "sample_size": 0,
+    "status": "WAITING_FOR_PAIRED_MARKET_RESULTS"
+  },
+  "model_version": "FENZOBOT_CONTEXTUAL_2026_11",
+  "overall": {
+    "accuracy_pct": null,
+    "brier": null,
+    "ece_10": null,
+    "log_loss": null,
+    "sample_size": 0,
+    "status": "WAITING_FOR_SETTLED_RESULTS"
+  },
+  "promotion_authorized": false,
+  "schema_version": 1,
+  "settlement_audit": {
+    "status": "HEALTHY",
+    "violations": []
+  },
+  "validation_gate": {
+    "automatic_promotion": false,
+    "contract_version": "fenzobot-contextual-2026-11-validation.1",
+    "human_review_required": true,
+    "market_checks": {
+      "model_brier_not_worse_than_market_with_95pct_confidence": false,
+      "model_log_loss_not_worse_than_market_with_95pct_confidence": false
+    },
+    "probability_checks": {
+      "both_tours_better_than_neutral": false,
+      "brier_better_than_neutral_with_95pct_confidence": false,
+      "ece_within_limit": false,
+      "log_loss_better_than_neutral_with_95pct_confidence": false
+    },
+    "sample_checks": {
+      "atp": false,
+      "calibration_bins": false,
+      "overall": false,
+      "paired_market": false,
+      "wta": false
+    },
+    "status": "INSUFFICIENT_SAMPLE"
+  }
+}
