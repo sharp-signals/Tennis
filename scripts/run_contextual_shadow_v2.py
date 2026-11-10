@@ -24,6 +24,11 @@ from scripts.audit_contextual_shadow_v2 import audit_ledger  # noqa: E402
 from src import fetch_data, match_identity_v2  # noqa: E402
 from src.contextual_family_replay import build_contextual_target_row  # noqa: E402
 from src.contextual_shadow_activation_v2 import activation_state  # noqa: E402
+from src.contextual_shadow_handicap_v2 import (  # noqa: E402
+    append_frozen_handicap_evidence,
+    build_frozen_handicap_evidence,
+    infer_match_format,
+)
 from src.contextual_shadow_runtime_v2 import (  # noqa: E402
     load_contract,
     predict_contextual_shadow_v2,
@@ -32,6 +37,7 @@ from src.contextual_shadow_store_v2 import (  # noqa: E402
     DEFAULT_PATH as LEDGER_PATH,
     append_observations,
     build_observation,
+    existing_observation_ids,
 )
 from src.main import (  # noqa: E402
     _deduplicate_matches,
@@ -205,12 +211,28 @@ def build_match_observation(
         "contextual_shadow_v2": shadow,
     }
     observation = build_observation(payload)
+    if observation is None:
+        return None, {
+            "status": "FAILED",
+            "reason_code": "OBSERVATION_CONTRACT_REJECTED",
+        }
+    handicap_evidence = build_frozen_handicap_evidence(
+        history,
+        observation_id=str(observation["observation_id"]),
+        configuration_fingerprint=str(shadow["configuration_fingerprint"]),
+        player_a=model_a,
+        player_b=model_b,
+        cutoff=start.date(),
+        match_format=infer_match_format(match),
+        captured_at_utc=analyzed_at_utc,
+    )
     return observation, {
         "status": shadow["status"],
         "reason_code": ",".join(shadow["reason_codes"]) or "READY",
         "tour": tour,
         "quality_group": shadow["quality_group"],
         "rank_sources": {"a": rank_source_a, "b": rank_source_b},
+        "_handicap_evidence": handicap_evidence,
     }
 
 
@@ -261,13 +283,26 @@ def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]
             }
 
     observations = []
+    handicap_evidence = []
     diagnostics = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 8))) as executor:
         for observation, diagnostic in executor.map(process, eligible):
+            evidence = diagnostic.pop("_handicap_evidence", None)
             diagnostics.append(diagnostic)
             if observation is not None:
                 observations.append(observation)
+                if evidence is not None:
+                    handicap_evidence.append(evidence)
+    existing_ids = existing_observation_ids(LEDGER_PATH)
+    new_ids = {
+        str(row.get("observation_id")) for row in observations
+        if str(row.get("observation_id") or "") not in existing_ids
+    }
     added = append_observations(observations, LEDGER_PATH)
+    handicap_added = append_frozen_handicap_evidence(
+        row for row in handicap_evidence
+        if str(row.get("observation_id") or "") in new_ids
+    )
     audit = audit_ledger(LEDGER_PATH, MODEL_PATH)
     reason_counts: dict[str, int] = {}
     status_counts: dict[str, int] = {}
@@ -286,6 +321,7 @@ def run_shadow_only(*, max_matches: int = 0, workers: int = 4) -> dict[str, Any]
         "eligible_main_tour": len(eligible),
         "observations_built": len(observations),
         "observations_added": added,
+        "handicap_evidence_added": handicap_added,
         "status_counts": dict(sorted(status_counts.items())),
         "reason_counts": dict(sorted(reason_counts.items())),
         "rapidapi_calls": fetch_data.get_rapidapi_call_count(),

@@ -1,4 +1,5 @@
 import json
+import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -80,11 +81,43 @@ def market():
     }
 
 
+def handicap_evidence():
+    def line(value):
+        return {
+            "line": value,
+            "total": {"cover": 45, "push": 0, "miss": 35},
+            "wins": {"cover": 36, "push": 0, "miss": 4},
+            "losses": {"cover": 9, "push": 0, "miss": 31},
+        }
+
+    return {
+        "observation_id": "obs-1",
+        "model_version": "contextual-family-shadow-v2",
+        "configuration_fingerprint": "fingerprint",
+        "production_effect": False,
+        "evidence_version": "contextual-shadow-handicap-evidence-v2.0",
+        "handicap_evidence": {
+            "format": "bo3",
+            "players": {
+                "a": {
+                    "lines": {
+                        "-2.5": line(-2.5),
+                        "-3": line(-3.0),
+                        "-3.5": line(-3.5),
+                    },
+                },
+                "b": {"lines": {}},
+            },
+        },
+    }
+
+
 class ContextualShadowReportTests(unittest.TestCase):
     def test_contract_is_explicitly_non_operational(self):
         contract = report.load_report_contract()
         self.assertEqual(contract["mode"], "SHADOW_PREVIEW_ONLY")
         self.assertTrue(contract["rules"]["market_must_not_enter_model_probability"])
+        self.assertTrue(contract["rules"]["handicap_requires_own_line_probability"])
         self.assertTrue(contract["rules"]["no_betting_recommendation"])
 
     def test_view_model_joins_market_without_recalculating_prediction(self):
@@ -133,12 +166,31 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("REGISTAR PAPER", html)
         self.assertNotIn("APOSTAR", html)
 
+    def test_frozen_handicap_evidence_is_rendered_as_human_review_only(self):
+        quote = {**market(), "odds": {"a": 1.50, "b": 2.70}}
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_model_a": 0.75,
+            "probability_model_b": 0.25,
+            "probability_interval_90_model_a": [0.70, 0.80],
+        })
+        view = report.build_report_view_model(
+            prediction, quote, None, handicap_evidence()
+        )
+        self.assertEqual(view["market_review"]["candidate_side"], "a")
+        self.assertEqual(view["market_review"]["handicap"]["type"], "negative")
+        html = report.render_report_html(view)
+        self.assertIn("HANDICAP NEGATIVO", html)
+        self.assertIn("cobre quando vence", html)
+        self.assertIn("SEM ENTRADA AUTOMÁTICA", html)
+
     def test_builder_creates_private_index_reports_and_summary(self):
         with TemporaryDirectory(dir=Path.cwd()) as directory:
             root = Path(directory)
             observations = root / "observations.jsonl"
             markets = root / "markets.jsonl"
             outcomes = root / "outcomes.jsonl"
+            handicap = root / "contextual_shadow_handicap_evidence-v2.jsonl"
             output = root / "preview"
             observations.write_text(
                 json.dumps(observation(), ensure_ascii=False) + "\n",
@@ -149,6 +201,10 @@ class ContextualShadowReportTests(unittest.TestCase):
                 encoding="utf-8",
             )
             outcomes.write_text("", encoding="utf-8")
+            handicap.write_text(
+                json.dumps(handicap_evidence(), ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
             summary = runner.build_previews(
                 output_dir=output,
                 observations_path=observations,
@@ -157,6 +213,7 @@ class ContextualShadowReportTests(unittest.TestCase):
             )
             self.assertEqual(summary["reports_built"], 1)
             self.assertEqual(summary["with_market"], 1)
+            self.assertEqual(summary["with_handicap_evidence"], 0)
             self.assertTrue((output / "index.html").exists())
             self.assertTrue((output / "report-obs-1.html").exists())
             self.assertFalse(summary["isolation"]["operational_reports_published"])

@@ -18,6 +18,7 @@ from src.contextual_shadow_report_v2 import (  # noqa: E402
     render_index_html,
     render_report_html,
 )
+from src.contextual_shadow_handicap_v2 import EVIDENCE_PATH  # noqa: E402
 from src.contextual_shadow_settlement_v2 import (  # noqa: E402
     MARKET_PATH,
     OBSERVATIONS_PATH,
@@ -45,6 +46,7 @@ def build_previews(
     observations_path: Path = OBSERVATIONS_PATH,
     market_path: Path = MARKET_PATH,
     outcomes_path: Path = OUTCOMES_PATH,
+    handicap_evidence_path: Path | None = None,
     max_observations: int = 50,
 ) -> dict[str, Any]:
     observations = read_jsonl(observations_path)
@@ -56,6 +58,16 @@ def build_previews(
         str(row.get("observation_id")): row for row in read_jsonl(outcomes_path)
         if row.get("observation_id")
     }
+    if handicap_evidence_path is None:
+        handicap_evidence_path = (
+            EVIDENCE_PATH if observations_path == OBSERVATIONS_PATH
+            else observations_path.with_name(EVIDENCE_PATH.name)
+        )
+    handicap_evidence = {
+        str(row.get("observation_id")): row
+        for row in read_jsonl(handicap_evidence_path)
+        if row.get("observation_id")
+    }
     observations.sort(key=lambda row: str(row.get("analyzed_at_utc") or ""), reverse=True)
     if max_observations > 0:
         observations = observations[:max_observations]
@@ -64,6 +76,7 @@ def build_previews(
             row,
             markets.get(str(row.get("observation_id"))),
             outcomes.get(str(row.get("observation_id"))),
+            handicap_evidence.get(str(row.get("observation_id"))),
         )
         for row in observations
     ]
@@ -81,6 +94,9 @@ def build_previews(
         "reports_built": len(views),
         "with_market": sum(view["market"]["available"] for view in views),
         "with_outcome": sum(view["outcome"]["available"] for view in views),
+        "with_handicap_evidence": sum(
+            view["market_review"].get("handicap") is not None for view in views
+        ),
         "output_dir": str(output_dir),
         "isolation": {
             "predictions_rewritten": False,
