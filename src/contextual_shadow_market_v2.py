@@ -92,6 +92,8 @@ def build_market_observation(
     fixture: Mapping[str, Any],
     odds: Mapping[str, Any],
     provenance: Mapping[str, Any],
+    *,
+    model_version: str = MODEL_VERSION,
 ) -> dict[str, Any] | None:
     """Build a benchmark only after prediction freeze and before match start."""
     analyzed = _parse_time(observation.get("analyzed_at_utc"))
@@ -145,7 +147,7 @@ def build_market_observation(
         "canonical_match_instance_id": observation.get(
             "canonical_match_instance_id"
         ),
-        "model_version": MODEL_VERSION,
+        "model_version": model_version,
         "configuration_fingerprint": shadow.get("configuration_fingerprint"),
         "prediction_analyzed_at_utc": observation.get("analyzed_at_utc"),
         "captured_at_utc": captured.isoformat(timespec="seconds"),

@@ -22,6 +22,7 @@ from src.contextual_shadow_settlement_v2 import (  # noqa: E402
     append_outcomes,
     build_evaluation,
     confirmed_outcome,
+    MODEL_VERSION,
     read_jsonl,
     write_evaluation_atomic,
 )
@@ -56,6 +57,8 @@ def settle(
     evaluation_path: Path = EVALUATION_PATH,
     max_observations: int = 0,
     evaluate_only: bool = False,
+    model_version: str = MODEL_VERSION,
+    validation_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if market_path is None:
         market_path = (
@@ -103,16 +106,26 @@ def settle(
         players = observation.get("players") or {}
         a_id = (players.get("a") or {}).get("id")
         b_id = (players.get("b") or {}).get("id")
-        result = confirmed_outcome(observation, matches_for(tour, a_id))
+        result = confirmed_outcome(
+            observation, matches_for(tour, a_id),
+            model_version=model_version,
+        )
         if result is None:
-            result = confirmed_outcome(observation, matches_for(tour, b_id))
+            result = confirmed_outcome(
+                observation, matches_for(tour, b_id),
+                model_version=model_version,
+            )
         if result is None:
             unresolved += 1
         else:
             additions.append(result)
     added = append_outcomes(additions, outcomes_path)
     final_outcomes = read_jsonl(outcomes_path)
-    evaluation = build_evaluation(observations, final_outcomes, markets)
+    evaluation = build_evaluation(
+        observations, final_outcomes, markets,
+        validation_contract=validation_contract,
+        model_version=model_version,
+    )
     write_evaluation_atomic(evaluation, evaluation_path)
     if (
         evaluation["settlement_audit"]["status"] != "HEALTHY"

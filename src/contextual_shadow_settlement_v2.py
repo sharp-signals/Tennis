@@ -61,12 +61,15 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def load_validation_contract(
     path: Path = VALIDATION_CONTRACT_PATH,
+    *,
+    expected_model_version: str = MODEL_VERSION,
+    expected_contract_version: str = "contextual-shadow-validation-v2.0",
 ) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if (
         not isinstance(value, dict)
-        or value.get("contract_version") != "contextual-shadow-validation-v2.0"
-        or value.get("model_version") != MODEL_VERSION
+        or value.get("contract_version") != expected_contract_version
+        or value.get("model_version") != expected_model_version
         or (value.get("governance") or {}).get("automatic_promotion") is not False
     ):
         raise ValueError("invalid contextual SHADOW validation contract")
@@ -82,6 +85,8 @@ def _player_id(match: Mapping[str, Any], side: int) -> Any:
 def confirmed_outcome(
     observation: Mapping[str, Any],
     matches: Iterable[Mapping[str, Any]],
+    *,
+    model_version: str = MODEL_VERSION,
 ) -> dict[str, Any] | None:
     """Resolve one completed result using exact player IDs and nearby time.
 
@@ -143,7 +148,7 @@ def confirmed_outcome(
         "canonical_match_instance_id": observation.get(
             "canonical_match_instance_id"
         ),
-        "model_version": MODEL_VERSION,
+        "model_version": model_version,
         "configuration_fingerprint": (
             observation.get("contextual_shadow") or {}
         ).get("configuration_fingerprint"),
@@ -494,6 +499,8 @@ def build_evaluation(
     outcomes: Iterable[Mapping[str, Any]],
     markets: Iterable[Mapping[str, Any]] = (),
     validation_contract: Mapping[str, Any] | None = None,
+    *,
+    model_version: str = MODEL_VERSION,
 ) -> dict[str, Any]:
     observations = list(observations)
     observation_by_id = {
@@ -512,7 +519,7 @@ def build_evaluation(
             code = "DUPLICATE_OUTCOME"
         elif row.get("winner_side") not in {"a", "b"}:
             code = "INVALID_WINNER_SIDE"
-        elif row.get("model_version") not in {None, MODEL_VERSION}:
+        elif row.get("model_version") not in {None, model_version}:
             code = "MODEL_VERSION_MISMATCH"
         elif (
             row.get("configuration_fingerprint")
@@ -554,7 +561,7 @@ def build_evaluation(
             code = "ORPHAN_OR_MISSING_OBSERVATION_ID"
         elif key in market_by_observation:
             code = "DUPLICATE_MARKET_OBSERVATION"
-        elif row.get("model_version") != MODEL_VERSION:
+        elif row.get("model_version") != model_version:
             code = "MODEL_VERSION_MISMATCH"
         elif (
             row.get("configuration_fingerprint")
@@ -649,7 +656,7 @@ def build_evaluation(
     )
     return {
         "schema_version": 1,
-        "model_version": MODEL_VERSION,
+        "model_version": model_version,
         "generated_at_utc": _utc_now(),
         "evaluation_state": (
             "CONTRACT_VIOLATION"

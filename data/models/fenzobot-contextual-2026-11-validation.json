@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "contract_version": "fenzobot-contextual-2026-11-validation.1",
+  "model_version": "FENZOBOT_CONTEXTUAL_2026_11",
+  "status": "PREDECLARED_NO_AUTOMATIC_PROMOTION",
+  "cohort": {
+    "prediction_status": "READY_FOR_PROSPECTIVE_SHADOW",
+    "universes": ["atp", "wta"],
+    "walkovers_excluded": true,
+    "first_prediction_and_first_valid_market_quote_win": true
+  },
+  "sample_gates": {
+    "overall_settled": 200,
+    "per_tour_settled": 75,
+    "paired_market_settled": 150,
+    "reported_segment_settled": 30,
+    "calibration_bin_settled": 30,
+    "minimum_populated_calibration_bins": 3
+  },
+  "probability_checks": {
+    "brier_better_than_neutral_with_95pct_confidence": true,
+    "log_loss_better_than_neutral_with_95pct_confidence": true,
+    "maximum_ece_10": 0.07,
+    "both_tours_must_beat_neutral_on_brier_and_log_loss": true
+  },
+  "market_checks": {
+    "model_brier_not_worse_than_devig_market_with_95pct_confidence": true,
+    "model_log_loss_not_worse_than_devig_market_with_95pct_confidence": true,
+    "market_quote_must_be_captured_after_prediction_and_before_start": true
+  },
+  "governance": {
+    "automatic_promotion": false,
+    "human_review_required": true,
+    "failed_or_insufficient_gate_keeps_model_in_shadow": true,
+    "market_never_enters_model_probability": true,
+    "sample_gates_do_not_block_private_reports": true
+  }
+}

@@ -27,6 +27,8 @@ PROFILES: dict[str, tuple[str, ...]] = {
         "data/contextual_shadow_handicap_evidence-v2.jsonl",
         "data/contextual_shadow_observations-fenzobot-contextual-2026-11.jsonl",
         "data/contextual_shadow_handicap_evidence-fenzobot-contextual-2026-11.jsonl",
+        "data/contextual_shadow_market-fenzobot-contextual-2026-11.jsonl",
+        "data/contextual_shadow_outcomes-fenzobot-contextual-2026-11.jsonl",
         "data/calibration_delivery_recovery/",
         "data/paper_trades.json", "data/market_ledger/", "data/match_identity/",
         "data/validation/", "data/dashboard/", "data/player_images.json",
