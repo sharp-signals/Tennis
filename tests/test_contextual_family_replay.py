@@ -212,6 +212,8 @@ def test_replay_exposes_candidate_structural_signal_without_replacing_legacy():
     assert target["features"]["contextual_structural_rank_core_v3"] > 0
     assert target["candidate_equation_audit"]["structural_strength_v4"]["status"] == "READY"
     assert target["candidate_equation_audit"]["structural_strength_v5"]["status"] == "READY"
+    assert target["candidate_equation_audit"]["structural_strength_v6"]["status"] == "READY"
+    assert "contextual_structural_material_rank_core_v6" in target["features"]
 
 
 def test_replay_surface_candidate_shrinks_small_sample_and_uses_conditions_once():

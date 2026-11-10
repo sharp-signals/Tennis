@@ -170,6 +170,17 @@ CALIBRATION_FEATURE_PROFILES = {
         ),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "contextual_v6": {
+        "structural_strength": (
+            "contextual_structural_material_rank_core_v6",
+            "contextual_structural_representative_rank_core_v6",
+            "contextual_structural_points_log_ratio_v6",
+            "contextual_structural_trajectory_margin_v3",
+            "contextual_structural_inactivity_margin_v3",
+            "contextual_structural_recovery_margin_v3",
+        ),
+        "surface_conditions": ("contextual_surface_signal_v1",),
+    },
     "recent_v0": {
         "recent_form": ("contextual_recent_result_core_v1",),
     },
@@ -286,7 +297,7 @@ def _family_features(family: str, feature_profile: str = "legacy_v0") -> tuple[s
 def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | None:
     if feature_profile not in {
         "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
-        "contextual_v5", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
+        "contextual_v5", "contextual_v6", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
         "recent_guarded_v4",
         "surface_v2",
         "surface_v3",
@@ -338,6 +349,9 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_structural_recovery_margin_v3",
             "contextual_structural_material_band_gap_v4",
             "contextual_structural_points_log_ratio_v5",
+            "contextual_structural_material_rank_core_v6",
+            "contextual_structural_representative_rank_core_v6",
+            "contextual_structural_points_log_ratio_v6",
             "contextual_recent_result_core_v1",
             "contextual_recent_competitiveness_v1",
             "contextual_recent_win_quality_v1",
@@ -690,7 +704,8 @@ def _structural_segment_labels(row: dict[str, Any]) -> tuple[str, ...]:
 
     audit_root = row.get("candidate_equation_audit", {})
     audit = (
-        audit_root.get("structural_strength_v5")
+        audit_root.get("structural_strength_v6")
+        or audit_root.get("structural_strength_v5")
         or audit_root.get("structural_strength_v4")
         or audit_root.get("structural_strength_v3")
         or audit_root.get("structural_strength_v2", {})
@@ -713,6 +728,19 @@ def _structural_segment_labels(row: dict[str, Any]) -> tuple[str, ...]:
         labels.append("ranking_trajectory_material")
     if abs(float(components.get("supported_recovery") or 0.0)) > 1e-9:
         labels.append("supported_ranking_recovery")
+    representativeness = components.get("bilateral_representativeness")
+    if representativeness is None:
+        labels.append("ranking_representativeness_unavailable")
+    elif float(representativeness) < 0.5:
+        labels.append("ranking_representativeness_low")
+    elif float(representativeness) < 0.8:
+        labels.append("ranking_representativeness_medium")
+    else:
+        labels.append("ranking_representativeness_high")
+    if abs(float(components.get("material_rank_core") or 0.0)) <= 1e-12:
+        labels.append("ranking_material_gap_neutral")
+    else:
+        labels.append("ranking_material_gap_present")
     return tuple(labels)
 
 
@@ -859,7 +887,7 @@ def compare_family_feature_profiles(
         }
         if family == "structural_strength" and contextual_profile in {
             "contextual_v2", "contextual_v3", "contextual_v4",
-            "contextual_v5",
+            "contextual_v5", "contextual_v6",
         }:
             comparisons[family]["segment_diagnostics"] = _paired_segment_diagnostics(paired)
         if family == "surface_conditions":

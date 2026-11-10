@@ -18,6 +18,7 @@ EQUATION_VERSION_V2 = "structural-context-v2"
 EQUATION_VERSION_V3 = "structural-context-v3-components"
 EQUATION_VERSION_V4 = "structural-context-v4-rank-bands"
 EQUATION_VERSION_V5 = "structural-context-v5-points-residual"
+EQUATION_VERSION_V6 = "structural-context-v6-representative-ranking"
 
 
 @dataclass(frozen=True)
@@ -505,5 +506,123 @@ def evaluate_structural_strength_v5(
             **base["governance"],
             "points_are_residual_not_rank_replacement": True,
             "missing_points_do_not_change_rank_core": True,
+        },
+    }
+
+
+def _rank_representativeness_v6(player: dict[str, Any]) -> float | None:
+    """Measure whether the current rank resembles the player's active-year level."""
+    current = _positive(player.get("current_rank"))
+    typical = _positive(player.get("typical_rank_365d"))
+    persistence = _finite(player.get("current_band_persistence_365d"))
+    dispersion = _finite(player.get("rank_log_iqr_365d"))
+    active_weeks = int(_positive(player.get("weekly_rank_observations_365d")) or 0)
+    if (
+        current is None or typical is None or persistence is None
+        or dispersion is None or active_weeks < 4
+    ):
+        return None
+    persistence = max(0.0, min(1.0, persistence))
+    typicality = math.exp(-abs(math.log(current / typical)))
+    stability = math.exp(-max(0.0, dispersion))
+    # Three factual views of representativeness.  None is a second strength
+    # vote: they only reduce confidence in the current-rank distance.
+    return (persistence * typicality * stability) ** (1.0 / 3.0)
+
+
+def evaluate_structural_strength_v6(
+    player_a: dict[str, Any], player_b: dict[str, Any],
+    *, config: StructuralEquationV2Config | None = None,
+) -> dict[str, Any]:
+    """Contextual rank distance with a neutral zone and historical friction."""
+    base = evaluate_structural_strength_v3(player_a, player_b, config=config)
+    if base.get("status") != "READY":
+        return {**base, "equation_version": EQUATION_VERSION_V6}
+    rank_a = float(_positive(player_a.get("current_rank")))
+    rank_b = float(_positive(player_b.get("current_rank")))
+    raw_core = math.log(rank_b / rank_a)
+    # A 25% rank ratio is the human-prior neutral candidate requested for
+    # nearby positions such as #70 vs #80.  Replay must challenge this value.
+    neutral_log = math.log(1.25)
+    material_core = math.copysign(
+        max(0.0, abs(raw_core) - neutral_log), raw_core,
+    ) if raw_core else 0.0
+
+    representativeness_a = _rank_representativeness_v6(player_a)
+    representativeness_b = _rank_representativeness_v6(player_b)
+    bilateral_representativeness = (
+        math.sqrt(representativeness_a * representativeness_b)
+        if representativeness_a is not None and representativeness_b is not None
+        else None
+    )
+    representative_core = (
+        material_core * bilateral_representativeness
+        if bilateral_representativeness is not None else None
+    )
+    points_a = _positive(player_a.get("current_points"))
+    points_b = _positive(player_b.get("current_points"))
+    points_margin = (
+        math.log(points_a / points_b)
+        if points_a is not None and points_b is not None else None
+    )
+
+    features = {
+        "contextual_structural_material_rank_core_v6": material_core,
+        "contextual_structural_representative_rank_core_v6": representative_core,
+        "contextual_structural_points_log_ratio_v6": points_margin,
+        "contextual_structural_trajectory_margin_v3": base["candidate_features"].get(
+            "contextual_structural_trajectory_margin_v3"
+        ),
+        "contextual_structural_inactivity_margin_v3": base["candidate_features"].get(
+            "contextual_structural_inactivity_margin_v3"
+        ),
+        "contextual_structural_recovery_margin_v3": base["candidate_features"].get(
+            "contextual_structural_recovery_margin_v3"
+        ),
+    }
+    return {
+        **base,
+        "equation_version": EQUATION_VERSION_V6,
+        "candidate_features": {
+            key: None if value is None else round(float(value), 6)
+            for key, value in features.items()
+        },
+        "components": {
+            **base["components"],
+            "raw_rank_core": round(raw_core, 6),
+            "neutral_ratio": 1.25,
+            "material_rank_core": round(material_core, 6),
+            "representativeness_a": (
+                None if representativeness_a is None
+                else round(representativeness_a, 6)
+            ),
+            "representativeness_b": (
+                None if representativeness_b is None
+                else round(representativeness_b, 6)
+            ),
+            "bilateral_representativeness": (
+                None if bilateral_representativeness is None
+                else round(bilateral_representativeness, 6)
+            ),
+            "typical_rank_365d_a": _positive(player_a.get("typical_rank_365d")),
+            "typical_rank_365d_b": _positive(player_b.get("typical_rank_365d")),
+            "current_band_persistence_365d_a": _finite(
+                player_a.get("current_band_persistence_365d")
+            ),
+            "current_band_persistence_365d_b": _finite(
+                player_b.get("current_band_persistence_365d")
+            ),
+            "points_log_ratio": (
+                None if points_margin is None else round(points_margin, 6)
+            ),
+        },
+        "governance": {
+            **base["governance"],
+            "nearby_ranks_can_be_neutral": True,
+            "historical_level_only_controls_representativeness": True,
+            "old_peak_never_restores_strength_automatically": True,
+            "points_are_a_dependent_level_view": True,
+            "one_active_week_one_rank_observation": True,
+            "point_concentration_not_inferred_without_source": True,
         },
     }
