@@ -149,7 +149,7 @@ def main() -> int:
     parser.add_argument(
         "--max-observations", type=int, default=50,
         help=(
-            "Pending observations to examine, reserving 20% for the oldest "
+            "Pending observations to examine, reserving 20%% for the oldest "
             "and the remainder for the newest; 0 disables the bound"
         ),
     )
