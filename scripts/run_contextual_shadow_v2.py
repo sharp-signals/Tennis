@@ -40,6 +40,7 @@ from src.main import (  # noqa: E402
     _filter_prelive_matches,
     _parse_utc,
 )
+from src.round_stage import classify_round_stage  # noqa: E402
 
 
 SUMMARY_PATH = Path("data/validation/contextual-shadow-v2-latest.json")
@@ -183,6 +184,24 @@ def build_match_observation(
         ),
         "player_a": model_a,
         "player_b": model_b,
+        "competition": {
+            "tournament_id": match.get("tournamentId"),
+            "tournament_name": match.get("tournament_name"),
+            "round_id": match.get("roundId") or match.get("round_id"),
+            "round_stage": classify_round_stage(
+                round_id=match.get("roundId") or match.get("round_id"),
+                round_label=match.get("round") or match.get("round_name"),
+            ),
+            "surface": match.get("surface"),
+            "country": match.get("country"),
+            "venue": (
+                match.get("indoor") if match.get("indoor") is not None
+                else match.get("venue_context")
+            ),
+            "pace_bucket": (
+                match.get("court_pace_bucket") or match.get("pace_bucket")
+            ),
+        },
         "contextual_shadow_v2": shadow,
     }
     observation = build_observation(payload)

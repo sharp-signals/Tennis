@@ -114,6 +114,13 @@ def test_append_only_v2_store_deduplicates_canonical_model_pair():
         "player_b_id": 2,
         "player_a": "Alpha",
         "player_b": "Beta",
+        "competition": {
+            "tournament_id": 77,
+            "tournament_name": "Test Open",
+            "round_id": 4,
+            "round_stage": "LATE_STAGES",
+            "surface": "Hard",
+        },
         "contextual_shadow_v2": shadow,
     }
     row = build_observation(payload)
@@ -125,6 +132,8 @@ def test_append_only_v2_store_deduplicates_canonical_model_pair():
         assert saved["schema_version"] == 2
         assert saved["paper_eligible"] is False
         assert saved["green_eligible"] is False
+        assert saved["competition"]["tournament_name"] == "Test Open"
+        assert saved["competition"]["round_stage"] == "LATE_STAGES"
 
 
 def test_v2_store_is_allowed_for_bot_generated_publication():

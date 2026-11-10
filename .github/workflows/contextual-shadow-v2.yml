@@ -77,6 +77,20 @@ jobs:
       - name: Refresh SHADOW evaluation with new pending observations
         run: python scripts/settle_contextual_shadow_v2.py --evaluate-only
 
+      - name: Build private contextual report previews
+        run: >-
+          python scripts/build_contextual_shadow_report_preview_v2.py
+          --output-dir "$RUNNER_TEMP/contextual-shadow-v2-report-preview"
+          --max-observations 50
+
+      - name: Upload private contextual report previews
+        uses: actions/upload-artifact@v7
+        with:
+          name: contextual-shadow-v2-report-preview-${{ github.run_id }}
+          path: ${{ runner.temp }}/contextual-shadow-v2-report-preview/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Publish only generated SHADOW data
         run: |
           git config user.name "tennis-bot"

@@ -16,8 +16,10 @@
 - liquidação de resultados: concluída e a acumular observações;
 - benchmark pós-previsão e contrato pré-declarado: implementados em
   `CHANGE-2026-11-04-177`, ainda sujeitos a CI/revisão;
-- calibração final, redesenho do relatório, integração operacional e Excel:
-  ainda pendentes.
+- contrato e protótipo visual isolado do relatório: implementados em
+  `CHANGE-2026-11-04-178`, sujeitos a CI e revisão visual;
+- calibração final, integração operacional do relatório e Excel: ainda
+  pendentes.
 
 ## Atualização final do Excel
 
