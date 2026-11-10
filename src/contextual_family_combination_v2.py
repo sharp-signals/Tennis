@@ -37,6 +37,22 @@ PROFILES = {
 }
 
 
+def _effective_profiles(
+    universe: str, overrides: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Return an isolated profile map without mutating the v2 defaults."""
+    profiles = {
+        **PROFILES,
+        "serve_return": _serve_profile(universe),
+    }
+    if overrides:
+        unknown = set(overrides) - set(FAMILY_ORDER)
+        if unknown:
+            raise ValueError(f"unknown family profile override(s): {sorted(unknown)}")
+        profiles.update({str(key): str(value) for key, value in overrides.items()})
+    return profiles
+
+
 def _serve_profile(universe: str) -> str:
     return (
         "serve_return_points_recent_deviation_v1"
@@ -75,26 +91,27 @@ def _fit_family_bundle(
     *,
     universe: str,
     selected_l1: dict[str, Any],
+    profiles: dict[str, str],
 ) -> dict[str, Any]:
     models = {}
     for family in ("recent_form", "structural_strength", "matchup_h2h"):
         models[family] = fit_family_equation(
             rows,
             family=family,
-            feature_profile=PROFILES[family],
+            feature_profile=profiles[family],
             l1=float(selected_l1[family]),
         )
     models["serve_return"] = fit_family_equation(
         rows,
         family="serve_return",
-        feature_profile=_serve_profile(universe),
+        feature_profile=profiles["serve_return"],
         l1=float(selected_l1["serve_return"]),
     )
     models["surface_conditions"] = {
         context: fit_family_equation(
             [row for row in rows if _surface_context(row) == context],
             family="surface_conditions",
-            feature_profile=PROFILES["surface_conditions"],
+            feature_profile=profiles["surface_conditions"],
             l1=float(selected_l1["surface_conditions"].get(context, 0.1)),
         )
         for context in SURFACE_CONTEXTS
@@ -104,20 +121,20 @@ def _fit_family_bundle(
 
 
 def _select_family_regularisation(
-    rows: list[dict[str, Any]], *, universe: str,
+    rows: list[dict[str, Any]], *, universe: str, profiles: dict[str, str],
 ) -> dict[str, Any]:
     selected = {
-        family: _select_l1(rows, family, PROFILES[family])
+        family: _select_l1(rows, family, profiles[family])
         for family in ("recent_form", "structural_strength", "matchup_h2h")
     }
     selected["serve_return"] = _select_l1(
-        rows, "serve_return", _serve_profile(universe),
+        rows, "serve_return", profiles["serve_return"],
     )
     selected["surface_conditions"] = {
         context: _select_l1(
             [row for row in rows if _surface_context(row) == context],
             "surface_conditions",
-            PROFILES["surface_conditions"],
+            profiles["surface_conditions"],
         )
         for context in SURFACE_CONTEXTS
         if _surface_vote_enabled(universe, context)
@@ -360,15 +377,21 @@ def combine_contextual_families_v2(
     universe: str,
     l1_grid: Iterable[float] = DEFAULT_L1_GRID,
     include_diagnostics: bool = False,
+    family_profile_overrides: dict[str, str] | None = None,
+    model_version: str = "contextual-family-combination-v2-hierarchical",
 ) -> dict[str, Any]:
     universe = str(universe).casefold()
     split = _split(rows)
     if min(len(part) for part in split.values()) == 0:
         return {"status": "INSUFFICIENT_CHRONOLOGY", "universe": universe}
 
-    family_l1 = _select_family_regularisation(split["train"], universe=universe)
+    profiles = _effective_profiles(universe, family_profile_overrides)
+    family_l1 = _select_family_regularisation(
+        split["train"], universe=universe, profiles=profiles,
+    )
     train_models = _fit_family_bundle(
         split["train"], universe=universe, selected_l1=family_l1,
+        profiles=profiles,
     )
     development_meta = _attach_predictions(
         split["validation"], train_models, universe=universe,
@@ -376,6 +399,7 @@ def combine_contextual_families_v2(
     development = split["train"] + split["validation"]
     final_models = _fit_family_bundle(
         development, universe=universe, selected_l1=family_l1,
+        profiles=profiles,
     )
     holdout = _attach_predictions(
         split["holdout"], final_models, universe=universe,
@@ -431,7 +455,7 @@ def combine_contextual_families_v2(
     modifier_total = sum(family_coefficients[name] for name in FAMILY_ORDER[2:])
     result = {
         "schema_version": SCHEMA_VERSION,
-        "model_version": "contextual-family-combination-v2-hierarchical",
+        "model_version": model_version,
         "universe": universe,
         "status": (
             "HIERARCHY_SUPPORTED"
@@ -440,10 +464,7 @@ def combine_contextual_families_v2(
             else "HIERARCHY_NOT_SUPPORTED"
         ),
         "mode": "HIERARCHY_CONSTRAINED_OUT_OF_SAMPLE_STACK",
-        "family_profiles": {
-            **PROFILES,
-            "serve_return": _serve_profile(universe),
-        },
+        "family_profiles": profiles,
         "family_l1_selected_inside_train": family_l1,
         "meta_l1_selected_inside_validation": selected_l1,
         "meta_candidates": candidates,
