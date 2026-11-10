@@ -19,6 +19,7 @@ from src import fetch_data
 from src.contextual_family_calibration import _paired_probability_gain
 from src.contextual_family_combination_v2 import combine_contextual_families_v2
 from src.contextual_family_replay import build_contextual_family_replay_rows
+from src.contextual_family_replay import _split
 from src.contextual_tournament_surface_registry import (
     enrich_tournament_surface_contexts,
 )
@@ -46,6 +47,9 @@ def build_report() -> dict:
             raise RuntimeError(f"Fonte histórica inadequada: {universe}")
         frame = enrich_tournament_surface_contexts(frame)[0]
         rows = build_contextual_family_replay_rows(frame, universe=universe)
+        chronology = _split(rows)
+        development = chronology["train"] + chronology["validation"]
+        holdout_rows = chronology["holdout"]
         baseline = combine_contextual_families_v2(
             rows, universe=universe, include_diagnostics=True,
         )
@@ -77,6 +81,16 @@ def build_report() -> dict:
         results[universe] = {
             "replay_rows_built_once": len(rows),
             "paired_holdout_targets": len(targets),
+            "chronology": {
+                "development_through": max(
+                    row["event_date"] for row in development
+                ),
+                "holdout_from": min(row["event_date"] for row in holdout_rows),
+                "evaluation_through": max(
+                    row["event_date"] for row in holdout_rows
+                ),
+                "holdout_targets": len(holdout_rows),
+            },
             "baseline_legacy_ranking": _compact(baseline),
             "candidate_ranking_v6": _compact(candidate),
             "candidate_gain_vs_baseline": paired,
@@ -116,6 +130,7 @@ def build_contract(report: dict) -> dict:
             "gain_vs_legacy_ranking_combination": result[
                 "candidate_gain_vs_baseline"
             ],
+            "chronology": result["chronology"],
         }
     return {
         "schema_version": 1,

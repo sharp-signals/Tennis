@@ -259,17 +259,28 @@ def _fair_odd(probability: float, lower: float, upper: float) -> dict[str, float
 
 def calibrate_probability_uncertainty_v2(
     rows: list[dict[str, Any]], *, universe: str,
+    prediction_records: list[dict[str, Any]] | None = None,
+    combination_summary: dict[str, Any] | None = None,
+    model_version: str = "contextual-probability-uncertainty-v2",
 ) -> dict[str, Any]:
-    combination = combine_contextual_families_v2(
-        rows, universe=universe, include_diagnostics=True,
-    )
-    diagnostics = combination.pop("_diagnostics")
-    records = [
-        {"row": row, "raw_probability": float(probability)}
-        for row, probability in zip(
-            diagnostics["holdout_rows"], diagnostics["holdout_probabilities"],
+    if prediction_records is None:
+        combination = combine_contextual_families_v2(
+            rows, universe=universe, include_diagnostics=True,
         )
-    ]
+        diagnostics = combination.pop("_diagnostics")
+        records = [
+            {"row": row, "raw_probability": float(probability)}
+            for row, probability in zip(
+                diagnostics["holdout_rows"], diagnostics["holdout_probabilities"],
+            )
+        ]
+    else:
+        records = list(prediction_records)
+        combination = combination_summary or {
+            "status": "FROZEN_EXTERNAL_COMBINATION",
+            "market_used": False,
+            "production_effect": False,
+        }
     calibration, test = _chronological_partition(records, 0.50)
     calibrator = _select_calibrator(calibration)
     for record in calibration + test:
@@ -352,7 +363,7 @@ def calibrate_probability_uncertainty_v2(
             blocked_by_reason[reason] += 1
     return {
         "schema_version": SCHEMA_VERSION,
-        "model_version": "contextual-probability-uncertainty-v2",
+        "model_version": model_version,
         "universe": str(universe).casefold(),
         "status": "UNCERTAINTY_CALIBRATED_FOR_SHADOW",
         "confidence_level": CONFIDENCE_LEVEL,
