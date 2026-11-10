@@ -206,6 +206,9 @@ class ContextualShadowSettlementTests(unittest.TestCase):
                 observations_path.read_text(encoding="utf-8"), original,
             )
             self.assertTrue(evaluation_path.exists())
+            self.assertFalse(
+                (root / "contextual_shadow_market-v2.jsonl").exists()
+            )
 
     def test_evaluate_only_makes_no_result_provider_calls(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -226,6 +229,7 @@ class ContextualShadowSettlementTests(unittest.TestCase):
             fetch.assert_not_called()
             self.assertTrue(report["evaluate_only"])
             self.assertEqual(report["pending_examined"], 0)
+            self.assertEqual(report["market_observations"], 0)
 
 
 if __name__ == "__main__":

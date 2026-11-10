@@ -38,6 +38,7 @@ def build_observation(payload: Mapping[str, Any]) -> dict[str, Any] | None:
             "a": {"id": payload.get("player_a_id"), "name": payload.get("player_a")},
             "b": {"id": payload.get("player_b_id"), "name": payload.get("player_b")},
         },
+        "competition": dict(payload.get("competition") or {}),
         "contextual_shadow": dict(shadow),
         "paper_eligible": False,
         "green_eligible": False,

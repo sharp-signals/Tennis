@@ -52,11 +52,16 @@ def _bounded_pending_batch(
 def settle(
     *, observations_path: Path = OBSERVATIONS_PATH,
     outcomes_path: Path = OUTCOMES_PATH,
-    market_path: Path = MARKET_PATH,
+    market_path: Path | None = None,
     evaluation_path: Path = EVALUATION_PATH,
     max_observations: int = 0,
     evaluate_only: bool = False,
 ) -> dict[str, Any]:
+    if market_path is None:
+        market_path = (
+            MARKET_PATH if observations_path == OBSERVATIONS_PATH
+            else observations_path.with_name("contextual_shadow_market-v2.jsonl")
+        )
     observations = read_jsonl(observations_path)
     outcomes = read_jsonl(outcomes_path)
     markets = read_jsonl(market_path)
