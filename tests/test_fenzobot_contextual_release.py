@@ -67,7 +67,7 @@ def test_manifest_names_every_internal_component_without_global_version_ambiguit
         "ranking_model": "contextual-ranking-v6",
         "family_combination": "contextual-family-combination-v3-ranking-v6",
         "probability_calibration": "contextual-probability-uncertainty-v3",
-        "runtime_generation": 3,
+        "runtime_generation": 4,
     }
     assert manifest["promotion_authorized"] is False
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
@@ -95,6 +95,18 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
+    assert result["runtime_generation"] == 4
+    assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
+    assert all(
+        "internal_trace" in family and family["internal_trace"]["status"] == "READY"
+        for family in result["families"]
+    )
+    lower, upper = result["probability_interval_90_model_a"]
+    assert lower <= result["probability_model_a"] <= upper
+    assert all(
+        lower <= scenario["probability_model_a_without_family"] <= upper
+        for scenario in result["family_sensitivity"]["scenarios"]
+    )
     assert result["market_used"] is False
     assert result["edge_calculated"] is False
     assert result["paper_eligible"] is False
@@ -147,5 +159,9 @@ def test_release_generated_ledgers_are_allowed_without_expanding_to_code():
     )
     assert is_allowed(
         "data/contextual_shadow_handicap_evidence-fenzobot-contextual-2026-11.jsonl",
+        "bot",
+    )
+    assert is_allowed(
+        "data/contextual_shadow_moneyline_evidence-fenzobot-contextual-2026-11.jsonl",
         "bot",
     )

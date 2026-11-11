@@ -32,7 +32,7 @@ def _observation():
                 "ranking_model": "contextual-ranking-v6",
                 "family_combination": "contextual-family-combination-v3-ranking-v6",
                 "probability_calibration": "contextual-probability-uncertainty-v3",
-                "runtime_generation": 3,
+                "runtime_generation": 4,
             },
             "configuration_fingerprint": "global-fingerprint",
             "probability_model_a": 0.61,
@@ -67,7 +67,7 @@ def _contract():
     return report.load_report_contract(
         Path("data/models/fenzobot-contextual-2026-11-report.json"),
         expected_model_version=GLOBAL_RELEASE_ID,
-        expected_contract_version="fenzobot-contextual-2026-11-report.1",
+        expected_contract_version="fenzobot-contextual-2026-11-report.2",
     )
 
 

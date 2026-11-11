@@ -99,6 +99,22 @@ def test_negative_handicap_has_own_price_and_conditional_coverage():
     assert review["handicap"]["lines"][0]["win_cover_pct"] == 90.0
 
 
+def test_all_relevant_half_point_lines_are_kept_with_three_highlights():
+    lines = [-(value / 2) for value in range(1, 13)]
+    review = build_market_review(
+        probabilities={"a": 0.75, "b": 0.25},
+        intervals={"a": [0.70, 0.80], "b": [0.20, 0.30]},
+        odds={"a": 1.45, "b": 2.90},
+        evidence_record=_evidence(lines),
+    )
+    rendered = review["handicap"]["lines"]
+    assert len(rendered) == 12
+    assert sum(bool(item["highlighted"]) for item in rendered) == 3
+    assert {item["line"] for item in rendered} == {
+        f"{-value / 2:+g}" for value in range(1, 13)
+    }
+
+
 def test_positive_handicap_highlights_total_coverage():
     review = build_market_review(
         probabilities={"a": 0.48, "b": 0.52},

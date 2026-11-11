@@ -112,6 +112,34 @@ def handicap_evidence():
     }
 
 
+def moneyline_evidence():
+    player = {
+        "general": {
+            "all": {"sample": 30, "wins": 19, "win_rate_pct": 63.3},
+            "bo3": {"sample": 25, "wins": 16, "win_rate_pct": 64.0},
+            "bo5": {"sample": 5, "wins": 3, "win_rate_pct": 60.0},
+        },
+        "buckets": {
+            "1.81-2.00": {
+                "all": {"sample": 8, "wins": 5, "win_rate_pct": 62.5},
+                "bo3": {"sample": 7, "wins": 5, "win_rate_pct": 71.4},
+                "bo5": {"sample": 1, "wins": 0, "win_rate_pct": 0.0},
+            },
+        },
+        "source": "frozen-test",
+        "odds_basis": "provider_pair",
+    }
+    return {
+        "observation_id": "obs-1",
+        "model_version": "contextual-family-shadow-v2",
+        "configuration_fingerprint": "fingerprint",
+        "production_effect": False,
+        "moneyline_evidence": {
+            "players": {"a": player, "b": player},
+        },
+    }
+
+
 class ContextualShadowReportTests(unittest.TestCase):
     def test_contract_is_explicitly_non_operational(self):
         contract = report.load_report_contract()
@@ -184,6 +212,34 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("cobre quando vence", html)
         self.assertIn("SEM ENTRADA AUTOMÁTICA", html)
 
+    def test_frozen_moneyline_history_shows_general_and_current_band(self):
+        view = report.build_report_view_model(
+            observation(), market(), None, None, moneyline_evidence()
+        )
+        history = view["players"]["a"]["moneyline_history"]
+        self.assertEqual(history["general"]["sample"], 25)
+        self.assertEqual(history["current_band_label"], "1.81-2.00")
+        self.assertEqual(history["current_band"]["win_rate_pct"], 71.4)
+        html = report.render_report_html(view)
+        self.assertIn("WIN RATE MONEYLINE", html)
+        self.assertIn("FAIXA ATUAL", html)
+
+    def test_single_family_dependency_is_visible_and_suppresses_markets(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"]["family_sensitivity"] = {
+            "method": "LEAVE_ONE_FAMILY_OUT",
+            "favorite_confirmed": False,
+            "dominant_family_if_unstable": "structural_strength",
+            "scenarios": [],
+        }
+        view = report.build_report_view_model(prediction, market())
+        self.assertEqual(
+            view["market_review"]["status"], "FAVORITE_UNCONFIRMED"
+        )
+        html = report.render_report_html(view)
+        self.assertIn("FAVORITISMO NÃO CONFIRMADO", html)
+        self.assertIn("Mercados não formulados", html)
+
     def test_builder_creates_private_index_reports_and_summary(self):
         with TemporaryDirectory(dir=Path.cwd()) as directory:
             root = Path(directory)
@@ -213,7 +269,8 @@ class ContextualShadowReportTests(unittest.TestCase):
             )
             self.assertEqual(summary["reports_built"], 1)
             self.assertEqual(summary["with_market"], 1)
-            self.assertEqual(summary["with_handicap_evidence"], 0)
+            self.assertEqual(summary["with_handicap_evidence"], 1)
+            self.assertEqual(summary["with_moneyline_evidence"], 0)
             self.assertTrue((output / "index.html").exists())
             self.assertTrue((output / "report-obs-1.html").exists())
             self.assertFalse(summary["isolation"]["operational_reports_published"])

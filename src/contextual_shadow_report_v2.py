@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_shadow_handicap_v2 import build_market_review
+from .contextual_shadow_moneyline_v1 import select_moneyline_history
 
 
 CONTRACT_PATH = Path("data/models/contextual-shadow-report-v2.json")
@@ -31,6 +32,7 @@ def load_report_contract(
         or rules.get("market_must_not_enter_model_probability") is not True
         or rules.get("handicap_evidence_must_be_frozen_with_prediction") is not True
         or rules.get("handicap_requires_own_line_probability") is not True
+        or rules.get("moneyline_evidence_must_be_frozen_with_prediction") is not True
         or rules.get("no_betting_recommendation") is not True
         or rules.get("no_automatic_publication") is not True
     ):
@@ -156,6 +158,7 @@ def build_report_view_model(
     market: Mapping[str, Any] | None = None,
     outcome: Mapping[str, Any] | None = None,
     handicap_evidence: Mapping[str, Any] | None = None,
+    moneyline_evidence: Mapping[str, Any] | None = None,
     *,
     contract: Mapping[str, Any] | None = None,
     expected_model_version: str = MODEL_VERSION,
@@ -196,6 +199,15 @@ def build_report_view_model(
         == shadow.get("configuration_fingerprint")
         and handicap_evidence.get("production_effect") is False
     )
+    valid_moneyline_evidence = bool(
+        isinstance(moneyline_evidence, Mapping)
+        and moneyline_evidence.get("observation_id")
+        == observation.get("observation_id")
+        and moneyline_evidence.get("model_version") == expected_model_version
+        and moneyline_evidence.get("configuration_fingerprint")
+        == shadow.get("configuration_fingerprint")
+        and moneyline_evidence.get("production_effect") is False
+    )
 
     family_rows = []
     absolute_total = sum(
@@ -222,6 +234,8 @@ def build_report_view_model(
                 100.0 * abs(contribution) / absolute_total
                 if absolute_total > 0.0 else 0.0
             ),
+            "internal_trace": dict(family.get("internal_trace") or {}),
+            "context_audit": dict(family.get("context_audit") or {}),
         })
 
     market_a = _player_market(
@@ -260,6 +274,28 @@ def build_report_view_model(
         },
         evidence_record=handicap_evidence if valid_handicap_evidence else None,
     )
+    match_format = str(
+        ((handicap_evidence or {}).get("handicap_evidence") or {}).get("format")
+        or "bo3"
+    )
+    moneyline_history_a = select_moneyline_history(
+        moneyline_evidence if valid_moneyline_evidence else None,
+        side="a", observed_odd=_number(odds.get("a")),
+        match_format=match_format,
+    )
+    moneyline_history_b = select_moneyline_history(
+        moneyline_evidence if valid_moneyline_evidence else None,
+        side="b", observed_odd=_number(odds.get("b")),
+        match_format=match_format,
+    )
+    sensitivity = dict(shadow.get("family_sensitivity") or {})
+    if sensitivity.get("favorite_confirmed") is False:
+        market_review = {
+            "status": "FAVORITE_UNCONFIRMED",
+            "candidate_side": None,
+            "central_ev_pct": None,
+            "conservative_ev_pct": None,
+        }
 
     return {
         "contract_version": contract["contract_version"],
@@ -291,6 +327,7 @@ def build_report_view_model(
                 "interval": interval_a,
                 "fair_odd": _fair_odd(shadow.get("fair_odd_model_a")),
                 "market": market_a,
+                "moneyline_history": moneyline_history_a,
             },
             "b": {
                 "name": _display_name(player_b.get("name")),
@@ -299,9 +336,11 @@ def build_report_view_model(
                 "interval": interval_b,
                 "fair_odd": _fair_odd(shadow.get("fair_odd_model_b")),
                 "market": market_b,
+                "moneyline_history": moneyline_history_b,
             },
         },
         "families": family_rows,
+        "family_sensitivity": sensitivity,
         "family_coverage": dict(shadow.get("family_coverage") or {}),
         "quality_group": shadow.get("quality_group"),
         "quality_label": _quality_label(shadow.get("quality_group")),
@@ -354,7 +393,76 @@ def _odd(value: Any) -> str:
 
 
 def _e(value: Any) -> str:
-    return html.escape(str(value or "N/D"))
+    return html.escape(str(value if value not in (None, "") else "N/D"))
+
+
+_FEATURE_LABELS = {
+    "contextual_recent_result_core_v1": "Resultados recentes",
+    "contextual_recent_competitiveness_v1": "Competitividade recente",
+    "contextual_recent_win_quality_v1": "Qualidade das vitórias",
+    "contextual_recent_competitiveness_residual_v2": "Qualidade das derrotas",
+    "contextual_recent_bad_loss_penalty_v2": "Penalização por derrotas inferiores",
+    "contextual_structural_material_rank_core_v6": "Distância material de ranking",
+    "contextual_structural_representative_rank_core_v6": "Ranking representativo",
+    "contextual_structural_points_log_ratio_v6": "Diferença de pontos",
+    "contextual_structural_trajectory_margin_v3": "Trajetória do ranking",
+    "contextual_structural_inactivity_margin_v3": "Inatividade",
+    "contextual_structural_recovery_margin_v3": "Regresso / recuperação",
+    "exact_surface_career_margin_shrunk": "Carreira neste piso",
+    "exact_surface_previous_margin_shrunk": "Época anterior neste piso",
+    "exact_surface_current_margin_shrunk": "Época atual neste piso",
+    "contextual_h2h_global_shrunk_v1": "Confronto direto global",
+    "service_points_won_surface_margin_shrunk_v1": "Serviço no piso",
+    "return_points_won_surface_margin_shrunk_v1": "Resposta no piso",
+    "service_points_won_recent_deviation_v1": "Serviço recente",
+    "return_points_won_recent_deviation_v1": "Resposta recente",
+}
+
+
+def _feature_label(value: Any) -> str:
+    key = str(value or "")
+    return _FEATURE_LABELS.get(key, key.replace("_", " ").strip().title())
+
+
+def _family_detail_html(family: Mapping[str, Any]) -> str:
+    trace = family.get("internal_trace") or {}
+    features = trace.get("features") or []
+    if not features:
+        return '<p class="family-detail-empty">Sem decomposição adicional disponível.</p>'
+    rows = []
+    for feature in features:
+        missing = bool(feature.get("missing"))
+        contribution = _number(feature.get("logit_contribution")) or 0.0
+        missing_contribution = _number(
+            feature.get("missing_logit_contribution")
+        ) or 0.0
+        total = contribution + missing_contribution
+        side = "A" if total > 1e-9 else "B" if total < -1e-9 else "—"
+        value = "Sem dado" if missing else _e(feature.get("raw_value"))
+        rows.append(
+            f'<div class="factor-row"><span>{_e(_feature_label(feature.get("key")))}</span>'
+            f'<b>{value}</b><i class="factor-{side.casefold()}">{side} · {total:+.3f}</i></div>'
+        )
+    context = family.get("context_audit") or {}
+    components = context.get("components") or {}
+    structural = ""
+    if components:
+        fields = (
+            ("Ranking atual", "current_rank_a", "current_rank_b"),
+            ("Pontos atuais", "current_points_a", "current_points_b"),
+            ("Melhor ranking observado", "observed_peak_rank_a", "observed_peak_rank_b"),
+            ("Ranking típico 365d", "typical_rank_365d_a", "typical_rank_365d_b"),
+            ("Representatividade", "representativeness_a", "representativeness_b"),
+        )
+        items = []
+        for label, key_a, key_b in fields:
+            if key_a in components or key_b in components:
+                items.append(
+                    f'<div><span>{_e(label)}</span><b>A: {_e(components.get(key_a))} · B: {_e(components.get(key_b))}</b></div>'
+                )
+        if items:
+            structural = f'<div class="context-grid">{"".join(items)}</div>'
+    return f'<div class="factor-table">{"".join(rows)}</div>{structural}'
 
 
 def _player_card(side: str, player: Mapping[str, Any]) -> str:
@@ -363,6 +471,26 @@ def _player_card(side: str, player: Mapping[str, Any]) -> str:
     market = player["market"]
     edge = market.get("probability_edge_pp")
     edge_class = "positive" if edge is not None and edge > 0 else "negative"
+    history = player.get("moneyline_history") or {}
+    general = history.get("general") or {}
+    band = history.get("current_band") or {}
+    general_text = (
+        f"{_e(general.get('win_rate_pct'))}% · "
+        f"{_e(general.get('wins'))}/{_e(general.get('sample'))}"
+        if general.get("sample") else "N/D · sem amostra histórica com odds"
+    )
+    band_text = (
+        f"{_e(band.get('win_rate_pct'))}% · "
+        f"{_e(band.get('wins'))}/{_e(band.get('sample'))}"
+        if band.get("sample") else "N/D · amostra inexistente nesta faixa"
+    )
+    observed_odd = _number(market.get("odd"))
+    break_even = 100.0 / observed_odd if observed_odd else None
+    band_margin = (
+        _number(band.get("win_rate_pct")) - break_even
+        if _number(band.get("win_rate_pct")) is not None and break_even is not None
+        else None
+    )
     return f"""
       <article class="player-card side-{side}">
         <div class="player-side">MODELO {side.upper()}</div>
@@ -379,6 +507,10 @@ def _player_card(side: str, player: Mapping[str, Any]) -> str:
           <span>EV central <b>{_signed(market.get('expected_value_pct'), '%')}</b></span>
           <span>EV no limite conservador <b>{_signed(market.get('conservative_expected_value_pct'), '%')}</b></span>
         </div>
+        <div class="ml-history">
+          <div><span>WIN RATE MONEYLINE · {_e(history.get('format'))}</span><b>{general_text}</b><small>Histórico geral com odds observadas</small></div>
+          <div><span>FAIXA ATUAL · {_e(history.get('current_band_label'))}</span><b>{band_text}</b><small>Break-even {_e(None if break_even is None else round(break_even, 1))}% · margem {_signed(band_margin, ' p.p.')}</small></div>
+        </div>
       </article>"""
 
 
@@ -390,6 +522,11 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             '<div class="review-empty"><b>Mercado ainda indisponível.</b> '
             "A previsão permanece guardada; não é formulado qualquer mercado."
             "</div>"
+        )
+    elif status == "FAVORITE_UNCONFIRMED":
+        body = (
+            '<div class="review-empty"><b>Mercados não formulados.</b> '
+            "O lado favorito muda quando se retira uma única família. A estimativa central permanece visível para auditoria, mas não é robusta o suficiente para gerar uma seleção Moneyline ou handicap.</div>"
         )
     elif status == "NO_POSITIVE_EDGE":
         body = (
@@ -424,7 +561,8 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
         handicap = review.get("handicap")
         if isinstance(handicap, Mapping):
             positive = handicap.get("type") == "positive"
-            line_cards = []
+            highlighted_cards = []
+            remaining_cards = []
             for line in handicap.get("lines") or []:
                 price = line.get("price") or {}
                 if price.get("status") != "READY":
@@ -450,16 +588,33 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                         f"Total: {_e(line.get('cover_pct'))}% "
                         f"({_e(line.get('cover'))}/{_e(line.get('total'))})"
                     )
-                line_cards.append(f"""
+                losses = (
+                    f"Nas derrotas: {_e(line.get('loss_cover_pct'))}% "
+                    f"({_e(line.get('loss_cover'))}/{_e(line.get('loss_total'))})"
+                    if line.get("loss_total") else "Nas derrotas: sem amostra"
+                )
+                line_card = f"""
                   <div class="line-card">
                     <div class="line-name">{_e(player.get('name'))} {_e(line.get('line'))}</div>
                     <strong>{primary}</strong><small>{secondary}</small>
+                    <small>{losses}</small><small>Amostra total: {_e(line.get('total'))} jogos</small>
                     <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>{_e(zone)}</b></div>
-                  </div>""")
+                  </div>"""
+                if line.get("highlighted"):
+                    highlighted_cards.append(line_card)
+                else:
+                    remaining_cards.append(line_card)
+            remaining = (
+                f'<details class="all-lines"><summary>Ver todas as restantes linhas de handicap '
+                f'({len(remaining_cards)})</summary><div class="line-grid full-lines">'
+                f'{"".join(remaining_cards)}</div></details>'
+                if remaining_cards else ""
+            )
             cards.append(f"""
               <article class="review-card handicap-card">
                 <div class="review-type">HANDICAP {'POSITIVO' if positive else 'NEGATIVO'} · {_e(handicap.get('format'))}</div>
-                <div class="line-grid">{''.join(line_cards)}</div>
+                <p class="line-intro">Linhas principais para leitura imediata. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
+                <div class="line-grid">{''.join(highlighted_cards)}</div>{remaining}
               </article>""")
         if not cards:
             cards.append(
@@ -509,7 +664,10 @@ def render_report_html(view: Mapping[str, Any]) -> str:
               {('+' if contribution > 0 else '')}{contribution:.3f}
               <small>logit</small>
             </div>
-          </div>""")
+          </div>
+          <details class="family-detail"><summary>Ver o que entrou nesta família</summary>
+            {_family_detail_html(family)}
+          </details>""")
     market = view["market"]
     if market["available"]:
         market_copy = (
@@ -526,7 +684,20 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     coverage_pct = coverage.get("pct", 0)
     preferred = max(players, key=lambda side: players[side]["probability"])
     preferred_name = players[preferred]["name"]
-    if view["model_status"] == "READY_FOR_PROSPECTIVE_SHADOW":
+    sensitivity = view.get("family_sensitivity") or {}
+    favorite_confirmed = sensitivity.get("favorite_confirmed") is not False
+    dominant_family = sensitivity.get("dominant_family_if_unstable")
+    family_labels = {
+        str(item.get("key")): str(item.get("label") or item.get("key"))
+        for item in view.get("families") or []
+    }
+    if not favorite_confirmed:
+        direct_read = (
+            f"Estimativa central: {preferred_name} {_pct(players[preferred]['probability'])}. "
+            f"Favoritismo não confirmado: ao retirar {family_labels.get(str(dominant_family), dominant_family)}, "
+            "o lado favorito muda. O jogo deve ser lido como sensível a uma única família."
+        )
+    elif view["model_status"] == "READY_FOR_PROSPECTIVE_SHADOW":
         direct_read = (
             f"O modelo inclina-se para {preferred_name}, mantendo a incerteza "
             "explicitamente visível. A comparação de mercado é posterior e não altera esta leitura."
@@ -538,6 +709,13 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         )
     title = f"{players['a']['name']} vs {players['b']['name']}"
     reasons = ", ".join(view["reason_codes"]) or "Sem bloqueios estruturais"
+    robustness_class = "confirmed" if favorite_confirmed else "unstable"
+    robustness_title = "FAVORITISMO ROBUSTO" if favorite_confirmed else "FAVORITISMO NÃO CONFIRMADO"
+    robustness_copy = (
+        "Nenhuma família isolada muda o lado favorito na análise leave-one-family-out."
+        if favorite_confirmed else
+        "Uma única família consegue inverter o lado favorito. A probabilidade central é mostrada, mas não deve ser lida como consenso do modelo."
+    )
     return f"""<!doctype html>
 <html lang="pt-PT">
 <head>
@@ -569,6 +747,10 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .player-grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}} .player-grid div{{padding:12px;background:#132f4d;border-radius:10px}}
     .player-grid span,.ev-row span{{display:block;color:var(--muted);font-size:11px}} .player-grid strong{{font-size:18px}}
     .positive strong{{color:var(--cyan)}} .negative strong{{color:#b8c9d8}} .ev-row{{display:flex;gap:18px;margin-top:12px}}
+    .ml-history{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}}.ml-history>div{{padding:12px;background:#091b2c;border-radius:10px}}
+    .ml-history span,.ml-history small{{display:block;color:var(--muted);font-size:10px}}.ml-history b{{display:block;margin:3px 0;font-size:16px}}
+    .robustness{{margin-top:18px;padding:15px 18px;border-radius:14px;border:1px solid var(--cyan);background:#0a2b35}}
+    .robustness.unstable{{border-color:var(--gold);background:#322914}}.robustness b{{display:block;letter-spacing:.08em}}.robustness span{{color:#c8d8e7}}
     .market-note{{margin-top:14px;padding:13px 15px;border-left:3px solid var(--gold);background:#152a3d;color:#c8d8e7}}
     .review-lead{{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:14px}}.review-lead>div{{padding:14px;background:#132f4d;border-radius:11px}}
     .review-lead b,.review-lead strong{{display:block;font-size:21px}}.review-lead span{{color:var(--muted);font-size:11px}}
@@ -577,7 +759,9 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .review-card p,.line-card small{{color:var(--muted)}}.price-zone,.line-zone{{margin-top:12px;padding:10px;background:#132f4d;border-radius:9px}}
     .price-zone span,.line-zone span{{display:block;color:var(--muted);font-size:9px;letter-spacing:.08em}}.price-zone b,.line-zone b{{font-size:16px}}
     .line-grid{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}}.line-card{{padding:13px;background:#102a45;border:1px solid #285171;border-radius:11px}}
-    .line-card strong,.line-card small{{display:block}}.line-name{{font-weight:900;font-size:17px;margin-bottom:7px}}.review-empty{{padding:20px;border:1px dashed #54718a;border-radius:14px;color:var(--muted)}}
+    .line-card strong,.line-card small{{display:block}}.line-name{{font-weight:900;font-size:17px;margin-bottom:7px}}.line-intro{{color:var(--muted);margin:8px 0 0}}
+    .all-lines{{margin-top:14px}}.all-lines summary,.family-detail summary{{color:var(--cyan);font-weight:800}}.full-lines{{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    .review-empty{{padding:20px;border:1px dashed #54718a;border-radius:14px;color:var(--muted)}}
     .quality{{display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:center}} .ring{{width:140px;height:140px;border-radius:50%;
       display:grid;place-content:center;text-align:center;background:conic-gradient(var(--cyan) {float(coverage_pct):.1f}%,#16334d 0);
       position:relative}} .ring:after{{content:"";position:absolute;inset:12px;border-radius:50%;background:#0b2137}}
@@ -588,13 +772,18 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .axis{{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#66829b}} .bar{{position:absolute;top:4px;height:10px;width:calc(var(--strength)/2);border-radius:6px}}
     .bar.a{{right:50%;background:var(--blue)}} .bar.b{{left:50%;background:var(--orange)}} .bar.neutral{{left:50%;width:2px;background:#66829b}}
     .family-result{{text-align:right;font-weight:900}} .family-result.a{{color:var(--blue)}} .family-result.b{{color:var(--orange)}}
+    .family-detail{{margin:0 0 8px;padding:10px 0 13px;border-top:0;border-bottom:1px solid #1b3a55}}.factor-table{{display:grid;gap:6px;margin-top:10px}}
+    .factor-row{{display:grid;grid-template-columns:2fr 1fr 100px;gap:10px;padding:8px 10px;background:#091b2c;border-radius:8px;align-items:center}}
+    .factor-row b{{font-size:12px}}.factor-row i{{font-style:normal;text-align:right;font-weight:800}}.factor-a{{color:var(--blue)}}.factor-b{{color:var(--orange)}}
+    .context-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:9px}}.context-grid div{{padding:9px;background:#132f4d;border-radius:8px}}
+    .context-grid span,.context-grid b{{display:block;font-size:11px}}.context-grid span{{color:var(--muted)}}.family-detail-empty{{color:var(--muted)}}
     details{{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}} summary{{cursor:pointer;color:var(--muted)}}
     .trace{{margin-top:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-family:ui-monospace,Consolas,monospace;font-size:11px}}
     .trace div{{padding:10px;background:#091b2c;border-radius:8px;overflow-wrap:anywhere}} .foot{{color:var(--muted);text-align:center;margin-top:18px;font-size:12px}}
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
       .versus .right{{text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
-      .review-lead,.review-grid,.line-grid{{grid-template-columns:1fr}}}}
+      .review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}.factor-row i{{text-align:left}}}}
   </style>
 </head>
 <body><main class="shell">
@@ -605,6 +794,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
       <div class="right"><h1>{_e(players['b']['name'])}</h1><span>Modelo B</span></div></div>
     <div class="summary"><div><strong>LEITURA DIRETA</strong><br><span>{_e(direct_read)}</span></div>
       <div class="market-badge">{benchmark_badge}</div></div>
+    <div class="robustness {robustness_class}"><b>{robustness_title}</b><span>{_e(robustness_copy)}</span></div>
   </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">NÚCLEO DE PRICING</div><h2>Probabilidade e fair odd independentes</h2></div></div>
