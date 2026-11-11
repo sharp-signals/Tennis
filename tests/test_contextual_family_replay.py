@@ -222,6 +222,32 @@ def test_main_tour_form_is_separate_from_challenger_form_and_uses_all_rows():
     assert target["samples"]["surface_a"] == 1
 
 
+def test_recent_tier_win_credit_values_masters_run_above_challenger_run():
+    rows = pd.DataFrame([
+        _match("20261001", "Ruud", "A", winner_rank=10, loser_rank=40,
+             competition_scope="main", competition_level="M"),
+        _match("20261003", "Ruud", "B", winner_rank=10, loser_rank=30,
+             competition_scope="main", competition_level="M"),
+        _match("20261005", "Ruud", "C", winner_rank=10, loser_rank=20,
+             competition_scope="main", competition_level="M"),
+        _match("20261007", "Ruud", "D", winner_rank=10, loser_rank=15,
+             competition_scope="main", competition_level="M"),
+        _match("20261001", "Shevchenko", "E", winner_rank=100, loser_rank=150,
+             competition_scope="challenger", competition_level="C"),
+        _match("20261003", "Shevchenko", "F", winner_rank=100, loser_rank=140,
+             competition_scope="challenger", competition_level="C"),
+    ])
+    target = build_contextual_target_row(
+        rows, universe="atp", player_a="Ruud", player_b="Shevchenko",
+        cutoff=pd.Timestamp("2026-10-10").date(), surface="Hard", target_tier="250",
+        rank_a=10, rank_b=100,
+    )
+    assert target["features"]["contextual_recent_tier_win_credit_v7"] > 0.35
+    audit = target["candidate_equation_audit"]["recent_form_tier_reliable_v5"]
+    assert audit["tier_win_credit"]["a_credit"] > 0.45
+    assert audit["tier_win_credit"]["b_credit"] < 0.06
+
+
 def test_exact_surface_features_do_not_mix_indoor_and_outdoor_hard():
     frame = pd.DataFrame([
         _match("20260101", "Alpha", "Other A", indoor=True),

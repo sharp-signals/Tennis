@@ -58,6 +58,14 @@ SCHEMA_VERSION = 1
 WINDOW_DAYS = 90
 RECENT_RELIABILITY_MIN_MATCHES = 4.0
 RECENT_MAIN_RELIABILITY_MIN_MATCHES = 2.0
+_MAX_TOURNAMENT_POINTS = 2000.0
+_COMPETITION_CHAMPION_POINTS = {
+    0: 100.0,
+    1: 250.0,
+    2: 500.0,
+    3: 1000.0,
+    4: 2000.0,
+}
 _COMPETITION_LEVEL_STRENGTH = {
     "c": 0,
     "challenger": 0,
@@ -105,6 +113,7 @@ FEATURE_FAMILIES = {
     "contextual_recent_result_main_v7": "recent_form",
     "contextual_recent_competitiveness_main_v7": "recent_form",
     "contextual_recent_win_quality_main_v7": "recent_form",
+    "contextual_recent_tier_win_credit_v7": "recent_form",
     "current_rank_log_ratio": "structural_strength",
     "rank_change_from_last_observation": "structural_strength",
     "contextual_structural_signal_v1": "structural_strength",
@@ -397,6 +406,37 @@ def _tier_recent_summary(
     }
 
 
+def _tier_win_credit_summary(
+    observations: list[dict[str, Any]], *, cutoff: date,
+) -> tuple[float | None, int]:
+    """Recent wins weighted by the objective hierarchy of the competition.
+
+    The scale mirrors the maximum ranking points of the category.  A win in a
+    Masters therefore carries ten times the category credit of a generic
+    Challenger win.  Losses contribute zero rather than a negative tier
+    penalty, so merely playing a stronger event cannot damage the player.
+    """
+    start = cutoff - timedelta(days=WINDOW_DAYS)
+    eligible = [
+        row for row in observations if start <= row["event_date"] < cutoff
+    ]
+    if not eligible:
+        return None, 0
+    weighted_credit = 0.0
+    total_weight = 0.0
+    for row in eligible:
+        weight = 0.5 ** (
+            max(0, (cutoff - row["event_date"]).days) / 60.0
+        )
+        total_weight += weight
+        if not row.get("won"):
+            continue
+        strength = _competition_strength(row.get("competition_level"))
+        points = _COMPETITION_CHAMPION_POINTS.get(strength or 0, 100.0)
+        weighted_credit += weight * points / _MAX_TOURNAMENT_POINTS
+    return weighted_credit / total_weight if total_weight else None, len(eligible)
+
+
 def _tier_reliable_recent_features(
     observations_a: list[dict[str, Any]],
     observations_b: list[dict[str, Any]],
@@ -504,6 +544,29 @@ def _tier_reliable_recent_features(
                 "b_shrunk": round(value_b, 6),
             }
         audit["buckets"][bucket] = bucket_audit
+    tier_credit_a, tier_credit_sample_a = _tier_win_credit_summary(
+        recent_a, cutoff=cutoff,
+    )
+    tier_credit_b, tier_credit_sample_b = _tier_win_credit_summary(
+        recent_b, cutoff=cutoff,
+    )
+    reliability = max(
+        min(1.0, tier_credit_sample_a / RECENT_RELIABILITY_MIN_MATCHES),
+        min(1.0, tier_credit_sample_b / RECENT_RELIABILITY_MIN_MATCHES),
+    )
+    result["contextual_recent_tier_win_credit_v7"] = (
+        (float(tier_credit_a or 0.0) - float(tier_credit_b or 0.0))
+        * reliability
+        if tier_credit_sample_a or tier_credit_sample_b else None
+    )
+    audit["tier_win_credit"] = {
+        "a_sample": tier_credit_sample_a,
+        "b_sample": tier_credit_sample_b,
+        "a_credit": round(float(tier_credit_a or 0.0), 6),
+        "b_credit": round(float(tier_credit_b or 0.0), 6),
+        "category_scale": "champion_points_over_2000",
+        "challenger_default_points": 100,
+    }
     return result, audit
 
 
