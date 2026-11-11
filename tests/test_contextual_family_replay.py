@@ -5,6 +5,7 @@ from src.contextual_family_replay import (
     _recent_circuit_downshift,
     _surface,
     adjust_recent_result_for_loss_context,
+    apply_h2h_override,
     build_contextual_target_row,
     build_contextual_family_replay_rows,
     evaluate_contextual_family_replay,
@@ -12,6 +13,35 @@ from src.contextual_family_replay import (
 )
 
 import pandas as pd
+
+
+def test_provider_h2h_override_reconciles_model_and_keeps_exhibition_auditable():
+    row = {
+        "features": {
+            "h2h_win_share_margin": -1.0,
+            "same_surface_h2h_win_share_margin": None,
+            "contextual_h2h_global_shrunk_v1": -1 / 3,
+        },
+        "samples": {"h2h": 1, "same_surface_h2h": 0},
+        "family_states": {"matchup_h2h": {"data_state": "OBSERVED"}},
+        "candidate_equation_audit": {},
+    }
+    result = apply_h2h_override(row, {
+        "source": "rapidapi_atp_h2h_matches",
+        "raw_matches": 3,
+        "eligible_matches": 2,
+        "eligible_a_wins": 1,
+        "eligible_surface_matches": 1,
+        "eligible_surface_a_wins": 1,
+        "excluded_non_competitive": 1,
+    })
+    assert result["samples"]["h2h"] == 2
+    assert result["samples"]["same_surface_h2h"] == 1
+    assert result["features"]["h2h_win_share_margin"] == 0.0
+    assert result["features"]["same_surface_h2h_win_share_margin"] == 1.0
+    audit = result["candidate_equation_audit"]["matchup_h2h"]
+    assert audit["raw_matches"] == 3
+    assert audit["excluded_non_competitive"] == 1
 
 
 def _observation(day, *, won, level, context="hard_indoor"):

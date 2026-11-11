@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 import math
 import threading
-from typing import Any
+from typing import Any, Mapping
 import weakref
 
 import pandas as pd
@@ -1072,6 +1072,50 @@ def _h2h_feature(
     else:
         surface_margin = None
     return global_margin, surface_margin, len(rows), len(same)
+
+
+def apply_h2h_override(
+    row: dict[str, Any], override: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Reconcile the model H2H with a more complete factual provider sample.
+
+    Non-competitive/exhibition rows remain factual audit evidence but never
+    vote in the contextual family.  A provider failure leaves the local,
+    chronological sample untouched.
+    """
+    if not override:
+        return row
+    total = int(override.get("eligible_matches") or 0)
+    current = int((row.get("samples") or {}).get("h2h") or 0)
+    if total < current or total <= 0:
+        return row
+    a_wins = int(override.get("eligible_a_wins") or 0)
+    surface_total = int(override.get("eligible_surface_matches") or 0)
+    surface_a_wins = int(override.get("eligible_surface_a_wins") or 0)
+    features = row.setdefault("features", {})
+    global_margin = 2.0 * a_wins / total - 1.0
+    surface_margin = (
+        2.0 * surface_a_wins / surface_total - 1.0
+        if surface_total > 0 else None
+    )
+    features["h2h_win_share_margin"] = global_margin
+    features["same_surface_h2h_win_share_margin"] = surface_margin
+    features["contextual_h2h_global_shrunk_v1"] = (
+        global_margin * total / (total + 2.0)
+    )
+    row.setdefault("samples", {}).update({
+        "h2h": total,
+        "same_surface_h2h": surface_total,
+    })
+    row.setdefault("family_states", {})["matchup_h2h"] = {
+        "data_state": "OBSERVED", "signal_state": "AVAILABLE",
+    }
+    row.setdefault("candidate_equation_audit", {})["matchup_h2h"] = {
+        **dict(override),
+        "local_eligible_matches_before_reconciliation": current,
+        "source_selected_for_model": str(override.get("source") or "provider_h2h"),
+    }
+    return row
 
 
 def _service_view(

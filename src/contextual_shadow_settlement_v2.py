@@ -559,8 +559,6 @@ def build_evaluation(
             odd_a = odd_b = probability_a = probability_b = math.nan
         if not key or observation is None:
             code = "ORPHAN_OR_MISSING_OBSERVATION_ID"
-        elif key in market_by_observation:
-            code = "DUPLICATE_MARKET_OBSERVATION"
         elif row.get("model_version") != model_version:
             code = "MODEL_VERSION_MISMATCH"
         elif (
@@ -592,7 +590,14 @@ def build_evaluation(
         if code:
             market_violations.append({"line": line_number, "code": code})
             continue
-        market_by_observation[key] = row
+        # Há vários snapshots imutáveis por observação. Para avaliação
+        # prospetiva mantém-se sempre a primeira cotação válida pós-previsão;
+        # as seguintes servem para acompanhar o movimento do mercado.
+        previous = market_by_observation.get(key)
+        if previous is None or str(row.get("captured_at_utc") or "") < str(
+            previous.get("captured_at_utc") or ""
+        ):
+            market_by_observation[key] = row
     pairs: list[tuple[Mapping[str, Any], tuple[float, int, float, float]]] = []
     excluded_settled = 0
     excluded_by_reason: dict[str, int] = defaultdict(int)

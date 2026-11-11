@@ -92,7 +92,7 @@ class ContextualShadowMarketTests(unittest.TestCase):
             provenance(captured="2026-11-04T09:59:00+00:00"),
         ))
 
-    def test_first_valid_quote_wins_without_replacement(self):
+    def test_changed_quote_is_appended_without_rewriting_first(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "market.jsonl"
             first = market.build_market_observation(
@@ -105,9 +105,30 @@ class ContextualShadowMarketTests(unittest.TestCase):
                 "odds": {"a": 1.7, "b": 2.3},
             }
             self.assertEqual(market.append_markets([first], path), 1)
+            self.assertEqual(market.append_markets([later], path), 1)
             self.assertEqual(market.append_markets([later], path), 0)
             saved = market.read_markets(path)
             self.assertEqual(saved[0]["odds"], {"a": 1.6, "b": 2.5})
+            self.assertEqual(saved[1]["odds"], {"a": 1.7, "b": 2.3})
+
+    def test_evaluation_uses_first_valid_quote_when_later_snapshot_exists(self):
+        row = observation()
+        first = market.build_market_observation(
+            row, fixture(), {"Beta": 2.5, "Alpha": 1.6}, provenance(),
+        )
+        later = market.build_market_observation(
+            row, fixture(), {"Beta": 2.3, "Alpha": 1.7},
+            provenance(captured="2026-11-04T11:01:00+00:00"),
+        )
+        outcome = {
+            "observation_id": "obs-1", "winner_side": "a",
+            "canonical_match_instance_id": "canonical-obs-1",
+            "configuration_fingerprint": "fingerprint",
+            "model_version": settlement.MODEL_VERSION,
+        }
+        result = settlement.build_evaluation([row], [outcome], [later, first])
+        self.assertEqual(result["market_audit"]["status"], "HEALTHY")
+        self.assertEqual(result["counts"]["ready_settled_with_market"], 1)
 
     def test_evaluation_joins_frozen_market_only_after_result(self):
         row = observation()

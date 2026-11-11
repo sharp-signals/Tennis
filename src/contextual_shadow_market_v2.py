@@ -131,11 +131,18 @@ def build_market_observation(
     observation_id = str(observation.get("observation_id") or "")
     if not observation_id:
         return None
+    # A previsão continua imutável, mas o preço pode mudar entre execuções.
+    # A identidade da cotação usa o conteúdo observado (não apenas a hora da
+    # nossa chamada), para guardar movimentos reais sem duplicar o mesmo preço.
     material = "|".join((
         observation_id,
         str(provenance.get("source") or ""),
         bookmaker,
-        captured.isoformat(),
+        str(provenance.get("event_id") or ""),
+        str(provenance.get("provider_timestamp") or ""),
+        str(provenance.get("raw_payload_sha256") or ""),
+        f"{odd_a:.6f}",
+        f"{odd_b:.6f}",
     ))
     shadow = observation.get("contextual_shadow") or {}
     return {
@@ -166,6 +173,7 @@ def build_market_observation(
         },
         "overround": round(overround, 8),
         "first_valid_quote_frozen": True,
+        "immutable_quote_snapshot": True,
         "paper_eligible": False,
         "green_eligible": False,
         "production_effect": False,
@@ -192,18 +200,20 @@ def read_markets(path: Path = MARKET_PATH) -> list[dict[str, Any]]:
 def append_markets(
     rows: Iterable[Mapping[str, Any]], path: Path = MARKET_PATH,
 ) -> int:
-    """First valid market observation wins; later prices never replace it."""
+    """Append immutable quote snapshots without rewriting earlier prices."""
     existing_rows = read_markets(path)
     existing = {
-        str(row.get("observation_id")): row for row in existing_rows
-        if row.get("observation_id")
+        str(row.get("market_observation_id")): row for row in existing_rows
+        if row.get("market_observation_id")
     }
     additions = []
     for source in rows:
         row = dict(source)
-        key = str(row.get("observation_id") or "")
-        if not key:
+        if not row.get("observation_id"):
             raise ValueError("market observation without observation_id")
+        key = str(row.get("market_observation_id") or "")
+        if not key:
+            raise ValueError("market observation without market_observation_id")
         if key in existing:
             continue
         if row.get("first_valid_quote_frozen") is not True:

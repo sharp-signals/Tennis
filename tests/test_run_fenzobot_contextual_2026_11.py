@@ -26,7 +26,7 @@ def test_global_release_empty_run_remains_isolated():
             "ranking_model": "contextual-ranking-v7.1",
             "family_combination": "contextual-family-combination-v8-tier-context",
             "probability_calibration": "contextual-probability-uncertainty-v8",
-            "runtime_generation": 8,
+            "runtime_generation": 9,
         },
     }
     with (

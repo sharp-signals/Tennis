@@ -22,7 +22,10 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.audit_contextual_shadow_v2 import audit_ledger  # noqa: E402
 from src import fetch_data, match_identity_v2  # noqa: E402
-from src.contextual_family_replay import build_contextual_target_row  # noqa: E402
+from src.contextual_family_replay import (  # noqa: E402
+    apply_h2h_override,
+    build_contextual_target_row,
+)
 from src.contextual_shadow_activation_v2 import activation_state  # noqa: E402
 from src.contextual_shadow_handicap_v2 import (  # noqa: E402
     append_frozen_handicap_evidence,
@@ -107,6 +110,92 @@ def _model_player_id(
     return None
 
 
+_NON_COMPETITIVE_H2H_MARKERS = (
+    "exhibition", "world tennis league", "laver cup",
+    "ultimate tennis showdown",
+)
+
+
+def _provider_h2h_override(
+    *, tour: str, player_a_id: Any, player_b_id: Any,
+    current_surface: Any, cutoff: datetime,
+) -> dict[str, Any] | None:
+    """Build a transparent competitive H2H sample from the factual endpoint."""
+    if player_a_id is None or player_b_id is None:
+        return None
+    try:
+        provider_a_id, provider_b_id = int(player_a_id), int(player_b_id)
+    except (TypeError, ValueError):
+        return None
+    matches, coverage = fetch_data.fetch_h2h_matches_with_coverage(
+        tour, provider_a_id, provider_b_id,
+    )
+    if not matches:
+        return None
+    current_family = fetch_data._normalize_surface_family(current_surface)
+    eligible = []
+    excluded = []
+    surface_rows = []
+    for source in matches:
+        if not isinstance(source, Mapping):
+            continue
+        row = dict(source)
+        played_at = row.get("date") or row.get("startTimestamp")
+        if played_at:
+            try:
+                if isinstance(played_at, (int, float)):
+                    played = datetime.fromtimestamp(float(played_at), timezone.utc)
+                else:
+                    played = _parse_utc(str(played_at))
+                if played >= cutoff:
+                    continue
+            except (TypeError, ValueError):
+                pass
+        tournament = row.get("tournament") or {}
+        tournament_name = str(
+            row.get("tournament_name") or row.get("tournamentName")
+            or (tournament.get("name") if isinstance(tournament, Mapping) else "")
+            or ""
+        ).strip()
+        surface = row.get("surface") or row.get("court")
+        tournament_id = row.get("tournamentId")
+        if tournament_id is not None and (not tournament_name or not surface):
+            try:
+                info = fetch_data.get_tournament_info(tournament_id, tour) or {}
+            except Exception:
+                info = {}
+            tournament_name = tournament_name or str(info.get("name") or "")
+            surface = surface or info.get("surface")
+        normalized_name = tournament_name.casefold()
+        if any(marker.casefold() in normalized_name for marker in _NON_COMPETITIVE_H2H_MARKERS):
+            excluded.append({"tournament": tournament_name, "reason": "NON_COMPETITIVE"})
+            continue
+        winner = row.get("match_winner") or row.get("winnerId") or row.get("winner")
+        if str(winner) not in {str(player_a_id), str(player_b_id)}:
+            continue
+        eligible.append(row)
+        if current_family and fetch_data._normalize_surface_family(surface) == current_family:
+            surface_rows.append(row)
+    if not eligible:
+        return None
+    return {
+        "source": str(coverage.get("source") or f"rapidapi_{tour}_h2h_matches"),
+        "raw_matches": len(matches),
+        "eligible_matches": len(eligible),
+        "eligible_a_wins": sum(
+            str(row.get("match_winner") or row.get("winnerId") or row.get("winner"))
+            == str(player_a_id) for row in eligible
+        ),
+        "eligible_surface_matches": len(surface_rows),
+        "eligible_surface_a_wins": sum(
+            str(row.get("match_winner") or row.get("winnerId") or row.get("winner"))
+            == str(player_a_id) for row in surface_rows
+        ),
+        "excluded_non_competitive": len(excluded),
+        "excluded_rows": excluded,
+    }
+
+
 def build_match_observation(
     match: Mapping[str, Any], *, official_rankings: Mapping[str, Any],
     contract: Mapping[str, Any], analyzed_at_utc: str,
@@ -167,6 +256,18 @@ def build_match_observation(
         ),
         target_tier=match.get("tier"),
     )
+    model_a_id = _model_player_id(
+        str(row["player_a"]), original_a=original_a, original_b=original_b,
+        resolved_a=resolved_a, resolved_b=resolved_b, id_a=id_a, id_b=id_b,
+    )
+    model_b_id = _model_player_id(
+        str(row["player_b"]), original_a=original_a, original_b=original_b,
+        resolved_a=resolved_a, resolved_b=resolved_b, id_a=id_a, id_b=id_b,
+    )
+    row = apply_h2h_override(row, _provider_h2h_override(
+        tour=tour, player_a_id=model_a_id, player_b_id=model_b_id,
+        current_surface=match.get("surface"), cutoff=start,
+    ))
     shadow = predictor(row, contract, universe=tour)
     identity = match_identity_v2.resolve_observation(
         match,
@@ -193,16 +294,8 @@ def build_match_observation(
         "tier": match.get("tier"),
         "commence_time_utc": start.isoformat(),
         "analyzed_at_utc": analyzed_at_utc,
-        "player_a_id": _model_player_id(
-            model_a, original_a=original_a, original_b=original_b,
-            resolved_a=resolved_a, resolved_b=resolved_b,
-            id_a=id_a, id_b=id_b,
-        ),
-        "player_b_id": _model_player_id(
-            model_b, original_a=original_a, original_b=original_b,
-            resolved_a=resolved_a, resolved_b=resolved_b,
-            id_a=id_a, id_b=id_b,
-        ),
+        "player_a_id": model_a_id,
+        "player_b_id": model_b_id,
         "player_a": model_a,
         "player_b": model_b,
         "competition": {
