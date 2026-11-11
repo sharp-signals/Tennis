@@ -66,6 +66,9 @@ sem voto.
 - SHADOW apenas: sem PAPER, GREEN, Telegram, email ou relatório operacional.
 - Moneyline e handicaps continuam evidência congelada e são formulados apenas
   segundo a política de robustez da nova geração.
+- O teste histórico Paul–Darderi mantém limites bilaterais de plausibilidade,
+  mas deixa de exigir uma banda de seis pontos que o arquivo ATP cumulativo já
+  ultrapassava em `main`; o motor operacional antigo não é alterado.
 
 ## Critérios de aceitação
 
