@@ -64,7 +64,15 @@ def _player_observation(
     player_rank: float | None,
     opponent_rank: float | None,
     game_margin: int | None,
+    competition_scope: str | None = None,
+    competition_level: str | None = None,
 ) -> dict[str, Any]:
+    def optional_text(value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip().casefold()
+        return None if text in {"", "<na>", "nan", "none"} else text
+
     ranking_context = None
     if player_rank is not None and opponent_rank is not None:
         ranking_context = math.log(opponent_rank / player_rank)
@@ -75,6 +83,8 @@ def _player_observation(
         "won": bool(won),
         "opponent_rank": opponent_rank,
         "game_margin": game_margin,
+        "competition_scope": optional_text(competition_scope),
+        "competition_level": optional_text(competition_level),
         "ranking_available": ranking_context is not None,
         "quality_win": (
             max(0.0, -ranking_context)

@@ -56,6 +56,33 @@ from .contextual_serve_return import _aggregate, _extract_match
 
 SCHEMA_VERSION = 1
 WINDOW_DAYS = 90
+RECENT_RELIABILITY_MIN_MATCHES = 4.0
+RECENT_MAIN_RELIABILITY_MIN_MATCHES = 2.0
+_COMPETITION_LEVEL_STRENGTH = {
+    "c": 0,
+    "challenger": 0,
+    "challenger 50": 0,
+    "challenger 75": 0,
+    "challenger 100": 0,
+    "challenger 125": 0,
+    "250": 1,
+    "atp 250": 1,
+    "wta 250": 1,
+    "500": 2,
+    "atp 500": 2,
+    "wta 500": 2,
+    "a": 2,
+    "d": 2,
+    "m": 3,
+    "masters 1000": 3,
+    "atp masters 1000": 3,
+    "wta 1000": 3,
+    "g": 4,
+    "grand slam": 4,
+    "f": 4,
+    "atp finals": 4,
+    "wta finals": 4,
+}
 FEATURE_FAMILIES = {
     "recent_result_balance_90d": "recent_form",
     "recent_game_margin_balance_90d": "recent_form",
@@ -66,6 +93,18 @@ FEATURE_FAMILIES = {
     "contextual_recent_win_quality_v1": "recent_form",
     "contextual_recent_loss_context_v1": "recent_form",
     "contextual_recent_bad_loss_penalty_v2": "recent_form",
+    "contextual_recent_result_peer_higher_v5": "recent_form",
+    "contextual_recent_competitiveness_peer_higher_v5": "recent_form",
+    "contextual_recent_win_quality_peer_higher_v5": "recent_form",
+    "contextual_recent_result_lower_main_v5": "recent_form",
+    "contextual_recent_competitiveness_lower_main_v5": "recent_form",
+    "contextual_recent_win_quality_lower_main_v5": "recent_form",
+    "contextual_recent_result_challenger_v5": "recent_form",
+    "contextual_recent_competitiveness_challenger_v5": "recent_form",
+    "contextual_recent_win_quality_challenger_v5": "recent_form",
+    "contextual_recent_result_main_v7": "recent_form",
+    "contextual_recent_competitiveness_main_v7": "recent_form",
+    "contextual_recent_win_quality_main_v7": "recent_form",
     "current_rank_log_ratio": "structural_strength",
     "rank_change_from_last_observation": "structural_strength",
     "contextual_structural_signal_v1": "structural_strength",
@@ -215,6 +254,17 @@ def _material(frame: pd.DataFrame) -> pd.DataFrame:
     material["_pace"] = frame.apply(_row_pace, axis=1)
     material["_score"] = _column(frame, "score")
     material["_non_standard"] = _is_non_standard_completion(frame)
+    material["_competition_scope"] = frame.get(
+        "_history_competition_scope",
+        pd.Series("main", index=frame.index),
+    ).fillna("main").astype("string").str.strip().str.casefold()
+    material["_competition_level"] = frame.get(
+        "tier",
+        frame.get(
+            "tourney_level",
+            pd.Series(index=frame.index, dtype="string"),
+        ),
+    ).astype("string").str.strip().str.casefold()
     return material[
         material["_event_date"].notna()
         & material["_winner"].notna()
@@ -249,6 +299,212 @@ def _difference(a: Any, b: Any) -> float | None:
     if not math.isfinite(left) or not math.isfinite(right):
         return None
     return left - right
+
+
+def _competition_strength(value: Any) -> int | None:
+    if value is None or pd.isna(value):
+        return None
+    text = " ".join(str(value).strip().casefold().split())
+    if not text:
+        return None
+    if text in _COMPETITION_LEVEL_STRENGTH:
+        return _COMPETITION_LEVEL_STRENGTH[text]
+    if "challenger" in text:
+        return 0
+    if "grand slam" in text:
+        return 4
+    if "masters" in text or "1000" in text:
+        return 3
+    if "500" in text:
+        return 2
+    if "250" in text:
+        return 1
+    return None
+
+
+def _recent_competition_bucket(
+    observation: dict[str, Any], *, target_level: Any,
+) -> str:
+    scope = str(observation.get("competition_scope") or "").casefold()
+    source_level = _competition_strength(observation.get("competition_level"))
+    if "challenger" in scope or source_level == 0:
+        return "challenger"
+    target_strength = _competition_strength(target_level)
+    if source_level is None or target_strength is None:
+        return "peer_higher"
+    return "peer_higher" if source_level >= target_strength else "lower_main"
+
+
+def _shrunk_recent_value(
+    summary: dict[str, Any], value_key: str, sample_key: str,
+    *, full_reliability_from: float = RECENT_RELIABILITY_MIN_MATCHES,
+) -> tuple[float, int]:
+    sample = int(summary.get(sample_key) or 0)
+    value = summary.get(value_key)
+    if sample <= 0 or value is None:
+        return 0.0, 0
+    reliability = min(1.0, sample / full_reliability_from)
+    return float(value) * reliability, sample
+
+
+def _tier_recent_summary(
+    observations: list[dict[str, Any]], *, cutoff: date,
+) -> dict[str, float | int | None]:
+    """Compute the three v5 components in one bounded 90-day pass."""
+    start = cutoff - timedelta(days=WINDOW_DAYS)
+    eligible = [
+        row for row in observations if start <= row["event_date"] < cutoff
+    ]
+    if not eligible:
+        return {
+            "result_balance": None, "sample": 0,
+            "game_margin_balance": None, "game_margin_sample": 0,
+            "win_opponent_strength": None, "wins_sample": 0,
+        }
+    result_balance = sum(float(row["result"]) for row in eligible) / len(eligible)
+    margins = [row for row in eligible if row.get("game_margin") is not None]
+    margin_weights = [
+        0.5 ** (max(0, (cutoff - row["event_date"]).days) / 45.0)
+        for row in margins
+    ]
+    game_margin_balance = (
+        sum(weight * float(row["game_margin"]) for weight, row in zip(margin_weights, margins))
+        / sum(margin_weights)
+        if margins else None
+    )
+    wins = [
+        row for row in eligible
+        if row.get("won") and row.get("opponent_rank") is not None
+    ]
+    win_weights = [
+        0.5 ** (max(0, (cutoff - row["event_date"]).days) / 60.0)
+        for row in wins
+    ]
+    win_opponent_strength = (
+        sum(
+            weight * -math.log(float(row["opponent_rank"]))
+            for weight, row in zip(win_weights, wins)
+        ) / sum(win_weights)
+        if wins else None
+    )
+    return {
+        "result_balance": result_balance,
+        "sample": len(eligible),
+        "game_margin_balance": game_margin_balance,
+        "game_margin_sample": len(margins),
+        "win_opponent_strength": win_opponent_strength,
+        "wins_sample": len(wins),
+    }
+
+
+def _tier_reliable_recent_features(
+    observations_a: list[dict[str, Any]],
+    observations_b: list[dict[str, Any]],
+    *, cutoff: date, surface: str | None, target_level: Any,
+    universe: str,
+) -> tuple[dict[str, float | None], dict[str, Any]]:
+    """Separate recent evidence by competition level and shrink tiny samples.
+
+    A missing bucket is the neutral prior, not evidence against a player.  The
+    three bucket coefficients are subsequently learned on chronological data;
+    Challenger performance can inform an ATP match without being treated as
+    equivalent to main-tour performance.
+    """
+    result: dict[str, float | None] = {}
+    audit: dict[str, Any] = {
+        "status": "READY",
+        "full_reliability_from_matches": RECENT_RELIABILITY_MIN_MATCHES,
+        "target_level": (
+            None if target_level is None or pd.isna(target_level)
+            else str(target_level).strip() or None
+        ),
+        "buckets": {},
+    }
+    start = cutoff - timedelta(days=WINDOW_DAYS)
+    recent_a = [
+        row for row in observations_a if start <= row["event_date"] < cutoff
+    ]
+    recent_b = [
+        row for row in observations_b if start <= row["event_date"] < cutoff
+    ]
+    metrics = (
+        ("result", "result_balance", "sample"),
+        ("competitiveness", "game_margin_balance", "game_margin_sample"),
+        ("win_quality", "win_opponent_strength", "wins_sample"),
+    )
+    for bucket in ("peer_higher", "lower_main", "challenger", "main"):
+        selected_a = [
+            row for row in recent_a
+            if (
+                _recent_competition_bucket(row, target_level=target_level) != "challenger"
+                if bucket == "main"
+                else _recent_competition_bucket(row, target_level=target_level) == bucket
+            )
+        ]
+        selected_b = [
+            row for row in recent_b
+            if (
+                _recent_competition_bucket(row, target_level=target_level) != "challenger"
+                if bucket == "main"
+                else _recent_competition_bucket(row, target_level=target_level) == bucket
+            )
+        ]
+        summaries = {
+            "a": _tier_recent_summary(selected_a, cutoff=cutoff),
+            "b": _tier_recent_summary(selected_b, cutoff=cutoff),
+        }
+        bucket_audit: dict[str, Any] = {}
+        for label, value_key, sample_key in metrics:
+            summary_a = summaries["a"]
+            summary_b = summaries["b"]
+            if label == "win_quality":
+                sample_a = int(summary_a.get(sample_key) or 0)
+                sample_b = int(summary_b.get(sample_key) or 0)
+                raw_a = summary_a.get(value_key)
+                raw_b = summary_b.get(value_key)
+                if sample_a and sample_b and raw_a is not None and raw_b is not None:
+                    threshold = (
+                        RECENT_MAIN_RELIABILITY_MIN_MATCHES
+                        if bucket == "main" else RECENT_RELIABILITY_MIN_MATCHES
+                    )
+                    reliability = min(
+                        min(1.0, sample_a / threshold),
+                        min(1.0, sample_b / threshold),
+                    )
+                    margin = (float(raw_a) - float(raw_b)) * reliability
+                    value_a, value_b = margin, 0.0
+                else:
+                    value_a = value_b = 0.0
+            else:
+                value_a, sample_a = _shrunk_recent_value(
+                    summary_a, value_key, sample_key,
+                    full_reliability_from=(
+                        RECENT_MAIN_RELIABILITY_MIN_MATCHES
+                        if bucket == "main" else RECENT_RELIABILITY_MIN_MATCHES
+                    ),
+                )
+                value_b, sample_b = _shrunk_recent_value(
+                    summary_b, value_key, sample_key,
+                    full_reliability_from=(
+                        RECENT_MAIN_RELIABILITY_MIN_MATCHES
+                        if bucket == "main" else RECENT_RELIABILITY_MIN_MATCHES
+                    ),
+                )
+            suffix = "v7" if bucket == "main" else "v5"
+            feature = f"contextual_recent_{label}_{bucket}_{suffix}"
+            result[feature] = (
+                value_a - value_b
+                if (sample_a and sample_b if label == "win_quality" else sample_a or sample_b)
+                else None
+            )
+            bucket_audit[label] = {
+                "a_sample": sample_a,
+                "b_sample": sample_b,
+                "a_shrunk": round(value_a, 6),
+                "b_shrunk": round(value_b, 6),
+            }
+        audit["buckets"][bucket] = bucket_audit
+    return result, audit
 
 
 def _last_rank_change(history: list[tuple[date, float]], current: float | None) -> float | None:
@@ -443,7 +699,10 @@ def _surface_equation_pair(
             row for row in observations
             if cutoff - timedelta(days=35) <= row["event_date"] < cutoff
         ]
-        recent_surfaces = [row.get("surface") for row in recent_35 if row.get("surface")]
+        recent_surfaces = [
+            row.get("surface") for row in recent_35
+            if isinstance(row.get("surface"), str) and row.get("surface")
+        ]
         counts = Counter(recent_surfaces)
         most_recent = recent_surfaces[-1] if recent_surfaces else None
         dominant = max(
@@ -477,7 +736,7 @@ def _candidate_equation_features(
     rank_history_a: list[tuple[date, float]], rank_history_b: list[tuple[date, float]],
     match_history_a: list[dict[str, Any]], match_history_b: list[dict[str, Any]],
     cutoff: date, surface: str | None, venue: str | None, pace: str | None,
-    universe: str,
+    universe: str, target_level: Any = None,
 ) -> tuple[dict[str, float | None], dict[str, Any]]:
     context_a = _ranking_equation_context(
         current_rank=rank_a, current_points=points_a,
@@ -494,6 +753,11 @@ def _candidate_equation_features(
     structural_v5 = evaluate_structural_strength_v5(context_a, context_b)
     structural_v6 = evaluate_structural_strength_v6(context_a, context_b)
     structural_v7 = evaluate_structural_strength_v7(context_a, context_b)
+    tier_recent_features, tier_recent_audit = _tier_reliable_recent_features(
+        match_history_a, match_history_b,
+        cutoff=cutoff, surface=surface, target_level=target_level,
+        universe=universe,
+    )
     surface_result = evaluate_surface_conditions(_surface_equation_pair(
         observations_a=match_history_a, observations_b=match_history_b,
         cutoff=cutoff, surface=surface, venue=venue, pace=pace,
@@ -595,6 +859,7 @@ def _candidate_equation_features(
         "contextual_surface_signal_v2": surface_result_v2.get("family_signal"),
         "contextual_surface_signal_v3": surface_result_v3.get("family_signal"),
         **recent_features,
+        **tier_recent_features,
     }
     features.update(structural_v3.get("candidate_features", {}))
     features.update(structural_v4.get("candidate_features", {}))
@@ -613,6 +878,7 @@ def _candidate_equation_features(
         "surface_conditions_v2": surface_result_v2,
         "surface_conditions_v3": surface_result_v3,
         "recent_form_v1": recent_audit,
+        "recent_form_tier_reliable_v5": tier_recent_audit,
     }
 
 
@@ -742,6 +1008,7 @@ def build_contextual_target_row(
     points_b: float | None = None,
     venue: str | None = None,
     pace_bucket: str | None = None,
+    target_tier: str | None = None,
 ) -> dict[str, Any]:
     """Build one future, market-free row with the exact replay definitions.
 
@@ -765,6 +1032,7 @@ def build_contextual_target_row(
     material = material[material["_event_date"] < cutoff]
 
     match_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    primary_match_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
     rank_history: dict[str, list[tuple[date, float]]] = defaultdict(list)
     service_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
     pair_history: list[dict[str, Any]] = []
@@ -780,6 +1048,9 @@ def build_contextual_target_row(
         if not winner or not loser or winner == loser:
             continue
         event_date, match_surface = match["_event_date"], match["_surface"]
+        competition_scope = match["_competition_scope"]
+        competition_level = match["_competition_level"]
+        is_primary = "challenger" not in str(competition_scope)
         match_surface_context = match["_surface_context"]
         match_venue, match_pace = match["_venue"], match["_pace"]
         rank_w = _positive_rank(match["_winner_rank"])
@@ -787,32 +1058,42 @@ def build_contextual_target_row(
         winner_margin = _game_margin(match["_score"], won=True)
         loser_margin = -winner_margin if winner_margin is not None else None
         if winner in wanted:
-            match_history[winner].append({**_player_observation(
+            observation = {**_player_observation(
                 event_date=event_date, surface=match_surface, won=True,
                 player_rank=rank_w, opponent_rank=rank_l, game_margin=winner_margin,
+                competition_scope=competition_scope,
+                competition_level=competition_level,
             ), "venue": match_venue, "pace_bucket": match_pace,
-                "surface_context": match_surface_context})
+                "surface_context": match_surface_context}
+            match_history[winner].append(observation)
+            if is_primary:
+                primary_match_history[winner].append(observation)
             if rank_w:
                 rank_history[winner].append((event_date, rank_w))
             service = _extract_match(match, player_won=True)
-            if service is not None:
+            if service is not None and is_primary:
                 service_history[winner].append({
                     **service, "event_date": event_date, "surface": match_surface,
                 })
         if loser in wanted:
-            match_history[loser].append({**_player_observation(
+            observation = {**_player_observation(
                 event_date=event_date, surface=match_surface, won=False,
                 player_rank=rank_l, opponent_rank=rank_w, game_margin=loser_margin,
+                competition_scope=competition_scope,
+                competition_level=competition_level,
             ), "venue": match_venue, "pace_bucket": match_pace,
-                "surface_context": match_surface_context})
+                "surface_context": match_surface_context}
+            match_history[loser].append(observation)
+            if is_primary:
+                primary_match_history[loser].append(observation)
             if rank_l:
                 rank_history[loser].append((event_date, rank_l))
             service = _extract_match(match, player_won=False)
-            if service is not None:
+            if service is not None and is_primary:
                 service_history[loser].append({
                     **service, "event_date": event_date, "surface": match_surface,
                 })
-        if {winner, loser} == wanted:
+        if is_primary and {winner, loser} == wanted:
             pair_history.append({
                 "event_date": event_date, "surface": match_surface, "winner": winner,
             })
@@ -825,8 +1106,8 @@ def build_contextual_target_row(
         match_history[model_b], cutoff=cutoff, target_surface=target_surface,
         half_life_days=None, window_days=WINDOW_DAYS,
     )
-    surface_rate_a, surface_sample_a = _surface_record(match_history[model_a], target_surface)
-    surface_rate_b, surface_sample_b = _surface_record(match_history[model_b], target_surface)
+    surface_rate_a, surface_sample_a = _surface_record(primary_match_history[model_a], target_surface)
+    surface_rate_b, surface_sample_b = _surface_record(primary_match_history[model_b], target_surface)
     h2h_global, h2h_surface, h2h_sample, h2h_surface_sample = _h2h_feature(
         pair_history, player_a=model_a, surface=target_surface,
     )
@@ -837,7 +1118,7 @@ def build_contextual_target_row(
         service_history[model_b], cutoff=cutoff, surface=target_surface,
     )
     exact_surface_features, exact_surface_audit = _exact_surface_features(
-        match_history[model_a], match_history[model_b],
+        primary_match_history[model_a], primary_match_history[model_b],
         context=target_surface_context, cutoff=cutoff,
     )
     model_rank_a, model_rank_b = current_ranks[model_a], current_ranks[model_b]
@@ -848,7 +1129,7 @@ def build_contextual_target_row(
         rank_history_a=rank_history[model_a], rank_history_b=rank_history[model_b],
         match_history_a=match_history[model_a], match_history_b=match_history[model_b],
         cutoff=cutoff, surface=target_surface, venue=target_venue, pace=target_pace,
-        universe=universe,
+        universe=universe, target_level=target_tier,
     )
     features = {
         "recent_result_balance_90d": _difference(recent_a["result_balance"], recent_b["result_balance"]),
@@ -918,6 +1199,7 @@ def build_contextual_target_row(
             "rank_a": model_rank_a, "rank_b": model_rank_b,
             "venue": target_venue, "pace": target_pace,
             "surface_context": target_surface_context,
+            "target_tier": target_tier,
         },
         "samples": {
             "recent_a": recent_a["sample"], "recent_b": recent_b["sample"],
@@ -949,11 +1231,12 @@ def build_contextual_target_row(
 
 
 def build_contextual_family_replay_rows(
-    frame: pd.DataFrame, *, universe: str,
+    frame: pd.DataFrame, *, universe: str, target_scope: str | None = None,
 ) -> list[dict[str, Any]]:
     """Build ex-ante rows; an entire event date is evaluated before ingestion."""
     material = _material(frame)
     match_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    primary_match_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
     rank_history: dict[str, list[tuple[date, float]]] = defaultdict(list)
     service_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
     pair_history: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -962,6 +1245,11 @@ def build_contextual_family_replay_rows(
     for event_date, day in material.groupby("_event_date", sort=True):
         for _, match in day.iterrows():
             if bool(match["_non_standard"]):
+                continue
+            if (
+                target_scope is not None
+                and str(match["_competition_scope"]) != str(target_scope).casefold()
+            ):
                 continue
             winner = _name_key(match["_winner"])
             loser = _name_key(match["_loser"])
@@ -973,6 +1261,7 @@ def build_contextual_family_replay_rows(
             surface_context = match["_surface_context"]
             venue = match["_venue"]
             pace = match["_pace"]
+            target_level = match["_competition_level"]
             rank_w = _positive_rank(match["_winner_rank"])
             rank_l = _positive_rank(match["_loser_rank"])
             points_w = _positive_rank(match["_winner_points"])
@@ -991,10 +1280,10 @@ def build_contextual_family_replay_rows(
                 half_life_days=None, window_days=WINDOW_DAYS,
             )
             surface_rate_a, surface_sample_a = _surface_record(
-                match_history[player_a], surface,
+                primary_match_history[player_a], surface,
             )
             surface_rate_b, surface_sample_b = _surface_record(
-                match_history[player_b], surface,
+                primary_match_history[player_b], surface,
             )
             h2h_global, h2h_surface, h2h_sample, h2h_surface_sample = _h2h_feature(
                 pair_history[(player_a, player_b)], player_a=player_a, surface=surface,
@@ -1006,7 +1295,7 @@ def build_contextual_family_replay_rows(
                 service_history[player_b], cutoff=event_date, surface=surface,
             )
             exact_surface_features, exact_surface_audit = _exact_surface_features(
-                match_history[player_a], match_history[player_b],
+                primary_match_history[player_a], primary_match_history[player_b],
                 context=surface_context, cutoff=event_date,
             )
 
@@ -1017,7 +1306,7 @@ def build_contextual_family_replay_rows(
                 match_history_a=match_history[player_a],
                 match_history_b=match_history[player_b],
                 cutoff=event_date, surface=surface, venue=venue, pace=pace,
-                universe=universe,
+                universe=universe, target_level=target_level,
             )
             features = {
                 "recent_result_balance_90d": _difference(
@@ -1119,6 +1408,7 @@ def build_contextual_family_replay_rows(
                     "rank_a": rank_a, "rank_b": rank_b,
                     "venue": venue, "pace": pace,
                     "surface_context": surface_context,
+                    "target_tier": target_level,
                 },
                 "features": features,
                 "samples": {
@@ -1160,34 +1450,47 @@ def build_contextual_family_replay_rows(
             surface_context = match["_surface_context"]
             venue = match["_venue"]
             pace = match["_pace"]
+            competition_scope = match["_competition_scope"]
+            competition_level = match["_competition_level"]
+            is_primary = "challenger" not in str(competition_scope)
             rank_w = _positive_rank(match["_winner_rank"])
             rank_l = _positive_rank(match["_loser_rank"])
             winner_margin = _game_margin(match["_score"], won=True)
             loser_margin = -winner_margin if winner_margin is not None else None
-            match_history[winner].append({**_player_observation(
+            winner_observation = {**_player_observation(
                 event_date=event_date, surface=surface, won=True,
                 player_rank=rank_w, opponent_rank=rank_l, game_margin=winner_margin,
+                competition_scope=competition_scope,
+                competition_level=competition_level,
             ), "venue": venue, "pace_bucket": pace,
-                "surface_context": surface_context})
-            match_history[loser].append({**_player_observation(
+                "surface_context": surface_context}
+            loser_observation = {**_player_observation(
                 event_date=event_date, surface=surface, won=False,
                 player_rank=rank_l, opponent_rank=rank_w, game_margin=loser_margin,
+                competition_scope=competition_scope,
+                competition_level=competition_level,
             ), "venue": venue, "pace_bucket": pace,
-                "surface_context": surface_context})
+                "surface_context": surface_context}
+            match_history[winner].append(winner_observation)
+            match_history[loser].append(loser_observation)
+            if is_primary:
+                primary_match_history[winner].append(winner_observation)
+                primary_match_history[loser].append(loser_observation)
             if rank_w:
                 rank_history[winner].append((event_date, rank_w))
             if rank_l:
                 rank_history[loser].append((event_date, rank_l))
             for player, won in ((winner, True), (loser, False)):
                 service = _extract_match(match, player_won=won)
-                if service is not None:
+                if service is not None and is_primary:
                     service_history[player].append({
                         **service, "event_date": event_date, "surface": surface,
                     })
-            pair = tuple(sorted((winner, loser)))
-            pair_history[pair].append({
-                "event_date": event_date, "surface": surface, "winner": winner,
-            })
+            if is_primary:
+                pair = tuple(sorted((winner, loser)))
+                pair_history[pair].append({
+                    "event_date": event_date, "surface": surface, "winner": winner,
+                })
     return replay
 
 

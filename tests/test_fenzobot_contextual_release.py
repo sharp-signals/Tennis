@@ -67,6 +67,8 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
         "player_b": "beta",
         "target_a_win": False,
         "features": {
+            "contextual_recent_result_main_v7": 0.2 if primary_ready else None,
+            "contextual_recent_competitiveness_main_v7": 0.15 if primary_ready else None,
             "contextual_recent_result_core_v1": 0.2 if primary_ready else None,
             "contextual_recent_competitiveness_v1": 0.15 if primary_ready else None,
             "contextual_recent_win_quality_v1": 0.1 if primary_ready else None,
@@ -105,27 +107,27 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
 
 def test_manifest_names_every_internal_component_without_global_version_ambiguity():
     manifest, runtime = build_release(
-        Path("data/models/contextual-family-combination-v4.json"),
-        Path("data/models/contextual-probability-uncertainty-v4.json"),
+        Path("data/models/contextual-family-combination-v7.json"),
+        Path("data/models/contextual-probability-uncertainty-v7.json"),
     )
     assert manifest["global_release_id"] == GLOBAL_RELEASE_ID
     assert manifest["components"] == {
         "ranking_model": "contextual-ranking-v7.1",
-        "family_combination": "contextual-family-combination-v4-ranking-v7",
-        "probability_calibration": "contextual-probability-uncertainty-v4",
-        "runtime_generation": 6,
+        "family_combination": "contextual-family-combination-v7-tier-pooled",
+        "probability_calibration": "contextual-probability-uncertainty-v7",
+        "runtime_generation": 7,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5]
+    ]] == [3, 4, 5, 6]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
 def test_runtime_contract_reproduces_export_and_is_market_free():
     manifest, built = build_release(
-        Path("data/models/contextual-family-combination-v4.json"),
-        Path("data/models/contextual-probability-uncertainty-v4.json"),
+        Path("data/models/contextual-family-combination-v7.json"),
+        Path("data/models/contextual-probability-uncertainty-v7.json"),
     )
     contract = load_contract(MODEL)
     assert built == contract
@@ -144,7 +146,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 6
+    assert result["runtime_generation"] == 7
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"

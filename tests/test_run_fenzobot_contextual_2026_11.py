@@ -24,9 +24,9 @@ def test_global_release_empty_run_remains_isolated():
         "configuration_fingerprint": "global-test-fingerprint",
         "components": {
             "ranking_model": "contextual-ranking-v7.1",
-            "family_combination": "contextual-family-combination-v4-ranking-v7",
-            "probability_calibration": "contextual-probability-uncertainty-v4",
-            "runtime_generation": 6,
+            "family_combination": "contextual-family-combination-v7-tier-pooled",
+            "probability_calibration": "contextual-probability-uncertainty-v7",
+            "runtime_generation": 7,
         },
     }
     with (

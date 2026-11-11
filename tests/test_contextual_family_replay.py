@@ -19,12 +19,15 @@ def test_provider_indoor_hard_label_matches_historical_hard_surface():
 
 
 def _match(day, winner, loser, *, surface="Hard", winner_rank=20, loser_rank=40,
-           score="6-4 6-4", service=True, indoor=None, pace=None):
+           score="6-4 6-4", service=True, indoor=None, pace=None,
+           competition_scope=None, competition_level=None):
     row = {
         "tourney_date": day, "winner_name": winner, "loser_name": loser,
         "surface": surface, "winner_rank": winner_rank,
         "loser_rank": loser_rank, "score": score,
         "indoor": indoor, "court_pace_bucket": pace,
+        "_history_competition_scope": competition_scope,
+        "tourney_level": competition_level,
     }
     if service:
         row.update({
@@ -188,6 +191,35 @@ def test_prospective_target_uses_exactly_the_replay_feature_definitions():
     assert target["samples"] == replay["samples"]
     assert target["family_states"] == replay["family_states"]
     assert target["market_used"] is False
+
+
+def test_main_tour_form_is_separate_from_challenger_form_and_uses_all_rows():
+    frame = pd.DataFrame([
+        _match("20261001", "Alpha", "Main One", winner_rank=100, loser_rank=80,
+               competition_scope="main", competition_level="250"),
+        _match("20261002", "Alpha", "Ch One", winner_rank=100, loser_rank=180,
+               competition_scope="challenger", competition_level="Challenger"),
+        _match("20261003", "Alpha", "Ch Two", winner_rank=98, loser_rank=170,
+               competition_scope="challenger", competition_level="Challenger"),
+        _match("20261004", "Alpha", "Ch Three", winner_rank=95, loser_rank=160,
+               competition_scope="challenger", competition_level="Challenger"),
+        _match("20261001", "Beta", "Main Two", winner_rank=20, loser_rank=35,
+               competition_scope="main", competition_level="250"),
+        _match("20261005", "Beta", "Main Three", winner_rank=18, loser_rank=30,
+               competition_scope="main", competition_level="250"),
+    ])
+    target = build_contextual_target_row(
+        frame, universe="atp", player_a="Alpha", player_b="Beta",
+        cutoff=pd.Timestamp("2026-10-10").date(), surface="Hard",
+        rank_a=95, rank_b=18, target_tier="250",
+    )
+    audit = target["candidate_equation_audit"]["recent_form_tier_reliable_v5"]
+    assert target["samples"]["recent_a"] == 4
+    assert audit["buckets"]["main"]["result"]["a_sample"] == 1
+    assert audit["buckets"]["challenger"]["result"]["a_sample"] == 3
+    assert target["features"]["contextual_recent_result_main_v7"] < 0.0
+    assert target["features"]["contextual_recent_result_challenger_v5"] > 0.0
+    assert target["samples"]["surface_a"] == 1
 
 
 def test_exact_surface_features_do_not_mix_indoor_and_outdoor_hard():
