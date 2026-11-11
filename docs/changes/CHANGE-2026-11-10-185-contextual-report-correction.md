@@ -44,6 +44,8 @@ probabilidade, fair odd ou contributos das famílias.
 - `runtime_generation`: 4.
 - Contrato do relatório global: `fenzobot-contextual-2026-11-report.2`.
 - Observações anteriores permanecem imutáveis e auditáveis.
+- O auditor aceita exclusivamente a geração 3/fingerprint histórico declarado
+  no contrato; fingerprints desconhecidos continuam a falhar fechados.
 - A nova geração cria uma coorte identificável por novo fingerprint.
 - O novo ledger de Moneyline é permitido apenas como output gerado:
   `data/contextual_shadow_moneyline_evidence-fenzobot-contextual-2026-11.jsonl`.
