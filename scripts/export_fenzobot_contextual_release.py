@@ -14,6 +14,12 @@ RELEASE_SLUG = "fenzobot-contextual-2026-11"
 RUNTIME_GENERATION = 4
 COMBINATION_VERSION = "contextual-family-combination-v3-ranking-v6"
 CALIBRATION_VERSION = "contextual-probability-uncertainty-v3"
+ACCEPTED_HISTORICAL_RELEASES = [{
+    "runtime_generation": 3,
+    "configuration_fingerprint": (
+        "05a0303b93ca8a5abc5edb3adcec235749737c54597a47333bb5bad67e2c707a"
+    ),
+}]
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -80,6 +86,7 @@ def build_release(
         "green_eligible": False,
         "promotion_authorized": False,
         "legacy_audit_trail_preserved": True,
+        "accepted_historical_releases": ACCEPTED_HISTORICAL_RELEASES,
     }
     runtime = {
         **manifest,

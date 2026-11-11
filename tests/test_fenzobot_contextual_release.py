@@ -1,4 +1,5 @@
 import json
+import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -12,6 +13,7 @@ from src.fenzobot_contextual_runtime import (
 )
 from src.fenzobot_contextual_store import append_observations, build_observation
 from scripts.generated_output_contract import is_allowed
+from scripts.audit_contextual_shadow_v2 import audit_ledger
 
 
 MODEL = Path("data/models/fenzobot-contextual-2026-11.json")
@@ -70,6 +72,12 @@ def test_manifest_names_every_internal_component_without_global_version_ambiguit
         "runtime_generation": 4,
     }
     assert manifest["promotion_authorized"] is False
+    assert manifest["accepted_historical_releases"] == [{
+        "runtime_generation": 3,
+        "configuration_fingerprint": (
+            "05a0303b93ca8a5abc5edb3adcec235749737c54597a47333bb5bad67e2c707a"
+        ),
+    }]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
@@ -150,6 +158,43 @@ def test_release_store_is_new_append_only_ledger():
         assert saved["contextual_shadow"]["global_release_id"] == GLOBAL_RELEASE_ID
         assert saved["paper_eligible"] is False
         assert saved["green_eligible"] is False
+
+
+def test_audit_accepts_declared_generation_three_but_rejects_unknown_history():
+    shadow = predict_fenzobot_contextual(
+        _row(), load_contract(MODEL), universe="atp",
+    )
+    historical = copy.deepcopy(shadow)
+    historical["runtime_generation"] = 3
+    historical["component_versions"]["runtime_generation"] = 3
+    historical["configuration_fingerprint"] = (
+        "05a0303b93ca8a5abc5edb3adcec235749737c54597a47333bb5bad67e2c707a"
+    )
+    payload = {
+        "canonical_match_instance_id": "atp:test:historical-release",
+        "tour": "atp", "tier": "ATP 250",
+        "commence_time_utc": "2026-11-11T10:00:00+00:00",
+        "analyzed_at_utc": "2026-11-10T10:00:00+00:00",
+        "player_a": "Alpha", "player_b": "Beta",
+        "fenzobot_contextual_2026_11": historical,
+    }
+    row = build_observation(payload)
+    with TemporaryDirectory(dir=Path.cwd()) as tmp:
+        ledger = Path(tmp) / "release.jsonl"
+        ledger.write_text(json.dumps(row) + "\n", encoding="utf-8")
+        result = audit_ledger(ledger, MODEL)
+        assert result["status"] == "HEALTHY"
+        assert result["counts"]["release:historical"] == 1
+
+        unknown = copy.deepcopy(row)
+        unknown["contextual_shadow"]["configuration_fingerprint"] = "unknown"
+        ledger.write_text(json.dumps(unknown) + "\n", encoding="utf-8")
+        result = audit_ledger(ledger, MODEL)
+        assert result["status"] == "CONTRACT_VIOLATION"
+        assert any(
+            item["code"] == "FINGERPRINT_MISMATCH"
+            for item in result["violations"]
+        )
 
 
 def test_release_generated_ledgers_are_allowed_without_expanding_to_code():

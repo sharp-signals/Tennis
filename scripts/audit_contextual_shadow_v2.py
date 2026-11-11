@@ -23,6 +23,15 @@ def audit_ledger(path: Path, contract_path: Path) -> dict[str, Any]:
         contract.get("model_version") or contract["global_release_id"]
     )
     expected_fingerprint = contract["configuration_fingerprint"]
+    accepted_historical = {
+        (
+            int(item.get("runtime_generation") or 0),
+            str(item.get("configuration_fingerprint") or ""),
+        )
+        for item in contract.get("accepted_historical_releases") or []
+        if int(item.get("runtime_generation") or 0) > 0
+        and item.get("configuration_fingerprint")
+    }
     violations: list[dict[str, Any]] = []
     counts = Counter()
     reasons = Counter()
@@ -55,13 +64,29 @@ def audit_ledger(path: Path, contract_path: Path) -> dict[str, Any]:
                 "code": "MISSING_OR_DUPLICATE_OBSERVATION_ID",
             })
         seen.add(observation_id)
+        try:
+            row_generation = int(
+                shadow.get("runtime_generation")
+                or (shadow.get("component_versions") or {}).get(
+                    "runtime_generation"
+                )
+                or 0
+            )
+        except (TypeError, ValueError):
+            row_generation = 0
+        row_fingerprint = str(
+            shadow.get("configuration_fingerprint") or ""
+        )
+        historical_release = (
+            row_generation, row_fingerprint
+        ) in accepted_historical
         checks = {
             "MODEL_VERSION_MISMATCH": (
                 shadow.get("model_version") == expected_version
                 or shadow.get("global_release_id") == expected_version
             ),
             "FINGERPRINT_MISMATCH": (
-                shadow.get("configuration_fingerprint") == expected_fingerprint
+                row_fingerprint == expected_fingerprint or historical_release
             ),
             "MARKET_ISOLATION_VIOLATION": shadow.get("market_used") is False,
             "EDGE_ISOLATION_VIOLATION": shadow.get("edge_calculated") is False,
@@ -108,6 +133,9 @@ def audit_ledger(path: Path, contract_path: Path) -> dict[str, Any]:
         counts[f"universe:{universe}"] += 1
         counts[f"status:{status}"] += 1
         counts[f"quality:{quality}"] += 1
+        counts[
+            f"release:{'historical' if historical_release else 'current'}"
+        ] += 1
         for reason in shadow.get("reason_codes") or []:
             reasons[str(reason)] += 1
     return {
