@@ -11,6 +11,7 @@ from typing import Any, Mapping
 from .contextual_family_combination_v2 import FAMILY_ORDER
 from .contextual_family_combination_v4 import predict_contextual_combination_v4
 from .contextual_family_calibration import explain_family_equation
+from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
 from .contextual_probability_uncertainty_v2 import (
     MIN_BIN_SAMPLE,
@@ -82,6 +83,49 @@ def _dependency_grade(
     ):
         return "MATERIAL_DEPENDENCE"
     return "BALANCED_SENSITIVE"
+
+
+def _family_lead_authority(
+    family_row: Mapping[str, Any], *, contribution: float,
+) -> dict[str, Any]:
+    """Decide whether one *primary* family may legitimately lead.
+
+    A family is not authorised merely because it is numerically strong.  It
+    must be primary, solid and supported by at least two active internal
+    components pointing mostly in the same direction.  This keeps secondary,
+    partial and internally contradictory evidence fail-closed.
+    """
+    key = str(family_row.get("key") or "")
+    methodology = family_methodology(key)
+    features = (family_row.get("internal_trace") or {}).get("features") or []
+    active = [
+        item for item in features
+        if not item.get("missing")
+        and abs(float(item.get("logit_contribution") or 0.0)) > 1e-9
+    ]
+    direction = 1 if contribution > 0 else -1 if contribution < 0 else 0
+    aligned = sum(
+        1 for item in active
+        if (1 if float(item.get("logit_contribution") or 0.0) > 0 else -1)
+        == direction
+    )
+    agreement = aligned / len(active) if active else 0.0
+    authorised = bool(
+        methodology["role"] in {"PRIMARY", "PRIMARY_CONTEXT"}
+        and methodology["can_lead"]
+        and family_row.get("coverage_grade") == "SOLID"
+        and len(active) >= 2
+        and agreement >= 2.0 / 3.0
+    )
+    return {
+        "authorised": authorised,
+        "role": methodology["role"],
+        "role_label": methodology["role_label"],
+        "coverage_grade": family_row.get("coverage_grade"),
+        "active_components": len(active),
+        "aligned_components": aligned,
+        "directional_agreement": round(agreement, 4),
+    }
 
 
 @lru_cache(maxsize=4)
@@ -268,6 +312,7 @@ def predict_fenzobot_contextual(
     )
     dominant_family = None
     dependency_grade = "ROBUST"
+    lead_authority = None
     if central_side and sensitivity:
         for scenario in sensitivity:
             scenario["dependency_grade"] = _dependency_grade(
@@ -286,7 +331,15 @@ def predict_fenzobot_contextual(
         if dependency_grade != "ROBUST":
             dominant_family = worst["family"]
         if dependency_grade == "CRITICAL_DEPENDENCE":
-            reason_codes.append("CRITICAL_SINGLE_FAMILY_DEPENDENCE")
+            lead_authority = _family_lead_authority(
+                family_rows_by_key[dominant_family],
+                contribution=contributions[dominant_family],
+            )
+            if lead_authority["authorised"]:
+                dependency_grade = "MATERIAL_DEPENDENCE"
+                worst["dependency_grade"] = "PRIMARY_FAMILY_LEAD"
+            else:
+                reason_codes.append("CRITICAL_SINGLE_FAMILY_DEPENDENCE")
     lower, upper = _centred_empirical_interval(
         probability, bin_item, global_bin,
         quality_group=quality_group,
@@ -297,6 +350,7 @@ def predict_fenzobot_contextual(
         for grade in ("SOLID", "PARTIAL", "OBSERVED_NEUTRAL", "UNAVAILABLE")
     }
     usable_families = grade_counts["SOLID"] + grade_counts["PARTIAL"]
+    measured_families = usable_families + grade_counts["OBSERVED_NEUTRAL"]
     status = (
         "READY_FOR_PROSPECTIVE_SHADOW"
         if not reason_codes else "NOT_OPERATIONALLY_READY"
@@ -328,6 +382,7 @@ def predict_fenzobot_contextual(
             "favorite_confirmed": stable_side,
             "dependency_grade": dependency_grade,
             "dominant_family_if_unstable": dominant_family,
+            "lead_authority": lead_authority,
             "scenarios": sensitivity,
         },
         "family_coverage": {
@@ -336,8 +391,9 @@ def predict_fenzobot_contextual(
             "observed_neutral": grade_counts["OBSERVED_NEUTRAL"],
             "unavailable": grade_counts["UNAVAILABLE"],
             "usable": usable_families,
+            "measured": measured_families,
             "total": len(FAMILY_ORDER),
-            "pct": round(100.0 * usable_families / len(FAMILY_ORDER), 2),
+            "pct": round(100.0 * measured_families / len(FAMILY_ORDER), 2),
         },
         "surface_context": surface_context,
         "quality_group": quality_group,

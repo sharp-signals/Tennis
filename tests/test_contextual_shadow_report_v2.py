@@ -160,6 +160,13 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertFalse(view["isolation"]["published_as_operational_report"])
         self.assertEqual(view["tournament_name"], "Test Open")
         self.assertEqual(view["round_stage"], "Fases finais")
+        self.assertEqual(
+            view["market"]["plausibility"]["status"],
+            "OUTSIDE_MODEL_INTERVAL",
+        )
+        self.assertTrue(
+            view["market"]["plausibility"]["requires_manual_review"]
+        )
 
     def test_missing_market_remains_not_available(self):
         view = report.build_report_view_model(observation())
@@ -191,6 +198,8 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("MAPA DAS FAMÍLIAS", html)
         self.assertIn("SHADOW · SEM DECISÃO", html)
         self.assertIn("mercado nunca entra", html)
+        self.assertIn("REVISÃO DE PLAUSIBILIDADE", html)
+        self.assertIn("Odd observada", html)
         self.assertNotIn("REGISTAR PAPER", html)
         self.assertNotIn("APOSTAR", html)
 
@@ -255,6 +264,25 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotEqual(view["market_review"]["status"], "FAVORITE_UNCONFIRMED")
         html = report.render_report_html(view)
         self.assertIn("JOGO EQUILIBRADO", html)
+
+    def test_authorised_primary_family_lead_is_explained_not_blocked(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"]["family_sensitivity"] = {
+            "method": "LEAVE_ONE_FAMILY_OUT",
+            "favorite_confirmed": False,
+            "dependency_grade": "MATERIAL_DEPENDENCE",
+            "dominant_family_if_unstable": "structural_strength",
+            "lead_authority": {
+                "authorised": True, "active_components": 3,
+                "aligned_components": 2,
+            },
+            "scenarios": [],
+        }
+        view = report.build_report_view_model(prediction, market())
+        self.assertNotEqual(view["market_review"]["status"], "FAVORITE_UNCONFIRMED")
+        html = report.render_report_html(view)
+        self.assertIn("LIDERANÇA PRINCIPAL VÁLIDA", html)
+        self.assertIn("evidência sólida", html)
 
     def test_builder_creates_private_index_reports_and_summary(self):
         with TemporaryDirectory(dir=Path.cwd()) as directory:
