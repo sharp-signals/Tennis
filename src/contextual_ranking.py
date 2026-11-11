@@ -17,6 +17,8 @@ import pandas as pd
 
 
 SCHEMA_VERSION = 1
+LONG_LAYOFF_DAYS = 120
+RETURN_EVIDENCE_MATCHES = 12
 
 
 def _rank_band(rank: float) -> str:
@@ -106,6 +108,119 @@ def summarize_weekly_rank_history(
             if current is not None and one_year["typical_rank"] is not None
             else None
         ),
+    }
+
+
+def summarize_return_context(
+    observations: list[dict[str, Any]],
+    match_dates: list[Any],
+    *,
+    cutoff: datetime,
+    days_since_last_match: Any = None,
+) -> dict[str, Any]:
+    """Describe a long-layoff return without restoring historical reputation.
+
+    The context is strictly ex ante.  A pre-layoff level is evidence that the
+    current ranking may be administratively unrepresentative; it is never a
+    direct vote that the player has already recovered that level.
+    """
+    cutoff_utc = cutoff if cutoff.tzinfo else cutoff.replace(tzinfo=timezone.utc)
+    cutoff_day = cutoff_utc.date()
+
+    dated_matches: list[date] = []
+    for raw in match_dates:
+        if isinstance(raw, datetime):
+            day = raw.date()
+        elif isinstance(raw, date):
+            day = raw
+        else:
+            parsed = pd.to_datetime(raw, errors="coerce", utc=True)
+            if pd.isna(parsed):
+                continue
+            day = parsed.date()
+        if day < cutoff_day:
+            dated_matches.append(day)
+    dated_matches = sorted(set(dated_matches))
+
+    explicit_gap = _number(days_since_last_match)
+    phase = "NONE"
+    layoff_days: int | None = None
+    return_day: date | None = None
+    pre_layoff_last_match: date | None = None
+    matches_since_return = 0
+
+    if explicit_gap is not None and explicit_gap >= LONG_LAYOFF_DAYS:
+        phase = "PRE_RETURN"
+        layoff_days = int(explicit_gap)
+        pre_layoff_last_match = dated_matches[-1] if dated_matches else None
+    else:
+        gaps = [
+            ((right - left).days, left, right)
+            for left, right in zip(dated_matches, dated_matches[1:])
+            if (right - left).days >= LONG_LAYOFF_DAYS
+        ]
+        if gaps:
+            layoff_days, pre_layoff_last_match, return_day = gaps[-1]
+            matches_since_return = sum(day >= return_day for day in dated_matches)
+            phase = (
+                "EARLY_RETURN"
+                if matches_since_return < RETURN_EVIDENCE_MATCHES
+                else "ESTABLISHED_RETURN"
+            )
+
+    anchor = pre_layoff_last_match
+    ranked_before: list[tuple[date, float]] = []
+    if anchor is not None:
+        start = anchor - pd.Timedelta(days=365)
+        for item in observations:
+            rank = _number(item.get("rank"))
+            raw = item.get("observed_at")
+            if isinstance(raw, datetime):
+                observed = raw.date()
+            elif isinstance(raw, date):
+                observed = raw
+            else:
+                parsed = pd.to_datetime(raw, errors="coerce", utc=True)
+                if pd.isna(parsed):
+                    continue
+                observed = parsed.date()
+            if rank is None:
+                continue
+            if start <= observed <= anchor:
+                ranked_before.append((observed, rank))
+    pre_ranks = [rank for _, rank in ranked_before]
+    pre_layoff_typical = (
+        math.exp(statistics.median([math.log(rank) for rank in pre_ranks]))
+        if pre_ranks else None
+    )
+    pre_layoff_best = min(pre_ranks) if pre_ranks else None
+
+    active_return = phase in {"PRE_RETURN", "EARLY_RETURN"}
+    evidence_fraction = (
+        min(1.0, matches_since_return / RETURN_EVIDENCE_MATCHES)
+        if phase != "PRE_RETURN" else 0.0
+    )
+    current_rank_reliability = (
+        0.25 + 0.75 * evidence_fraction if active_return else 1.0
+    )
+    return {
+        "return_phase": phase,
+        "long_layoff_detected": phase != "NONE",
+        "active_return_phase": active_return,
+        "layoff_days": layoff_days,
+        "pre_layoff_last_match": (
+            pre_layoff_last_match.isoformat() if pre_layoff_last_match else None
+        ),
+        "return_date": return_day.isoformat() if return_day else None,
+        "days_since_return": (
+            (cutoff_day - return_day).days if return_day else None
+        ),
+        "matches_since_return": matches_since_return,
+        "pre_layoff_rank_observations": len(pre_ranks),
+        "pre_layoff_typical_rank": pre_layoff_typical,
+        "pre_layoff_best_rank": pre_layoff_best,
+        "return_current_rank_reliability": current_rank_reliability,
+        "return_evidence_fraction": evidence_fraction,
     }
 
 
@@ -231,6 +346,12 @@ def build_player_ranking_context(
     weekly_summary = summarize_weekly_rank_history(
         observations, cutoff=cutoff, current_rank=rank,
     )
+    return_context = summarize_return_context(
+        observations,
+        [item.get("observed_at") for item in observations],
+        cutoff=cutoff,
+        days_since_last_match=inactivity,
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "mode": "OBSERVATIONAL_ONLY",
@@ -255,6 +376,7 @@ def build_player_ranking_context(
         "ranking_strength_change_12m": strength_change(anchor_12m),
         "days_since_last_match": inactivity,
         **weekly_summary,
+        **return_context,
         "evidence_status": (
             "COMPLETE_CURRENT_AND_HISTORY" if rank is not None and ranked
             else "CURRENT_ONLY" if rank is not None

@@ -11,15 +11,23 @@ from typing import Any
 
 GLOBAL_RELEASE_ID = "FENZOBOT_CONTEXTUAL_2026_11"
 RELEASE_SLUG = "fenzobot-contextual-2026-11"
-RUNTIME_GENERATION = 4
-COMBINATION_VERSION = "contextual-family-combination-v3-ranking-v6"
-CALIBRATION_VERSION = "contextual-probability-uncertainty-v3"
-ACCEPTED_HISTORICAL_RELEASES = [{
-    "runtime_generation": 3,
-    "configuration_fingerprint": (
-        "05a0303b93ca8a5abc5edb3adcec235749737c54597a47333bb5bad67e2c707a"
-    ),
-}]
+RUNTIME_GENERATION = 5
+COMBINATION_VERSION = "contextual-family-combination-v4-ranking-v7"
+CALIBRATION_VERSION = "contextual-probability-uncertainty-v4"
+ACCEPTED_HISTORICAL_RELEASES = [
+    {
+        "runtime_generation": 3,
+        "configuration_fingerprint": (
+            "05a0303b93ca8a5abc5edb3adcec235749737c54597a47333bb5bad67e2c707a"
+        ),
+    },
+    {
+        "runtime_generation": 4,
+        "configuration_fingerprint": (
+            "287e02c8e3d1a0b6223892b00b4fc15d2b8bd0d8afaf924f8e494fde080bde6c"
+        ),
+    },
+]
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -59,7 +67,7 @@ def build_release(
         "probability_calibration_sha256": _sha(calibration_path),
     }
     components = {
-        "ranking_model": "contextual-ranking-v6",
+        "ranking_model": "contextual-ranking-v7",
         "family_combination": COMBINATION_VERSION,
         "probability_calibration": CALIBRATION_VERSION,
         "runtime_generation": RUNTIME_GENERATION,
@@ -106,11 +114,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--combination", type=Path,
-        default=Path("data/models/contextual-family-combination-v3.json"),
+        default=Path("data/models/contextual-family-combination-v4.json"),
     )
     parser.add_argument(
         "--calibration", type=Path,
-        default=Path("data/models/contextual-probability-uncertainty-v3.json"),
+        default=Path("data/models/contextual-probability-uncertainty-v4.json"),
     )
     parser.add_argument(
         "--manifest", type=Path,

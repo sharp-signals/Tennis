@@ -21,7 +21,7 @@ def load_report_contract(
     path: Path = CONTRACT_PATH,
     *,
     expected_model_version: str = MODEL_VERSION,
-    expected_contract_version: str = "contextual-shadow-report-v2.0",
+    expected_contract_version: str = "contextual-shadow-report-v2.1",
 ) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     rules = value.get("rules") or {}
@@ -33,6 +33,9 @@ def load_report_contract(
         or rules.get("handicap_evidence_must_be_frozen_with_prediction") is not True
         or rules.get("handicap_requires_own_line_probability") is not True
         or rules.get("moneyline_evidence_must_be_frozen_with_prediction") is not True
+        or rules.get("main_family_impact_must_use_probability_points") is not True
+        or rules.get("technical_logits_must_remain_collapsed") is not True
+        or rules.get("dependency_must_be_graded_not_binary") is not True
         or rules.get("no_betting_recommendation") is not True
         or rules.get("no_automatic_publication") is not True
     ):
@@ -79,6 +82,22 @@ def _state_label(value: Any) -> str:
         "DIAGNOSTIC_ONLY": "Apenas diagnóstico",
         "NOT_APPLICABLE": "Não aplicável",
     }.get(str(value or "").upper(), str(value or "N/D"))
+
+
+def _coverage_grade_label(value: Any) -> str:
+    return {
+        "SOLID": "Evidência sólida",
+        "PARTIAL": "Evidência parcial",
+        "OBSERVED_NEUTRAL": "Consultado · sem ocorrência",
+        "UNAVAILABLE": "Indisponível",
+    }.get(str(value or "").upper(), "Indisponível")
+
+
+def _impact_label(value: Any) -> str:
+    return {
+        "SLIGHT": "ligeiro", "MODERATE": "moderado",
+        "STRONG": "forte", "DECISIVE": "muito forte",
+    }.get(str(value or "").upper(), "neutro")
 
 
 def _quality_label(value: Any) -> str:
@@ -211,11 +230,11 @@ def build_report_view_model(
 
     family_rows = []
     absolute_total = sum(
-        abs(float(item.get("logit_contribution") or 0.0))
+        abs(float(item.get("impact_pp_model_a") or 0.0))
         for item in shadow.get("families") or []
     )
     for family in shadow.get("families") or []:
-        contribution = float(family.get("logit_contribution") or 0.0)
+        contribution = float(family.get("impact_pp_model_a") or 0.0)
         if contribution > 1e-9:
             direction = "a"
         elif contribution < -1e-9:
@@ -227,8 +246,16 @@ def build_report_view_model(
             "label": family.get("label") or family.get("key"),
             "data_state": family.get("data_state"),
             "data_state_label": _state_label(family.get("data_state")),
+            "coverage_grade": family.get("coverage_grade") or "UNAVAILABLE",
+            "coverage_grade_label": _coverage_grade_label(
+                family.get("coverage_grade")
+            ),
             "probability_a": _number(family.get("probability_model_a")),
-            "logit_contribution": contribution,
+            "impact_pp_model_a": contribution,
+            "impact_intensity": family.get("impact_intensity") or "NEUTRAL",
+            "impact_intensity_label": _impact_label(
+                family.get("impact_intensity")
+            ),
             "direction": direction,
             "relative_contribution_pct": (
                 100.0 * abs(contribution) / absolute_total
@@ -289,13 +316,22 @@ def build_report_view_model(
         match_format=match_format,
     )
     sensitivity = dict(shadow.get("family_sensitivity") or {})
-    if sensitivity.get("favorite_confirmed") is False:
+    if sensitivity.get("dependency_grade") == "CRITICAL_DEPENDENCE":
         market_review = {
             "status": "FAVORITE_UNCONFIRMED",
             "candidate_side": None,
             "central_ev_pct": None,
             "conservative_ev_pct": None,
         }
+
+    arguments_a = sorted(
+        (item for item in family_rows if item["impact_pp_model_a"] > 0),
+        key=lambda item: item["impact_pp_model_a"], reverse=True,
+    )[:2]
+    arguments_b = sorted(
+        (item for item in family_rows if item["impact_pp_model_a"] < 0),
+        key=lambda item: item["impact_pp_model_a"],
+    )[:2]
 
     return {
         "contract_version": contract["contract_version"],
@@ -340,6 +376,7 @@ def build_report_view_model(
             },
         },
         "families": family_rows,
+        "top_arguments": {"a": arguments_a, "b": arguments_b},
         "family_sensitivity": sensitivity,
         "family_coverage": dict(shadow.get("family_coverage") or {}),
         "quality_group": shadow.get("quality_group"),
@@ -405,6 +442,9 @@ _FEATURE_LABELS = {
     "contextual_structural_material_rank_core_v6": "Distância material de ranking",
     "contextual_structural_representative_rank_core_v6": "Ranking representativo",
     "contextual_structural_points_log_ratio_v6": "Diferença de pontos",
+    "contextual_structural_return_rank_contraction_v7": "Ajuste do ranking durante o regresso",
+    "contextual_structural_return_points_contraction_v7": "Ajuste dos pontos durante o regresso",
+    "contextual_structural_return_friction_margin_v7": "Contexto de regresso após hiato",
     "contextual_structural_trajectory_margin_v3": "Trajetória do ranking",
     "contextual_structural_inactivity_margin_v3": "Inatividade",
     "contextual_structural_recovery_margin_v3": "Regresso / recuperação",
@@ -451,6 +491,9 @@ def _family_detail_html(family: Mapping[str, Any]) -> str:
             ("Ranking atual", "current_rank_a", "current_rank_b"),
             ("Pontos atuais", "current_points_a", "current_points_b"),
             ("Melhor ranking observado", "observed_peak_rank_a", "observed_peak_rank_b"),
+            ("Nível típico antes do hiato", "pre_layoff_typical_rank_a", "pre_layoff_typical_rank_b"),
+            ("Jogos desde o regresso", "matches_since_return_a", "matches_since_return_b"),
+            ("Confiança no ranking atual", "current_rank_reliability_a", "current_rank_reliability_b"),
             ("Ranking típico 365d", "typical_rank_365d_a", "typical_rank_365d_b"),
             ("Representatividade", "representativeness_a", "representativeness_b"),
         )
@@ -645,24 +688,24 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     players = view["players"]
     families = []
     for family in view["families"]:
-        contribution = float(family["logit_contribution"])
+        contribution = float(family["impact_pp_model_a"])
         width = min(100.0, float(family["relative_contribution_pct"]))
         direction = family["direction"]
         probability = family.get("probability_a")
         probability_text = _pct(probability) if probability is not None else "Sem probabilidade própria"
         families.append(f"""
-          <div class="family-row state-{_e(family['data_state']).lower()}">
+          <div class="family-row grade-{_e(family['coverage_grade']).lower()}">
             <div class="family-copy">
               <strong>{_e(family['label'])}</strong>
-              <small>{_e(family['data_state_label'])} · {probability_text}</small>
+              <small>{_e(family['coverage_grade_label'])} · impacto {_e(family['impact_intensity_label'])} · {probability_text}</small>
             </div>
             <div class="family-scale" aria-label="Contributo relativo da família">
               <span class="axis"></span>
               <span class="bar {direction}" style="--strength:{width:.2f}%"></span>
             </div>
             <div class="family-result {direction}">
-              {('+' if contribution > 0 else '')}{contribution:.3f}
-              <small>logit</small>
+              {('+' if contribution > 0 else '')}{contribution:.1f} p.p.
+              <small>efeito na probabilidade</small>
             </div>
           </div>
           <details class="family-detail"><summary>Ver o que entrou nesta família</summary>
@@ -679,23 +722,34 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         market_copy = "Cotação pós-previsão ainda indisponível. A previsão mantém-se válida e imutável."
         benchmark_badge = "MERCADO N/D"
     coverage = view.get("family_coverage") or {}
-    observed = coverage.get("observed", 0)
+    solid = coverage.get("solid", coverage.get("observed", 0))
+    partial = coverage.get("partial", 0)
+    neutral = coverage.get("observed_neutral", 0)
+    unavailable = coverage.get("unavailable", 0)
+    usable = coverage.get("usable", solid + partial)
     total = coverage.get("total", 5)
     coverage_pct = coverage.get("pct", 0)
     preferred = max(players, key=lambda side: players[side]["probability"])
     preferred_name = players[preferred]["name"]
     sensitivity = view.get("family_sensitivity") or {}
-    favorite_confirmed = sensitivity.get("favorite_confirmed") is not False
+    dependency_grade = sensitivity.get("dependency_grade") or "ROBUST"
+    favorite_confirmed = dependency_grade == "ROBUST"
     dominant_family = sensitivity.get("dominant_family_if_unstable")
     family_labels = {
         str(item.get("key")): str(item.get("label") or item.get("key"))
         for item in view.get("families") or []
     }
-    if not favorite_confirmed:
+    if dependency_grade == "CRITICAL_DEPENDENCE":
         direct_read = (
             f"Estimativa central: {preferred_name} {_pct(players[preferred]['probability'])}. "
             f"Favoritismo não confirmado: ao retirar {family_labels.get(str(dominant_family), dominant_family)}, "
-            "o lado favorito muda. O jogo deve ser lido como sensível a uma única família."
+            "o lado favorito muda de forma crítica. Não formular decisão operacional."
+        )
+    elif dependency_grade in {"BALANCED_SENSITIVE", "MATERIAL_DEPENDENCE"}:
+        direct_read = (
+            f"Estimativa central: {preferred_name} {_pct(players[preferred]['probability'])}. "
+            f"Leitura {_e('sensível em jogo equilibrado' if dependency_grade == 'BALANCED_SENSITIVE' else 'com dependência material')}: "
+            f"{family_labels.get(str(dominant_family), dominant_family)} pode mudar o lado, mas a previsão permanece visível com incerteza reforçada."
         )
     elif view["model_status"] == "READY_FOR_PROSPECTIVE_SHADOW":
         direct_read = (
@@ -710,12 +764,27 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     title = f"{players['a']['name']} vs {players['b']['name']}"
     reasons = ", ".join(view["reason_codes"]) or "Sem bloqueios estruturais"
     robustness_class = "confirmed" if favorite_confirmed else "unstable"
-    robustness_title = "FAVORITISMO ROBUSTO" if favorite_confirmed else "FAVORITISMO NÃO CONFIRMADO"
-    robustness_copy = (
-        "Nenhuma família isolada muda o lado favorito na análise leave-one-family-out."
-        if favorite_confirmed else
-        "Uma única família consegue inverter o lado favorito. A probabilidade central é mostrada, mas não deve ser lida como consenso do modelo."
-    )
+    robustness_title = {
+        "ROBUST": "FAVORITISMO ROBUSTO",
+        "BALANCED_SENSITIVE": "JOGO EQUILIBRADO · LEITURA SENSÍVEL",
+        "MATERIAL_DEPENDENCE": "DEPENDÊNCIA MATERIAL DE UMA FAMÍLIA",
+        "CRITICAL_DEPENDENCE": "DEPENDÊNCIA CRÍTICA · BLOQUEADO",
+    }.get(dependency_grade, "ROBUSTEZ N/D")
+    robustness_copy = {
+        "ROBUST": "Nenhuma família isolada muda o lado favorito.",
+        "BALANCED_SENSITIVE": "Uma família muda o lado apenas dentro de uma zona próxima de 50/50.",
+        "MATERIAL_DEPENDENCE": "Uma família tem influência material; a faixa de fair odd incorpora essa sensibilidade.",
+        "CRITICAL_DEPENDENCE": "Uma família isolada sustenta uma vantagem forte; o jogo fica bloqueado para decisão.",
+    }.get(dependency_grade, "Robustez não classificada.")
+    top_arguments = view.get("top_arguments") or {}
+    argument_chips = []
+    for side in ("a", "b"):
+        for item in top_arguments.get(side) or []:
+            impact = float(item.get("impact_pp_model_a") or 0.0)
+            argument_chips.append(
+                f'<span class="argument side-{side}"><b>{_e(item.get("label"))}</b> '
+                f'{("+" if impact > 0 else "")}{impact:.1f} p.p.</span>'
+            )
     return f"""<!doctype html>
 <html lang="pt-PT">
 <head>
@@ -751,6 +820,8 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .ml-history span,.ml-history small{{display:block;color:var(--muted);font-size:10px}}.ml-history b{{display:block;margin:3px 0;font-size:16px}}
     .robustness{{margin-top:18px;padding:15px 18px;border-radius:14px;border:1px solid var(--cyan);background:#0a2b35}}
     .robustness.unstable{{border-color:var(--gold);background:#322914}}.robustness b{{display:block;letter-spacing:.08em}}.robustness span{{color:#c8d8e7}}
+    .arguments{{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}}.argument{{padding:7px 10px;border-radius:999px;background:#102a45;font-size:12px}}
+    .argument.side-a{{border:1px solid var(--blue)}}.argument.side-b{{border:1px solid var(--orange)}}
     .market-note{{margin-top:14px;padding:13px 15px;border-left:3px solid var(--gold);background:#152a3d;color:#c8d8e7}}
     .review-lead{{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:14px}}.review-lead>div{{padding:14px;background:#132f4d;border-radius:11px}}
     .review-lead b,.review-lead strong{{display:block;font-size:21px}}.review-lead span{{color:var(--muted);font-size:11px}}
@@ -771,6 +842,8 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .family-result small{{display:block;color:var(--muted);font-size:11px}} .family-scale{{height:18px;position:relative;background:#091b2c;border-radius:9px}}
     .axis{{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#66829b}} .bar{{position:absolute;top:4px;height:10px;width:calc(var(--strength)/2);border-radius:6px}}
     .bar.a{{right:50%;background:var(--blue)}} .bar.b{{left:50%;background:var(--orange)}} .bar.neutral{{left:50%;width:2px;background:#66829b}}
+    .grade-partial .bar{{background-image:repeating-linear-gradient(45deg,#ffffff22 0 4px,transparent 4px 8px)}}
+    .grade-unavailable{{opacity:.55}} .grade-observed_neutral .family-scale{{opacity:.6}}
     .family-result{{text-align:right;font-weight:900}} .family-result.a{{color:var(--blue)}} .family-result.b{{color:var(--orange)}}
     .family-detail{{margin:0 0 8px;padding:10px 0 13px;border-top:0;border-bottom:1px solid #1b3a55}}.factor-table{{display:grid;gap:6px;margin-top:10px}}
     .factor-row{{display:grid;grid-template-columns:2fr 1fr 100px;gap:10px;padding:8px 10px;background:#091b2c;border-radius:8px;align-items:center}}
@@ -795,6 +868,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <div class="summary"><div><strong>LEITURA DIRETA</strong><br><span>{_e(direct_read)}</span></div>
       <div class="market-badge">{benchmark_badge}</div></div>
     <div class="robustness {robustness_class}"><b>{robustness_title}</b><span>{_e(robustness_copy)}</span></div>
+    <div class="arguments">{''.join(argument_chips)}</div>
   </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">NÚCLEO DE PRICING</div><h2>Probabilidade e fair odd independentes</h2></div></div>
@@ -804,14 +878,15 @@ def render_report_html(view: Mapping[str, Any]) -> str:
   {_market_review_html(view)}
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">QUALIDADE DA EVIDÊNCIA</div><h2>O que foi realmente medido</h2></div></div>
-    <div class="quality"><div class="ring"><strong>{float(coverage_pct):.0f}%</strong><small>{observed}/{total} famílias</small></div>
+    <div class="quality"><div class="ring"><strong>{float(coverage_pct):.0f}%</strong><small>{usable}/{total} utilizáveis</small></div>
       <div class="quality-copy"><h3>{_e(view['quality_label'])}</h3><p>{_e(view['model_status_label'])}</p>
-      <p>Bin histórico de calibração: <b>{_e(view['calibration_bin_sample'])} casos</b>. Dados em falta alargam a incerteza; nunca são tratados como vantagem neutra.</p></div></div>
+      <p><b>{solid} sólida(s)</b> · <b>{partial} parcial(is)</b> · {neutral} consultada(s) sem ocorrência · {unavailable} indisponível(is).</p>
+      <p>Bin histórico de calibração: <b>{_e(view['calibration_bin_sample'])} casos</b>. Evidência parcial alarga a incerteza; dados em falta nunca são tratados como empate.</p></div></div>
   </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">MAPA DAS FAMÍLIAS</div><h2>Direção e contributo para a previsão</h2></div></div>
     {''.join(families)}
-    <div class="market-note">As barras mostram a participação relativa no movimento do logit deste jogo. Não são percentagens autónomas de vitória nem pesos fixos.</div>
+    <div class="market-note">As barras mostram quanto cada família move a probabilidade final, em pontos percentuais. Os coeficientes e logits ficam apenas na auditoria técnica.</div>
   </section>
   <section class="section">
     <div class="eyebrow">RASTREABILIDADE</div><h2>Contrato e isolamento</h2>

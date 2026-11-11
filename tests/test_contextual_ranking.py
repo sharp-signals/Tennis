@@ -128,3 +128,21 @@ def test_rank_outside_current_band_reduces_persistence_without_becoming_vote():
     assert context["weekly_rank_observations_365d"] == 3
     assert context["current_band_persistence_365d"] == 1 / 3
     assert context["current_vs_typical_365d_log_ratio"] < 0
+
+
+def test_long_gap_and_first_return_match_create_strictly_ex_ante_early_return():
+    cutoff = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    frame = pd.DataFrame([
+        _match(cutoff - timedelta(days=400), "A", "X", 8, 60, 4000, 800),
+        _match(cutoff - timedelta(days=380), "A", "Y", 10, 70, 3500, 600),
+        _match(cutoff - timedelta(days=5), "A", "Z", 406, 100, 120, 400),
+    ])
+    context = build_player_ranking_context(
+        frame, "A", cutoff=cutoff, current_rank=406, current_points=120,
+        days_since_last_match=5,
+    )
+    assert context["return_phase"] == "EARLY_RETURN"
+    assert context["layoff_days"] >= 120
+    assert context["matches_since_return"] == 1
+    assert context["pre_layoff_typical_rank"] < 20
+    assert 0.25 < context["return_current_rank_reliability"] < 0.4

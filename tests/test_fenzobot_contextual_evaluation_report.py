@@ -29,10 +29,10 @@ def _observation():
         "contextual_shadow": {
             "global_release_id": GLOBAL_RELEASE_ID,
             "component_versions": {
-                "ranking_model": "contextual-ranking-v6",
-                "family_combination": "contextual-family-combination-v3-ranking-v6",
-                "probability_calibration": "contextual-probability-uncertainty-v3",
-                "runtime_generation": 4,
+                "ranking_model": "contextual-ranking-v7",
+                "family_combination": "contextual-family-combination-v4-ranking-v7",
+                "probability_calibration": "contextual-probability-uncertainty-v4",
+                "runtime_generation": 5,
             },
             "configuration_fingerprint": "global-fingerprint",
             "probability_model_a": 0.61,
@@ -47,9 +47,13 @@ def _observation():
             "families": [{
                 "key": "recent_form", "label": "Forma recente ajustada",
                 "probability_model_a": 0.64, "logit_contribution": 0.2,
+                "impact_pp_model_a": 4.1, "impact_intensity": "MODERATE",
+                "coverage_grade": "SOLID",
                 "data_state": "OBSERVED",
             }],
-            "family_coverage": {"observed": 5, "total": 5, "pct": 100.0},
+            "family_coverage": {"solid": 5, "partial": 0,
+                                "observed_neutral": 0, "unavailable": 0,
+                                "usable": 5, "total": 5, "pct": 100.0},
             "surface_context": "hard_indoor",
             "quality_group": "PRIMARY_READY_COMPLETE",
             "status": "READY_FOR_PROSPECTIVE_SHADOW",
@@ -67,7 +71,7 @@ def _contract():
     return report.load_report_contract(
         Path("data/models/fenzobot-contextual-2026-11-report.json"),
         expected_model_version=GLOBAL_RELEASE_ID,
-        expected_contract_version="fenzobot-contextual-2026-11-report.2",
+        expected_contract_version="fenzobot-contextual-2026-11-report.3",
     )
 
 
@@ -82,12 +86,12 @@ class FenzobotContextualEvaluationReportTests(unittest.TestCase):
         self.assertEqual(view["global_release_id"], GLOBAL_RELEASE_ID)
         self.assertEqual(
             view["component_versions"]["ranking_model"],
-            "contextual-ranking-v6",
+            "contextual-ranking-v7",
         )
         html = report.render_report_html(view)
         self.assertIn(GLOBAL_RELEASE_ID, html)
-        self.assertIn("contextual-ranking-v6", html)
-        self.assertIn("contextual-probability-uncertainty-v3", html)
+        self.assertIn("contextual-ranking-v7", html)
+        self.assertIn("contextual-probability-uncertainty-v4", html)
         self.assertNotIn("REGISTAR PAPER", html)
         self.assertNotIn("APOSTAR", html)
 

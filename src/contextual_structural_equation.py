@@ -19,6 +19,7 @@ EQUATION_VERSION_V3 = "structural-context-v3-components"
 EQUATION_VERSION_V4 = "structural-context-v4-rank-bands"
 EQUATION_VERSION_V5 = "structural-context-v5-points-residual"
 EQUATION_VERSION_V6 = "structural-context-v6-representative-ranking"
+EQUATION_VERSION_V7 = "structural-context-v7-return-aware-ranking"
 
 
 @dataclass(frozen=True)
@@ -636,5 +637,126 @@ def evaluate_structural_strength_v6(
             "points_are_a_dependent_level_view": True,
             "one_active_week_one_rank_observation": True,
             "point_concentration_not_inferred_without_source": True,
+        },
+    }
+
+
+def _return_rank_reliability_v7(player: dict[str, Any]) -> float:
+    """Reliability of the current rank, never an estimate of player strength."""
+    representative = _rank_representativeness_v6(player)
+    baseline = 1.0 if representative is None else representative
+    if not bool(player.get("active_return_phase")):
+        return baseline
+    return min(
+        baseline,
+        max(0.0, min(1.0, float(
+            _finite(player.get("return_current_rank_reliability")) or 0.25
+        ))),
+    )
+
+
+def _return_friction_v7(player: dict[str, Any]) -> float:
+    """Expose pre-layoff level as context, not as an automatic restoration."""
+    if not bool(player.get("active_return_phase")):
+        return 0.0
+    current = _positive(player.get("current_rank"))
+    previous = _positive(player.get("pre_layoff_typical_rank"))
+    if current is None or previous is None:
+        return 0.0
+    reliability = _return_rank_reliability_v7(player)
+    return max(0.0, math.log(current / previous)) * (1.0 - reliability)
+
+
+def evaluate_structural_strength_v7(
+    player_a: dict[str, Any], player_b: dict[str, Any],
+    *, config: StructuralEquationV2Config | None = None,
+) -> dict[str, Any]:
+    """Return-aware structural evidence with explicit historical friction.
+
+    Current rank and points are contracted when an ex-ante long-layoff return
+    has little post-return evidence.  Historical level is a separate calibrated
+    feature and never silently replaces the current ranking.
+    """
+    base = evaluate_structural_strength_v6(player_a, player_b, config=config)
+    if base.get("status") != "READY":
+        return {**base, "equation_version": EQUATION_VERSION_V7}
+
+    components = dict(base.get("components") or {})
+    material_core = _finite(components.get("material_rank_core"))
+    points_core = _finite(components.get("points_log_ratio"))
+    reliability_a = _return_rank_reliability_v7(player_a)
+    reliability_b = _return_rank_reliability_v7(player_b)
+    bilateral_reliability = math.sqrt(reliability_a * reliability_b)
+    reliable_rank_core = (
+        material_core * bilateral_reliability
+        if material_core is not None else None
+    )
+    reliable_points_core = (
+        points_core * bilateral_reliability
+        if points_core is not None else None
+    )
+    friction_a = _return_friction_v7(player_a)
+    friction_b = _return_friction_v7(player_b)
+    friction_margin = friction_a - friction_b
+
+    features = {
+        # Preserve the accepted v6 basis for ordinary players.  The return
+        # context is a sparse interaction and is exactly zero otherwise.
+        **dict(base["candidate_features"]),
+        "contextual_structural_return_rank_contraction_v7": (
+            None if material_core is None
+            else reliable_rank_core - material_core
+        ),
+        "contextual_structural_return_points_contraction_v7": (
+            None if points_core is None
+            else reliable_points_core - points_core
+        ),
+        "contextual_structural_return_friction_margin_v7": friction_margin,
+    }
+    return {
+        **base,
+        "equation_version": EQUATION_VERSION_V7,
+        "candidate_features": {
+            key: None if value is None else round(float(value), 6)
+            for key, value in features.items()
+        },
+        "components": {
+            **components,
+            "current_rank_reliability_a": round(reliability_a, 6),
+            "current_rank_reliability_b": round(reliability_b, 6),
+            "bilateral_current_rank_reliability": round(
+                bilateral_reliability, 6,
+            ),
+            "reliable_rank_core": (
+                None if reliable_rank_core is None
+                else round(reliable_rank_core, 6)
+            ),
+            "reliable_points_core": (
+                None if reliable_points_core is None
+                else round(reliable_points_core, 6)
+            ),
+            "return_friction_a": round(friction_a, 6),
+            "return_friction_b": round(friction_b, 6),
+            "return_friction_margin": round(friction_margin, 6),
+            "return_phase_a": player_a.get("return_phase"),
+            "return_phase_b": player_b.get("return_phase"),
+            "layoff_days_a": player_a.get("layoff_days"),
+            "layoff_days_b": player_b.get("layoff_days"),
+            "matches_since_return_a": player_a.get("matches_since_return"),
+            "matches_since_return_b": player_b.get("matches_since_return"),
+            "pre_layoff_typical_rank_a": player_a.get(
+                "pre_layoff_typical_rank"
+            ),
+            "pre_layoff_typical_rank_b": player_b.get(
+                "pre_layoff_typical_rank"
+            ),
+        },
+        "governance": {
+            **base["governance"],
+            "current_rank_contracts_during_early_return": True,
+            "v6_basis_is_preserved_outside_verified_return": True,
+            "historical_level_is_context_not_restoration": True,
+            "return_context_requires_long_layoff": True,
+            "market_is_forbidden": True,
         },
     }

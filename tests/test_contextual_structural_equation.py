@@ -5,6 +5,7 @@ from src.contextual_structural_equation import (
     evaluate_structural_strength_v4,
     evaluate_structural_strength_v5,
     evaluate_structural_strength_v6,
+    evaluate_structural_strength_v7,
 )
 
 
@@ -208,3 +209,39 @@ def test_v6_missing_history_preserves_material_rank_but_not_fake_representativen
     assert result["candidate_features"][
         "contextual_structural_representative_rank_core_v6"
     ] is None
+
+
+def test_v7_contracts_current_rank_during_early_return_and_keeps_history_separate():
+    returning = _player(406, points=120, typical=350)
+    returning.update({
+        "active_return_phase": True,
+        "return_phase": "EARLY_RETURN",
+        "return_current_rank_reliability": 0.3125,
+        "pre_layoff_typical_rank": 8,
+        "layoff_days": 365,
+        "matches_since_return": 1,
+    })
+    stable = _player(64, points=859)
+    v6 = evaluate_structural_strength_v6(returning, stable)
+    v7 = evaluate_structural_strength_v7(returning, stable)
+    assert v7["candidate_features"][
+        "contextual_structural_material_rank_core_v6"
+    ] == v6["candidate_features"][
+        "contextual_structural_material_rank_core_v6"
+    ]
+    assert v7["candidate_features"][
+        "contextual_structural_return_rank_contraction_v7"
+    ] > 0
+    assert v7["candidate_features"][
+        "contextual_structural_return_friction_margin_v7"
+    ] > 0
+    assert v7["governance"]["historical_level_is_context_not_restoration"]
+
+
+def test_v7_does_not_restore_old_level_without_active_long_layoff_return():
+    veteran = _player(90, points=700)
+    veteran.update({"observed_peak_rank": 5, "pre_layoff_typical_rank": 8})
+    result = evaluate_structural_strength_v7(veteran, _player(60, points=900))
+    assert result["candidate_features"][
+        "contextual_structural_return_friction_margin_v7"
+    ] == 0.0
