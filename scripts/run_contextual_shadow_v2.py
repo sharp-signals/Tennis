@@ -129,12 +129,17 @@ def build_match_observation(
         return None, {
             "status": "SKIPPED", "reason_code": "PLAYER_IDENTITY_MISSING",
         }
-    history = fetch_data.get_history(tour, tier=match.get("tier"))
-    if history.empty:
+    if tour == "atp":
+        context_history = fetch_data.get_history("atp", tier="Challenger 125")
+        history = fetch_data.filter_history_scope(context_history, "main")
+    else:
+        context_history = fetch_data.get_history(tour, tier=match.get("tier"))
+        history = context_history
+    if history.empty or context_history.empty:
         return None, {"status": "SKIPPED", "reason_code": "HISTORY_EMPTY"}
     historical_odds_history = fetch_data.get_historical_odds_history(tour)
-    resolved_a = fetch_data.resolve_player_name(history, original_a) or original_a
-    resolved_b = fetch_data.resolve_player_name(history, original_b) or original_b
+    resolved_a = fetch_data.resolve_player_name(context_history, original_a) or original_a
+    resolved_b = fetch_data.resolve_player_name(context_history, original_b) or original_b
     rank_a, rank_source_a = _ranking(
         history, official_rankings.get(tour), original_a, id_a,
     )
@@ -143,7 +148,7 @@ def build_match_observation(
     )
     start = _parse_utc(str(match["date"]))
     row = build_contextual_target_row(
-        history,
+        context_history,
         universe=tour,
         player_a=resolved_a,
         player_b=resolved_b,
@@ -160,6 +165,7 @@ def build_match_observation(
         pace_bucket=(
             match.get("court_pace_bucket") or match.get("pace_bucket")
         ),
+        target_tier=match.get("tier"),
     )
     shadow = predictor(row, contract, universe=tour)
     identity = match_identity_v2.resolve_observation(
