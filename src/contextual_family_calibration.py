@@ -236,6 +236,7 @@ CALIBRATION_FEATURE_PROFILES = {
             "contextual_recent_win_quality_lower_main_v5",
             "contextual_recent_result_challenger_v5",
             "contextual_recent_competitiveness_challenger_v5",
+            "contextual_recent_tier_win_credit_v7",
             "contextual_recent_win_quality_challenger_v5",
         ),
     },
@@ -263,6 +264,7 @@ CALIBRATION_FEATURE_PROFILES = {
             "contextual_recent_competitiveness_lower_main_v5",
             "contextual_recent_result_challenger_v5",
             "contextual_recent_competitiveness_challenger_v5",
+            "contextual_recent_tier_win_credit_v7",
         ),
     },
 }
@@ -425,6 +427,7 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_recent_result_main_v7",
             "contextual_recent_competitiveness_main_v7",
             "contextual_recent_win_quality_main_v7",
+            "contextual_recent_tier_win_credit_v7",
         } or name.startswith("contextual_recent_adjusted_result_loss_")
         for name in columns
     ], dtype=bool)
