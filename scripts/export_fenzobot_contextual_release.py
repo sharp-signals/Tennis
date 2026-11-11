@@ -11,7 +11,7 @@ from typing import Any
 
 GLOBAL_RELEASE_ID = "FENZOBOT_CONTEXTUAL_2026_11"
 RELEASE_SLUG = "fenzobot-contextual-2026-11"
-RUNTIME_GENERATION = 3
+RUNTIME_GENERATION = 4
 COMBINATION_VERSION = "contextual-family-combination-v3-ranking-v6"
 CALIBRATION_VERSION = "contextual-probability-uncertainty-v3"
 

@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
 from .contextual_family_combination_v3 import predict_contextual_combination_v3
+from .contextual_family_calibration import explain_family_equation
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
 from .contextual_probability_uncertainty_v2 import (
     MIN_BIN_SAMPLE,
@@ -46,6 +47,35 @@ def load_contract(path: Path = DEFAULT_MODEL_PATH) -> dict[str, Any]:
 def _logit(probability: float) -> float:
     value = min(max(float(probability), 1e-6), 1.0 - 1e-6)
     return math.log(value / (1.0 - value))
+
+
+def _sigmoid(value: float) -> float:
+    return 1.0 / (1.0 + math.exp(-float(value)))
+
+
+def _centred_empirical_interval(
+    probability: float, bin_item: Mapping[str, Any],
+    global_bin: Mapping[str, Any], *, quality_group: str,
+    sensitivity_probabilities: list[float],
+) -> tuple[float, float]:
+    """Centre empirical uncertainty on the actual prediction.
+
+    Wilson width is learned from chronological calibration cohorts.  It is a
+    width, not a second point prediction.  Leave-one-family-out probabilities
+    widen the range when the result depends materially on one family.
+    """
+    widths = [float(bin_item["wilson_upper"]) - float(bin_item["wilson_lower"])]
+    if quality_group != "PRIMARY_READY_COMPLETE":
+        widths.append(
+            float(global_bin["wilson_upper"]) - float(global_bin["wilson_lower"])
+        )
+    half_width = max(widths) / 2.0
+    lower = probability - half_width
+    upper = probability + half_width
+    if sensitivity_probabilities:
+        lower = min(lower, *sensitivity_probabilities)
+        upper = max(upper, *sensitivity_probabilities)
+    return max(1e-6, lower), min(1.0 - 1e-6, upper)
 
 
 def _fair_odd_b(lower_a: float, probability_a: float, upper_a: float) -> dict[str, float]:
@@ -87,12 +117,7 @@ def predict_fenzobot_contextual(
     bin_item, interval_source, global_bin = _lookup_interval(
         calibration["calibration_model"], record,
     )
-    lower = min(probability, float(bin_item["wilson_lower"]))
-    upper = max(probability, float(bin_item["wilson_upper"]))
     quality_group = _quality_group(working)
-    if quality_group != "PRIMARY_READY_COMPLETE":
-        lower = min(lower, float(global_bin["wilson_lower"]))
-        upper = max(upper, float(global_bin["wilson_upper"]))
     supported = calibration["supported_probability_range"]
     extrapolation = not (
         float(supported["lower"]) <= probability <= float(supported["upper"])
@@ -104,20 +129,24 @@ def predict_fenzobot_contextual(
         reason_codes.append("PROBABILITY_EXTRAPOLATION")
     if int(bin_item["sample"]) < MIN_BIN_SAMPLE:
         reason_codes.append("CALIBRATION_BIN_SAMPLE_LOW")
-    status = (
-        "READY_FOR_PROSPECTIVE_SHADOW"
-        if not reason_codes else "NOT_OPERATIONALLY_READY"
-    )
     labels = {item["key"]: item["label"] for item in FAMILY_DEFINITIONS}
     family_probabilities = working["family_probabilities"]
     coefficients = universe_contract["combination"]["family_coefficients"]
+    runtime_models = universe_contract["combination"]["runtime_family_models"]
+    surface_context = (working.get("diagnostics") or {}).get("surface_context")
+    equation_audit = row.get("candidate_equation_audit") or {}
     family_rows = []
+    contributions: dict[str, float] = {}
     for family in FAMILY_ORDER:
         family_probability = family_probabilities.get(family)
         contribution = (
             float(coefficients.get(family, 0.0)) * _logit(family_probability)
             if family_probability is not None else 0.0
         )
+        contributions[family] = contribution
+        model = runtime_models.get(family)
+        if family == "surface_conditions":
+            model = (model or {}).get(surface_context)
         family_rows.append({
             "key": family,
             "label": labels[family],
@@ -129,11 +158,61 @@ def predict_fenzobot_contextual(
             "data_state": (
                 (row.get("family_states") or {}).get(family) or {}
             ).get("data_state"),
+            "internal_trace": (
+                explain_family_equation(dict(row), model)
+                if isinstance(model, dict) else {"status": "UNAVAILABLE", "features": []}
+            ),
+            "context_audit": (
+                dict(equation_audit.get("structural_strength_v6") or {})
+                if family == "structural_strength"
+                else dict(equation_audit.get("recent_form_v1") or {})
+                if family == "recent_form"
+                else {}
+            ),
         })
+    raw_logit = _logit(raw_probability)
+    sensitivity = []
+    for family, contribution in contributions.items():
+        if abs(contribution) <= 1e-12:
+            continue
+        probability_without_family = _apply_calibrator(
+            _sigmoid(raw_logit - contribution), calibration["central_calibrator"],
+        )
+        sensitivity.append({
+            "family": family,
+            "probability_model_a_without_family": round(
+                probability_without_family, 6,
+            ),
+        })
+    sensitivity_probabilities = [
+        float(item["probability_model_a_without_family"]) for item in sensitivity
+    ]
+    central_side = "a" if probability > 0.5 else "b" if probability < 0.5 else None
+    stable_side = bool(central_side) and all(
+        (value > 0.5 if central_side == "a" else value < 0.5)
+        for value in sensitivity_probabilities
+    )
+    dominant_family = None
+    if central_side and not stable_side and contributions:
+        dominant_family = max(
+            contributions,
+            key=lambda key: (
+                contributions[key] if central_side == "a" else -contributions[key]
+            ),
+        )
+        reason_codes.append("SINGLE_FAMILY_DEPENDENCE")
+    lower, upper = _centred_empirical_interval(
+        probability, bin_item, global_bin,
+        quality_group=quality_group,
+        sensitivity_probabilities=sensitivity_probabilities,
+    )
     observed_families = sum(
         _family_available(working, family) for family in FAMILY_ORDER
     )
-    surface_context = (working.get("diagnostics") or {}).get("surface_context")
+    status = (
+        "READY_FOR_PROSPECTIVE_SHADOW"
+        if not reason_codes else "NOT_OPERATIONALLY_READY"
+    )
     return {
         "schema_version": 3,
         "global_release_id": contract["global_release_id"],
@@ -155,6 +234,13 @@ def predict_fenzobot_contextual(
         "fair_odd_model_a": _fair_odd(probability, lower, upper),
         "fair_odd_model_b": _fair_odd_b(lower, probability, upper),
         "families": family_rows,
+        "family_sensitivity": {
+            "method": "LEAVE_ONE_FAMILY_OUT",
+            "central_side": central_side,
+            "favorite_confirmed": stable_side,
+            "dominant_family_if_unstable": dominant_family,
+            "scenarios": sensitivity,
+        },
         "family_coverage": {
             "observed": observed_families,
             "total": len(FAMILY_ORDER),

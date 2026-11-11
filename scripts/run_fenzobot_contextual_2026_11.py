@@ -34,6 +34,9 @@ SUMMARY_PATH = Path(
 HANDICAP_PATH = Path(
     "data/contextual_shadow_handicap_evidence-fenzobot-contextual-2026-11.jsonl"
 )
+MONEYLINE_PATH = Path(
+    "data/contextual_shadow_moneyline_evidence-fenzobot-contextual-2026-11.jsonl"
+)
 
 
 def run_release_only(*, max_matches: int = 0, workers: int = 4) -> dict:
@@ -54,6 +57,7 @@ def run_release_only(*, max_matches: int = 0, workers: int = 4) -> dict:
         payload_key=PAYLOAD_KEY,
         model_version=GLOBAL_RELEASE_ID,
         handicap_path=HANDICAP_PATH,
+        moneyline_path=MONEYLINE_PATH,
         usage_status="fenzobot_contextual_2026_11_success",
     )
 

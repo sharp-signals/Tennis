@@ -529,6 +529,52 @@ def predict_family_equation(
     return result
 
 
+def explain_family_equation(
+    row: dict[str, Any], model: dict[str, Any],
+) -> dict[str, Any]:
+    """Return an auditable, one-row decomposition of a frozen family model.
+
+    The explanation uses the exact frozen preprocessor and coefficients used by
+    ``predict_family_equation``.  It is diagnostic only: it never refits the
+    model and never changes the probability.
+    """
+    if model.get("status") != "FITTED":
+        return {"status": "UNAVAILABLE", "features": []}
+    features = tuple(model["features"])
+    x, _, columns = _transform([row], features, model["preprocessor"])
+    if columns != model["columns"]:
+        raise ValueError("family explanation column mismatch")
+    weights = np.asarray(model["weights"], dtype=float)
+    raw_features = row.get("features", {})
+    items = []
+    for index, column in enumerate(columns):
+        if column.endswith("__missing"):
+            continue
+        missing_column = f"{column}__missing"
+        missing_index = columns.index(missing_column)
+        items.append({
+            "key": column,
+            "raw_value": raw_features.get(column),
+            "missing": raw_features.get(column) is None,
+            "standardized_value": round(float(x[0, index]), 8),
+            "coefficient": round(float(weights[index]), 8),
+            "logit_contribution": round(float(x[0, index] * weights[index]), 8),
+            "missing_coefficient": round(float(weights[missing_index]), 8),
+            "missing_logit_contribution": round(
+                float(x[0, missing_index] * weights[missing_index]), 8,
+            ),
+        })
+    return {
+        "status": "READY",
+        "family": model.get("family"),
+        "feature_profile": model.get("feature_profile"),
+        "intercept": round(float(model.get("intercept") or 0.0), 8),
+        "features": items,
+        "market_used": False,
+        "production_effect": False,
+    }
+
+
 def calibrate_family(
     split: dict[str, list[dict[str, Any]]],
     *,

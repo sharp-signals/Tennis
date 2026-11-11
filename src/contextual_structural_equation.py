@@ -589,6 +589,18 @@ def evaluate_structural_strength_v6(
         },
         "components": {
             **base["components"],
+            "current_rank_a": rank_a,
+            "current_rank_b": rank_b,
+            "current_points_a": points_a,
+            "current_points_b": points_b,
+            "observed_peak_rank_a": _positive(player_a.get("observed_peak_rank")),
+            "observed_peak_rank_b": _positive(player_b.get("observed_peak_rank")),
+            "observed_best_rank_365d_a": _positive(
+                player_a.get("observed_best_rank_365d")
+            ),
+            "observed_best_rank_365d_b": _positive(
+                player_b.get("observed_best_rank_365d")
+            ),
             "raw_rank_core": round(raw_core, 6),
             "neutral_ratio": 1.25,
             "material_rank_core": round(material_core, 6),

@@ -29,6 +29,10 @@ from src.contextual_shadow_handicap_v2 import (  # noqa: E402
     build_frozen_handicap_evidence,
     infer_match_format,
 )
+from src.contextual_shadow_moneyline_v1 import (  # noqa: E402
+    append_frozen_moneyline_evidence,
+    build_frozen_moneyline_evidence,
+)
 from src.contextual_shadow_runtime_v2 import (  # noqa: E402
     load_contract,
     predict_contextual_shadow_v2,
@@ -128,6 +132,7 @@ def build_match_observation(
     history = fetch_data.get_history(tour, tier=match.get("tier"))
     if history.empty:
         return None, {"status": "SKIPPED", "reason_code": "HISTORY_EMPTY"}
+    historical_odds_history = fetch_data.get_historical_odds_history(tour)
     resolved_a = fetch_data.resolve_player_name(history, original_a) or original_a
     resolved_b = fetch_data.resolve_player_name(history, original_b) or original_b
     rank_a, rank_source_a = _ranking(
@@ -231,6 +236,16 @@ def build_match_observation(
         captured_at_utc=analyzed_at_utc,
         model_version=model_version,
     )
+    moneyline_evidence = build_frozen_moneyline_evidence(
+        historical_odds_history,
+        observation_id=str(observation["observation_id"]),
+        configuration_fingerprint=str(shadow["configuration_fingerprint"]),
+        player_a=model_a,
+        player_b=model_b,
+        cutoff=start.date(),
+        captured_at_utc=analyzed_at_utc,
+        model_version=model_version,
+    )
     return observation, {
         "status": shadow["status"],
         "reason_code": ",".join(shadow["reason_codes"]) or "READY",
@@ -238,6 +253,7 @@ def build_match_observation(
         "quality_group": shadow["quality_group"],
         "rank_sources": {"a": rank_source_a, "b": rank_source_b},
         "_handicap_evidence": handicap_evidence,
+        "_moneyline_evidence": moneyline_evidence,
     }
 
 
@@ -257,6 +273,7 @@ def _run_shadow_only(
     payload_key: str = "contextual_shadow_v2",
     model_version: str = "contextual-family-shadow-v2",
     handicap_path: Path | None = None,
+    moneyline_path: Path | None = None,
     usage_status: str = "shadow_v2_success",
 ) -> dict[str, Any]:
     activation = activation_loader()
@@ -309,15 +326,19 @@ def _run_shadow_only(
 
     observations = []
     handicap_evidence = []
+    moneyline_evidence = []
     diagnostics = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 8))) as executor:
         for observation, diagnostic in executor.map(process, eligible):
             evidence = diagnostic.pop("_handicap_evidence", None)
+            moneyline = diagnostic.pop("_moneyline_evidence", None)
             diagnostics.append(diagnostic)
             if observation is not None:
                 observations.append(observation)
                 if evidence is not None:
                     handicap_evidence.append(evidence)
+                if moneyline is not None:
+                    moneyline_evidence.append(moneyline)
     existing_ids = observation_ids_loader(ledger_path)
     new_ids = {
         str(row.get("observation_id")) for row in observations
@@ -330,6 +351,13 @@ def _run_shadow_only(
             if str(row.get("observation_id") or "") in new_ids
         ),
         **({"path": handicap_path} if handicap_path is not None else {}),
+    )
+    moneyline_added = append_frozen_moneyline_evidence(
+        (
+            row for row in moneyline_evidence
+            if str(row.get("observation_id") or "") in new_ids
+        ),
+        **({"path": moneyline_path} if moneyline_path is not None else {}),
     )
     audit = audit_ledger(ledger_path, model_path)
     reason_counts: dict[str, int] = {}
@@ -353,6 +381,7 @@ def _run_shadow_only(
         "observations_built": len(observations),
         "observations_added": added,
         "handicap_evidence_added": handicap_added,
+        "moneyline_evidence_added": moneyline_added,
         "status_counts": dict(sorted(status_counts.items())),
         "reason_counts": dict(sorted(reason_counts.items())),
         "rapidapi_calls": fetch_data.get_rapidapi_call_count(),

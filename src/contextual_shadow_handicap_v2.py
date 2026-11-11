@@ -308,11 +308,16 @@ def build_market_review(
     evidence = (evidence_record or {}).get("handicap_evidence") or {}
     player_evidence = (evidence.get("players") or {}).get(side) or {}
     match_format = str(evidence.get("format") or "bo3")
-    lines = _reference_lines(odd, match_format, underdog=underdog)
-    if not lines or not player_evidence:
+    reference_lines = _reference_lines(odd, match_format, underdog=underdog)
+    all_relevant_lines = [
+        line for line in LINES
+        if (line > 0 if underdog else line < 0)
+    ]
+    if not all_relevant_lines or not player_evidence:
         return review
     line_models = []
-    for line in lines:
+    reference_keys = {_line_key(line) for line in reference_lines}
+    for line in all_relevant_lines:
         counts = (player_evidence.get("lines") or {}).get(_line_key(line))
         if not counts:
             continue
@@ -324,6 +329,7 @@ def build_market_review(
         loss_n = sum(int(losses.get(key) or 0) for key in ("cover", "push", "miss"))
         line_models.append({
             "line": _line_key(line),
+            "highlighted": _line_key(line) in reference_keys,
             "total": total_n,
             "cover": int(total.get("cover") or 0),
             "cover_pct": round(100.0 * int(total.get("cover") or 0) / total_n, 1) if total_n else None,
@@ -338,10 +344,14 @@ def build_market_review(
             ),
         })
     if line_models:
+        line_models.sort(key=lambda item: (
+            not item["highlighted"], abs(float(item["line"])),
+        ))
         review["handicap"] = {
             "type": "positive" if underdog else "negative",
             "format": match_format.upper(),
             "lines": line_models,
+            "highlight_lines": sorted(reference_keys),
             "evidence_version": (evidence_record or {}).get("evidence_version"),
         }
     return review

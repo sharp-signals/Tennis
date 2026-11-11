@@ -21,6 +21,9 @@ from src.contextual_shadow_report_v2 import (  # noqa: E402
     render_report_html,
 )
 from src.contextual_shadow_handicap_v2 import EVIDENCE_PATH  # noqa: E402
+from src.contextual_shadow_moneyline_v1 import (  # noqa: E402
+    EVIDENCE_PATH as MONEYLINE_EVIDENCE_PATH,
+)
 from src.contextual_shadow_settlement_v2 import (  # noqa: E402
     MARKET_PATH,
     OBSERVATIONS_PATH,
@@ -49,6 +52,7 @@ def build_previews(
     market_path: Path = MARKET_PATH,
     outcomes_path: Path = OUTCOMES_PATH,
     handicap_evidence_path: Path | None = None,
+    moneyline_evidence_path: Path | None = None,
     max_observations: int = 50,
     expected_model_version: str = MODEL_VERSION,
     report_contract: dict[str, Any] | None = None,
@@ -73,6 +77,16 @@ def build_previews(
         for row in read_jsonl(handicap_evidence_path)
         if row.get("observation_id")
     }
+    if moneyline_evidence_path is None:
+        moneyline_evidence_path = (
+            MONEYLINE_EVIDENCE_PATH if observations_path == OBSERVATIONS_PATH
+            else observations_path.with_name(MONEYLINE_EVIDENCE_PATH.name)
+        )
+    moneyline_evidence = {
+        str(row.get("observation_id")): row
+        for row in read_jsonl(moneyline_evidence_path)
+        if row.get("observation_id")
+    }
     observations.sort(key=lambda row: str(row.get("analyzed_at_utc") or ""), reverse=True)
     if max_observations > 0:
         observations = observations[:max_observations]
@@ -82,6 +96,7 @@ def build_previews(
             markets.get(str(row.get("observation_id"))),
             outcomes.get(str(row.get("observation_id"))),
             handicap_evidence.get(str(row.get("observation_id"))),
+            moneyline_evidence.get(str(row.get("observation_id"))),
             contract=report_contract,
             expected_model_version=expected_model_version,
         )
@@ -104,6 +119,12 @@ def build_previews(
         "with_outcome": sum(view["outcome"]["available"] for view in views),
         "with_handicap_evidence": sum(
             view["market_review"].get("handicap") is not None for view in views
+        ),
+        "with_moneyline_evidence": sum(
+            any(
+                (player.get("moneyline_history") or {}).get("general", {}).get("sample")
+                for player in view["players"].values()
+            ) for view in views
         ),
         "output_dir": str(output_dir),
         "isolation": {
