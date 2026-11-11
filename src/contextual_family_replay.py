@@ -114,6 +114,7 @@ FEATURE_FAMILIES = {
     "contextual_recent_competitiveness_main_v7": "recent_form",
     "contextual_recent_win_quality_main_v7": "recent_form",
     "contextual_recent_tier_win_credit_v7": "recent_form",
+    "contextual_recent_circuit_downshift_v8": "recent_form",
     "current_rank_log_ratio": "structural_strength",
     "rank_change_from_last_observation": "structural_strength",
     "contextual_structural_signal_v1": "structural_strength",
@@ -141,6 +142,9 @@ FEATURE_FAMILIES = {
     "exact_surface_career_margin_shrunk": "surface_conditions",
     "exact_surface_previous_margin_shrunk": "surface_conditions",
     "exact_surface_current_margin_shrunk": "surface_conditions",
+    "exact_surface_tier_win_credit_career_v8": "surface_conditions",
+    "exact_surface_tier_win_credit_previous_v8": "surface_conditions",
+    "exact_surface_tier_win_credit_current_v8": "surface_conditions",
     "h2h_win_share_margin": "matchup_h2h",
     "same_surface_h2h_win_share_margin": "matchup_h2h",
     "contextual_h2h_global_shrunk_v1": "matchup_h2h",
@@ -437,6 +441,51 @@ def _tier_win_credit_summary(
     return weighted_credit / total_weight if total_weight else None, len(eligible)
 
 
+def _competition_level_average(
+    observations: list[dict[str, Any]], *, start: date, end: date,
+) -> tuple[float | None, int]:
+    """Average competition level normalized to the Slam/Finals ceiling."""
+    material = []
+    for row in observations:
+        if not start <= row["event_date"] < end:
+            continue
+        strength = _competition_strength(row.get("competition_level"))
+        if strength is not None:
+            material.append(float(strength) / 4.0)
+    return (sum(material) / len(material), len(material)) if material else (None, 0)
+
+
+def _recent_circuit_downshift(
+    observations: list[dict[str, Any]], *, cutoff: date,
+) -> tuple[float | None, dict[str, Any]]:
+    """Penalize a supported circuit downgrade without rewarding mere entry."""
+    recent_level, recent_sample = _competition_level_average(
+        observations, start=cutoff - timedelta(days=WINDOW_DAYS), end=cutoff,
+    )
+    reference_level, reference_sample = _competition_level_average(
+        observations,
+        start=cutoff - timedelta(days=365),
+        end=cutoff - timedelta(days=WINDOW_DAYS),
+    )
+    if recent_level is None or reference_level is None:
+        return None, {
+            "recent_sample": recent_sample,
+            "reference_sample": reference_sample,
+            "status": "INSUFFICIENT_BILATERAL_WINDOWS",
+        }
+    reliability = min(1.0, recent_sample / 4.0, reference_sample / 8.0)
+    penalty = max(0.0, reference_level - recent_level) * reliability
+    return penalty, {
+        "recent_level": round(recent_level, 6),
+        "reference_level": round(reference_level, 6),
+        "recent_sample": recent_sample,
+        "reference_sample": reference_sample,
+        "reliability": round(reliability, 6),
+        "penalty": round(penalty, 6),
+        "status": "READY",
+    }
+
+
 def _tier_reliable_recent_features(
     observations_a: list[dict[str, Any]],
     observations_b: list[dict[str, Any]],
@@ -567,6 +616,22 @@ def _tier_reliable_recent_features(
         "category_scale": "champion_points_over_2000",
         "challenger_default_points": 100,
     }
+    downshift_a, downshift_audit_a = _recent_circuit_downshift(
+        observations_a, cutoff=cutoff,
+    )
+    downshift_b, downshift_audit_b = _recent_circuit_downshift(
+        observations_b, cutoff=cutoff,
+    )
+    result["contextual_recent_circuit_downshift_v8"] = (
+        float(downshift_b or 0.0) - float(downshift_a or 0.0)
+        if downshift_a is not None or downshift_b is not None else None
+    )
+    audit["circuit_downshift"] = {
+        "a": downshift_audit_a,
+        "b": downshift_audit_b,
+        "direction": "positive_favours_a_when_b_has_larger_downshift",
+        "upgrades_never_receive_positive_credit": True,
+    }
     return result, audit
 
 
@@ -611,6 +676,8 @@ def _exact_surface_features(
     *,
     context: str | None,
     cutoff: date,
+    tier_observations_a: list[dict[str, Any]] | None = None,
+    tier_observations_b: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, float | None], dict[str, Any]]:
     names = (
         "exact_surface_career_margin_raw",
@@ -619,6 +686,9 @@ def _exact_surface_features(
         "exact_surface_career_margin_shrunk",
         "exact_surface_previous_margin_shrunk",
         "exact_surface_current_margin_shrunk",
+        "exact_surface_tier_win_credit_career_v8",
+        "exact_surface_tier_win_credit_previous_v8",
+        "exact_surface_tier_win_credit_current_v8",
     )
     if context not in {
         "hard_outdoor", "hard_indoor", "clay", "grass",
@@ -632,6 +702,36 @@ def _exact_surface_features(
     ledger_b = build_chronological_surface_ledger(
         observations_b, context=context, cutoff=cutoff,
     )
+
+    def tier_credit(
+        observations: list[dict[str, Any]], period: str,
+    ) -> tuple[float | None, int]:
+        rows = [
+            row for row in observations
+            if row.get("surface_context") == context
+            and row["event_date"] < cutoff
+            and (
+                period == "career"
+                or period == "current_season" and row["event_date"].year == cutoff.year
+                or period == "previous_season" and row["event_date"].year == cutoff.year - 1
+            )
+        ]
+        if not rows:
+            return None, 0
+        credit = 0.0
+        for row in rows:
+            if not row.get("won"):
+                continue
+            strength = _competition_strength(row.get("competition_level"))
+            points = _COMPETITION_CHAMPION_POINTS.get(strength or 0, 100.0)
+            credit += points / _MAX_TOURNAMENT_POINTS
+        return credit / len(rows), len(rows)
+
+    tier_periods = ("career", "previous_season", "current_season")
+    tier_source_a = observations_a if tier_observations_a is None else tier_observations_a
+    tier_source_b = observations_b if tier_observations_b is None else tier_observations_b
+    tier_a = {period: tier_credit(tier_source_a, period) for period in tier_periods}
+    tier_b = {period: tier_credit(tier_source_b, period) for period in tier_periods}
     features = {
         names[0]: _difference(
             _ledger_rate(ledger_a, "career"), _ledger_rate(ledger_b, "career"),
@@ -664,12 +764,25 @@ def _exact_surface_features(
                 ledger_b, "current_season", prior_matches=8.0,
             ),
         ),
+        names[6]: _difference(tier_a["career"][0], tier_b["career"][0]),
+        names[7]: _difference(
+            tier_a["previous_season"][0], tier_b["previous_season"][0],
+        ),
+        names[8]: _difference(
+            tier_a["current_season"][0], tier_b["current_season"][0],
+        ),
     }
     return features, {
         "status": "READY",
         "context": context,
         "a": ledger_a,
         "b": ledger_b,
+        "tier_adjusted_win_credit": {
+            "a": {key: {"credit": value[0], "sample": value[1]} for key, value in tier_a.items()},
+            "b": {key: {"credit": value[0], "sample": value[1]} for key, value in tier_b.items()},
+            "scale": "champion_points_over_2000_per_match",
+            "mere_entry_never_receives_positive_credit": True,
+        },
     }
 
 
@@ -1183,6 +1296,8 @@ def build_contextual_target_row(
     exact_surface_features, exact_surface_audit = _exact_surface_features(
         primary_match_history[model_a], primary_match_history[model_b],
         context=target_surface_context, cutoff=cutoff,
+        tier_observations_a=match_history[model_a],
+        tier_observations_b=match_history[model_b],
     )
     model_rank_a, model_rank_b = current_ranks[model_a], current_ranks[model_b]
     candidate_features, equation_audit = _candidate_equation_features(
@@ -1360,6 +1475,8 @@ def build_contextual_family_replay_rows(
             exact_surface_features, exact_surface_audit = _exact_surface_features(
                 primary_match_history[player_a], primary_match_history[player_b],
                 context=surface_context, cutoff=event_date,
+                tier_observations_a=match_history[player_a],
+                tier_observations_b=match_history[player_b],
             )
 
             candidate_features, equation_audit = _candidate_equation_features(

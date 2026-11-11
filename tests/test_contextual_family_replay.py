@@ -1,6 +1,8 @@
 import math
 
 from src.contextual_family_replay import (
+    _exact_surface_features,
+    _recent_circuit_downshift,
     _surface,
     adjust_recent_result_for_loss_context,
     build_contextual_target_row,
@@ -10,6 +12,50 @@ from src.contextual_family_replay import (
 )
 
 import pandas as pd
+
+
+def _observation(day, *, won, level, context="hard_indoor"):
+    return {
+        "event_date": pd.Timestamp(day).date(),
+        "won": won,
+        "competition_level": level,
+        "surface_context": context,
+    }
+
+
+def test_recent_circuit_downshift_penalizes_demotion_but_not_upgrade():
+    cutoff = pd.Timestamp("2026-11-11").date()
+    demoted = [
+        *[_observation(f"2026-0{month}-01", won=True, level="ATP 500") for month in range(1, 7)],
+        *[_observation(f"2026-10-{day:02d}", won=True, level="Challenger 100") for day in range(1, 5)],
+    ]
+    upgraded = [
+        *[_observation(f"2026-0{month}-01", won=True, level="Challenger 100") for month in range(1, 7)],
+        *[_observation(f"2026-10-{day:02d}", won=True, level="ATP 500") for day in range(1, 5)],
+    ]
+    penalty, audit = _recent_circuit_downshift(demoted, cutoff=cutoff)
+    upgrade_penalty, _ = _recent_circuit_downshift(upgraded, cutoff=cutoff)
+    assert penalty is not None and penalty > 0
+    assert audit["status"] == "READY"
+    assert upgrade_penalty == 0.0
+
+
+def test_exact_surface_tier_credit_distinguishes_equal_win_rates_by_level():
+    cutoff = pd.Timestamp("2026-11-11").date()
+    masters = [
+        _observation(f"2026-10-{day:02d}", won=day <= 2, level="Masters 1000")
+        for day in range(1, 5)
+    ]
+    challengers = [
+        _observation(f"2026-10-{day:02d}", won=day <= 2, level="Challenger 100")
+        for day in range(1, 5)
+    ]
+    features, audit = _exact_surface_features(
+        masters, challengers, context="hard_indoor", cutoff=cutoff,
+    )
+    assert features["exact_surface_current_margin_shrunk"] == 0.0
+    assert features["exact_surface_tier_win_credit_current_v8"] > 0
+    assert audit["tier_adjusted_win_credit"]["a"]["current_season"]["sample"] == 4
 
 
 def test_provider_indoor_hard_label_matches_historical_hard_surface():

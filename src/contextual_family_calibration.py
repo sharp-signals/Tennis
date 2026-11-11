@@ -63,6 +63,16 @@ CALIBRATION_FEATURE_PROFILES = {
             "exact_surface_current_margin_shrunk",
         ),
     },
+    "surface_exact_tier_adjusted_v8": {
+        "surface_conditions": (
+            "exact_surface_career_margin_shrunk",
+            "exact_surface_previous_margin_shrunk",
+            "exact_surface_current_margin_shrunk",
+            "exact_surface_tier_win_credit_career_v8",
+            "exact_surface_tier_win_credit_previous_v8",
+            "exact_surface_tier_win_credit_current_v8",
+        ),
+    },
     "h2h_global_shrunk_v1": {
         "matchup_h2h": ("contextual_h2h_global_shrunk_v1",),
     },
@@ -267,6 +277,19 @@ CALIBRATION_FEATURE_PROFILES = {
             "contextual_recent_tier_win_credit_v7",
         ),
     },
+    "recent_tier_context_v8": {
+        "recent_form": (
+            "contextual_recent_result_main_v7",
+            "contextual_recent_competitiveness_main_v7",
+            "contextual_recent_win_quality_v1",
+            "contextual_recent_result_lower_main_v5",
+            "contextual_recent_competitiveness_lower_main_v5",
+            "contextual_recent_result_challenger_v5",
+            "contextual_recent_competitiveness_challenger_v5",
+            "contextual_recent_tier_win_credit_v7",
+            "contextual_recent_circuit_downshift_v8",
+        ),
+    },
 }
 for _alpha in RECENT_LOSS_CONTEXT_GRID_V2:
     CALIBRATION_FEATURE_PROFILES[
@@ -353,12 +376,14 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
         "contextual_v5", "contextual_v6", "contextual_v7", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
         "recent_guarded_v4", "recent_tier_adjusted_v6", "recent_tier_pooled_v7",
+        "recent_tier_context_v8",
         "surface_v2",
         "surface_v3",
         "surface_exact_career_raw",
         "surface_exact_career_previous_raw",
         "surface_exact_career_seasons_raw",
         "surface_exact_career_seasons_shrunk",
+        "surface_exact_tier_adjusted_v8",
         "h2h_global_shrunk_v1",
         "h2h_same_context_modifier_v1",
         "h2h_recent_context_modifier_v1",
@@ -428,6 +453,10 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_recent_competitiveness_main_v7",
             "contextual_recent_win_quality_main_v7",
             "contextual_recent_tier_win_credit_v7",
+            "contextual_recent_circuit_downshift_v8",
+            "exact_surface_tier_win_credit_career_v8",
+            "exact_surface_tier_win_credit_previous_v8",
+            "exact_surface_tier_win_credit_current_v8",
         } or name.startswith("contextual_recent_adjusted_result_loss_")
         for name in columns
     ], dtype=bool)
