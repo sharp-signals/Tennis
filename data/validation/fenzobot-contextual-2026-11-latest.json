@@ -1,12 +1,12 @@
 {
-  "analyzed_at_utc": "2026-11-10T21:56:51+00:00",
+  "analyzed_at_utc": "2026-11-11T00:47:31+00:00",
   "component_versions": {
     "family_combination": "contextual-family-combination-v3-ranking-v6",
     "probability_calibration": "contextual-probability-uncertainty-v3",
     "ranking_model": "contextual-ranking-v6",
-    "runtime_generation": 3
+    "runtime_generation": 4
   },
-  "configuration_fingerprint": "05a0303b93ca8a5abc5edb3adcec235749737c54597a47333bb5bad67e2c707a",
+  "configuration_fingerprint": "287e02c8e3d1a0b6223892b00b4fc15d2b8bd0d8afaf924f8e494fde080bde6c",
   "eligible_main_tour": 5,
   "fixtures_discovered": 13,
   "handicap_evidence_added": 5,
@@ -19,25 +19,33 @@
   },
   "ledger_audit": {
     "counts": {
-      "quality:PRIMARY_READY_SECONDARY_GAPS": 5,
-      "status:READY_FOR_PROSPECTIVE_SHADOW": 5,
-      "universe:atp": 5
+      "quality:PRIMARY_READY_SECONDARY_GAPS": 10,
+      "release:current": 5,
+      "release:historical": 5,
+      "status:NOT_OPERATIONALLY_READY": 3,
+      "status:READY_FOR_PROSPECTIVE_SHADOW": 7,
+      "universe:atp": 10
     },
-    "reason_codes": {},
-    "rows": 5,
+    "reason_codes": {
+      "SINGLE_FAMILY_DEPENDENCE": 3
+    },
+    "rows": 10,
     "status": "HEALTHY",
     "violations": []
   },
   "mode": "PROSPECTIVE_SHADOW_ONLY",
   "model_version": "FENZOBOT_CONTEXTUAL_2026_11",
+  "moneyline_evidence_added": 5,
   "observations_added": 5,
   "observations_built": 5,
-  "rapidapi_calls": 11,
+  "rapidapi_calls": 9,
   "reason_counts": {
-    "READY": 5
+    "READY": 2,
+    "SINGLE_FAMILY_DEPENDENCE": 3
   },
   "schema_version": 1,
   "status_counts": {
-    "READY_FOR_PROSPECTIVE_SHADOW": 5
+    "NOT_OPERATIONALLY_READY": 3,
+    "READY_FOR_PROSPECTIVE_SHADOW": 2
   }
 }
