@@ -10,6 +10,7 @@ from scripts.export_fenzobot_contextual_release import (
 from src.fenzobot_contextual_runtime import (
     _coverage_grade,
     _dependency_grade,
+    _family_lead_authority,
     load_contract,
     predict_fenzobot_contextual,
 )
@@ -38,6 +39,25 @@ def test_leave_one_family_out_dependency_is_graded_not_binary():
     assert _dependency_grade(
         full_probability=0.65, without_probability=0.48, central_side="a",
     ) == "CRITICAL_DEPENDENCE"
+
+
+def test_only_solid_coherent_primary_family_may_legitimately_lead():
+    primary = {
+        "key": "structural_strength",
+        "coverage_grade": "SOLID",
+        "internal_trace": {"features": [
+            {"missing": False, "logit_contribution": -0.8},
+            {"missing": False, "logit_contribution": -0.4},
+            {"missing": False, "logit_contribution": 0.1},
+        ]},
+    }
+    assert _family_lead_authority(primary, contribution=-1.0)["authorised"]
+    secondary = {**primary, "key": "serve_return"}
+    assert not _family_lead_authority(
+        secondary, contribution=-1.0,
+    )["authorised"]
+    partial = {**primary, "coverage_grade": "PARTIAL"}
+    assert not _family_lead_authority(partial, contribution=-1.0)["authorised"]
 
 
 def _row(primary_ready=True, *, context="hard_outdoor"):
@@ -90,15 +110,15 @@ def test_manifest_names_every_internal_component_without_global_version_ambiguit
     )
     assert manifest["global_release_id"] == GLOBAL_RELEASE_ID
     assert manifest["components"] == {
-        "ranking_model": "contextual-ranking-v7",
+        "ranking_model": "contextual-ranking-v7.1",
         "family_combination": "contextual-family-combination-v4-ranking-v7",
         "probability_calibration": "contextual-probability-uncertainty-v4",
-        "runtime_generation": 5,
+        "runtime_generation": 6,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4]
+    ]] == [3, 4, 5]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
@@ -119,12 +139,12 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
         _row(), load_contract(MODEL), universe="atp",
     )
     assert result["global_release_id"] == GLOBAL_RELEASE_ID
-    assert result["component_versions"]["ranking_model"] == "contextual-ranking-v7"
+    assert result["component_versions"]["ranking_model"] == "contextual-ranking-v7.1"
     assert 0.0 < result["probability_model_a"] < 1.0
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 5
+    assert result["runtime_generation"] == 6
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"

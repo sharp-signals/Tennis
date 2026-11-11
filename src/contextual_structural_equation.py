@@ -19,7 +19,7 @@ EQUATION_VERSION_V3 = "structural-context-v3-components"
 EQUATION_VERSION_V4 = "structural-context-v4-rank-bands"
 EQUATION_VERSION_V5 = "structural-context-v5-points-residual"
 EQUATION_VERSION_V6 = "structural-context-v6-representative-ranking"
-EQUATION_VERSION_V7 = "structural-context-v7-return-aware-ranking"
+EQUATION_VERSION_V7 = "structural-context-v7.1-effective-return-contraction"
 
 
 @dataclass(frozen=True)
@@ -695,14 +695,23 @@ def evaluate_structural_strength_v7(
         points_core * bilateral_reliability
         if points_core is not None else None
     )
+    return_active = bool(
+        player_a.get("active_return_phase") or player_b.get("active_return_phase")
+    )
+    effective_rank_core = reliable_rank_core if return_active else material_core
+    effective_points_core = reliable_points_core if return_active else points_core
     friction_a = _return_friction_v7(player_a)
     friction_b = _return_friction_v7(player_b)
     friction_margin = friction_a - friction_b
 
     features = {
-        # Preserve the accepted v6 basis for ordinary players.  The return
-        # context is a sparse interaction and is exactly zero otherwise.
+        # The calibrated rank/points columns must themselves receive the
+        # reliability-contracted values.  Earlier v7 only added residual
+        # columns whose fitted coefficients were zero, so the intended
+        # return protection had no effective influence.
         **dict(base["candidate_features"]),
+        "contextual_structural_material_rank_core_v6": effective_rank_core,
+        "contextual_structural_points_log_ratio_v6": effective_points_core,
         "contextual_structural_return_rank_contraction_v7": (
             None if material_core is None
             else reliable_rank_core - material_core
@@ -738,6 +747,7 @@ def evaluate_structural_strength_v7(
             "return_friction_a": round(friction_a, 6),
             "return_friction_b": round(friction_b, 6),
             "return_friction_margin": round(friction_margin, 6),
+            "return_contraction_active": return_active,
             "return_phase_a": player_a.get("return_phase"),
             "return_phase_b": player_b.get("return_phase"),
             "layoff_days_a": player_a.get("layoff_days"),
@@ -754,6 +764,7 @@ def evaluate_structural_strength_v7(
         "governance": {
             **base["governance"],
             "current_rank_contracts_during_early_return": True,
+            "contraction_applied_to_calibrated_rank_and_points_columns": True,
             "v6_basis_is_preserved_outside_verified_return": True,
             "historical_level_is_context_not_restoration": True,
             "return_context_requires_long_layoff": True,

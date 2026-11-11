@@ -28,6 +28,7 @@ from .contextual_structural_equation import (
 )
 from .contextual_ranking import summarize_return_context, summarize_weekly_rank_history
 from .contextual_surface import (
+    _surface as _canonical_surface,
     _pace as _surface_pace,
     _row_pace,
     _row_venue,
@@ -155,8 +156,8 @@ _MATERIAL_CACHE_LOCK = threading.Lock()
 
 
 def _surface(value: Any) -> str | None:
-    text = str(value or "").strip().casefold()
-    return text or None
+    """Canonicalise provider and historical surface labels identically."""
+    return _canonical_surface(value)
 
 
 def _surface_from_context(context: Any) -> str | None:

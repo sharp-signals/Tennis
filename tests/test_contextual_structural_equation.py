@@ -224,11 +224,16 @@ def test_v7_contracts_current_rank_during_early_return_and_keeps_history_separat
     stable = _player(64, points=859)
     v6 = evaluate_structural_strength_v6(returning, stable)
     v7 = evaluate_structural_strength_v7(returning, stable)
-    assert v7["candidate_features"][
+    assert abs(v7["candidate_features"][
         "contextual_structural_material_rank_core_v6"
-    ] == v6["candidate_features"][
+    ]) < abs(v6["candidate_features"][
         "contextual_structural_material_rank_core_v6"
-    ]
+    ])
+    assert abs(v7["candidate_features"][
+        "contextual_structural_points_log_ratio_v6"
+    ]) < abs(v6["candidate_features"][
+        "contextual_structural_points_log_ratio_v6"
+    ])
     assert v7["candidate_features"][
         "contextual_structural_return_rank_contraction_v7"
     ] > 0
@@ -245,3 +250,14 @@ def test_v7_does_not_restore_old_level_without_active_long_layoff_return():
     assert result["candidate_features"][
         "contextual_structural_return_friction_margin_v7"
     ] == 0.0
+
+
+def test_v7_keeps_v6_rank_and_points_for_players_outside_return_phase():
+    a, b = _player(20, points=1800), _player(60, points=850)
+    v6 = evaluate_structural_strength_v6(a, b)
+    v7 = evaluate_structural_strength_v7(a, b)
+    for key in (
+        "contextual_structural_material_rank_core_v6",
+        "contextual_structural_points_log_ratio_v6",
+    ):
+        assert v7["candidate_features"][key] == v6["candidate_features"][key]

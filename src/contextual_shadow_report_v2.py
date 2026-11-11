@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 from datetime import datetime
+from functools import lru_cache
 import html
 import json
 import math
@@ -14,6 +16,7 @@ from .contextual_shadow_moneyline_v1 import select_moneyline_history
 
 
 CONTRACT_PATH = Path("data/models/contextual-shadow-report-v2.json")
+PLAYER_IMAGES_PATH = Path("data/player_images.json")
 MODEL_VERSION = "contextual-family-shadow-v2"
 
 
@@ -21,7 +24,7 @@ def load_report_contract(
     path: Path = CONTRACT_PATH,
     *,
     expected_model_version: str = MODEL_VERSION,
-    expected_contract_version: str = "contextual-shadow-report-v2.1",
+    expected_contract_version: str = "contextual-shadow-report-v2.2",
 ) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     rules = value.get("rules") or {}
@@ -36,6 +39,8 @@ def load_report_contract(
         or rules.get("main_family_impact_must_use_probability_points") is not True
         or rules.get("technical_logits_must_remain_collapsed") is not True
         or rules.get("dependency_must_be_graded_not_binary") is not True
+        or rules.get("market_divergence_is_diagnostic_only") is not True
+        or rules.get("player_header_must_show_frozen_odds_when_available") is not True
         or rules.get("no_betting_recommendation") is not True
         or rules.get("no_automatic_publication") is not True
     ):
@@ -54,6 +59,61 @@ def _number(value: Any) -> float | None:
 def _display_name(value: Any) -> str:
     text = " ".join(str(value or "").split())
     return text.title() if text else "Jogador N/D"
+
+
+@lru_cache(maxsize=1)
+def _player_images() -> tuple[dict[str, Any], dict[str, Any]]:
+    try:
+        rows = json.loads(PLAYER_IMAGES_PATH.read_text(encoding="utf-8"))["players"]
+    except (OSError, ValueError, KeyError, TypeError):
+        rows = {}
+    by_name = {
+        " ".join(str(item.get("name") or "").casefold().split()): item
+        for item in rows.values() if isinstance(item, Mapping)
+    }
+    return rows, by_name
+
+
+def _player_image_url(tour: Any, player_id: Any, name: Any) -> str | None:
+    rows, by_name = _player_images()
+    item = rows.get(f"{str(tour).casefold()}:{player_id}")
+    if not isinstance(item, Mapping):
+        item = by_name.get(" ".join(str(name or "").casefold().split()))
+    path = str((item or {}).get("path") or "")
+    marker = "assets/players/"
+    if marker not in path:
+        return None
+    filename = path.split(marker, 1)[1]
+    local = Path("docs/assets/players") / filename
+    try:
+        encoded = base64.b64encode(local.read_bytes()).decode("ascii")
+    except OSError:
+        return f"https://sharp-signals.github.io/Tennis/assets/players/{filename}"
+    mime = "image/png" if local.suffix.casefold() == ".png" else "image/jpeg"
+    return f"data:{mime};base64,{encoded}"
+
+
+def _market_plausibility(
+    *, market_probability_a: float | None, interval_a: list[float],
+) -> dict[str, Any]:
+    """Audit market disagreement after prediction without changing pricing."""
+    if market_probability_a is None:
+        return {"status": "UNAVAILABLE", "requires_manual_review": False}
+    lower, upper = interval_a
+    if lower <= market_probability_a <= upper:
+        return {
+            "status": "WITHIN_MODEL_INTERVAL",
+            "requires_manual_review": False,
+            "distance_pp": 0.0,
+        }
+    distance = lower - market_probability_a if market_probability_a < lower else market_probability_a - upper
+    return {
+        "status": "OUTSIDE_MODEL_INTERVAL",
+        "requires_manual_review": True,
+        "market_side": "b" if market_probability_a < lower else "a",
+        "distance_pp": round(100.0 * distance, 2),
+        "rule": "MARKET_PROBABILITY_OUTSIDE_MODEL_90_INTERVAL",
+    }
 
 
 def _display_time(value: Any) -> str:
@@ -111,6 +171,7 @@ def _quality_label(value: Any) -> str:
 def _surface_label(value: Any) -> str:
     key = str(value or "").strip().casefold()
     return {
+        "i.hard": "Rápido indoor",
         "hard_indoor": "Rápido indoor",
         "hard_outdoor": "Rápido outdoor",
         "clay": "Terra batida",
@@ -257,6 +318,11 @@ def build_report_view_model(
                 family.get("impact_intensity")
             ),
             "direction": direction,
+            "direction_name": (
+                _display_name(player_a.get("name")) if direction == "a"
+                else _display_name(player_b.get("name")) if direction == "b"
+                else "Sem vantagem material"
+            ),
             "relative_contribution_pct": (
                 100.0 * abs(contribution) / absolute_total
                 if absolute_total > 0.0 else 0.0
@@ -288,6 +354,10 @@ def build_report_view_model(
         default=(None, {}),
     )[0]
     winner_side = None
+    plausibility = _market_plausibility(
+        market_probability_a=_number(market_probabilities.get("a")),
+        interval_a=interval_a,
+    )
     if isinstance(outcome, Mapping) and (
         outcome.get("observation_id") == observation.get("observation_id")
     ):
@@ -359,6 +429,9 @@ def build_report_view_model(
             "a": {
                 "name": _display_name(player_a.get("name")),
                 "id": player_a.get("id"),
+                "image_url": _player_image_url(
+                    observation.get("tour"), player_a.get("id"), player_a.get("name")
+                ),
                 "probability": probability_a,
                 "interval": interval_a,
                 "fair_odd": _fair_odd(shadow.get("fair_odd_model_a")),
@@ -368,6 +441,9 @@ def build_report_view_model(
             "b": {
                 "name": _display_name(player_b.get("name")),
                 "id": player_b.get("id"),
+                "image_url": _player_image_url(
+                    observation.get("tour"), player_b.get("id"), player_b.get("name")
+                ),
                 "probability": probability_b,
                 "interval": interval_b,
                 "fair_odd": _fair_odd(shadow.get("fair_odd_model_b")),
@@ -398,6 +474,7 @@ def build_report_view_model(
                 if market and market.get("overround") is not None else None
             ),
             "used_for_prediction": False,
+            "plausibility": plausibility,
         },
         "outcome": {
             "available": winner_side in {"a", "b"},
@@ -691,21 +768,20 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         contribution = float(family["impact_pp_model_a"])
         width = min(100.0, float(family["relative_contribution_pct"]))
         direction = family["direction"]
-        probability = family.get("probability_a")
-        probability_text = _pct(probability) if probability is not None else "Sem probabilidade própria"
+        advantage = family.get("direction_name") or "Sem vantagem material"
         families.append(f"""
           <div class="family-row grade-{_e(family['coverage_grade']).lower()}">
             <div class="family-copy">
               <strong>{_e(family['label'])}</strong>
-              <small>{_e(family['coverage_grade_label'])} · impacto {_e(family['impact_intensity_label'])} · {probability_text}</small>
+              <small>{_e(family['coverage_grade_label'])}</small>
             </div>
             <div class="family-scale" aria-label="Contributo relativo da família">
               <span class="axis"></span>
               <span class="bar {direction}" style="--strength:{width:.2f}%"></span>
             </div>
             <div class="family-result {direction}">
-              {('+' if contribution > 0 else '')}{contribution:.1f} p.p.
-              <small>efeito na probabilidade</small>
+              {_e(advantage)}
+              <small>vantagem {_e(family['impact_intensity_label'])}</small>
             </div>
           </div>
           <details class="family-detail"><summary>Ver o que entrou nesta família</summary>
@@ -721,18 +797,32 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     else:
         market_copy = "Cotação pós-previsão ainda indisponível. A previsão mantém-se válida e imutável."
         benchmark_badge = "MERCADO N/D"
+    plausibility = market.get("plausibility") or {}
+    plausibility_html = ""
+    if plausibility.get("requires_manual_review"):
+        market_side = plausibility.get("market_side")
+        market_name = players.get(str(market_side), {}).get("name")
+        plausibility_html = f"""
+        <div class="plausibility-alert"><b>REVISÃO DE PLAUSIBILIDADE</b>
+          <span>O mercado está fora do intervalo de 90% do modelo e favorece
+          mais {_e(market_name)} em {_e(plausibility.get('distance_pp'))} p.p.
+          Esta divergência não altera a fair odd, mas exige rever identidade,
+          dados em falta e calibração antes de qualquer decisão.</span></div>"""
     coverage = view.get("family_coverage") or {}
     solid = coverage.get("solid", coverage.get("observed", 0))
     partial = coverage.get("partial", 0)
     neutral = coverage.get("observed_neutral", 0)
     unavailable = coverage.get("unavailable", 0)
     usable = coverage.get("usable", solid + partial)
+    measured = coverage.get("measured", usable + neutral)
     total = coverage.get("total", 5)
     coverage_pct = coverage.get("pct", 0)
     preferred = max(players, key=lambda side: players[side]["probability"])
     preferred_name = players[preferred]["name"]
     sensitivity = view.get("family_sensitivity") or {}
     dependency_grade = sensitivity.get("dependency_grade") or "ROBUST"
+    lead_authority = sensitivity.get("lead_authority") or {}
+    authorised_lead = bool(lead_authority.get("authorised"))
     favorite_confirmed = dependency_grade == "ROBUST"
     dominant_family = sensitivity.get("dominant_family_if_unstable")
     family_labels = {
@@ -744,6 +834,12 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             f"Estimativa central: {preferred_name} {_pct(players[preferred]['probability'])}. "
             f"Favoritismo não confirmado: ao retirar {family_labels.get(str(dominant_family), dominant_family)}, "
             "o lado favorito muda de forma crítica. Não formular decisão operacional."
+        )
+    elif authorised_lead:
+        direct_read = (
+            f"Estimativa central: {preferred_name} {_pct(players[preferred]['probability'])}. "
+            f"A direção é liderada por {family_labels.get(str(dominant_family), dominant_family)}, "
+            "uma família principal com evidência sólida e componentes internos coerentes."
         )
     elif dependency_grade in {"BALANCED_SENSITIVE", "MATERIAL_DEPENDENCE"}:
         direct_read = (
@@ -770,12 +866,22 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         "MATERIAL_DEPENDENCE": "DEPENDÊNCIA MATERIAL DE UMA FAMÍLIA",
         "CRITICAL_DEPENDENCE": "DEPENDÊNCIA CRÍTICA · BLOQUEADO",
     }.get(dependency_grade, "ROBUSTEZ N/D")
+    if authorised_lead:
+        robustness_title = (
+            "LIDERANÇA PRINCIPAL VÁLIDA · "
+            + family_labels.get(str(dominant_family), str(dominant_family)).upper()
+        )
     robustness_copy = {
         "ROBUST": "Nenhuma família isolada muda o lado favorito.",
         "BALANCED_SENSITIVE": "Uma família muda o lado apenas dentro de uma zona próxima de 50/50.",
         "MATERIAL_DEPENDENCE": "Uma família tem influência material; a faixa de fair odd incorpora essa sensibilidade.",
         "CRITICAL_DEPENDENCE": "Uma família isolada sustenta uma vantagem forte; o jogo fica bloqueado para decisão.",
     }.get(dependency_grade, "Robustez não classificada.")
+    if authorised_lead:
+        robustness_copy = (
+            "A retirada desta família muda o lado favorito, mas a liderança é "
+            "aceite porque a evidência é sólida e não depende de um único componente."
+        )
     top_arguments = view.get("top_arguments") or {}
     argument_chips = []
     for side in ("a", "b"):
@@ -785,6 +891,20 @@ def render_report_html(view: Mapping[str, Any]) -> str:
                 f'<span class="argument side-{side}"><b>{_e(item.get("label"))}</b> '
                 f'{("+" if impact > 0 else "")}{impact:.1f} p.p.</span>'
             )
+    def hero_player(side: str) -> str:
+        player = players[side]
+        image = player.get("image_url")
+        initials = "".join(
+            part[:1] for part in str(player.get("name") or "?").split()[:2]
+        ).upper()
+        portrait = (
+            f'<img src="{_e(image)}" alt="{_e(player.get("name"))}">'
+            if image else f'<span>{_e(initials)}</span>'
+        )
+        odd = _odd((player.get("market") or {}).get("odd"))
+        return f'''<div class="hero-player side-{side}"><div class="portrait">{portrait}</div>
+          <div><h1>{_e(player['name'])}</h1><b>{_pct(player['probability'])} Fenzobot</b>
+          <small>Odd observada {odd}</small></div></div>'''
     return f"""<!doctype html>
 <html lang="pt-PT">
 <head>
@@ -804,6 +924,10 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .hero{{padding:26px}} .context{{text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-size:12px}}
     .versus{{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;margin-top:8px}}
     .versus h1{{font-size:clamp(23px,4vw,40px);line-height:1.05;margin:8px 0}} .versus .right{{text-align:right}}
+    .hero-player{{display:flex;gap:15px;align-items:center}}.hero-player.side-b{{flex-direction:row-reverse;text-align:right}}
+    .hero-player small,.hero-player b{{display:block}}.hero-player small{{color:var(--muted)}}
+    .portrait{{width:76px;height:76px;flex:0 0 76px;border-radius:50%;overflow:hidden;border:3px solid var(--blue);display:grid;place-items:center;background:#173956;font-weight:900;font-size:22px}}
+    .side-b .portrait{{border-color:var(--orange)}}.portrait img{{width:100%;height:100%;object-fit:cover}}
     .vs{{color:var(--muted);font-weight:900;font-size:20px}} .summary{{margin:18px 0 0;border-top:1px solid var(--line);
       padding-top:17px;display:flex;gap:14px;justify-content:space-between;align-items:center}}
     .summary strong{{font-size:18px}} .summary span{{color:var(--muted)}} .section{{margin-top:18px;padding:24px}}
@@ -823,6 +947,8 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .arguments{{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}}.argument{{padding:7px 10px;border-radius:999px;background:#102a45;font-size:12px}}
     .argument.side-a{{border:1px solid var(--blue)}}.argument.side-b{{border:1px solid var(--orange)}}
     .market-note{{margin-top:14px;padding:13px 15px;border-left:3px solid var(--gold);background:#152a3d;color:#c8d8e7}}
+    .plausibility-alert{{margin-top:14px;padding:15px 18px;border:1px solid var(--red);border-radius:12px;background:#361c2a}}
+    .plausibility-alert b,.plausibility-alert span{{display:block}}.plausibility-alert b{{color:#ff9aa6;letter-spacing:.08em}}
     .review-lead{{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:14px}}.review-lead>div{{padding:14px;background:#132f4d;border-radius:11px}}
     .review-lead b,.review-lead strong{{display:block;font-size:21px}}.review-lead span{{color:var(--muted);font-size:11px}}
     .review-grid{{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(0,2fr);gap:14px}}.review-card{{background:#0b2137;border:1px solid var(--line);border-radius:16px;padding:18px}}
@@ -863,8 +989,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
   <div class="topline"><div class="brand">FENZOBOT · {_e(release_label)}</div><div class="shadow-badge">SHADOW · SEM DECISÃO</div></div>
   <section class="hero">
     <div class="context">{_e(view['tour'])} · {_e(view['tier'])} · {_e(view['tournament_name'])} · {_e(view['round_stage'])} · {_e(view['surface_context'])} · {_e(view['commence_time'])}</div>
-    <div class="versus"><div><h1>{_e(players['a']['name'])}</h1><span>Modelo A</span></div><div class="vs">VS</div>
-      <div class="right"><h1>{_e(players['b']['name'])}</h1><span>Modelo B</span></div></div>
+    <div class="versus">{hero_player('a')}<div class="vs">VS</div>{hero_player('b')}</div>
     <div class="summary"><div><strong>LEITURA DIRETA</strong><br><span>{_e(direct_read)}</span></div>
       <div class="market-badge">{benchmark_badge}</div></div>
     <div class="robustness {robustness_class}"><b>{robustness_title}</b><span>{_e(robustness_copy)}</span></div>
@@ -874,19 +999,20 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <div class="section-head"><div><div class="eyebrow">NÚCLEO DE PRICING</div><h2>Probabilidade e fair odd independentes</h2></div></div>
     <div class="pricing-grid">{_player_card('a', players['a'])}{_player_card('b', players['b'])}</div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> {_e(market_copy)}</div>
+    {plausibility_html}
   </section>
   {_market_review_html(view)}
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">QUALIDADE DA EVIDÊNCIA</div><h2>O que foi realmente medido</h2></div></div>
-    <div class="quality"><div class="ring"><strong>{float(coverage_pct):.0f}%</strong><small>{usable}/{total} utilizáveis</small></div>
+    <div class="quality"><div class="ring"><strong>{float(coverage_pct):.0f}%</strong><small>{measured}/{total} avaliadas</small></div>
       <div class="quality-copy"><h3>{_e(view['quality_label'])}</h3><p>{_e(view['model_status_label'])}</p>
-      <p><b>{solid} sólida(s)</b> · <b>{partial} parcial(is)</b> · {neutral} consultada(s) sem ocorrência · {unavailable} indisponível(is).</p>
+      <p><b>{solid} sólida(s)</b> · <b>{partial} parcial(is)</b> · {neutral} consultada(s) sem ocorrência · {unavailable} indisponível(is). Uma consulta sem ocorrência conta como cobertura, mas vale zero no índice.</p>
       <p>Bin histórico de calibração: <b>{_e(view['calibration_bin_sample'])} casos</b>. Evidência parcial alarga a incerteza; dados em falta nunca são tratados como empate.</p></div></div>
   </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">MAPA DAS FAMÍLIAS</div><h2>Direção e contributo para a previsão</h2></div></div>
     {''.join(families)}
-    <div class="market-note">As barras mostram quanto cada família move a probabilidade final, em pontos percentuais. Os coeficientes e logits ficam apenas na auditoria técnica.</div>
+    <div class="market-note">As barras mostram a força relativa de cada família. Os valores técnicos, coeficientes e logits ficam recolhidos na auditoria expandível.</div>
   </section>
   <section class="section">
     <div class="eyebrow">RASTREABILIDADE</div><h2>Contrato e isolamento</h2>

@@ -1,6 +1,7 @@
 import math
 
 from src.contextual_family_replay import (
+    _surface,
     adjust_recent_result_for_loss_context,
     build_contextual_target_row,
     build_contextual_family_replay_rows,
@@ -9,6 +10,12 @@ from src.contextual_family_replay import (
 )
 
 import pandas as pd
+
+
+def test_provider_indoor_hard_label_matches_historical_hard_surface():
+    assert _surface("I.hard") == "hard"
+    assert _surface("Hard") == "hard"
+    assert _surface("hard_indoor") == "hard"
 
 
 def _match(day, winner, loser, *, surface="Hard", winner_rank=20, loser_rank=40,

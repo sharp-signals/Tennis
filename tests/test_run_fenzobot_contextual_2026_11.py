@@ -23,10 +23,10 @@ def test_global_release_empty_run_remains_isolated():
         "global_release_id": "FENZOBOT_CONTEXTUAL_2026_11",
         "configuration_fingerprint": "global-test-fingerprint",
         "components": {
-            "ranking_model": "contextual-ranking-v7",
+            "ranking_model": "contextual-ranking-v7.1",
             "family_combination": "contextual-family-combination-v4-ranking-v7",
             "probability_calibration": "contextual-probability-uncertainty-v4",
-            "runtime_generation": 5,
+            "runtime_generation": 6,
         },
     }
     with (
