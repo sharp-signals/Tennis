@@ -128,6 +128,19 @@ def test_positive_handicap_highlights_total_coverage():
     assert review["handicap"]["lines"][0]["cover_pct"] == 50.0
 
 
+def test_handicap_side_follows_model_even_when_moneyline_value_is_other_side():
+    review = build_market_review(
+        probabilities={"a": 0.57, "b": 0.43},
+        intervals={"a": [0.52, 0.61], "b": [0.39, 0.48]},
+        odds={"a": 1.48, "b": 2.62},
+        evidence_record=_evidence([-2.0, -2.5, -3.0, -3.5]),
+        handicap_side="a",
+    )
+    assert review["candidate_side"] == "b"
+    assert review["handicap"]["side"] == "a"
+    assert review["handicap"]["type"] == "negative"
+
+
 def test_line_without_both_result_states_is_not_declared_ready():
     one_sided = _evidence([-3.0])
     one_sided["handicap_evidence"]["players"]["a"]["lines"]["-3"][

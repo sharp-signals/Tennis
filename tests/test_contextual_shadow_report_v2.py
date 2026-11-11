@@ -218,10 +218,20 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertEqual(view["market_review"]["candidate_side"], "a")
         self.assertEqual(view["market_review"]["handicap"]["type"], "negative")
         html = report.render_report_html(view)
-        self.assertIn("HANDICAP NEGATIVO", html)
+        self.assertIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
         self.assertIn("cobre quando vence", html)
         self.assertIn("SEM ENTRADA AUTOMÁTICA", html)
         self.assertNotIn("<small>logit</small>", html)
+
+    def test_public_report_hides_internal_trace_and_uses_human_labels(self):
+        html = report.render_report_html(
+            report.build_report_view_model(observation(), market())
+        )
+        self.assertNotIn("Contrato e isolamento", html)
+        self.assertNotIn("observation_id", html)
+        self.assertNotIn("configuration_fingerprint", html)
+        self.assertNotIn("contextual_recent_tier_win_credit_v7", html)
+        self.assertIn("Vantagem global", html)
 
     def test_frozen_moneyline_history_shows_general_and_current_band(self):
         view = report.build_report_view_model(

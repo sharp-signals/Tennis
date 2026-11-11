@@ -267,6 +267,7 @@ def _price_line(
 def build_market_review(
     *, probabilities: Mapping[str, float], intervals: Mapping[str, list[float]],
     odds: Mapping[str, float], evidence_record: Mapping[str, Any] | None,
+    handicap_side: str | None = None,
 ) -> dict[str, Any]:
     """Select review markets after prediction; never alter model probability."""
     if not all(side in odds and float(odds[side]) > 1.0 for side in ("a", "b")):
@@ -278,21 +279,28 @@ def build_market_review(
         conservative_ev = 100.0 * (float(intervals[side][0]) * odd - 1.0)
         if central_ev > 0:
             candidates.append((side, central_ev, conservative_ev))
-    if not candidates:
-        return {"status": "NO_POSITIVE_EDGE", "candidate_side": None}
-    side, central_ev, conservative_ev = max(candidates, key=lambda item: item[1])
-    odd = float(odds[side])
-    other = "b" if side == "a" else "a"
-    underdog = odd > float(odds[other])
+    selected = max(candidates, key=lambda item: item[1]) if candidates else None
+    side = selected[0] if selected else None
+    central_ev = selected[1] if selected else None
+    conservative_ev = selected[2] if selected else None
     review = {
-        "status": "CONSERVATIVE_POSITIVE" if conservative_ev > 0 else "CENTRAL_ONLY",
+        "status": (
+            "CONSERVATIVE_POSITIVE" if conservative_ev is not None and conservative_ev > 0
+            else "CENTRAL_ONLY" if selected else "NO_POSITIVE_EDGE"
+        ),
         "candidate_side": side,
-        "central_ev_pct": round(central_ev, 1),
-        "conservative_ev_pct": round(conservative_ev, 1),
+        "central_ev_pct": round(central_ev, 1) if central_ev is not None else None,
+        "conservative_ev_pct": (
+            round(conservative_ev, 1) if conservative_ev is not None else None
+        ),
         "moneyline": None,
         "handicap": None,
     }
-    if INVESTOR_PROFILE_ODDS_LOW <= odd <= INVESTOR_PROFILE_ODDS_HIGH:
+    if side is not None:
+        odd = float(odds[side])
+    else:
+        odd = None
+    if odd is not None and INVESTOR_PROFILE_ODDS_LOW <= odd <= INVESTOR_PROFILE_ODDS_HIGH:
         fair = 1.0 / float(probabilities[side])
         minimum = max(
             INVESTOR_PROFILE_ODDS_LOW,
@@ -304,10 +312,16 @@ def build_market_review(
             "minimum_odd": round(minimum, 2) if minimum <= INVESTOR_PROFILE_ODDS_HIGH else None,
             "maximum_odd": INVESTOR_PROFILE_ODDS_HIGH,
         }
+    handicap_side = handicap_side if handicap_side in {"a", "b"} else side
+    if handicap_side is None:
+        return review
+    handicap_odd = float(odds[handicap_side])
+    handicap_other = "b" if handicap_side == "a" else "a"
+    underdog = handicap_odd > float(odds[handicap_other])
     evidence = (evidence_record or {}).get("handicap_evidence") or {}
-    player_evidence = (evidence.get("players") or {}).get(side) or {}
+    player_evidence = (evidence.get("players") or {}).get(handicap_side) or {}
     match_format = str(evidence.get("format") or "bo3")
-    reference_lines = _reference_lines(odd, match_format, underdog=underdog)
+    reference_lines = _reference_lines(handicap_odd, match_format, underdog=underdog)
     all_relevant_lines = [
         line for line in LINES
         if (line > 0 if underdog else line < 0)
@@ -339,7 +353,7 @@ def build_market_review(
             "loss_cover": int(losses.get("cover") or 0),
             "loss_cover_pct": round(100.0 * int(losses.get("cover") or 0) / loss_n, 1) if loss_n else None,
             "price": _price_line(
-                probability=float(probabilities[side]), line=line, counts=counts,
+                probability=float(probabilities[handicap_side]), line=line, counts=counts,
             ),
         })
     if line_models:
@@ -347,6 +361,7 @@ def build_market_review(
             not item["highlighted"], abs(float(item["line"])),
         ))
         review["handicap"] = {
+            "side": handicap_side,
             "type": "positive" if underdog else "negative",
             "format": match_format.upper(),
             "lines": line_models,

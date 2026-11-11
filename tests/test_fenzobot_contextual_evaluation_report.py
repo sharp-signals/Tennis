@@ -71,7 +71,7 @@ def _contract():
     return report.load_report_contract(
         Path("data/models/fenzobot-contextual-2026-11-report.json"),
         expected_model_version=GLOBAL_RELEASE_ID,
-        expected_contract_version="fenzobot-contextual-2026-11-report.5",
+        expected_contract_version="fenzobot-contextual-2026-11-report.6",
     )
 
 
@@ -90,8 +90,9 @@ class FenzobotContextualEvaluationReportTests(unittest.TestCase):
         )
         html = report.render_report_html(view)
         self.assertIn(GLOBAL_RELEASE_ID, html)
-        self.assertIn("contextual-ranking-v7.1", html)
-        self.assertIn("contextual-probability-uncertainty-v4", html)
+        self.assertNotIn("contextual-ranking-v7.1", html)
+        self.assertNotIn("contextual-probability-uncertainty-v4", html)
+        self.assertNotIn("configuration_fingerprint", html)
         self.assertNotIn("REGISTAR PAPER", html)
         self.assertNotIn("APOSTAR", html)
 

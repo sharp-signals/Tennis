@@ -42,11 +42,22 @@ def load_report_contract(
         or rules.get("market_divergence_is_diagnostic_only") is not True
         or rules.get("player_header_must_show_frozen_odds_when_available") is not True
         or (
-            expected_contract_version == "fenzobot-contextual-2026-11-report.5"
+            expected_contract_version in {
+                "fenzobot-contextual-2026-11-report.5",
+                "fenzobot-contextual-2026-11-report.6",
+            }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
                 or rules.get("first_market_snapshot_must_be_used_for_evaluation") is not True
                 or rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
+            )
+        )
+        or (
+            expected_contract_version == "fenzobot-contextual-2026-11-report.6"
+            and (
+                rules.get("handicap_references_must_follow_model_side") is not True
+                or rules.get("public_family_details_must_use_human_labels") is not True
+                or rules.get("public_report_must_hide_internal_identifiers") is not True
             )
         )
         or rules.get("no_betting_recommendation") is not True
@@ -378,6 +389,7 @@ def build_report_view_model(
             if side in {"a", "b"} and _number(value) is not None
         },
         evidence_record=handicap_evidence if valid_handicap_evidence else None,
+        handicap_side="a" if probability_a >= probability_b else "b",
     )
     match_format = str(
         ((handicap_evidence or {}).get("handicap_evidence") or {}).get("format")
@@ -538,6 +550,8 @@ _FEATURE_LABELS = {
     "contextual_recent_result_main_v7": "Resultados recentes · circuito principal",
     "contextual_recent_competitiveness_main_v7": "Competitividade · circuito principal",
     "contextual_recent_win_quality_main_v7": "Vitórias de qualidade · circuito principal",
+    "contextual_recent_tier_win_credit_v7": "Qualidade das vitórias ajustada ao nível",
+    "contextual_recent_circuit_downshift_v8": "Mudança recente de nível competitivo",
     "contextual_structural_material_rank_core_v6": "Distância material de ranking",
     "contextual_structural_representative_rank_core_v6": "Ranking representativo",
     "contextual_structural_points_log_ratio_v6": "Diferença de pontos",
@@ -550,6 +564,9 @@ _FEATURE_LABELS = {
     "exact_surface_career_margin_shrunk": "Carreira neste piso",
     "exact_surface_previous_margin_shrunk": "Época anterior neste piso",
     "exact_surface_current_margin_shrunk": "Época atual neste piso",
+    "exact_surface_tier_win_credit_career_v8": "Qualidade no piso · carreira",
+    "exact_surface_tier_win_credit_previous_v8": "Qualidade no piso · época anterior",
+    "exact_surface_tier_win_credit_current_v8": "Qualidade no piso · época atual",
     "contextual_h2h_global_shrunk_v1": "Confronto direto global",
     "service_points_won_surface_margin_shrunk_v1": "Serviço no piso",
     "return_points_won_surface_margin_shrunk_v1": "Resposta no piso",
@@ -563,11 +580,49 @@ def _feature_label(value: Any) -> str:
     return _FEATURE_LABELS.get(key, key.replace("_", " ").strip().title())
 
 
-def _family_detail_html(family: Mapping[str, Any]) -> str:
+def _factor_strength_label(share: float) -> str:
+    if share >= 0.45:
+        return "fator dominante nesta família"
+    if share >= 0.25:
+        return "impacto forte"
+    if share >= 0.10:
+        return "impacto moderado"
+    if share > 0.0:
+        return "impacto ligeiro"
+    return "sem impacto material"
+
+
+def _context_value(label: str, value: Any) -> str:
+    number = _number(value)
+    if number is None:
+        return "N/D"
+    if label in {
+        "Ranking atual", "Pontos atuais", "Melhor ranking observado",
+        "Jogos desde o regresso",
+    }:
+        return str(int(round(number)))
+    if label in {"Confiança no ranking atual", "Representatividade"}:
+        return f"{100.0 * number:.0f}%"
+    return f"{number:.1f}"
+
+
+def _family_detail_html(
+    family: Mapping[str, Any], players: Mapping[str, Mapping[str, Any]],
+) -> str:
     trace = family.get("internal_trace") or {}
     features = trace.get("features") or []
     if not features:
         return '<p class="family-detail-empty">Sem decomposição adicional disponível.</p>'
+    active_totals = []
+    for feature in features:
+        if feature.get("missing"):
+            continue
+        total = (
+            (_number(feature.get("logit_contribution")) or 0.0)
+            + (_number(feature.get("missing_logit_contribution")) or 0.0)
+        )
+        active_totals.append(abs(total))
+    absolute_total = sum(active_totals)
     rows = []
     for feature in features:
         missing = bool(feature.get("missing"))
@@ -577,10 +632,27 @@ def _family_detail_html(family: Mapping[str, Any]) -> str:
         ) or 0.0
         total = contribution + missing_contribution
         side = "A" if total > 1e-9 else "B" if total < -1e-9 else "—"
-        value = "Sem dado" if missing else _e(feature.get("raw_value"))
+        direction = side.casefold() if side != "—" else "neutral"
+        if missing:
+            result = "Sem dados · sem leitura factual"
+            strength = ""
+            width = 0.0
+            direction = "missing"
+        elif side == "—":
+            result = "Sem vantagem material"
+            strength = "sem impacto material"
+            width = 0.0
+        else:
+            player = players[side.casefold()]
+            share = abs(total) / absolute_total if absolute_total else 0.0
+            result = f"Favorece {player['name']}"
+            strength = _factor_strength_label(share)
+            width = min(100.0, 100.0 * share)
         rows.append(
-            f'<div class="factor-row"><span>{_e(_feature_label(feature.get("key")))}</span>'
-            f'<b>{value}</b><i class="factor-{side.casefold()}">{side} · {total:+.3f}</i></div>'
+            f'<div class="factor-row factor-{direction}">'
+            f'<span class="factor-name">{_e(_feature_label(feature.get("key")))}</span>'
+            f'<div class="factor-visual"><span class="factor-fill" style="--factor-width:{width:.1f}%"></span></div>'
+            f'<b>{_e(result)}</b><small>{_e(strength)}</small></div>'
         )
     context = family.get("context_audit") or {}
     components = context.get("components") or {}
@@ -600,7 +672,9 @@ def _family_detail_html(family: Mapping[str, Any]) -> str:
         for label, key_a, key_b in fields:
             if key_a in components or key_b in components:
                 items.append(
-                    f'<div><span>{_e(label)}</span><b>A: {_e(components.get(key_a))} · B: {_e(components.get(key_b))}</b></div>'
+                    f'<div><span>{_e(label)}</span><b>'
+                    f'{_e(players["a"]["name"])} {_e(_context_value(label, components.get(key_a)))} · '
+                    f'{_e(players["b"]["name"])} {_e(_context_value(label, components.get(key_b)))}</b></div>'
                 )
         if items:
             structural = f'<div class="context-grid">{"".join(items)}</div>'
@@ -681,7 +755,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             '<div class="review-empty"><b>Mercados não formulados.</b> '
             "O lado favorito muda quando se retira uma única família. A estimativa central permanece visível para auditoria, mas não é robusta o suficiente para gerar uma seleção Moneyline ou handicap.</div>"
         )
-    elif status == "NO_POSITIVE_EDGE":
+    elif status == "NO_POSITIVE_EDGE" and not isinstance(review.get("handicap"), Mapping):
         body = (
             '<div class="review-empty"><b>Sem edge central positivo.</b> '
             "O relatório mantém a leitura factual, mas não destaca um mercado."
@@ -713,6 +787,8 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
               </article>""")
         handicap = review.get("handicap")
         if isinstance(handicap, Mapping):
+            handicap_side = str(handicap.get("side") or side)
+            handicap_player = (view.get("players") or {}).get(handicap_side) or {}
             positive = handicap.get("type") == "positive"
             highlighted_cards = []
             remaining_cards = []
@@ -748,7 +824,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                 )
                 line_card = f"""
                   <div class="line-card">
-                    <div class="line-name">{_e(player.get('name'))} {_e(line.get('line'))}</div>
+                    <div class="line-name">{_e(line.get('line'))}</div>
                     <strong>{primary}</strong><small>{secondary}</small>
                     <small>{losses}</small><small>Amostra total: {_e(line.get('total'))} jogos</small>
                     <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>{_e(zone)}</b></div>
@@ -765,7 +841,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             )
             cards.append(f"""
               <article class="review-card handicap-card">
-                <div class="review-type">HANDICAP {'POSITIVO' if positive else 'NEGATIVO'} · {_e(handicap.get('format'))}</div>
+                <div class="review-type">HANDICAPS DE {_e(handicap_player.get('name')).upper()} · {'POSITIVOS' if positive else 'NEGATIVOS'} · {_e(handicap.get('format'))}</div>
                 <p class="line-intro">Linhas principais para leitura imediata. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
                 <div class="line-grid">{''.join(highlighted_cards)}</div>{remaining}
               </article>""")
@@ -775,10 +851,15 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                 "está na janela Moneyline e não existe evidência de handicap "
                 "congelada para esta observação.</div>"
             )
+        lead = (
+            f'<div><b>Valor Moneyline: {_e(player.get("name"))}</b><span>{_e(confidence)}</span></div>'
+            f'<div><strong>{_signed(review.get("central_ev_pct"), "%")}</strong><span>EV central</span></div>'
+            f'<div><strong>{_signed(review.get("conservative_ev_pct"), "%")}</strong><span>EV conservador</span></div>'
+            if side else
+            '<div class="review-no-ml"><b>Sem edge Moneyline positivo</b><span>Os handicaps abaixo pertencem ao lado indicado pelo modelo.</span></div>'
+        )
         body = f"""
-          <div class="review-lead"><div><b>{_e(player.get('name'))}</b><span>{_e(confidence)}</span></div>
-            <div><strong>{_signed(review.get('central_ev_pct'), '%')}</strong><span>EV central</span></div>
-            <div><strong>{_signed(review.get('conservative_ev_pct'), '%')}</strong><span>EV conservador</span></div></div>
+          <div class="review-lead">{lead}</div>
           <div class="review-grid">{''.join(cards)}</div>"""
     return f"""
       <section class="section market-review">
@@ -794,7 +875,6 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     release_label = (
         view.get("global_release_id") or "CONTEXTUAL V2"
     )
-    components = view.get("component_versions") or {}
     players = view["players"]
     families = []
     for family in view["families"]:
@@ -802,6 +882,15 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         width = min(100.0, float(family["relative_contribution_pct"]))
         direction = family["direction"]
         advantage = family.get("direction_name") or "Sem vantagem material"
+        intensity = {
+            "forte": "forte",
+            "moderado": "moderada",
+            "ligeiro": "ligeira",
+            "neutro": "neutra",
+        }.get(
+            str(family.get("impact_intensity_label") or "").casefold(),
+            str(family.get("impact_intensity_label") or "N/D"),
+        )
         families.append(f"""
           <div class="family-row grade-{_e(family['coverage_grade']).lower()}">
             <div class="family-copy">
@@ -814,11 +903,11 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             </div>
             <div class="family-result {direction}">
               {_e(advantage)}
-              <small>vantagem {_e(family['impact_intensity_label'])}</small>
+              <small>vantagem {_e(intensity)}</small>
             </div>
           </div>
           <details class="family-detail"><summary>Ver o que entrou nesta família</summary>
-            {_family_detail_html(family)}
+            {_family_detail_html(family, players)}
           </details>""")
     market = view["market"]
     if market["available"]:
@@ -904,10 +993,9 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             "tratá-la como operacionalmente pronta."
         )
     title = f"{players['a']['name']} vs {players['b']['name']}"
-    reasons = ", ".join(view["reason_codes"]) or "Sem bloqueios estruturais"
     robustness_class = "confirmed" if favorite_confirmed else "unstable"
     robustness_title = {
-        "ROBUST": "FAVORITISMO ROBUSTO",
+        "ROBUST": "LEITURA ESTÁVEL",
         "BALANCED_SENSITIVE": "JOGO EQUILIBRADO · LEITURA SENSÍVEL",
         "MATERIAL_DEPENDENCE": "DEPENDÊNCIA MATERIAL DE UMA FAMÍLIA",
         "CRITICAL_DEPENDENCE": "DEPENDÊNCIA CRÍTICA · BLOQUEADO",
@@ -928,15 +1016,32 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             "A retirada desta família muda o lado favorito, mas a liderança é "
             "aceite porque a evidência é sólida e não depende de um único componente."
         )
-    top_arguments = view.get("top_arguments") or {}
-    argument_chips = []
+    direction_counts = {
+        "a": sum(1 for item in view["families"] if item.get("direction") == "a"),
+        "b": sum(1 for item in view["families"] if item.get("direction") == "b"),
+        "neutral": sum(
+            1 for item in view["families"] if item.get("direction") == "neutral"
+        ),
+    }
+    favorite_margin = abs(float(players[preferred]["probability"]) - 0.5)
+    global_intensity = (
+        "forte" if favorite_margin >= 0.12
+        else "moderada" if favorite_margin >= 0.07
+        else "ligeira" if favorite_margin >= 0.03
+        else "equilibrada"
+    )
+    consensus_items = []
     for side in ("a", "b"):
-        for item in top_arguments.get(side) or []:
-            impact = float(item.get("impact_pp_model_a") or 0.0)
-            argument_chips.append(
-                f'<span class="argument side-{side}"><b>{_e(item.get("label"))}</b> '
-                f'{("+" if impact > 0 else "")}{impact:.1f} p.p.</span>'
+        if direction_counts[side]:
+            consensus_items.append(
+                f'<div class="consensus-side side-{side}"><strong>{direction_counts[side]}</strong>'
+                f'<span>família(s) favorecem<br>{_e(players[side]["name"])}</span></div>'
             )
+    if direction_counts["neutral"]:
+        consensus_items.append(
+            f'<div class="consensus-side neutral"><strong>{direction_counts["neutral"]}</strong>'
+            '<span>família(s)<br>neutras</span></div>'
+        )
     def hero_player(side: str) -> str:
         player = players[side]
         image = player.get("image_url")
@@ -1003,19 +1108,24 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .ml-history span,.ml-history small{{display:block;color:var(--muted);font-size:10px}}.ml-history b{{display:block;margin:3px 0;font-size:16px}}
     .robustness{{margin-top:18px;padding:15px 18px;border-radius:14px;border:1px solid var(--cyan);background:#0a2b35}}
     .robustness.unstable{{border-color:var(--gold);background:#322914}}.robustness b{{display:block;letter-spacing:.08em}}.robustness span{{color:#c8d8e7}}
-    .arguments{{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}}.argument{{padding:7px 10px;border-radius:999px;background:#102a45;font-size:12px}}
-    .argument.side-a{{border:1px solid var(--blue)}}.argument.side-b{{border:1px solid var(--orange)}}
+    .consensus{{display:grid;grid-template-columns:minmax(220px,1.4fr) repeat(3,minmax(130px,1fr));gap:9px;margin-top:13px}}
+    .consensus-summary,.consensus-side{{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}}
+    .consensus-summary b,.consensus-summary span,.consensus-side strong,.consensus-side span{{display:block}}
+    .consensus-summary span,.consensus-side span{{color:var(--muted);font-size:11px}}.consensus-side strong{{font-size:24px}}
+    .consensus-side.side-a{{border-color:var(--blue)}}.consensus-side.side-b{{border-color:var(--orange)}}
     .market-note{{margin-top:14px;padding:13px 15px;border-left:3px solid var(--gold);background:#152a3d;color:#c8d8e7}}
     .plausibility-alert{{margin-top:14px;padding:15px 18px;border:1px solid var(--red);border-radius:12px;background:#361c2a}}
     .plausibility-alert b,.plausibility-alert span{{display:block}}.plausibility-alert b{{color:#ff9aa6;letter-spacing:.08em}}
     .review-lead{{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:14px}}.review-lead>div{{padding:14px;background:#132f4d;border-radius:11px}}
+    .review-lead .review-no-ml{{grid-column:1/-1}}
     .review-lead b,.review-lead strong{{display:block;font-size:21px}}.review-lead span{{color:var(--muted);font-size:11px}}
     .review-grid{{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(0,2fr);gap:14px}}.review-card{{background:#0b2137;border:1px solid var(--line);border-radius:16px;padding:18px}}
+    .handicap-card{{grid-column:1/-1}}
     .review-type{{color:var(--cyan);font-size:10px;font-weight:900;letter-spacing:.12em}}.review-big{{font-size:38px;font-weight:950}}
     .review-card p,.line-card small{{color:var(--muted)}}.price-zone,.line-zone{{margin-top:12px;padding:10px;background:#132f4d;border-radius:9px}}
     .price-zone span,.line-zone span{{display:block;color:var(--muted);font-size:9px;letter-spacing:.08em}}.price-zone b,.line-zone b{{font-size:16px}}
-    .line-grid{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}}.line-card{{padding:13px;background:#102a45;border:1px solid #285171;border-radius:11px}}
-    .line-card strong,.line-card small{{display:block}}.line-name{{font-weight:900;font-size:17px;margin-bottom:7px}}.line-intro{{color:var(--muted);margin:8px 0 0}}
+    .line-grid{{display:grid;grid-template-columns:repeat(4,minmax(175px,1fr));gap:9px;margin-top:12px}}.line-card{{padding:13px;background:#102a45;border:1px solid #285171;border-radius:11px}}
+    .line-card strong,.line-card small{{display:block}}.line-card strong{{font-size:17px;line-height:1.2}}.line-name{{font-weight:950;font-size:23px;margin-bottom:7px;color:var(--cyan)}}.line-intro{{color:var(--muted);margin:8px 0 0}}
     .all-lines{{margin-top:14px}}.all-lines summary,.family-detail summary{{color:var(--cyan);font-weight:800}}.full-lines{{grid-template-columns:repeat(4,minmax(0,1fr))}}
     .review-empty{{padding:20px;border:1px dashed #54718a;border-radius:14px;color:var(--muted)}}
     .quality{{display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:center}} .ring{{width:140px;height:140px;border-radius:50%;
@@ -1031,17 +1141,18 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .grade-unavailable{{opacity:.55}} .grade-observed_neutral .family-scale{{opacity:.6}}
     .family-result{{text-align:right;font-weight:900}} .family-result.a{{color:var(--blue)}} .family-result.b{{color:var(--orange)}}
     .family-detail{{margin:0 0 8px;padding:10px 0 13px;border-top:0;border-bottom:1px solid #1b3a55}}.factor-table{{display:grid;gap:6px;margin-top:10px}}
-    .factor-row{{display:grid;grid-template-columns:2fr 1fr 100px;gap:10px;padding:8px 10px;background:#091b2c;border-radius:8px;align-items:center}}
-    .factor-row b{{font-size:12px}}.factor-row i{{font-style:normal;text-align:right;font-weight:800}}.factor-a{{color:var(--blue)}}.factor-b{{color:var(--orange)}}
+    .factor-row{{display:grid;grid-template-columns:minmax(210px,1.4fr) minmax(150px,1fr) minmax(180px,1fr) 130px;gap:12px;padding:10px;background:#091b2c;border-radius:8px;align-items:center}}
+    .factor-row b{{font-size:12px}}.factor-row small{{color:var(--muted);font-size:10px}}.factor-visual{{height:9px;border-radius:8px;background:#173956;overflow:hidden}}
+    .factor-fill{{display:block;height:100%;width:var(--factor-width);background:var(--blue);border-radius:8px}}.factor-b .factor-fill{{background:var(--orange)}}
+    .factor-a b{{color:var(--blue)}}.factor-b b{{color:var(--orange)}}.factor-missing{{opacity:.62}}
     .context-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:9px}}.context-grid div{{padding:9px;background:#132f4d;border-radius:8px}}
     .context-grid span,.context-grid b{{display:block;font-size:11px}}.context-grid span{{color:var(--muted)}}.family-detail-empty{{color:var(--muted)}}
     details{{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}} summary{{cursor:pointer;color:var(--muted)}}
-    .trace{{margin-top:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-family:ui-monospace,Consolas,monospace;font-size:11px}}
-    .trace div{{padding:10px;background:#091b2c;border-radius:8px;overflow-wrap:anywhere}} .foot{{color:var(--muted);text-align:center;margin-top:18px;font-size:12px}}
+    .foot{{color:var(--muted);text-align:center;margin-top:18px;font-size:12px}}
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
       .versus .right{{text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
-      .review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}.factor-row i{{text-align:left}}}}
+      .consensus,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}}}
   </style>
 </head>
 <body><main class="shell">
@@ -1052,7 +1163,8 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <div class="summary"><div><strong>LEITURA DIRETA</strong><br><span>{_e(direct_read)}</span></div>
       <div class="market-badge">{benchmark_badge}</div></div>
     <div class="robustness {robustness_class}"><b>{robustness_title}</b><span>{_e(robustness_copy)}</span></div>
-    <div class="arguments">{''.join(argument_chips)}</div>
+    <div class="consensus"><div class="consensus-summary"><b>Vantagem global {_e(global_intensity)}</b>
+      <span>A direção conta; a intensidade de cada família determina quanto pesa.</span></div>{''.join(consensus_items)}</div>
   </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">NÚCLEO DE PRICING</div><h2>Probabilidade e fair odd independentes</h2></div></div>
@@ -1071,20 +1183,9 @@ def render_report_html(view: Mapping[str, Any]) -> str:
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">MAPA DAS FAMÍLIAS</div><h2>Direção e contributo para a previsão</h2></div></div>
     {''.join(families)}
-    <div class="market-note">As barras mostram a força relativa de cada família. Os valores técnicos, coeficientes e logits ficam recolhidos na auditoria expandível.</div>
+    <div class="market-note">As barras mostram a força relativa dentro de cada família. Ao abrir uma família, o relatório identifica em linguagem simples que fator favorece cada jogador e com que intensidade.</div>
   </section>
-  <section class="section">
-    <div class="eyebrow">RASTREABILIDADE</div><h2>Contrato e isolamento</h2>
-    <p>Razões técnicas: {_e(reasons)}. Este preview não cria entradas, não altera previsões e não é publicado como relatório operacional.</p>
-    <details><summary>Ver identificação técnica completa</summary><div class="trace">
-      <div>observation_id<br>{_e(view['observation_id'])}</div><div>canonical_match_instance_id<br>{_e(view['canonical_match_instance_id'])}</div>
-      <div>model_version<br>{_e(view['model_version'])}</div><div>contract_version<br>{_e(view['contract_version'])}</div>
-      <div>ranking_model<br>{_e(components.get('ranking_model'))}</div><div>family_combination<br>{_e(components.get('family_combination'))}</div>
-      <div>probability_calibration<br>{_e(components.get('probability_calibration'))}</div><div>runtime_generation<br>{_e(components.get('runtime_generation'))}</div>
-      <div>configuration_fingerprint<br>{_e(view['configuration_fingerprint'])}</div><div>previsão congelada<br>{_e(view['analyzed_at'])}</div>
-    </div></details>
-  </section>
-  <p class="foot">Protótipo visual isolado · não representa recomendação de aposta · mercado nunca entra na probabilidade Fenzobot.</p>
+  <p class="foot">Modelo em validação prospetiva · o mercado nunca entra na probabilidade Fenzobot · sem entrada automática.</p>
 </main></body></html>"""
 
 
