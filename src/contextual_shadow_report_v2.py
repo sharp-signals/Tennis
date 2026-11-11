@@ -41,6 +41,14 @@ def load_report_contract(
         or rules.get("dependency_must_be_graded_not_binary") is not True
         or rules.get("market_divergence_is_diagnostic_only") is not True
         or rules.get("player_header_must_show_frozen_odds_when_available") is not True
+        or (
+            expected_contract_version == "fenzobot-contextual-2026-11-report.5"
+            and (
+                rules.get("latest_market_snapshot_must_be_used_for_display") is not True
+                or rules.get("first_market_snapshot_must_be_used_for_evaluation") is not True
+                or rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
+            )
+        )
         or rules.get("no_betting_recommendation") is not True
         or rules.get("no_automatic_publication") is not True
     ):
@@ -469,6 +477,8 @@ def build_report_view_model(
             "bookmaker": (market or {}).get("bookmaker"),
             "source": (market or {}).get("source"),
             "captured_at": _display_time((market or {}).get("captured_at_utc")),
+            "quote_snapshots": int((market or {}).get("quote_snapshots") or 0),
+            "previous_quote": dict((market or {}).get("previous_quote") or {}),
             "overround_pct": (
                 100.0 * float(market["overround"])
                 if market and market.get("overround") is not None else None
@@ -594,6 +604,17 @@ def _family_detail_html(family: Mapping[str, Any]) -> str:
                 )
         if items:
             structural = f'<div class="context-grid">{"".join(items)}</div>'
+    if family.get("key") == "matchup_h2h" and context:
+        h2h_items = (
+            ("H2H factual encontrado", context.get("raw_matches")),
+            ("H2H competitivo usado", context.get("eligible_matches")),
+            ("No piso atual", context.get("eligible_surface_matches")),
+            ("Exibições excluídas do cálculo", context.get("excluded_non_competitive")),
+        )
+        structural += '<div class="context-grid">' + ''.join(
+            f'<div><span>{_e(label)}</span><b>{_e(value)}</b></div>'
+            for label, value in h2h_items if value is not None
+        ) + '</div>'
     return f'<div class="factor-table">{"".join(rows)}</div>{structural}'
 
 
@@ -802,9 +823,22 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     market = view["market"]
     if market["available"]:
         market_copy = (
-            f"Primeira cotação válida congelada · {_e(market['bookmaker'])} · "
+            f"Cotação mais recente desta execução · {_e(market['bookmaker'])} · "
             f"{_e(market['source'])} · {_e(market['captured_at'])}"
         )
+        previous_quote = market.get("previous_quote") or {}
+        previous_odds = previous_quote.get("odds") or {}
+        if previous_odds:
+            movement = []
+            for side in ("a", "b"):
+                old = _number(previous_odds.get(side))
+                current = _number((players[side].get("market") or {}).get("odd"))
+                if old is not None and current is not None:
+                    movement.append(
+                        f"{players[side]['name']}: {old:.2f} → {current:.2f}"
+                    )
+            if movement:
+                market_copy += " · Movimento desde a leitura anterior: " + " | ".join(movement)
         benchmark_badge = "BENCHMARK DISPONÍVEL"
     else:
         market_copy = "Cotação pós-previsão ainda indisponível. A previsão mantém-se válida e imutável."
@@ -914,9 +948,21 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             if image else f'<span>{_e(initials)}</span>'
         )
         odd = _odd((player.get("market") or {}).get("odd"))
+        fair = _odd((player.get("fair_odd") or {}).get("central"))
+        central_ev = _number((player.get("market") or {}).get("expected_value_pct"))
+        conservative_ev = _number(
+            (player.get("market") or {}).get("conservative_expected_value_pct")
+        )
+        value_label = (
+            "VALOR CONSERVADOR"
+            if conservative_ev is not None and conservative_ev > 0
+            else "VALOR CENTRAL"
+            if central_ev is not None and central_ev > 0
+            else "SEM EDGE POSITIVO"
+        )
         return f'''<div class="hero-player side-{side}"><div class="portrait">{portrait}</div>
           <div><h1>{_e(player['name'])}</h1><b>{_pct(player['probability'])} Fenzobot</b>
-          <small>Odd observada {odd}</small></div></div>'''
+          <small>Fair {fair} · Mercado {odd}</small><em>{value_label}</em></div></div>'''
     return f"""<!doctype html>
 <html lang="pt-PT">
 <head>
@@ -938,6 +984,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .versus h1{{font-size:clamp(23px,4vw,40px);line-height:1.05;margin:8px 0}} .versus .right{{text-align:right}}
     .hero-player{{display:flex;gap:15px;align-items:center}}.hero-player.side-b{{flex-direction:row-reverse;text-align:right}}
     .hero-player small,.hero-player b{{display:block}}.hero-player small{{color:var(--muted)}}
+    .hero-player em{{display:inline-block;margin-top:5px;padding:4px 7px;border-radius:999px;background:#173956;color:var(--cyan);font-size:9px;font-style:normal;font-weight:900;letter-spacing:.06em}}
     .portrait{{width:76px;height:76px;flex:0 0 76px;border-radius:50%;overflow:hidden;border:3px solid var(--blue);display:grid;place-items:center;background:#173956;font-weight:900;font-size:22px}}
     .side-b .portrait{{border-color:var(--orange)}}.portrait img{{width:100%;height:100%;object-fit:cover}}
     .vs{{color:var(--muted);font-weight:900;font-size:20px}} .summary{{margin:18px 0 0;border-top:1px solid var(--line);
@@ -967,9 +1014,9 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .review-type{{color:var(--cyan);font-size:10px;font-weight:900;letter-spacing:.12em}}.review-big{{font-size:38px;font-weight:950}}
     .review-card p,.line-card small{{color:var(--muted)}}.price-zone,.line-zone{{margin-top:12px;padding:10px;background:#132f4d;border-radius:9px}}
     .price-zone span,.line-zone span{{display:block;color:var(--muted);font-size:9px;letter-spacing:.08em}}.price-zone b,.line-zone b{{font-size:16px}}
-    .line-grid{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}}.line-card{{padding:13px;background:#102a45;border:1px solid #285171;border-radius:11px}}
+    .line-grid{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}}.line-card{{padding:13px;background:#102a45;border:1px solid #285171;border-radius:11px}}
     .line-card strong,.line-card small{{display:block}}.line-name{{font-weight:900;font-size:17px;margin-bottom:7px}}.line-intro{{color:var(--muted);margin:8px 0 0}}
-    .all-lines{{margin-top:14px}}.all-lines summary,.family-detail summary{{color:var(--cyan);font-weight:800}}.full-lines{{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    .all-lines{{margin-top:14px}}.all-lines summary,.family-detail summary{{color:var(--cyan);font-weight:800}}.full-lines{{grid-template-columns:repeat(4,minmax(0,1fr))}}
     .review-empty{{padding:20px;border:1px dashed #54718a;border-radius:14px;color:var(--muted)}}
     .quality{{display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:center}} .ring{{width:140px;height:140px;border-radius:50%;
       display:grid;place-content:center;text-align:center;background:conic-gradient(var(--cyan) {float(coverage_pct):.1f}%,#16334d 0);

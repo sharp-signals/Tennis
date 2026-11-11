@@ -271,6 +271,8 @@ def predict_fenzobot_contextual(
                 if family == "structural_strength"
                 else dict(equation_audit.get("recent_form_v1") or {})
                 if family == "recent_form"
+                else dict(equation_audit.get("matchup_h2h") or {})
+                if family == "matchup_h2h"
                 else {}
             ),
         }

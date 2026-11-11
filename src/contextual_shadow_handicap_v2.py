@@ -210,11 +210,10 @@ def _reference_lines(odd: float, match_format: str, *, underdog: bool) -> list[f
         pair = next((lines for threshold, lines in _UNDERDOG_REFERENCE if odd >= threshold), ())
         if not pair:
             return []
-        return list(dict.fromkeys((*pair, pair[-1] + 0.5)))
+        return list(dict.fromkeys((*pair, pair[-1] + 0.5, pair[-1] + 1.0)))
     for low, high, pair in _FAVOURITE_REFERENCE.get(match_format, _FAVOURITE_REFERENCE["bo3"]):
         if low <= odd < high:
-            protected = pair[0] + 0.5
-            return list(dict.fromkeys((protected, *pair)))
+            return list(dict.fromkeys((pair[0] + 1.0, pair[0] + 0.5, *pair)))
     return []
 
 

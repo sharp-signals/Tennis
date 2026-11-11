@@ -70,7 +70,7 @@ def capture(
     market_builder = market_builder or build_market_observation
     observations = read_jsonl(observations_path)
     existing = read_markets(market_path)
-    frozen_ids = {
+    quoted_ids = {
         str(row.get("observation_id")) for row in existing
         if row.get("observation_id")
     }
@@ -81,8 +81,7 @@ def capture(
         analyzed = _parse_time(row.get("analyzed_at_utc"))
         commence = _parse_time(row.get("commence_time_utc"))
         if (
-            row.get("observation_id") not in frozen_ids
-            and shadow.get("status") == "READY_FOR_PROSPECTIVE_SHADOW"
+            shadow.get("status") == "READY_FOR_PROSPECTIVE_SHADOW"
             and analyzed is not None
             and commence is not None
             and analyzed <= now < commence
@@ -139,7 +138,7 @@ def capture(
         "status": "COMPLETED",
         "captured_at_utc": now.isoformat(timespec="seconds"),
         "observations": len(observations),
-        "already_frozen": len(frozen_ids),
+        "observations_with_prior_quote": len(quoted_ids),
         "pending_examined": len(pending),
         "fixtures_discovered": len(fixtures),
         "fixtures_linked": len(linked),

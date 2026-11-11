@@ -101,6 +101,7 @@ def handicap_evidence():
             "players": {
                 "a": {
                     "lines": {
+                        "-2": line(-2.0),
                         "-2.5": line(-2.5),
                         "-3": line(-3.0),
                         "-3.5": line(-3.5),
@@ -296,8 +297,15 @@ class ContextualShadowReportTests(unittest.TestCase):
                 json.dumps(observation(), ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
+            first_quote = market()
+            latest_quote = {
+                **market(),
+                "captured_at_utc": "2026-11-04T12:00:00+00:00",
+                "odds": {"a": 1.85, "b": 2.05},
+            }
             markets.write_text(
-                json.dumps(market(), ensure_ascii=False) + "\n",
+                json.dumps(first_quote, ensure_ascii=False) + "\n"
+                + json.dumps(latest_quote, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
             outcomes.write_text("", encoding="utf-8")
@@ -317,6 +325,9 @@ class ContextualShadowReportTests(unittest.TestCase):
             self.assertEqual(summary["with_moneyline_evidence"], 0)
             self.assertTrue((output / "index.html").exists())
             self.assertTrue((output / "report-obs-1.html").exists())
+            html = (output / "report-obs-1.html").read_text(encoding="utf-8")
+            self.assertIn("Movimento desde a leitura anterior", html)
+            self.assertIn("1.90 → 1.85", html)
             self.assertFalse(summary["isolation"]["operational_reports_published"])
 
     def test_workflow_builds_and_uploads_preview_without_publishing_it(self):

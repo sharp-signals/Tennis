@@ -59,10 +59,23 @@ def build_previews(
 ) -> dict[str, Any]:
     report_contract = report_contract or load_report_contract()
     observations = read_jsonl(observations_path)
-    markets = {
-        str(row.get("observation_id")): row for row in read_jsonl(market_path)
-        if row.get("observation_id")
-    }
+    market_history: dict[str, list[dict[str, Any]]] = {}
+    for row in read_jsonl(market_path):
+        key = str(row.get("observation_id") or "")
+        if not key:
+            continue
+        market_history.setdefault(key, []).append(row)
+    markets: dict[str, dict[str, Any]] = {}
+    for key, rows in market_history.items():
+        rows.sort(key=lambda row: str(row.get("captured_at_utc") or ""))
+        latest = dict(rows[-1])
+        if len(rows) > 1:
+            latest["previous_quote"] = {
+                "captured_at_utc": rows[-2].get("captured_at_utc"),
+                "odds": dict(rows[-2].get("odds") or {}),
+            }
+        latest["quote_snapshots"] = len(rows)
+        markets[key] = latest
     outcomes = {
         str(row.get("observation_id")): row for row in read_jsonl(outcomes_path)
         if row.get("observation_id")
