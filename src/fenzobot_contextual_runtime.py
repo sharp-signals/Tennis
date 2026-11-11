@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
-from .contextual_family_combination_v3 import predict_contextual_combination_v3
+from .contextual_family_combination_v4 import predict_contextual_combination_v4
 from .contextual_family_calibration import explain_family_equation
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
 from .contextual_probability_uncertainty_v2 import (
@@ -25,6 +25,63 @@ from .contextual_probability_uncertainty_v2 import (
 GLOBAL_RELEASE_ID = "FENZOBOT_CONTEXTUAL_2026_11"
 RELEASE_SLUG = "fenzobot-contextual-2026-11"
 DEFAULT_MODEL_PATH = Path("data/models/fenzobot-contextual-2026-11.json")
+
+DEPENDENCE_MATERIAL_FAVORITE = 0.55
+DEPENDENCE_CRITICAL_FAVORITE = 0.60
+DEPENDENCE_MATERIAL_DELTA_PP = 10.0
+DEPENDENCE_CRITICAL_DELTA_PP = 15.0
+
+
+def _coverage_grade(data_state: str | None, probability: float | None) -> str:
+    """Separate researched neutrality, partial evidence and true availability."""
+    state = str(data_state or "MISSING_DATA").upper()
+    if state == "OBSERVED_NONE":
+        return "OBSERVED_NEUTRAL"
+    if probability is None:
+        return "UNAVAILABLE"
+    if state == "OBSERVED":
+        return "SOLID"
+    if state == "INSUFFICIENT_SAMPLE":
+        return "PARTIAL"
+    return "UNAVAILABLE"
+
+
+def _impact_intensity(delta_pp: float) -> str:
+    value = abs(float(delta_pp))
+    if value < 3.0:
+        return "SLIGHT"
+    if value < 7.0:
+        return "MODERATE"
+    if value < 12.0:
+        return "STRONG"
+    return "DECISIVE"
+
+
+def _dependency_grade(
+    *, full_probability: float, without_probability: float, central_side: str,
+) -> str:
+    """Grade a favorite flip instead of treating every flip as a fatal error."""
+    flipped = (
+        without_probability <= 0.5 if central_side == "a"
+        else without_probability >= 0.5
+    )
+    if not flipped:
+        return "ROBUST"
+    favorite_probability = (
+        full_probability if central_side == "a" else 1.0 - full_probability
+    )
+    delta_pp = 100.0 * abs(full_probability - without_probability)
+    if (
+        favorite_probability >= DEPENDENCE_CRITICAL_FAVORITE
+        or delta_pp >= DEPENDENCE_CRITICAL_DELTA_PP
+    ):
+        return "CRITICAL_DEPENDENCE"
+    if (
+        favorite_probability >= DEPENDENCE_MATERIAL_FAVORITE
+        or delta_pp >= DEPENDENCE_MATERIAL_DELTA_PP
+    ):
+        return "MATERIAL_DEPENDENCE"
+    return "BALANCED_SENSITIVE"
 
 
 @lru_cache(maxsize=4)
@@ -104,7 +161,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v3(
+    prediction = predict_contextual_combination_v4(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
@@ -136,6 +193,7 @@ def predict_fenzobot_contextual(
     surface_context = (working.get("diagnostics") or {}).get("surface_context")
     equation_audit = row.get("candidate_equation_audit") or {}
     family_rows = []
+    family_rows_by_key: dict[str, dict[str, Any]] = {}
     contributions: dict[str, float] = {}
     for family in FAMILY_ORDER:
         family_probability = family_probabilities.get(family)
@@ -147,7 +205,10 @@ def predict_fenzobot_contextual(
         model = runtime_models.get(family)
         if family == "surface_conditions":
             model = (model or {}).get(surface_context)
-        family_rows.append({
+        data_state = (
+            (row.get("family_states") or {}).get(family) or {}
+        ).get("data_state")
+        family_row = {
             "key": family,
             "label": labels[family],
             "probability_model_a": (
@@ -155,21 +216,22 @@ def predict_fenzobot_contextual(
                 if family_probability is not None else None
             ),
             "logit_contribution": round(contribution, 8),
-            "data_state": (
-                (row.get("family_states") or {}).get(family) or {}
-            ).get("data_state"),
+            "data_state": data_state,
+            "coverage_grade": _coverage_grade(data_state, family_probability),
             "internal_trace": (
                 explain_family_equation(dict(row), model)
                 if isinstance(model, dict) else {"status": "UNAVAILABLE", "features": []}
             ),
             "context_audit": (
-                dict(equation_audit.get("structural_strength_v6") or {})
+                dict(equation_audit.get("structural_strength_v7") or {})
                 if family == "structural_strength"
                 else dict(equation_audit.get("recent_form_v1") or {})
                 if family == "recent_form"
                 else {}
             ),
-        })
+        }
+        family_rows.append(family_row)
+        family_rows_by_key[family] = family_row
     raw_logit = _logit(raw_probability)
     sensitivity = []
     for family, contribution in contributions.items():
@@ -178,11 +240,23 @@ def predict_fenzobot_contextual(
         probability_without_family = _apply_calibrator(
             _sigmoid(raw_logit - contribution), calibration["central_calibrator"],
         )
+        calibrated_impact_pp = 100.0 * (
+            probability - probability_without_family
+        )
+        family_rows_by_key[family].update({
+            "impact_pp_model_a": round(calibrated_impact_pp, 3),
+            "impact_direction": (
+                "a" if calibrated_impact_pp > 0
+                else "b" if calibrated_impact_pp < 0 else "neutral"
+            ),
+            "impact_intensity": _impact_intensity(calibrated_impact_pp),
+        })
         sensitivity.append({
             "family": family,
             "probability_model_a_without_family": round(
                 probability_without_family, 6,
             ),
+            "impact_pp_model_a": round(calibrated_impact_pp, 3),
         })
     sensitivity_probabilities = [
         float(item["probability_model_a_without_family"]) for item in sensitivity
@@ -193,22 +267,36 @@ def predict_fenzobot_contextual(
         for value in sensitivity_probabilities
     )
     dominant_family = None
-    if central_side and not stable_side and contributions:
-        dominant_family = max(
-            contributions,
-            key=lambda key: (
-                contributions[key] if central_side == "a" else -contributions[key]
-            ),
-        )
-        reason_codes.append("SINGLE_FAMILY_DEPENDENCE")
+    dependency_grade = "ROBUST"
+    if central_side and sensitivity:
+        for scenario in sensitivity:
+            scenario["dependency_grade"] = _dependency_grade(
+                full_probability=probability,
+                without_probability=float(
+                    scenario["probability_model_a_without_family"]
+                ),
+                central_side=central_side,
+            )
+        grade_order = {
+            "ROBUST": 0, "BALANCED_SENSITIVE": 1,
+            "MATERIAL_DEPENDENCE": 2, "CRITICAL_DEPENDENCE": 3,
+        }
+        worst = max(sensitivity, key=lambda item: grade_order[item["dependency_grade"]])
+        dependency_grade = worst["dependency_grade"]
+        if dependency_grade != "ROBUST":
+            dominant_family = worst["family"]
+        if dependency_grade == "CRITICAL_DEPENDENCE":
+            reason_codes.append("CRITICAL_SINGLE_FAMILY_DEPENDENCE")
     lower, upper = _centred_empirical_interval(
         probability, bin_item, global_bin,
         quality_group=quality_group,
         sensitivity_probabilities=sensitivity_probabilities,
     )
-    observed_families = sum(
-        _family_available(working, family) for family in FAMILY_ORDER
-    )
+    grade_counts = {
+        grade: sum(row["coverage_grade"] == grade for row in family_rows)
+        for grade in ("SOLID", "PARTIAL", "OBSERVED_NEUTRAL", "UNAVAILABLE")
+    }
+    usable_families = grade_counts["SOLID"] + grade_counts["PARTIAL"]
     status = (
         "READY_FOR_PROSPECTIVE_SHADOW"
         if not reason_codes else "NOT_OPERATIONALLY_READY"
@@ -238,13 +326,18 @@ def predict_fenzobot_contextual(
             "method": "LEAVE_ONE_FAMILY_OUT",
             "central_side": central_side,
             "favorite_confirmed": stable_side,
+            "dependency_grade": dependency_grade,
             "dominant_family_if_unstable": dominant_family,
             "scenarios": sensitivity,
         },
         "family_coverage": {
-            "observed": observed_families,
+            "solid": grade_counts["SOLID"],
+            "partial": grade_counts["PARTIAL"],
+            "observed_neutral": grade_counts["OBSERVED_NEUTRAL"],
+            "unavailable": grade_counts["UNAVAILABLE"],
+            "usable": usable_families,
             "total": len(FAMILY_ORDER),
-            "pct": round(100.0 * observed_families / len(FAMILY_ORDER), 2),
+            "pct": round(100.0 * usable_families / len(FAMILY_ORDER), 2),
         },
         "surface_context": surface_context,
         "quality_group": quality_group,

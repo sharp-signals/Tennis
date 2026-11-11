@@ -8,6 +8,8 @@ from scripts.export_fenzobot_contextual_release import (
     build_release,
 )
 from src.fenzobot_contextual_runtime import (
+    _coverage_grade,
+    _dependency_grade,
     load_contract,
     predict_fenzobot_contextual,
 )
@@ -17,6 +19,25 @@ from scripts.audit_contextual_shadow_v2 import audit_ledger
 
 
 MODEL = Path("data/models/fenzobot-contextual-2026-11.json")
+
+
+def test_family_coverage_distinguishes_neutral_partial_and_unavailable():
+    assert _coverage_grade("OBSERVED", 0.6) == "SOLID"
+    assert _coverage_grade("INSUFFICIENT_SAMPLE", 0.6) == "PARTIAL"
+    assert _coverage_grade("OBSERVED_NONE", None) == "OBSERVED_NEUTRAL"
+    assert _coverage_grade("OBSERVED", None) == "UNAVAILABLE"
+
+
+def test_leave_one_family_out_dependency_is_graded_not_binary():
+    assert _dependency_grade(
+        full_probability=0.51, without_probability=0.49, central_side="a",
+    ) == "BALANCED_SENSITIVE"
+    assert _dependency_grade(
+        full_probability=0.56, without_probability=0.48, central_side="a",
+    ) == "MATERIAL_DEPENDENCE"
+    assert _dependency_grade(
+        full_probability=0.65, without_probability=0.48, central_side="a",
+    ) == "CRITICAL_DEPENDENCE"
 
 
 def _row(primary_ready=True, *, context="hard_outdoor"):
@@ -32,6 +53,9 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
             "contextual_structural_material_rank_core_v6": 0.5,
             "contextual_structural_representative_rank_core_v6": 0.2,
             "contextual_structural_points_log_ratio_v6": 0.3,
+            "contextual_structural_return_rank_contraction_v7": 0.0,
+            "contextual_structural_return_points_contraction_v7": 0.0,
+            "contextual_structural_return_friction_margin_v7": 0.0,
             "contextual_structural_trajectory_margin_v3": 0.1,
             "contextual_structural_inactivity_margin_v3": 0.0,
             "contextual_structural_recovery_margin_v3": 0.0,
@@ -61,30 +85,27 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
 
 def test_manifest_names_every_internal_component_without_global_version_ambiguity():
     manifest, runtime = build_release(
-        Path("data/models/contextual-family-combination-v3.json"),
-        Path("data/models/contextual-probability-uncertainty-v3.json"),
+        Path("data/models/contextual-family-combination-v4.json"),
+        Path("data/models/contextual-probability-uncertainty-v4.json"),
     )
     assert manifest["global_release_id"] == GLOBAL_RELEASE_ID
     assert manifest["components"] == {
-        "ranking_model": "contextual-ranking-v6",
-        "family_combination": "contextual-family-combination-v3-ranking-v6",
-        "probability_calibration": "contextual-probability-uncertainty-v3",
-        "runtime_generation": 4,
+        "ranking_model": "contextual-ranking-v7",
+        "family_combination": "contextual-family-combination-v4-ranking-v7",
+        "probability_calibration": "contextual-probability-uncertainty-v4",
+        "runtime_generation": 5,
     }
     assert manifest["promotion_authorized"] is False
-    assert manifest["accepted_historical_releases"] == [{
-        "runtime_generation": 3,
-        "configuration_fingerprint": (
-            "05a0303b93ca8a5abc5edb3adcec235749737c54597a47333bb5bad67e2c707a"
-        ),
-    }]
+    assert [item["runtime_generation"] for item in manifest[
+        "accepted_historical_releases"
+    ]] == [3, 4]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
 def test_runtime_contract_reproduces_export_and_is_market_free():
     manifest, built = build_release(
-        Path("data/models/contextual-family-combination-v3.json"),
-        Path("data/models/contextual-probability-uncertainty-v3.json"),
+        Path("data/models/contextual-family-combination-v4.json"),
+        Path("data/models/contextual-probability-uncertainty-v4.json"),
     )
     contract = load_contract(MODEL)
     assert built == contract
@@ -98,12 +119,12 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
         _row(), load_contract(MODEL), universe="atp",
     )
     assert result["global_release_id"] == GLOBAL_RELEASE_ID
-    assert result["component_versions"]["ranking_model"] == "contextual-ranking-v6"
+    assert result["component_versions"]["ranking_model"] == "contextual-ranking-v7"
     assert 0.0 < result["probability_model_a"] < 1.0
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 4
+    assert result["runtime_generation"] == 5
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"

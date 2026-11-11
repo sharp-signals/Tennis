@@ -211,6 +211,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("HANDICAP NEGATIVO", html)
         self.assertIn("cobre quando vence", html)
         self.assertIn("SEM ENTRADA AUTOMÁTICA", html)
+        self.assertNotIn("<small>logit</small>", html)
 
     def test_frozen_moneyline_history_shows_general_and_current_band(self):
         view = report.build_report_view_model(
@@ -229,6 +230,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         prediction["contextual_shadow"]["family_sensitivity"] = {
             "method": "LEAVE_ONE_FAMILY_OUT",
             "favorite_confirmed": False,
+            "dependency_grade": "CRITICAL_DEPENDENCE",
             "dominant_family_if_unstable": "structural_strength",
             "scenarios": [],
         }
@@ -237,8 +239,22 @@ class ContextualShadowReportTests(unittest.TestCase):
             view["market_review"]["status"], "FAVORITE_UNCONFIRMED"
         )
         html = report.render_report_html(view)
-        self.assertIn("FAVORITISMO NÃO CONFIRMADO", html)
+        self.assertIn("DEPENDÊNCIA CRÍTICA", html)
         self.assertIn("Mercados não formulados", html)
+
+    def test_balanced_dependency_remains_visible_without_false_fatal_block(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"]["family_sensitivity"] = {
+            "method": "LEAVE_ONE_FAMILY_OUT",
+            "favorite_confirmed": False,
+            "dependency_grade": "BALANCED_SENSITIVE",
+            "dominant_family_if_unstable": "structural_strength",
+            "scenarios": [],
+        }
+        view = report.build_report_view_model(prediction, market())
+        self.assertNotEqual(view["market_review"]["status"], "FAVORITE_UNCONFIRMED")
+        html = report.render_report_html(view)
+        self.assertIn("JOGO EQUILIBRADO", html)
 
     def test_builder_creates_private_index_reports_and_summary(self):
         with TemporaryDirectory(dir=Path.cwd()) as directory:
