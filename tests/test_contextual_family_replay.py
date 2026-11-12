@@ -1,6 +1,7 @@
 import math
 
 from src.contextual_family_replay import (
+    _competition_strength,
     _exact_surface_features,
     _recent_circuit_downshift,
     _surface,
@@ -86,6 +87,10 @@ def test_exact_surface_tier_credit_distinguishes_equal_win_rates_by_level():
     assert features["exact_surface_current_margin_shrunk"] == 0.0
     assert features["exact_surface_tier_win_credit_current_v8"] > 0
     assert audit["tier_adjusted_win_credit"]["a"]["current_season"]["sample"] == 4
+
+
+def test_wta_finals_provider_tier_has_maximum_competition_strength():
+    assert _competition_strength("Championships") == 4
 
 
 def test_provider_indoor_hard_label_matches_historical_hard_surface():

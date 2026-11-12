@@ -596,13 +596,14 @@ def _context_value(label: str, value: Any) -> str:
     number = _number(value)
     if number is None:
         return "N/D"
-    if label in {
-        "Ranking atual", "Pontos atuais", "Melhor ranking observado",
-        "Jogos desde o regresso",
-    }:
+    if label in {"Ranking atual", "Melhor ranking observado"}:
+        return f"#{int(round(number))}"
+    if label in {"Pontos atuais", "Jogos desde o regresso"}:
         return str(int(round(number)))
-    if label in {"Confiança no ranking atual", "Representatividade"}:
+    if label == "Representatividade do ranking atual":
         return f"{100.0 * number:.0f}%"
+    if label == "Ranking típico (365 dias)":
+        return f"~#{int(round(number))}"
     return f"{number:.1f}"
 
 
@@ -658,16 +659,19 @@ def _family_detail_html(
     components = context.get("components") or {}
     structural = ""
     if components:
-        fields = (
+        fields = [
             ("Ranking atual", "current_rank_a", "current_rank_b"),
             ("Pontos atuais", "current_points_a", "current_points_b"),
             ("Melhor ranking observado", "observed_peak_rank_a", "observed_peak_rank_b"),
-            ("Nível típico antes do hiato", "pre_layoff_typical_rank_a", "pre_layoff_typical_rank_b"),
-            ("Jogos desde o regresso", "matches_since_return_a", "matches_since_return_b"),
-            ("Confiança no ranking atual", "current_rank_reliability_a", "current_rank_reliability_b"),
-            ("Ranking típico 365d", "typical_rank_365d_a", "typical_rank_365d_b"),
-            ("Representatividade", "representativeness_a", "representativeness_b"),
-        )
+            ("Ranking típico (365 dias)", "typical_rank_365d_a", "typical_rank_365d_b"),
+            ("Representatividade do ranking atual", "representativeness_a", "representativeness_b"),
+        ]
+        return_active = bool(components.get("return_contraction_active"))
+        if return_active:
+            fields.extend([
+                ("Nível típico antes do hiato", "pre_layoff_typical_rank_a", "pre_layoff_typical_rank_b"),
+                ("Jogos desde o regresso", "matches_since_return_a", "matches_since_return_b"),
+            ])
         items = []
         for label, key_a, key_b in fields:
             if key_a in components or key_b in components:
@@ -736,7 +740,7 @@ def _player_card(side: str, player: Mapping[str, Any]) -> str:
         </div>
         <div class="ml-history">
           <div><span>WIN RATE MONEYLINE · {_e(history.get('format'))}</span><b>{general_text}</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>FAIXA ATUAL · {_e(history.get('current_band_label'))}</span><b>{band_text}</b><small>Break-even {_e(None if break_even is None else round(break_even, 1))}% · margem {_signed(band_margin, ' p.p.')}</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · {_e(history.get('current_band_label'))}</span><b>{band_text}</b><small>Dado descritivo · break-even {_e(None if break_even is None else round(break_even, 1))}% · margem {_signed(band_margin, ' p.p.')}</small></div>
         </div>
       </article>"""
 
@@ -790,9 +794,8 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             handicap_side = str(handicap.get("side") or side)
             handicap_player = (view.get("players") or {}).get(handicap_side) or {}
             positive = handicap.get("type") == "positive"
-            highlighted_cards = []
-            remaining_cards = []
-            for line in handicap.get("lines") or []:
+            visible_cards = []
+            for line in (handicap.get("lines") or [])[:5]:
                 price = line.get("price") or {}
                 if price.get("status") != "READY":
                     zone = "Sem preço validado · amostra relevante curta"
@@ -829,21 +832,12 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                     <small>{losses}</small><small>Amostra total: {_e(line.get('total'))} jogos</small>
                     <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>{_e(zone)}</b></div>
                   </div>"""
-                if line.get("highlighted"):
-                    highlighted_cards.append(line_card)
-                else:
-                    remaining_cards.append(line_card)
-            remaining = (
-                f'<details class="all-lines"><summary>Ver todas as restantes linhas de handicap '
-                f'({len(remaining_cards)})</summary><div class="line-grid full-lines">'
-                f'{"".join(remaining_cards)}</div></details>'
-                if remaining_cards else ""
-            )
+                visible_cards.append(line_card)
             cards.append(f"""
               <article class="review-card handicap-card">
                 <div class="review-type">HANDICAPS DE {_e(handicap_player.get('name')).upper()} · {'POSITIVOS' if positive else 'NEGATIVOS'} · {_e(handicap.get('format'))}</div>
                 <p class="line-intro">Linhas principais para leitura imediata. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
-                <div class="line-grid">{''.join(highlighted_cards)}</div>{remaining}
+                <div class="line-grid">{''.join(visible_cards)}</div>
               </article>""")
         if not cards:
             cards.append(
@@ -928,10 +922,12 @@ def render_report_html(view: Mapping[str, Any]) -> str:
                     )
             if movement:
                 market_copy += " · Movimento desde a leitura anterior: " + " | ".join(movement)
-        benchmark_badge = "BENCHMARK DISPONÍVEL"
+        benchmark_badge = "ODD DE MERCADO CAPTURADA"
+        benchmark_meta = f"{_e(market['bookmaker'])} · {_e(market['captured_at'])}"
     else:
         market_copy = "Cotação pós-previsão ainda indisponível. A previsão mantém-se válida e imutável."
         benchmark_badge = "MERCADO N/D"
+        benchmark_meta = "Sem cotação válida nesta execução"
     plausibility = market.get("plausibility") or {}
     plausibility_html = ""
     if plausibility.get("requires_manual_review"):
@@ -1030,6 +1026,46 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         else "ligeira" if favorite_margin >= 0.03
         else "equilibrada"
     )
+    preferred_fair = players[preferred]["fair_odd"]
+    market_review = view.get("market_review") or {}
+    value_side = market_review.get("candidate_side")
+    if value_side in {"a", "b"}:
+        conservative_value = _number(market_review.get("conservative_ev_pct"))
+        value_measure = (
+            f"EV conservador {_signed(conservative_value, '%')}"
+            if conservative_value is not None and conservative_value > 0
+            else f"apenas EV central {_signed(market_review.get('central_ev_pct'), '%')}"
+        )
+        value_copy = f"{players[value_side]['name']} · {value_measure}"
+    else:
+        value_copy = "Sem valor Moneyline confirmado"
+    sensitivity_rows = sensitivity.get("scenarios") or []
+    sensitive_row = min(
+        (
+            item for item in sensitivity_rows
+            if _number(item.get("probability_model_a_without_family")) is not None
+        ),
+        key=lambda item: abs(
+            float(item["probability_model_a_without_family"]) - 0.5
+        ),
+        default=None,
+    )
+    sensitive_copy = robustness_copy
+    if favorite_confirmed and sensitive_row:
+        family_name = family_labels.get(
+            str(sensitive_row.get("family")), str(sensitive_row.get("family"))
+        )
+        remaining_probability_a = float(
+            sensitive_row["probability_model_a_without_family"]
+        )
+        remaining_probability = (
+            remaining_probability_a if preferred == "a"
+            else 1.0 - remaining_probability_a
+        )
+        sensitive_copy = (
+            f"Mesmo sem {family_name}, {preferred_name} mantém o favoritismo "
+            f"({_pct(remaining_probability)})."
+        )
     consensus_items = []
     for side in ("a", "b"):
         if direction_counts[side]:
@@ -1081,7 +1117,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
       color:var(--ink);font:15px/1.45 Inter,Segoe UI,Arial,sans-serif}}
     .shell{{max-width:1180px;margin:auto;padding:28px 18px 70px}} .topline{{display:flex;gap:12px;align-items:center;
       justify-content:space-between;margin-bottom:18px}} .brand{{font-weight:900;letter-spacing:.16em;color:var(--cyan)}}
-    .shadow-badge,.market-badge{{border:1px solid var(--gold);color:var(--gold);border-radius:999px;padding:7px 11px;
+    .shadow-badge,.market-badge{{border:1px solid var(--gold);color:var(--gold);border-radius:14px;padding:7px 11px;
       font-size:11px;font-weight:800;letter-spacing:.09em}} .hero,.section{{background:linear-gradient(145deg,rgba(16,42,69,.96),rgba(8,27,45,.96));
       border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 50px #0005}}
     .hero{{padding:26px}} .context{{text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-size:12px}}
@@ -1106,7 +1142,10 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .positive strong{{color:var(--cyan)}} .negative strong{{color:#b8c9d8}} .ev-row{{display:flex;gap:18px;margin-top:12px}}
     .ml-history{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}}.ml-history>div{{padding:12px;background:#091b2c;border-radius:10px}}
     .ml-history span,.ml-history small{{display:block;color:var(--muted);font-size:10px}}.ml-history b{{display:block;margin:3px 0;font-size:16px}}
-    .robustness{{margin-top:18px;padding:15px 18px;border-radius:14px;border:1px solid var(--cyan);background:#0a2b35}}
+    .market-badge small{{display:block;color:var(--muted);font-size:9px;letter-spacing:0;margin-top:2px}}
+    .decision-strip{{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}}.decision-strip>div{{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}}
+    .decision-strip span,.decision-strip b{{display:block}}.decision-strip span{{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}}.decision-strip b{{font-size:16px;margin-top:3px}}
+    .robustness{{margin-top:9px;padding:10px 13px;border-radius:10px;border:1px solid var(--cyan);background:#0a2b35;font-size:12px}}
     .robustness.unstable{{border-color:var(--gold);background:#322914}}.robustness b{{display:block;letter-spacing:.08em}}.robustness span{{color:#c8d8e7}}
     .consensus{{display:grid;grid-template-columns:minmax(220px,1.4fr) repeat(3,minmax(130px,1fr));gap:9px;margin-top:13px}}
     .consensus-summary,.consensus-side{{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}}
@@ -1152,7 +1191,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
       .versus .right{{text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
-      .consensus,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}}}
+      .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}}}
   </style>
 </head>
 <body><main class="shell">
@@ -1161,8 +1200,13 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <div class="context">{_e(view['tour'])} · {_e(view['tier'])} · {_e(view['tournament_name'])} · {_e(view['round_stage'])} · {_e(view['surface_context'])} · {_e(view['commence_time'])}</div>
     <div class="versus">{hero_player('a')}<div class="vs">VS</div>{hero_player('b')}</div>
     <div class="summary"><div><strong>LEITURA DIRETA</strong><br><span>{_e(direct_read)}</span></div>
-      <div class="market-badge">{benchmark_badge}</div></div>
-    <div class="robustness {robustness_class}"><b>{robustness_title}</b><span>{_e(robustness_copy)}</span></div>
+      <div class="market-badge">{benchmark_badge}<small>{benchmark_meta}</small></div></div>
+    <div class="decision-strip">
+      <div><span>Favorito do modelo</span><b>{_e(preferred_name)} · {_pct(players[preferred]['probability'])}</b></div>
+      <div><span>Faixa justa do favorito</span><b>{_odd(preferred_fair['lower'])}–{_odd(preferred_fair['upper'])}</b></div>
+      <div><span>Valor Moneyline</span><b>{_e(value_copy)}</b></div>
+    </div>
+    <div class="robustness {robustness_class}"><b>{robustness_title}</b><span>{_e(sensitive_copy)}</span></div>
     <div class="consensus"><div class="consensus-summary"><b>Vantagem global {_e(global_intensity)}</b>
       <span>A direção conta; a intensidade de cada família determina quanto pesa.</span></div>{''.join(consensus_items)}</div>
   </section>

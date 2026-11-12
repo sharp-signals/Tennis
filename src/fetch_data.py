@@ -542,6 +542,7 @@ _DISCOVERY_DIAGNOSTICS: dict = {
     "discovery_sources": {},
     "discovery_selected_source": None,
     "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
+    "tournament_filter_by_tour": {},
 }
 _MARKET_OBSERVATION_STORE = JsonCacheStore("data/cache")
 # A ponte fixture ID -> eventId é devolvida por ``event/get`` e é necessária
@@ -1045,6 +1046,7 @@ def _reset_discovery_diagnostics() -> None:
         "discovery_selected_source": None,
         "discovery_status": DISCOVERY_SOURCE_UNAVAILABLE,
         "discovery_partial": False,
+        "tournament_filter_by_tour": {},
     })
 
 
@@ -1083,6 +1085,15 @@ def get_discovery_diagnostics() -> dict:
         "discovery_partial": bool(
             _DISCOVERY_DIAGNOSTICS.get("discovery_partial", False)
         ),
+        "tournament_filter_by_tour": {
+            tour: {
+                **dict(values),
+                "rejected_by_tier": dict(values.get("rejected_by_tier") or {}),
+            }
+            for tour, values in (
+                _DISCOVERY_DIAGNOSTICS.get("tournament_filter_by_tour") or {}
+            ).items()
+        },
     }
 
 
@@ -9670,6 +9681,16 @@ def _eligible_tournaments_from_events(
             continue
         candidatos.setdefault(tournament_id, tour)
 
+    filter_by_tour = {
+        tour: {
+            "candidates": sum(1 for value in candidatos.values() if value == tour),
+            "accepted": 0,
+            "rejected": 0,
+            "metadata_unresolved": 0,
+            "rejected_by_tier": {},
+        }
+        for tour in ("atp", "wta")
+    }
     aceites: dict[int, str] = {}
     rejeitados = []
     unresolved = 0
@@ -9678,12 +9699,19 @@ def _eligible_tournaments_from_events(
         forced = FORCED_TOURNAMENT_IDS.get(tournament_id) == tour
         if forced or (info and info.get("tier") in ALLOWED_TOURNAMENT_TIERS):
             aceites[tournament_id] = tour
+            filter_by_tour[tour]["accepted"] += 1
         else:
+            filter_by_tour[tour]["rejected"] += 1
             if info is None:
                 unresolved += 1
+                filter_by_tour[tour]["metadata_unresolved"] += 1
             nome = (info or {}).get("name") or "torneio não identificado"
             tier = (info or {}).get("tier") or "sem informação de tier"
+            rejected_by_tier = filter_by_tour[tour]["rejected_by_tier"]
+            rejected_by_tier[tier] = int(rejected_by_tier.get(tier) or 0) + 1
             rejeitados.append(f"{tournament_id} {nome} ({tier})")
+
+    _DISCOVERY_DIAGNOSTICS["tournament_filter_by_tour"] = filter_by_tour
 
     if rejeitados:
         limite = 10

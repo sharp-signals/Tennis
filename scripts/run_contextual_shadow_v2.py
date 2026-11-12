@@ -466,6 +466,16 @@ def _run_shadow_only(
         status = str(item.get("status") or "UNKNOWN")
         reason_counts[reason] = reason_counts.get(reason, 0) + 1
         status_counts[status] = status_counts.get(status, 0) + 1
+    def count_by_tour(rows, *, observation_rows: bool = False) -> dict[str, int]:
+        counts = {"atp": 0, "wta": 0}
+        for row in rows:
+            value = row.get("tour") if observation_rows else row.get("_tour")
+            tour = str(value or "").casefold()
+            if tour in counts:
+                counts[tour] += 1
+        return counts
+
+    discovery_diagnostics = fetch_data.get_discovery_diagnostics()
     summary = {
         "schema_version": 1,
         "mode": "PROSPECTIVE_SHADOW_ONLY",
@@ -476,8 +486,13 @@ def _run_shadow_only(
         "configuration_fingerprint": contract["configuration_fingerprint"],
         "analyzed_at_utc": analyzed_at,
         "fixtures_discovered": len(raw),
+        "fixtures_discovered_by_tour": count_by_tour(raw),
         "eligible_main_tour": len(eligible),
+        "eligible_main_tour_by_tour": count_by_tour(eligible),
         "observations_built": len(observations),
+        "observations_built_by_tour": count_by_tour(
+            observations, observation_rows=True,
+        ),
         "observations_added": added,
         "handicap_evidence_added": handicap_added,
         "moneyline_evidence_added": moneyline_added,
@@ -485,6 +500,9 @@ def _run_shadow_only(
         "reason_counts": dict(sorted(reason_counts.items())),
         "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
         "ledger_audit": audit,
+        "tournament_filter_by_tour": discovery_diagnostics.get(
+            "tournament_filter_by_tour", {}
+        ),
         "isolation": {
             "market_used": False,
             "reports_published": False,
