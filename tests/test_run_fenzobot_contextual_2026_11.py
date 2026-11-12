@@ -102,5 +102,7 @@ def test_global_release_workflow_is_dispatched_and_publishes_without_auto_bets()
     assert "python -m src.report_notifications wait" in workflow
     assert "python -m src.report_notifications send" in workflow
     assert "TELEGRAM_BOT_TOKEN" in workflow
+    assert "REPORT_EMAIL_APP_PASSWORD" in workflow
+    assert "REPORT_EMAIL_TO: fenzobot@gmail.com" in workflow
     assert "PAPER" not in workflow
     assert "GREEN" not in workflow

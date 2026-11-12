@@ -143,7 +143,7 @@ jobs:
             echo "Sem jogos pré-jogo para notificar."
           fi
 
-      - name: Send contextual reports to Telegram
+      - name: Send contextual reports to Telegram and email
         id: contextual_notifications
         if: steps.contextual_readiness.outcome == 'success'
         continue-on-error: true
@@ -151,6 +151,9 @@ jobs:
           FENZOBOT_REPORT_NOTIFICATION_MANIFEST: ${{ runner.temp }}/fenzobot-contextual-notifications.json
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPORT_EMAIL_TO: fenzobot@gmail.com
+          REPORT_EMAIL_FROM: fenzobot@gmail.com
+          REPORT_EMAIL_APP_PASSWORD: ${{ secrets.REPORT_EMAIL_APP_PASSWORD }}
         run: |
           if [ -f "$FENZOBOT_REPORT_NOTIFICATION_MANIFEST" ]; then
             python -m src.report_notifications send
