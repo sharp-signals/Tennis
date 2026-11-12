@@ -47,6 +47,44 @@ def _chunks(lines: list[str], limit: int = 3800) -> list[str]:
     return chunks
 
 
+def _notification_match_key(observation: dict) -> str:
+    """Identify one fixture across repeated pre-match observations."""
+    canonical = str(
+        observation.get("canonical_match_instance_id")
+        or observation.get("event_key")
+        or ""
+    ).strip()
+    if canonical:
+        return f"canonical:{canonical}"
+    players = sorted(
+        " ".join(_name(observation, side).casefold().split())
+        for side in ("a", "b")
+    )
+    return "fallback:" + "|".join([
+        str(observation.get("tour") or "").casefold().strip(),
+        str(observation.get("commence_time_utc") or "").strip(),
+        *players,
+    ])
+
+
+def _latest_unique_observations(observations: list[dict]) -> list[dict]:
+    """Keep only the newest pre-match snapshot for each fixture."""
+    ordered = sorted(
+        observations,
+        key=lambda row: str(row.get("analyzed_at_utc") or ""),
+        reverse=True,
+    )
+    unique: list[dict] = []
+    seen: set[str] = set()
+    for row in ordered:
+        key = _notification_match_key(row)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(row)
+    return unique
+
+
 _NOTIFICATION_GROUPS = {
     "CONSERVATIVE_POSITIVE": (
         0, "🟢 EDGE CONSERVADOR CONFIRMADO", "🟢",
@@ -84,8 +122,7 @@ def build_publication(
         str(row.get("observation_id")) for row in read_jsonl(OUTCOMES_PATH)
         if row.get("observation_id")
     }
-    observations = read_jsonl(DEFAULT_PATH)
-    observations.sort(key=lambda row: str(row.get("analyzed_at_utc") or ""), reverse=True)
+    observations = _latest_unique_observations(read_jsonl(DEFAULT_PATH))
     if max_observations > 0:
         observations = observations[:max_observations]
 
