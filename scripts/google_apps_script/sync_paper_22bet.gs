@@ -1,5 +1,5 @@
 /**
- * CHANGE-2026-09-06-023; CHANGE-2026-11-12-201
+ * CHANGE-2026-09-06-023; CHANGE-2026-11-12-201; CHANGE-2026-11-12-202
  * Publica apenas métricas agregadas da Sheet PAPER 22Bet no repositório.
  * Não publica a lista de apostas, notas ou dados pessoais.
  *
@@ -248,7 +248,7 @@ function ensureChallengerPaperEntryOption_(spreadsheet) {
   if (sheet.getMaxColumns() < headers.length) {
     sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
   }
-  sheet.getRange('A1:V2').breakApart();
+  breakApartAllMergedRanges_(sheet);
   sheet.getRange('A1:V1').merge().setValue('CHALLENGER — ENTRADAS PAPER 0,5u');
   sheet.getRange('A2:V2').merge().setValue(
     'Registo experimental separado · edge mínimo 2% · não entra nos totais ATP/WTA principais',
@@ -1911,14 +1911,16 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
   if (!spreadsheet || typeof spreadsheet.insertSheet !== 'function') return;
   const name = PAPER_22BET_SYNC.challengerDashboardSheetName;
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
-  if (sheet.getMaxRows() < 58) sheet.insertRowsAfter(sheet.getMaxRows(), 58 - sheet.getMaxRows());
+  // As tabelas-fonte dos gráficos chegam à linha 277. Uma folha criada de
+  // raiz precisa de espaço para a projeção completa.
+  if (sheet.getMaxRows() < 280) sheet.insertRowsAfter(sheet.getMaxRows(), 280 - sheet.getMaxRows());
   if (sheet.getMaxColumns() < 21) sheet.insertColumnsAfter(sheet.getMaxColumns(), 21 - sheet.getMaxColumns());
   // Os gráficos válidos são objetos persistentes. Removê-los em cada sync e
   // reconstruí-los pelo ChartBuilder do Apps Script pode criar apenas molduras
   // vazias. Preservamos os objetos existentes e atualizamos unicamente as
   // tabelas-fonte estáveis às quais estão ligados.
   const existingCharts = sheet.getCharts();
-  sheet.getDataRange().breakApart();
+  breakApartAllMergedRanges_(sheet);
   // Não limpar a folha inteira: apagar momentaneamente as células-fonte faz o
   // Google Sheets prender os gráficos ao estado "sem séries". Limpamos apenas
   // a zona visual; os blocos técnicos são substituídos atomicamente abaixo.
@@ -1997,6 +1999,20 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
       addChallengerPerformanceChart_(sheet, job.range, spec.title, spec.row, spec.column, spec.width || 540);
     });
   }
+}
+
+function breakApartAllMergedRanges_(sheet) {
+  if (!sheet || typeof sheet.getRange !== 'function') return 0;
+  const rows = Math.max(1, Number(sheet.getMaxRows()) || 1);
+  const columns = Math.max(1, Number(sheet.getMaxColumns()) || 1);
+  const fullSheetRange = sheet.getRange(1, 1, rows, columns);
+  const mergedRanges = typeof fullSheetRange.getMergedRanges === 'function'
+    ? fullSheetRange.getMergedRanges()
+    : [];
+  mergedRanges.forEach(range => {
+    if (range && typeof range.breakApart === 'function') range.breakApart();
+  });
+  return mergedRanges.length;
 }
 
 function formatDashboardPct_(value) {
