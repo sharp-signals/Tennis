@@ -1,5 +1,5 @@
 {
-  "analyzed_at_utc": "2026-11-11T22:59:50+00:00",
+  "analyzed_at_utc": "2026-11-12T00:21:49+00:00",
   "component_versions": {
     "family_combination": "contextual-family-combination-v8-tier-context",
     "probability_calibration": "contextual-probability-uncertainty-v8",
@@ -7,9 +7,17 @@
     "runtime_generation": 9
   },
   "configuration_fingerprint": "b8ca61a90d1901897fd2ee1bddf7508d8af074a888348dcf15b6b905128621d1",
-  "eligible_main_tour": 2,
-  "fixtures_discovered": 10,
-  "handicap_evidence_added": 0,
+  "eligible_main_tour": 6,
+  "eligible_main_tour_by_tour": {
+    "atp": 4,
+    "wta": 2
+  },
+  "fixtures_discovered": 13,
+  "fixtures_discovered_by_tour": {
+    "atp": 10,
+    "wta": 3
+  },
+  "handicap_evidence_added": 4,
   "isolation": {
     "green_created": false,
     "market_used": false,
@@ -19,33 +27,61 @@
   },
   "ledger_audit": {
     "counts": {
-      "quality:PRIMARY_READY_COMPLETE": 7,
-      "quality:PRIMARY_READY_SECONDARY_GAPS": 14,
-      "release:current": 2,
+      "quality:PRIMARY_READY_COMPLETE": 9,
+      "quality:PRIMARY_READY_SECONDARY_GAPS": 16,
+      "release:current": 6,
       "release:historical": 19,
       "status:NOT_OPERATIONALLY_READY": 4,
-      "status:READY_FOR_PROSPECTIVE_SHADOW": 17,
-      "universe:atp": 21
+      "status:READY_FOR_PROSPECTIVE_SHADOW": 21,
+      "universe:atp": 23,
+      "universe:wta": 2
     },
     "reason_codes": {
       "CRITICAL_SINGLE_FAMILY_DEPENDENCE": 1,
       "SINGLE_FAMILY_DEPENDENCE": 3
     },
-    "rows": 21,
+    "rows": 25,
     "status": "HEALTHY",
     "violations": []
   },
   "mode": "PROSPECTIVE_SHADOW_ONLY",
   "model_version": "FENZOBOT_CONTEXTUAL_2026_11",
-  "moneyline_evidence_added": 0,
-  "observations_added": 0,
-  "observations_built": 2,
-  "rapidapi_calls": 9,
+  "moneyline_evidence_added": 4,
+  "observations_added": 4,
+  "observations_built": 6,
+  "observations_built_by_tour": {
+    "atp": 4,
+    "wta": 2
+  },
+  "rapidapi_calls": 26,
   "reason_counts": {
-    "READY": 2
+    "READY": 6
   },
   "schema_version": 1,
   "status_counts": {
-    "READY_FOR_PROSPECTIVE_SHADOW": 2
+    "READY_FOR_PROSPECTIVE_SHADOW": 6
+  },
+  "tournament_filter_by_tour": {
+    "atp": {
+      "accepted": 2,
+      "candidates": 24,
+      "metadata_unresolved": 0,
+      "rejected": 22,
+      "rejected_by_tier": {
+        "Challenger 50": 2,
+        "Challenger 75": 4,
+        "Future": 16
+      }
+    },
+    "wta": {
+      "accepted": 1,
+      "candidates": 15,
+      "metadata_unresolved": 0,
+      "rejected": 14,
+      "rejected_by_tier": {
+        "ITF Event": 13,
+        "WTA 125": 1
+      }
+    }
   }
 }
