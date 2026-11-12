@@ -243,7 +243,31 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertEqual(history["current_band"]["win_rate_pct"], 71.4)
         html = report.render_report_html(view)
         self.assertIn("WIN RATE MONEYLINE", html)
-        self.assertIn("FAIXA ATUAL", html)
+        self.assertIn("HISTÓRICO NESTA FAIXA DE ODD", html)
+        self.assertIn("Dado descritivo", html)
+
+    def test_public_header_names_market_capture_and_limits_handicap_cards(self):
+        evidence = handicap_evidence()
+        evidence["handicap_evidence"]["players"]["a"]["lines"].update({
+            "-4": handicap_evidence()["handicap_evidence"]["players"]["a"]["lines"]["-2"],
+            "-4.5": handicap_evidence()["handicap_evidence"]["players"]["a"]["lines"]["-2"],
+        })
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_model_a": 0.75,
+            "probability_model_b": 0.25,
+            "probability_interval_90_model_a": [0.70, 0.80],
+        })
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market(), None, evidence)
+        )
+        self.assertIn("ODD DE MERCADO CAPTURADA", html)
+        self.assertIn("Favorito do modelo", html)
+        self.assertIn("Faixa justa do favorito", html)
+        self.assertIn("Valor Moneyline", html)
+        self.assertNotIn("BENCHMARK DISPONÍVEL", html)
+        self.assertNotIn("Ver todas as restantes linhas", html)
+        self.assertLessEqual(html.count('class="line-card"'), 5)
 
     def test_single_family_dependency_is_visible_and_suppresses_markets(self):
         prediction = copy.deepcopy(observation())

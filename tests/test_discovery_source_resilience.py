@@ -388,6 +388,51 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in actual], [1, 2, 3])
         self.assertIn("Challenger 125", config.ALLOWED_TOURNAMENT_TIERS)
 
+    def test_tournament_filter_exposes_wta_acceptance_and_rejection_by_tier(self):
+        events = [
+            self._fixture(1, 201, "wta"),
+            self._fixture(2, 202, "wta"),
+            self._fixture(3, 203, "atp"),
+        ]
+        tiers = {201: "WTA 250", 202: "WTA 125", 203: "ATP 250"}
+        fetch_data._reset_discovery_diagnostics()
+        with patch.object(
+            fetch_data, "get_tournament_info",
+            side_effect=lambda tournament_id, _tour: {
+                "tier": tiers[tournament_id], "name": str(tournament_id),
+            },
+        ):
+            accepted = fetch_data._eligible_tournaments_from_events(events)
+
+        self.assertEqual(accepted, {201: "wta", 203: "atp"})
+        wta = fetch_data.get_discovery_diagnostics()[
+            "tournament_filter_by_tour"
+        ]["wta"]
+        self.assertEqual(wta["candidates"], 2)
+        self.assertEqual(wta["accepted"], 1)
+        self.assertEqual(wta["rejected"], 1)
+        self.assertEqual(wta["rejected_by_tier"], {"WTA 125": 1})
+
+    def test_wta_finals_championships_tier_is_main_tour_eligible(self):
+        events = [self._fixture(1, 16758, "wta")]
+        fetch_data._reset_discovery_diagnostics()
+        with patch.object(
+            fetch_data, "get_tournament_info",
+            return_value={
+                "tier": "Championships",
+                "name": "WTA Finals",
+                "surface": "Hard",
+            },
+        ):
+            accepted = fetch_data._eligible_tournaments_from_events(events)
+
+        self.assertEqual(accepted, {16758: "wta"})
+        wta = fetch_data.get_discovery_diagnostics()[
+            "tournament_filter_by_tour"
+        ]["wta"]
+        self.assertEqual(wta["accepted"], 1)
+        self.assertEqual(wta["rejected"], 0)
+
     def test_core_deduplicates_fixture_ids_and_never_fabricates_event_id(self):
         one = self._fixture(1, 10)
         duplicate = deepcopy(one)

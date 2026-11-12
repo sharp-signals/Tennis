@@ -57,6 +57,7 @@ ALLOWED_TOURNAMENT_TIERS = {
     "WTA 1000",   # reativado 28/07/2026 (H2H rico via matchstat + Sackmann de volta)
     "WTA 500",    # valor exato confirmado via getTournamentInfo no id 16738
     "WTA 250",
+    "Championships",  # WTA Finals; valor confirmado no cache do id 16758
     "Challenger 125",
 }
 # CHANGE-2026-09-24-052: ATP/WTA 250 integram a cobertura main-tour normal.

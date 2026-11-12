@@ -88,6 +88,7 @@ _COMPETITION_LEVEL_STRENGTH = {
     "g": 4,
     "grand slam": 4,
     "f": 4,
+    "championships": 4,
     "atp finals": 4,
     "wta finals": 4,
 }
