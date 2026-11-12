@@ -21,6 +21,9 @@ from src.contextual_shadow_report_v2 import (  # noqa: E402
     render_report_html,
 )
 from src.contextual_shadow_handicap_v2 import EVIDENCE_PATH  # noqa: E402
+from src.contextual_shadow_h2h_evidence_v1 import (  # noqa: E402
+    EVIDENCE_PATH as H2H_EVIDENCE_PATH,
+)
 from src.contextual_shadow_moneyline_v1 import (  # noqa: E402
     EVIDENCE_PATH as MONEYLINE_EVIDENCE_PATH,
 )
@@ -53,6 +56,7 @@ def build_previews(
     outcomes_path: Path = OUTCOMES_PATH,
     handicap_evidence_path: Path | None = None,
     moneyline_evidence_path: Path | None = None,
+    h2h_evidence_path: Path | None = None,
     max_observations: int = 50,
     expected_model_version: str = MODEL_VERSION,
     report_contract: dict[str, Any] | None = None,
@@ -100,6 +104,16 @@ def build_previews(
         for row in read_jsonl(moneyline_evidence_path)
         if row.get("observation_id")
     }
+    if h2h_evidence_path is None:
+        h2h_evidence_path = (
+            H2H_EVIDENCE_PATH if observations_path == OBSERVATIONS_PATH
+            else observations_path.with_name(H2H_EVIDENCE_PATH.name)
+        )
+    h2h_evidence = {
+        str(row.get("observation_id")): row
+        for row in read_jsonl(h2h_evidence_path)
+        if row.get("observation_id")
+    }
     observations.sort(key=lambda row: str(row.get("analyzed_at_utc") or ""), reverse=True)
     if max_observations > 0:
         observations = observations[:max_observations]
@@ -110,6 +124,7 @@ def build_previews(
             outcomes.get(str(row.get("observation_id"))),
             handicap_evidence.get(str(row.get("observation_id"))),
             moneyline_evidence.get(str(row.get("observation_id"))),
+            h2h_evidence.get(str(row.get("observation_id"))),
             contract=report_contract,
             expected_model_version=expected_model_version,
         )
@@ -138,6 +153,9 @@ def build_previews(
                 (player.get("moneyline_history") or {}).get("general", {}).get("sample")
                 for player in view["players"].values()
             ) for view in views
+        ),
+        "with_h2h_evidence": sum(
+            bool(view.get("h2h_evidence_available")) for view in views
         ),
         "output_dir": str(output_dir),
         "isolation": {

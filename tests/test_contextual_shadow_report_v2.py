@@ -313,6 +313,43 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("Beta Player", html)
         self.assertIn("6-4 6-3", html)
 
+    def test_external_h2h_evidence_enriches_frozen_prediction(self):
+        prediction = copy.deepcopy(observation())
+        h2h = prediction["contextual_shadow"]["families"][1]
+        h2h["data_state"] = "OBSERVED"
+        h2h["internal_trace"] = {"features": [{
+            "key": "contextual_h2h_global_shrunk_v1",
+            "logit_contribution": 0.10,
+            "missing_logit_contribution": 0.0,
+            "missing": False,
+        }]}
+        evidence = {
+            "observation_id": "obs-1",
+            "model_version": "contextual-family-shadow-v2",
+            "configuration_fingerprint": "fingerprint",
+            "production_effect": False,
+            "h2h_evidence": {
+                "eligible_matches": 1,
+                "matches": [{
+                    "event_date": "2026-10-01",
+                    "tournament": "Indoor Open",
+                    "surface": "hard_indoor",
+                    "winner_side": "a",
+                    "score": "6-4 6-3",
+                    "round": "QF",
+                }],
+            },
+        }
+        view = report.build_report_view_model(
+            prediction, market(), None, None, None, evidence
+        )
+        self.assertEqual(view["players"]["a"]["probability"], 0.62)
+        self.assertTrue(view["h2h_evidence_available"])
+        html = report.render_report_html(view)
+        self.assertIn("Confrontos anteriores", html)
+        self.assertIn("Indoor Open", html)
+        self.assertIn("6-4 6-3", html)
+
     def test_frozen_moneyline_history_shows_general_and_current_band(self):
         view = report.build_report_view_model(
             observation(), market(), None, None, moneyline_evidence()
@@ -498,6 +535,7 @@ class ContextualShadowReportTests(unittest.TestCase):
             self.assertEqual(summary["with_market"], 1)
             self.assertEqual(summary["with_handicap_evidence"], 1)
             self.assertEqual(summary["with_moneyline_evidence"], 0)
+            self.assertEqual(summary["with_h2h_evidence"], 0)
             self.assertTrue((output / "index.html").exists())
             self.assertTrue((output / "report-obs-1.html").exists())
             html = (output / "report-obs-1.html").read_text(encoding="utf-8")

@@ -48,6 +48,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.7",
                 "fenzobot-contextual-2026-11-report.8",
                 "fenzobot-contextual-2026-11-report.9",
+                "fenzobot-contextual-2026-11-report.10",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
@@ -57,6 +58,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.7",
                         "fenzobot-contextual-2026-11-report.8",
                         "fenzobot-contextual-2026-11-report.9",
+                        "fenzobot-contextual-2026-11-report.10",
                     }
                     and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
                 )
@@ -65,6 +67,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.7",
                         "fenzobot-contextual-2026-11-report.8",
                         "fenzobot-contextual-2026-11-report.9",
+                        "fenzobot-contextual-2026-11-report.10",
                     }
                     and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
                 )
@@ -76,6 +79,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.7",
                 "fenzobot-contextual-2026-11-report.8",
                 "fenzobot-contextual-2026-11-report.9",
+                "fenzobot-contextual-2026-11-report.10",
             }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
@@ -85,12 +89,20 @@ def load_report_contract(
                     expected_contract_version in {
                         "fenzobot-contextual-2026-11-report.8",
                         "fenzobot-contextual-2026-11-report.9",
+                        "fenzobot-contextual-2026-11-report.10",
                     }
                     and rules.get("family_detail_must_offer_xray_toggle") is not True
                 )
                 or (
-                    expected_contract_version == "fenzobot-contextual-2026-11-report.9"
+                    expected_contract_version in {
+                        "fenzobot-contextual-2026-11-report.9",
+                        "fenzobot-contextual-2026-11-report.10",
+                    }
                     and rules.get("h2h_family_must_show_factual_match_history") is not True
+                )
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.10"
+                    and rules.get("h2h_facts_must_join_without_prediction_rewrite") is not True
                 )
             )
         )
@@ -310,6 +322,7 @@ def build_report_view_model(
     outcome: Mapping[str, Any] | None = None,
     handicap_evidence: Mapping[str, Any] | None = None,
     moneyline_evidence: Mapping[str, Any] | None = None,
+    h2h_evidence: Mapping[str, Any] | None = None,
     *,
     contract: Mapping[str, Any] | None = None,
     expected_model_version: str = MODEL_VERSION,
@@ -361,6 +374,15 @@ def build_report_view_model(
         == shadow.get("configuration_fingerprint")
         and moneyline_evidence.get("production_effect") is False
     )
+    valid_h2h_evidence = bool(
+        isinstance(h2h_evidence, Mapping)
+        and h2h_evidence.get("observation_id")
+        == observation.get("observation_id")
+        and h2h_evidence.get("model_version") == expected_model_version
+        and h2h_evidence.get("configuration_fingerprint")
+        == shadow.get("configuration_fingerprint")
+        and h2h_evidence.get("production_effect") is False
+    )
 
     family_rows = []
     absolute_total = sum(
@@ -375,6 +397,9 @@ def build_report_view_model(
             direction = "b"
         else:
             direction = "neutral"
+        context_audit = dict(family.get("context_audit") or {})
+        if family.get("key") == "matchup_h2h" and valid_h2h_evidence:
+            context_audit = dict(h2h_evidence.get("h2h_evidence") or {})
         family_rows.append({
             "key": family.get("key"),
             "label": family.get("label") or family.get("key"),
@@ -401,7 +426,7 @@ def build_report_view_model(
                 if absolute_total > 0.0 else 0.0
             ),
             "internal_trace": dict(family.get("internal_trace") or {}),
-            "context_audit": dict(family.get("context_audit") or {}),
+            "context_audit": context_audit,
         })
 
     market_a = _player_market(
@@ -532,6 +557,7 @@ def build_report_view_model(
             },
         },
         "families": family_rows,
+        "h2h_evidence_available": valid_h2h_evidence,
         "top_arguments": {"a": arguments_a, "b": arguments_b},
         "family_sensitivity": sensitivity,
         "family_coverage": dict(shadow.get("family_coverage") or {}),
