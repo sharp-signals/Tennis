@@ -271,8 +271,9 @@ class ContextualShadowReportTests(unittest.TestCase):
             "probability_model_b": 0.25,
             "probability_interval_90_model_a": [0.70, 0.80],
         })
+        quote = {**market(), "odds": {"a": 1.45, "b": 2.90}}
         html = report.render_report_html(
-            report.build_report_view_model(prediction, market(), None, evidence)
+            report.build_report_view_model(prediction, quote, None, evidence)
         )
         self.assertIn("ODD DE MERCADO CAPTURADA", html)
         self.assertIn("Favorito do modelo", html)
@@ -282,9 +283,29 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("Ver todas as restantes linhas", html)
         self.assertLessEqual(html.count('class="line-card"'), 5)
         positions = [html.index(f'<div class="line-name">{line}</div>') for line in (
-            "-0.5", "-2", "-2.5", "-3", "-3.5",
+            "-2", "-2.5", "-3", "-3.5", "-4",
         )]
         self.assertEqual(positions, sorted(positions))
+
+    def test_exact_surface_context_overrides_generic_provider_surface(self):
+        view = report.build_report_view_model(observation(), market())
+        self.assertEqual(view["surface_context"], "Rápido indoor")
+
+    def test_moneyline_card_reuses_frozen_fair_odd(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_model_a": 0.536,
+            "probability_model_b": 0.464,
+            "probability_interval_90_model_a": [0.50, 0.57],
+            "fair_odd_model_a": {
+                "central": 1.864, "lower_odd": 1.754, "upper_odd": 2.0,
+            },
+        })
+        quote = {**market(), "odds": {"a": 1.97, "b": 1.92}}
+        view = report.build_report_view_model(prediction, quote)
+        self.assertEqual(view["market_review"]["moneyline"]["fair_odd"], 1.86)
+        html = report.render_report_html(view)
+        self.assertGreaterEqual(html.count("fair odd 1.86"), 1)
 
     def test_integer_handicap_push_is_explained_in_public_card(self):
         evidence = handicap_evidence()
@@ -297,8 +318,9 @@ class ContextualShadowReportTests(unittest.TestCase):
             "probability_model_b": 0.25,
             "probability_interval_90_model_a": [0.70, 0.80],
         })
+        quote = {**market(), "odds": {"a": 1.45, "b": 2.90}}
         html = report.render_report_html(
-            report.build_report_view_model(prediction, market(), None, evidence)
+            report.build_report_view_model(prediction, quote, None, evidence)
         )
         self.assertIn("Push: 5 em 80 jogos", html)
 

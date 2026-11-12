@@ -100,7 +100,7 @@ def test_negative_handicap_has_own_price_and_conditional_coverage():
     assert review["handicap"]["lines"][0]["push"] == 0
 
 
-def test_all_relevant_half_point_lines_are_kept_with_four_highlights():
+def test_all_relevant_half_point_lines_are_kept_with_five_consecutive_highlights():
     lines = [-(value / 2) for value in range(1, 13)]
     review = build_market_review(
         probabilities={"a": 0.75, "b": 0.25},
@@ -110,10 +110,40 @@ def test_all_relevant_half_point_lines_are_kept_with_four_highlights():
     )
     rendered = review["handicap"]["lines"]
     assert len(rendered) == 12
-    assert sum(bool(item["highlighted"]) for item in rendered) == 4
+    highlighted = [
+        float(item["line"]) for item in rendered if item["highlighted"]
+    ]
+    assert highlighted == [-2.0, -2.5, -3.0, -3.5, -4.0]
     assert {item["line"] for item in rendered} == {
         f"{-value / 2:+g}" for value in range(1, 13)
     }
+
+
+def test_underdog_reference_lines_are_five_consecutive_half_games():
+    lines = [value / 2 for value in range(1, 13)]
+    review = build_market_review(
+        probabilities={"a": 0.48, "b": 0.52},
+        intervals={"a": [0.43, 0.53], "b": [0.47, 0.57]},
+        odds={"a": 2.30, "b": 1.60},
+        evidence_record=_evidence(lines),
+    )
+    highlighted = [
+        float(item["line"])
+        for item in review["handicap"]["lines"] if item["highlighted"]
+    ]
+    assert highlighted == [1.5, 2.0, 2.5, 3.0, 3.5]
+
+
+def test_moneyline_review_uses_frozen_fair_odd_when_provided():
+    review = build_market_review(
+        probabilities={"a": 0.536, "b": 0.464},
+        intervals={"a": [0.50, 0.57], "b": [0.43, 0.50]},
+        odds={"a": 1.97, "b": 1.92},
+        evidence_record=_evidence([0.5, 1.0, 1.5, 2.0, 2.5]),
+        fair_odds={"a": 1.864, "b": 2.155},
+    )
+    assert review["candidate_side"] == "a"
+    assert review["moneyline"]["fair_odd"] == 1.86
 
 
 def test_positive_handicap_highlights_total_coverage():
