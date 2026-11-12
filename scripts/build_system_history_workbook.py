@@ -235,17 +235,21 @@ def _write_factor_coverage_sheets(wb: Workbook, coverage: Mapping[str, Any]) -> 
 
 def _write_guerra_audit_sheets(wb: Workbook, manual_paper: Mapping[str, Any]) -> None:
     """Append the private-Sheet-derived aggregate audit; never individual rows."""
-    for name in ("GUERRA — fatores", "GUERRA — segmentos", "GUERRA — qualidade"):
+    for name in (
+        "GUERRA — fatores", "GUERRA — segmentos", "GUERRA — qualidade",
+        "GUERRA LEGACY — fatores", "GUERRA LEGACY — segmentos",
+        "GUERRA LEGACY — qualidade", "GUERRA CONTEXTUAL — estado",
+    ):
         if name in wb.sheetnames:
             del wb[name]
     strategy = ((manual_paper.get("by_strategy") or {}).get("GUERRA_SELECTION_V1") or {})
     audit = strategy.get("audit_v1") or {}
 
-    factors = wb.create_sheet("GUERRA — fatores")
+    factors = wb.create_sheet("GUERRA LEGACY — fatores")
     _title(
         factors,
-        "Seleções GUERRA por fator",
-        "Agregados da Sheet privada ligados a snapshots canónicos. ROI e unidades usam o registo manual; nenhuma seleção individual é publicada.",
+        "GUERRA LEGACY — fatores (SUPERSEDED)",
+        "Regime histórico preservado. Foi produzido com pesos antigos e fair odd não independente do mercado; não valida o modelo contextual novo.",
     )
     last = _write_rows(
         factors, 5,
@@ -256,11 +260,11 @@ def _write_guerra_audit_sheets(wb: Workbook, manual_paper: Mapping[str, Any]) ->
     _percent_columns(factors, 6, last, [9, 11, 13])
     _widths(factors, [14, 24, 22, 12, 12, 12, 12, 12, 14, 14, 14, 14, 16, 24, 20, 26])
 
-    segments = wb.create_sheet("GUERRA — segmentos")
+    segments = wb.create_sheet("GUERRA LEGACY — segmentos")
     _title(
         segments,
-        "Seleções GUERRA por segmento",
-        "ATP, WTA, mercado, perfil, odds, piso, índice, alinhamento e tipo de ligação. Challenger permanece num universo próprio.",
+        "GUERRA LEGACY — segmentos (SUPERSEDED)",
+        "Resultados preservados apenas para memória e estudo da seleção humana. Não misturar com GUERRA_CONTEXTUAL_V1.",
     )
     last = _write_rows(
         segments, 5,
@@ -271,11 +275,11 @@ def _write_guerra_audit_sheets(wb: Workbook, manual_paper: Mapping[str, Any]) ->
     _percent_columns(segments, 6, last, [9, 11, 13])
     _widths(segments, [22, 30, 12, 12, 12, 12, 12, 10, 14, 14, 14, 14, 16, 24, 26])
 
-    quality = wb.create_sheet("GUERRA — qualidade")
+    quality = wb.create_sheet("GUERRA LEGACY — qualidade")
     _title(
         quality,
-        "Qualidade da ligação GUERRA",
-        "Controlo terminal de cobertura e privacidade. Não alimenta decisões, pesos ou pricing.",
+        "GUERRA LEGACY — qualidade e limites",
+        "Controlo do histórico preservado. Este universo não alimenta a validação da fair odd contextual independente.",
     )
     _header(quality, 5, ["Indicador", "Valor"])
     values = audit.get("quality") or {}
@@ -299,6 +303,35 @@ def _write_guerra_audit_sheets(wb: Workbook, manual_paper: Mapping[str, Any]) ->
         quality.cell(row, 1, label).font = Font(name="Arial", bold=True, color="243B53")
         quality.cell(row, 2, value).alignment = Alignment(wrap_text=True, vertical="top")
     _widths(quality, [48, 105])
+
+    contextual = ((manual_paper.get("by_strategy") or {}).get("GUERRA_CONTEXTUAL_V1") or {})
+    contextual_summary = contextual.get("summary") or {}
+    contextual_state = wb.create_sheet("GUERRA CONTEXTUAL — estado")
+    _title(
+        contextual_state,
+        "GUERRA CONTEXTUAL — novo regime",
+        "Apenas seleções registadas com FENZOBOT_CONTEXTUAL_2026_11 e fair odd independente do mercado. O histórico LEGACY está excluído.",
+    )
+    _header(contextual_state, 5, ["Indicador", "Valor"])
+    contextual_rows = (
+        ("Estado", contextual.get("status") or "WAITING_FOR_FIRST_SELECTIONS"),
+        ("Estratégia", "GUERRA_CONTEXTUAL_V1"),
+        ("Modelo", contextual.get("model_version") or "FENZOBOT_CONTEXTUAL_2026_11"),
+        ("Regime", contextual.get("regime") or "CONTEXTUAL_INDEPENDENT_FAIR_ODD"),
+        ("Entradas", contextual_summary.get("total_entries", 0)),
+        ("Liquidadas", contextual_summary.get("settled", 0)),
+        ("Vitórias", contextual_summary.get("wins", 0)),
+        ("Derrotas", contextual_summary.get("losses", 0)),
+        ("Pendentes", contextual_summary.get("pending", 0)),
+        ("Unidades", contextual_summary.get("units", 0)),
+        ("ROI", contextual_summary.get("roi_pct") if contextual_summary.get("roi_pct") is not None else "N/D"),
+        ("Regra", "Prospectivo; zero entradas LEGACY; sem mistura de pesos ou pricing antigos."),
+        ("Famílias", "A análise por família só será mostrada após ligação contextual por observação e versão do modelo."),
+    )
+    for row, (label, value) in enumerate(contextual_rows, 6):
+        contextual_state.cell(row, 1, label).font = Font(name="Arial", bold=True, color="243B53")
+        contextual_state.cell(row, 2, value).alignment = Alignment(wrap_text=True, vertical="top")
+    _widths(contextual_state, [38, 105])
 
 
 def _write_atp_history_sheets(wb: Workbook, payload: Mapping[str, Any]) -> None:

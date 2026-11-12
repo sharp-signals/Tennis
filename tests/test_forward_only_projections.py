@@ -455,9 +455,10 @@ class ForwardOnlyProjectionTests(unittest.TestCase):
         source = (Path(__file__).parents[1] / "scripts/google_apps_script/sync_system_history.gs").read_text(encoding="utf-8")
         self.assertIn("writeProspectiveSystemHistory_", source)
         self.assertIn("writeGuerraAuditSheets_(spreadsheet, manualPaper || {});", source)
-        self.assertIn("GUERRA — fatores", source)
-        self.assertIn("GUERRA — segmentos", source)
-        self.assertIn("GUERRA — qualidade", source)
+        self.assertIn("GUERRA LEGACY — fatores", source)
+        self.assertIn("GUERRA LEGACY — segmentos", source)
+        self.assertIn("GUERRA LEGACY — qualidade", source)
+        self.assertIn("GUERRA CONTEXTUAL — estado", source)
         function = source[source.index("function writeProspectiveSystemHistory_"):source.index("function installSystemHistorySync")]
         self.assertNotIn("writeSystemHistoryWorkbook_(", function)
         self.assertNotIn("writeGuerraAuditSheets_(", function)
