@@ -64,7 +64,7 @@ test('weight decision panel blocks tuning while GUERRA factor evidence is insuff
       {scope: 'WTA', factor: 'servico_carreira', market_residual_pp: 2.7},
     ],
   };
-  const manual = {by_strategy: {GUERRA_SELECTION_V1: {audit_v1: {quality: {
+  const manual = {by_strategy: {GUERRA_CONTEXTUAL_V1: {audit_v1: {quality: {
     linked_entries: 139, canonical_entries: 65, factor_audit_eligible_entries: 2,
     selected_side_unresolved: 63,
   }}}}};

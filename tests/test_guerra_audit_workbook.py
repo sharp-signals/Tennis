@@ -72,15 +72,27 @@ class GuerraAuditWorkbookTests(unittest.TestCase):
                         }],
                     },
                 },
+                "GUERRA_CONTEXTUAL_V1": {
+                    "status": "WAITING_FOR_FIRST_SELECTIONS",
+                    "model_version": "FENZOBOT_CONTEXTUAL_2026_11",
+                    "regime": "CONTEXTUAL_INDEPENDENT_FAIR_ODD",
+                    "summary": {"total_entries": 0, "settled": 0},
+                },
             },
         }
         _write_guerra_audit_sheets(workbook, payload)
-        self.assertIn("GUERRA — fatores", workbook.sheetnames)
-        self.assertIn("GUERRA — segmentos", workbook.sheetnames)
-        self.assertIn("GUERRA — qualidade", workbook.sheetnames)
-        self.assertEqual(workbook["GUERRA — fatores"]["A6"].value, "ATP")
-        self.assertEqual(workbook["GUERRA — fatores"]["I6"].value, 0.667)
-        self.assertEqual(workbook["GUERRA — qualidade"]["B8"].value, 12)
+        self.assertIn("GUERRA LEGACY — fatores", workbook.sheetnames)
+        self.assertIn("GUERRA LEGACY — segmentos", workbook.sheetnames)
+        self.assertIn("GUERRA LEGACY — qualidade", workbook.sheetnames)
+        self.assertIn("GUERRA CONTEXTUAL — estado", workbook.sheetnames)
+        self.assertEqual(workbook["GUERRA LEGACY — fatores"]["A6"].value, "ATP")
+        self.assertEqual(workbook["GUERRA LEGACY — fatores"]["I6"].value, 0.667)
+        self.assertEqual(workbook["GUERRA LEGACY — qualidade"]["B8"].value, 12)
+        self.assertEqual(
+            workbook["GUERRA CONTEXTUAL — estado"]["B8"].value,
+            "FENZOBOT_CONTEXTUAL_2026_11",
+        )
+        self.assertNotIn("GUERRA — fatores", workbook.sheetnames)
 
 
 if __name__ == "__main__":

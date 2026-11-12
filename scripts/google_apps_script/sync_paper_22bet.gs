@@ -1,5 +1,5 @@
 /**
- * CHANGE-2026-09-06-023
+ * CHANGE-2026-09-06-023; CHANGE-2026-11-12-201
  * Publica apenas métricas agregadas da Sheet PAPER 22Bet no repositório.
  * Não publica a lista de apostas, notas ou dados pessoais.
  *
@@ -27,7 +27,7 @@ const PAPER_22BET_SYNC = {
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
     '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
     'Fenzobot Report Match Key', 'Fenzobot Report URL', 'Selection Time Precision',
-    'Fenzobot Commence Time UTC',
+    'Fenzobot Commence Time UTC', 'Fenzobot Model Version',
   ],
   challengerTrackingHeaders: [
     'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
@@ -36,9 +36,12 @@ const PAPER_22BET_SYNC = {
   challengerDashboardSheetName: 'Challenger · Gráficos',
   challengerLevelLabel: 'Challenger',
   challengerManualStrategy: 'CHALLENGER_125_EXPERIMENTAL_V1',
+  legacyGuerraStrategy: 'GUERRA_SELECTION_V1',
+  contextualGuerraStrategy: 'GUERRA_CONTEXTUAL_V1',
+  contextualModelVersion: 'FENZOBOT_CONTEXTUAL_2026_11',
   challengerManualStakeUnits: 0.5,
   challengerManualMinimumEdgePct: 2.0,
-  syncContractVersion: 5,
+  syncContractVersion: 6,
   // Índices legacy (A:O) usados exclusivamente como compatibilidade para
   // versões antigas da Sheet sem cabeçalhos reconhecíveis.
   legacyOperationalIndexes: {
@@ -484,7 +487,12 @@ function recoverGuerraReportLinks_(spreadsheet, reportIndex) {
   let unmatched = 0;
   rows.forEach(row => {
     if (!(row[0] && row[1] && row[tracking.market]) || isChallengerManualRow_(row, tracking)) return;
-    row[tracking.strategy] = 'GUERRA_SELECTION_V1';
+    // Nunca reclassificar o passado. As linhas já existentes sem estratégia
+    // pertencem ao regime histórico; apenas novas edições, carimbadas pelo
+    // onEdit, entram no regime contextual independente do mercado.
+    if (!String(row[tracking.strategy] || '').trim()) {
+      row[tracking.strategy] = PAPER_22BET_SYNC.legacyGuerraStrategy;
+    }
     const existingSnapshot = String(row[tracking.snapshot] || '').trim();
     const existingMatchKey = String(row[tracking.reportMatchKey] || '').trim();
     let link = null;
@@ -660,12 +668,24 @@ function onEdit(e) {
   const strategyColumn = map['Selection Strategy'];
   const stampColumn = map['Selected At UTC'];
   const precisionColumn = map['Selection Time Precision'];
+  const modelVersionColumn = map['Fenzobot Model Version'];
   if (!stampColumn || !strategyColumn) return;
   const rowValues = sheet.getRange(e.range.getRow(), 1, 1, Math.max(sheet.getLastColumn(), 16)).getValues()[0];
   const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, Math.max(sheet.getLastColumn(), 16)).getValues()[0];
   const tracking = trackingIndexes_(headers);
   if (!(rowValues[0] && rowValues[1] && rowValues[tracking.market])) return;
-  sheet.getRange(e.range.getRow(), strategyColumn).setValue('GUERRA_SELECTION_V1');
+  const existingStrategy = String(rowValues[tracking.strategy] || '').trim();
+  // O cutover é forward-only: uma edição posterior nunca pode transportar
+  // uma seleção do regime antigo para o modelo contextual.
+  if (existingStrategy && existingStrategy !== PAPER_22BET_SYNC.contextualGuerraStrategy) return;
+  sheet.getRange(e.range.getRow(), strategyColumn).setValue(
+    PAPER_22BET_SYNC.contextualGuerraStrategy,
+  );
+  if (modelVersionColumn) {
+    sheet.getRange(e.range.getRow(), modelVersionColumn).setValue(
+      PAPER_22BET_SYNC.contextualModelVersion,
+    );
+  }
   const stampCell = sheet.getRange(e.range.getRow(), stampColumn);
   if (!stampCell.getValue()) {
     stampCell.setValue(new Date().toISOString());
@@ -825,6 +845,19 @@ function buildPaperTradingPayload_(token, repository, branch) {
     factor_index_missing: 0,
     duplicate_exact_legs: 0,
   };
+  const contextualStats = newStats_();
+  const contextualByMarket = {};
+  const contextualBySide = {};
+  const contextualLinkage = {
+    LINKED_EX_ANTE: 0,
+    LINKED_RETROSPECTIVE_CANONICAL: 0,
+    LINKED_RETROSPECTIVE_LEGACY: 0,
+    REPORT_LINK_NOT_FOUND: 0,
+    SELECTION_AFTER_START: 0,
+    MISSING_SELECTION_TIMESTAMP: 0,
+    UNAVAILABLE: 0,
+  };
+  const contextualCandidates = {};
   const challengerStats = newStats_();
   const challengerByMarket = {};
   const challengerBySide = {};
@@ -859,7 +892,29 @@ function buildPaperTradingPayload_(token, repository, branch) {
       });
       return;
     }
-    if (!(row[0] && row[1] && row[tracking.market]) || !tracking.complete || String(row[tracking.strategy] || '').trim() !== 'GUERRA_SELECTION_V1') return;
+    if (!(row[0] && row[1] && row[tracking.market]) || !tracking.complete) return;
+    const rowStrategy = String(row[tracking.strategy] || '').trim();
+    if (rowStrategy === PAPER_22BET_SYNC.contextualGuerraStrategy) {
+      const contextualStatus = validateGuerraSelection_(row, tracking, green.byKey, green.available);
+      contextualLinkage[contextualStatus] = (contextualLinkage[contextualStatus] || 0) + 1;
+      sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1)
+        .setValue(contextualStatus);
+      if (!isLinkedGuerraStatus_(contextualStatus)) return;
+      const contextualSnapshot = String(row[tracking.snapshot] || '').trim();
+      const contextualReport = String(row[tracking.reportMatchKey] || '').trim();
+      const contextualKey = contextualSnapshot || contextualReport;
+      if (!contextualKey) return;
+      contextualCandidates[contextualKey] = true;
+      const contextualMarket = marketName_(row, tracking);
+      const contextualSide = sideName_(row, tracking);
+      if (!contextualByMarket[contextualMarket]) contextualByMarket[contextualMarket] = newStats_();
+      if (!contextualBySide[contextualSide]) contextualBySide[contextualSide] = newStats_();
+      addRowToStats_(contextualStats, row, tracking);
+      addRowToStats_(contextualByMarket[contextualMarket], row, tracking);
+      addRowToStats_(contextualBySide[contextualSide], row, tracking);
+      return;
+    }
+    if (rowStrategy !== PAPER_22BET_SYNC.legacyGuerraStrategy) return;
     const status = validateGuerraSelection_(row, tracking, green.byKey, green.available);
     linkage[status] = (linkage[status] || 0) + 1;
     sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(status);
@@ -973,6 +1028,23 @@ function buildPaperTradingPayload_(token, repository, branch) {
       claims: 'DESCRIPTIVE_ONLY_NO_AUTOMATIC_WEIGHT_CHANGE',
     },
   };
+  const contextualStrategyAggregate = {
+    regime: 'CONTEXTUAL_INDEPENDENT_FAIR_ODD',
+    model_version: PAPER_22BET_SYNC.contextualModelVersion,
+    summary: finishStats_(contextualStats),
+    paper_entries: contextualStats.total_entries,
+    selected_candidates: Object.keys(contextualCandidates).length,
+    by_market: finishCollection_(contextualByMarket),
+    by_side: finishCollection_(contextualBySide),
+    linkage: contextualLinkage,
+    status: contextualStats.total_entries ? 'AVAILABLE' : 'WAITING_FOR_FIRST_SELECTIONS',
+    audit_v1: {
+      status: 'WAITING_FOR_CONTEXTUAL_FAMILY_LINKAGE',
+      claims: 'PROSPECTIVE_ONLY_NO_LEGACY_MIXING',
+      legacy_entries_included: 0,
+      note: 'As famílias contextuais serão auditadas apenas quando a ligação por observação e versão estiver publicada.',
+    },
+  };
   const challengerAggregate = {
     summary: finishStats_(challengerStats),
     paper_entries: challengerStats.total_entries,
@@ -997,7 +1069,11 @@ function buildPaperTradingPayload_(token, repository, branch) {
     Utilities.DigestAlgorithm.SHA_256,
     semanticFingerprintMaterial_(fingerprintRows, {
       summary: finishStats_(summary), by_market: finishCollection_(byMarket),
-      by_side: finishCollection_(bySide), by_strategy: strategyAggregate,
+      by_side: finishCollection_(bySide),
+      by_strategy: {
+        legacy: strategyAggregate,
+        contextual: contextualStrategyAggregate,
+      },
       challenger_manual: challengerAggregate,
     }),
   ).map(byte => ('0' + (byte & 0xff).toString(16)).slice(-2)).join('');
@@ -1024,6 +1100,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     by_side: finishCollection_(bySide),
     by_strategy: {
       GUERRA_SELECTION_V1: strategyAggregate,
+      GUERRA_CONTEXTUAL_V1: contextualStrategyAggregate,
       CHALLENGER_125_EXPERIMENTAL_V1: challengerAggregate,
     },
   };
@@ -1078,6 +1155,7 @@ function trackingIndexes_(headers) {
     reportUrl: indexes['Fenzobot Report URL'],
     timePrecision: indexes['Selection Time Precision'],
     commenceTime: indexes['Fenzobot Commence Time UTC'],
+    modelVersion: indexes['Fenzobot Model Version'],
     challengerIndex: headerIndex_(headers, 'Challenger Índice Fenzobot'),
     challengerCoverage: headerIndex_(headers, 'Challenger Cobertura %'),
     challengerEdge: headerIndex_(headers, 'Challenger Edge %'),

@@ -1,5 +1,5 @@
 /**
- * CHANGE-2026-09-28-061; CHANGE-2026-10-04-074
+ * CHANGE-2026-09-28-061; CHANGE-2026-10-04-074; CHANGE-2026-11-12-201
  * Sincroniza a Sheet colaborativa "Fenzobot — Histórico & Aprendizagem" a
  * partir do JSON canónico publicado no repositório.
  *
@@ -22,7 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
-  projectionSchemaVersion: '2026-11-12-contextual-history-v1',
+  projectionSchemaVersion: '2026-11-12-guerra-regime-cutover-v1',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 
@@ -57,9 +57,10 @@ function syncSystemHistoryToSheet() {
     'Atribuição — força do peso',
     'Cobertura — fatores',
     'Cobertura — motivos',
-    'GUERRA — fatores',
-    'GUERRA — segmentos',
-    'GUERRA — qualidade',
+    'GUERRA LEGACY — fatores',
+    'GUERRA LEGACY — segmentos',
+    'GUERRA LEGACY — qualidade',
+    'GUERRA CONTEXTUAL — estado',
     'ATP histórico - jogador odd',
     'ATP histórico — fonte',
     'ATP odds recuperadas',
@@ -138,7 +139,10 @@ function buildWeightDecisionPanelModel_(attribution, manualPaper) {
   summary.forEach(row => {
     byScope[String(row.scope || '').toUpperCase() + '|' + String(row.factor || '')] = row;
   });
-  const strategy = (((manualPaper || {}).by_strategy || {}).GUERRA_SELECTION_V1 || {});
+  // Só o regime contextual prospectivo pode autorizar conclusões sobre os
+  // pesos novos. GUERRA_SELECTION_V1 fica preservado como LEGACY e nunca
+  // contribui para este painel de decisão.
+  const strategy = (((manualPaper || {}).by_strategy || {}).GUERRA_CONTEXTUAL_V1 || {});
   const audit = strategy.audit_v1 || {};
   const quality = audit.quality || {};
   const linked = Number(quality.linked_entries || 0);
@@ -254,13 +258,13 @@ function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
   sheet.getRange('A1:L1').merge().setValue('FENZOBOT — DECISÃO SOBRE PESOS')
     .setBackground('#0B1726').setFontColor('#FFFFFF').setFontFamily('Arial')
     .setFontSize(18).setFontWeight('bold').setHorizontalAlignment('left');
-  sheet.getRange('A2:L2').merge().setValue('O painel separa evidência estrutural do motor da validação PAPER de Guerra. Atualiza automaticamente; não altera o modelo.')
+  sheet.getRange('A2:L2').merge().setValue('Validação exclusiva do regime GUERRA_CONTEXTUAL_V1. O histórico LEGACY é preservado, mas não entra nas conclusões nem altera o modelo.')
     .setBackground('#EAF2F8').setFontColor('#35546F').setFontFamily('Arial').setFontSize(10);
 
   const cards = [
     ['A4:C4', 'A5:C6', 'SNAPSHOTS ESTRUTURAIS', model.structural_snapshots],
     ['D4:F4', 'D5:F6', 'FATORES ANALISADOS', model.factor_count],
-    ['G4:I4', 'G5:I6', 'GUERRA LIGADAS', model.linked],
+    ['G4:I4', 'G5:I6', 'GUERRA CONTEXTUAL', model.linked],
     ['J4:L4', 'J5:L6', 'AUDITORIA DE FATORES', model.eligible],
   ];
   cards.forEach(card => {
@@ -511,6 +515,19 @@ function writeChallengerManualPaperSheet_(spreadsheet, manualPaper) {
 }
 
 function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
+  [
+    ['GUERRA — fatores', 'GUERRA LEGACY — fatores'],
+    ['GUERRA — segmentos', 'GUERRA LEGACY — segmentos'],
+    ['GUERRA — qualidade', 'GUERRA LEGACY — qualidade'],
+  ].forEach(pair => {
+    const oldSheet = spreadsheet.getSheetByName(pair[0]);
+    const currentSheet = spreadsheet.getSheetByName(pair[1]);
+    if (oldSheet && !currentSheet) {
+      oldSheet.setName(pair[1]);
+    } else if (oldSheet && currentSheet) {
+      spreadsheet.deleteSheet(oldSheet);
+    }
+  });
   const strategy = ((manualPaper || {}).by_strategy || {}).GUERRA_SELECTION_V1 || {};
   const audit = strategy.audit_v1 || {};
   const factors = normaliseGuerraAuditRows_(audit.factors);
@@ -523,20 +540,21 @@ function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
   const movementAll = referenceMovement.all_linked || {};
   const movementExact = referenceMovement.exact_timestamp || {};
 
-  upsertSystemSheet_(spreadsheet, 'GUERRA — fatores', rowsWithHeaders_(
+  upsertSystemSheet_(spreadsheet, 'GUERRA LEGACY — fatores', rowsWithHeaders_(
     ['Universo', 'Fator', 'Relação com seleção', 'Entradas', 'Liquidadas', 'Pendentes', 'Vitórias', 'Derrotas', '% acerto', 'Unidades', 'ROI', 'Odd média', 'Break-even', 'Margem vs break-even (p.p.)', 'Peso efetivo médio', 'Leitura da amostra'],
     factors,
     ['scope', 'factor', 'relation', 'total_entries', 'settled', 'pending', 'wins', 'losses', 'win_rate_pct', 'units', 'roi_pct', 'average_odd', 'break_even_pct', 'hit_vs_break_even_pp', 'average_effective_weight', 'sample_status'],
   ), {headerRow: 1, widths: [14, 24, 22, 12, 12, 12, 12, 12, 14, 14, 14, 14, 16, 24, 20, 26], percentageColumns: [9, 11, 13], marginColumn: 14});
 
-  upsertSystemSheet_(spreadsheet, 'GUERRA — segmentos', rowsWithHeaders_(
+  upsertSystemSheet_(spreadsheet, 'GUERRA LEGACY — segmentos', rowsWithHeaders_(
     ['Dimensão', 'Grupo', 'Entradas', 'Liquidadas', 'Pendentes', 'Vitórias', 'Derrotas', 'Void', '% acerto', 'Unidades', 'ROI', 'Odd média', 'Break-even', 'Margem vs break-even (p.p.)', 'Leitura da amostra'],
     segments,
     ['dimension', 'group', 'total_entries', 'settled', 'pending', 'wins', 'losses', 'pushes', 'win_rate_pct', 'units', 'roi_pct', 'average_odd', 'break_even_pct', 'hit_vs_break_even_pp', 'sample_status'],
   ), {headerRow: 1, widths: [22, 30, 12, 12, 12, 12, 12, 10, 14, 14, 14, 14, 16, 24, 26], percentageColumns: [9, 11, 13], marginColumn: 14});
 
   const qualityRows = [
-    ['Auditoria GUERRA_SELECTION', 'Valor'],
+    ['GUERRA LEGACY — SUPERSEDED', 'Valor'],
+    ['Regime', 'Pesos antigos e fair odd não independente do mercado. Preservado; excluído da validação contextual.'],
     ['Estado', audit.status || 'UNAVAILABLE'],
     ['Contrato de privacidade', audit.privacy_contract || 'N/D'],
     ['Entradas ligadas a relatório', quality.linked_entries || 0],
@@ -567,7 +585,29 @@ function writeGuerraAuditSheets_(spreadsheet, manualPaper) {
     ['Regra de amostra', '<20 informativo · 20–39 tendência · ≥40 candidato a revisão; alterações máximas de peso ±0,5 por ciclo.'],
     ['Limite', 'Auditoria descritiva. Não altera pesos, PAPER, pricing ou decisões automaticamente. Challenger mantém universo próprio.'],
   ];
-  upsertSystemSheet_(spreadsheet, 'GUERRA — qualidade', qualityRows, {
+  upsertSystemSheet_(spreadsheet, 'GUERRA LEGACY — qualidade', qualityRows, {
+    headerRow: 1, widths: [48, 105], preserveCharts: false,
+  });
+
+  const contextual = ((manualPaper || {}).by_strategy || {}).GUERRA_CONTEXTUAL_V1 || {};
+  const contextualSummary = contextual.summary || {};
+  const contextualRows = [
+    ['GUERRA CONTEXTUAL — NOVO REGIME', 'Valor'],
+    ['Estado', contextual.status || 'WAITING_FOR_FIRST_SELECTIONS'],
+    ['Estratégia', 'GUERRA_CONTEXTUAL_V1'],
+    ['Modelo', contextual.model_version || 'FENZOBOT_CONTEXTUAL_2026_11'],
+    ['Regime', contextual.regime || 'CONTEXTUAL_INDEPENDENT_FAIR_ODD'],
+    ['Entradas', contextualSummary.total_entries || 0],
+    ['Liquidadas', contextualSummary.settled || 0],
+    ['Vitórias', contextualSummary.wins || 0],
+    ['Derrotas', contextualSummary.losses || 0],
+    ['Pendentes', contextualSummary.pending || 0],
+    ['Unidades', contextualSummary.units || 0],
+    ['ROI', contextualSummary.roi_pct == null ? 'N/D' : contextualSummary.roi_pct + '%'],
+    ['Regra', 'Prospectivo; zero entradas LEGACY; sem mistura de pesos ou pricing antigos.'],
+    ['Famílias', 'A análise por família só aparece após ligação contextual por observação e versão do modelo.'],
+  ];
+  upsertSystemSheet_(spreadsheet, 'GUERRA CONTEXTUAL — estado', contextualRows, {
     headerRow: 1, widths: [48, 105], preserveCharts: false,
   });
 }

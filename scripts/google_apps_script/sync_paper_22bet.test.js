@@ -233,10 +233,75 @@ test('tracking column installation is idempotent', () => {
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
     '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
     'Fenzobot Report Match Key', 'Fenzobot Report URL', 'Selection Time Precision',
-    'Fenzobot Commence Time UTC',
+    'Fenzobot Commence Time UTC', 'Fenzobot Model Version',
   ];
   assert.deepEqual(Array.from(context.missingTrackingHeaders_([])), all);
   assert.deepEqual(Array.from(context.missingTrackingHeaders_(all)), []);
+});
+
+test('new manual edits stamp the contextual regime and model version', () => {
+  const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat(
+    [
+      'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
+      '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
+      'Fenzobot Report Match Key', 'Fenzobot Report URL', 'Selection Time Precision',
+      'Fenzobot Commence Time UTC', 'Fenzobot Model Version',
+    ],
+  );
+  const values = Array(headers.length).fill('');
+  values[0] = '2026-11-12'; values[1] = 'Alpha vs Beta'; values[5] = 'Moneyline'; values[6] = 'Alpha';
+  const written = {};
+  const sheet = {
+    getName: () => 'Apostas',
+    getLastColumn: () => headers.length,
+    getRange: (rowNumber, columnNumber) => ({
+      getValues: () => rowNumber === 5 ? [headers] : [values],
+      getValue: () => written[columnNumber] || '',
+      setValue: value => { written[columnNumber] = value; },
+    }),
+  };
+  context.onEdit({range: {
+    getSheet: () => sheet,
+    getRow: () => 6,
+    getColumn: () => 7,
+  }});
+  assert.equal(written[headers.indexOf('Selection Strategy') + 1], 'GUERRA_CONTEXTUAL_V1');
+  assert.equal(written[headers.indexOf('Fenzobot Model Version') + 1], 'FENZOBOT_CONTEXTUAL_2026_11');
+  assert.match(written[headers.indexOf('Selected At UTC') + 1], /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('editing an old Guerra row never reclassifies the legacy regime', () => {
+  const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat(
+    [
+      'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC',
+      '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
+      'Fenzobot Report Match Key', 'Fenzobot Report URL', 'Selection Time Precision',
+      'Fenzobot Commence Time UTC', 'Fenzobot Model Version',
+    ],
+  );
+  const values = Array(headers.length).fill('');
+  values[0] = '2026-10-10';
+  values[1] = 'Alpha vs Beta';
+  values[5] = 'Moneyline';
+  values[6] = 'Alpha';
+  values[headers.indexOf('Selection Strategy')] = 'GUERRA_SELECTION_V1';
+  const written = {};
+  const sheet = {
+    getName: () => 'Apostas',
+    getLastColumn: () => headers.length,
+    getRange: (rowNumber, columnNumber) => ({
+      getValues: () => rowNumber === 5 ? [headers] : [values],
+      getValue: () => written[columnNumber] || '',
+      setValue: value => { written[columnNumber] = value; },
+    }),
+  };
+  context.onEdit({range: {
+    getSheet: () => sheet,
+    getRow: () => 6,
+    getColumn: () => 10,
+  }});
+  assert.deepEqual(written, {});
+  assert.equal(values[headers.indexOf('Selection Strategy')], 'GUERRA_SELECTION_V1');
 });
 
 test('historical report linkage handles abbreviated names and the Safiullin typo', () => {
@@ -500,6 +565,48 @@ test('underdog pair counts one candidate, two PAPER legs and one complete pair',
   assert.equal(unavailable.by_strategy.GUERRA_SELECTION_V1.flat_stake_simulation.excluded_entries, 0);
   assert.equal(unavailable.by_strategy.GUERRA_SELECTION_V1.flat_stake_simulation.status, 'UNAVAILABLE');
   assert.doesNotMatch(JSON.stringify(strategy), /wta:pair|Alpha|Beta/);
+});
+
+test('new Guerra entries are isolated in the contextual strategy', () => {
+  const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat(
+    ['Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status'],
+  );
+  const legacy = row('atp:legacy', '2026-11-11T10:00:00Z');
+  legacy[0] = '2026-11-11'; legacy[1] = 'Legacy A vs Legacy B'; legacy[5] = 'Moneyline';
+  legacy[9] = 1.9; legacy[12] = 'GANHOU'; legacy[13] = 0.9;
+  const contextual = row('atp:contextual', '2026-11-12T10:00:00Z');
+  contextual[0] = '2026-11-12'; contextual[1] = 'Current A vs Current B'; contextual[5] = 'Moneyline';
+  contextual[9] = 2.0; contextual[12] = 'PERDEU'; contextual[13] = -1;
+  contextual[16] = 'GUERRA_CONTEXTUAL_V1';
+  const rows = [legacy, contextual];
+  const sheet = {
+    getLastRow: () => 7,
+    getLastColumn: () => 21,
+    getRange: (sheetRow) => ({
+      getValues: () => sheetRow === 5 ? [headers] : rows,
+      setValue: () => {},
+    }),
+  };
+  context.SpreadsheetApp = {getActiveSpreadsheet: () => ({
+    getSheetByName: () => sheet, getUrl: () => 'https://docs.google.com/spreadsheets/d/test',
+  })};
+  context.Utilities = {
+    DigestAlgorithm: {SHA_256: 'SHA_256'},
+    computeDigest: (algorithm, material) => Array.from(crypto.createHash('sha256').update(String(material)).digest()),
+  };
+  context.fetchGreenStrongIndex_ = () => ({
+    available: true, eligibleCount: 0,
+    byKey: {
+      'atp:legacy': {eligible: true, commence_time_utc: '2026-11-11T12:00:00Z'},
+      'atp:contextual': {eligible: true, commence_time_utc: '2026-11-12T12:00:00Z'},
+    },
+  });
+  context.fetchManualFactorIndex_ = () => ({available: false, recordCount: 0, byKey: {}});
+  const payload = context.buildPaperTradingPayload_('token', 'repo', 'main');
+  assert.equal(payload.by_strategy.GUERRA_SELECTION_V1.paper_entries, 1);
+  assert.equal(payload.by_strategy.GUERRA_CONTEXTUAL_V1.paper_entries, 1);
+  assert.equal(payload.by_strategy.GUERRA_CONTEXTUAL_V1.regime, 'CONTEXTUAL_INDEPENDENT_FAIR_ODD');
+  assert.equal(payload.by_strategy.GUERRA_CONTEXTUAL_V1.audit_v1.legacy_entries_included, 0);
 });
 
 test('flat stake simulation handles win, loss, void and pending independently of real stake', () => {
