@@ -168,7 +168,8 @@ test('Challenger charts use visible support data and a stable column layout', ()
   assert.doesNotMatch(source, /getCharts\(\)\.forEach\(chart => sheet\.removeChart\(chart\)\)/);
   assert.match(source, /const existingCharts = sheet\.getCharts\(\)/);
   assert.doesNotMatch(source, /sheet\.clear\(\)/);
-  assert.match(source, /getRange\(1, 1, 198, sheet\.getMaxColumns\(\)\)\.clear\(\)/);
+  assert.match(source, /const visualRange = sheet\.getRange\(1, 1, 198, sheet\.getMaxColumns\(\)\)/);
+  assert.match(source, /breakApartMergedRanges_\(visualRange\);\s*flushPendingSheetChanges_\(\);\s*visualRange\.clear\(\)/);
   assert.match(source, /sourceRange\.setValues\(paddedTable\)/);
   assert.match(source, /if \(!existingCharts\.length\) \{\s*SpreadsheetApp\.flush\(\);\s*chartJobs\.forEach/);
 });
@@ -190,6 +191,14 @@ test('merged cells are released through their complete merged ranges', () => {
   assert.equal(context.breakApartAllMergedRanges_(sheet), 2);
   assert.equal(released, 2);
   assert.doesNotMatch(source, /getDataRange\(\)\.breakApart\(\)/);
+});
+
+test('pending unmerge operations are flushed before the dashboard is cleared', () => {
+  let flushes = 0;
+  context.SpreadsheetApp = {flush: () => { flushes += 1; }};
+  assert.equal(context.flushPendingSheetChanges_(), true);
+  assert.equal(flushes, 1);
+  delete context.SpreadsheetApp;
 });
 
 test('executed edge uses frozen probability, actual odd and Betfair commission', () => {

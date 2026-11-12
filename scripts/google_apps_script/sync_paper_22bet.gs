@@ -1,5 +1,5 @@
 /**
- * CHANGE-2026-09-06-023; CHANGE-2026-11-12-201; CHANGE-2026-11-12-202
+ * CHANGE-2026-09-06-023; CHANGE-2026-11-12-201; CHANGE-2026-11-12-202; CHANGE-2026-11-12-203
  * Publica apenas métricas agregadas da Sheet PAPER 22Bet no repositório.
  * Não publica a lista de apostas, notas ou dados pessoais.
  *
@@ -1921,10 +1921,16 @@ function refreshChallengerPaperDashboard_(spreadsheet, aggregate) {
   // tabelas-fonte estáveis às quais estão ligados.
   const existingCharts = sheet.getCharts();
   breakApartAllMergedRanges_(sheet);
+  flushPendingSheetChanges_();
   // Não limpar a folha inteira: apagar momentaneamente as células-fonte faz o
   // Google Sheets prender os gráficos ao estado "sem séries". Limpamos apenas
   // a zona visual; os blocos técnicos são substituídos atomicamente abaixo.
-  sheet.getRange(1, 1, 198, sheet.getMaxColumns()).clear();
+  const visualRange = sheet.getRange(1, 1, 198, sheet.getMaxColumns());
+  // Proteção adicional contra uniões antigas que o serviço só materialize
+  // depois da primeira operação sobre a folha.
+  breakApartMergedRanges_(visualRange);
+  flushPendingSheetChanges_();
+  visualRange.clear();
   sheet.showColumns(1, sheet.getMaxColumns());
   sheet.setConditionalFormatRules([]);
   sheet.setFrozenRows(3);
@@ -2005,14 +2011,26 @@ function breakApartAllMergedRanges_(sheet) {
   if (!sheet || typeof sheet.getRange !== 'function') return 0;
   const rows = Math.max(1, Number(sheet.getMaxRows()) || 1);
   const columns = Math.max(1, Number(sheet.getMaxColumns()) || 1);
-  const fullSheetRange = sheet.getRange(1, 1, rows, columns);
-  const mergedRanges = typeof fullSheetRange.getMergedRanges === 'function'
-    ? fullSheetRange.getMergedRanges()
+  return breakApartMergedRanges_(sheet.getRange(1, 1, rows, columns));
+}
+
+function breakApartMergedRanges_(range) {
+  if (!range) return 0;
+  const mergedRanges = typeof range.getMergedRanges === 'function'
+    ? range.getMergedRanges()
     : [];
   mergedRanges.forEach(range => {
     if (range && typeof range.breakApart === 'function') range.breakApart();
   });
   return mergedRanges.length;
+}
+
+function flushPendingSheetChanges_() {
+  if (typeof SpreadsheetApp !== 'undefined' && typeof SpreadsheetApp.flush === 'function') {
+    SpreadsheetApp.flush();
+    return true;
+  }
+  return false;
 }
 
 function formatDashboardPct_(value) {
