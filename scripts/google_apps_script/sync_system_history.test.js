@@ -119,3 +119,20 @@ test('factor coverage projection keeps availability separate from application', 
   assert.equal(calls[0].values[1][6], 3);
   assert.equal(calls[1].values[1][3], 'amostra em falta num dos lados');
 });
+
+test('contextual history projection creates all deep-collection tabs', () => {
+  const calls = [];
+  context.upsertSystemSheet_ = (_spreadsheet, name, values) => calls.push({name, values});
+  context.writeContextualHistorySheets_({}, {
+    release: 'FENZOBOT_CONTEXTUAL_2026_11',
+    summary: {observations: 1, with_market: 1, settled: 0},
+    games: [{observation_id: 'obs-1', player_a: 'Alpha', player_b: 'Beta'}],
+    families: [], moneyline: [], handicaps: [], h2h: [],
+  });
+  assert.deepEqual(calls.map(call => call.name), [
+    'Contextual — resumo', 'Contextual — jogos', 'Contextual — famílias',
+    'Contextual — Moneyline', 'Contextual — handicaps', 'Contextual — H2H',
+  ]);
+  assert.equal(calls[1].values[1].length, 36);
+  assert.equal(calls[1].values[1][0], 'obs-1');
+});

@@ -22,7 +22,7 @@ const SYSTEM_HISTORY_SYNC = {
   sourcePath: 'data/dashboard/system_history_analytics.json',
   manualPaperPath: 'data/manual_paper_22bet_authoritative.json',
   fingerprintProperty: 'SYSTEM_HISTORY_LAST_FINGERPRINT',
-  projectionSchemaVersion: '2026-10-20-atp-history-odds-v1',
+  projectionSchemaVersion: '2026-11-12-contextual-history-v1',
   triggerHandler: 'syncSystemHistoryToSheet',
 };
 
@@ -63,6 +63,12 @@ function syncSystemHistoryToSheet() {
     'ATP histórico - jogador odd',
     'ATP histórico — fonte',
     'ATP odds recuperadas',
+    'Contextual — resumo',
+    'Contextual — jogos',
+    'Contextual — famílias',
+    'Contextual — Moneyline',
+    'Contextual — handicaps',
+    'Contextual — H2H',
   ].some(name => {
     const sheet = spreadsheet.getSheetByName(name);
     return !sheet || sheet.getLastRow() < 2;
@@ -86,6 +92,10 @@ function syncSystemHistoryToSheet() {
   writeFactorAttributionSheets_(spreadsheet, currentOperational.factor_attribution || {});
   writeFactorCoverageSheets_(spreadsheet, currentOperational.factor_coverage || {});
   writeAtpHistorySheets_(spreadsheet, continuity ? currentOperational : payload);
+  writeContextualHistorySheets_(
+    spreadsheet,
+    continuity ? (currentOperational.contextual_history || {}) : (payload.contextual_history || {}),
+  );
   writeChallengerManualPaperSheet_(spreadsheet, manualPaper || {});
   writeGuerraAuditSheets_(spreadsheet, manualPaper || {});
   writeWeightDecisionPanel_(spreadsheet, currentOperational.factor_attribution || {}, manualPaper || {});
@@ -371,6 +381,55 @@ function writeAtpHistorySheets_(spreadsheet, products) {
   upsertSystemSheet_(spreadsheet, 'ATP odds recuperadas', normalizedRecoveredRows, {
     titleRows: 2, headerRow: 4, widths: [38, 25, 16, 16, 14, 32, 25, 25, 13, 13, 13, 13, 18, 14, 38, 38],
   });
+}
+
+function writeContextualHistorySheets_(spreadsheet, contextual) {
+  const summary = contextual.summary || {};
+  upsertSystemSheet_(spreadsheet, 'Contextual — resumo', [
+    ['Fenzobot Contextual — recolha profunda', ''],
+    ['Vista append-only. Mercado e resultado são ligados depois da previsão e não reescrevem a fair odd.', ''],
+    ['', ''],
+    ['Indicador', 'Valor'],
+    ['Release', contextual.release || 'FENZOBOT_CONTEXTUAL_2026_11'],
+    ['Observações congeladas', summary.observations || 0],
+    ['Com mercado ligado', summary.with_market || 0],
+    ['Liquidadas', summary.settled || 0],
+    ['Linhas de famílias', summary.family_rows || 0],
+    ['Linhas Moneyline', summary.moneyline_rows || 0],
+    ['Linhas de handicap', summary.handicap_rows || 0],
+    ['Confrontos H2H factuais', summary.h2h_matches || 0],
+    ['Fingerprint das fontes', contextual.source_fingerprint_sha256 || 'N/D'],
+  ], {titleRows: 2, headerRow: 4, widths: [38, 76], preserveCharts: false});
+
+  upsertSystemSheet_(spreadsheet, 'Contextual — jogos', rowsWithHeaders_(
+    ['Observation ID', 'Match ID', 'Analisado UTC', 'Início UTC', 'Tour', 'Categoria', 'Torneio', 'Ronda', 'Piso', 'Jogador A', 'Jogador B', 'Prob. A', 'Prob. B', 'Fair odd A', 'Fair A mín.', 'Fair A máx.', 'Fair odd B', 'Fair B mín.', 'Fair B máx.', 'Favorito modelo', 'Cobertura', 'Famílias observadas', 'Famílias totais', 'Qualidade', 'Estado', 'Razões', 'Odd mercado A', 'Odd mercado B', 'Prob. mercado A', 'Prob. mercado B', 'Mercado capturado UTC', 'Bookmaker', 'Vencedor', 'Lado vencedor', 'Modelo acertou', 'Liquidado UTC'],
+    contextual.games || [],
+    ['observation_id', 'canonical_match_instance_id', 'analyzed_at_utc', 'commence_time_utc', 'tour', 'tier', 'tournament', 'round', 'surface', 'player_a', 'player_b', 'probability_a_pct', 'probability_b_pct', 'fair_odd_a', 'fair_odd_a_min', 'fair_odd_a_max', 'fair_odd_b', 'fair_odd_b_min', 'fair_odd_b_max', 'model_favorite', 'coverage_pct', 'families_observed', 'families_total', 'quality_group', 'status', 'reason_codes', 'market_odd_a', 'market_odd_b', 'market_probability_a_pct', 'market_probability_b_pct', 'market_captured_at_utc', 'bookmaker', 'winner', 'winner_side', 'prediction_correct', 'settled_at_utc'],
+  ), {headerRow: 1, widths: [34, 34, 22, 22, 9, 18, 28, 16, 16, 24, 24, 12, 12, 12, 12, 12, 12, 12, 12, 24, 12, 14, 14, 22, 28, 30, 14, 14, 16, 16, 22, 18, 24, 12, 14, 22], percentageColumns: [12, 13, 21, 29, 30]});
+
+  upsertSystemSheet_(spreadsheet, 'Contextual — famílias', rowsWithHeaders_(
+    ['Observation ID', 'Tour', 'Jogador A', 'Jogador B', 'Família', 'Chave', 'Estado dos dados', 'Cobertura', 'Prob. A da família', 'Impacto em A (p.p.)', 'Intensidade', 'Contributo logit'],
+    contextual.families || [],
+    ['observation_id', 'tour', 'player_a', 'player_b', 'family', 'family_key', 'data_state', 'coverage_grade', 'probability_a_pct', 'impact_pp_model_a', 'impact_intensity', 'logit_contribution'],
+  ), {headerRow: 1, widths: [34, 9, 24, 24, 28, 24, 22, 18, 20, 20, 18, 18], percentageColumns: [9]});
+
+  upsertSystemSheet_(spreadsheet, 'Contextual — Moneyline', rowsWithHeaders_(
+    ['Observation ID', 'Lado', 'Jogador', 'Âmbito', 'Faixa de odd', 'Formato', 'Amostra', 'Vitórias', '% vitória', 'Fonte', 'Base da odd'],
+    contextual.moneyline || [],
+    ['observation_id', 'side', 'player', 'scope', 'odds_band', 'format', 'sample', 'wins', 'win_rate_pct', 'source', 'odds_basis'],
+  ), {headerRow: 1, widths: [34, 8, 24, 12, 16, 10, 12, 12, 14, 22, 32], percentageColumns: [9]});
+
+  upsertSystemSheet_(spreadsheet, 'Contextual — handicaps', rowsWithHeaders_(
+    ['Observation ID', 'Lado', 'Jogador', 'Formato', 'Linha', 'Amostra total', 'Cobre total', 'Push total', 'Falha total', '% cobre total', 'Amostra em vitórias', 'Cobre em vitórias', '% cobre em vitórias', 'Amostra em derrotas', 'Cobre em derrotas', '% cobre em derrotas'],
+    contextual.handicaps || [],
+    ['observation_id', 'side', 'player', 'format', 'line', 'total_sample', 'total_cover', 'total_push', 'total_miss', 'total_cover_pct', 'wins_sample', 'wins_cover', 'wins_cover_pct', 'losses_sample', 'losses_cover', 'losses_cover_pct'],
+  ), {headerRow: 1, widths: [34, 8, 24, 10, 10, 15, 14, 12, 14, 16, 20, 20, 22, 20, 20, 22], percentageColumns: [10, 13, 16]});
+
+  upsertSystemSheet_(spreadsheet, 'Contextual — H2H', rowsWithHeaders_(
+    ['Observation ID', 'Jogador A', 'Jogador B', 'Data', 'Torneio', 'Ronda', 'Piso', 'Vencedor', 'Resultado'],
+    contextual.h2h || [],
+    ['observation_id', 'player_a', 'player_b', 'event_date', 'tournament', 'round', 'surface', 'winner', 'score'],
+  ), {headerRow: 1, widths: [34, 24, 24, 14, 30, 12, 18, 24, 20]});
 }
 
 function installSystemHistorySync() {
