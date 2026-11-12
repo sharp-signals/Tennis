@@ -31,6 +31,7 @@
       border-top:4px solid var(--blue);border-radius:16px;padding:20px;background:#0b2137} .player-card.side-b{border-top-color:var(--orange)}
     .player-side{font-size:10px;letter-spacing:.14em;color:var(--muted);font-weight:900} .player-card h2{margin:6px 0}
     .probability{font-size:42px;font-weight:950;letter-spacing:-.04em} .interval{color:var(--muted);margin-bottom:18px}
+    .stress-interval{color:#d7b56d;font-size:11px;margin:-11px 0 17px;padding:7px 9px;border-left:2px solid var(--gold);background:#2b271b}
     .player-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px} .player-grid div{padding:12px;background:#132f4d;border-radius:10px}
     .player-grid span,.ev-row span{display:block;color:var(--muted);font-size:11px} .player-grid strong{font-size:18px}
     .positive strong{color:var(--cyan)} .negative strong{color:#b8c9d8} .ev-row{display:flex;gap:18px;margin-top:12px}
@@ -133,7 +134,7 @@
     <div class="decision-strip">
       <div><span>Favorito do modelo</span><b>Ugo Humbert · 64.0%</b></div>
       <div><span>Faixa justa do favorito</span><b>1.48–1.88</b></div>
-      <div><span>Valor Moneyline</span><b>Borna Gojo · apenas EV central +0.4%</b></div>
+      <div><span>Valor Moneyline</span><b>Sem Moneyline confirmada · estudar handicaps de Ugo Humbert</b></div>
     </div>
     <div class="robustness confirmed"><b>LEITURA ESTÁVEL</b><span>Teste de robustez: ao retirar apenas Força estrutural, Ugo Humbert continua à frente (53.3%).</span></div>
     <div class="consensus"><div class="consensus-summary"><b>Vantagem global forte</b>
@@ -146,7 +147,8 @@
         <div class="player-side">MODELO A</div>
         <h2>Borna Gojo</h2>
         <div class="probability">36.0%</div>
-        <div class="interval">Intervalo 90% · 32.5%–46.7%</div>
+        <div class="interval">Faixa estatística 90% · 32.5%–46.7% · 527 casos históricos</div>
+        
         <div class="player-grid">
           <div><span>Fair odd</span><strong>2.78</strong></div>
           <div><span>Faixa justa</span><strong>2.14–3.08</strong></div>
@@ -166,7 +168,8 @@
         <div class="player-side">MODELO B</div>
         <h2>Ugo Humbert</h2>
         <div class="probability">64.0%</div>
-        <div class="interval">Intervalo 90% · 53.3%–67.5%</div>
+        <div class="interval">Faixa estatística 90% · 53.3%–67.5% · 527 casos históricos</div>
+        
         <div class="player-grid">
           <div><span>Fair odd</span><strong>1.56</strong></div>
           <div><span>Faixa justa</span><strong>1.48–1.88</strong></div>
@@ -190,7 +193,7 @@
         <div class="section-head"><div><div class="eyebrow">VALIDAÇÃO HUMANA</div>
           <h2>Mercados a consultar</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
         
-          <div class="review-lead"><div><b>Valor Moneyline: Borna Gojo</b><span>Edge positivo apenas na estimativa central</span></div><div><strong>+0.4%</strong><span>EV central</span></div><div><strong>-9.4%</strong><span>EV conservador</span></div></div>
+          <div class="review-lead"><div class="review-no-ml"><b>Direção principal: handicaps de Ugo Humbert</b><span>O preço de Borna Gojo parece alto apenas na estimativa central, mas não resiste ao limite conservador; não é apresentado como valor Moneyline.</span></div></div>
           <div class="review-grid">
               <article class="review-card handicap-card">
                 <div class="review-type">HANDICAPS DE UGO HUMBERT · NEGATIVOS · BO3</div>
