@@ -173,6 +173,25 @@ test('Challenger charts use visible support data and a stable column layout', ()
   assert.match(source, /if \(!existingCharts\.length\) \{\s*SpreadsheetApp\.flush\(\);\s*chartJobs\.forEach/);
 });
 
+test('merged cells are released through their complete merged ranges', () => {
+  let released = 0;
+  const mergedRanges = [
+    {breakApart: () => { released += 1; }},
+    {breakApart: () => { released += 1; }},
+  ];
+  const sheet = {
+    getMaxRows: () => 280,
+    getMaxColumns: () => 22,
+    getRange: (row, column, rows, columns) => {
+      assert.deepEqual([row, column, rows, columns], [1, 1, 280, 22]);
+      return {getMergedRanges: () => mergedRanges};
+    },
+  };
+  assert.equal(context.breakApartAllMergedRanges_(sheet), 2);
+  assert.equal(released, 2);
+  assert.doesNotMatch(source, /getDataRange\(\)\.breakApart\(\)/);
+});
+
 test('executed edge uses frozen probability, actual odd and Betfair commission', () => {
   const rowTracking = {
     selection: 6, market: 5, odd: 9, house: 10, handicapLine: 19,
