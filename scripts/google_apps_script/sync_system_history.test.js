@@ -47,6 +47,14 @@ test('an optional existing filter never blocks the history sync', () => {
   assert.equal(context.createSystemFilterBestEffort_(sheet, range), false);
 });
 
+test('an optional chart cleanup never blocks the history sync', () => {
+  const sheet = {
+    getCharts() { throw new Error('O serviço Sheets falhou ao aceder ao documento.'); },
+    getName() { return 'ATP operacional — Fenzobot odd'; },
+  };
+  assert.equal(context.removeSystemChartsBestEffort_(sheet), false);
+});
+
 test('weight decision panel blocks tuning while GUERRA factor evidence is insufficient', () => {
   const attribution = {
     summary: [

@@ -247,7 +247,7 @@ function writeWeightDecisionPanel_(spreadsheet, attribution, manualPaper) {
   // Apps Script e deixou células da versão anterior entre os novos blocos.
   sheet.clear();
   sheet.clearConditionalFormatRules();
-  sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  removeSystemChartsBestEffort_(sheet);
   sheet.setHiddenGridlines(true);
   sheet.setFrozenRows(11);
 
@@ -741,7 +741,7 @@ function writeRankingsSheet_(spreadsheet, rankings) {
   sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear({ contentsOnly: false });
   sheet.clearConditionalFormatRules();
-  sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  removeSystemChartsBestEffort_(sheet);
   sheet.getRange(1, 1).setValue('Rankings de aprendizagem').setFontSize(16).setFontWeight('bold').setFontColor('#17365D');
   sheet.getRange(2, 1).setValue('Top 10 e Bottom 10 por métrica. Em handicap, a linha é referência interna BO3 e a métrica é % cobre — não lucro. WTA inclui apenas jogadoras ativas no cache dos últimos 12 meses.').setFontSize(10).setFontStyle('italic').setFontColor('#5B6573');
   let row = 5;
@@ -797,7 +797,7 @@ function writeFenzobotCharts_(spreadsheet, rows, indexRows) {
   data.getRange(2, 3, Math.max(eligible.length, 1), 1).setNumberFormat('0.0%');
   data.getRange(2, 7, Math.max(eligibleIndex.length, 1), 1).setNumberFormat('0.0%');
   data.hideSheet();
-  summary.getCharts().forEach(chart => summary.removeChart(chart));
+  removeSystemChartsBestEffort_(summary);
   if (eligible.length) {
     const chart = summary.newChart()
       .asColumnChart()
@@ -848,6 +848,18 @@ function createSystemFilterBestEffort_(sheet, range) {
   }
 }
 
+function removeSystemChartsBestEffort_(sheet) {
+  try {
+    sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+    return true;
+  } catch (error) {
+    // Os gráficos são uma projeção visual. Uma indisponibilidade transitória do
+    // serviço Sheets nunca pode impedir a atualização dos dados das abas.
+    console.warn('Gráficos não removidos em ' + sheet.getName() + ': ' + String(error && error.message || error));
+    return false;
+  }
+}
+
 function upsertSystemSheet_(spreadsheet, name, values, options) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
   const existingFilter = sheet.getFilter();
@@ -855,7 +867,7 @@ function upsertSystemSheet_(spreadsheet, name, values, options) {
   sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear({ contentsOnly: false });
   sheet.clearConditionalFormatRules();
-  if (!options.preserveCharts) sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  if (!options.preserveCharts) removeSystemChartsBestEffort_(sheet);
   if (!values.length || !values[0].length) return;
   sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
   sheet.setFrozenRows(options.headerRow || 1);
