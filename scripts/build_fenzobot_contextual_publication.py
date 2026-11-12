@@ -92,6 +92,9 @@ _NOTIFICATION_GROUPS = {
     "CENTRAL_ONLY": (
         1, "🟡 SINAL CENTRAL NÃO CONFIRMADO", "🟡",
     ),
+    "CONTRARIAN_PRICE_ONLY": (
+        1, "🟡 SINAL CONTRARIAN NÃO CONFIRMADO", "🟡",
+    ),
     "MARKET_UNAVAILABLE": (
         2, "🟡 MERCADO INDISPONÍVEL", "🟡",
     ),
