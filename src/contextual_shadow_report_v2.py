@@ -45,15 +45,26 @@ def load_report_contract(
             expected_contract_version in {
                 "fenzobot-contextual-2026-11-report.5",
                 "fenzobot-contextual-2026-11-report.6",
+                "fenzobot-contextual-2026-11-report.7",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
                 or rules.get("first_market_snapshot_must_be_used_for_evaluation") is not True
-                or rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
+                or (
+                    expected_contract_version != "fenzobot-contextual-2026-11-report.7"
+                    and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
+                )
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.7"
+                    and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
+                )
             )
         )
         or (
-            expected_contract_version == "fenzobot-contextual-2026-11-report.6"
+            expected_contract_version in {
+                "fenzobot-contextual-2026-11-report.6",
+                "fenzobot-contextual-2026-11-report.7",
+            }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
                 or rules.get("public_family_details_must_use_human_labels") is not True
@@ -295,6 +306,8 @@ def build_report_view_model(
         raise ValueError("contextual SHADOW report isolation violated")
     probability_a = float(shadow["probability_model_a"])
     probability_b = float(shadow["probability_model_b"])
+    fair_odd_a = _fair_odd(shadow.get("fair_odd_model_a"))
+    fair_odd_b = _fair_odd(shadow.get("fair_odd_model_b"))
     interval_a = list(map(float, shadow["probability_interval_90_model_a"]))
     interval_b = [1.0 - interval_a[1], 1.0 - interval_a[0]]
     valid_market = _market_is_valid(
@@ -408,6 +421,10 @@ def build_report_view_model(
         },
         evidence_record=handicap_evidence if valid_handicap_evidence else None,
         handicap_side="a" if probability_a >= probability_b else "b",
+        fair_odds={
+            "a": fair_odd_a.get("central"),
+            "b": fair_odd_b.get("central"),
+        },
     )
     match_format = str(
         ((handicap_evidence or {}).get("handicap_evidence") or {}).get("format")
@@ -461,7 +478,7 @@ def build_report_view_model(
             **competition, "tier": observation.get("tier"),
         }),
         "surface_context": _surface_label(
-            competition.get("surface") or shadow.get("surface_context")
+            shadow.get("surface_context") or competition.get("surface")
         ),
         "commence_time": _display_time(observation.get("commence_time_utc")),
         "analyzed_at": _display_time(observation.get("analyzed_at_utc")),
@@ -474,7 +491,7 @@ def build_report_view_model(
                 ),
                 "probability": probability_a,
                 "interval": interval_a,
-                "fair_odd": _fair_odd(shadow.get("fair_odd_model_a")),
+                "fair_odd": fair_odd_a,
                 "market": market_a,
                 "moneyline_history": moneyline_history_a,
             },
@@ -486,7 +503,7 @@ def build_report_view_model(
                 ),
                 "probability": probability_b,
                 "interval": interval_b,
-                "fair_odd": _fair_odd(shadow.get("fair_odd_model_b")),
+                "fair_odd": fair_odd_b,
                 "market": market_b,
                 "moneyline_history": moneyline_history_b,
             },
@@ -814,9 +831,13 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             handicap_side = str(handicap.get("side") or side)
             handicap_player = (view.get("players") or {}).get(handicap_side) or {}
             positive = handicap.get("type") == "positive"
-            # Preserve the five lines selected by the model, then display them
-            # in natural handicap order rather than internal priority order.
-            visible_lines = list((handicap.get("lines") or [])[:5])
+            # The Moneyline reference table defines exactly five consecutive
+            # half-game lines.  Never fill a missing reference with an
+            # unrelated line merely because it is the next available record.
+            visible_lines = [
+                item for item in (handicap.get("lines") or [])
+                if item.get("highlighted")
+            ][:5]
             visible_lines.sort(
                 key=lambda item: abs(float(item.get("line") or 0.0))
             )

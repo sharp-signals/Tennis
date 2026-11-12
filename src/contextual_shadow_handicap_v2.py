@@ -210,10 +210,12 @@ def _reference_lines(odd: float, match_format: str, *, underdog: bool) -> list[f
         pair = next((lines for threshold, lines in _UNDERDOG_REFERENCE if odd >= threshold), ())
         if not pair:
             return []
-        return list(dict.fromkeys((*pair, pair[-1] + 0.5, pair[-1] + 1.0)))
+        start = max(0.5, min(pair) - 0.5)
+        return [start + 0.5 * offset for offset in range(5)]
     for low, high, pair in _FAVOURITE_REFERENCE.get(match_format, _FAVOURITE_REFERENCE["bo3"]):
         if low <= odd < high:
-            return list(dict.fromkeys((pair[0] + 1.0, pair[0] + 0.5, *pair)))
+            start = max(0.5, min(abs(value) for value in pair) - 1.0)
+            return [-(start + 0.5 * offset) for offset in range(5)]
     return []
 
 
@@ -268,6 +270,7 @@ def build_market_review(
     *, probabilities: Mapping[str, float], intervals: Mapping[str, list[float]],
     odds: Mapping[str, float], evidence_record: Mapping[str, Any] | None,
     handicap_side: str | None = None,
+    fair_odds: Mapping[str, float] | None = None,
 ) -> dict[str, Any]:
     """Select review markets after prediction; never alter model probability."""
     if not all(side in odds and float(odds[side]) > 1.0 for side in ("a", "b")):
@@ -301,7 +304,12 @@ def build_market_review(
     else:
         odd = None
     if odd is not None and INVESTOR_PROFILE_ODDS_LOW <= odd <= INVESTOR_PROFILE_ODDS_HIGH:
-        fair = 1.0 / float(probabilities[side])
+        frozen_fair = (fair_odds or {}).get(side)
+        fair = (
+            float(frozen_fair)
+            if frozen_fair is not None and float(frozen_fair) > 1.0
+            else 1.0 / float(probabilities[side])
+        )
         minimum = max(
             INVESTOR_PROFILE_ODDS_LOW,
             math.floor((fair + 0.010000001) * 100.0) / 100.0,
