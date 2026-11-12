@@ -16,6 +16,15 @@ def test_user_confirmed_2026_indoor_registry_is_season_aware():
     ) is None
 
 
+def test_wta_finals_2026_outdoor_context_is_season_aware():
+    assert season_registry_context(
+        "WTA Finals - Indian Wells", event_date="2026-11-12",
+    ) == "hard_outdoor"
+    assert season_registry_context(
+        "WTA Finals - Indian Wells", event_date="2025-11-12",
+    ) is None
+
+
 def test_exact_name_reference_recovers_only_unambiguous_context():
     frame = pd.DataFrame([
         {
