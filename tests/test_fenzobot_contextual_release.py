@@ -3,11 +3,14 @@ import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
+
 from scripts.export_fenzobot_contextual_release import (
     GLOBAL_RELEASE_ID,
     build_release,
 )
 from src.fenzobot_contextual_runtime import (
+    _centred_empirical_intervals,
     _coverage_grade,
     _dependency_grade,
     _family_lead_authority,
@@ -20,6 +23,18 @@ from scripts.audit_contextual_shadow_v2 import audit_ledger
 
 
 MODEL = Path("data/models/fenzobot-contextual-2026-11.json")
+
+
+def test_calibrated_interval_is_separate_from_family_removal_stress():
+    calibrated, stress = _centred_empirical_intervals(
+        0.62,
+        {"wilson_lower": 0.55, "wilson_upper": 0.65},
+        {"wilson_lower": 0.50, "wilson_upper": 0.70},
+        quality_group="PRIMARY_READY_COMPLETE",
+        sensitivity_probabilities=[0.49, 0.72],
+    )
+    assert calibrated == pytest.approx((0.57, 0.67))
+    assert stress == (0.49, 0.72)
 
 
 def test_family_coverage_distinguishes_neutral_partial_and_unavailable():
@@ -115,12 +130,12 @@ def test_manifest_names_every_internal_component_without_global_version_ambiguit
         "ranking_model": "contextual-ranking-v7.1",
         "family_combination": "contextual-family-combination-v8-tier-context",
         "probability_calibration": "contextual-probability-uncertainty-v8",
-        "runtime_generation": 9,
+        "runtime_generation": 10,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5, 6, 7, 8]
+    ]] == [3, 4, 5, 6, 7, 8, 9]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
@@ -146,7 +161,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 9
+    assert result["runtime_generation"] == 10
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"
@@ -154,8 +169,12 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     )
     lower, upper = result["probability_interval_90_model_a"]
     assert lower <= result["probability_model_a"] <= upper
+    stress_lower, stress_upper = result["probability_stress_interval_model_a"]
+    assert stress_lower <= lower <= upper <= stress_upper
     assert all(
-        lower <= scenario["probability_model_a_without_family"] <= upper
+        stress_lower
+        <= scenario["probability_model_a_without_family"]
+        <= stress_upper
         for scenario in result["family_sensitivity"]["scenarios"]
     )
     assert result["market_used"] is False

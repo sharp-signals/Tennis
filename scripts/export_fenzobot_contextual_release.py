@@ -11,7 +11,7 @@ from typing import Any
 
 GLOBAL_RELEASE_ID = "FENZOBOT_CONTEXTUAL_2026_11"
 RELEASE_SLUG = "fenzobot-contextual-2026-11"
-RUNTIME_GENERATION = 9
+RUNTIME_GENERATION = 10
 COMBINATION_VERSION = "contextual-family-combination-v8-tier-context"
 CALIBRATION_VERSION = "contextual-probability-uncertainty-v8"
 ACCEPTED_HISTORICAL_RELEASES = [
@@ -49,6 +49,12 @@ ACCEPTED_HISTORICAL_RELEASES = [
         "runtime_generation": 8,
         "configuration_fingerprint": (
             "5d6a16de3e59f2d58583655cafcb26bf27d7151ac9f19027563d81dd07d99dd8"
+        ),
+    },
+    {
+        "runtime_generation": 9,
+        "configuration_fingerprint": (
+            "b8ca61a90d1901897fd2ee1bddf7508d8af074a888348dcf15b6b905128621d1"
         ),
     },
 ]
