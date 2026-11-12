@@ -473,6 +473,32 @@ def build_report_view_model(
         outcome.get("observation_id") == observation.get("observation_id")
     ):
         winner_side = outcome.get("winner_side")
+    model_side = "a" if probability_a >= probability_b else "b"
+    market_review_probe = build_market_review(
+        probabilities={"a": probability_a, "b": probability_b},
+        intervals={"a": interval_a, "b": interval_b},
+        odds={
+            side: float(value) for side, value in odds.items()
+            if side in {"a", "b"} and _number(value) is not None
+        },
+        evidence_record=handicap_evidence if valid_handicap_evidence else None,
+        fair_odds={
+            "a": fair_odd_a.get("central"),
+            "b": fair_odd_b.get("central"),
+        },
+    )
+    candidate_side = market_review_probe.get("candidate_side")
+    # A price edge only changes the handicap direction when it survives the
+    # conservative probability bound.  A central-only discrepancy remains an
+    # observation and keeps the handicap references on the model favourite.
+    review_handicap_side = (
+        candidate_side
+        if (
+            market_review_probe.get("status") == "CONSERVATIVE_POSITIVE"
+            and candidate_side in {"a", "b"}
+        )
+        else model_side
+    )
     market_review = build_market_review(
         probabilities={"a": probability_a, "b": probability_b},
         intervals={"a": interval_a, "b": interval_b},
@@ -481,14 +507,18 @@ def build_report_view_model(
             if side in {"a", "b"} and _number(value) is not None
         },
         evidence_record=handicap_evidence if valid_handicap_evidence else None,
-        handicap_side="a" if probability_a >= probability_b else "b",
+        handicap_side=review_handicap_side,
         fair_odds={
             "a": fair_odd_a.get("central"),
             "b": fair_odd_b.get("central"),
         },
     )
-    model_side = "a" if probability_a >= probability_b else "b"
     market_review["model_side"] = model_side
+    market_review["value_side_differs_from_model"] = bool(
+        market_review.get("status") == "CONSERVATIVE_POSITIVE"
+        and market_review.get("candidate_side") in {"a", "b"}
+        and market_review.get("candidate_side") != model_side
+    )
     match_format = str(
         ((handicap_evidence or {}).get("handicap_evidence") or {}).get("format")
         or "bo3"
@@ -1081,6 +1111,15 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                 f'{_e(player.get("name"))} parece alto apenas na estimativa '
                 'central, mas não resiste ao limite conservador; não é '
                 'apresentado como valor Moneyline.</span></div>'
+            )
+        elif review.get("value_side_differs_from_model"):
+            lead = (
+                f'<div><b>Valor de preço: {_e(player.get("name"))}</b>'
+                f'<span>Favorito do modelo: {_e(model_player.get("name"))}. '
+                'A odd está acima da fair odd mesmo no limite conservador; '
+                'valor não significa favoritismo.</span></div>'
+                f'<div><strong>{_signed(review.get("central_ev_pct"), "%")}</strong><span>EV central</span></div>'
+                f'<div><strong>{_signed(review.get("conservative_ev_pct"), "%")}</strong><span>EV conservador</span></div>'
             )
         else:
             lead = (

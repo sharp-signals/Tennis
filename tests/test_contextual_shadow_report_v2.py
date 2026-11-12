@@ -250,6 +250,45 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("Valor Moneyline: Beta Player", html)
         self.assertIn("150 casos históricos", html)
 
+    def test_confirmed_opposite_value_aligns_moneyline_and_positive_handicaps(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_model_a": 0.571,
+            "probability_model_b": 0.429,
+            "probability_interval_90_model_a": [0.518, 0.609],
+        })
+        quote = {**market(), "odds": {"a": 1.48, "b": 2.62}}
+        evidence = handicap_evidence()
+        source_line = next(iter(
+            evidence["handicap_evidence"]["players"]["a"]["lines"].values()
+        ))
+        evidence["handicap_evidence"]["players"]["b"]["lines"] = {
+            "+2": {**copy.deepcopy(source_line), "line": 2.0},
+            "+2.5": {**copy.deepcopy(source_line), "line": 2.5},
+            "+3": {**copy.deepcopy(source_line), "line": 3.0},
+            "+3.5": {**copy.deepcopy(source_line), "line": 3.5},
+            "+4": {**copy.deepcopy(source_line), "line": 4.0},
+        }
+
+        view = report.build_report_view_model(
+            prediction, quote, None, evidence
+        )
+
+        self.assertEqual(view["market_review"]["status"], "CONSERVATIVE_POSITIVE")
+        self.assertEqual(view["market_review"]["candidate_side"], "b")
+        self.assertEqual(view["market_review"]["model_side"], "a")
+        self.assertTrue(
+            view["market_review"]["value_side_differs_from_model"]
+        )
+        self.assertEqual(view["market_review"]["handicap"]["side"], "b")
+        self.assertEqual(view["market_review"]["handicap"]["type"], "positive")
+        html = report.render_report_html(view)
+        self.assertIn("Valor de preço: Beta Player", html)
+        self.assertIn("Favorito do modelo: Alpha Player", html)
+        self.assertIn("valor não significa favoritismo", html)
+        self.assertIn("HANDICAPS DE BETA PLAYER · POSITIVOS", html)
+        self.assertNotIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
+
     def test_calibrated_and_family_stress_ranges_are_visually_separate(self):
         prediction = copy.deepcopy(observation())
         prediction["contextual_shadow"].update({
