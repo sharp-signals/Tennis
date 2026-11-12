@@ -89,7 +89,7 @@ def test_global_release_empty_run_remains_isolated():
     }
 
 
-def test_global_release_workflow_is_manual_and_cannot_publish_reports():
+def test_global_release_workflow_is_dispatched_and_publishes_without_auto_bets():
     from pathlib import Path
 
     workflow = Path(
@@ -98,7 +98,9 @@ def test_global_release_workflow_is_manual_and_cannot_publish_reports():
     assert "workflow_dispatch:" in workflow
     assert "schedule:" not in workflow
     assert "python scripts/run_fenzobot_contextual_2026_11.py" in workflow
-    assert "src.report_notifications" not in workflow
-    assert "TELEGRAM_BOT_TOKEN" not in workflow
+    assert "python scripts/build_fenzobot_contextual_publication.py" in workflow
+    assert "python -m src.report_notifications wait" in workflow
+    assert "python -m src.report_notifications send" in workflow
+    assert "TELEGRAM_BOT_TOKEN" in workflow
     assert "PAPER" not in workflow
     assert "GREEN" not in workflow

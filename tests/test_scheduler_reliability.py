@@ -11,16 +11,21 @@ class SchedulerReliabilityTests(unittest.TestCase):
         cls.workflow = (root / ".github/workflows/tennis-bot.yml").read_text(
             encoding="utf-8"
         )
+        cls.contextual_workflow = (
+            root / ".github/workflows/fenzobot-contextual-2026-11.yml"
+        ).read_text(encoding="utf-8")
         cls.scheduler = (
             root / "scripts/google_apps_script/prelive_scheduler.gs"
         ).read_text(encoding="utf-8")
 
     def test_workflow_dispatch_accepts_optional_slot_and_source(self):
-        self.assertIn("trigger_slot:", self.workflow)
-        self.assertIn("trigger_source:", self.workflow)
-        self.assertIn("trigger_local_date:", self.workflow)
-        self.assertIn("dispatch_attempt_id:", self.workflow)
-        self.assertGreaterEqual(self.workflow.count("required: false"), 4)
+        self.assertIn("trigger_slot:", self.contextual_workflow)
+        self.assertIn("trigger_source:", self.contextual_workflow)
+        self.assertIn("trigger_local_date:", self.contextual_workflow)
+        self.assertIn("dispatch_attempt_id:", self.contextual_workflow)
+        self.assertGreaterEqual(
+            self.contextual_workflow.count("required: false"), 4
+        )
 
     def test_manual_dispatch_defaults_are_explicit(self):
         self.assertIn(
@@ -42,10 +47,16 @@ class SchedulerReliabilityTests(unittest.TestCase):
         self.assertIn("trigger_local_date: localDate", self.scheduler)
         self.assertIn("dispatch_attempt_id: attemptId", self.scheduler)
 
-    def test_four_slots_are_documented_without_github_cron(self):
-        for slot in ("06:30", "11:30", "15:30", "18:30"):
+    def test_two_authorized_slots_are_documented_without_github_cron(self):
+        for slot in ("06:30", "18:30"):
             self.assertIn(f"slot: '{slot}'", self.scheduler)
-        self.assertNotIn("schedule:", self.workflow)
+        for deprecated_slot in ("11:30", "15:30"):
+            self.assertNotIn(f"slot: '{deprecated_slot}'", self.scheduler)
+        self.assertIn(
+            "const PRELIVE_WORKFLOW = 'fenzobot-contextual-2026-11.yml'",
+            self.scheduler,
+        )
+        self.assertNotIn("schedule:", self.contextual_workflow)
 
     def test_writer_queue_does_not_replace_third_pending_run(self):
         root = Path(__file__).resolve().parents[1]

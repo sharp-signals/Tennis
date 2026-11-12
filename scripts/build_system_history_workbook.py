@@ -30,6 +30,7 @@ from src.system_history_analytics import (
     load_local_wta_history,
     write_if_changed,
 )
+from src.contextual_history_export import build_contextual_history_export
 from src import forward_only, forward_only_projections, valuebetennis_history
 
 
@@ -39,6 +40,12 @@ REPORTS_DIR = ROOT / "docs" / "relatorios"
 ANALYTICS_JSON = ROOT / "data" / "dashboard" / "system_history_analytics.json"
 MANUAL_PAPER_JSON = ROOT / "data" / "manual_paper_22bet_authoritative.json"
 WORKBOOK_PATH = ROOT / "docs" / "dashboard" / "Fenzobot_Historico_do_Sistema.xlsx"
+CONTEXTUAL_LEDGER = ROOT / "data" / "contextual_shadow_observations-fenzobot-contextual-2026-11.jsonl"
+CONTEXTUAL_MARKET = ROOT / "data" / "contextual_shadow_market-fenzobot-contextual-2026-11.jsonl"
+CONTEXTUAL_OUTCOMES = ROOT / "data" / "contextual_shadow_outcomes-fenzobot-contextual-2026-11.jsonl"
+CONTEXTUAL_HANDICAPS = ROOT / "data" / "contextual_shadow_handicap_evidence-fenzobot-contextual-2026-11.jsonl"
+CONTEXTUAL_MONEYLINE = ROOT / "data" / "contextual_shadow_moneyline_evidence-fenzobot-contextual-2026-11.jsonl"
+CONTEXTUAL_H2H = ROOT / "data" / "contextual_shadow_h2h_evidence-fenzobot-contextual-2026-11.jsonl"
 
 NAVY = "17365D"
 TEAL = "0F766E"
@@ -338,6 +345,91 @@ def _write_atp_history_sheets(wb: Workbook, payload: Mapping[str, Any]) -> None:
     _widths(recovered, [38, 25, 16, 16, 14, 32, 25, 25, 13, 13, 13, 13, 18, 14, 38, 38])
 
 
+def _write_contextual_history_sheets(
+    wb: Workbook, contextual: Mapping[str, Any],
+) -> None:
+    """Publish the deep contextual collection without changing legacy tabs."""
+    names = (
+        "Contextual — resumo", "Contextual — jogos", "Contextual — famílias",
+        "Contextual — Moneyline", "Contextual — handicaps", "Contextual — H2H",
+    )
+    for name in names:
+        if name in wb.sheetnames:
+            del wb[name]
+
+    summary = wb.create_sheet("Contextual — resumo")
+    _title(
+        summary, "Fenzobot Contextual — recolha profunda",
+        "Vista append-only da release contextual. O mercado e o resultado são ligados depois da previsão; não reescrevem probabilidade nem fair odd.",
+    )
+    _header(summary, 5, ["Indicador", "Valor"])
+    values = contextual.get("summary") or {}
+    rows = (
+        ("Release", contextual.get("release")),
+        ("Observações congeladas", values.get("observations", 0)),
+        ("Com mercado ligado", values.get("with_market", 0)),
+        ("Liquidadas", values.get("settled", 0)),
+        ("Linhas de famílias", values.get("family_rows", 0)),
+        ("Linhas Moneyline", values.get("moneyline_rows", 0)),
+        ("Linhas de handicap", values.get("handicap_rows", 0)),
+        ("Confrontos H2H factuais", values.get("h2h_matches", 0)),
+        ("Fingerprint das fontes", contextual.get("source_fingerprint_sha256")),
+    )
+    for index, (label, value) in enumerate(rows, 6):
+        summary.cell(index, 1, label).font = Font(name="Arial", bold=True, color="243B53")
+        summary.cell(index, 2, value).fill = PatternFill("solid", fgColor=LIGHT_BLUE)
+    _widths(summary, [38, 76])
+
+    games = wb.create_sheet("Contextual — jogos")
+    last = _write_rows(
+        games, 1,
+        ["Observation ID", "Match ID", "Analisado UTC", "Início UTC", "Tour", "Categoria", "Torneio", "Ronda", "Piso", "Jogador A", "Jogador B", "Prob. A", "Prob. B", "Fair odd A", "Fair A mín.", "Fair A máx.", "Fair odd B", "Fair B mín.", "Fair B máx.", "Favorito modelo", "Cobertura", "Famílias observadas", "Famílias totais", "Qualidade", "Estado", "Razões", "Odd mercado A", "Odd mercado B", "Prob. mercado A", "Prob. mercado B", "Mercado capturado UTC", "Bookmaker", "Vencedor", "Lado vencedor", "Modelo acertou", "Liquidado UTC"],
+        contextual.get("games") or [],
+        ["observation_id", "canonical_match_instance_id", "analyzed_at_utc", "commence_time_utc", "tour", "tier", "tournament", "round", "surface", "player_a", "player_b", "probability_a_pct", "probability_b_pct", "fair_odd_a", "fair_odd_a_min", "fair_odd_a_max", "fair_odd_b", "fair_odd_b_min", "fair_odd_b_max", "model_favorite", "coverage_pct", "families_observed", "families_total", "quality_group", "status", "reason_codes", "market_odd_a", "market_odd_b", "market_probability_a_pct", "market_probability_b_pct", "market_captured_at_utc", "bookmaker", "winner", "winner_side", "prediction_correct", "settled_at_utc"],
+    )
+    _percent_columns(games, 2, last, [12, 13, 21, 29, 30])
+    _widths(games, [34, 34, 22, 22, 9, 18, 28, 16, 16, 24, 24, 12, 12, 12, 12, 12, 12, 12, 12, 24, 12, 14, 14, 22, 28, 30, 14, 14, 16, 16, 22, 18, 24, 12, 14, 22])
+
+    families = wb.create_sheet("Contextual — famílias")
+    last = _write_rows(
+        families, 1,
+        ["Observation ID", "Tour", "Jogador A", "Jogador B", "Família", "Chave", "Estado dos dados", "Cobertura", "Prob. A da família", "Impacto em A (p.p.)", "Intensidade", "Contributo logit"],
+        contextual.get("families") or [],
+        ["observation_id", "tour", "player_a", "player_b", "family", "family_key", "data_state", "coverage_grade", "probability_a_pct", "impact_pp_model_a", "impact_intensity", "logit_contribution"],
+    )
+    _percent_columns(families, 2, last, [9])
+    _widths(families, [34, 9, 24, 24, 28, 24, 22, 18, 20, 20, 18, 18])
+
+    moneyline = wb.create_sheet("Contextual — Moneyline")
+    last = _write_rows(
+        moneyline, 1,
+        ["Observation ID", "Lado", "Jogador", "Âmbito", "Faixa de odd", "Formato", "Amostra", "Vitórias", "% vitória", "Fonte", "Base da odd"],
+        contextual.get("moneyline") or [],
+        ["observation_id", "side", "player", "scope", "odds_band", "format", "sample", "wins", "win_rate_pct", "source", "odds_basis"],
+    )
+    _percent_columns(moneyline, 2, last, [9])
+    _widths(moneyline, [34, 8, 24, 12, 16, 10, 12, 12, 14, 22, 32])
+
+    handicaps = wb.create_sheet("Contextual — handicaps")
+    last = _write_rows(
+        handicaps, 1,
+        ["Observation ID", "Lado", "Jogador", "Formato", "Linha", "Amostra total", "Cobre total", "Push total", "Falha total", "% cobre total", "Amostra em vitórias", "Cobre em vitórias", "% cobre em vitórias", "Amostra em derrotas", "Cobre em derrotas", "% cobre em derrotas"],
+        contextual.get("handicaps") or [],
+        ["observation_id", "side", "player", "format", "line", "total_sample", "total_cover", "total_push", "total_miss", "total_cover_pct", "wins_sample", "wins_cover", "wins_cover_pct", "losses_sample", "losses_cover", "losses_cover_pct"],
+    )
+    _percent_columns(handicaps, 2, last, [10, 13, 16])
+    _widths(handicaps, [34, 8, 24, 10, 10, 15, 14, 12, 14, 16, 20, 20, 22, 20, 20, 22])
+
+    h2h = wb.create_sheet("Contextual — H2H")
+    _write_rows(
+        h2h, 1,
+        ["Observation ID", "Jogador A", "Jogador B", "Data", "Torneio", "Ronda", "Piso", "Vencedor", "Resultado"],
+        contextual.get("h2h") or [],
+        ["observation_id", "player_a", "player_b", "event_date", "tournament", "round", "surface", "winner", "score"],
+    )
+    _widths(h2h, [34, 24, 24, 14, 30, 12, 18, 24, 20])
+
+
 def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> Workbook:
     wb = Workbook()
     ws = wb.active
@@ -416,6 +508,7 @@ def _workbook(payload: Mapping[str, Any], raw_wta: list[Mapping[str, Any]]) -> W
     _write_factor_attribution_sheets(wb, payload["operational"].get("factor_attribution") or {})
     _write_factor_coverage_sheets(wb, payload["operational"].get("factor_coverage") or {})
     _write_atp_history_sheets(wb, payload)
+    _write_contextual_history_sheets(wb, payload.get("contextual_history") or {})
 
     rankings = wb.create_sheet("Rankings")
     _write_rankings(rankings, payload["rankings"])
@@ -538,6 +631,9 @@ def _prospective_workbook(
         current_products.get("factor_coverage") or {},
     )
     _write_atp_history_sheets(workbook, current_products)
+    _write_contextual_history_sheets(
+        workbook, current_products.get("contextual_history") or {},
+    )
     _write_guerra_audit_sheets(workbook, _read_json(MANUAL_PAPER_JSON))
     return workbook
 
@@ -596,6 +692,14 @@ def main() -> int:
     raw_atp = load_local_atp_odds_history(HISTORY_CACHE)
     canonical, _removed = canonical_snapshots(snapshots.get("snapshots") or [])
     recovered_odds = valuebetennis_history.canonical_odds_enrichment(canonical, atp_frame)
+    contextual_history = build_contextual_history_export(
+        observations_path=CONTEXTUAL_LEDGER,
+        market_path=CONTEXTUAL_MARKET,
+        outcomes_path=CONTEXTUAL_OUTCOMES,
+        handicap_path=CONTEXTUAL_HANDICAPS,
+        moneyline_path=CONTEXTUAL_MONEYLINE,
+        h2h_path=CONTEXTUAL_H2H,
+    )
     report_files = [path.name for path in REPORTS_DIR.glob("*.html")]
     payload = build_system_history(
         snapshots,
@@ -604,12 +708,14 @@ def main() -> int:
         local_atp_matches=raw_atp,
         canonical_odds_recovery=recovered_odds,
     )
+    payload["contextual_history"] = contextual_history
     current_source_fingerprint = str(payload.get("input_fingerprint_sha256") or "")
     current_products = {
         "factor_attribution": (payload.get("operational") or {}).get("factor_attribution") or {},
         "factor_coverage": (payload.get("operational") or {}).get("factor_coverage") or {},
         "historical_atp": payload.get("historical_atp") or {},
         "canonical_odds_recovery": payload.get("canonical_odds_recovery") or [],
+        "contextual_history": contextual_history,
         "summary": {
             "historical_atp_matches_with_odds": (payload.get("summary") or {}).get("historical_atp_matches_with_odds", 0),
             "canonical_atp_odds_recovered": (payload.get("summary") or {}).get("canonical_atp_odds_recovered", 0),
@@ -637,7 +743,8 @@ def main() -> int:
     history_fingerprint = str(payload.get("input_fingerprint_sha256") or "")
     manual_fingerprint = str(manual_paper.get("data_fingerprint") or "manual-paper-unavailable")
     payload["input_fingerprint_sha256"] = hashlib.sha256(
-        f"{history_fingerprint}:{current_source_fingerprint}:{manual_fingerprint}:atp-history-v1".encode("utf-8")
+        f"{history_fingerprint}:{current_source_fingerprint}:{manual_fingerprint}:"
+        f"{contextual_history.get('source_fingerprint_sha256', '')}:contextual-history-v1".encode("utf-8")
     ).hexdigest()
     if boundary.active:
         serialized = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
