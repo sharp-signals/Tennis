@@ -3,8 +3,6 @@ import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import pytest
-
 from scripts.export_fenzobot_contextual_release import (
     GLOBAL_RELEASE_ID,
     build_release,
@@ -33,7 +31,10 @@ def test_calibrated_interval_is_separate_from_family_removal_stress():
         quality_group="PRIMARY_READY_COMPLETE",
         sensitivity_probabilities=[0.49, 0.72],
     )
-    assert calibrated == pytest.approx((0.57, 0.67))
+    assert all(
+        abs(actual - expected) < 1e-12
+        for actual, expected in zip(calibrated, (0.57, 0.67), strict=True)
+    )
     assert stress == (0.49, 0.72)
 
 
