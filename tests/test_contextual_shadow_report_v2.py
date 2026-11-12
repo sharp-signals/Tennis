@@ -169,6 +169,18 @@ class ContextualShadowReportTests(unittest.TestCase):
             view["market"]["plausibility"]["requires_manual_review"]
         )
 
+    def test_wta_finals_round_eight_is_displayed_as_group_stage(self):
+        prediction = copy.deepcopy(observation())
+        prediction["tour"] = "wta"
+        prediction["tier"] = "Championships"
+        prediction["competition"].update({
+            "tournament_name": "WTA Finals - Indian Wells",
+            "round_id": 8,
+            "round_stage": "ROUND_UNRESOLVED",
+        })
+        view = report.build_report_view_model(prediction)
+        self.assertEqual(view["round_stage"], "Fase de grupos")
+
     def test_missing_market_remains_not_available(self):
         view = report.build_report_view_model(observation())
         self.assertFalse(view["market"]["available"])
@@ -249,6 +261,7 @@ class ContextualShadowReportTests(unittest.TestCase):
     def test_public_header_names_market_capture_and_limits_handicap_cards(self):
         evidence = handicap_evidence()
         evidence["handicap_evidence"]["players"]["a"]["lines"].update({
+            "-0.5": handicap_evidence()["handicap_evidence"]["players"]["a"]["lines"]["-2"],
             "-4": handicap_evidence()["handicap_evidence"]["players"]["a"]["lines"]["-2"],
             "-4.5": handicap_evidence()["handicap_evidence"]["players"]["a"]["lines"]["-2"],
         })
@@ -268,6 +281,44 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("BENCHMARK DISPONÍVEL", html)
         self.assertNotIn("Ver todas as restantes linhas", html)
         self.assertLessEqual(html.count('class="line-card"'), 5)
+        positions = [html.index(f'<div class="line-name">{line}</div>') for line in (
+            "-0.5", "-2", "-2.5", "-3", "-3.5",
+        )]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_integer_handicap_push_is_explained_in_public_card(self):
+        evidence = handicap_evidence()
+        evidence["handicap_evidence"]["players"]["a"]["lines"]["-2"][
+            "total"
+        ] = {"cover": 40, "push": 5, "miss": 35}
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_model_a": 0.75,
+            "probability_model_b": 0.25,
+            "probability_interval_90_model_a": [0.70, 0.80],
+        })
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market(), None, evidence)
+        )
+        self.assertIn("Push: 5 em 80 jogos", html)
+
+    def test_robustness_copy_warns_when_remaining_lead_is_short(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"]["family_sensitivity"] = {
+            "method": "LEAVE_ONE_FAMILY_OUT",
+            "favorite_confirmed": True,
+            "dependency_grade": "ROBUST",
+            "scenarios": [{
+                "family": "structural_strength",
+                "probability_model_a_without_family": 0.511,
+            }],
+        }
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market())
+        )
+        self.assertIn("LADO MANTIDO · MARGEM FRÁGIL", html)
+        self.assertIn("continua à frente, mas por margem curta", html)
+        self.assertNotIn("Mesmo sem Força estrutural", html)
 
     def test_single_family_dependency_is_visible_and_suppresses_markets(self):
         prediction = copy.deepcopy(observation())

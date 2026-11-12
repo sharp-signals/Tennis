@@ -37,6 +37,13 @@ ATP_2026_INDOOR_TOURNAMENTS = {
     "nitto atp finals turin",
 }
 
+# The provider sends this court only as plain ``Hard``.  The season-specific
+# venue fact prevents the future observation from losing the exact surface
+# family without guessing that every generic hard court is outdoor.
+WTA_2026_OUTDOOR_TOURNAMENTS = {
+    "wta finals indian wells",
+}
+
 
 def normalize_tournament_name(value: Any) -> str:
     normalized = unicodedata.normalize("NFKD", str(value or ""))
@@ -89,6 +96,8 @@ def season_registry_context(
     name = normalize_tournament_name(tournament)
     if name in ATP_2026_INDOOR_TOURNAMENTS:
         return "hard_indoor"
+    if name in WTA_2026_OUTDOOR_TOURNAMENTS:
+        return "hard_outdoor"
     return None
 
 

@@ -345,6 +345,7 @@ def build_market_review(
             "highlighted": _line_key(line) in reference_keys,
             "total": total_n,
             "cover": int(total.get("cover") or 0),
+            "push": int(total.get("push") or 0),
             "cover_pct": round(100.0 * int(total.get("cover") or 0) / total_n, 1) if total_n else None,
             "win_total": win_n,
             "win_cover": int(wins.get("cover") or 0),

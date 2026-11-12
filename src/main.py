@@ -549,6 +549,17 @@ def _filter_and_enrich_with_tournament_info(raw_matches: list[dict]) -> list[dic
         match["surface"] = info.get("surface") or "Desconhecido"
         match["tier"] = tier
         match["country"] = info.get("country")
+        if match.get("venue_context") is None and match.get("indoor") is None:
+            from src.contextual_tournament_surface_registry import (
+                season_registry_context,
+            )
+            exact_context = season_registry_context(
+                match["tournament_name"], event_date=match.get("date"),
+            )
+            if exact_context == "hard_indoor":
+                match["venue_context"] = "indoor"
+            elif exact_context == "hard_outdoor":
+                match["venue_context"] = "outdoor"
         eligible.append(match)
 
     return eligible

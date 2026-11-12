@@ -97,6 +97,7 @@ def test_negative_handicap_has_own_price_and_conditional_coverage():
     assert review["handicap"]["type"] == "negative"
     assert review["handicap"]["lines"][0]["price"]["status"] == "READY"
     assert review["handicap"]["lines"][0]["win_cover_pct"] == 90.0
+    assert review["handicap"]["lines"][0]["push"] == 0
 
 
 def test_all_relevant_half_point_lines_are_kept_with_four_highlights():

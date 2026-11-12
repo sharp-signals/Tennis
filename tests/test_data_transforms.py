@@ -1436,6 +1436,27 @@ class MatchInputTests(unittest.TestCase):
         self.assertEqual(actual[0]["tournament_name"], "Winston-Salem Open")
         self.assertEqual(actual[0]["tier"], "ATP 250")
 
+    def test_wta_finals_gets_registered_outdoor_context(self):
+        matches = [{
+            "id": 1,
+            "date": "2026-11-12T20:00:00+00:00",
+            "tournamentId": 16758,
+            "_tour": "wta",
+        }]
+        response = {
+            "name": "WTA Finals - Indian Wells",
+            "surface": "Hard",
+            "tier": "Championships",
+            "country": "United States",
+        }
+        with patch.object(
+            main.fetch_data, "get_tournament_info", return_value=response,
+        ):
+            actual = main._filter_and_enrich_with_tournament_info(matches)
+
+        self.assertEqual(len(actual), 1)
+        self.assertEqual(actual[0]["venue_context"], "outdoor")
+
     def test_deduplication_keeps_first_occurrence_and_entries_without_id(self):
         matches = [
             {"id": 7, "date": "first"},

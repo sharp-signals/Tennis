@@ -208,6 +208,24 @@ def _round_stage_label(value: Any) -> str:
     }.get(str(value or ""), str(value or "Ronda N/D"))
 
 
+def _competition_round_label(competition: Mapping[str, Any]) -> str:
+    """Translate special provider stages without changing model buckets."""
+    stage = _round_stage_label(competition.get("round_stage"))
+    if stage != "Ronda N/D":
+        return stage
+    tier = str(competition.get("tier") or "").strip().casefold()
+    tournament = str(competition.get("tournament_name") or "").casefold()
+    try:
+        round_id = int(competition.get("round_id"))
+    except (TypeError, ValueError):
+        round_id = None
+    if round_id == 8 and (
+        tier == "championships" or "wta finals" in tournament
+    ):
+        return "Fase de grupos"
+    return stage
+
+
 def _status_label(value: Any) -> str:
     return {
         "READY_FOR_PROSPECTIVE_SHADOW": "Pronto para validação prospetiva",
@@ -439,7 +457,9 @@ def build_report_view_model(
         "tour": str(observation.get("tour") or "").upper(),
         "tier": observation.get("tier") or "Tier N/D",
         "tournament_name": competition.get("tournament_name") or "Torneio N/D",
-        "round_stage": _round_stage_label(competition.get("round_stage")),
+        "round_stage": _competition_round_label({
+            **competition, "tier": observation.get("tier"),
+        }),
         "surface_context": _surface_label(
             competition.get("surface") or shadow.get("surface_context")
         ),
@@ -794,8 +814,14 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             handicap_side = str(handicap.get("side") or side)
             handicap_player = (view.get("players") or {}).get(handicap_side) or {}
             positive = handicap.get("type") == "positive"
+            # Preserve the five lines selected by the model, then display them
+            # in natural handicap order rather than internal priority order.
+            visible_lines = list((handicap.get("lines") or [])[:5])
+            visible_lines.sort(
+                key=lambda item: abs(float(item.get("line") or 0.0))
+            )
             visible_cards = []
-            for line in (handicap.get("lines") or [])[:5]:
+            for line in visible_lines:
                 price = line.get("price") or {}
                 if price.get("status") != "READY":
                     zone = "Sem preço validado · amostra relevante curta"
@@ -825,11 +851,16 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                     f"({_e(line.get('loss_cover'))}/{_e(line.get('loss_total'))})"
                     if line.get("loss_total") else "Nas derrotas: sem amostra"
                 )
+                push_copy = (
+                    f"Push: {_e(line.get('push'))} em "
+                    f"{_e(line.get('total'))} jogos"
+                    if line.get("push") else ""
+                )
                 line_card = f"""
                   <div class="line-card">
                     <div class="line-name">{_e(line.get('line'))}</div>
                     <strong>{primary}</strong><small>{secondary}</small>
-                    <small>{losses}</small><small>Amostra total: {_e(line.get('total'))} jogos</small>
+                    <small>{losses}</small>{f'<small>{push_copy}</small>' if push_copy else ''}<small>Amostra total: {_e(line.get('total'))} jogos</small>
                     <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>{_e(zone)}</b></div>
                   </div>"""
                 visible_cards.append(line_card)
@@ -1062,10 +1093,20 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             remaining_probability_a if preferred == "a"
             else 1.0 - remaining_probability_a
         )
-        sensitive_copy = (
-            f"Mesmo sem {family_name}, {preferred_name} mantém o favoritismo "
-            f"({_pct(remaining_probability)})."
-        )
+        if remaining_probability < 0.53:
+            robustness_class = "unstable"
+            robustness_title = "LADO MANTIDO · MARGEM FRÁGIL"
+            sensitive_copy = (
+                f"Teste de robustez: ao retirar apenas {family_name}, "
+                f"{preferred_name} continua à frente, mas por margem curta "
+                f"({_pct(remaining_probability)})."
+            )
+        else:
+            sensitive_copy = (
+                f"Teste de robustez: ao retirar apenas {family_name}, "
+                f"{preferred_name} continua à frente "
+                f"({_pct(remaining_probability)})."
+            )
     consensus_items = []
     for side in ("a", "b"):
         if direction_counts[side]:
@@ -1188,9 +1229,11 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .context-grid span,.context-grid b{{display:block;font-size:11px}}.context-grid span{{color:var(--muted)}}.family-detail-empty{{color:var(--muted)}}
     details{{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}} summary{{cursor:pointer;color:var(--muted)}}
     .foot{{color:var(--muted);text-align:center;margin-top:18px;font-size:12px}}
+    @media(max-width:980px){{.line-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.review-grid{{grid-template-columns:1fr}}
+      .handicap-card{{grid-column:auto}}.factor-row{{grid-template-columns:minmax(180px,1.3fr) minmax(130px,1fr) minmax(150px,1fr)}}.factor-row>:last-child{{grid-column:2/-1}}}}
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
-      .versus .right{{text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
+      .versus .right{{text-align:center}}.hero-player,.hero-player.side-b{{flex-direction:column;text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
       .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}}}
   </style>
 </head>
