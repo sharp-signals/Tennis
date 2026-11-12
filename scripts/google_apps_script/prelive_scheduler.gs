@@ -1,37 +1,30 @@
 /**
  * CHANGE-2026-09-26-055
  *
- * Agendador autónomo do Tennis Pre-Live Bot. Usa o token já guardado como
- * GITHUB_TOKEN nas Propriedades do Script e despacha o workflow do GitHub.
+ * Agendador autónomo do Fenzobot Contextual. Usa o token já guardado como
+ * GITHUB_TOKEN nas Propriedades do Script e despacha o workflow do GitHub
+ * às 06:30 e 18:30 Europe/Lisbon.
  * Não lê a Sheet PAPER nem partilha dados com o respetivo sincronizador.
  */
 
 const PRELIVE_OWNER = 'sharp-signals';
 const PRELIVE_REPO = 'Tennis';
-const PRELIVE_WORKFLOW = 'tennis-bot.yml';
+const PRELIVE_WORKFLOW = 'fenzobot-contextual-2026-11.yml';
 const PRELIVE_REF = 'main';
 const PRELIVE_TIMEZONE = 'Europe/Lisbon';
 const PRELIVE_RUNS = [
   { handler: 'dispatchPreLive0630', slot: '06:30', hour: 6, minute: 30 },
-  { handler: 'dispatchPreLive1130', slot: '11:30', hour: 11, minute: 30 },
-  { handler: 'dispatchPreLive1530', slot: '15:30', hour: 15, minute: 30 },
   { handler: 'dispatchPreLive1830', slot: '18:30', hour: 18, minute: 30 },
 ];
 const PRELIVE_LEGACY_HANDLER = 'dispatchPreLiveBot';
+const PRELIVE_DEPRECATED_HANDLERS = ['dispatchPreLive1130', 'dispatchPreLive1530'];
 const PRELIVE_MANAGED_HANDLERS = PRELIVE_RUNS
   .map(run => run.handler)
-  .concat([PRELIVE_LEGACY_HANDLER]);
+  .concat([PRELIVE_LEGACY_HANDLER])
+  .concat(PRELIVE_DEPRECATED_HANDLERS);
 
 function dispatchPreLive0630() {
   return dispatchPreLiveBotForSlot('06:30');
-}
-
-function dispatchPreLive1130() {
-  return dispatchPreLiveBotForSlot('11:30');
-}
-
-function dispatchPreLive1530() {
-  return dispatchPreLiveBotForSlot('15:30');
 }
 
 function dispatchPreLive1830() {
@@ -160,7 +153,10 @@ function verifyPreLiveSchedule() {
       if (typeof trigger.getUniqueId === 'function') {
         triggerIds[handler].push(trigger.getUniqueId());
       }
-    } else if (handler === PRELIVE_LEGACY_HANDLER) {
+    } else if (
+      handler === PRELIVE_LEGACY_HANDLER
+      || PRELIVE_DEPRECATED_HANDLERS.includes(handler)
+    ) {
       unexpectedLegacyTriggers += 1;
     }
   });

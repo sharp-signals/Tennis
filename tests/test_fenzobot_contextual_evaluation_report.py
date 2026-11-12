@@ -138,7 +138,10 @@ class FenzobotContextualEvaluationReportTests(unittest.TestCase):
         positions = [workflow.index(command) for command in commands]
         self.assertEqual(positions, sorted(positions))
         self.assertIn("actions/upload-artifact@v7", workflow)
-        self.assertNotIn("TELEGRAM_BOT_TOKEN", workflow)
+        self.assertIn("python scripts/build_fenzobot_contextual_publication.py", workflow)
+        self.assertIn("python -m src.report_notifications wait", workflow)
+        self.assertIn("python -m src.report_notifications send", workflow)
+        self.assertIn("TELEGRAM_BOT_TOKEN", workflow)
         self.assertTrue(is_allowed(
             "data/contextual_shadow_market-fenzobot-contextual-2026-11.jsonl",
             "bot",

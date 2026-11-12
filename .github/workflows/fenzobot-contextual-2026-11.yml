@@ -1,13 +1,29 @@
 name: Fenzobot Contextual 2026-11 Observation
 
 on:
-  # Manual only. This global release remains isolated from the operational bot.
+  # Sem cron GitHub: o Apps Script despacha às 06:30 e 18:30 Europe/Lisbon.
   workflow_dispatch:
     inputs:
       max_matches:
         description: "Optional safety limit; 0 processes every eligible match"
         required: false
         default: "0"
+        type: string
+      trigger_slot:
+        description: "Slot lógico Europe/Lisbon"
+        required: false
+        type: string
+      trigger_source:
+        description: "Origem do dispatch"
+        required: false
+        type: string
+      trigger_local_date:
+        description: "Data local do slot"
+        required: false
+        type: string
+      dispatch_attempt_id:
+        description: "Identidade idempotente da tentativa"
+        required: false
         type: string
 
 concurrency:
@@ -91,6 +107,16 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Build public contextual reports and notification manifest
+        env:
+          FENZOBOT_REPORT_NOTIFICATION_MANIFEST: ${{ runner.temp }}/fenzobot-contextual-notifications.json
+        run: >-
+          python scripts/build_fenzobot_contextual_publication.py
+          --max-observations 50
+
+      - name: Update canonical history and workbook
+        run: python scripts/build_system_history_workbook.py
+
       - name: Publish only generated SHADOW data
         run: |
           git config user.name "tennis-bot"
@@ -102,6 +128,52 @@ jobs:
           else
             echo "Sem observações globais novas para publicar."
           fi
+
+      - name: Confirm contextual report publication
+        id: contextual_readiness
+        continue-on-error: true
+        env:
+          FENZOBOT_REPORT_NOTIFICATION_MANIFEST: ${{ runner.temp }}/fenzobot-contextual-notifications.json
+          REPORT_PUBLICATION_TIMEOUT_SECONDS: "360"
+          REPORT_PUBLICATION_POLL_SECONDS: "4"
+        run: |
+          if [ -f "$FENZOBOT_REPORT_NOTIFICATION_MANIFEST" ]; then
+            python -m src.report_notifications wait
+          else
+            echo "Sem jogos pré-jogo para notificar."
+          fi
+
+      - name: Send contextual reports to Telegram
+        id: contextual_notifications
+        if: steps.contextual_readiness.outcome == 'success'
+        continue-on-error: true
+        env:
+          FENZOBOT_REPORT_NOTIFICATION_MANIFEST: ${{ runner.temp }}/fenzobot-contextual-notifications.json
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -f "$FENZOBOT_REPORT_NOTIFICATION_MANIFEST" ]; then
+            python -m src.report_notifications send
+          else
+            echo "Sem manifesto contextual; envio não aplicável."
+          fi
+
+      - name: Persist contextual delivery checkpoint
+        if: always() && steps.contextual_readiness.outcome != 'skipped'
+        run: |
+          git config user.name "tennis-bot"
+          git config user.email "actions@github.com"
+          python scripts/stage_generated_outputs.py --profile bot
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: registar entrega contextual"
+            FENZOBOT_WRITER_PROFILE=bot bash scripts/publish-generated-changes.sh "chore: registar entrega contextual"
+          else
+            echo "Sem checkpoint contextual novo para publicar."
+          fi
+
+      - name: Fail after preserving data if contextual delivery failed
+        if: always() && (steps.contextual_readiness.outcome == 'failure' || steps.contextual_notifications.outcome == 'failure')
+        run: exit 1
 
       - name: Preserve generated-data recovery bundle
         if: failure()

@@ -413,9 +413,13 @@ def send_ready_notifications(
         _persist_delivery(run_id, state)
         _write_json_atomic(state_path, state)
 
+    email_payload = manifest.get("email") or {}
     email_delivery = state.get("email_delivery")
     if not isinstance(email_delivery, dict) or email_delivery.get("status") != "SENT":
-        email_delivery = email_sender(manifest.get("email") or {})
+        if email_payload.get("enabled") is False:
+            email_delivery = {"status": "SENT", "kind": "DISABLED"}
+        else:
+            email_delivery = email_sender(email_payload)
         state["email_delivery"] = dict(email_delivery)
         _persist_delivery(run_id, state)
         _write_json_atomic(state_path, state)

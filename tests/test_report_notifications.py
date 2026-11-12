@@ -228,6 +228,28 @@ class ReportNotificationsTests(unittest.TestCase):
         telegram.assert_not_called()
         email.assert_not_called()
 
+    def test_ready_telegram_only_manifest_skips_email_sender(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            report_notifications, "_persist_telemetry",
+        ), patch.object(report_notifications, "_persist_delivery"):
+            root = Path(directory)
+            target = self._manifest(root, count=1, email={"enabled": False})
+            body = (root / "report-0.html").read_bytes()
+            report_notifications.wait_for_publication(
+                path=target, get=lambda *_args, **_kwargs: Response(200, body),
+            )
+            telegram = MagicMock()
+            email = MagicMock()
+            result = report_notifications.send_ready_notifications(
+                path=target, telegram_sender=telegram, email_sender=email,
+            )
+        self.assertEqual(result["status"], "REPORTS_SENT")
+        self.assertEqual(result["email_delivery"], {
+            "status": "SENT", "kind": "DISABLED",
+        })
+        telegram.assert_called()
+        email.assert_not_called()
+
     def test_push_failure_withholds_without_sending(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(
             report_notifications, "_persist_telemetry",
