@@ -28,6 +28,9 @@ HANDICAP_EVIDENCE_PATH = Path(
 MONEYLINE_EVIDENCE_PATH = Path(
     "data/contextual_shadow_moneyline_evidence-fenzobot-contextual-2026-11.jsonl"
 )
+H2H_EVIDENCE_PATH = Path(
+    "data/contextual_shadow_h2h_evidence-fenzobot-contextual-2026-11.jsonl"
+)
 
 
 def build_release_previews(
@@ -36,7 +39,7 @@ def build_release_previews(
     contract = load_report_contract(
         REPORT_CONTRACT_PATH,
         expected_model_version=GLOBAL_RELEASE_ID,
-        expected_contract_version="fenzobot-contextual-2026-11-report.9",
+        expected_contract_version="fenzobot-contextual-2026-11-report.10",
     )
     return build_previews(
         output_dir=output_dir,
@@ -45,6 +48,7 @@ def build_release_previews(
         outcomes_path=OUTCOMES_PATH,
         handicap_evidence_path=HANDICAP_EVIDENCE_PATH,
         moneyline_evidence_path=MONEYLINE_EVIDENCE_PATH,
+        h2h_evidence_path=H2H_EVIDENCE_PATH,
         max_observations=max_observations,
         expected_model_version=GLOBAL_RELEASE_ID,
         report_contract=contract,

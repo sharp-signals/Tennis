@@ -32,6 +32,10 @@ from src.contextual_shadow_handicap_v2 import (  # noqa: E402
     build_frozen_handicap_evidence,
     infer_match_format,
 )
+from src.contextual_shadow_h2h_evidence_v1 import (  # noqa: E402
+    append_frozen_h2h_evidence,
+    build_frozen_h2h_evidence,
+)
 from src.contextual_shadow_moneyline_v1 import (  # noqa: E402
     append_frozen_moneyline_evidence,
     build_frozen_moneyline_evidence,
@@ -370,6 +374,11 @@ def build_match_observation(
         captured_at_utc=analyzed_at_utc,
         model_version=model_version,
     )
+    h2h_evidence = build_frozen_h2h_evidence(
+        observation,
+        captured_at_utc=analyzed_at_utc,
+        model_version=model_version,
+    )
     return observation, {
         "status": shadow["status"],
         "reason_code": ",".join(shadow["reason_codes"]) or "READY",
@@ -378,6 +387,7 @@ def build_match_observation(
         "rank_sources": {"a": rank_source_a, "b": rank_source_b},
         "_handicap_evidence": handicap_evidence,
         "_moneyline_evidence": moneyline_evidence,
+        "_h2h_evidence": h2h_evidence,
     }
 
 
@@ -398,6 +408,7 @@ def _run_shadow_only(
     model_version: str = "contextual-family-shadow-v2",
     handicap_path: Path | None = None,
     moneyline_path: Path | None = None,
+    h2h_path: Path | None = None,
     usage_status: str = "shadow_v2_success",
 ) -> dict[str, Any]:
     activation = activation_loader()
@@ -451,11 +462,13 @@ def _run_shadow_only(
     observations = []
     handicap_evidence = []
     moneyline_evidence = []
+    h2h_evidence = []
     diagnostics = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 8))) as executor:
         for observation, diagnostic in executor.map(process, eligible):
             evidence = diagnostic.pop("_handicap_evidence", None)
             moneyline = diagnostic.pop("_moneyline_evidence", None)
+            h2h = diagnostic.pop("_h2h_evidence", None)
             diagnostics.append(diagnostic)
             if observation is not None:
                 observations.append(observation)
@@ -463,6 +476,8 @@ def _run_shadow_only(
                     handicap_evidence.append(evidence)
                 if moneyline is not None:
                     moneyline_evidence.append(moneyline)
+                if h2h is not None:
+                    h2h_evidence.append(h2h)
     existing_ids = observation_ids_loader(ledger_path)
     new_ids = {
         str(row.get("observation_id")) for row in observations
@@ -482,6 +497,10 @@ def _run_shadow_only(
             if str(row.get("observation_id") or "") in new_ids
         ),
         **({"path": moneyline_path} if moneyline_path is not None else {}),
+    )
+    h2h_added = append_frozen_h2h_evidence(
+        h2h_evidence,
+        **({"path": h2h_path} if h2h_path is not None else {}),
     )
     audit = audit_ledger(ledger_path, model_path)
     reason_counts: dict[str, int] = {}
@@ -521,6 +540,7 @@ def _run_shadow_only(
         "observations_added": added,
         "handicap_evidence_added": handicap_added,
         "moneyline_evidence_added": moneyline_added,
+        "h2h_evidence_added": h2h_added,
         "status_counts": dict(sorted(status_counts.items())),
         "reason_counts": dict(sorted(reason_counts.items())),
         "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
