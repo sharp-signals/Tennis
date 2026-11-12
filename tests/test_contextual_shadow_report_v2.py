@@ -276,6 +276,43 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("contextual_recent_result_main_v7", html)
         self.assertNotIn("logit_contribution", html)
 
+    def test_h2h_family_lists_matches_with_surface_colours(self):
+        prediction = copy.deepcopy(observation())
+        h2h = prediction["contextual_shadow"]["families"][1]
+        h2h["data_state"] = "OBSERVED"
+        h2h["internal_trace"] = {"features": [{
+            "key": "contextual_h2h_global_shrunk_v1",
+            "logit_contribution": 0.10,
+            "missing_logit_contribution": 0.0,
+            "missing": False,
+        }]}
+        h2h["context_audit"] = {
+            "eligible_matches": 2,
+            "matches": [
+                {
+                    "event_date": "2026-10-01", "tournament": "Indoor Open",
+                    "surface": "hard_indoor", "winner_side": "a",
+                    "score": "6-4 6-3", "round": "QF",
+                },
+                {
+                    "event_date": "2025-05-02", "tournament": "Clay Open",
+                    "surface": "clay", "winner_side": "b",
+                    "score": "7-5 6-4", "round": "R16",
+                },
+            ],
+        }
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market())
+        )
+        self.assertIn("Confrontos anteriores", html)
+        self.assertIn("Rápido indoor", html)
+        self.assertIn("Terra batida", html)
+        self.assertIn("h2h-hard-indoor", html)
+        self.assertIn("h2h-clay", html)
+        self.assertIn("Alpha Player", html)
+        self.assertIn("Beta Player", html)
+        self.assertIn("6-4 6-3", html)
+
     def test_frozen_moneyline_history_shows_general_and_current_band(self):
         view = report.build_report_view_model(
             observation(), market(), None, None, moneyline_evidence()

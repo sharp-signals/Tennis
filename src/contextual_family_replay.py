@@ -267,6 +267,16 @@ def _material(frame: pd.DataFrame) -> pd.DataFrame:
     material["_surface"] = material["_surface"].fillna(recovered_surface)
     material["_pace"] = frame.apply(_row_pace, axis=1)
     material["_score"] = _column(frame, "score")
+    material["_tournament"] = frame.get(
+        "tourney_name",
+        frame.get(
+            "tournament_name",
+            pd.Series(index=frame.index, dtype="string"),
+        ),
+    ).astype("string").str.strip()
+    material["_round"] = frame.get(
+        "round", pd.Series(index=frame.index, dtype="string"),
+    ).astype("string").str.strip()
     material["_non_standard"] = _is_non_standard_completion(frame)
     material["_competition_scope"] = frame.get(
         "_history_competition_scope",
@@ -301,6 +311,13 @@ def _cached_material(frame: pd.DataFrame) -> pd.DataFrame:
         for item in stale:
             _MATERIAL_CACHE.pop(item, None)
         return material
+
+
+def _optional_text(value: Any) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def _difference(a: Any, b: Any) -> float | None:
@@ -1317,6 +1334,10 @@ def build_contextual_target_row(
         if is_primary and {winner, loser} == wanted:
             pair_history.append({
                 "event_date": event_date, "surface": match_surface, "winner": winner,
+                "surface_context": match_surface_context,
+                "tournament": _optional_text(match["_tournament"]),
+                "score": _optional_text(match["_score"]),
+                "round": _optional_text(match["_round"]),
             })
 
     recent_a = _summarize_player_history(
@@ -1443,6 +1464,39 @@ def build_contextual_target_row(
         },
         "candidate_equation_audit": {
             **equation_audit,
+            "matchup_h2h": {
+                "source": "chronological_history",
+                "raw_matches": h2h_sample,
+                "eligible_matches": h2h_sample,
+                "eligible_a_wins": sum(
+                    row["winner"] == model_a for row in pair_history
+                ),
+                "eligible_surface_matches": h2h_surface_sample,
+                "eligible_surface_a_wins": sum(
+                    row["winner"] == model_a
+                    for row in pair_history
+                    if target_surface is not None
+                    and row.get("surface") == target_surface
+                ),
+                "excluded_non_competitive": 0,
+                "matches": [
+                    {
+                        "event_date": row["event_date"].isoformat(),
+                        "tournament": row.get("tournament"),
+                        "surface": row.get("surface_context") or row.get("surface"),
+                        "winner_side": (
+                            "a" if row["winner"] == model_a else "b"
+                        ),
+                        "score": row.get("score"),
+                        "round": row.get("round"),
+                    }
+                    for row in sorted(
+                        pair_history,
+                        key=lambda item: item["event_date"],
+                        reverse=True,
+                    )
+                ],
+            },
             "exact_surface_ledger": exact_surface_audit,
         },
         "orientation": {

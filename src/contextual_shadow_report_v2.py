@@ -47,6 +47,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.6",
                 "fenzobot-contextual-2026-11-report.7",
                 "fenzobot-contextual-2026-11-report.8",
+                "fenzobot-contextual-2026-11-report.9",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
@@ -55,6 +56,7 @@ def load_report_contract(
                     expected_contract_version not in {
                         "fenzobot-contextual-2026-11-report.7",
                         "fenzobot-contextual-2026-11-report.8",
+                        "fenzobot-contextual-2026-11-report.9",
                     }
                     and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
                 )
@@ -62,6 +64,7 @@ def load_report_contract(
                     expected_contract_version in {
                         "fenzobot-contextual-2026-11-report.7",
                         "fenzobot-contextual-2026-11-report.8",
+                        "fenzobot-contextual-2026-11-report.9",
                     }
                     and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
                 )
@@ -72,14 +75,22 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.6",
                 "fenzobot-contextual-2026-11-report.7",
                 "fenzobot-contextual-2026-11-report.8",
+                "fenzobot-contextual-2026-11-report.9",
             }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
                 or rules.get("public_family_details_must_use_human_labels") is not True
                 or rules.get("public_report_must_hide_internal_identifiers") is not True
                 or (
-                    expected_contract_version == "fenzobot-contextual-2026-11-report.8"
+                    expected_contract_version in {
+                        "fenzobot-contextual-2026-11-report.8",
+                        "fenzobot-contextual-2026-11-report.9",
+                    }
                     and rules.get("family_detail_must_offer_xray_toggle") is not True
+                )
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.9"
+                    and rules.get("h2h_family_must_show_factual_match_history") is not True
                 )
             )
         )
@@ -656,6 +667,58 @@ def _context_value(label: str, value: Any) -> str:
     return f"{number:.1f}"
 
 
+def _h2h_surface(value: Any) -> tuple[str, str]:
+    text = str(value or "").strip().casefold().replace("_", " ")
+    if "clay" in text or "terra" in text:
+        return "Terra batida", "clay"
+    if "grass" in text or "relva" in text:
+        return "Relva", "grass"
+    if "indoor" in text or "i.hard" in text or "carpet" in text:
+        return "Rápido indoor", "hard-indoor"
+    if "hard" in text or "duro" in text:
+        return "Rápido outdoor", "hard-outdoor"
+    return "Piso N/D", "unknown"
+
+
+def _h2h_date(value: Any) -> str:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).strftime(
+            "%d/%m/%Y"
+        )
+    except (TypeError, ValueError):
+        return "Data N/D"
+
+
+def _h2h_history_html(
+    context: Mapping[str, Any], players: Mapping[str, Mapping[str, Any]],
+) -> str:
+    rows = []
+    for match in context.get("matches") or []:
+        if not isinstance(match, Mapping):
+            continue
+        side = str(match.get("winner_side") or "").casefold()
+        winner = players.get(side, {}).get("name") if side in {"a", "b"} else None
+        surface_label, surface_class = _h2h_surface(match.get("surface"))
+        tournament = str(match.get("tournament") or "Torneio não identificado")
+        score = str(match.get("score") or "Resultado N/D")
+        round_name = str(match.get("round") or "").strip()
+        rows.append(
+            f'<div class="h2h-match h2h-{_e(surface_class)}">'
+            f'<span class="h2h-surface">{_e(surface_label)}</span>'
+            f'<div><b>{_e(winner or "Vencedor N/D")}</b>'
+            f'<small>{_e(_h2h_date(match.get("event_date")))} · {_e(tournament)}'
+            f'{" · " + _e(round_name) if round_name else ""}</small></div>'
+            f'<strong>{_e(score)}</strong></div>'
+        )
+    if not rows:
+        return ""
+    return (
+        '<div class="h2h-history"><div class="h2h-history-head">'
+        '<b>Confrontos anteriores</b><span>mais recente primeiro</span></div>'
+        f'{"".join(rows)}</div>'
+    )
+
+
 def _family_detail_html(
     family: Mapping[str, Any], players: Mapping[str, Mapping[str, Any]],
 ) -> str:
@@ -760,6 +823,7 @@ def _family_detail_html(
             f'<div><span>{_e(label)}</span><b>{_e(value)}</b></div>'
             for label, value in h2h_items if value is not None
         ) + '</div>'
+        structural += _h2h_history_html(context, players)
     return (
         '<div class="family-view-head"><span>Como quer ver os fatores?</span>'
         '<div class="family-view-toggle"><span>Leitura simples</span>'
@@ -1356,6 +1420,17 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .factor-a b{{color:var(--blue)}}.factor-b b{{color:var(--orange)}}.factor-missing{{opacity:.62}}
     .context-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:9px}}.context-grid div{{padding:9px;background:#132f4d;border-radius:8px}}
     .context-grid span,.context-grid b{{display:block;font-size:11px}}.context-grid span{{color:var(--muted)}}.family-detail-empty{{color:var(--muted)}}
+    .h2h-history{{margin-top:10px;border:1px solid #213f58;border-radius:12px;overflow:hidden;background:#091927}}
+    .h2h-history-head{{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border-bottom:1px solid #213f58}}
+    .h2h-history-head b{{font-size:12px}}.h2h-history-head span{{color:var(--muted);font-size:10px}}
+    .h2h-match{{display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:12px;padding:10px 13px;border-bottom:1px solid #173048;border-left:4px solid var(--muted)}}
+    .h2h-match:last-child{{border-bottom:0}}.h2h-match div b,.h2h-match div small{{display:block}}.h2h-match div b{{font-size:12px}}.h2h-match div small{{margin-top:2px;color:var(--muted);font-size:10px}}
+    .h2h-match strong{{font-size:12px;text-align:right}}.h2h-surface{{padding:4px 7px;border-radius:999px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.04em}}
+    .h2h-hard-outdoor{{border-left-color:#3f9cff}}.h2h-hard-outdoor .h2h-surface{{color:#b9ddff;background:#174c75}}
+    .h2h-hard-indoor{{border-left-color:#9b7cff}}.h2h-hard-indoor .h2h-surface{{color:#ded2ff;background:#463679}}
+    .h2h-clay{{border-left-color:#e88248}}.h2h-clay .h2h-surface{{color:#ffd5bd;background:#713a20}}
+    .h2h-grass{{border-left-color:#64c97b}}.h2h-grass .h2h-surface{{color:#d5ffde;background:#245d32}}
+    .h2h-unknown{{border-left-color:#73879a}}.h2h-unknown .h2h-surface{{color:#d5e0e8;background:#354451}}
     .family-view-head{{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:12px 0 8px;color:var(--muted);font-size:11px}}
     .family-view-toggle{{display:flex;align-items:center;gap:8px}}.family-view-switch{{position:relative;width:44px;height:24px;flex:0 0 auto}}
     .family-view-switch input{{position:absolute;opacity:0;pointer-events:none}}.family-view-switch>span{{position:absolute;inset:0;border:1px solid var(--line);border-radius:999px;background:#132f4d;cursor:pointer;transition:.2s}}
@@ -1381,7 +1456,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
       .versus .right{{text-align:center}}.hero-player,.hero-player.side-b{{flex-direction:column;text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
-      .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}.family-view-head{{align-items:flex-start;flex-direction:column}}.family-view-toggle{{align-self:flex-end}}}}
+      .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}.family-view-head{{align-items:flex-start;flex-direction:column}}.family-view-toggle{{align-self:flex-end}}.h2h-match{{grid-template-columns:1fr}}.h2h-match strong{{text-align:left}}}}
   </style>
 </head>
 <body><main class="shell">
