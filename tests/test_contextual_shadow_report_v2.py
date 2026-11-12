@@ -235,6 +235,21 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("SEM ENTRADA AUTOMÁTICA", html)
         self.assertNotIn("<small>logit</small>", html)
 
+    def test_opposite_central_only_price_does_not_override_model_direction(self):
+        quote = {**market(), "odds": {"a": 1.40, "b": 2.70}}
+        view = report.build_report_view_model(
+            observation(), quote, None, handicap_evidence()
+        )
+        self.assertEqual(view["market_review"]["status"], "CENTRAL_ONLY")
+        self.assertEqual(view["market_review"]["candidate_side"], "b")
+        self.assertEqual(view["market_review"]["model_side"], "a")
+        html = report.render_report_html(view)
+        self.assertIn("Direção principal: handicaps de Alpha Player", html)
+        self.assertIn("não é apresentado como valor Moneyline", html)
+        self.assertIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
+        self.assertNotIn("Valor Moneyline: Beta Player", html)
+        self.assertIn("150 casos históricos", html)
+
     def test_public_report_hides_internal_trace_and_uses_human_labels(self):
         html = report.render_report_html(
             report.build_report_view_model(observation(), market())

@@ -34,7 +34,12 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
             (output_dir / f"report-{row['observation_id']}.html").write_text(
                 row["observation_id"], encoding="utf-8",
             )
-        return {"status": "COMPLETED", "reports_built": 2, "isolation": {}}
+        return {
+            "status": "COMPLETED", "reports_built": 2, "isolation": {},
+            "notification_rows": [{
+                "observation_id": "future", "status": "NO_POSITIVE_EDGE",
+            }],
+        }
 
     monkeypatch.setattr(publication, "DEFAULT_PATH", observations)
     monkeypatch.setattr(publication, "OUTCOMES_PATH", outcomes)
@@ -54,7 +59,12 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
     assert len(payload["reports"]) == 1
     assert payload["reports"][0]["url"].endswith("report-future.html")
     assert "Player A vs Player B" in payload["telegram_chunks"][0]
-    assert payload["email"] == {"enabled": False}
+    assert "🔴 SEM EDGE POSITIVO" in payload["telegram_chunks"][0]
+    assert payload["email"]["today"] == "2026-11-12"
+    assert payload["email"]["groups"][0]["name"] == "🔴 SEM EDGE POSITIVO"
+    assert payload["email"]["groups"][0]["reports"][0]["title"] == (
+        "Player A vs Player B"
+    )
     metric_rows = json.loads(metrics.read_text(encoding="utf-8"))
     assert metric_rows[-1]["github_run_id"] == "run-contextual-1"
     assert metric_rows[-1]["reports_ok"] == 1

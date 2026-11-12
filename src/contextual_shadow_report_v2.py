@@ -474,6 +474,8 @@ def build_report_view_model(
             "b": fair_odd_b.get("central"),
         },
     )
+    model_side = "a" if probability_a >= probability_b else "b"
+    market_review["model_side"] = model_side
     match_format = str(
         ((handicap_evidence or {}).get("handicap_evidence") or {}).get("format")
         or "bo3"
@@ -867,7 +869,9 @@ def _family_detail_html(
     )
 
 
-def _player_card(side: str, player: Mapping[str, Any]) -> str:
+def _player_card(
+    side: str, player: Mapping[str, Any], calibration_sample: Any,
+) -> str:
     interval = player["interval"]
     fair = player["fair_odd"]
     market = player["market"]
@@ -898,7 +902,7 @@ def _player_card(side: str, player: Mapping[str, Any]) -> str:
         <div class="player-side">MODELO {side.upper()}</div>
         <h2>{_e(player['name'])}</h2>
         <div class="probability">{_pct(player['probability'])}</div>
-        <div class="interval">Intervalo 90% · {_pct(interval[0])}–{_pct(interval[1])}</div>
+        <div class="interval">Faixa estatística 90% · {_pct(interval[0])}–{_pct(interval[1])} · {_e(calibration_sample)} casos históricos</div>
         <div class="player-grid">
           <div><span>Fair odd</span><strong>{_odd(fair['central'])}</strong></div>
           <div><span>Faixa justa</span><strong>{_odd(fair['lower'])}–{_odd(fair['upper'])}</strong></div>
@@ -938,7 +942,15 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
         )
     else:
         side = str(review.get("candidate_side") or "")
+        model_side = str(review.get("model_side") or "")
+        opposite_central_only = bool(
+            status == "CENTRAL_ONLY"
+            and side in {"a", "b"}
+            and model_side in {"a", "b"}
+            and side != model_side
+        )
         player = (view.get("players") or {}).get(side) or {}
+        model_player = (view.get("players") or {}).get(model_side) or {}
         confidence = (
             "Edge também positivo no limite conservador"
             if status == "CONSERVATIVE_POSITIVE"
@@ -946,7 +958,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
         )
         cards = []
         moneyline = review.get("moneyline")
-        if isinstance(moneyline, Mapping):
+        if isinstance(moneyline, Mapping) and not opposite_central_only:
             minimum = moneyline.get("minimum_odd")
             zone = (
                 f"{float(minimum):.2f}–{float(moneyline['maximum_odd']):.2f}"
@@ -1031,13 +1043,22 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                 "está na janela Moneyline e não existe evidência de handicap "
                 "congelada para esta observação.</div>"
             )
-        lead = (
-            f'<div><b>Valor Moneyline: {_e(player.get("name"))}</b><span>{_e(confidence)}</span></div>'
-            f'<div><strong>{_signed(review.get("central_ev_pct"), "%")}</strong><span>EV central</span></div>'
-            f'<div><strong>{_signed(review.get("conservative_ev_pct"), "%")}</strong><span>EV conservador</span></div>'
-            if side else
-            '<div class="review-no-ml"><b>Sem edge Moneyline positivo</b><span>Os handicaps abaixo pertencem ao lado indicado pelo modelo.</span></div>'
-        )
+        if opposite_central_only:
+            lead = (
+                '<div class="review-no-ml"><b>Direção principal: handicaps de '
+                f'{_e(model_player.get("name"))}</b><span>O preço de '
+                f'{_e(player.get("name"))} parece alto apenas na estimativa '
+                'central, mas não resiste ao limite conservador; não é '
+                'apresentado como valor Moneyline.</span></div>'
+            )
+        else:
+            lead = (
+                f'<div><b>Valor Moneyline: {_e(player.get("name"))}</b><span>{_e(confidence)}</span></div>'
+                f'<div><strong>{_signed(review.get("central_ev_pct"), "%")}</strong><span>EV central</span></div>'
+                f'<div><strong>{_signed(review.get("conservative_ev_pct"), "%")}</strong><span>EV conservador</span></div>'
+                if side else
+                '<div class="review-no-ml"><b>Sem edge Moneyline positivo</b><span>Os handicaps abaixo pertencem ao lado indicado pelo modelo.</span></div>'
+            )
         body = f"""
           <div class="review-lead">{lead}</div>
           <div class="review-grid">{''.join(cards)}</div>"""
@@ -1279,7 +1300,19 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     preferred_fair = players[preferred]["fair_odd"]
     market_review = view.get("market_review") or {}
     value_side = market_review.get("candidate_side")
-    if value_side in {"a", "b"}:
+    model_side = market_review.get("model_side") or preferred
+    central_only_opposite = bool(
+        market_review.get("status") == "CENTRAL_ONLY"
+        and value_side in {"a", "b"}
+        and model_side in {"a", "b"}
+        and value_side != model_side
+    )
+    if central_only_opposite:
+        value_copy = (
+            f"Sem Moneyline confirmada · estudar handicaps de "
+            f"{players[model_side]['name']}"
+        )
+    elif value_side in {"a", "b"}:
         conservative_value = _number(market_review.get("conservative_ev_pct"))
         value_measure = (
             f"EV conservador {_signed(conservative_value, '%')}"
@@ -1503,7 +1536,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
   </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">NÚCLEO DE PRICING</div><h2>Probabilidade e fair odd independentes</h2></div></div>
-    <div class="pricing-grid">{_player_card('a', players['a'])}{_player_card('b', players['b'])}</div>
+    <div class="pricing-grid">{_player_card('a', players['a'], view.get('calibration_bin_sample'))}{_player_card('b', players['b'], view.get('calibration_bin_sample'))}</div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> {_e(market_copy)}</div>
     {plausibility_html}
   </section>

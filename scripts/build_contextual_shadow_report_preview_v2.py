@@ -157,6 +157,19 @@ def build_previews(
         "with_h2h_evidence": sum(
             bool(view.get("h2h_evidence_available")) for view in views
         ),
+        "notification_rows": [
+            {
+                "observation_id": view.get("observation_id"),
+                "status": (view.get("market_review") or {}).get("status"),
+                "candidate_side": (
+                    view.get("market_review") or {}
+                ).get("candidate_side"),
+                "model_side": (
+                    view.get("market_review") or {}
+                ).get("model_side"),
+            }
+            for view in views
+        ],
         "output_dir": str(output_dir),
         "isolation": {
             "predictions_rewritten": False,

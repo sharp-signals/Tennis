@@ -47,6 +47,31 @@ def _chunks(lines: list[str], limit: int = 3800) -> list[str]:
     return chunks
 
 
+_NOTIFICATION_GROUPS = {
+    "CONSERVATIVE_POSITIVE": (
+        0, "🟢 EDGE CONSERVADOR CONFIRMADO", "🟢",
+    ),
+    "CENTRAL_ONLY": (
+        1, "🟡 SINAL CENTRAL NÃO CONFIRMADO", "🟡",
+    ),
+    "MARKET_UNAVAILABLE": (
+        2, "🟡 MERCADO INDISPONÍVEL", "🟡",
+    ),
+    "FAVORITE_UNCONFIRMED": (
+        3, "⚪ LEITURA INCONCLUSIVA", "⚪",
+    ),
+    "NO_POSITIVE_EDGE": (
+        4, "🔴 SEM EDGE POSITIVO", "🔴",
+    ),
+}
+
+
+def _notification_group(status: object) -> tuple[int, str, str]:
+    return _NOTIFICATION_GROUPS.get(
+        str(status or ""), (3, "⚪ LEITURA INCONCLUSIVA", "⚪"),
+    )
+
+
 def build_publication(
     *, output_dir: Path, max_observations: int, now: datetime | None = None,
 ) -> dict:
@@ -65,9 +90,16 @@ def build_publication(
         observations = observations[:max_observations]
 
     reports: list[dict[str, object]] = []
+    notification_rows = {
+        str(row.get("observation_id")): row
+        for row in summary.get("notification_rows") or []
+        if row.get("observation_id")
+    }
+    grouped_lines: dict[int, dict[str, object]] = {}
+    email_groups: dict[int, dict[str, object]] = {}
     notification_lines = [
         "<b>FENZOBOT CONTEXTUAL — RELATÓRIOS PRÉ-JOGO</b>",
-        "Fair odd independente do mercado · decisão final humana · sem entrada automática",
+        "Fair odd independente do mercado · verde só com edge conservador confirmado",
         "",
     ]
     for row in observations:
@@ -90,11 +122,31 @@ def build_publication(
             f"{quote(local_path.name)}"
         )
         reports.append({"url": url, "local_path": str(local_path)})
-        player_a = escape(_name(row, "a"))
-        player_b = escape(_name(row, "b"))
-        notification_lines.append(
-            f"• <b>{player_a} vs {player_b}</b> — <a href=\"{url}\">ABRIR RELATÓRIO</a>"
+        raw_player_a = _name(row, "a")
+        raw_player_b = _name(row, "b")
+        player_a = escape(raw_player_a)
+        player_b = escape(raw_player_b)
+        status = (notification_rows.get(observation_id) or {}).get("status")
+        order, heading, ball = _notification_group(status)
+        group = grouped_lines.setdefault(
+            order, {"heading": heading, "lines": []},
         )
+        group["lines"].append(
+            f"{ball} <b>{player_a} vs {player_b}</b> — "
+            f"<a href=\"{url}\">ABRIR RELATÓRIO</a>"
+        )
+        email_group = email_groups.setdefault(
+            order, {"name": heading, "reports": []},
+        )
+        email_group["reports"].append({
+            "title": f"{raw_player_a} vs {raw_player_b}", "url": url,
+        })
+
+    for order in sorted(grouped_lines):
+        group = grouped_lines[order]
+        notification_lines.append(f"<b>{group['heading']}</b>")
+        notification_lines.extend(group["lines"])
+        notification_lines.append("")
 
     run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
     metrics_path = os.environ.get(
@@ -116,7 +168,10 @@ def build_publication(
         run_date=instant.date().isoformat(),
         reports=reports,
         telegram_chunks=_chunks(notification_lines) if reports else [],
-        email={"enabled": False},
+        email={
+            "today": instant.date().isoformat(),
+            "groups": [email_groups[key] for key in sorted(email_groups)],
+        },
         github_run_id=run_id or None,
     )
     publication_isolation = dict(summary.get("isolation") or {})
