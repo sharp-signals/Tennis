@@ -46,16 +46,23 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.5",
                 "fenzobot-contextual-2026-11-report.6",
                 "fenzobot-contextual-2026-11-report.7",
+                "fenzobot-contextual-2026-11-report.8",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
                 or rules.get("first_market_snapshot_must_be_used_for_evaluation") is not True
                 or (
-                    expected_contract_version != "fenzobot-contextual-2026-11-report.7"
+                    expected_contract_version not in {
+                        "fenzobot-contextual-2026-11-report.7",
+                        "fenzobot-contextual-2026-11-report.8",
+                    }
                     and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
                 )
                 or (
-                    expected_contract_version == "fenzobot-contextual-2026-11-report.7"
+                    expected_contract_version in {
+                        "fenzobot-contextual-2026-11-report.7",
+                        "fenzobot-contextual-2026-11-report.8",
+                    }
                     and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
                 )
             )
@@ -64,11 +71,16 @@ def load_report_contract(
             expected_contract_version in {
                 "fenzobot-contextual-2026-11-report.6",
                 "fenzobot-contextual-2026-11-report.7",
+                "fenzobot-contextual-2026-11-report.8",
             }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
                 or rules.get("public_family_details_must_use_human_labels") is not True
                 or rules.get("public_report_must_hide_internal_identifiers") is not True
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.8"
+                    and rules.get("family_detail_must_offer_xray_toggle") is not True
+                )
             )
         )
         or rules.get("no_betting_recommendation") is not True
@@ -662,6 +674,7 @@ def _family_detail_html(
         active_totals.append(abs(total))
     absolute_total = sum(active_totals)
     rows = []
+    xray_rows = []
     for feature in features:
         missing = bool(feature.get("missing"))
         contribution = _number(feature.get("logit_contribution")) or 0.0
@@ -691,6 +704,23 @@ def _family_detail_html(
             f'<span class="factor-name">{_e(_feature_label(feature.get("key")))}</span>'
             f'<div class="factor-visual"><span class="factor-fill" style="--factor-width:{width:.1f}%"></span></div>'
             f'<b>{_e(result)}</b><small>{_e(strength)}</small></div>'
+        )
+        xray_side = direction if direction in {"a", "b"} else ""
+        xray_player = (
+            players[xray_side]["name"] if xray_side else
+            "Sem dados" if missing else "Neutro"
+        )
+        xray_strength = strength or (
+            "sem leitura factual" if missing else "sem impacto material"
+        )
+        xray_rows.append(
+            f'<div class="xray-row xray-{direction}" '
+            f'data-impact-side="{_e(xray_side)}" data-impact-pct="{width:.1f}">'
+            f'<div class="xray-row-head"><span>{_e(_feature_label(feature.get("key")))}</span>'
+            f'<b>{_e(xray_player)}</b></div>'
+            f'<div class="xray-track"><span class="xray-axis"></span>'
+            f'<span class="xray-fill {xray_side}" style="--xray-width:{width / 2.0:.2f}%"></span>'
+            f'<small>{_e(xray_strength)}</small></div></div>'
         )
     context = family.get("context_audit") or {}
     components = context.get("components") or {}
@@ -730,7 +760,21 @@ def _family_detail_html(
             f'<div><span>{_e(label)}</span><b>{_e(value)}</b></div>'
             for label, value in h2h_items if value is not None
         ) + '</div>'
-    return f'<div class="factor-table">{"".join(rows)}</div>{structural}'
+    return (
+        '<div class="family-view-head"><span>Como quer ver os fatores?</span>'
+        '<div class="family-view-toggle"><span>Leitura simples</span>'
+        '<label class="family-view-switch"><input type="checkbox" '
+        'aria-label="Alternar para Raio-X de impacto"><span></span></label>'
+        '<span>Raio-X de impacto</span></div></div>'
+        f'<div class="factor-table family-simple-view">{"".join(rows)}</div>'
+        '<div class="family-xray-view" aria-hidden="true">'
+        f'<div class="xray-players"><b>{_e(players["a"]["name"])}</b>'
+        f'<span>força relativa dentro da família</span><b>{_e(players["b"]["name"])}</b></div>'
+        f'<div class="xray-lines">{"".join(xray_rows)}'
+        '<svg class="xray-trace" aria-hidden="true"><path></path><g></g></svg>'
+        '</div></div>'
+        f'{structural}'
+    )
 
 
 def _player_card(side: str, player: Mapping[str, Any]) -> str:
@@ -914,6 +958,70 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
         {body}
         <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>
       </section>"""
+
+
+def _family_xray_script() -> str:
+    return """<script>
+(() => {
+  const svgNs = "http://www.w3.org/2000/svg";
+  function drawFamilyTrace(detail) {
+    if (!detail.classList.contains("xray-mode") || !detail.open) return;
+    const box = detail.querySelector(".xray-lines");
+    const svg = detail.querySelector(".xray-trace");
+    if (!box || !svg) return;
+    const rect = box.getBoundingClientRect();
+    const rows = [...box.querySelectorAll(".xray-row[data-impact-side]")]
+      .filter(row => row.dataset.impactSide && Number(row.dataset.impactPct) > 0);
+    const points = rows.map(row => {
+      const rowRect = row.getBoundingClientRect();
+      const direction = row.dataset.impactSide === "a" ? -1 : 1;
+      return {
+        x: rect.width * (.5 + direction * .45 * Number(row.dataset.impactPct) / 100),
+        y: rowRect.top - rect.top + rowRect.height - 15
+      };
+    });
+    svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+    const path = svg.querySelector("path");
+    const dots = svg.querySelector("g");
+    if (!points.length) {
+      path.setAttribute("d", "");
+      dots.replaceChildren();
+      return;
+    }
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let index = 1; index < points.length; index += 1) {
+      const previous = points[index - 1];
+      const current = points[index];
+      const middleY = (previous.y + current.y) / 2;
+      d += ` C ${previous.x} ${middleY}, ${current.x} ${middleY}, ${current.x} ${current.y}`;
+    }
+    path.setAttribute("d", d);
+    dots.replaceChildren(...points.map(point => {
+      const dot = document.createElementNS(svgNs, "circle");
+      dot.setAttribute("cx", point.x);
+      dot.setAttribute("cy", point.y);
+      dot.setAttribute("r", 3.5);
+      return dot;
+    }));
+  }
+  document.querySelectorAll(".family-detail").forEach(detail => {
+    const toggle = detail.querySelector(".family-view-switch input");
+    const xray = detail.querySelector(".family-xray-view");
+    if (!toggle || !xray) return;
+    toggle.addEventListener("change", () => {
+      detail.classList.toggle("xray-mode", toggle.checked);
+      xray.setAttribute("aria-hidden", toggle.checked ? "false" : "true");
+      requestAnimationFrame(() => drawFamilyTrace(detail));
+    });
+    detail.addEventListener("toggle", () => {
+      if (detail.open) requestAnimationFrame(() => drawFamilyTrace(detail));
+    });
+  });
+  window.addEventListener("resize", () => {
+    document.querySelectorAll(".family-detail.xray-mode").forEach(drawFamilyTrace);
+  });
+})();
+</script>"""
 
 
 def render_report_html(view: Mapping[str, Any]) -> str:
@@ -1248,6 +1356,24 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .factor-a b{{color:var(--blue)}}.factor-b b{{color:var(--orange)}}.factor-missing{{opacity:.62}}
     .context-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:9px}}.context-grid div{{padding:9px;background:#132f4d;border-radius:8px}}
     .context-grid span,.context-grid b{{display:block;font-size:11px}}.context-grid span{{color:var(--muted)}}.family-detail-empty{{color:var(--muted)}}
+    .family-view-head{{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:12px 0 8px;color:var(--muted);font-size:11px}}
+    .family-view-toggle{{display:flex;align-items:center;gap:8px}}.family-view-switch{{position:relative;width:44px;height:24px;flex:0 0 auto}}
+    .family-view-switch input{{position:absolute;opacity:0;pointer-events:none}}.family-view-switch>span{{position:absolute;inset:0;border:1px solid var(--line);border-radius:999px;background:#132f4d;cursor:pointer;transition:.2s}}
+    .family-view-switch>span:before{{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 2px 5px #0008}}
+    .family-view-switch input:checked+span{{background:#205f89;border-color:var(--cyan)}}.family-view-switch input:checked+span:before{{transform:translateX(20px)}}
+    .family-view-switch input:focus-visible+span{{outline:2px solid var(--cyan);outline-offset:2px}}
+    .family-xray-view{{display:none;margin-top:10px;padding:14px;border:1px solid #213f58;border-radius:12px;background:#07121c}}
+    .family-detail.xray-mode .family-simple-view{{display:none}}.family-detail.xray-mode .family-xray-view{{display:block}}
+    .xray-players{{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;margin-bottom:12px;color:var(--muted);font-size:10px;text-align:center}}
+    .xray-players b:first-child{{color:var(--blue);text-align:left}}.xray-players b:last-child{{color:var(--orange);text-align:right}}
+    .xray-lines{{position:relative}}.xray-row{{position:relative;padding:8px 0 11px;border-bottom:1px solid #173048}}.xray-row:last-of-type{{border-bottom:0}}
+    .xray-row-head{{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:12px}}.xray-row-head b{{font-size:11px}}
+    .xray-a .xray-row-head b{{color:var(--blue)}}.xray-b .xray-row-head b{{color:var(--orange)}}.xray-missing{{opacity:.42}}
+    .xray-track{{height:22px;position:relative;border-radius:6px;background:#101f2b;overflow:hidden}}.xray-axis{{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#ffffff55;z-index:2}}
+    .xray-fill{{position:absolute;top:0;bottom:0;width:var(--xray-width)}}.xray-fill.a{{right:50%;background:var(--blue)}}.xray-fill.b{{left:50%;background:var(--orange)}}
+    .xray-track small{{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);padding:2px 6px;border-radius:5px;background:#06111bd9;color:#dcecff;font-size:9px;white-space:nowrap}}
+    .xray-trace{{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:5}}.xray-trace path{{fill:none;stroke:#d9f7ff;stroke-width:2;stroke-linecap:round;filter:drop-shadow(0 0 4px #78cfff)}}
+    .xray-trace circle{{fill:#f6fdff;stroke:#20394a;stroke-width:1.5}}
     details{{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}} summary{{cursor:pointer;color:var(--muted)}}
     .foot{{color:var(--muted);text-align:center;margin-top:18px;font-size:12px}}
     @media(max-width:980px){{.line-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.review-grid{{grid-template-columns:1fr}}
@@ -1255,7 +1381,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
       .versus .right{{text-align:center}}.hero-player,.hero-player.side-b{{flex-direction:column;text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
-      .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}}}
+      .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}.family-view-head{{align-items:flex-start;flex-direction:column}}.family-view-toggle{{align-self:flex-end}}}}
   </style>
 </head>
 <body><main class="shell">
@@ -1294,7 +1420,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <div class="market-note">As barras mostram a força relativa dentro de cada família. Ao abrir uma família, o relatório identifica em linguagem simples que fator favorece cada jogador e com que intensidade.</div>
   </section>
   <p class="foot">Modelo em validação prospetiva · o mercado nunca entra na probabilidade Fenzobot · sem entrada automática.</p>
-</main></body></html>"""
+</main>{_family_xray_script()}</body></html>"""
 
 
 def render_index_html(views: list[Mapping[str, Any]]) -> str:

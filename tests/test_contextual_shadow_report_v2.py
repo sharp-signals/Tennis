@@ -245,6 +245,37 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("contextual_recent_tier_win_credit_v7", html)
         self.assertIn("Vantagem global", html)
 
+    def test_family_detail_can_switch_to_visual_xray(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"]["families"][0]["internal_trace"] = {
+            "features": [
+                {
+                    "key": "contextual_recent_result_main_v7",
+                    "logit_contribution": 0.20,
+                    "missing_logit_contribution": 0.0,
+                    "missing": False,
+                },
+                {
+                    "key": "contextual_recent_win_quality_main_v7",
+                    "logit_contribution": -0.10,
+                    "missing_logit_contribution": 0.0,
+                    "missing": False,
+                },
+            ],
+        }
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market())
+        )
+        self.assertIn("Leitura simples", html)
+        self.assertIn("Raio-X de impacto", html)
+        self.assertIn('class="family-xray-view"', html)
+        self.assertIn('data-impact-side="a"', html)
+        self.assertIn('data-impact-side="b"', html)
+        self.assertIn("Resultados recentes · circuito principal", html)
+        self.assertIn("Vitórias de qualidade · circuito principal", html)
+        self.assertNotIn("contextual_recent_result_main_v7", html)
+        self.assertNotIn("logit_contribution", html)
+
     def test_frozen_moneyline_history_shows_general_and_current_band(self):
         view = report.build_report_view_model(
             observation(), market(), None, None, moneyline_evidence()
