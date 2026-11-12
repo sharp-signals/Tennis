@@ -250,6 +250,25 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("Valor Moneyline: Beta Player", html)
         self.assertIn("150 casos históricos", html)
 
+    def test_calibrated_and_family_stress_ranges_are_visually_separate(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_stress_interval_model_a": [0.49, 0.72],
+            "fair_odd_stress_model_a": {
+                "central": 1.6129, "lower_odd": 1.3889,
+                "upper_odd": 2.0408,
+            },
+            "fair_odd_stress_model_b": {
+                "central": 2.6316, "lower_odd": 1.9608,
+                "upper_odd": 3.5714,
+            },
+        })
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market())
+        )
+        self.assertIn("Faixa estatística 90%", html)
+        self.assertIn("Stress ao retirar uma família", html)
+
     def test_public_report_hides_internal_trace_and_uses_human_labels(self):
         html = report.render_report_html(
             report.build_report_view_model(observation(), market())

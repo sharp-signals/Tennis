@@ -154,16 +154,17 @@ def _sigmoid(value: float) -> float:
     return 1.0 / (1.0 + math.exp(-float(value)))
 
 
-def _centred_empirical_interval(
+def _centred_empirical_intervals(
     probability: float, bin_item: Mapping[str, Any],
     global_bin: Mapping[str, Any], *, quality_group: str,
     sensitivity_probabilities: list[float],
-) -> tuple[float, float]:
+) -> tuple[tuple[float, float], tuple[float, float]]:
     """Centre empirical uncertainty on the actual prediction.
 
     Wilson width is learned from chronological calibration cohorts.  It is a
     width, not a second point prediction.  Leave-one-family-out probabilities
-    widen the range when the result depends materially on one family.
+    form a separate stress range: they must not automatically dilute an
+    otherwise complete historical calibration interval.
     """
     widths = [float(bin_item["wilson_upper"]) - float(bin_item["wilson_lower"])]
     if quality_group != "PRIMARY_READY_COMPLETE":
@@ -171,12 +172,16 @@ def _centred_empirical_interval(
             float(global_bin["wilson_upper"]) - float(global_bin["wilson_lower"])
         )
     half_width = max(widths) / 2.0
-    lower = probability - half_width
-    upper = probability + half_width
+    calibrated_lower = max(1e-6, probability - half_width)
+    calibrated_upper = min(1.0 - 1e-6, probability + half_width)
+    stress_lower, stress_upper = calibrated_lower, calibrated_upper
     if sensitivity_probabilities:
-        lower = min(lower, *sensitivity_probabilities)
-        upper = max(upper, *sensitivity_probabilities)
-    return max(1e-6, lower), min(1.0 - 1e-6, upper)
+        stress_lower = min(stress_lower, *sensitivity_probabilities)
+        stress_upper = max(stress_upper, *sensitivity_probabilities)
+    return (
+        (calibrated_lower, calibrated_upper),
+        (max(1e-6, stress_lower), min(1.0 - 1e-6, stress_upper)),
+    )
 
 
 def _fair_odd_b(lower_a: float, probability_a: float, upper_a: float) -> dict[str, float]:
@@ -342,7 +347,7 @@ def predict_fenzobot_contextual(
                 worst["dependency_grade"] = "PRIMARY_FAMILY_LEAD"
             else:
                 reason_codes.append("CRITICAL_SINGLE_FAMILY_DEPENDENCE")
-    lower, upper = _centred_empirical_interval(
+    (lower, upper), (stress_lower, stress_upper) = _centred_empirical_intervals(
         probability, bin_item, global_bin,
         quality_group=quality_group,
         sensitivity_probabilities=sensitivity_probabilities,
@@ -375,8 +380,17 @@ def predict_fenzobot_contextual(
         "probability_model_a": round(probability, 6),
         "probability_model_b": round(1.0 - probability, 6),
         "probability_interval_90_model_a": [round(lower, 6), round(upper, 6)],
+        "probability_stress_interval_model_a": [
+            round(stress_lower, 6), round(stress_upper, 6),
+        ],
         "fair_odd_model_a": _fair_odd(probability, lower, upper),
         "fair_odd_model_b": _fair_odd_b(lower, probability, upper),
+        "fair_odd_stress_model_a": _fair_odd(
+            probability, stress_lower, stress_upper,
+        ),
+        "fair_odd_stress_model_b": _fair_odd_b(
+            stress_lower, probability, stress_upper,
+        ),
         "families": family_rows,
         "family_sensitivity": {
             "method": "LEAVE_ONE_FAMILY_OUT",

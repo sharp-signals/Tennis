@@ -346,6 +346,19 @@ def build_report_view_model(
     fair_odd_b = _fair_odd(shadow.get("fair_odd_model_b"))
     interval_a = list(map(float, shadow["probability_interval_90_model_a"]))
     interval_b = [1.0 - interval_a[1], 1.0 - interval_a[0]]
+    stress_interval_a = list(map(
+        float,
+        shadow.get("probability_stress_interval_model_a") or interval_a,
+    ))
+    stress_interval_b = [
+        1.0 - stress_interval_a[1], 1.0 - stress_interval_a[0],
+    ]
+    stress_fair_odd_a = _fair_odd(
+        shadow.get("fair_odd_stress_model_a") or shadow.get("fair_odd_model_a")
+    )
+    stress_fair_odd_b = _fair_odd(
+        shadow.get("fair_odd_stress_model_b") or shadow.get("fair_odd_model_b")
+    )
     valid_market = _market_is_valid(
         observation, market,
         expected_model_version=expected_model_version,
@@ -541,7 +554,9 @@ def build_report_view_model(
                 ),
                 "probability": probability_a,
                 "interval": interval_a,
+                "stress_interval": stress_interval_a,
                 "fair_odd": fair_odd_a,
+                "stress_fair_odd": stress_fair_odd_a,
                 "market": market_a,
                 "moneyline_history": moneyline_history_a,
             },
@@ -553,7 +568,9 @@ def build_report_view_model(
                 ),
                 "probability": probability_b,
                 "interval": interval_b,
+                "stress_interval": stress_interval_b,
                 "fair_odd": fair_odd_b,
+                "stress_fair_odd": stress_fair_odd_b,
                 "market": market_b,
                 "moneyline_history": moneyline_history_b,
             },
@@ -873,6 +890,7 @@ def _player_card(
     side: str, player: Mapping[str, Any], calibration_sample: Any,
 ) -> str:
     interval = player["interval"]
+    stress_interval = player.get("stress_interval") or interval
     fair = player["fair_odd"]
     market = player["market"]
     edge = market.get("probability_edge_pp")
@@ -897,12 +915,25 @@ def _player_card(
         if _number(band.get("win_rate_pct")) is not None and break_even is not None
         else None
     )
+    stress_copy = ""
+    if any(
+        abs(float(value) - float(reference)) > 1e-6
+        for value, reference in zip(stress_interval, interval)
+    ):
+        stress_fair = player.get("stress_fair_odd") or fair
+        stress_copy = (
+            '<div class="stress-interval">Stress ao retirar uma família · '
+            f'{_pct(stress_interval[0])}–{_pct(stress_interval[1])} · fair '
+            f'{_odd(stress_fair.get("lower"))}–'
+            f'{_odd(stress_fair.get("upper"))}</div>'
+        )
     return f"""
       <article class="player-card side-{side}">
         <div class="player-side">MODELO {side.upper()}</div>
         <h2>{_e(player['name'])}</h2>
         <div class="probability">{_pct(player['probability'])}</div>
         <div class="interval">Faixa estatística 90% · {_pct(interval[0])}–{_pct(interval[1])} · {_e(calibration_sample)} casos históricos</div>
+        {stress_copy}
         <div class="player-grid">
           <div><span>Fair odd</span><strong>{_odd(fair['central'])}</strong></div>
           <div><span>Faixa justa</span><strong>{_odd(fair['lower'])}–{_odd(fair['upper'])}</strong></div>
@@ -1430,6 +1461,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
       border-top:4px solid var(--blue);border-radius:16px;padding:20px;background:#0b2137}} .player-card.side-b{{border-top-color:var(--orange)}}
     .player-side{{font-size:10px;letter-spacing:.14em;color:var(--muted);font-weight:900}} .player-card h2{{margin:6px 0}}
     .probability{{font-size:42px;font-weight:950;letter-spacing:-.04em}} .interval{{color:var(--muted);margin-bottom:18px}}
+    .stress-interval{{color:#d7b56d;font-size:11px;margin:-11px 0 17px;padding:7px 9px;border-left:2px solid var(--gold);background:#2b271b}}
     .player-grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}} .player-grid div{{padding:12px;background:#132f4d;border-radius:10px}}
     .player-grid span,.ev-row span{{display:block;color:var(--muted);font-size:11px}} .player-grid strong{{font-size:18px}}
     .positive strong{{color:var(--cyan)}} .negative strong{{color:#b8c9d8}} .ev-row{{display:flex;gap:18px;margin-top:12px}}
