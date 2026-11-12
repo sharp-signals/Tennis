@@ -141,6 +141,7 @@ def _provider_h2h_override(
             continue
         row = dict(source)
         played_at = row.get("date") or row.get("startTimestamp")
+        played = None
         if played_at:
             try:
                 if isinstance(played_at, (int, float)):
@@ -173,6 +174,12 @@ def _provider_h2h_override(
         winner = row.get("match_winner") or row.get("winnerId") or row.get("winner")
         if str(winner) not in {str(player_a_id), str(player_b_id)}:
             continue
+        row["_display_date"] = played.date().isoformat() if played else None
+        row["_display_tournament"] = tournament_name or "Torneio não identificado"
+        row["_display_surface"] = surface
+        row["_display_winner_side"] = (
+            "a" if str(winner) == str(player_a_id) else "b"
+        )
         eligible.append(row)
         if current_family and fetch_data._normalize_surface_family(surface) == current_family:
             surface_rows.append(row)
@@ -193,6 +200,24 @@ def _provider_h2h_override(
         ),
         "excluded_non_competitive": len(excluded),
         "excluded_rows": excluded,
+        "matches": sorted(
+            [
+                {
+                    "event_date": row.get("_display_date"),
+                    "tournament": row.get("_display_tournament"),
+                    "surface": row.get("_display_surface"),
+                    "winner_side": row.get("_display_winner_side"),
+                    "score": (
+                        row.get("result") or row.get("score")
+                        or row.get("finalScore")
+                    ),
+                    "round": row.get("roundName") or row.get("round"),
+                }
+                for row in eligible
+            ],
+            key=lambda item: str(item.get("event_date") or ""),
+            reverse=True,
+        ),
     }
 
 

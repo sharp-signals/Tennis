@@ -189,14 +189,27 @@ def test_confirmed_no_prior_h2h_is_observed_none():
 
 
 def test_prior_h2h_is_context_not_a_prefitted_weight():
-    rows = build_contextual_family_replay_rows(pd.DataFrame([
-        _match("20260101", "Alpha", "Beta"),
-        _match("20260105", "Beta", "Alpha"),
-    ]), universe="atp")
-    target = rows[-1]
+    first = _match("20260101", "Alpha", "Beta")
+    first["tourney_name"] = "History Open"
+    first["round"] = "QF"
+    target = build_contextual_target_row(
+        pd.DataFrame([first]), universe="atp",
+        player_a="Beta", player_b="Alpha",
+        cutoff=pd.Timestamp("2026-01-05").date(), surface="Hard",
+        rank_a=40, rank_b=20,
+    )
     assert target["samples"]["h2h"] == 1
     assert target["features"]["h2h_win_share_margin"] == 1.0
     assert target["family_states"]["matchup_h2h"]["signal_state"] == "UNSCORED"
+    audit = target["candidate_equation_audit"]["matchup_h2h"]
+    assert audit["matches"] == [{
+        "event_date": "2026-01-01",
+        "tournament": "History Open",
+        "surface": "hard",
+        "winner_side": "a",
+        "score": "6-4 6-4",
+        "round": "QF",
+    }]
 
 
 def test_service_family_degrades_without_point_aggregates():

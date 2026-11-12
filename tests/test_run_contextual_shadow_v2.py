@@ -1,8 +1,10 @@
 from scripts.run_contextual_shadow_v2 import (
     _model_player_id,
     _player,
+    _provider_h2h_override,
     run_shadow_only,
 )
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 
@@ -23,6 +25,43 @@ def test_model_player_id_preserves_alphabetical_orientation():
     }
     assert _model_player_id("Alpha P.", **common) == 20
     assert _model_player_id("Zed P.", **common) == 10
+
+
+def test_provider_h2h_override_preserves_factual_matches_for_report():
+    matches = [{
+        "date": "2026-10-01T12:00:00+00:00",
+        "player1Id": 10,
+        "player2Id": 20,
+        "match_winner": 10,
+        "tournamentId": 99,
+        "result": "6-4 6-3",
+        "roundName": "QF",
+    }]
+    with (
+        patch(
+            "scripts.run_contextual_shadow_v2.fetch_data."
+            "fetch_h2h_matches_with_coverage",
+            return_value=(matches, {"source": "test_h2h"}),
+        ),
+        patch(
+            "scripts.run_contextual_shadow_v2.fetch_data.get_tournament_info",
+            return_value={"name": "Indoor Open", "surface": "I.hard"},
+        ),
+    ):
+        result = _provider_h2h_override(
+            tour="atp", player_a_id=10, player_b_id=20,
+            current_surface="I.hard",
+            cutoff=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        )
+    assert result["eligible_matches"] == 1
+    assert result["matches"] == [{
+        "event_date": "2026-10-01",
+        "tournament": "Indoor Open",
+        "surface": "I.hard",
+        "winner_side": "a",
+        "score": "6-4 6-3",
+        "round": "QF",
+    }]
 
 
 def test_shadow_only_runner_fails_closed_without_explicit_activation():
