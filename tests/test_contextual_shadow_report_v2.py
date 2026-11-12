@@ -250,13 +250,16 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("Valor Moneyline: Beta Player", html)
         self.assertIn("150 casos históricos", html)
 
-    def test_confirmed_opposite_value_aligns_moneyline_and_positive_handicaps(self):
+    def test_confirmed_opposite_without_family_support_is_contrarian_only(self):
         prediction = copy.deepcopy(observation())
         prediction["contextual_shadow"].update({
             "probability_model_a": 0.571,
             "probability_model_b": 0.429,
             "probability_interval_90_model_a": [0.518, 0.609],
         })
+        prediction["contextual_shadow"]["families"][0][
+            "impact_pp_model_a"
+        ] = 5.4
         quote = {**market(), "odds": {"a": 1.48, "b": 2.62}}
         evidence = handicap_evidence()
         source_line = next(iter(
@@ -274,20 +277,54 @@ class ContextualShadowReportTests(unittest.TestCase):
             prediction, quote, None, evidence
         )
 
-        self.assertEqual(view["market_review"]["status"], "CONSERVATIVE_POSITIVE")
+        self.assertEqual(
+            view["market_review"]["status"], "CONTRARIAN_PRICE_ONLY"
+        )
         self.assertEqual(view["market_review"]["candidate_side"], "b")
         self.assertEqual(view["market_review"]["model_side"], "a")
-        self.assertTrue(
-            view["market_review"]["value_side_differs_from_model"]
+        self.assertIsNone(view["market_review"]["moneyline"])
+        self.assertIsNone(view["market_review"]["handicap"])
+        html = report.render_report_html(view)
+        self.assertIn("Preço contrarian não confirmado", html)
+        self.assertIn("nenhuma família analisada favorece esse lado", html)
+        self.assertNotIn("HANDICAPS DE BETA PLAYER · POSITIVOS", html)
+        self.assertNotIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
+
+    def test_confirmed_opposite_with_family_support_keeps_candidate_markets(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_model_a": 0.571,
+            "probability_model_b": 0.429,
+            "probability_interval_90_model_a": [0.518, 0.609],
+        })
+        prediction["contextual_shadow"]["families"][0][
+            "impact_pp_model_a"
+        ] = 5.4
+        prediction["contextual_shadow"]["families"][1][
+            "impact_pp_model_a"
+        ] = -1.2
+        quote = {**market(), "odds": {"a": 1.48, "b": 2.62}}
+        evidence = handicap_evidence()
+        source_line = next(iter(
+            evidence["handicap_evidence"]["players"]["a"]["lines"].values()
+        ))
+        evidence["handicap_evidence"]["players"]["b"]["lines"] = {
+            f"+{line:g}": {**copy.deepcopy(source_line), "line": line}
+            for line in (2.0, 2.5, 3.0, 3.5, 4.0)
+        }
+
+        view = report.build_report_view_model(
+            prediction, quote, None, evidence
+        )
+
+        self.assertEqual(
+            view["market_review"]["status"], "CONSERVATIVE_POSITIVE"
         )
         self.assertEqual(view["market_review"]["handicap"]["side"], "b")
         self.assertEqual(view["market_review"]["handicap"]["type"], "positive")
         html = report.render_report_html(view)
         self.assertIn("Valor de preço: Beta Player", html)
-        self.assertIn("Favorito do modelo: Alpha Player", html)
-        self.assertIn("valor não significa favoritismo", html)
         self.assertIn("HANDICAPS DE BETA PLAYER · POSITIVOS", html)
-        self.assertNotIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
 
     def test_calibrated_and_family_stress_ranges_are_visually_separate(self):
         prediction = copy.deepcopy(observation())

@@ -75,6 +75,14 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
 
 
 class ContextualPublicationDeduplicationTests(unittest.TestCase):
+    def test_contrarian_price_is_grouped_as_unconfirmed_yellow_signal(self):
+        order, heading, ball = publication._notification_group(
+            "CONTRARIAN_PRICE_ONLY"
+        )
+        self.assertEqual(order, 1)
+        self.assertEqual(heading, "🟡 SINAL CONTRARIAN NÃO CONFIRMADO")
+        self.assertEqual(ball, "🟡")
+
     def test_repeated_snapshots_notify_only_latest_report_per_match(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)

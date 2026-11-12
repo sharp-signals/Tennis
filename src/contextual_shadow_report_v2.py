@@ -519,6 +519,26 @@ def build_report_view_model(
         and market_review.get("candidate_side") in {"a", "b"}
         and market_review.get("candidate_side") != model_side
     )
+    directional_family_sides = {
+        str(item.get("direction"))
+        for item in family_rows
+        if item.get("direction") in {"a", "b"}
+    }
+    contrarian_without_family_support = bool(
+        market_review.get("status") == "CONSERVATIVE_POSITIVE"
+        and market_review.get("candidate_side") in {"a", "b"}
+        and market_review.get("candidate_side") != model_side
+        and model_side in directional_family_sides
+        and market_review.get("candidate_side") not in directional_family_sides
+    )
+    if contrarian_without_family_support:
+        market_review.update({
+            "status": "CONTRARIAN_PRICE_ONLY",
+            "moneyline": None,
+            "handicap": None,
+            "contrarian_candidate_side": market_review.get("candidate_side"),
+            "family_support_sides": sorted(directional_family_sides),
+        })
     match_format = str(
         ((handicap_evidence or {}).get("handicap_evidence") or {}).get("format")
         or "bo3"
@@ -995,6 +1015,21 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             '<div class="review-empty"><b>Mercados não formulados.</b> '
             "O lado favorito muda quando se retira uma única família. A estimativa central permanece visível para auditoria, mas não é robusta o suficiente para gerar uma seleção Moneyline ou handicap.</div>"
         )
+    elif status == "CONTRARIAN_PRICE_ONLY":
+        candidate_side = str(
+            review.get("contrarian_candidate_side")
+            or review.get("candidate_side")
+            or ""
+        )
+        candidate = (view.get("players") or {}).get(candidate_side) or {}
+        body = (
+            '<div class="review-empty"><b>Preço contrarian não confirmado.</b> '
+            f'A odd de {_e(candidate.get("name"))} produz edge matemático '
+            f'({_signed(review.get("conservative_ev_pct"), "%")} no limite '
+            'conservador), mas nenhuma família analisada favorece esse lado. '
+            'O dado fica visível para auditoria, sem Moneyline formulada e sem '
+            'handicaps sugeridos.</div>'
+        )
     elif status == "NO_POSITIVE_EDGE" and not isinstance(review.get("handicap"), Mapping):
         body = (
             '<div class="review-empty"><b>Sem edge central positivo.</b> '
@@ -1377,7 +1412,14 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         and model_side in {"a", "b"}
         and value_side != model_side
     )
-    if central_only_opposite:
+    if market_review.get("status") == "CONTRARIAN_PRICE_ONLY":
+        value_copy = (
+            f"Sinal contrarian não confirmado · preço em "
+            f"{players[value_side]['name']} sem apoio das famílias"
+            if value_side in {"a", "b"}
+            else "Sinal contrarian não confirmado"
+        )
+    elif central_only_opposite:
         value_copy = (
             f"Sem Moneyline confirmada · estudar handicaps de "
             f"{players[model_side]['name']}"
