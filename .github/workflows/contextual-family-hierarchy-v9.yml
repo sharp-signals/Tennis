@@ -24,7 +24,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Chronological v8 versus v9 replay
         run: >-
-          python scripts/compare_contextual_family_combinations_v9.py
+          python -m scripts.compare_contextual_family_combinations_v9
           --replay-cache-dir artifacts/contextual-family-replay-v9
           --output artifacts/contextual-family-hierarchy-v9-report.json
           --contract-output artifacts/contextual-family-combination-v9.json
