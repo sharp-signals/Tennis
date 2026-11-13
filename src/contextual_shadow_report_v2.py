@@ -49,6 +49,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.8",
                 "fenzobot-contextual-2026-11-report.9",
                 "fenzobot-contextual-2026-11-report.10",
+                "fenzobot-contextual-2026-11-report.11",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
@@ -59,6 +60,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.8",
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
+                        "fenzobot-contextual-2026-11-report.11",
                     }
                     and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
                 )
@@ -68,6 +70,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.8",
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
+                        "fenzobot-contextual-2026-11-report.11",
                     }
                     and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
                 )
@@ -80,6 +83,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.8",
                 "fenzobot-contextual-2026-11-report.9",
                 "fenzobot-contextual-2026-11-report.10",
+                "fenzobot-contextual-2026-11-report.11",
             }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
@@ -90,6 +94,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.8",
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
+                        "fenzobot-contextual-2026-11-report.11",
                     }
                     and rules.get("family_detail_must_offer_xray_toggle") is not True
                 )
@@ -97,12 +102,23 @@ def load_report_contract(
                     expected_contract_version in {
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
+                        "fenzobot-contextual-2026-11-report.11",
                     }
                     and rules.get("h2h_family_must_show_factual_match_history") is not True
                 )
                 or (
-                    expected_contract_version == "fenzobot-contextual-2026-11-report.10"
+                    expected_contract_version in {
+                        "fenzobot-contextual-2026-11-report.10",
+                        "fenzobot-contextual-2026-11-report.11",
+                    }
                     and rules.get("h2h_facts_must_join_without_prediction_rewrite") is not True
+                )
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.11"
+                    and (
+                        rules.get("markets_require_conservative_positive_edge") is not True
+                        or rules.get("balanced_sensitive_must_suppress_markets") is not True
+                    )
                 )
             )
         )
@@ -159,7 +175,8 @@ def _player_image_url(tour: Any, player_id: Any, name: Any) -> str | None:
 
 
 def _market_plausibility(
-    *, market_probability_a: float | None, interval_a: list[float],
+    *, model_probability_a: float, market_probability_a: float | None,
+    interval_a: list[float],
 ) -> dict[str, Any]:
     """Audit market disagreement after prediction without changing pricing."""
     if market_probability_a is None:
@@ -172,10 +189,27 @@ def _market_plausibility(
             "distance_pp": 0.0,
         }
     distance = lower - market_probability_a if market_probability_a < lower else market_probability_a - upper
+    market_side = "b" if market_probability_a < lower else "a"
+    market_probability = (
+        1.0 - market_probability_a if market_side == "b"
+        else market_probability_a
+    )
+    model_probability = (
+        1.0 - model_probability_a if market_side == "b"
+        else model_probability_a
+    )
     return {
         "status": "OUTSIDE_MODEL_INTERVAL",
         "requires_manual_review": True,
-        "market_side": "b" if market_probability_a < lower else "a",
+        "market_side": market_side,
+        "market_probability_pct": round(100.0 * market_probability, 2),
+        "model_probability_pct": round(100.0 * model_probability, 2),
+        "total_difference_pp": round(
+            100.0 * abs(market_probability - model_probability), 2
+        ),
+        "interval_excess_pp": round(100.0 * distance, 2),
+        # Compatibilidade com consumidores anteriores: este valor mede apenas
+        # o excesso para lá do intervalo, não a divergência total.
         "distance_pp": round(100.0 * distance, 2),
         "rule": "MARKET_PROBABILITY_OUTSIDE_MODEL_90_INTERVAL",
     }
@@ -268,7 +302,7 @@ def _competition_round_label(competition: Mapping[str, Any]) -> str:
     if round_id == 8 and (
         tier == "championships" or "wta finals" in tournament
     ):
-        return "Fase de grupos"
+        return "Fase de grupos · inferida pelo torneio"
     return stage
 
 
@@ -466,6 +500,7 @@ def build_report_view_model(
     )[0]
     winner_side = None
     plausibility = _market_plausibility(
+        model_probability_a=probability_a,
         market_probability_a=_number(market_probabilities.get("a")),
         interval_a=interval_a,
     )
@@ -561,6 +596,19 @@ def build_report_view_model(
             "central_ev_pct": None,
             "conservative_ev_pct": None,
         }
+    elif sensitivity.get("dependency_grade") == "BALANCED_SENSITIVE":
+        market_review.update({
+            "status": "SENSITIVE_EDGE_UNCONFIRMED",
+            "moneyline": None,
+            "handicap": None,
+        })
+
+    # Só um edge que continua positivo no limite conservador pode originar
+    # mercados a consultar. Os restantes relatórios preservam o pricing para
+    # auditoria, mas não mostram sugestões de Moneyline nem de handicap.
+    if market_review.get("status") != "CONSERVATIVE_POSITIVE":
+        market_review["moneyline"] = None
+        market_review["handicap"] = None
 
     arguments_a = sorted(
         (item for item in family_rows if item["impact_pp_model_a"] > 0),
@@ -626,6 +674,7 @@ def build_report_view_model(
             },
         },
         "families": family_rows,
+        "handicap_evidence_available": valid_handicap_evidence,
         "h2h_evidence_available": valid_h2h_evidence,
         "top_arguments": {"a": arguments_a, "b": arguments_b},
         "family_sensitivity": sensitivity,
@@ -965,6 +1014,17 @@ def _player_card(
         if _number(band.get("win_rate_pct")) is not None and break_even is not None
         else None
     )
+    def sample_badge(sample: Any) -> str:
+        count = int(sample or 0)
+        if count <= 0:
+            return '<em class="sample-badge unavailable">SEM AMOSTRA</em>'
+        if count < 20:
+            label, css = "AMOSTRA PEQUENA", "small"
+        elif count < 40:
+            label, css = "TENDÊNCIA", "trend"
+        else:
+            label, css = "AMOSTRA UTILIZÁVEL", "usable"
+        return f'<em class="sample-badge {css}">{label} · n={count}</em>'
     stress_copy = ""
     if any(
         abs(float(value) - float(reference)) > 1e-6
@@ -995,8 +1055,8 @@ def _player_card(
           <span>EV no limite conservador <b>{_signed(market.get('conservative_expected_value_pct'), '%')}</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · {_e(history.get('format'))}</span><b>{general_text}</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · {_e(history.get('current_band_label'))}</span><b>{band_text}</b><small>Dado descritivo · break-even {_e(None if break_even is None else round(break_even, 1))}% · margem {_signed(band_margin, ' p.p.')}</small></div>
+          <div><span>WIN RATE MONEYLINE · {_e(history.get('format'))}</span><b>{general_text}</b>{sample_badge(general.get('sample'))}<small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · {_e(history.get('current_band_label'))}</span><b>{band_text}</b>{sample_badge(band.get('sample'))}<small>Dado descritivo · break-even {_e(None if break_even is None else round(break_even, 1))}% · margem {_signed(band_margin, ' p.p.')}</small></div>
         </div>
       </article>"""
 
@@ -1004,6 +1064,7 @@ def _player_card(
 def _market_review_html(view: Mapping[str, Any]) -> str:
     review = view.get("market_review") or {}
     status = review.get("status")
+    confirmed = status == "CONSERVATIVE_POSITIVE"
     if status == "MARKET_UNAVAILABLE":
         body = (
             '<div class="review-empty"><b>Mercado ainda indisponível.</b> '
@@ -1030,11 +1091,25 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             'O dado fica visível para auditoria, sem Moneyline formulada e sem '
             'handicaps sugeridos.</div>'
         )
-    elif status == "NO_POSITIVE_EDGE" and not isinstance(review.get("handicap"), Mapping):
+    elif status == "SENSITIVE_EDGE_UNCONFIRMED":
+        body = (
+            '<div class="review-empty"><b>Edge não confirmado num jogo sensível.</b> '
+            'Uma família consegue mudar o lado favorito numa zona próxima de '
+            '50/50. O pricing fica visível, mas não são sugeridos Moneyline nem '
+            'handicaps.</div>'
+        )
+    elif status == "NO_POSITIVE_EDGE":
         body = (
             '<div class="review-empty"><b>Sem edge central positivo.</b> '
             "O relatório mantém a leitura factual, mas não destaca um mercado."
             "</div>"
+        )
+    elif not confirmed:
+        body = (
+            '<div class="review-empty"><b>Edge central não confirmado.</b> '
+            'A diferença positiva não resiste ao limite conservador. O pricing '
+            'permanece visível para análise, sem sugestão de Moneyline ou '
+            'handicap.</div>'
         )
     else:
         side = str(review.get("candidate_side") or "")
@@ -1094,8 +1169,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                     )
                 else:
                     zone = (
-                        f"{float(price['minimum_odd']):.2f}–"
-                        f"{float(price['maximum_odd']):.2f}"
+                        f"Preço mínimo {float(price['minimum_odd']):.2f}"
                     )
                 if positive:
                     primary = f"{_e(line.get('cover_pct'))}% cobre no total"
@@ -1130,7 +1204,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             cards.append(f"""
               <article class="review-card handicap-card">
                 <div class="review-type">HANDICAPS DE {_e(handicap_player.get('name')).upper()} · {'POSITIVOS' if positive else 'NEGATIVOS'} · {_e(handicap.get('format'))}</div>
-                <p class="line-intro">Linhas principais para leitura imediata. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
+                <p class="line-intro">Linhas principais para leitura imediata · janela máxima 2.50. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
                 <div class="line-grid">{''.join(visible_cards)}</div>
               </article>""")
         if not cards:
@@ -1167,12 +1241,18 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
         body = f"""
           <div class="review-lead">{lead}</div>
           <div class="review-grid">{''.join(cards)}</div>"""
+    section_title = "Mercados a consultar" if confirmed else "Sem mercado confirmado"
+    market_note = (
+        "A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas."
+        if confirmed else
+        "O pricing permanece disponível para auditoria. Sem edge conservador confirmado, este relatório não apresenta sugestões de Moneyline nem de handicap."
+    )
     return f"""
       <section class="section market-review">
         <div class="section-head"><div><div class="eyebrow">VALIDAÇÃO HUMANA</div>
-          <h2>Mercados a consultar</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
+          <h2>{_e(section_title)}</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
         {body}
-        <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>
+        <div class="market-note">{_e(market_note)}</div>
       </section>"""
 
 
@@ -1311,10 +1391,13 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         market_name = players.get(str(market_side), {}).get("name")
         plausibility_html = f"""
         <div class="plausibility-alert"><b>REVISÃO DE PLAUSIBILIDADE</b>
-          <span>O mercado está fora do intervalo de 90% do modelo e favorece
-          mais {_e(market_name)} em {_e(plausibility.get('distance_pp'))} p.p.
-          Esta divergência não altera a fair odd, mas exige rever identidade,
-          dados em falta e calibração antes de qualquer decisão.</span></div>"""
+          <span>O mercado atribui {_e(plausibility.get('market_probability_pct'))}%
+          a {_e(market_name)}, contra {_e(plausibility.get('model_probability_pct'))}%
+          no modelo: diferença total de {_e(plausibility.get('total_difference_pp'))}
+          p.p. A cotação está {_e(plausibility.get('interval_excess_pp'))} p.p.
+          para lá do intervalo estatístico de 90%. Esta divergência não altera
+          a fair odd, mas exige rever identidade, dados em falta e calibração
+          antes de qualquer decisão.</span></div>"""
     coverage = view.get("family_coverage") or {}
     solid = coverage.get("solid", coverage.get("observed", 0))
     partial = coverage.get("partial", 0)
@@ -1502,7 +1585,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         value_label = (
             "VALOR CONSERVADOR"
             if conservative_ev is not None and conservative_ev > 0
-            else "VALOR CENTRAL"
+            else "EDGE CENTRAL NÃO CONFIRMADO"
             if central_ev is not None and central_ev > 0
             else "SEM EDGE POSITIVO"
         )
@@ -1548,6 +1631,9 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .positive strong{{color:var(--cyan)}} .negative strong{{color:#b8c9d8}} .ev-row{{display:flex;gap:18px;margin-top:12px}}
     .ml-history{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}}.ml-history>div{{padding:12px;background:#091b2c;border-radius:10px}}
     .ml-history span,.ml-history small{{display:block;color:var(--muted);font-size:10px}}.ml-history b{{display:block;margin:3px 0;font-size:16px}}
+    .sample-badge{{display:inline-block;margin:3px 0 5px;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:900;letter-spacing:.06em}}
+    .sample-badge.small{{background:#452936;color:#ffb3bd}}.sample-badge.trend{{background:#463b1e;color:#ffd875}}
+    .sample-badge.usable{{background:#123d39;color:#69e4d6}}.sample-badge.unavailable{{background:#25384a;color:#9eb2c5}}
     .market-badge small{{display:block;color:var(--muted);font-size:9px;letter-spacing:0;margin-top:2px}}
     .decision-strip{{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}}.decision-strip>div{{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}}
     .decision-strip span,.decision-strip b{{display:block}}.decision-strip span{{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}}.decision-strip b{{font-size:16px;margin-top:3px}}

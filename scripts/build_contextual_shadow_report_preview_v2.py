@@ -146,7 +146,7 @@ def build_previews(
         "with_market": sum(view["market"]["available"] for view in views),
         "with_outcome": sum(view["outcome"]["available"] for view in views),
         "with_handicap_evidence": sum(
-            view["market_review"].get("handicap") is not None for view in views
+            bool(view.get("handicap_evidence_available")) for view in views
         ),
         "with_moneyline_evidence": sum(
             any(

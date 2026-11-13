@@ -179,7 +179,9 @@ class ContextualShadowReportTests(unittest.TestCase):
             "round_stage": "ROUND_UNRESOLVED",
         })
         view = report.build_report_view_model(prediction)
-        self.assertEqual(view["round_stage"], "Fase de grupos")
+        self.assertEqual(
+            view["round_stage"], "Fase de grupos · inferida pelo torneio"
+        )
 
     def test_missing_market_remains_not_available(self):
         view = report.build_report_view_model(observation())
@@ -212,6 +214,8 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("SHADOW · SEM DECISÃO", html)
         self.assertIn("mercado nunca entra", html)
         self.assertIn("REVISÃO DE PLAUSIBILIDADE", html)
+        self.assertIn("diferença total", html)
+        self.assertIn("para lá do intervalo estatístico de 90%", html)
         self.assertIn("Odd observada", html)
         self.assertNotIn("REGISTAR PAPER", html)
         self.assertNotIn("APOSTAR", html)
@@ -235,7 +239,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("SEM ENTRADA AUTOMÁTICA", html)
         self.assertNotIn("<small>logit</small>", html)
 
-    def test_opposite_central_only_price_does_not_override_model_direction(self):
+    def test_central_only_price_shows_no_moneyline_or_handicap_suggestions(self):
         quote = {**market(), "odds": {"a": 1.40, "b": 2.70}}
         view = report.build_report_view_model(
             observation(), quote, None, handicap_evidence()
@@ -243,10 +247,13 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertEqual(view["market_review"]["status"], "CENTRAL_ONLY")
         self.assertEqual(view["market_review"]["candidate_side"], "b")
         self.assertEqual(view["market_review"]["model_side"], "a")
+        self.assertIsNone(view["market_review"]["moneyline"])
+        self.assertIsNone(view["market_review"]["handicap"])
         html = report.render_report_html(view)
-        self.assertIn("Direção principal: handicaps de Alpha Player", html)
-        self.assertIn("não é apresentado como valor Moneyline", html)
-        self.assertIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
+        self.assertIn("Sem mercado confirmado", html)
+        self.assertIn("Edge central não confirmado", html)
+        self.assertNotIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
+        self.assertNotIn("ODD PARA CONSIDERAR", html)
         self.assertNotIn("Valor Moneyline: Beta Player", html)
         self.assertIn("150 casos históricos", html)
 
@@ -472,6 +479,8 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("WIN RATE MONEYLINE", html)
         self.assertIn("HISTÓRICO NESTA FAIXA DE ODD", html)
         self.assertIn("Dado descritivo", html)
+        self.assertIn("TENDÊNCIA · n=25", html)
+        self.assertIn("AMOSTRA PEQUENA · n=7", html)
 
     def test_public_header_names_market_capture_and_limits_handicap_cards(self):
         evidence = handicap_evidence()
@@ -501,6 +510,9 @@ class ContextualShadowReportTests(unittest.TestCase):
             "-2", "-2.5", "-3", "-3.5", "-4",
         )]
         self.assertEqual(positions, sorted(positions))
+        self.assertIn("janela máxima 2.50", html)
+        self.assertIn("Preço mínimo", html)
+        self.assertNotIn("1.70–2.50", html)
 
     def test_exact_surface_context_overrides_generic_provider_surface(self):
         view = report.build_report_view_model(observation(), market())
@@ -516,7 +528,7 @@ class ContextualShadowReportTests(unittest.TestCase):
                 "central": 1.864, "lower_odd": 1.754, "upper_odd": 2.0,
             },
         })
-        quote = {**market(), "odds": {"a": 1.97, "b": 1.92}}
+        quote = {**market(), "odds": {"a": 2.05, "b": 1.85}}
         view = report.build_report_view_model(prediction, quote)
         self.assertEqual(view["market_review"]["moneyline"]["fair_odd"], 1.86)
         html = report.render_report_html(view)
@@ -584,9 +596,15 @@ class ContextualShadowReportTests(unittest.TestCase):
             "scenarios": [],
         }
         view = report.build_report_view_model(prediction, market())
-        self.assertNotEqual(view["market_review"]["status"], "FAVORITE_UNCONFIRMED")
+        self.assertEqual(
+            view["market_review"]["status"], "SENSITIVE_EDGE_UNCONFIRMED"
+        )
+        self.assertIsNone(view["market_review"]["moneyline"])
+        self.assertIsNone(view["market_review"]["handicap"])
         html = report.render_report_html(view)
         self.assertIn("JOGO EQUILIBRADO", html)
+        self.assertIn("Edge não confirmado num jogo sensível", html)
+        self.assertNotIn("ODD PARA CONSIDERAR", html)
 
     def test_authorised_primary_family_lead_is_explained_not_blocked(self):
         prediction = copy.deepcopy(observation())
