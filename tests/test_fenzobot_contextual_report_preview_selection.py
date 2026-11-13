@@ -6,7 +6,7 @@ from scripts import build_fenzobot_contextual_report_preview as preview
 
 def _row(
     observation_id, canonical, analyzed, commence,
-    *, status="READY_FOR_PROSPECTIVE_SHADOW",
+    *, status="READY_FOR_PROSPECTIVE_SHADOW", tier=None,
 ):
     return {
         "observation_id": observation_id,
@@ -14,6 +14,7 @@ def _row(
         "analyzed_at_utc": analyzed,
         "commence_time_utc": commence,
         "contextual_shadow": {"status": status},
+        "tier": tier,
     }
 
 
@@ -52,3 +53,21 @@ def test_imminent_prestart_fixture_is_carried_from_previous_run(tmp_path, monkey
     )
 
     assert selected == {"current", "imminent-new"}
+
+
+def test_finals_fixture_is_never_revived_when_current_run_did_not_rebuild_it(
+    tmp_path, monkeypatch,
+):
+    ledger = tmp_path / "observations.jsonl"
+    ledger.write_text(json.dumps(_row(
+        "provisional-final", "volatile-final",
+        "2026-11-13T18:24:00+00:00", "2026-11-14T20:00:00+00:00",
+        tier="Championships",
+    )) + "\n", encoding="utf-8")
+    monkeypatch.setattr(preview, "DEFAULT_PATH", ledger)
+
+    selected = preview._active_release_observation_ids(
+        set(), now=datetime(2026, 11, 14, 18, 0, tzinfo=timezone.utc),
+    )
+
+    assert selected == set()

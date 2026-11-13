@@ -9842,6 +9842,77 @@ def _canonical_fixture_player_ids(match: dict) -> tuple[str, str] | None:
     return tuple(sorted((str(first), str(second))))
 
 
+def _fixture_start_utc(match: dict) -> Optional[datetime]:
+    value = match.get("date") or match.get("startTime") or match.get("timeGame")
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _exclude_unresolved_downstream_fixtures(
+    matches: list[dict], *, now: Optional[datetime] = None,
+) -> tuple[list[dict], int]:
+    """Exclude provisional later-round pairings while a prior round is pending.
+
+    Finals feeds can expose a speculative final before the semi-final/group
+    fixture that determines it has started. Exact player IDs and bookmaker
+    odds do not make that downstream pairing factual. Round-robin fixtures
+    sharing the same round id remain untouched.
+    """
+    # ``now`` is intentionally accepted for deterministic callers/tests. The
+    # guard does not trust the scheduled clock as proof that the prior match
+    # finished: the provider may keep an unresolved past fixture in the same
+    # response, as happened in the WTA Finals incident.
+    _ = now
+    future_by_tournament_player: dict[tuple[str, str], list[tuple[datetime, int]]] = {}
+    for match in matches:
+        start = _fixture_start_utc(match)
+        if start is None:
+            continue
+        tournament = match.get("tournamentId") or match.get("tournament_id")
+        try:
+            round_id = int(match.get("roundId") or match.get("round_id"))
+        except (TypeError, ValueError):
+            continue
+        for player_id in _canonical_fixture_player_ids(match) or ():
+            future_by_tournament_player.setdefault(
+                (str(tournament), player_id), [],
+            ).append((start, round_id))
+
+    accepted = []
+    excluded = 0
+    for match in matches:
+        start = _fixture_start_utc(match)
+        try:
+            round_id = int(match.get("roundId") or match.get("round_id"))
+        except (TypeError, ValueError):
+            round_id = None
+        tournament = match.get("tournamentId") or match.get("tournament_id")
+        provisional = False
+        if start is not None and round_id in {9, 10, 12}:
+            for player_id in _canonical_fixture_player_ids(match) or ():
+                pending = future_by_tournament_player.get(
+                    (str(tournament), player_id), [],
+                )
+                if any(
+                    prior_start < start and prior_round != round_id
+                    for prior_start, prior_round in pending
+                ):
+                    provisional = True
+                    break
+        if provisional:
+            excluded += 1
+        else:
+            accepted.append(match)
+    return accepted, excluded
+
+
 def _is_singles_fixture(match: dict) -> bool:
     """Replica a regra operacional legacy: nomes com ``/`` são pares."""
     player1 = str((match.get("player1") or {}).get("name") or "")
@@ -9957,6 +10028,13 @@ def fetch_resilient_discovery_fixtures() -> list[dict]:
                 "stale_fixture_ids_excluded": stale_fixture_ids,
                 "identity_conflicts_excluded": identity_conflicts,
             }
+        all_matches, provisional_excluded = _exclude_unresolved_downstream_fixtures(
+            all_matches,
+        )
+        _DISCOVERY_DIAGNOSTICS["provisional_fixture_guard"] = {
+            "status": "HEALTHY",
+            "excluded": provisional_excluded,
+        }
         selected_status = (
             DISCOVERY_SUCCESS_WITH_MATCHES
             if all_matches else DISCOVERY_SUCCESS_EMPTY

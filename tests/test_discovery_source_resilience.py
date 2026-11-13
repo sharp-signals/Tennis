@@ -98,6 +98,54 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
             fetch_data.DISCOVERY_SUCCESS_WITH_MATCHES,
         )
 
+    def test_provisional_final_is_excluded_while_same_player_has_prior_fixture(self):
+        prior = self._fixture(101, 16758, "wta")
+        prior.update({
+            "date": "2026-11-13T20:00:00+00:00", "roundId": 8,
+            "player1Id": 77934, "player2Id": 18482,
+            "player1": {"id": 77934, "name": "Mirra Andreeva"},
+            "player2": {"id": 18482, "name": "Karolina Muchova"},
+        })
+        provisional = self._fixture(102, 16758, "wta")
+        provisional.update({
+            "date": "2026-11-14T20:00:00+00:00", "roundId": 10,
+            "player1Id": 77934, "player2Id": 11712,
+            "player1": {"id": 77934, "name": "Mirra Andreeva"},
+            "player2": {"id": 11712, "name": "Jessica Pegula"},
+        })
+
+        selected, excluded = fetch_data._exclude_unresolved_downstream_fixtures(
+            [prior, provisional],
+            # Even after the scheduled start, the earlier row remains
+            # unresolved in the provider response and cannot confirm a final.
+            now=datetime(2026, 11, 13, 22, 16, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(selected, [prior])
+        self.assertEqual(excluded, 1)
+
+    def test_round_robin_schedule_is_not_mistaken_for_provisional_final(self):
+        first = self._fixture(101, 16758, "wta")
+        second = self._fixture(102, 16758, "wta")
+        for match, start, opponent in (
+            (first, "2026-11-13T20:00:00+00:00", 18482),
+            (second, "2026-11-14T20:00:00+00:00", 11712),
+        ):
+            match.update({
+                "date": start, "roundId": 8,
+                "player1Id": 77934, "player2Id": opponent,
+                "player1": {"id": 77934, "name": "Mirra Andreeva"},
+                "player2": {"id": opponent, "name": "Opponent"},
+            })
+
+        selected, excluded = fetch_data._exclude_unresolved_downstream_fixtures(
+            [first, second],
+            now=datetime(2026, 11, 13, 18, 24, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(selected, [first, second])
+        self.assertEqual(excluded, 0)
+
     def test_upcoming_valid_empty_is_no_matches_not_source_failure(self):
         with patch.object(
             fetch_data, "_fetch_extend_upcoming_events",

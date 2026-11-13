@@ -78,6 +78,10 @@ def _active_release_observation_ids(
         shadow = row.get("contextual_shadow") or {}
         if shadow.get("status") != "READY_FOR_PROSPECTIVE_SHADOW":
             continue
+        if str(row.get("tier") or "").casefold() == "championships":
+            # Finals brackets are volatile: never revive an observation that
+            # the current factual discovery did not rebuild.
+            continue
         commence = _parse_utc(row.get("commence_time_utc"))
         analyzed = _parse_utc(row.get("analyzed_at_utc"))
         if (
