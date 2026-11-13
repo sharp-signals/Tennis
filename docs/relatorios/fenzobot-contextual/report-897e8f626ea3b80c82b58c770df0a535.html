@@ -37,6 +37,9 @@
     .positive strong{color:var(--cyan)} .negative strong{color:#b8c9d8} .ev-row{display:flex;gap:18px;margin-top:12px}
     .ml-history{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.ml-history>div{padding:12px;background:#091b2c;border-radius:10px}
     .ml-history span,.ml-history small{display:block;color:var(--muted);font-size:10px}.ml-history b{display:block;margin:3px 0;font-size:16px}
+    .sample-badge{display:inline-block;margin:3px 0 5px;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:900;letter-spacing:.06em}
+    .sample-badge.small{background:#452936;color:#ffb3bd}.sample-badge.trend{background:#463b1e;color:#ffd875}
+    .sample-badge.usable{background:#123d39;color:#69e4d6}.sample-badge.unavailable{background:#25384a;color:#9eb2c5}
     .market-badge small{display:block;color:var(--muted);font-size:9px;letter-spacing:0;margin-top:2px}
     .decision-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.decision-strip>div{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}
     .decision-strip span,.decision-strip b{display:block}.decision-strip span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.decision-strip b{font-size:16px;margin-top:3px}
@@ -160,8 +163,8 @@
           <span>EV no limite conservador <b>N/D</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.6% · 154/263</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · N/D</span><b>N/D · amostra inexistente nesta faixa</b><small>Dado descritivo · break-even N/D% · margem N/D</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.6% · 154/263</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=263</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · N/D</span><b>N/D · amostra inexistente nesta faixa</b><em class="sample-badge unavailable">SEM AMOSTRA</em><small>Dado descritivo · break-even N/D% · margem N/D</small></div>
         </div>
       </article>
       <article class="player-card side-b">
@@ -181,8 +184,8 @@
           <span>EV no limite conservador <b>N/D</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>45.2% · 99/219</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · N/D</span><b>N/D · amostra inexistente nesta faixa</b><small>Dado descritivo · break-even N/D% · margem N/D</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>45.2% · 99/219</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=219</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · N/D</span><b>N/D · amostra inexistente nesta faixa</b><em class="sample-badge unavailable">SEM AMOSTRA</em><small>Dado descritivo · break-even N/D% · margem N/D</small></div>
         </div>
       </article></div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> Cotação pós-previsão ainda indisponível. A previsão mantém-se válida e imutável.</div>
@@ -191,9 +194,9 @@
   
       <section class="section market-review">
         <div class="section-head"><div><div class="eyebrow">VALIDAÇÃO HUMANA</div>
-          <h2>Mercados a consultar</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
+          <h2>Sem mercado confirmado</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
         <div class="review-empty"><b>Mercado ainda indisponível.</b> A previsão permanece guardada; não é formulado qualquer mercado.</div>
-        <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>
+        <div class="market-note">O pricing permanece disponível para auditoria. Sem edge conservador confirmado, este relatório não apresenta sugestões de Moneyline nem de handicap.</div>
       </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">QUALIDADE DA EVIDÊNCIA</div><h2>O que foi realmente medido</h2></div></div>

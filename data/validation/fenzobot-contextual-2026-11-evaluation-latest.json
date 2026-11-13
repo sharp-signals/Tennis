@@ -1,8 +1,8 @@
 {
   "by_quality_group": {
     "PRIMARY_READY_COMPLETE": {
-      "accuracy_pct": 70.0,
-      "brier": 0.243831,
+      "accuracy_pct": 66.667,
+      "brier": 0.239639,
       "calibration_bins": [
         {
           "absolute_gap": 0.279215,
@@ -17,55 +17,55 @@
           "sample_size": 3
         },
         {
-          "absolute_gap": 0.044702,
+          "absolute_gap": 0.103635,
           "interval_consistent": null,
-          "mean_probability": 0.455298,
+          "mean_probability": 0.436968,
           "mean_probability_interval_90": [
-            0.409609,
-            0.494447
+            0.393929,
+            0.475647
           ],
-          "observed_rate": 0.5,
+          "observed_rate": 0.333333,
           "range": "0.4-0.5",
-          "sample_size": 2
+          "sample_size": 3
         },
         {
-          "absolute_gap": 0.446347,
+          "absolute_gap": 0.28422,
           "interval_consistent": null,
-          "mean_probability": 0.553653,
+          "mean_probability": 0.549113,
           "mean_probability_interval_90": [
-            0.502849,
-            0.59491
+            0.500421,
+            0.58985
           ],
-          "observed_rate": 1.0,
+          "observed_rate": 0.833333,
           "range": "0.5-0.6",
-          "sample_size": 5
+          "sample_size": 6
         }
       ],
-      "ece_10": 0.315879,
-      "log_loss": 0.68131,
-      "mean_probability_a": 0.484121,
+      "ece_10": 0.237823,
+      "log_loss": 0.672655,
+      "mean_probability_a": 0.480661,
       "neutral_baseline": {
         "brier": 0.25,
-        "brier_improvement": 0.006169,
+        "brier_improvement": 0.010361,
         "brier_improvement_ci95": [
-          -0.045437,
-          0.057775
+          -0.034863,
+          0.055585
         ],
         "log_loss": 0.693147,
-        "log_loss_improvement": 0.011838,
+        "log_loss_improvement": 0.020493,
         "log_loss_improvement_ci95": [
-          -0.092896,
-          0.116572
+          -0.071272,
+          0.112258
         ]
       },
-      "observed_win_rate_a": 0.8,
+      "observed_win_rate_a": 0.666667,
       "probability_interval_diagnostic": {
         "bins_with_minimum_10": 0,
         "consistent_bins": 0,
-        "mean_width": 0.088953,
+        "mean_width": 0.086773,
         "note": "A binary result is not tested as if it were a continuous value inside the interval; interval calibration is checked only through empirical rates in bins with n>=10."
       },
-      "sample_size": 10,
+      "sample_size": 12,
       "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
     },
     "PRIMARY_READY_SECONDARY_GAPS": {
@@ -151,8 +151,8 @@
   },
   "by_surface_context": {
     "hard_indoor": {
-      "accuracy_pct": 68.421,
-      "brier": 0.215786,
+      "accuracy_pct": 66.667,
+      "brier": 0.216062,
       "calibration_bins": [
         {
           "absolute_gap": 0.296291,
@@ -179,55 +179,55 @@
           "sample_size": 9
         },
         {
-          "absolute_gap": 0.305472,
+          "absolute_gap": 0.164316,
           "interval_consistent": null,
-          "mean_probability": 0.444528,
+          "mean_probability": 0.435684,
           "mean_probability_interval_90": [
-            0.402875,
-            0.504588
+            0.394814,
+            0.49128
           ],
-          "observed_rate": 0.75,
+          "observed_rate": 0.6,
           "range": "0.4-0.5",
-          "sample_size": 4
+          "sample_size": 5
         },
         {
-          "absolute_gap": 0.43561,
+          "absolute_gap": 0.275273,
           "interval_consistent": null,
-          "mean_probability": 0.56439,
+          "mean_probability": 0.55806,
           "mean_probability_interval_90": [
-            0.523046,
-            0.616206
+            0.517251,
+            0.607596
           ],
-          "observed_rate": 1.0,
+          "observed_rate": 0.833333,
           "range": "0.5-0.6",
-          "sample_size": 5
+          "sample_size": 6
         }
       ],
-      "ece_10": 0.206353,
-      "log_loss": 0.622102,
-      "mean_probability_a": 0.427412,
+      "ece_10": 0.14257,
+      "log_loss": 0.622796,
+      "mean_probability_a": 0.430835,
       "neutral_baseline": {
         "brier": 0.25,
-        "brier_improvement": 0.034214,
+        "brier_improvement": 0.033938,
         "brier_improvement_ci95": [
-          -0.012875,
-          0.081302
+          -0.009284,
+          0.07716
         ],
         "log_loss": 0.693147,
-        "log_loss_improvement": 0.071045,
+        "log_loss_improvement": 0.070352,
         "log_loss_improvement_ci95": [
-          -0.025869,
-          0.167958
+          -0.018551,
+          0.159255
         ]
       },
-      "observed_win_rate_a": 0.578947,
+      "observed_win_rate_a": 0.52381,
       "probability_interval_diagnostic": {
         "bins_with_minimum_10": 0,
         "consistent_bins": 0,
-        "mean_width": 0.105317,
+        "mean_width": 0.102513,
         "note": "A binary result is not tested as if it were a continuous value inside the interval; interval calibration is checked only through empirical rates in bins with n>=10."
       },
-      "sample_size": 19,
+      "sample_size": 21,
       "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
     },
     "hard_outdoor": {
@@ -333,8 +333,8 @@
   },
   "by_tour": {
     "atp": {
-      "accuracy_pct": 68.421,
-      "brier": 0.215786,
+      "accuracy_pct": 66.667,
+      "brier": 0.216062,
       "calibration_bins": [
         {
           "absolute_gap": 0.296291,
@@ -361,55 +361,55 @@
           "sample_size": 9
         },
         {
-          "absolute_gap": 0.305472,
+          "absolute_gap": 0.164316,
           "interval_consistent": null,
-          "mean_probability": 0.444528,
+          "mean_probability": 0.435684,
           "mean_probability_interval_90": [
-            0.402875,
-            0.504588
+            0.394814,
+            0.49128
           ],
-          "observed_rate": 0.75,
+          "observed_rate": 0.6,
           "range": "0.4-0.5",
-          "sample_size": 4
+          "sample_size": 5
         },
         {
-          "absolute_gap": 0.43561,
+          "absolute_gap": 0.275273,
           "interval_consistent": null,
-          "mean_probability": 0.56439,
+          "mean_probability": 0.55806,
           "mean_probability_interval_90": [
-            0.523046,
-            0.616206
+            0.517251,
+            0.607596
           ],
-          "observed_rate": 1.0,
+          "observed_rate": 0.833333,
           "range": "0.5-0.6",
-          "sample_size": 5
+          "sample_size": 6
         }
       ],
-      "ece_10": 0.206353,
-      "log_loss": 0.622102,
-      "mean_probability_a": 0.427412,
+      "ece_10": 0.14257,
+      "log_loss": 0.622796,
+      "mean_probability_a": 0.430835,
       "neutral_baseline": {
         "brier": 0.25,
-        "brier_improvement": 0.034214,
+        "brier_improvement": 0.033938,
         "brier_improvement_ci95": [
-          -0.012875,
-          0.081302
+          -0.009284,
+          0.07716
         ],
         "log_loss": 0.693147,
-        "log_loss_improvement": 0.071045,
+        "log_loss_improvement": 0.070352,
         "log_loss_improvement_ci95": [
-          -0.025869,
-          0.167958
+          -0.018551,
+          0.159255
         ]
       },
-      "observed_win_rate_a": 0.578947,
+      "observed_win_rate_a": 0.52381,
       "probability_interval_diagnostic": {
         "bins_with_minimum_10": 0,
         "consistent_bins": 0,
-        "mean_width": 0.105317,
+        "mean_width": 0.102513,
         "note": "A binary result is not tested as if it were a continuous value inside the interval; interval calibration is checked only through empirical rates in bins with n>=10."
       },
-      "sample_size": 19,
+      "sample_size": 21,
       "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
     },
     "wta": {
@@ -470,28 +470,28 @@
     }
   },
   "counts": {
-    "market_observations": 30,
-    "observations": 34,
-    "outcomes": 27,
-    "ready_observations": 30,
+    "market_observations": 31,
+    "observations": 36,
+    "outcomes": 29,
+    "ready_observations": 32,
     "ready_pending": 7,
-    "ready_settled": 23,
-    "ready_settled_with_market": 23,
+    "ready_settled": 25,
+    "ready_settled_with_market": 25,
     "settled_excluded_by_reason": {
       "PREDICTION_NOT_READY": 4
     },
     "settled_excluded_from_primary_metrics": 4
   },
   "evaluation_state": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE",
-  "generated_at_utc": "2026-11-13T06:31:50+00:00",
+  "generated_at_utc": "2026-11-13T18:25:18+00:00",
   "market_audit": {
     "status": "HEALTHY",
     "violations": []
   },
   "market_benchmark": {
     "devig_market": {
-      "accuracy_pct": 65.217,
-      "brier": 0.220944,
+      "accuracy_pct": 64.0,
+      "brier": 0.22288,
       "calibration_bins": [
         {
           "absolute_gap": 0.321624,
@@ -518,28 +518,28 @@
           "sample_size": 4
         },
         {
-          "absolute_gap": 0.548746,
+          "absolute_gap": 0.309933,
           "interval_consistent": null,
-          "mean_probability": 0.451254,
+          "mean_probability": 0.440067,
           "mean_probability_interval_90": [
-            0.451254,
-            0.451254
+            0.440067,
+            0.440067
           ],
-          "observed_rate": 1.0,
+          "observed_rate": 0.75,
           "range": "0.4-0.5",
-          "sample_size": 3
+          "sample_size": 4
         },
         {
-          "absolute_gap": 0.567358,
+          "absolute_gap": 0.568744,
           "interval_consistent": null,
-          "mean_probability": 0.567358,
+          "mean_probability": 0.568744,
           "mean_probability_interval_90": [
-            0.567358,
-            0.567358
+            0.568744,
+            0.568744
           ],
           "observed_rate": 0.0,
           "range": "0.5-0.6",
-          "sample_size": 1
+          "sample_size": 2
         },
         {
           "absolute_gap": 0.335521,
@@ -566,39 +566,39 @@
           "sample_size": 2
         }
       ],
-      "ece_10": 0.365329,
-      "log_loss": 0.640638,
-      "mean_probability_a": 0.456891,
+      "ece_10": 0.342648,
+      "log_loss": 0.644027,
+      "mean_probability_a": 0.459405,
       "neutral_baseline": {
         "brier": 0.25,
-        "brier_improvement": 0.029056,
+        "brier_improvement": 0.02712,
         "brier_improvement_ci95": [
-          -0.048156,
-          0.106268
+          -0.044409,
+          0.098649
         ],
         "log_loss": 0.693147,
-        "log_loss_improvement": 0.05251,
+        "log_loss_improvement": 0.04912,
         "log_loss_improvement_ci95": [
-          -0.117364,
-          0.222383
+          -0.108011,
+          0.206252
         ]
       },
-      "observed_win_rate_a": 0.652174,
+      "observed_win_rate_a": 0.6,
       "probability_interval_diagnostic": {
         "bins_with_minimum_10": 0,
         "consistent_bins": 0,
         "mean_width": 0.0,
         "note": "A binary result is not tested as if it were a continuous value inside the interval; interval calibration is checked only through empirical rates in bins with n>=10."
       },
-      "sample_size": 23,
+      "sample_size": 25,
       "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
     },
     "hypothetical_edge_bands": {
       "0-2pp": {
-        "hypothetical_flat_stake_roi_pct": 2.0,
-        "mean_model_expected_return_pct": 0.6161,
-        "mean_probability_edge_pp": 1.486,
-        "sample_size": 2,
+        "hypothetical_flat_stake_roi_pct": 22.5667,
+        "mean_model_expected_return_pct": -0.1995,
+        "mean_probability_edge_pp": 1.1972,
+        "sample_size": 3,
         "status": "DESCRIPTIVE_SHADOW_NOT_A_STRATEGY"
       },
       "10pp+": {
@@ -609,10 +609,10 @@
         "status": "DESCRIPTIVE_SHADOW_NOT_A_STRATEGY"
       },
       "2-5pp": {
-        "hypothetical_flat_stake_roi_pct": -70.8571,
-        "mean_model_expected_return_pct": 6.2091,
-        "mean_probability_edge_pp": 3.1242,
-        "sample_size": 7,
+        "hypothetical_flat_stake_roi_pct": -46.25,
+        "mean_model_expected_return_pct": 6.3118,
+        "mean_probability_edge_pp": 3.2801,
+        "sample_size": 8,
         "status": "DESCRIPTIVE_SHADOW_NOT_A_STRATEGY"
       },
       "5-10pp": {
@@ -624,8 +624,8 @@
       }
     },
     "model": {
-      "accuracy_pct": 69.565,
-      "brier": 0.216683,
+      "accuracy_pct": 68.0,
+      "brier": 0.216843,
       "calibration_bins": [
         {
           "absolute_gap": 0.296291,
@@ -652,77 +652,77 @@
           "sample_size": 9
         },
         {
-          "absolute_gap": 0.345545,
+          "absolute_gap": 0.221236,
           "interval_consistent": null,
-          "mean_probability": 0.454455,
+          "mean_probability": 0.445431,
           "mean_probability_interval_90": [
-            0.409576,
-            0.51406
+            0.401741,
+            0.501391
           ],
-          "observed_rate": 0.8,
+          "observed_rate": 0.666667,
           "range": "0.4-0.5",
-          "sample_size": 5
+          "sample_size": 6
         },
         {
-          "absolute_gap": 0.443441,
+          "absolute_gap": 0.33568,
           "interval_consistent": null,
-          "mean_probability": 0.556559,
+          "mean_probability": 0.553209,
           "mean_probability_interval_90": [
-            0.51036,
-            0.609303
+            0.507906,
+            0.60433
           ],
-          "observed_rate": 1.0,
+          "observed_rate": 0.888889,
           "range": "0.5-0.6",
-          "sample_size": 8
+          "sample_size": 9
         }
       ],
-      "ece_10": 0.252001,
-      "log_loss": 0.624293,
-      "mean_probability_a": 0.445457,
+      "ece_10": 0.194772,
+      "log_loss": 0.6247,
+      "mean_probability_a": 0.446889,
       "neutral_baseline": {
         "brier": 0.25,
-        "brier_improvement": 0.033317,
+        "brier_improvement": 0.033157,
         "brier_improvement_ci95": [
-          -0.005796,
-          0.07243
+          -0.003366,
+          0.069681
         ],
         "log_loss": 0.693147,
-        "log_loss_improvement": 0.068854,
+        "log_loss_improvement": 0.068447,
         "log_loss_improvement_ci95": [
-          -0.011615,
-          0.149324
+          -0.00665,
+          0.143545
         ]
       },
-      "observed_win_rate_a": 0.652174,
+      "observed_win_rate_a": 0.6,
       "probability_interval_diagnostic": {
         "bins_with_minimum_10": 0,
         "consistent_bins": 0,
-        "mean_width": 0.106189,
+        "mean_width": 0.103764,
         "note": "A binary result is not tested as if it were a continuous value inside the interval; interval calibration is checked only through empirical rates in bins with n>=10."
       },
-      "sample_size": 23,
+      "sample_size": 25,
       "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
     },
     "paired_difference": {
-      "brier_market_minus_model": 0.004261,
+      "brier_market_minus_model": 0.006037,
       "brier_market_minus_model_ci95": [
-        -0.050153,
-        0.058674
+        -0.044049,
+        0.056124
       ],
-      "log_loss_market_minus_model": 0.016345,
+      "log_loss_market_minus_model": 0.019327,
       "log_loss_market_minus_model_ci95": [
-        -0.105604,
-        0.138293
+        -0.092843,
+        0.131496
       ],
       "positive_means_model_better": true
     },
-    "sample_size": 23,
+    "sample_size": 25,
     "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
   },
   "model_version": "FENZOBOT_CONTEXTUAL_2026_11",
   "overall": {
-    "accuracy_pct": 69.565,
-    "brier": 0.216683,
+    "accuracy_pct": 68.0,
+    "brier": 0.216843,
     "calibration_bins": [
       {
         "absolute_gap": 0.296291,
@@ -749,55 +749,55 @@
         "sample_size": 9
       },
       {
-        "absolute_gap": 0.345545,
+        "absolute_gap": 0.221236,
         "interval_consistent": null,
-        "mean_probability": 0.454455,
+        "mean_probability": 0.445431,
         "mean_probability_interval_90": [
-          0.409576,
-          0.51406
+          0.401741,
+          0.501391
         ],
-        "observed_rate": 0.8,
+        "observed_rate": 0.666667,
         "range": "0.4-0.5",
-        "sample_size": 5
+        "sample_size": 6
       },
       {
-        "absolute_gap": 0.443441,
+        "absolute_gap": 0.33568,
         "interval_consistent": null,
-        "mean_probability": 0.556559,
+        "mean_probability": 0.553209,
         "mean_probability_interval_90": [
-          0.51036,
-          0.609303
+          0.507906,
+          0.60433
         ],
-        "observed_rate": 1.0,
+        "observed_rate": 0.888889,
         "range": "0.5-0.6",
-        "sample_size": 8
+        "sample_size": 9
       }
     ],
-    "ece_10": 0.252001,
-    "log_loss": 0.624293,
-    "mean_probability_a": 0.445457,
+    "ece_10": 0.194772,
+    "log_loss": 0.6247,
+    "mean_probability_a": 0.446889,
     "neutral_baseline": {
       "brier": 0.25,
-      "brier_improvement": 0.033317,
+      "brier_improvement": 0.033157,
       "brier_improvement_ci95": [
-        -0.005796,
-        0.07243
+        -0.003366,
+        0.069681
       ],
       "log_loss": 0.693147,
-      "log_loss_improvement": 0.068854,
+      "log_loss_improvement": 0.068447,
       "log_loss_improvement_ci95": [
-        -0.011615,
-        0.149324
+        -0.00665,
+        0.143545
       ]
     },
-    "observed_win_rate_a": 0.652174,
+    "observed_win_rate_a": 0.6,
     "probability_interval_diagnostic": {
       "bins_with_minimum_10": 0,
       "consistent_bins": 0,
-      "mean_width": 0.106189,
+      "mean_width": 0.103764,
       "note": "A binary result is not tested as if it were a continuous value inside the interval; interval calibration is checked only through empirical rates in bins with n>=10."
     },
-    "sample_size": 23,
+    "sample_size": 25,
     "status": "DESCRIPTIVE_ONLY_NO_APPROVED_PROMOTION_GATE"
   },
   "promotion_authorized": false,

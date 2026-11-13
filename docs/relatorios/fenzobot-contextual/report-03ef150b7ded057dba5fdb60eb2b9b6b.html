@@ -37,6 +37,9 @@
     .positive strong{color:var(--cyan)} .negative strong{color:#b8c9d8} .ev-row{display:flex;gap:18px;margin-top:12px}
     .ml-history{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.ml-history>div{padding:12px;background:#091b2c;border-radius:10px}
     .ml-history span,.ml-history small{display:block;color:var(--muted);font-size:10px}.ml-history b{display:block;margin:3px 0;font-size:16px}
+    .sample-badge{display:inline-block;margin:3px 0 5px;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:900;letter-spacing:.06em}
+    .sample-badge.small{background:#452936;color:#ffb3bd}.sample-badge.trend{background:#463b1e;color:#ffd875}
+    .sample-badge.usable{background:#123d39;color:#69e4d6}.sample-badge.unavailable{background:#25384a;color:#9eb2c5}
     .market-badge small{display:block;color:var(--muted);font-size:9px;letter-spacing:0;margin-top:2px}
     .decision-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.decision-strip>div{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}
     .decision-strip span,.decision-strip b{display:block}.decision-strip span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.decision-strip b{font-size:16px;margin-top:3px}
@@ -160,8 +163,8 @@
           <span>EV no limite conservador <b>-21.0%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.1% · 137/236</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.41-1.50</span><b>60.0% · 12/20</b><small>Dado descritivo · break-even 67.6% · margem -7.6 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.1% · 137/236</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=236</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.41-1.50</span><b>60.0% · 12/20</b><em class="sample-badge trend">TENDÊNCIA · n=20</em><small>Dado descritivo · break-even 67.6% · margem -7.6 p.p.</small></div>
         </div>
       </article>
       <article class="player-card side-b">
@@ -181,24 +184,27 @@
           <span>EV no limite conservador <b>+2.7%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>54.0% · 121/224</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 2.61-3.00</span><b>45.5% · 5/11</b><small>Dado descritivo · break-even 38.1% · margem +7.4 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>54.0% · 121/224</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=224</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 2.61-3.00</span><b>45.5% · 5/11</b><em class="sample-badge small">AMOSTRA PEQUENA · n=11</em><small>Dado descritivo · break-even 38.1% · margem +7.4 p.p.</small></div>
         </div>
       </article></div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> Cotação mais recente desta execução · Marathonbet · RapidAPI Tennis API / recent-odds · 12/11/2026 · 18:25 UTC</div>
     
         <div class="plausibility-alert"><b>REVISÃO DE PLAUSIBILIDADE</b>
-          <span>O mercado está fora do intervalo de 90% do modelo e favorece
-          mais Lorenzo Musetti em 3.09 p.p.
-          Esta divergência não altera a fair odd, mas exige rever identidade,
-          dados em falta e calibração antes de qualquer decisão.</span></div>
+          <span>O mercado atribui 63.95%
+          a Lorenzo Musetti, contra 57.13%
+          no modelo: diferença total de 6.81
+          p.p. A cotação está 3.09 p.p.
+          para lá do intervalo estatístico de 90%. Esta divergência não altera
+          a fair odd, mas exige rever identidade, dados em falta e calibração
+          antes de qualquer decisão.</span></div>
   </section>
   
       <section class="section market-review">
         <div class="section-head"><div><div class="eyebrow">VALIDAÇÃO HUMANA</div>
-          <h2>Mercados a consultar</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
+          <h2>Sem mercado confirmado</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
         <div class="review-empty"><b>Preço contrarian não confirmado.</b> A odd de Ugo Humbert produz edge matemático (+2.7% no limite conservador), mas nenhuma família analisada favorece esse lado. O dado fica visível para auditoria, sem Moneyline formulada e sem handicaps sugeridos.</div>
-        <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>
+        <div class="market-note">O pricing permanece disponível para auditoria. Sem edge conservador confirmado, este relatório não apresenta sugestões de Moneyline nem de handicap.</div>
       </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">QUALIDADE DA EVIDÊNCIA</div><h2>O que foi realmente medido</h2></div></div>

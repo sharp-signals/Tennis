@@ -37,6 +37,9 @@
     .positive strong{color:var(--cyan)} .negative strong{color:#b8c9d8} .ev-row{display:flex;gap:18px;margin-top:12px}
     .ml-history{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.ml-history>div{padding:12px;background:#091b2c;border-radius:10px}
     .ml-history span,.ml-history small{display:block;color:var(--muted);font-size:10px}.ml-history b{display:block;margin:3px 0;font-size:16px}
+    .sample-badge{display:inline-block;margin:3px 0 5px;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:900;letter-spacing:.06em}
+    .sample-badge.small{background:#452936;color:#ffb3bd}.sample-badge.trend{background:#463b1e;color:#ffd875}
+    .sample-badge.usable{background:#123d39;color:#69e4d6}.sample-badge.unavailable{background:#25384a;color:#9eb2c5}
     .market-badge small{display:block;color:var(--muted);font-size:9px;letter-spacing:0;margin-top:2px}
     .decision-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.decision-strip>div{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}
     .decision-strip span,.decision-strip b{display:block}.decision-strip span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.decision-strip b{font-size:16px;margin-top:3px}
@@ -160,8 +163,8 @@
           <span>EV no limite conservador <b>+34.8%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.6% · 154/263</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 3.51-4.50</span><b>35.3% · 6/17</b><small>Dado descritivo · break-even 25.6% · margem +9.7 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.6% · 154/263</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=263</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 3.51-4.50</span><b>35.3% · 6/17</b><em class="sample-badge small">AMOSTRA PEQUENA · n=17</em><small>Dado descritivo · break-even 25.6% · margem +9.7 p.p.</small></div>
         </div>
       </article>
       <article class="player-card side-b">
@@ -181,17 +184,20 @@
           <span>EV no limite conservador <b>-27.6%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.9% · 99/168</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.20-1.25</span><b>83.3% · 5/6</b><small>Dado descritivo · break-even 80.0% · margem +3.3 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.9% · 99/168</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=168</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.20-1.25</span><b>83.3% · 5/6</b><em class="sample-badge small">AMOSTRA PEQUENA · n=6</em><small>Dado descritivo · break-even 80.0% · margem +3.3 p.p.</small></div>
         </div>
       </article></div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> Cotação mais recente desta execução · BWin · RapidAPI Tennis API / recent-odds · 12/11/2026 · 11:59 UTC · Movimento desde a leitura anterior: Alejandro Tabilo: 4.00 → 3.90 | Alex Michelsen: 1.25 → 1.25</div>
     
         <div class="plausibility-alert"><b>REVISÃO DE PLAUSIBILIDADE</b>
-          <span>O mercado está fora do intervalo de 90% do modelo e favorece
-          mais Alex Michelsen em 10.28 p.p.
-          Esta divergência não altera a fair odd, mas exige rever identidade,
-          dados em falta e calibração antes de qualquer decisão.</span></div>
+          <span>O mercado atribui 75.73%
+          a Alex Michelsen, contra 61.67%
+          no modelo: diferença total de 14.06
+          p.p. A cotação está 10.28 p.p.
+          para lá do intervalo estatístico de 90%. Esta divergência não altera
+          a fair odd, mas exige rever identidade, dados em falta e calibração
+          antes de qualquer decisão.</span></div>
   </section>
   
       <section class="section market-review">
@@ -202,37 +208,37 @@
           <div class="review-grid">
               <article class="review-card handicap-card">
                 <div class="review-type">HANDICAPS DE ALEJANDRO TABILO · POSITIVOS · BO3</div>
-                <p class="line-intro">Linhas principais para leitura imediata. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
+                <p class="line-intro">Linhas principais para leitura imediata · janela máxima 2.50. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
                 <div class="line-grid">
                   <div class="line-card">
                     <div class="line-name">+3</div>
                     <strong>66.3% cobre no total</strong><small>Quando vence: 100.0% (85/85)</small>
                     <small>Nas derrotas: 32.1% (27/84)</small><small>Push: 6 em 169 jogos</small><small>Amostra total: 169 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+3.5</div>
                     <strong>69.8% cobre no total</strong><small>Quando vence: 100.0% (85/85)</small>
                     <small>Nas derrotas: 39.3% (33/84)</small><small>Amostra total: 169 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+4</div>
                     <strong>69.8% cobre no total</strong><small>Quando vence: 100.0% (85/85)</small>
                     <small>Nas derrotas: 39.3% (33/84)</small><small>Push: 19 em 169 jogos</small><small>Amostra total: 169 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+4.5</div>
                     <strong>81.1% cobre no total</strong><small>Quando vence: 100.0% (85/85)</small>
                     <small>Nas derrotas: 61.9% (52/84)</small><small>Amostra total: 169 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+5</div>
                     <strong>81.1% cobre no total</strong><small>Quando vence: 100.0% (85/85)</small>
                     <small>Nas derrotas: 61.9% (52/84)</small><small>Push: 5 em 169 jogos</small><small>Amostra total: 169 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div></div>
               </article></div>
         <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>

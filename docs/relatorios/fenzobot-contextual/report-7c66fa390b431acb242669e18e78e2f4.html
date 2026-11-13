@@ -37,6 +37,9 @@
     .positive strong{color:var(--cyan)} .negative strong{color:#b8c9d8} .ev-row{display:flex;gap:18px;margin-top:12px}
     .ml-history{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.ml-history>div{padding:12px;background:#091b2c;border-radius:10px}
     .ml-history span,.ml-history small{display:block;color:var(--muted);font-size:10px}.ml-history b{display:block;margin:3px 0;font-size:16px}
+    .sample-badge{display:inline-block;margin:3px 0 5px;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:900;letter-spacing:.06em}
+    .sample-badge.small{background:#452936;color:#ffb3bd}.sample-badge.trend{background:#463b1e;color:#ffd875}
+    .sample-badge.usable{background:#123d39;color:#69e4d6}.sample-badge.unavailable{background:#25384a;color:#9eb2c5}
     .market-badge small{display:block;color:var(--muted);font-size:9px;letter-spacing:0;margin-top:2px}
     .decision-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.decision-strip>div{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}
     .decision-strip span,.decision-strip b{display:block}.decision-strip span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.decision-strip b{font-size:16px;margin-top:3px}
@@ -160,8 +163,8 @@
           <span>EV no limite conservador <b>-13.3%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.2% · 138/237</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 2.31-2.60</span><b>68.8% · 11/16</b><small>Dado descritivo · break-even 41.8% · margem +27.0 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>58.2% · 138/237</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=237</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 2.31-2.60</span><b>68.8% · 11/16</b><em class="sample-badge small">AMOSTRA PEQUENA · n=16</em><small>Dado descritivo · break-even 41.8% · margem +27.0 p.p.</small></div>
         </div>
       </article>
       <article class="player-card side-b">
@@ -181,8 +184,8 @@
           <span>EV no limite conservador <b>-8.0%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>63.3% · 136/215</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.61-1.80</span><b>60.0% · 18/30</b><small>Dado descritivo · break-even 61.1% · margem -1.1 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>63.3% · 136/215</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=215</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.61-1.80</span><b>60.0% · 18/30</b><em class="sample-badge trend">TENDÊNCIA · n=30</em><small>Dado descritivo · break-even 61.1% · margem -1.1 p.p.</small></div>
         </div>
       </article></div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> Cotação mais recente desta execução · Pinnacle · RapidAPI Tennis API / recent-odds · 13/11/2026 · 06:31 UTC</div>
@@ -191,46 +194,9 @@
   
       <section class="section market-review">
         <div class="section-head"><div><div class="eyebrow">VALIDAÇÃO HUMANA</div>
-          <h2>Mercados a consultar</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
-        
-          <div class="review-lead"><div class="review-no-ml"><b>Sem edge Moneyline positivo</b><span>Os handicaps abaixo pertencem ao lado indicado pelo modelo.</span></div></div>
-          <div class="review-grid">
-              <article class="review-card handicap-card">
-                <div class="review-type">HANDICAPS DE TAYLOR FRITZ · NEGATIVOS · BO3</div>
-                <p class="line-intro">Linhas principais para leitura imediata. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
-                <div class="line-grid">
-                  <div class="line-card">
-                    <div class="line-name">-0.5</div>
-                    <strong>97.2% cobre quando vence</strong><small>Total: 61.5% (279/454)</small>
-                    <small>Nas derrotas: 2.3% (4/171)</small><small>Amostra total: 454 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
-                  </div>
-                  <div class="line-card">
-                    <div class="line-name">-1</div>
-                    <strong>92.6% cobre quando vence</strong><small>Total: 58.1% (264/454)</small>
-                    <small>Nas derrotas: 1.2% (2/171)</small><small>Push: 15 em 454 jogos</small><small>Amostra total: 454 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.73–2.50</b></div>
-                  </div>
-                  <div class="line-card">
-                    <div class="line-name">-1.5</div>
-                    <strong>92.6% cobre quando vence</strong><small>Total: 58.1% (264/454)</small>
-                    <small>Nas derrotas: 1.2% (2/171)</small><small>Amostra total: 454 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.79–2.50</b></div>
-                  </div>
-                  <div class="line-card">
-                    <div class="line-name">-2</div>
-                    <strong>82.3% cobre quando vence</strong><small>Total: 51.5% (234/454)</small>
-                    <small>Nas derrotas: 0.6% (1/171)</small><small>Push: 30 em 454 jogos</small><small>Amostra total: 454 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.89–2.50</b></div>
-                  </div>
-                  <div class="line-card">
-                    <div class="line-name">-2.5</div>
-                    <strong>82.3% cobre quando vence</strong><small>Total: 51.5% (234/454)</small>
-                    <small>Nas derrotas: 0.6% (1/171)</small><small>Amostra total: 454 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>2.02–2.50</b></div>
-                  </div></div>
-              </article></div>
-        <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>
+          <h2>Sem mercado confirmado</h2></div><div class="shadow-badge">SEM ENTRADA AUTOMÁTICA</div></div>
+        <div class="review-empty"><b>Sem edge central positivo.</b> O relatório mantém a leitura factual, mas não destaca um mercado.</div>
+        <div class="market-note">O pricing permanece disponível para auditoria. Sem edge conservador confirmado, este relatório não apresenta sugestões de Moneyline nem de handicap.</div>
       </section>
   <section class="section">
     <div class="section-head"><div><div class="eyebrow">QUALIDADE DA EVIDÊNCIA</div><h2>O que foi realmente medido</h2></div></div>

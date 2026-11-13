@@ -37,6 +37,9 @@
     .positive strong{color:var(--cyan)} .negative strong{color:#b8c9d8} .ev-row{display:flex;gap:18px;margin-top:12px}
     .ml-history{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.ml-history>div{padding:12px;background:#091b2c;border-radius:10px}
     .ml-history span,.ml-history small{display:block;color:var(--muted);font-size:10px}.ml-history b{display:block;margin:3px 0;font-size:16px}
+    .sample-badge{display:inline-block;margin:3px 0 5px;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:900;letter-spacing:.06em}
+    .sample-badge.small{background:#452936;color:#ffb3bd}.sample-badge.trend{background:#463b1e;color:#ffd875}
+    .sample-badge.usable{background:#123d39;color:#69e4d6}.sample-badge.unavailable{background:#25384a;color:#9eb2c5}
     .market-badge small{display:block;color:var(--muted);font-size:9px;letter-spacing:0;margin-top:2px}
     .decision-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.decision-strip>div{padding:12px 14px;border-radius:12px;background:#102a45;border:1px solid var(--line)}
     .decision-strip span,.decision-strip b{display:block}.decision-strip span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.decision-strip b{font-size:16px;margin-top:3px}
@@ -160,8 +163,8 @@
           <span>EV no limite conservador <b>-31.8%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>63.7% · 142/223</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.31-1.40</span><b>82.9% · 29/35</b><small>Dado descritivo · break-even 72.0% · margem +10.9 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>63.7% · 142/223</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=223</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 1.31-1.40</span><b>82.9% · 29/35</b><em class="sample-badge trend">TENDÊNCIA · n=35</em><small>Dado descritivo · break-even 72.0% · margem +10.9 p.p.</small></div>
         </div>
       </article>
       <article class="player-card side-b">
@@ -181,17 +184,20 @@
           <span>EV no limite conservador <b>+27.4%</b></span>
         </div>
         <div class="ml-history">
-          <div><span>WIN RATE MONEYLINE · BO3</span><b>41.7% · 90/216</b><small>Histórico geral com odds observadas</small></div>
-          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 3.01-3.50</span><b>22.2% · 2/9</b><small>Dado descritivo · break-even 31.3% · margem -9.1 p.p.</small></div>
+          <div><span>WIN RATE MONEYLINE · BO3</span><b>41.7% · 90/216</b><em class="sample-badge usable">AMOSTRA UTILIZÁVEL · n=216</em><small>Histórico geral com odds observadas</small></div>
+          <div><span>HISTÓRICO NESTA FAIXA DE ODD · 3.01-3.50</span><b>22.2% · 2/9</b><em class="sample-badge small">AMOSTRA PEQUENA · n=9</em><small>Dado descritivo · break-even 31.3% · margem -9.1 p.p.</small></div>
         </div>
       </article></div>
     <div class="market-note"><b>Mercado observado apenas depois da previsão.</b> Cotação mais recente desta execução · Pinnacle · RapidAPI Tennis API / recent-odds · 11/11/2026 · 14:50 UTC</div>
     
         <div class="plausibility-alert"><b>REVISÃO DE PLAUSIBILIDADE</b>
-          <span>O mercado está fora do intervalo de 90% do modelo e favorece
-          mais Holger Rune em 9.62 p.p.
-          Esta divergência não altera a fair odd, mas exige rever identidade,
-          dados em falta e calibração antes de qualquer decisão.</span></div>
+          <span>O mercado atribui 69.68%
+          a Holger Rune, contra 55.35%
+          no modelo: diferença total de 14.33
+          p.p. A cotação está 9.62 p.p.
+          para lá do intervalo estatístico de 90%. Esta divergência não altera
+          a fair odd, mas exige rever identidade, dados em falta e calibração
+          antes de qualquer decisão.</span></div>
   </section>
   
       <section class="section market-review">
@@ -202,37 +208,37 @@
           <div class="review-grid">
               <article class="review-card handicap-card">
                 <div class="review-type">HANDICAPS DE MIOMIR KECMANOVIC · POSITIVOS · BO3</div>
-                <p class="line-intro">Linhas principais para leitura imediata. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
+                <p class="line-intro">Linhas principais para leitura imediata · janela máxima 2.50. Cobertura total, em vitórias e em derrotas usam apenas evidência congelada antes do jogo.</p>
                 <div class="line-grid">
                   <div class="line-card">
                     <div class="line-name">+2.5</div>
                     <strong>58.8% cobre no total</strong><small>Quando vence: 100.0% (151/151)</small>
                     <small>Nas derrotas: 21.6% (36/167)</small><small>Amostra total: 318 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.77–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.77</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+3</div>
                     <strong>58.8% cobre no total</strong><small>Quando vence: 100.0% (151/151)</small>
                     <small>Nas derrotas: 21.6% (36/167)</small><small>Push: 33 em 318 jogos</small><small>Amostra total: 318 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+3.5</div>
                     <strong>69.2% cobre no total</strong><small>Quando vence: 100.0% (151/151)</small>
                     <small>Nas derrotas: 41.3% (69/167)</small><small>Amostra total: 318 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+4</div>
                     <strong>69.2% cobre no total</strong><small>Quando vence: 100.0% (151/151)</small>
                     <small>Nas derrotas: 41.3% (69/167)</small><small>Push: 30 em 318 jogos</small><small>Amostra total: 318 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div>
                   <div class="line-card">
                     <div class="line-name">+4.5</div>
                     <strong>78.6% cobre no total</strong><small>Quando vence: 100.0% (151/151)</small>
                     <small>Nas derrotas: 59.3% (99/167)</small><small>Amostra total: 318 jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>1.70–2.50</b></div>
+                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>Preço mínimo 1.70</b></div>
                   </div></div>
               </article></div>
         <div class="market-note">A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas.</div>
