@@ -44,7 +44,9 @@ def h2h_sample_reliability(sample: int) -> float:
     return min(1.0, (count - 1.0) / 3.0)
 
 
-def _primary_agreement_probability(probabilities: dict[str, Any]) -> float:
+def _primary_agreement_probability(
+    probabilities: dict[str, Any], *, threshold: float = 0.0,
+) -> float:
     values = []
     for family in PRIMARY_FAMILIES:
         probability = probabilities.get(family)
@@ -54,12 +56,14 @@ def _primary_agreement_probability(probabilities: dict[str, Any]) -> float:
     if values[0] == 0.0 or values[1] == 0.0 or values[0] * values[1] <= 0.0:
         return 0.5
     direction = 1.0 if values[0] > 0.0 else -1.0
-    return _sigmoid(direction * min(abs(value) for value in values))
+    excess = max(0.0, min(abs(value) for value in values) - threshold)
+    return _sigmoid(direction * excess)
 
 
 def prepare_contextual_meta_rows(
     rows: list[dict[str, Any]], *, h2h_policy: str = "progressive",
     include_primary_agreement: bool = True,
+    primary_agreement_threshold: float = 0.0,
 ) -> list[dict[str, Any]]:
     """Apply governed contextual gates before the chronological meta-model."""
     prepared = []
@@ -82,7 +86,9 @@ def prepare_contextual_meta_rows(
             )
         if include_primary_agreement:
             probabilities["primary_agreement"] = (
-                _primary_agreement_probability(probabilities)
+                _primary_agreement_probability(
+                    probabilities, threshold=primary_agreement_threshold,
+                )
             )
         states = dict(row.get("family_states") or {})
         if include_primary_agreement:
@@ -131,6 +137,7 @@ def combine_contextual_families_v9(
     include_diagnostics: bool = False,
     h2h_policy: str = "progressive",
     include_primary_agreement: bool = True,
+    primary_agreement_threshold: float = 0.0,
 ) -> dict[str, Any]:
     """Fit the candidate strictly on chronological development/holdout data."""
     universe = str(universe).casefold()
@@ -153,6 +160,7 @@ def combine_contextual_families_v9(
         _attach_predictions(split["validation"], train_models, universe=universe),
         h2h_policy=h2h_policy,
         include_primary_agreement=include_primary_agreement,
+        primary_agreement_threshold=primary_agreement_threshold,
     )
     development = split["train"] + split["validation"]
     final_models = _fit_family_bundle(
@@ -163,6 +171,7 @@ def combine_contextual_families_v9(
         _attach_predictions(split["holdout"], final_models, universe=universe),
         h2h_policy=h2h_policy,
         include_primary_agreement=include_primary_agreement,
+        primary_agreement_threshold=primary_agreement_threshold,
     )
     meta_families = META_FAMILIES if include_primary_agreement else FAMILY_ORDER
     projector = (
@@ -202,9 +211,11 @@ def combine_contextual_families_v9(
         "mode": "CONTEXT_GATED_CHRONOLOGICAL_STACK",
         "h2h_policy": h2h_policy,
         "include_primary_agreement": include_primary_agreement,
+        "primary_agreement_threshold": primary_agreement_threshold,
         "family_profiles": profiles,
         "family_l1_selected_inside_train": family_l1,
         "meta_l1_selected_inside_validation": candidate["selected_l1"],
+        "meta_candidates": candidate["candidates"],
         "intercept": candidate["intercept"],
         "coefficients": coefficients,
         "family_coefficients": family_coefficients,
@@ -284,6 +295,9 @@ def predict_contextual_combination_v9(
         ),
         h2h_policy=str(model.get("h2h_policy") or "progressive"),
         include_primary_agreement=include_agreement,
+        primary_agreement_threshold=float(
+            model.get("primary_agreement_threshold") or 0.0,
+        ),
     )
     meta_families = META_FAMILIES if include_agreement else FAMILY_ORDER
     x, _, columns, _ = _meta_matrix(attached, families=meta_families)

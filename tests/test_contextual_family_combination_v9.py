@@ -78,6 +78,19 @@ def test_primary_agreement_only_activates_when_both_primary_families_align():
     assert opposed["family_probabilities"]["primary_agreement"] == 0.5
 
 
+def test_primary_agreement_threshold_ignores_weak_alignment():
+    weak = prepare_contextual_meta_rows(
+        [_row(recent=0.55, structural=0.56)],
+        primary_agreement_threshold=0.3,
+    )[0]
+    strong = prepare_contextual_meta_rows(
+        [_row(recent=0.7, structural=0.65)],
+        primary_agreement_threshold=0.3,
+    )[0]
+    assert weak["family_probabilities"]["primary_agreement"] == 0.5
+    assert strong["family_probabilities"]["primary_agreement"] > 0.5
+
+
 def test_primary_agreement_coefficient_cannot_exceed_either_primary():
     columns = _columns()
     weights = np.zeros(len(columns))

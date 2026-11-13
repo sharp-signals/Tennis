@@ -73,18 +73,20 @@ def build_report(
         holdout = chronology["holdout"]
         variants = {}
         variant_specs = {
-            "primary_agreement_only": ("raw", True),
-            "single_h2h_neutral_only": ("single_neutral", False),
-            "primary_agreement_and_single_h2h": ("single_neutral", True),
-            "primary_agreement_and_progressive_h2h": ("progressive", True),
+            "primary_agreement_threshold_000": ("raw", True, 0.0),
+            "primary_agreement_threshold_015": ("raw", True, 0.15),
+            "primary_agreement_threshold_030": ("raw", True, 0.30),
+            "primary_agreement_threshold_050": ("raw", True, 0.50),
         }
-        for name, (h2h_policy, include_agreement) in variant_specs.items():
+        for name, spec in variant_specs.items():
+            h2h_policy, include_agreement, threshold = spec
             candidate = combine_contextual_families_v9(
                 rows,
                 universe=universe,
                 include_diagnostics=True,
                 h2h_policy=h2h_policy,
                 include_primary_agreement=include_agreement,
+                primary_agreement_threshold=threshold,
             )
             candidate_diag = candidate.pop("_diagnostics")
             variants[name] = {
@@ -95,12 +97,11 @@ def build_report(
                     np.asarray(candidate_diag["holdout_probabilities"]),
                 ),
             }
-        selected_name = min(
-            variants,
-            key=lambda name: variants[name]["candidate"]["holdout"][
-                "combined"
-            ]["log_loss"],
-        )
+        def validation_score(name: str) -> float:
+            candidates = variants[name]["candidate"]["meta_candidates"]
+            return min(item["validation_log_loss"] for item in candidates)
+
+        selected_name = min(variants, key=validation_score)
         results[universe] = {
             "replay_rows": len(rows),
             "chronology": {
