@@ -27,21 +27,21 @@
       "total_snapshots": 1616
     },
     "last_refresh_attempt": {
-      "attempted_at_utc": "2026-10-29T13:30:22+00:00",
+      "attempted_at_utc": "2026-11-12T23:58:24+00:00",
       "green_strong": "AVAILABLE",
       "market_memory": "AVAILABLE"
     },
     "ledger_status": "AVAILABLE",
     "llm": {
-      "llm_external_requests": 0,
-      "llm_mode": "disabled",
-      "llm_provider_invocations": 68
+      "llm_external_requests": null,
+      "llm_mode": null,
+      "llm_provider_invocations": null
     },
     "maintenance": {
-      "finished_at_utc": null,
-      "reason_code": null,
+      "finished_at_utc": "2026-11-02T07:31:31+00:00",
+      "reason_code": "SETTLEMENT_MAINTENANCE_EXTERNAL_TIMEOUT",
       "started_at_utc": "2026-11-02T07:27:01+00:00",
-      "status": "PARTIAL"
+      "status": "TIMED_OUT"
     },
     "paired_comparison": {
       "by_code_revision": {
@@ -138737,7 +138737,7 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-11-02T07:27:30+00:00",
+  "generated_at_utc": "2026-11-13T00:35:57+00:00",
   "global": {
     "distinct_matchups": 3952,
     "green_strong_candidates": 30,
@@ -138979,7 +138979,7 @@
       "VOID_DATA_INTEGRITY": 1,
       "VOID_PRICING_SOURCE": 1
     },
-    "generated_at_utc": "2026-11-02T07:27:30+00:00",
+    "generated_at_utc": "2026-11-13T00:35:57+00:00",
     "losses": 107,
     "metric_id": "GREEN_MONETIZATION_V1",
     "net_profit_eur": -61.17,
@@ -139023,7 +139023,7 @@
       "average_market_probability": 0.425793,
       "observed_win_rate_pct": 44.44
     },
-    "generated_at_utc": "2026-11-02T07:24:26+00:00",
+    "generated_at_utc": "2026-11-13T00:35:57+00:00",
     "market_movement": {
       "average_probability_pp": -1.4342,
       "comparable_closing_n": 3,
@@ -139415,64 +139415,20 @@
     "distinct_events": 1616,
     "events_with_comparable_closing": 102,
     "events_with_entry_market": 446,
-    "generated_at_utc": "2026-11-02T07:24:25+00:00",
+    "generated_at_utc": "2026-11-13T00:35:56+00:00",
     "market_only": {
-      "accuracy_pct": 67.16,
-      "brier_score": 0.201925,
-      "log_loss": 0.588028,
-      "sample_size": 268
+      "accuracy_pct": 67.41,
+      "brier_score": 0.201151,
+      "log_loss": 0.586044,
+      "sample_size": 270
     },
     "market_plus_fenzobot": {
-      "accuracy_pct": 65.12,
-      "brier_score": 0.217213,
-      "log_loss": 0.623032,
-      "sample_size": 777
+      "accuracy_pct": 65.09,
+      "brier_score": 0.217566,
+      "log_loss": 0.62378,
+      "sample_size": 782
     },
     "observations_by_day": [
-      {
-        "date": "2026-10-04",
-        "observations": 1816
-      },
-      {
-        "date": "2026-10-05",
-        "observations": 725
-      },
-      {
-        "date": "2026-10-06",
-        "observations": 2433
-      },
-      {
-        "date": "2026-10-07",
-        "observations": 1862
-      },
-      {
-        "date": "2026-10-08",
-        "observations": 1384
-      },
-      {
-        "date": "2026-10-09",
-        "observations": 1821
-      },
-      {
-        "date": "2026-10-10",
-        "observations": 1211
-      },
-      {
-        "date": "2026-10-11",
-        "observations": 1553
-      },
-      {
-        "date": "2026-10-12",
-        "observations": 1075
-      },
-      {
-        "date": "2026-10-13",
-        "observations": 548
-      },
-      {
-        "date": "2026-10-14",
-        "observations": 656
-      },
       {
         "date": "2026-10-15",
         "observations": 257
@@ -139548,6 +139504,50 @@
       {
         "date": "2026-11-02",
         "observations": 823
+      },
+      {
+        "date": "2026-11-03",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-04",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-05",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-06",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-07",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-08",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-09",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-10",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-11",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-12",
+        "observations": 0
+      },
+      {
+        "date": "2026-11-13",
+        "observations": 0
       }
     ],
     "status": "AVAILABLE",
@@ -139561,13 +139561,13 @@
       "runtime_sha": "76fdc295c9907d98efabad08529672d9ba8bc57c"
     },
     "aliases": {
-      "ACTIVE": 2062,
+      "ACTIVE": 2110,
       "CONFLICTED": 0,
       "RETIRED": 0
     },
-    "canonical_instances": 1193,
+    "canonical_instances": 1241,
     "canonical_paper_entries": 0,
-    "canonical_snapshot_coverage_pct": 100.0,
+    "canonical_snapshot_coverage_pct": 96.13,
     "canonical_snapshots": 1193,
     "change_id": "CHANGE-2026-09-21-049",
     "observations_by_state": {
@@ -139779,7 +139779,7 @@
     "settled": 175,
     "settled_stake_units": 168.5,
     "status": "AVAILABLE",
-    "synced_at_utc": "2026-10-28T11:23:17.986Z",
+    "synced_at_utc": "2026-11-12T23:57:38.049Z",
     "total_entries": 184,
     "units": 9.847,
     "win_rate_pct": 54.857,
@@ -139923,7 +139923,7 @@
     "status": "AVAILABLE"
   },
   "schema_version": 1,
-  "semantic_fingerprint": "9362825fb92cc708e87dd17c714b83c3f3c7b5fe965a7eda03b20597dae08964",
+  "semantic_fingerprint": "760fd24005ce92492b9f0e0e3b85308d827b9ff5a114e982f93827795c459923",
   "snapshot_reconciliation_v1": {
     "absence_reason_codes": {
       "DUPLICATE_REPORT_VERSION": 217,
@@ -139968,7 +139968,7 @@
   "source_freshness": {
     "green_strong_v1": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-11-02T07:24:26+00:00"
+      "updated_at_utc": "2026-11-13T00:35:57+00:00"
     },
     "market_ledger": {
       "invalid_records": 0,
@@ -139977,15 +139977,15 @@
     },
     "market_memory": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-11-02T07:24:25+00:00"
+      "updated_at_utc": "2026-11-13T00:35:56+00:00"
     },
     "match_identity_v2": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-11-02T06:33:52+00:00"
+      "updated_at_utc": "2026-11-12T18:24:13+00:00"
     },
     "paper_22bet": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-10-28T11:23:17.986Z"
+      "updated_at_utc": "2026-11-12T23:57:38.049Z"
     },
     "paper_technical": {
       "status": "AVAILABLE",
@@ -139997,7 +139997,7 @@
     },
     "run_metrics": {
       "status": "AVAILABLE",
-      "updated_at_utc": "2026-11-02T07:24:31+00:00"
+      "updated_at_utc": "2026-11-12T18:25:19+00:00"
     },
     "snapshots": {
       "status": "AVAILABLE",
@@ -140007,27 +140007,19 @@
   "system_health": {
     "alerts": [],
     "latest": {
-      "analysis_failed": 0,
-      "duration_seconds": 3043.234,
-      "eligible": 70,
-      "llm_calls": 68,
+      "analysis_failed": null,
+      "duration_seconds": null,
+      "eligible": null,
+      "llm_calls": null,
       "llm_estimated_cost_usd": 0.0,
-      "phase": "complete",
-      "processed": 70,
-      "rapidapi_calls": 391,
-      "reports_failed": 0,
-      "status": "success",
-      "timestamp": "2026-11-02T07:24:31+00:00"
+      "phase": "contextual_publication",
+      "processed": null,
+      "rapidapi_calls": null,
+      "reports_failed": null,
+      "status": "contextual_reports_built",
+      "timestamp": "2026-11-12T18:25:19+00:00"
     },
     "recent_runs": [
-      {
-        "status": "DEGRADED",
-        "timestamp": "2026-10-26T15:10:16+00:00"
-      },
-      {
-        "status": "DEGRADED",
-        "timestamp": "2026-10-26T20:06:19+00:00"
-      },
       {
         "status": "DEGRADED",
         "timestamp": "2026-10-27T07:07:14+00:00"
@@ -140097,10 +140089,18 @@
         "timestamp": "2026-11-01T19:17:31+00:00"
       },
       {
-        "status": "HEALTHY",
+        "status": "DEGRADED",
         "timestamp": "2026-11-02T07:24:31+00:00"
+      },
+      {
+        "status": "UNKNOWN",
+        "timestamp": "2026-11-12T15:42:04+00:00"
+      },
+      {
+        "status": "UNKNOWN",
+        "timestamp": "2026-11-12T18:25:19+00:00"
       }
     ],
-    "status": "HEALTHY"
+    "status": "UNKNOWN"
   }
 }
