@@ -53,6 +53,22 @@ def test_h2h_reliability_grows_after_first_match_and_is_capped():
     assert h2h_sample_reliability(20) == 1.0
 
 
+def test_single_neutral_ablation_only_suppresses_one_h2h():
+    single, repeated = prepare_contextual_meta_rows(
+        [_row(h2h_sample=1), _row(h2h_sample=2)],
+        h2h_policy="single_neutral",
+    )
+    assert single["family_probabilities"]["matchup_h2h"] == 0.5
+    assert repeated["family_probabilities"]["matchup_h2h"] == 0.25
+
+
+def test_raw_h2h_ablation_preserves_single_h2h_signal():
+    prepared = prepare_contextual_meta_rows(
+        [_row(h2h_sample=1)], h2h_policy="raw",
+    )[0]
+    assert prepared["family_probabilities"]["matchup_h2h"] == 0.25
+
+
 def test_primary_agreement_only_activates_when_both_primary_families_align():
     aligned = prepare_contextual_meta_rows([_row()])[0]
     opposed = prepare_contextual_meta_rows([

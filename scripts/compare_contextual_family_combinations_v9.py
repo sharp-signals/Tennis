@@ -63,11 +63,7 @@ def build_report(
             },
             model_version="contextual-family-combination-v8-tier-context",
         )
-        candidate = combine_contextual_families_v9(
-            rows, universe=universe, include_diagnostics=True,
-        )
         baseline_diag = baseline.pop("_diagnostics")
-        candidate_diag = candidate.pop("_diagnostics")
         targets = np.asarray([
             1.0 if row["target_a_win"] else 0.0
             for row in baseline_diag["holdout_rows"]
@@ -75,6 +71,36 @@ def build_report(
         chronology = _split(rows)
         development = chronology["train"] + chronology["validation"]
         holdout = chronology["holdout"]
+        variants = {}
+        variant_specs = {
+            "primary_agreement_only": ("raw", True),
+            "single_h2h_neutral_only": ("single_neutral", False),
+            "primary_agreement_and_single_h2h": ("single_neutral", True),
+            "primary_agreement_and_progressive_h2h": ("progressive", True),
+        }
+        for name, (h2h_policy, include_agreement) in variant_specs.items():
+            candidate = combine_contextual_families_v9(
+                rows,
+                universe=universe,
+                include_diagnostics=True,
+                h2h_policy=h2h_policy,
+                include_primary_agreement=include_agreement,
+            )
+            candidate_diag = candidate.pop("_diagnostics")
+            variants[name] = {
+                "candidate": candidate,
+                "paired_gain": _paired_probability_gain(
+                    targets,
+                    np.asarray(baseline_diag["holdout_probabilities"]),
+                    np.asarray(candidate_diag["holdout_probabilities"]),
+                ),
+            }
+        selected_name = min(
+            variants,
+            key=lambda name: variants[name]["candidate"]["holdout"][
+                "combined"
+            ]["log_loss"],
+        )
         results[universe] = {
             "replay_rows": len(rows),
             "chronology": {
@@ -88,12 +114,10 @@ def build_report(
                 "holdout_targets": len(holdout),
             },
             "baseline_v8": _compact(baseline),
-            "candidate_v9": candidate,
-            "paired_gain": _paired_probability_gain(
-                targets,
-                np.asarray(baseline_diag["holdout_probabilities"]),
-                np.asarray(candidate_diag["holdout_probabilities"]),
-            ),
+            "variants": variants,
+            "selected_variant": selected_name,
+            "candidate_v9": variants[selected_name]["candidate"],
+            "paired_gain": variants[selected_name]["paired_gain"],
         }
     return {
         "schema_version": 1,

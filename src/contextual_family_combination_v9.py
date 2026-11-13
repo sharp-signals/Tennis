@@ -57,7 +57,10 @@ def _primary_agreement_probability(probabilities: dict[str, Any]) -> float:
     return _sigmoid(direction * min(abs(value) for value in values))
 
 
-def prepare_contextual_meta_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def prepare_contextual_meta_rows(
+    rows: list[dict[str, Any]], *, h2h_policy: str = "progressive",
+    include_primary_agreement: bool = True,
+) -> list[dict[str, Any]]:
     """Apply governed contextual gates before the chronological meta-model."""
     prepared = []
     for row in rows:
@@ -65,19 +68,28 @@ def prepare_contextual_meta_rows(rows: list[dict[str, Any]]) -> list[dict[str, A
         samples = row.get("samples") or {}
         h2h_sample = int(samples.get("h2h") or 0)
         h2h_probability = probabilities.get("matchup_h2h")
-        reliability = h2h_sample_reliability(h2h_sample)
+        if h2h_policy == "raw":
+            reliability = 1.0
+        elif h2h_policy == "single_neutral":
+            reliability = 0.0 if h2h_sample <= 1 else 1.0
+        elif h2h_policy == "progressive":
+            reliability = h2h_sample_reliability(h2h_sample)
+        else:
+            raise ValueError(f"unexpected H2H policy: {h2h_policy}")
         if h2h_probability is not None:
             probabilities["matchup_h2h"] = _sigmoid(
                 _logit(float(h2h_probability)) * reliability,
             )
-        probabilities["primary_agreement"] = (
-            _primary_agreement_probability(probabilities)
-        )
+        if include_primary_agreement:
+            probabilities["primary_agreement"] = (
+                _primary_agreement_probability(probabilities)
+            )
         states = dict(row.get("family_states") or {})
-        states["primary_agreement"] = {
-            "data_state": "OBSERVED",
-            "signal_state": "AVAILABLE",
-        }
+        if include_primary_agreement:
+            states["primary_agreement"] = {
+                "data_state": "OBSERVED",
+                "signal_state": "AVAILABLE",
+            }
         prepared.append({
             **row,
             "family_probabilities": probabilities,
@@ -85,8 +97,9 @@ def prepare_contextual_meta_rows(rows: list[dict[str, Any]]) -> list[dict[str, A
             "combination_context_v9": {
                 "h2h_sample": h2h_sample,
                 "h2h_reliability": round(reliability, 6),
-                "primary_agreement_probability": round(
-                    probabilities["primary_agreement"], 6,
+                "primary_agreement_probability": (
+                    round(probabilities["primary_agreement"], 6)
+                    if include_primary_agreement else None
                 ),
             },
         })
@@ -116,6 +129,8 @@ def combine_contextual_families_v9(
     rows: list[dict[str, Any]], *, universe: str,
     l1_grid: Iterable[float] = DEFAULT_L1_GRID,
     include_diagnostics: bool = False,
+    h2h_policy: str = "progressive",
+    include_primary_agreement: bool = True,
 ) -> dict[str, Any]:
     """Fit the candidate strictly on chronological development/holdout data."""
     universe = str(universe).casefold()
@@ -134,21 +149,30 @@ def combine_contextual_families_v9(
         split["train"], universe=universe,
         selected_l1=family_l1, profiles=profiles,
     )
-    development_meta = prepare_contextual_meta_rows(_attach_predictions(
-        split["validation"], train_models, universe=universe,
-    ))
+    development_meta = prepare_contextual_meta_rows(
+        _attach_predictions(split["validation"], train_models, universe=universe),
+        h2h_policy=h2h_policy,
+        include_primary_agreement=include_primary_agreement,
+    )
     development = split["train"] + split["validation"]
     final_models = _fit_family_bundle(
         development, universe=universe,
         selected_l1=family_l1, profiles=profiles,
     )
-    holdout = prepare_contextual_meta_rows(_attach_predictions(
-        split["holdout"], final_models, universe=universe,
-    ))
+    holdout = prepare_contextual_meta_rows(
+        _attach_predictions(split["holdout"], final_models, universe=universe),
+        h2h_policy=h2h_policy,
+        include_primary_agreement=include_primary_agreement,
+    )
+    meta_families = META_FAMILIES if include_primary_agreement else FAMILY_ORDER
+    projector = (
+        hierarchy_v9_projector
+        if include_primary_agreement else hierarchy_projector
+    )
     candidate = _fit_and_evaluate_meta(
         development_meta, holdout, l1_grid=l1_grid,
-        families=META_FAMILIES,
-        projector_factory=hierarchy_v9_projector,
+        families=meta_families,
+        projector_factory=projector,
     )
     primary_only = _fit_and_evaluate_meta(
         development_meta, holdout, l1_grid=l1_grid,
@@ -158,7 +182,7 @@ def combine_contextual_families_v9(
     coefficients = dict(candidate["coefficients"])
     family_coefficients = {
         family: coefficients[f"{family}__logit"]
-        for family in META_FAMILIES
+        for family in meta_families
     }
     targets = np.asarray([
         1.0 if row["target_a_win"] else 0.0 for row in holdout
@@ -176,6 +200,8 @@ def combine_contextual_families_v9(
         "universe": universe,
         "status": "CANDIDATE_FITTED",
         "mode": "CONTEXT_GATED_CHRONOLOGICAL_STACK",
+        "h2h_policy": h2h_policy,
+        "include_primary_agreement": include_primary_agreement,
         "family_profiles": profiles,
         "family_l1_selected_inside_train": family_l1,
         "meta_l1_selected_inside_validation": candidate["selected_l1"],
@@ -185,14 +211,19 @@ def combine_contextual_families_v9(
         "runtime_family_models": final_models,
         "hierarchy": {
             "primary": list(PRIMARY_FAMILIES),
-            "primary_agreement_role": "BOUNDED_CONTEXTUAL_INTERACTION",
-            "primary_agreement_not_above_each_primary": all((
+            "primary_agreement_role": (
+                "BOUNDED_CONTEXTUAL_INTERACTION"
+                if include_primary_agreement else "DISABLED_FOR_ABLATION"
+            ),
+            "primary_agreement_not_above_each_primary": (
+                all((
                 family_coefficients["primary_agreement"]
                 <= family_coefficients[name] + 1e-9
                 for name in PRIMARY_FAMILIES
-            )),
-            "h2h_role": "SAMPLE_GATED_OPTIONAL_MODIFIER",
-            "single_h2h_directional_vote": False,
+                )) if include_primary_agreement else None
+            ),
+            "h2h_role": h2h_policy,
+            "single_h2h_directional_vote": h2h_policy == "raw",
         },
         "holdout": {
             "combined": candidate["metrics"],
@@ -210,8 +241,8 @@ def combine_contextual_families_v9(
             "beats_intercept_only": (
                 candidate["metrics"]["log_loss"] < baseline["log_loss"]
             ),
-            "primary_agreement_fitted_not_fixed": True,
-            "single_h2h_is_factual_only": True,
+            "primary_agreement_fitted_not_fixed": include_primary_agreement,
+            "single_h2h_is_factual_only": h2h_policy != "raw",
             "market_independent": True,
             "production_unchanged": True,
         },
@@ -246,10 +277,16 @@ def predict_contextual_combination_v9(
     model = contract.get("universes", {}).get(universe)
     if not isinstance(model, dict):
         raise ValueError(f"combination v9 missing universe: {universe}")
-    attached = prepare_contextual_meta_rows(_attach_predictions(
-        rows, model["runtime_family_models"], universe=universe,
-    ))
-    x, _, columns, _ = _meta_matrix(attached, families=META_FAMILIES)
+    include_agreement = bool(model.get("include_primary_agreement", True))
+    attached = prepare_contextual_meta_rows(
+        _attach_predictions(
+            rows, model["runtime_family_models"], universe=universe,
+        ),
+        h2h_policy=str(model.get("h2h_policy") or "progressive"),
+        include_primary_agreement=include_agreement,
+    )
+    meta_families = META_FAMILIES if include_agreement else FAMILY_ORDER
+    x, _, columns, _ = _meta_matrix(attached, families=meta_families)
     coefficients = model["family_coefficients"]
     weights = np.asarray([
         float(coefficients[name.removesuffix("__logit")])
