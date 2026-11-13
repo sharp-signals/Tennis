@@ -23,3 +23,28 @@ Calibrar historicamente a concordância entre `Forma recente ajustada` e
 O candidato só pode substituir a combinação v8 depois de replay cronológico
 ATP/WTA, comparação emparelhada fora da amostra, calibração de incerteza e
 testes completos. Até essa decisão, `production_effect=false`.
+
+## Resultado do replay cronológico
+
+O replay usou 26 691 jogos ATP e 24 498 jogos WTA, com o período final
+reservado exclusivamente para avaliação fora da amostra.
+
+- O reforço global da concordância das famílias principais ficou
+  inconclusivo e ligeiramente abaixo da v8 em ATP e WTA.
+- Neutralizar o voto direcional de um único H2H piorou significativamente
+  ambos os circuitos. A redução progressiva também foi rejeitada.
+- Foram testados limiares de concordância forte, escolhidos no período de
+  desenvolvimento. Nenhum demonstrou ganho estatisticamente confirmado no
+  período final.
+- Melhor variante ATP: `threshold_030`, ganho de log-loss `-0.000090`,
+  intervalo de 95% `[-0.000356, 0.000175]` — inconclusivo.
+- Melhor resultado observado WTA: `threshold_050`, ganho `+0.000051`,
+  intervalo de 95% `[-0.000116, 0.000218]` — inconclusivo. O limiar escolhido
+  apenas no desenvolvimento foi `threshold_015` e não melhorou o holdout.
+
+## Decisão
+
+O candidato não é promovido. A combinação v8 e a calibração de fair odds de
+produção permanecem inalteradas. O relatório pode continuar a mostrar o H2H
+único como facto, mas o replay não suporta retirar por decreto o pequeno efeito
+que o modelo já lhe atribui. Não existe ajuste manual para Fritz ou Tirante.
