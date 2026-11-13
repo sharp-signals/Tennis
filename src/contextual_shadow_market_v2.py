@@ -106,6 +106,14 @@ def build_market_observation(
     if provenance.get("operational_pricing_eligible") is not True:
         return None
     bookmaker = str(provenance.get("bookmaker") or "").strip()
+    if (
+        not bookmaker
+        and provenance.get("bookmaker_attribution")
+        == "NOT_EXPOSED_BY_PROVIDER_FEED"
+        and provenance.get("source")
+        == "RapidAPI Tennis API / pre-match match-winner feed"
+    ):
+        bookmaker = "RapidAPI pre-match feed (casa não identificada)"
     if not bookmaker:
         return None
     linked = match_fixture(observation, [fixture])
