@@ -54,6 +54,7 @@ ALLOWED_TOURNAMENT_TIERS = {
     "ATP Masters 1000",
     "ATP 500",
     "ATP 250",
+    "Finals",  # ATP Finals; valor confirmado no cache do id 21364
     "WTA 1000",   # reativado 28/07/2026 (H2H rico via matchstat + Sackmann de volta)
     "WTA 500",    # valor exato confirmado via getTournamentInfo no id 16738
     "WTA 250",

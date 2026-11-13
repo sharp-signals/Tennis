@@ -26,6 +26,13 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
             "commence_time_utc": "2026-11-11T20:00:00+00:00",
             "players": {"a": {"name": "Past A"}, "b": {"name": "Past B"}},
         },
+        {
+            "observation_id": "stale-future",
+            "commence_time_utc": "2026-11-14T20:00:00+00:00",
+            "players": {
+                "a": {"name": "Stale A"}, "b": {"name": "Stale B"},
+            },
+        },
     ]
     observations.write_text(
         "\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8",
@@ -39,7 +46,7 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
                 row["observation_id"], encoding="utf-8",
             )
         return {
-            "status": "COMPLETED", "reports_built": 2, "isolation": {},
+            "status": "COMPLETED", "reports_built": 1, "isolation": {},
             "notification_rows": [{
                 "observation_id": "future", "status": "NO_POSITIVE_EDGE",
             }],
@@ -63,6 +70,7 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
     assert len(payload["reports"]) == 1
     assert payload["reports"][0]["url"].endswith("report-future.html")
     assert "Player A vs Player B" in payload["telegram_chunks"][0]
+    assert "Stale A vs Stale B" not in payload["telegram_chunks"][0]
     assert "🔴 SEM EDGE POSITIVO" in payload["telegram_chunks"][0]
     assert payload["email"]["today"] == "2026-11-12"
     assert payload["email"]["groups"][0]["name"] == "🔴 SEM EDGE POSITIVO"

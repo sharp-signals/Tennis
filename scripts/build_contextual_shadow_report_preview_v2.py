@@ -60,9 +60,15 @@ def build_previews(
     max_observations: int = 50,
     expected_model_version: str = MODEL_VERSION,
     report_contract: dict[str, Any] | None = None,
+    observation_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     report_contract = report_contract or load_report_contract()
     observations = read_jsonl(observations_path)
+    if observation_ids is not None:
+        observations = [
+            row for row in observations
+            if str(row.get("observation_id") or "") in observation_ids
+        ]
     market_history: dict[str, list[dict[str, Any]]] = {}
     for row in read_jsonl(market_path):
         key = str(row.get("observation_id") or "")

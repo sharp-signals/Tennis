@@ -206,6 +206,63 @@ class ContextualShadowMarketTests(unittest.TestCase):
             self.assertFalse(report["isolation"]["paper_created"])
             self.assertTrue(summary_path.exists())
 
+    def test_capture_falls_back_to_rapidapi_when_odds_api_has_no_finals_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            observations_path = root / "observations.jsonl"
+            market_path = root / "market.jsonl"
+            summary_path = root / "summary.json"
+            finals_observation = observation()
+            finals_observation["tier"] = "Finals"
+            finals_fixture = {
+                **fixture(),
+                "tier": "Finals",
+                "tournament_name": "Nitto ATP Finals - Turin",
+            }
+            observations_path.write_text(
+                json.dumps(finals_observation) + "\n", encoding="utf-8",
+            )
+            rapid_provenance = {
+                **provenance(),
+                "source": "RapidAPI Tennis API / recent-odds",
+            }
+            with (
+                patch.object(
+                    runner.fetch_data, "fetch_resilient_discovery_fixtures",
+                    return_value=[finals_fixture],
+                ),
+                patch.object(runner.fetch_data, "prepare_the_odds_market_index"),
+                patch.object(
+                    runner.fetch_data,
+                    "fetch_the_odds_moneyline_with_provenance",
+                    return_value=(None, None),
+                ),
+                patch.object(
+                    runner.fetch_data,
+                    "fetch_rapidapi_recent_moneyline_with_provenance",
+                    return_value=(
+                        {"Beta": 2.5, "Alpha": 1.6}, rapid_provenance,
+                    ),
+                ),
+                patch.object(runner.fetch_data, "flush_tournament_cache"),
+                patch.object(runner.fetch_data, "flush_fixtures_cache"),
+                patch.object(runner.fetch_data, "persist_rapidapi_usage"),
+                patch.object(
+                    runner.fetch_data, "get_rapidapi_call_count", return_value=0,
+                ),
+            ):
+                report = runner.capture(
+                    observations_path=observations_path,
+                    market_path=market_path,
+                    summary_path=summary_path,
+                )
+
+            self.assertEqual(report["market_quotes_added"], 1)
+            self.assertEqual(
+                report["source_counts"],
+                {"RapidAPI Tennis API / recent-odds": 1},
+            )
+
     def test_workflow_orders_prediction_before_market_and_evaluation(self):
         workflow = Path(".github/workflows/contextual-shadow-v2.yml").read_text(
             encoding="utf-8",

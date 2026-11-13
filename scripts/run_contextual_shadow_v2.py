@@ -534,6 +534,10 @@ def _run_shadow_only(
         "eligible_main_tour": len(eligible),
         "eligible_main_tour_by_tour": count_by_tour(eligible),
         "observations_built": len(observations),
+        "observation_ids_built": [
+            str(row.get("observation_id")) for row in observations
+            if row.get("observation_id")
+        ],
         "observations_built_by_tour": count_by_tour(
             observations, observation_rows=True,
         ),

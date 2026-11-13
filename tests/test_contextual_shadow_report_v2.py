@@ -365,6 +365,7 @@ class ContextualShadowReportTests(unittest.TestCase):
     def test_family_detail_can_switch_to_visual_xray(self):
         prediction = copy.deepcopy(observation())
         prediction["contextual_shadow"]["families"][0]["internal_trace"] = {
+            "intercept": -0.25,
             "features": [
                 {
                     "key": "contextual_recent_result_main_v7",
@@ -390,6 +391,8 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn('data-impact-side="b"', html)
         self.assertIn("Resultados recentes · circuito principal", html)
         self.assertIn("Vitórias de qualidade · circuito principal", html)
+        self.assertIn("Base estatística da família", html)
+        self.assertIn("ajuste histórico; não é um dado individual deste jogo", html)
         self.assertNotIn("contextual_recent_result_main_v7", html)
         self.assertNotIn("logit_contribution", html)
 
@@ -670,6 +673,39 @@ class ContextualShadowReportTests(unittest.TestCase):
             self.assertIn("Movimento desde a leitura anterior", html)
             self.assertIn("1.90 → 1.85", html)
             self.assertFalse(summary["isolation"]["operational_reports_published"])
+
+    def test_builder_can_limit_index_and_reports_to_current_run_ids(self):
+        with TemporaryDirectory(dir=Path.cwd()) as directory:
+            root = Path(directory)
+            observations = root / "observations.jsonl"
+            markets = root / "markets.jsonl"
+            outcomes = root / "outcomes.jsonl"
+            output = root / "preview"
+            current = observation()
+            historical = copy.deepcopy(current)
+            historical["observation_id"] = "obs-historical"
+            historical["canonical_match_instance_id"] = "match-historical"
+            observations.write_text(
+                "\n".join(json.dumps(row) for row in (historical, current)) + "\n",
+                encoding="utf-8",
+            )
+            markets.write_text("", encoding="utf-8")
+            outcomes.write_text("", encoding="utf-8")
+
+            summary = runner.build_previews(
+                output_dir=output,
+                observations_path=observations,
+                market_path=markets,
+                outcomes_path=outcomes,
+                observation_ids={"obs-1"},
+            )
+
+            self.assertEqual(summary["reports_built"], 1)
+            self.assertTrue((output / "report-obs-1.html").exists())
+            self.assertFalse((output / "report-obs-historical.html").exists())
+            index = (output / "index.html").read_text(encoding="utf-8")
+            self.assertIn("Alpha Player", index)
+            self.assertNotIn("obs-historical", index)
 
     def test_workflow_builds_and_uploads_preview_without_publishing_it(self):
         workflow = Path(".github/workflows/contextual-shadow-v2.yml").read_text(

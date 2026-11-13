@@ -871,6 +871,9 @@ def _family_detail_html(
     if not features:
         return '<p class="family-detail-empty">Sem decomposição adicional disponível.</p>'
     active_totals = []
+    intercept = _number(trace.get("intercept")) or 0.0
+    if abs(intercept) > 1e-9:
+        active_totals.append(abs(intercept))
     for feature in features:
         if feature.get("missing"):
             continue
@@ -882,6 +885,29 @@ def _family_detail_html(
     absolute_total = sum(active_totals)
     rows = []
     xray_rows = []
+    if abs(intercept) > 1e-9:
+        side = "A" if intercept > 0 else "B"
+        direction = side.casefold()
+        player = players[direction]
+        share = abs(intercept) / absolute_total if absolute_total else 0.0
+        width = min(100.0, 100.0 * share)
+        rows.append(
+            f'<div class="factor-row factor-{direction} factor-baseline">'
+            '<span class="factor-name">Base estatística da família</span>'
+            '<div class="factor-visual"><span class="factor-fill" '
+            f'style="--factor-width:{width:.1f}%"></span></div>'
+            f'<b>{_e("Favorece " + player["name"])}</b>'
+            '<small>ajuste histórico; não é um dado individual deste jogo</small></div>'
+        )
+        xray_rows.append(
+            f'<div class="xray-row xray-{direction}" '
+            f'data-impact-side="{direction}" data-impact-pct="{width:.1f}">'
+            '<div class="xray-row-head"><span>Base estatística da família</span>'
+            f'<b>{_e(player["name"])}</b></div>'
+            f'<div class="xray-track"><span class="xray-axis"></span>'
+            f'<span class="xray-fill {direction}" style="--xray-width:{width / 2.0:.2f}%"></span>'
+            '<small>ajuste histórico do modelo</small></div></div>'
+        )
     for feature in features:
         missing = bool(feature.get("missing"))
         contribution = _number(feature.get("logit_contribution")) or 0.0

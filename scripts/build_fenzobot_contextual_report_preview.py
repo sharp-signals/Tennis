@@ -17,6 +17,7 @@ from scripts.settle_fenzobot_contextual_2026_11 import OUTCOMES_PATH  # noqa: E4
 from src.contextual_shadow_report_v2 import load_report_contract  # noqa: E402
 from src.fenzobot_contextual_runtime import GLOBAL_RELEASE_ID  # noqa: E402
 from src.fenzobot_contextual_store import DEFAULT_PATH  # noqa: E402
+from scripts.run_fenzobot_contextual_2026_11 import SUMMARY_PATH  # noqa: E402
 
 
 REPORT_CONTRACT_PATH = Path(
@@ -39,8 +40,14 @@ def build_release_previews(
     contract = load_report_contract(
         REPORT_CONTRACT_PATH,
         expected_model_version=GLOBAL_RELEASE_ID,
-        expected_contract_version="fenzobot-contextual-2026-11-report.11",
+        expected_contract_version="fenzobot-contextual-2026-11-report.12",
     )
+    observation_ids = None
+    if SUMMARY_PATH.is_file():
+        summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+        built = summary.get("observation_ids_built")
+        if isinstance(built, list):
+            observation_ids = {str(value) for value in built if value}
     return build_previews(
         output_dir=output_dir,
         observations_path=DEFAULT_PATH,
@@ -52,6 +59,7 @@ def build_release_previews(
         max_observations=max_observations,
         expected_model_version=GLOBAL_RELEASE_ID,
         report_contract=contract,
+        observation_ids=observation_ids,
     )
 
 
