@@ -50,6 +50,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.9",
                 "fenzobot-contextual-2026-11-report.10",
                 "fenzobot-contextual-2026-11-report.11",
+                "fenzobot-contextual-2026-11-report.12",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
@@ -61,6 +62,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
                 )
@@ -71,6 +73,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
                 )
@@ -84,6 +87,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.9",
                 "fenzobot-contextual-2026-11-report.10",
                 "fenzobot-contextual-2026-11-report.11",
+                "fenzobot-contextual-2026-11-report.12",
             }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
@@ -95,6 +99,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("family_detail_must_offer_xray_toggle") is not True
                 )
@@ -103,6 +108,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("h2h_family_must_show_factual_match_history") is not True
                 )
@@ -110,15 +116,24 @@ def load_report_contract(
                     expected_contract_version in {
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("h2h_facts_must_join_without_prediction_rewrite") is not True
                 )
                 or (
-                    expected_contract_version == "fenzobot-contextual-2026-11-report.11"
+                    expected_contract_version in {
+                        "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
+                    }
                     and (
                         rules.get("markets_require_conservative_positive_edge") is not True
                         or rules.get("balanced_sensitive_must_suppress_markets") is not True
                     )
+                )
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.12"
+                    and rules.get("family_detail_must_show_statistical_baseline")
+                    is not True
                 )
             )
         )
