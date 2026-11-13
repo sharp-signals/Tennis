@@ -50,6 +50,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.9",
                 "fenzobot-contextual-2026-11-report.10",
                 "fenzobot-contextual-2026-11-report.11",
+                "fenzobot-contextual-2026-11-report.12",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
@@ -61,6 +62,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
                 )
@@ -71,6 +73,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
                 )
@@ -84,6 +87,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.9",
                 "fenzobot-contextual-2026-11-report.10",
                 "fenzobot-contextual-2026-11-report.11",
+                "fenzobot-contextual-2026-11-report.12",
             }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
@@ -95,6 +99,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("family_detail_must_offer_xray_toggle") is not True
                 )
@@ -103,6 +108,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.9",
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("h2h_family_must_show_factual_match_history") is not True
                 )
@@ -110,15 +116,24 @@ def load_report_contract(
                     expected_contract_version in {
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
                     }
                     and rules.get("h2h_facts_must_join_without_prediction_rewrite") is not True
                 )
                 or (
-                    expected_contract_version == "fenzobot-contextual-2026-11-report.11"
+                    expected_contract_version in {
+                        "fenzobot-contextual-2026-11-report.11",
+                        "fenzobot-contextual-2026-11-report.12",
+                    }
                     and (
                         rules.get("markets_require_conservative_positive_edge") is not True
                         or rules.get("balanced_sensitive_must_suppress_markets") is not True
                     )
+                )
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.12"
+                    and rules.get("family_detail_must_show_statistical_baseline")
+                    is not True
                 )
             )
         )
@@ -871,6 +886,9 @@ def _family_detail_html(
     if not features:
         return '<p class="family-detail-empty">Sem decomposição adicional disponível.</p>'
     active_totals = []
+    intercept = _number(trace.get("intercept")) or 0.0
+    if abs(intercept) > 1e-9:
+        active_totals.append(abs(intercept))
     for feature in features:
         if feature.get("missing"):
             continue
@@ -882,6 +900,29 @@ def _family_detail_html(
     absolute_total = sum(active_totals)
     rows = []
     xray_rows = []
+    if abs(intercept) > 1e-9:
+        side = "A" if intercept > 0 else "B"
+        direction = side.casefold()
+        player = players[direction]
+        share = abs(intercept) / absolute_total if absolute_total else 0.0
+        width = min(100.0, 100.0 * share)
+        rows.append(
+            f'<div class="factor-row factor-{direction} factor-baseline">'
+            '<span class="factor-name">Base estatística da família</span>'
+            '<div class="factor-visual"><span class="factor-fill" '
+            f'style="--factor-width:{width:.1f}%"></span></div>'
+            f'<b>{_e("Favorece " + player["name"])}</b>'
+            '<small>ajuste histórico; não é um dado individual deste jogo</small></div>'
+        )
+        xray_rows.append(
+            f'<div class="xray-row xray-{direction}" '
+            f'data-impact-side="{direction}" data-impact-pct="{width:.1f}">'
+            '<div class="xray-row-head"><span>Base estatística da família</span>'
+            f'<b>{_e(player["name"])}</b></div>'
+            f'<div class="xray-track"><span class="xray-axis"></span>'
+            f'<span class="xray-fill {direction}" style="--xray-width:{width / 2.0:.2f}%"></span>'
+            '<small>ajuste histórico do modelo</small></div></div>'
+        )
     for feature in features:
         missing = bool(feature.get("missing"))
         contribution = _number(feature.get("logit_contribution")) or 0.0

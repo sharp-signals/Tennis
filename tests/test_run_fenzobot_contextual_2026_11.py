@@ -80,6 +80,7 @@ def test_global_release_empty_run_remains_isolated():
     assert summary["model_version"] == "FENZOBOT_CONTEXTUAL_2026_11"
     assert summary["eligible_main_tour"] == 0
     assert summary["observations_added"] == 0
+    assert summary["observation_ids_built"] == []
     assert summary["isolation"] == {
         "market_used": False,
         "reports_published": False,

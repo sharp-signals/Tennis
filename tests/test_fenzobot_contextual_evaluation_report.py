@@ -71,7 +71,7 @@ def _contract():
     return report.load_report_contract(
         Path("data/models/fenzobot-contextual-2026-11-report.json"),
         expected_model_version=GLOBAL_RELEASE_ID,
-        expected_contract_version="fenzobot-contextual-2026-11-report.11",
+        expected_contract_version="fenzobot-contextual-2026-11-report.12",
     )
 
 

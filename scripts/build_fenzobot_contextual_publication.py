@@ -135,6 +135,7 @@ def build_publication(
         for row in summary.get("notification_rows") or []
         if row.get("observation_id")
     }
+    current_run_ids = set(notification_rows)
     grouped_lines: dict[int, dict[str, object]] = {}
     email_groups: dict[int, dict[str, object]] = {}
     notification_lines = [
@@ -144,7 +145,11 @@ def build_publication(
     ]
     for row in observations:
         observation_id = str(row.get("observation_id") or "")
-        if not observation_id or observation_id in outcomes:
+        if (
+            not observation_id
+            or observation_id not in current_run_ids
+            or observation_id in outcomes
+        ):
             continue
         try:
             commence = datetime.fromisoformat(

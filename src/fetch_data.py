@@ -1094,6 +1094,9 @@ def get_discovery_diagnostics() -> dict:
                 _DISCOVERY_DIAGNOSTICS.get("tournament_filter_by_tour") or {}
             ).items()
         },
+        "upcoming_fixture_reconciliation": dict(
+            _DISCOVERY_DIAGNOSTICS.get("upcoming_fixture_reconciliation") or {}
+        ),
     }
 
 
@@ -9828,6 +9831,17 @@ def _deduplicate_fixture_ids(matches: list[dict]) -> list[dict]:
     return result
 
 
+def _canonical_fixture_player_ids(match: dict) -> tuple[str, str] | None:
+    """Return an orientation-free player pair for cross-endpoint checks."""
+    player1 = match.get("player1") or {}
+    player2 = match.get("player2") or {}
+    first = match.get("player1Id") or player1.get("id")
+    second = match.get("player2Id") or player2.get("id")
+    if first in (None, "") or second in (None, ""):
+        return None
+    return tuple(sorted((str(first), str(second))))
+
+
 def _is_singles_fixture(match: dict) -> bool:
     """Replica a regra operacional legacy: nomes com ``/`` são pares."""
     player1 = str((match.get("player1") or {}).get("name") or "")
@@ -9911,6 +9925,38 @@ def fetch_resilient_discovery_fixtures() -> list[dict]:
         for tournament_id, tour in tracked.items():
             all_matches.extend(fetch_tournament_fixtures(tournament_id, tour))
         all_matches = _deduplicate_fixture_ids(all_matches)
+        upcoming_by_id = {
+            str(event.get("id")): event
+            for event in events
+            if event.get("id") not in (None, "")
+        }
+        if upcoming_by_id:
+            reconciled = []
+            identity_conflicts = 0
+            stale_fixture_ids = 0
+            for match in all_matches:
+                match_id = str(match.get("id") or "")
+                upcoming = upcoming_by_id.get(match_id)
+                if upcoming is None:
+                    stale_fixture_ids += 1
+                    continue
+                fixture_players = _canonical_fixture_player_ids(match)
+                upcoming_players = _canonical_fixture_player_ids(upcoming)
+                if (
+                    fixture_players is not None
+                    and upcoming_players is not None
+                    and fixture_players != upcoming_players
+                ):
+                    identity_conflicts += 1
+                    continue
+                reconciled.append(match)
+            all_matches = reconciled
+            _DISCOVERY_DIAGNOSTICS["upcoming_fixture_reconciliation"] = {
+                "status": "HEALTHY" if not identity_conflicts else "DEGRADED",
+                "accepted": len(reconciled),
+                "stale_fixture_ids_excluded": stale_fixture_ids,
+                "identity_conflicts_excluded": identity_conflicts,
+            }
         selected_status = (
             DISCOVERY_SUCCESS_WITH_MATCHES
             if all_matches else DISCOVERY_SUCCESS_EMPTY

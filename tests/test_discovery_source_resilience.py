@@ -433,6 +433,45 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
         self.assertEqual(wta["accepted"], 1)
         self.assertEqual(wta["rejected"], 0)
 
+    def test_atp_finals_tier_is_main_tour_eligible(self):
+        events = [self._fixture(1, 21364, "atp")]
+        fetch_data._reset_discovery_diagnostics()
+        with patch.object(
+            fetch_data, "get_tournament_info",
+            return_value={
+                "tier": "Finals", "name": "Nitto ATP Finals - Turin",
+                "surface": "I.hard",
+            },
+        ):
+            accepted = fetch_data._eligible_tournaments_from_events(events)
+
+        self.assertEqual(accepted, {21364: "atp"})
+        self.assertIn("Finals", config.ALLOWED_TOURNAMENT_TIERS)
+
+    def test_upcoming_and_tournament_fixture_identity_must_agree(self):
+        upcoming = self._fixture(77, 16758, "wta")
+        upcoming["player1"] = {"id": 10, "name": "Karolina Muchova"}
+        upcoming["player2"] = {"id": 20, "name": "Mirra Andreeva"}
+        stale = deepcopy(upcoming)
+        stale["player1"] = {"id": 30, "name": "Jessica Pegula"}
+
+        with patch.object(
+            fetch_data, "_fetch_extend_upcoming_events", return_value=[upcoming],
+        ), patch.object(
+            fetch_data, "get_tournament_info",
+            return_value={"tier": "Championships", "name": "WTA Finals"},
+        ), patch.object(
+            fetch_data, "fetch_tournament_fixtures", return_value=[stale],
+        ):
+            actual = fetch_data.fetch_resilient_discovery_fixtures()
+
+        self.assertEqual(actual, [])
+        reconciliation = fetch_data.get_discovery_diagnostics()[
+            "upcoming_fixture_reconciliation"
+        ]
+        self.assertEqual(reconciliation["identity_conflicts_excluded"], 1)
+        self.assertEqual(reconciliation["status"], "DEGRADED")
+
     def test_core_deduplicates_fixture_ids_and_never_fabricates_event_id(self):
         one = self._fixture(1, 10)
         duplicate = deepcopy(one)
