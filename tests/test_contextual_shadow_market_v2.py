@@ -183,6 +183,7 @@ class ContextualShadowMarketTests(unittest.TestCase):
                     return_value=[fixture()],
                 ),
                 patch.object(runner.fetch_data, "prepare_the_odds_market_index"),
+                patch.object(runner.fetch_data, "prepare_rapidapi_odds_index"),
                 patch.object(
                     runner.fetch_data,
                     "fetch_the_odds_moneyline_with_provenance",
@@ -232,6 +233,7 @@ class ContextualShadowMarketTests(unittest.TestCase):
                     return_value=[finals_fixture],
                 ),
                 patch.object(runner.fetch_data, "prepare_the_odds_market_index"),
+                patch.object(runner.fetch_data, "prepare_rapidapi_odds_index"),
                 patch.object(
                     runner.fetch_data,
                     "fetch_the_odds_moneyline_with_provenance",
@@ -261,6 +263,68 @@ class ContextualShadowMarketTests(unittest.TestCase):
             self.assertEqual(
                 report["source_counts"],
                 {"RapidAPI Tennis API / recent-odds": 1},
+            )
+
+    def test_capture_uses_verified_upcoming_feed_as_third_fallback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            observations_path = root / "observations.jsonl"
+            market_path = root / "market.jsonl"
+            summary_path = root / "summary.json"
+            observations_path.write_text(
+                json.dumps(observation()) + "\n", encoding="utf-8",
+            )
+            feed_provenance = {
+                **provenance(),
+                "source": "RapidAPI Tennis API / pre-match match-winner feed",
+                "bookmaker": None,
+                "bookmaker_attribution": "NOT_EXPOSED_BY_PROVIDER_FEED",
+            }
+            with (
+                patch.object(
+                    runner.fetch_data, "fetch_resilient_discovery_fixtures",
+                    return_value=[fixture()],
+                ),
+                patch.object(runner.fetch_data, "prepare_the_odds_market_index"),
+                patch.object(runner.fetch_data, "prepare_rapidapi_odds_index"),
+                patch.object(
+                    runner.fetch_data,
+                    "fetch_the_odds_moneyline_with_provenance",
+                    return_value=(None, None),
+                ),
+                patch.object(
+                    runner.fetch_data,
+                    "fetch_rapidapi_recent_moneyline_with_provenance",
+                    return_value=(None, None),
+                ),
+                patch.object(
+                    runner.fetch_data,
+                    "fetch_rapidapi_upcoming_operational_moneyline_with_provenance",
+                    return_value=(
+                        {"Beta": 2.5, "Alpha": 1.6}, feed_provenance,
+                    ),
+                ),
+                patch.object(runner.fetch_data, "flush_tournament_cache"),
+                patch.object(runner.fetch_data, "flush_fixtures_cache"),
+                patch.object(runner.fetch_data, "persist_rapidapi_usage"),
+                patch.object(
+                    runner.fetch_data, "get_rapidapi_call_count", return_value=0,
+                ),
+            ):
+                report = runner.capture(
+                    observations_path=observations_path,
+                    market_path=market_path,
+                    summary_path=summary_path,
+                )
+
+            self.assertEqual(report["market_quotes_added"], 1)
+            self.assertEqual(report["source_counts"], {
+                "RapidAPI Tennis API / pre-match match-winner feed": 1,
+            })
+            stored = json.loads(market_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                stored["bookmaker"],
+                "RapidAPI pre-match feed (casa não identificada)",
             )
 
     def test_workflow_orders_prediction_before_market_and_evaluation(self):

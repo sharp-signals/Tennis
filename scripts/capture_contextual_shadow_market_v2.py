@@ -106,6 +106,10 @@ def capture(
 
     linked_fixtures = [fixture for _, fixture in linked]
     fetch_data.prepare_the_odds_market_index(linked_fixtures)
+    # Prepara também a Moneyline incluída no feed RapidAPI já descarregado
+    # pela descoberta. Não acrescenta chamadas; apenas cria o índice local
+    # necessário ao terceiro fallback verificado.
+    fetch_data.prepare_rapidapi_odds_index(linked_fixtures)
     additions = []
     source_counts: dict[str, int] = {}
     unavailable = 0
@@ -119,6 +123,12 @@ def capture(
                     fixture,
                 )
             )
+        if not odds or not provenance:
+            upcoming_market = (
+                fetch_data
+                .fetch_rapidapi_upcoming_operational_moneyline_with_provenance
+            )
+            odds, provenance = upcoming_market(fixture)
         market = (
             market_builder(
                 observation, fixture, odds, provenance,
