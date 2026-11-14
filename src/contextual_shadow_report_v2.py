@@ -1202,15 +1202,32 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             visible_cards = []
             for line in visible_lines:
                 price = line.get("price") or {}
-                if price.get("status") != "READY":
-                    zone = "Sem preço validado · amostra relevante curta"
-                elif price.get("minimum_odd") is None:
-                    zone = (
-                        f"Fair {_odd(price.get('fair_odd'))} · acima da janela"
-                    )
+                central = price.get("central") or {}
+                conservative = price.get("conservative") or {}
+                if not price.get("reference_available"):
+                    zone = "Sem referência · faltam jogos em ambos os estados"
+                    reference_note = "Não foi possível calcular uma referência contextual."
                 else:
                     zone = (
-                        f"Preço mínimo {float(price['minimum_odd']):.2f}"
+                        f"Central {_odd(central.get('minimum_odd'))} · "
+                        f"conservadora {_odd(conservative.get('minimum_odd'))}"
+                    )
+                    if price.get("status") == "REFERENCE_LOW_SAMPLE":
+                        reference_note = (
+                            "Referência indicativa · amostra relevante curta · "
+                            "não é preço de mercado validado."
+                        )
+                    else:
+                        reference_note = (
+                            "Referência contextual · não é preço de mercado validado."
+                        )
+                    if not central.get("inside_operational_window"):
+                        reference_note += " Central acima da janela 1.70–2.50."
+                    if not conservative.get("inside_operational_window"):
+                        reference_note += " Conservadora acima da janela 1.70–2.50."
+                    reference_note += (
+                        f" Cobertura central {_e(central.get('cover_probability_pct'))}%"
+                        f" · conservadora {_e(conservative.get('cover_probability_pct'))}%."
                     )
                 if positive:
                     primary = f"{_e(line.get('cover_pct'))}% cobre no total"
@@ -1239,7 +1256,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
                     <div class="line-name">{_e(line.get('line'))}</div>
                     <strong>{primary}</strong><small>{secondary}</small>
                     <small>{losses}</small>{f'<small>{push_copy}</small>' if push_copy else ''}<small>Amostra total: {_e(line.get('total'))} jogos</small>
-                    <div class="line-zone"><span>ODD PARA CONSIDERAR</span><b>{_e(zone)}</b></div>
+                    <div class="line-zone"><span>Preço mínimo de referência</span><b>{_e(zone)}</b><small>{_e(reference_note)}</small></div>
                   </div>"""
                 visible_cards.append(line_card)
             cards.append(f"""
