@@ -32,6 +32,9 @@ const PAPER_22BET_SYNC = {
   challengerTrackingHeaders: [
     'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
   ],
+  contextualHeaderRow: 4,
+  contextualEntrySheetName: 'Nova fase · ATP-WTA',
+  contextualChallengerEntrySheetName: 'Nova fase · Challenger',
   challengerEntrySheetName: 'Challenger · Entradas',
   challengerDashboardSheetName: 'Challenger · Gráficos',
   challengerLevelLabel: 'Challenger',
@@ -98,6 +101,7 @@ function syncPaperTradingToGitHub() {
   const reportIndex = fetchReportLinkageIndex_(token, repository, branch);
   const factorIndex = fetchManualFactorIndex_(token, repository, branch);
   recoverGuerraReportLinks_(spreadsheet, reportIndex);
+  recoverContextualReportLinks_(spreadsheet, reportIndex);
   recoverChallengerReportLinks_(spreadsheet, reportIndex, factorIndex);
   const payload = buildPaperTradingPayload_(token, repository, branch);
   refreshChallengerPaperDashboard_(
@@ -195,9 +199,79 @@ function installGreenStrongTrackingColumns() {
 }
 
 function installGuerraSelectionWorkspace() {
-  const sheet = paperTradingSpreadsheet_().getSheetByName(PAPER_22BET_SYNC.sheetName);
-  ensureGuerraSelectionWorkspace_(sheet);
-  return 'Guerra Selection preparado: listas, resultados e comissão Betfair ativos.';
+  const spreadsheet = paperTradingSpreadsheet_();
+  const atpWta = spreadsheet.getSheetByName(PAPER_22BET_SYNC.contextualEntrySheetName);
+  const challenger = spreadsheet.getSheetByName(PAPER_22BET_SYNC.contextualChallengerEntrySheetName);
+  ensureContextualEntryWorkspace_(atpWta, false);
+  ensureContextualEntryWorkspace_(challenger, true);
+  return 'Nova fase preparada: ATP/WTA e Challenger editáveis, com listas, resultados e comissão Betfair ativos.';
+}
+
+function contextualEntryHeaders_(challenger) {
+  if (challenger) {
+    return [
+      'Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção',
+      'Fav/Und', 'Pré/Live', 'Casa', 'Odd aposta', 'Stake (u)', 'EDGE',
+      'Resultado', 'Lucro (u)', 'Notas', 'Fenzobot Snapshot Key',
+      'Selected At UTC', 'Challenger Índice Fenzobot', 'Challenger Cobertura %',
+      'Challenger Edge %', 'Validation Status', 'Fase do torneio',
+      'Motivo principal', 'Confiança Guerra', 'Mercado normalizado',
+    ];
+  }
+  return [
+    'Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção',
+    'Fav/Und', 'Pré/Live', 'Casa', 'Odd aposta', 'Stake (u)', 'EDGE',
+    'Resultado', 'Lucro (u)', 'Notas', 'Fenzobot Snapshot Key',
+    'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd',
+    '22Bet Handicap Games Line', 'Validation Status', 'Fenzobot Report Match Key',
+    'Fenzobot Report URL', 'Selection Time Precision', 'Fenzobot Commence Time UTC',
+    'Fase do torneio', 'Motivo principal', 'Confiança Guerra', 'Mercado normalizado',
+  ];
+}
+
+function ensureContextualEntryWorkspace_(sheet, challenger) {
+  if (!sheet) throw new Error('Não encontrei o separador da nova fase.');
+  const headerRow = PAPER_22BET_SYNC.contextualHeaderRow;
+  const headers = contextualEntryHeaders_(challenger);
+  if (sheet.getMaxColumns() < headers.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
+  }
+  // Remove a antiga QUERY apenas no cabeçalho e transforma a vista numa área
+  // operacional. As linhas já introduzidas pelo utilizador são preservadas.
+  sheet.getRange(headerRow, 1, 1, headers.length).setValues([headers]);
+  sheet.setFrozenRows(headerRow);
+  const map = trackingColumnMap_(sheet, headerRow);
+  const firstDataRow = headerRow + 1;
+  const rows = Math.max(1, sheet.getMaxRows() - headerRow);
+  const options = PAPER_22BET_SYNC.guerraEntryOptions;
+  const validations = [
+    ['Tour', challenger ? ['ATP'] : options.tour, 'Escolha o circuito.'],
+    ['Nível', challenger ? ['Challenger 50', 'Challenger 75', 'Challenger 100', 'Challenger 125'] : options.level, 'Escolha o nível do torneio.'],
+    ['Piso', ['Hard', 'Hard indoor', 'Clay', 'Grass'], 'Escolha a superfície.'],
+    ['Tipo de mercado', options.market, 'Escolha o mercado registado.'],
+    ['Fav/Und', options.side, 'Perfil da seleção à odd registada.'],
+    ['Pré/Live', options.timing, 'Momento da entrada.'],
+    ['Casa', options.house, '22Bet sem comissão; Betfair com 5% sobre os ganhos líquidos.'],
+    ['Resultado', options.result, 'Deixe PENDENTE até existir resultado oficial.'],
+    ['Fase do torneio', options.stage, 'Fase do torneio para análise posterior.'],
+    ['Motivo principal', options.reason, 'Família ou razão principal da escolha.'],
+    ['Confiança Guerra', options.confidence, 'Confiança registada antes do jogo.'],
+  ];
+  validations.forEach(item => {
+    const column = normalisedTrackingColumn_(map, item[0]);
+    if (column) sheet.getRange(firstDataRow, column, rows, 1)
+      .setDataValidation(challengerListValidation_(item[1], item[2]));
+  });
+  const profitColumn = normalisedTrackingColumn_(map, 'Lucro (u)');
+  if (profitColumn) ensureGuerraProfitFormulas_(sheet, firstDataRow, rows, profitColumn);
+  const reasonColumn = normalisedTrackingColumn_(map, 'Motivo principal');
+  if (reasonColumn) sheet.getRange(headerRow, reasonColumn).setNote(
+    'Use a família que mais pesou na decisão. Esta coluna alimenta os gráficos da nova fase.',
+  );
+  const houseColumn = normalisedTrackingColumn_(map, 'Casa');
+  if (houseColumn) sheet.getRange(headerRow, houseColumn).setNote(
+    'A Betfair desconta automaticamente 5% apenas aos ganhos líquidos; a 22Bet não desconta comissão.',
+  );
 }
 
 function ensureGuerraSelectionWorkspace_(sheet) {
@@ -299,13 +373,12 @@ function backfillGuerraReportLinks() {
   const branch = properties.getProperty('GITHUB_BRANCH') || PAPER_22BET_SYNC.defaultBranch;
   const spreadsheet = paperTradingSpreadsheet_();
   ensureGuerraTrackingColumns_(spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName));
-  const result = recoverGuerraReportLinks_(
-    spreadsheet,
-    fetchReportLinkageIndex_(token, repository, branch),
-  );
-  return 'Linhas processadas: ' + result.linked
-    + ' · promovidas a canónicas: ' + result.upgradedCanonical
-    + ' · sem snapshot canónico seguro: ' + result.unmatched + '.';
+  const reportIndex = fetchReportLinkageIndex_(token, repository, branch);
+  const result = recoverGuerraReportLinks_(spreadsheet, reportIndex);
+  const contextual = recoverContextualReportLinks_(spreadsheet, reportIndex);
+  return 'Linhas processadas: ' + (result.linked + contextual.linked)
+    + ' · promovidas a canónicas: ' + (result.upgradedCanonical + contextual.upgradedCanonical)
+    + ' · sem snapshot canónico seguro: ' + (result.unmatched + contextual.unmatched) + '.';
 }
 
 function missingTrackingHeaders_(headers) {
@@ -640,6 +713,60 @@ function recoverGuerraReportLinks_(spreadsheet, reportIndex) {
   return {linked: linked, upgradedCanonical: upgradedCanonical, unmatched: unmatched};
 }
 
+function recoverContextualReportLinks_(spreadsheet, reportIndex) {
+  const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.contextualEntrySheetName);
+  if (!sheet || !reportIndex || reportIndex.available !== true) return {linked: 0, upgradedCanonical: 0, unmatched: 0};
+  const headerRow = PAPER_22BET_SYNC.contextualHeaderRow;
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(headerRow, 1, 1, width).getValues()[0];
+  const tracking = trackingIndexes_(headers);
+  const rowCount = Math.max(0, sheet.getLastRow() - headerRow);
+  if (!rowCount) return {linked: 0, upgradedCanonical: 0, unmatched: 0};
+  const rows = sheet.getRange(headerRow + 1, 1, rowCount, width).getValues();
+  const timeZone = spreadsheet.getSpreadsheetTimeZone ? spreadsheet.getSpreadsheetTimeZone() : 'Europe/Lisbon';
+  let linked = 0;
+  let upgradedCanonical = 0;
+  let unmatched = 0;
+  rows.forEach(row => {
+    if (!(row[0] && row[1] && tracking.market >= 0 && row[tracking.market])) return;
+    if (tracking.strategy >= 0 && !String(row[tracking.strategy] || '').trim()) {
+      row[tracking.strategy] = PAPER_22BET_SYNC.contextualGuerraStrategy;
+    }
+    const existingSnapshot = String(row[tracking.snapshot] || '').trim();
+    const existingMatchKey = String(row[tracking.reportMatchKey] || '').trim();
+    if (!existingSnapshot) {
+      const link = existingMatchKey
+        ? findCanonicalPaperReportLink_(paperDateIso_(row[0], timeZone), row[1], existingMatchKey, reportIndex.records)
+        : findPaperReportLink_(paperDateIso_(row[0], timeZone), row[1], reportIndex.records);
+      if (!link) {
+        unmatched += 1;
+      } else {
+        row[tracking.snapshot] = link.snapshot_key || '';
+        row[tracking.reportMatchKey] = link.report_match_key || existingMatchKey;
+        row[tracking.reportUrl] = link.report_url || row[tracking.reportUrl] || '';
+        row[tracking.commenceTime] = link.commence_time_utc || row[tracking.commenceTime] || '';
+        if (String(link.snapshot_key || '').trim()) upgradedCanonical += 1;
+      }
+    }
+    row[tracking.timePrecision] = row[tracking.selectedAt]
+      ? 'EXACT_TIMESTAMP'
+      : 'DATE_ONLY_RETROSPECTIVE';
+    if (!row[tracking.handicapLine] && normalisedHeader_(marketName_(row, tracking)).indexOf('handicap') >= 0) {
+      const line = String(row[6] || '').replace(',', '.').match(/([+-]\s*\d+(?:\.\d+)?)\s*$/);
+      if (line) row[tracking.handicapLine] = Number(line[1].replace(/\s/g, ''));
+    }
+    linked += 1;
+  });
+  [
+    tracking.snapshot, tracking.strategy, tracking.selectedAt, tracking.reviewOdd,
+    tracking.handicapLine, tracking.status, tracking.reportMatchKey,
+    tracking.reportUrl, tracking.timePrecision, tracking.commenceTime,
+  ].filter(index => Number.isInteger(index) && index >= 0).forEach(index => {
+    sheet.getRange(headerRow + 1, index + 1, rowCount, 1).setValues(rows.map(row => [row[index]]));
+  });
+  return {linked: linked, upgradedCanonical: upgradedCanonical, unmatched: unmatched};
+}
+
 function challengerEdgePct_(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
@@ -675,12 +802,15 @@ function enrichChallengerRow_(row, tracking, link, factorByKey) {
 
 function recoverChallengerSheetLinks_(spreadsheet, sheet, reportIndex, factorIndex, mainSheet) {
   if (!sheet || !reportIndex || reportIndex.available !== true) return {linked: 0, unmatched: 0};
+  const headerRow = sheet.getName() === PAPER_22BET_SYNC.contextualChallengerEntrySheetName
+    ? PAPER_22BET_SYNC.contextualHeaderRow
+    : PAPER_22BET_SYNC.headerRow;
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
-  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, width).getValues()[0];
+  const headers = sheet.getRange(headerRow, 1, 1, width).getValues()[0];
   const tracking = trackingIndexes_(headers);
-  const rowCount = Math.max(0, sheet.getLastRow() - PAPER_22BET_SYNC.headerRow);
+  const rowCount = Math.max(0, sheet.getLastRow() - headerRow);
   if (!rowCount) return {linked: 0, unmatched: 0};
-  const rows = sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, 1, rowCount, width).getValues();
+  const rows = sheet.getRange(headerRow + 1, 1, rowCount, width).getValues();
   const timeZone = spreadsheet.getSpreadsheetTimeZone ? spreadsheet.getSpreadsheetTimeZone() : 'Europe/Lisbon';
   let linked = 0;
   let unmatched = 0;
@@ -706,7 +836,7 @@ function recoverChallengerSheetLinks_(spreadsheet, sheet, reportIndex, factorInd
     tracking.challengerEdge,
   ].filter((index, position, indexes) => Number.isInteger(index) && index >= 0 && indexes.indexOf(index) === position);
   writable.forEach(index => {
-    sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, index + 1, rowCount, 1)
+    sheet.getRange(headerRow + 1, index + 1, rowCount, 1)
       .setValues(rows.map(row => [row[index]]));
   });
   return {linked: linked, unmatched: unmatched};
@@ -714,7 +844,7 @@ function recoverChallengerSheetLinks_(spreadsheet, sheet, reportIndex, factorInd
 
 function recoverChallengerReportLinks_(spreadsheet, reportIndex, factorIndex) {
   const mainSheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.sheetName);
-  const dedicated = spreadsheet.getSheetByName(PAPER_22BET_SYNC.challengerEntrySheetName);
+  const dedicated = spreadsheet.getSheetByName(PAPER_22BET_SYNC.contextualChallengerEntrySheetName);
   const main = recoverChallengerSheetLinks_(spreadsheet, mainSheet, reportIndex, factorIndex, mainSheet);
   const separate = dedicated && dedicated !== mainSheet
     ? recoverChallengerSheetLinks_(spreadsheet, dedicated, reportIndex, factorIndex, mainSheet)
@@ -755,12 +885,21 @@ function onEdit(e) {
   const editedSheetName = editedSheet.getName();
   if (
     editedSheetName !== PAPER_22BET_SYNC.sheetName &&
-    editedSheetName !== PAPER_22BET_SYNC.challengerEntrySheetName
+    editedSheetName !== PAPER_22BET_SYNC.challengerEntrySheetName &&
+    editedSheetName !== PAPER_22BET_SYNC.contextualEntrySheetName &&
+    editedSheetName !== PAPER_22BET_SYNC.contextualChallengerEntrySheetName
   ) return;
-  if (e.range.getRow() <= PAPER_22BET_SYNC.headerRow) return;
+  const headerRow = (
+    editedSheetName === PAPER_22BET_SYNC.contextualEntrySheetName ||
+    editedSheetName === PAPER_22BET_SYNC.contextualChallengerEntrySheetName
+  ) ? PAPER_22BET_SYNC.contextualHeaderRow : PAPER_22BET_SYNC.headerRow;
+  if (e.range.getRow() <= headerRow) return;
   const sheet = editedSheet;
-  const map = trackingColumnMap_(sheet);
-  if (editedSheetName === PAPER_22BET_SYNC.challengerEntrySheetName) {
+  const map = trackingColumnMap_(sheet, headerRow);
+  if (
+    editedSheetName === PAPER_22BET_SYNC.challengerEntrySheetName ||
+    editedSheetName === PAPER_22BET_SYNC.contextualChallengerEntrySheetName
+  ) {
     applyChallengerEntryDefaults_(sheet, e.range.getRow(), map);
     return;
   }
@@ -779,7 +918,7 @@ function onEdit(e) {
   const modelVersionColumn = map['Fenzobot Model Version'];
   if (!stampColumn || !strategyColumn) return;
   const rowValues = sheet.getRange(e.range.getRow(), 1, 1, Math.max(sheet.getLastColumn(), 16)).getValues()[0];
-  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, Math.max(sheet.getLastColumn(), 16)).getValues()[0];
+  const headers = sheet.getRange(headerRow, 1, 1, Math.max(sheet.getLastColumn(), 16)).getValues()[0];
   const tracking = trackingIndexes_(headers);
   if (!(rowValues[0] && rowValues[1] && rowValues[tracking.market])) return;
   const existingStrategy = String(rowValues[tracking.strategy] || '').trim();
@@ -815,7 +954,9 @@ function applyChallengerEntryDefaults_(sheet, rowNumber, map) {
   const selectedAtColumn = normalisedTrackingColumn_(map, 'Selected At UTC');
   const profitColumn = normalisedTrackingColumn_(map, 'Lucro (u)');
   if (tourColumn) sheet.getRange(rowNumber, tourColumn).setValue('ATP');
-  if (levelColumn) sheet.getRange(rowNumber, levelColumn).setValue(PAPER_22BET_SYNC.challengerLevelLabel);
+  if (levelColumn && sheet.getName() !== PAPER_22BET_SYNC.contextualChallengerEntrySheetName) {
+    sheet.getRange(rowNumber, levelColumn).setValue(PAPER_22BET_SYNC.challengerLevelLabel);
+  }
   if (stakeColumn) sheet.getRange(rowNumber, stakeColumn).setValue(PAPER_22BET_SYNC.challengerManualStakeUnits);
   if (profitColumn) {
     const houseColumn = normalisedTrackingColumn_(map, 'Casa');
@@ -860,29 +1001,48 @@ function installPaperTradingSync() {
  * principal em getSheetByName(), dupliquem silenciosamente as entradas.
  */
 function readChallengerEntrySource_(spreadsheet, mainSheet) {
-  const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.challengerEntrySheetName);
+  const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.contextualChallengerEntrySheetName);
   if (!sheet || sheet === mainSheet) {
     return {available: false, sheet: null, headers: [], tracking: trackingIndexes_([]), rows: []};
   }
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headerRow = PAPER_22BET_SYNC.contextualHeaderRow;
   const headers = sheet.getRange(
-    PAPER_22BET_SYNC.headerRow,
+    headerRow,
     PAPER_22BET_SYNC.firstColumn,
     1,
     width,
   ).getValues()[0];
   const tracking = trackingIndexes_(headers);
   assertOperationalTracking_(tracking, headers);
-  const rowCount = Math.max(0, sheet.getLastRow() - PAPER_22BET_SYNC.headerRow);
+  const rowCount = Math.max(0, sheet.getLastRow() - headerRow);
   const rows = rowCount
     ? sheet.getRange(
-      PAPER_22BET_SYNC.headerRow + 1,
+      headerRow + 1,
       PAPER_22BET_SYNC.firstColumn,
       rowCount,
       width,
     ).getValues().filter(row => row[0] && row[1] && row[tracking.market])
     : [];
   return {available: true, sheet: sheet, headers: headers, tracking: tracking, rows: rows};
+}
+
+function readContextualEntrySource_(spreadsheet, mainSheet) {
+  const sheet = spreadsheet.getSheetByName(PAPER_22BET_SYNC.contextualEntrySheetName);
+  if (!sheet || sheet === mainSheet) {
+    return {available: false, sheet: null, headers: [], tracking: trackingIndexes_([]), rows: []};
+  }
+  const headerRow = PAPER_22BET_SYNC.contextualHeaderRow;
+  const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
+  const headers = sheet.getRange(headerRow, 1, 1, width).getValues()[0];
+  const tracking = trackingIndexes_(headers);
+  assertOperationalTracking_(tracking, headers);
+  const rowCount = Math.max(0, sheet.getLastRow() - headerRow);
+  const rows = rowCount ? sheet.getRange(headerRow + 1, 1, rowCount, width).getValues() : [];
+  return {
+    available: true, sheet: sheet, headers: headers, tracking: tracking,
+    rows: rows, rowCount: rowCount, headerRow: headerRow,
+  };
 }
 
 function buildPaperTradingPayload_(token, repository, branch) {
@@ -897,6 +1057,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
   assertOperationalTracking_(tracking, headers);
   const rows = rowCount ? sheet.getRange(PAPER_22BET_SYNC.headerRow + 1, PAPER_22BET_SYNC.firstColumn, rowCount, width).getValues() : [];
   const activeRows = rows.filter(row => row[0] && row[1] && row[tracking.market]);
+  const contextualSource = readContextualEntrySource_(spreadsheet, sheet);
   const challengerSource = readChallengerEntrySource_(spreadsheet, sheet);
   // O agregado principal mantém-se exclusivamente PAPER normal. O Challenger
   // 125 manual tem universo e stake próprios, publicados abaixo por estratégia.
@@ -1002,36 +1163,40 @@ function buildPaperTradingPayload_(token, repository, branch) {
     addRowToStats_(challengerByCoverageBand[coverageBand], row, rowTracking);
     addRowToStats_(challengerByEdgeBand[edgeBand], row, rowTracking);
   };
+  const recordContextualRow = (row, rowTracking, statusWriter) => {
+    if (!(row[0] && row[1] && row[rowTracking.market]) || !rowTracking.complete) return;
+    const contextualStatus = validateGuerraSelection_(row, rowTracking, green.byKey, green.available);
+    contextualLinkage[contextualStatus] = (contextualLinkage[contextualStatus] || 0) + 1;
+    statusWriter(contextualStatus);
+    if (!isLinkedGuerraStatus_(contextualStatus)) return;
+    const contextualSnapshot = String(row[rowTracking.snapshot] || '').trim();
+    const contextualReport = String(row[rowTracking.reportMatchKey] || '').trim();
+    const contextualKey = contextualSnapshot || contextualReport;
+    if (!contextualKey) return;
+    contextualCandidates[contextualKey] = true;
+    const contextualMarket = marketName_(row, rowTracking);
+    const contextualSide = sideName_(row, rowTracking);
+    const contextualHouse = houseName_(row, rowTracking);
+    if (!contextualByMarket[contextualMarket]) contextualByMarket[contextualMarket] = newStats_();
+    if (!contextualBySide[contextualSide]) contextualBySide[contextualSide] = newStats_();
+    if (!contextualByHouse[contextualHouse]) contextualByHouse[contextualHouse] = newStats_();
+    addRowToStats_(contextualStats, row, rowTracking);
+    addRowToStats_(contextualByMarket[contextualMarket], row, rowTracking);
+    addRowToStats_(contextualBySide[contextualSide], row, rowTracking);
+    addRowToStats_(contextualByHouse[contextualHouse], row, rowTracking);
+  };
   rows.forEach((row, offset) => {
     if (isChallengerManualRow_(row, tracking)) {
-      recordChallengerRow(row, tracking, status => {
-        if (tracking.status >= 0) sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(status);
-      });
+      // As entradas Challenger anteriores permanecem no arquivo legacy, mas
+      // não entram nas métricas da nova fase.
       return;
     }
     if (!(row[0] && row[1] && row[tracking.market]) || !tracking.complete) return;
     const rowStrategy = String(row[tracking.strategy] || '').trim();
     if (rowStrategy === PAPER_22BET_SYNC.contextualGuerraStrategy) {
-      const contextualStatus = validateGuerraSelection_(row, tracking, green.byKey, green.available);
-      contextualLinkage[contextualStatus] = (contextualLinkage[contextualStatus] || 0) + 1;
-      sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1)
-        .setValue(contextualStatus);
-      if (!isLinkedGuerraStatus_(contextualStatus)) return;
-      const contextualSnapshot = String(row[tracking.snapshot] || '').trim();
-      const contextualReport = String(row[tracking.reportMatchKey] || '').trim();
-      const contextualKey = contextualSnapshot || contextualReport;
-      if (!contextualKey) return;
-      contextualCandidates[contextualKey] = true;
-      const contextualMarket = marketName_(row, tracking);
-      const contextualSide = sideName_(row, tracking);
-      const contextualHouse = houseName_(row, tracking);
-      if (!contextualByMarket[contextualMarket]) contextualByMarket[contextualMarket] = newStats_();
-      if (!contextualBySide[contextualSide]) contextualBySide[contextualSide] = newStats_();
-      if (!contextualByHouse[contextualHouse]) contextualByHouse[contextualHouse] = newStats_();
-      addRowToStats_(contextualStats, row, tracking);
-      addRowToStats_(contextualByMarket[contextualMarket], row, tracking);
-      addRowToStats_(contextualBySide[contextualSide], row, tracking);
-      addRowToStats_(contextualByHouse[contextualHouse], row, tracking);
+      recordContextualRow(row, tracking, status => {
+        sheet.getRange(PAPER_22BET_SYNC.headerRow + 1 + offset, tracking.status + 1).setValue(status);
+      });
       return;
     }
     if (rowStrategy !== PAPER_22BET_SYNC.legacyGuerraStrategy) return;
@@ -1088,11 +1253,21 @@ function buildPaperTradingPayload_(token, repository, branch) {
       if (leg === 'POSITIVE_HANDICAP_GAMES') underdogPairs[candidateKey].positiveHandicap = true;
     }
   });
+  contextualSource.rows.forEach((row, offset) => {
+    recordContextualRow(row, contextualSource.tracking, status => {
+      if (contextualSource.tracking.status >= 0) {
+        contextualSource.sheet.getRange(
+          contextualSource.headerRow + 1 + offset,
+          contextualSource.tracking.status + 1,
+        ).setValue(status);
+      }
+    });
+  });
   challengerSource.rows.forEach((row, offset) => {
     recordChallengerRow(row, challengerSource.tracking, status => {
       if (challengerSource.tracking.status >= 0) {
         challengerSource.sheet.getRange(
-          PAPER_22BET_SYNC.headerRow + 1 + offset,
+          PAPER_22BET_SYNC.contextualHeaderRow + 1 + offset,
           challengerSource.tracking.status + 1,
         ).setValue(status);
       }
@@ -1187,6 +1362,9 @@ function buildPaperTradingPayload_(token, repository, branch) {
     standard_and_legacy_challenger: tracking.complete
       ? activeRows.map(row => row.filter((value, index) => index !== tracking.status))
       : activeRows,
+    contextual: contextualSource.rows.map(row => row.filter(
+      (value, index) => index !== contextualSource.tracking.status,
+    )),
     dedicated_challenger: challengerSource.rows.map(row => row.filter(
       (value, index) => index !== challengerSource.tracking.status,
     )),
@@ -1217,7 +1395,11 @@ function buildPaperTradingPayload_(token, repository, branch) {
       // linhas individuais. Torna auditável a leitura depois de mudanças na
       // Sheet (por exemplo, a coluna Casa inserida antes da odd).
       operational_columns: publicOperationalColumnMap_(headers, tracking),
-      challenger_entry_sheet: PAPER_22BET_SYNC.challengerEntrySheetName,
+      contextual_entry_sheet: PAPER_22BET_SYNC.contextualEntrySheetName,
+      contextual_operational_columns: contextualSource.available
+        ? publicOperationalColumnMap_(contextualSource.headers, contextualSource.tracking)
+        : null,
+      challenger_entry_sheet: PAPER_22BET_SYNC.contextualChallengerEntrySheetName,
       challenger_operational_columns: challengerSource.available
         ? publicOperationalColumnMap_(challengerSource.headers, challengerSource.tracking)
         : null,
@@ -1811,9 +1993,10 @@ function semanticFingerprintMaterial_(rowsWithoutValidationStatus, publicAggrega
   return JSON.stringify({sheet_rows: rowsWithoutValidationStatus, aggregates: publicAggregates});
 }
 
-function trackingColumnMap_(sheet) {
+function trackingColumnMap_(sheet, headerRow) {
   const width = Math.max(PAPER_22BET_SYNC.columnCount, sheet.getLastColumn());
-  const headers = sheet.getRange(PAPER_22BET_SYNC.headerRow, 1, 1, width).getValues()[0];
+  const row = headerRow || PAPER_22BET_SYNC.headerRow;
+  const headers = sheet.getRange(row, 1, 1, width).getValues()[0];
   const result = {};
   headers.forEach((header, index) => result[String(header)] = index + 1);
   return result;
