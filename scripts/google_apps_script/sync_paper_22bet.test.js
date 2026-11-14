@@ -40,6 +40,29 @@ test('1.75 is inclusive and there is no 1.90 ceiling', () => {
   assert.equal(context.moneylineReviewRoute_(2.50), 'MONEYLINE_MANUAL_REVIEW');
 });
 
+test('Guerra Selection exposes complete dropdowns and explicit family reasons', () => {
+  const options = vm.runInContext('PAPER_22BET_SYNC.guerraEntryOptions', context);
+  assert.deepEqual(Array.from(options.tour), ['ATP', 'WTA']);
+  assert.ok(options.level.includes('Finals'));
+  assert.ok(options.surface.includes('Hard outdoor'));
+  assert.ok(options.house.includes('22Bet'));
+  assert.ok(options.house.includes('Betfair'));
+  assert.ok(options.result.includes('PENDENTE'));
+  assert.ok(options.reason.includes('Forma recente ajustada'));
+  assert.ok(options.reason.includes('Força estrutural'));
+  assert.ok(options.reason.includes('Superfície e condições'));
+  assert.ok(options.reason.includes('Matchup/H2H'));
+  assert.ok(options.reason.includes('Serviço e resposta'));
+});
+
+test('automatic Guerra profit formula handles pending, void and Betfair commission', () => {
+  const formula = context.guerraProfitFormulaR1C1_();
+  assert.match(formula, /PENDENTE/);
+  assert.match(formula, /VOID/);
+  assert.match(formula, /betfair/);
+  assert.match(formula, /0\.95/);
+});
+
 test('Guerra audit relates factor direction to the selected side and real ROI', () => {
   const rowTracking = {
     snapshot: 15, selection: 6, tour: 2, surface: 4, market: 5,
@@ -738,6 +761,8 @@ test('Casa inserted before odds keeps all PAPER totals mapped by header', () => 
   assert.equal(payload.summary.average_odd, 1.96);
   assert.equal(payload.by_market.Moneyline.units, 0.8);
   assert.equal(payload.by_market['Handicap games'].units, 1.064);
+  assert.equal(payload.by_house['22Bet'].units, 0.8);
+  assert.equal(payload.by_house.Betfair.units, 1.064);
 });
 
 test('operational headers tolerate accents and invisible whitespace and preserve 0.5u exposure', () => {
@@ -763,8 +788,10 @@ test('operational headers tolerate accents and invisible whitespace and preserve
   assert.equal(payload.summary.settled_stake_units, 1);
   assert.equal(payload.summary.pending_stake_units, 0.5);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.source.operational_columns)), {
-    market: 6, side: 8, odd: 11, stake: 12, result: 14, profit: 15,
+    house: 10, market: 6, side: 8, odd: 11, stake: 12, result: 14, profit: 15,
   });
+  assert.deepEqual(Array.from(payload.source.execution_houses), ['22Bet', 'Betfair']);
+  assert.equal(payload.source.betfair_commission_policy, '5_PERCENT_ON_NET_WINNINGS');
 });
 
 test('an expanded sheet with unrecognised operational headers fails closed', () => {

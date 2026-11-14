@@ -39,9 +39,33 @@ const PAPER_22BET_SYNC = {
   legacyGuerraStrategy: 'GUERRA_SELECTION_V1',
   contextualGuerraStrategy: 'GUERRA_CONTEXTUAL_V1',
   contextualModelVersion: 'FENZOBOT_CONTEXTUAL_2026_11',
+  guerraEntryOptions: {
+    tour: ['ATP', 'WTA'],
+    level: ['250', '500', '1000', 'Grand Slam', 'Finals'],
+    surface: ['Hard', 'Hard outdoor', 'Hard indoor', 'Clay', 'Grass'],
+    market: [
+      'Vencedor', 'Moneyline', 'Handicap games', 'Handicap positivo',
+      'Handicap negativo', 'Over/Under games', 'Handicap sets',
+      'Over/Under sets', 'Outro',
+    ],
+    side: ['Favorito', 'Underdog'],
+    timing: ['Pré-live', 'Ao vivo'],
+    house: ['22Bet', 'Betfair'],
+    result: ['PENDENTE', 'GANHOU', 'PERDEU', 'VOID'],
+    stage: [
+      'Qualifying', 'Primeiras rondas', 'Quartos de final',
+      'Meias-finais', 'Final', 'N/D',
+    ],
+    reason: [
+      'Valor Moneyline', 'Valor handicap', 'Forma recente ajustada',
+      'Força estrutural', 'Superfície e condições', 'Matchup/H2H',
+      'Serviço e resposta', 'Mercado desalinhado', 'Leitura pessoal/Outro',
+    ],
+    confidence: ['Baixa', 'Média', 'Alta'],
+  },
   challengerManualStakeUnits: 0.5,
   challengerManualMinimumEdgePct: 2.0,
-  syncContractVersion: 6,
+  syncContractVersion: 7,
   // Índices legacy (A:O) usados exclusivamente como compatibilidade para
   // versões antigas da Sheet sem cabeçalhos reconhecíveis.
   legacyOperationalIndexes: {
@@ -54,6 +78,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Fenzobot')
     .addItem('Sincronizar métricas PAPER 22Bet', 'syncPaperTradingToGitHub')
+    .addItem('Preparar Guerra Selection', 'installGuerraSelectionWorkspace')
     .addItem('Instalar colunas GREEN_STRONG_V1', 'installGreenStrongTrackingColumns')
     .addItem('Recuperar ligações Guerra aos relatórios', 'backfillGuerraReportLinks')
     .addItem('Preparar área Challenger · 0,5u', 'installChallengerPaperWorkspace')
@@ -167,6 +192,89 @@ function installGreenStrongTrackingColumns() {
   if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
   ensureGuerraTrackingColumns_(sheet);
   return 'Colunas de ligação Fenzobot instaladas sem alterar as colunas operacionais existentes.';
+}
+
+function installGuerraSelectionWorkspace() {
+  const sheet = paperTradingSpreadsheet_().getSheetByName(PAPER_22BET_SYNC.sheetName);
+  ensureGuerraSelectionWorkspace_(sheet);
+  return 'Guerra Selection preparado: listas, resultados e comissão Betfair ativos.';
+}
+
+function ensureGuerraSelectionWorkspace_(sheet) {
+  if (!sheet) throw new Error('Não encontrei o separador "' + PAPER_22BET_SYNC.sheetName + '".');
+  ensureGuerraTrackingColumns_(sheet);
+  const map = trackingColumnMap_(sheet);
+  const firstDataRow = PAPER_22BET_SYNC.headerRow + 1;
+  const rows = Math.max(1, sheet.getMaxRows() - PAPER_22BET_SYNC.headerRow);
+  const options = PAPER_22BET_SYNC.guerraEntryOptions;
+  const validations = [
+    ['Tour', options.tour, 'Escolha ATP ou WTA.'],
+    ['Nível', options.level, 'Escolha o nível do torneio.'],
+    ['Piso', options.surface, 'Escolha a superfície e a condição indoor/outdoor.'],
+    ['Tipo de mercado', options.market, 'Escolha o mercado registado.'],
+    ['Fav/Und', options.side, 'Perfil da seleção à odd registada.'],
+    ['Pré/Live', options.timing, 'Momento da entrada.'],
+    ['Casa', options.house, '22Bet sem comissão; Betfair com 5% sobre o lucro líquido.'],
+    ['Resultado', options.result, 'Deixe PENDENTE até existir resultado oficial.'],
+    ['Fase do torneio', options.stage, 'Fase do torneio para análise posterior.'],
+    ['Motivo principal', options.reason, 'Razão ou família principal da escolha.'],
+    ['Confiança Guerra', options.confidence, 'Confiança registada antes do jogo.'],
+  ];
+  validations.forEach(item => {
+    const column = normalisedTrackingColumn_(map, item[0]);
+    if (column) {
+      sheet.getRange(firstDataRow, column, rows, 1)
+        .setDataValidation(challengerListValidation_(item[1], item[2]));
+    }
+  });
+
+  const modelVersionColumn = normalisedTrackingColumn_(map, 'Fenzobot Model Version');
+  if (modelVersionColumn) {
+    sheet.getRange(firstDataRow, modelVersionColumn, rows, 1).clearDataValidations();
+  }
+  const houseColumn = normalisedTrackingColumn_(map, 'Casa');
+  const profitColumn = normalisedTrackingColumn_(map, 'Lucro (u)');
+  const reasonColumn = normalisedTrackingColumn_(map, 'Motivo principal');
+  if (houseColumn) {
+    sheet.getRange(PAPER_22BET_SYNC.headerRow, houseColumn).setNote(
+      'A Betfair desconta automaticamente 5% apenas aos ganhos líquidos; a 22Bet não desconta comissão.',
+    );
+  }
+  if (profitColumn) {
+    sheet.getRange(PAPER_22BET_SYNC.headerRow, profitColumn).setNote(
+      'Cálculo automático: ganho líquido, perda da stake ou zero em VOID. Não preencher manualmente.',
+    );
+    ensureGuerraProfitFormulas_(sheet, firstDataRow, rows, profitColumn);
+  }
+  if (reasonColumn) {
+    sheet.getRange(PAPER_22BET_SYNC.headerRow, reasonColumn).setNote(
+      'Use a família que mais pesou na decisão; o detalhe completo das cinco famílias permanece ligado ao relatório Fenzobot.',
+    );
+  }
+}
+
+function guerraProfitFormulaR1C1_() {
+  return '=IF(OR(RC[-1]="",RC[-1]="PENDENTE"),"",IF(RC[-1]="GANHOU",RC[-3]*(RC[-4]-1)*IF(REGEXMATCH(LOWER(RC[-5]),"betfair"),0.95,1),IF(RC[-1]="PERDEU",-RC[-3],IF(RC[-1]="VOID",0,""))))';
+}
+
+function ensureGuerraProfitFormulas_(sheet, firstDataRow, rows, profitColumn) {
+  const range = sheet.getRange(firstDataRow, profitColumn, rows, 1);
+  const formulas = range.getFormulasR1C1();
+  const values = range.getValues();
+  let runStart = null;
+  const flush = endExclusive => {
+    if (runStart === null) return;
+    sheet.getRange(firstDataRow + runStart, profitColumn, endExclusive - runStart, 1)
+      .setFormulaR1C1(guerraProfitFormulaR1C1_());
+    runStart = null;
+  };
+  for (let index = 0; index < rows; index += 1) {
+    const missing = !formulas[index][0] && (values[index][0] === '' || values[index][0] == null);
+    if (missing && runStart === null) runStart = index;
+    if (!missing) flush(index);
+  }
+  flush(rows);
+  range.setNumberFormat('+0.00;-0.00;0.00');
 }
 
 function ensureGuerraTrackingColumns_(sheet) {
@@ -796,14 +904,18 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const summary = newStats_();
   const byMarket = {};
   const bySide = {};
+  const byHouse = {};
   standardRows.forEach(row => {
     const market = marketName_(row, tracking);
     const side = sideName_(row, tracking);
+    const house = houseName_(row, tracking);
     if (!byMarket[market]) byMarket[market] = newStats_();
     if (!bySide[side]) bySide[side] = newStats_();
+    if (!byHouse[house]) byHouse[house] = newStats_();
     addRowToStats_(summary, row, tracking);
     addRowToStats_(byMarket[market], row, tracking);
     addRowToStats_(bySide[side], row, tracking);
+    addRowToStats_(byHouse[house], row, tracking);
   });
 
   const green = tracking.complete ? fetchGreenStrongIndex_(token, repository, branch) : {byKey: {}, eligibleCount: null, available: false};
@@ -813,6 +925,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const guerraStats = newStats_();
   const guerraByMarket = {};
   const guerraBySide = {};
+  const guerraByHouse = {};
   const guerraReviewRoutes = {};
   const flatStakeSimulation = newFlatStakeSimulation_();
   const selectedSnapshotKeys = {};
@@ -848,6 +961,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const contextualStats = newStats_();
   const contextualByMarket = {};
   const contextualBySide = {};
+  const contextualByHouse = {};
   const contextualLinkage = {
     LINKED_EX_ANTE: 0,
     LINKED_RETROSPECTIVE_CANONICAL: 0,
@@ -861,6 +975,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
   const challengerStats = newStats_();
   const challengerByMarket = {};
   const challengerBySide = {};
+  const challengerByHouse = {};
   const challengerByIndexBand = {};
   const challengerByCoverageBand = {};
   const challengerByEdgeBand = {};
@@ -872,15 +987,17 @@ function buildPaperTradingPayload_(token, repository, branch) {
     if (challengerStatus !== 'MANUAL_CHALLENGER_RECORDED') return;
     const market = marketName_(row, rowTracking);
     const side = sideName_(row, rowTracking);
+    const house = houseName_(row, rowTracking);
     const indexBand = challengerIndexBand_(row, rowTracking);
     const coverageBand = challengerCoverageBand_(row, rowTracking);
     const edgeBand = challengerEdgeBand_(row, rowTracking);
-    [[challengerByMarket, market], [challengerBySide, side], [challengerByIndexBand, indexBand], [challengerByCoverageBand, coverageBand], [challengerByEdgeBand, edgeBand]].forEach(pair => {
+    [[challengerByMarket, market], [challengerBySide, side], [challengerByHouse, house], [challengerByIndexBand, indexBand], [challengerByCoverageBand, coverageBand], [challengerByEdgeBand, edgeBand]].forEach(pair => {
       if (!pair[0][pair[1]]) pair[0][pair[1]] = newStats_();
     });
     addRowToStats_(challengerStats, row, rowTracking);
     addRowToStats_(challengerByMarket[market], row, rowTracking);
     addRowToStats_(challengerBySide[side], row, rowTracking);
+    addRowToStats_(challengerByHouse[house], row, rowTracking);
     addRowToStats_(challengerByIndexBand[indexBand], row, rowTracking);
     addRowToStats_(challengerByCoverageBand[coverageBand], row, rowTracking);
     addRowToStats_(challengerByEdgeBand[edgeBand], row, rowTracking);
@@ -907,11 +1024,14 @@ function buildPaperTradingPayload_(token, repository, branch) {
       contextualCandidates[contextualKey] = true;
       const contextualMarket = marketName_(row, tracking);
       const contextualSide = sideName_(row, tracking);
+      const contextualHouse = houseName_(row, tracking);
       if (!contextualByMarket[contextualMarket]) contextualByMarket[contextualMarket] = newStats_();
       if (!contextualBySide[contextualSide]) contextualBySide[contextualSide] = newStats_();
+      if (!contextualByHouse[contextualHouse]) contextualByHouse[contextualHouse] = newStats_();
       addRowToStats_(contextualStats, row, tracking);
       addRowToStats_(contextualByMarket[contextualMarket], row, tracking);
       addRowToStats_(contextualBySide[contextualSide], row, tracking);
+      addRowToStats_(contextualByHouse[contextualHouse], row, tracking);
       return;
     }
     if (rowStrategy !== PAPER_22BET_SYNC.legacyGuerraStrategy) return;
@@ -928,13 +1048,16 @@ function buildPaperTradingPayload_(token, repository, branch) {
     if (snapshotKey && cohort.eligible === true) selectedGreenSnapshotKeys[snapshotKey] = true;
     const market = marketName_(row, tracking);
     const side = sideName_(row, tracking);
+    const house = houseName_(row, tracking);
     const route = moneylineReviewRoute_(row[tracking.reviewOdd]);
     if (!guerraByMarket[market]) guerraByMarket[market] = newStats_();
     if (!guerraBySide[side]) guerraBySide[side] = newStats_();
+    if (!guerraByHouse[house]) guerraByHouse[house] = newStats_();
     addRowToStats_(guerraStats, row, tracking);
     addRowToFlatStakeSimulation_(flatStakeSimulation, row, tracking);
     addRowToStats_(guerraByMarket[market], row, tracking);
     addRowToStats_(guerraBySide[side], row, tracking);
+    addRowToStats_(guerraByHouse[house], row, tracking);
     guerraReviewRoutes[route] = (guerraReviewRoutes[route] || 0) + 1;
     const factorRecord = factorIndex.byKey[snapshotKey]
       || factorIndex.byKey[reportMatchKey]
@@ -991,6 +1114,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     selected_candidates: selectedCandidates,
     by_market: finishCollection_(guerraByMarket),
     by_side: finishCollection_(guerraBySide),
+    by_house: finishCollection_(guerraByHouse),
     by_stage: finishCollection_(guerraSegmentGroups['Fase do torneio'] || {}),
     by_stage_and_alignment: finishCollection_(guerraSegmentGroups['Fase × alinhamento'] || {}),
     moneyline_review_routes: guerraReviewRoutes,
@@ -1036,6 +1160,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     selected_candidates: Object.keys(contextualCandidates).length,
     by_market: finishCollection_(contextualByMarket),
     by_side: finishCollection_(contextualBySide),
+    by_house: finishCollection_(contextualByHouse),
     linkage: contextualLinkage,
     status: contextualStats.total_entries ? 'AVAILABLE' : 'WAITING_FOR_FIRST_SELECTIONS',
     audit_v1: {
@@ -1051,6 +1176,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     fixed_stake_units: PAPER_22BET_SYNC.challengerManualStakeUnits,
     by_market: finishCollection_(challengerByMarket),
     by_side: finishCollection_(challengerBySide),
+    by_house: finishCollection_(challengerByHouse),
     by_fenzobot_index_band: finishCollection_(challengerByIndexBand),
     by_coverage_band: finishCollection_(challengerByCoverageBand),
     by_edge_band: finishCollection_(challengerByEdgeBand),
@@ -1069,7 +1195,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     Utilities.DigestAlgorithm.SHA_256,
     semanticFingerprintMaterial_(fingerprintRows, {
       summary: finishStats_(summary), by_market: finishCollection_(byMarket),
-      by_side: finishCollection_(bySide),
+      by_side: finishCollection_(bySide), by_house: finishCollection_(byHouse),
       by_strategy: {
         legacy: strategyAggregate,
         contextual: contextualStrategyAggregate,
@@ -1083,6 +1209,8 @@ function buildPaperTradingPayload_(token, repository, branch) {
       label: 'Track Record PAPER Trading — 22Bet',
       url: spreadsheet.getUrl(),
       reference_bookmaker: '22Bet',
+      execution_houses: ['22Bet', 'Betfair'],
+      betfair_commission_policy: '5_PERCENT_ON_NET_WINNINGS',
       synced_at_utc: new Date().toISOString(),
       sync_contract_version: PAPER_22BET_SYNC.syncContractVersion,
       // Só publica a posição das colunas operacionais, nunca valores de
@@ -1098,6 +1226,7 @@ function buildPaperTradingPayload_(token, repository, branch) {
     summary: finishStats_(summary),
     by_market: finishCollection_(byMarket),
     by_side: finishCollection_(bySide),
+    by_house: finishCollection_(byHouse),
     by_strategy: {
       GUERRA_SELECTION_V1: strategyAggregate,
       GUERRA_CONTEXTUAL_V1: contextualStrategyAggregate,
@@ -1240,7 +1369,7 @@ function headerIndex_(headers, expected) {
 }
 
 function publicOperationalColumnMap_(headers, tracking) {
-  const fields = ['market', 'side', 'odd', 'stake', 'result', 'profit'];
+  const fields = ['house', 'market', 'side', 'odd', 'stake', 'result', 'profit'];
   const mapped = {};
   fields.forEach(field => {
     const index = tracking[field];
@@ -1256,6 +1385,12 @@ function marketName_(row, tracking) {
 
 function sideName_(row, tracking) {
   return String(row[tracking.side] || 'Sem perfil');
+}
+
+function houseName_(row, tracking) {
+  if (!Number.isInteger(tracking.house) || tracking.house < 0) return 'N/D';
+  const house = String(row[tracking.house] || '').trim();
+  return house || 'N/D';
 }
 
 function isChallengerManualRow_(row, tracking) {
