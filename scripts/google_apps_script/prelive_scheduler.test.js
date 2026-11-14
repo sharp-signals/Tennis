@@ -128,7 +128,7 @@ test('verify is healthy for exactly one trigger per handler', () => {
 });
 
 test('verify is degraded for missing, duplicate, or legacy triggers', () => {
-  const missing = harness(handlers.slice(0, 3).map(item => trigger(item))).context;
+  const missing = harness(handlers.slice(0, 1).map(item => trigger(item))).context;
   assert.equal(missing.verifyPreLiveSchedule().status, 'DEGRADED');
 
   const duplicate = harness([
