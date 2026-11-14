@@ -803,7 +803,7 @@ test('an expanded sheet with unrecognised operational headers fails closed', () 
   );
 });
 
-test('manual Challenger 125 has a separate 0.5u aggregate and never changes normal PAPER totals', () => {
+test('legacy Challenger row remains archived and does not enter the new-phase aggregate', () => {
   const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat([
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
     'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
@@ -823,17 +823,17 @@ test('manual Challenger 125 has a separate 0.5u aggregate and never changes norm
   const payload = context.buildPaperTradingPayload_('', '', 'main');
   const strategy = payload.by_strategy.CHALLENGER_125_EXPERIMENTAL_V1;
   assert.equal(payload.summary.total_entries, 0);
-  assert.equal(strategy.summary.total_entries, 1);
-  assert.equal(strategy.summary.wins, 1);
-  assert.equal(strategy.summary.units, 0.5);
+  assert.equal(strategy.summary.total_entries, 0);
+  assert.equal(strategy.summary.wins, 0);
+  assert.equal(strategy.summary.units, 0);
   assert.equal(strategy.fixed_stake_units, 0.5);
-  assert.equal(strategy.by_fenzobot_index_band['70–79'].total_entries, 1);
-  assert.equal(strategy.by_coverage_band['50–64,9%'].total_entries, 1);
-  assert.equal(strategy.by_edge_band['4–4,9%'].total_entries, 1);
+  assert.equal(strategy.by_fenzobot_index_band['70–79'], undefined);
+  assert.equal(strategy.by_coverage_band['50–64,9%'], undefined);
+  assert.equal(strategy.by_edge_band['4–4,9%'], undefined);
   assert.doesNotMatch(JSON.stringify(payload), /Private Player|Private Opponent|private:snapshot/);
 });
 
-test('selecting Challenger in Nível isolates the row even without a manually typed strategy', () => {
+test('legacy Challenger level stays outside both normal and new-phase totals', () => {
   const headers = ['Data', 'Jogo', 'Tour', 'Nível', 'Piso', 'Tipo de mercado', 'Seleção', 'Fav/Und', 'Pré/Live', 'Odd aposta', 'Stake (u)', 'EDGE', 'Resultado', 'Lucro (u)', 'Notas'].concat([
     'Fenzobot Snapshot Key', 'Selection Strategy', 'Selected At UTC', '22Bet Moneyline Review Odd', '22Bet Handicap Games Line', 'Validation Status',
     'Challenger Índice Fenzobot', 'Challenger Cobertura %', 'Challenger Edge %',
@@ -856,10 +856,10 @@ test('selecting Challenger in Nível isolates the row even without a manually ty
   const payload = context.buildPaperTradingPayload_('', '', 'main');
   const strategy = payload.by_strategy.CHALLENGER_125_EXPERIMENTAL_V1;
   assert.equal(payload.summary.total_entries, 1);
-  assert.equal(strategy.summary.total_entries, 1);
-  assert.equal(strategy.summary.units, 0.55);
-  assert.equal(strategy.by_edge_band['2–2,9%'].total_entries, 1);
-  assert.equal(strategy.validation.MANUAL_CHALLENGER_RECORDED, 1);
+  assert.equal(strategy.summary.total_entries, 0);
+  assert.equal(strategy.summary.units, 0);
+  assert.equal(strategy.by_edge_band['2–2,9%'], undefined);
+  assert.equal(strategy.validation.MANUAL_CHALLENGER_RECORDED, 0);
 });
 
 test('dedicated Challenger entry sheet feeds only the isolated aggregate', () => {
@@ -882,18 +882,19 @@ test('dedicated Challenger entry sheet feeds only the isolated aggregate', () =>
   challengerRow[13] = 'GANHOU'; challengerRow[14] = 0.55;
   challengerRow[16] = 'snapshot:dedicated'; challengerRow[17] = '2026-10-11T10:00:00Z';
   challengerRow[18] = 82; challengerRow[19] = 0.61; challengerRow[20] = 2.4;
-  const sheetStub = (headers, rows) => ({
-    getLastRow: () => 5 + rows.length,
+  const sheetStub = (headers, rows, headerRow) => ({
+    getLastRow: () => headerRow + rows.length,
     getLastColumn: () => headers.length,
     getRange: (sheetRow) => ({
-      getValues: () => sheetRow === 5 ? [headers] : rows,
+      getValues: () => sheetRow === headerRow ? [headers] : rows,
       setValue: () => {},
     }),
   });
-  const mainSheet = sheetStub(mainHeaders, [mainRow]);
-  const challengerSheet = sheetStub(challengerHeaders, [challengerRow]);
+  const mainSheet = sheetStub(mainHeaders, [mainRow], 5);
+  const challengerSheet = sheetStub(challengerHeaders, [challengerRow], 4);
   context.SpreadsheetApp = {getActiveSpreadsheet: () => ({
-    getSheetByName: name => name === 'Apostas' ? mainSheet : challengerSheet,
+    getSheetByName: name => name === 'Apostas' ? mainSheet
+      : (name === 'Nova fase · Challenger' ? challengerSheet : null),
     getUrl: () => 'https://docs.google.com/spreadsheets/d/test',
   })};
   context.Utilities = {DigestAlgorithm: {SHA_256: 'SHA_256'}, computeDigest: () => [0]};
@@ -907,7 +908,7 @@ test('dedicated Challenger entry sheet feeds only the isolated aggregate', () =>
   assert.equal(challenger.by_market['Handicap games'].total_entries, 1);
   assert.equal(challenger.by_fenzobot_index_band['80–89'].total_entries, 1);
   assert.equal(challenger.by_edge_band['2–2,9%'].total_entries, 1);
-  assert.equal(payload.source.challenger_entry_sheet, 'Challenger · Entradas');
+  assert.equal(payload.source.challenger_entry_sheet, 'Nova fase · Challenger');
   assert.doesNotMatch(JSON.stringify(payload), /ATP Alpha|Challenger Alpha|snapshot:dedicated/);
 });
 
