@@ -219,30 +219,13 @@ def _reference_lines(odd: float, match_format: str, *, underdog: bool) -> list[f
     return []
 
 
-def _price_line(
-    *, probability: float, line: float, counts: Mapping[str, Any],
-) -> dict[str, Any]:
-    wins = counts.get("wins") or {}
-    losses = counts.get("losses") or {}
+def _contextual_line_price(
+    *, probability: float, wins: Mapping[str, Any], losses: Mapping[str, Any],
+) -> dict[str, Any] | None:
     win_total = sum(int(wins.get(key) or 0) for key in ("cover", "push", "miss"))
     loss_total = sum(int(losses.get(key) or 0) for key in ("cover", "push", "miss"))
-    relevant_sample = win_total if line < 0 else loss_total
-    has_required_states = bool(win_total and loss_total)
-    result = {
-        "status": (
-            "READY"
-            if relevant_sample >= 30 and has_required_states
-            else "INSUFFICIENT_SAMPLE"
-        ),
-        "relevant_sample": relevant_sample,
-        "fair_odd": None,
-        "minimum_odd": None,
-        "maximum_odd": INVESTOR_PROFILE_ODDS_HIGH,
-        "cover_probability_pct": None,
-        "push_probability_pct": None,
-    }
-    if relevant_sample < 30 or not has_required_states:
-        return result
+    if not win_total or not loss_total:
+        return None
     win_cover = float(wins["cover"]) / win_total
     win_push = float(wins["push"]) / win_total
     loss_cover = float(losses["cover"]) / loss_total
@@ -251,17 +234,69 @@ def _price_line(
     push_probability = probability * win_push + (1.0 - probability) * loss_push
     miss_probability = max(0.0, 1.0 - cover_probability - push_probability)
     if cover_probability <= 0:
-        return result
+        return None
     fair = 1.0 + miss_probability / cover_probability
     minimum = max(
         INVESTOR_PROFILE_ODDS_LOW,
         math.floor((fair + 0.010000001) * 100.0) / 100.0,
     )
-    result.update({
+    return {
         "fair_odd": round(fair, 2),
-        "minimum_odd": round(minimum, 2) if minimum <= INVESTOR_PROFILE_ODDS_HIGH else None,
+        "minimum_odd": round(minimum, 2),
+        "inside_operational_window": minimum <= INVESTOR_PROFILE_ODDS_HIGH,
         "cover_probability_pct": round(100.0 * cover_probability, 1),
         "push_probability_pct": round(100.0 * push_probability, 1),
+    }
+
+
+def _price_line(
+    *, probability: float, conservative_probability: float,
+    line: float, counts: Mapping[str, Any],
+) -> dict[str, Any]:
+    wins = counts.get("wins") or {}
+    losses = counts.get("losses") or {}
+    win_total = sum(int(wins.get(key) or 0) for key in ("cover", "push", "miss"))
+    loss_total = sum(int(losses.get(key) or 0) for key in ("cover", "push", "miss"))
+    relevant_sample = win_total if line < 0 else loss_total
+    has_required_states = bool(win_total and loss_total)
+    status = (
+        "READY" if relevant_sample >= 30 and has_required_states
+        else "REFERENCE_LOW_SAMPLE" if has_required_states
+        else "INSUFFICIENT_SAMPLE"
+    )
+    result = {
+        "status": status,
+        "relevant_sample": relevant_sample,
+        "reference_available": False,
+        "central": None,
+        "conservative": None,
+        "fair_odd": None,
+        "minimum_odd": None,
+        "maximum_odd": INVESTOR_PROFILE_ODDS_HIGH,
+        "cover_probability_pct": None,
+        "push_probability_pct": None,
+    }
+    if not has_required_states:
+        return result
+    central = _contextual_line_price(
+        probability=probability, wins=wins, losses=losses,
+    )
+    conservative = _contextual_line_price(
+        probability=conservative_probability, wins=wins, losses=losses,
+    )
+    if central is None or conservative is None:
+        return result
+    result.update({
+        "reference_available": True,
+        "central": central,
+        "conservative": conservative,
+        # Backwards-compatible central aliases.
+        "fair_odd": central["fair_odd"],
+        "minimum_odd": (
+            central["minimum_odd"] if central["inside_operational_window"] else None
+        ),
+        "cover_probability_pct": central["cover_probability_pct"],
+        "push_probability_pct": central["push_probability_pct"],
     })
     return result
 
@@ -362,7 +397,10 @@ def build_market_review(
             "loss_cover": int(losses.get("cover") or 0),
             "loss_cover_pct": round(100.0 * int(losses.get("cover") or 0) / loss_n, 1) if loss_n else None,
             "price": _price_line(
-                probability=float(probabilities[handicap_side]), line=line, counts=counts,
+                probability=float(probabilities[handicap_side]),
+                conservative_probability=float(intervals[handicap_side][0]),
+                line=line,
+                counts=counts,
             ),
         })
     if line_models:

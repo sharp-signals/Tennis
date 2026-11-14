@@ -190,6 +190,31 @@ def test_line_without_both_result_states_is_not_declared_ready():
     assert line["price"]["fair_odd"] is None
 
 
+def test_low_sample_line_keeps_central_and_conservative_reference():
+    evidence = _evidence([4.5])
+    counts = evidence["handicap_evidence"]["players"]["a"]["lines"]["+4.5"]
+    counts["total"] = {"cover": 17, "push": 0, "miss": 8}
+    counts["wins"] = {"cover": 10, "push": 0, "miss": 0}
+    counts["losses"] = {"cover": 7, "push": 0, "miss": 8}
+    review = build_market_review(
+        probabilities={"a": 0.30, "b": 0.70},
+        intervals={"a": [0.25, 0.35], "b": [0.65, 0.75]},
+        odds={"a": 3.00, "b": 1.40},
+        evidence_record=evidence,
+        handicap_side="a",
+    )
+    line = next(
+        row for row in review["handicap"]["lines"] if row["line"] == "+4.5"
+    )
+    price = line["price"]
+    assert price["status"] == "REFERENCE_LOW_SAMPLE"
+    assert price["reference_available"] is True
+    assert price["central"]["cover_probability_pct"] == 62.7
+    assert price["central"]["minimum_odd"] == 1.70
+    assert price["conservative"]["cover_probability_pct"] == 60.0
+    assert price["conservative"]["minimum_odd"] == 1.70
+
+
 def test_no_market_never_formulates_review():
     assert build_market_review(
         probabilities={"a": 0.6, "b": 0.4},
