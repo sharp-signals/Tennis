@@ -4,9 +4,15 @@
     "label": "Track Record PAPER Trading — 22Bet",
     "url": "https://docs.google.com/spreadsheets/d/1WY4D0yYxBUX5kOQHMoFnEHmDT1oXsGszyFoMUcXQ-8U/edit",
     "reference_bookmaker": "22Bet",
-    "synced_at_utc": "2026-11-12T23:57:38.049Z",
-    "sync_contract_version": 6,
+    "execution_houses": [
+      "22Bet",
+      "Betfair"
+    ],
+    "betfair_commission_policy": "5_PERCENT_ON_NET_WINNINGS",
+    "synced_at_utc": "2026-11-14T14:17:42.015Z",
+    "sync_contract_version": 7,
     "operational_columns": {
+      "house": 10,
       "market": 6,
       "side": 8,
       "odd": 11,
@@ -16,6 +22,7 @@
     },
     "challenger_entry_sheet": "Challenger · Entradas",
     "challenger_operational_columns": {
+      "house": 10,
       "market": 6,
       "side": 8,
       "odd": 11,
@@ -24,7 +31,7 @@
       "profit": 15
     }
   },
-  "data_fingerprint": "8ee3d47a8b395953a716ce073dda46d53ce3d96b83893710b44d761935c0ab4d",
+  "data_fingerprint": "2aba80a167a930caa81960272223f7d0604f46585c5c736755df80cd614a0c24",
   "summary": {
     "total_entries": 184,
     "settled": 175,
@@ -97,6 +104,36 @@
       "pending_stake_units": 1,
       "roi_pct": -1.959,
       "average_odd": 1.885
+    }
+  },
+  "by_house": {
+    "22Bet": {
+      "total_entries": 149,
+      "settled": 142,
+      "pending": 1,
+      "wins": 80,
+      "losses": 62,
+      "pushes": 6,
+      "win_rate_pct": 56.338,
+      "units": 10.945,
+      "settled_stake_units": 137.5,
+      "pending_stake_units": 1,
+      "roi_pct": 7.96,
+      "average_odd": 1.932
+    },
+    "Betfair": {
+      "total_entries": 35,
+      "settled": 33,
+      "pending": 0,
+      "wins": 16,
+      "losses": 17,
+      "pushes": 2,
+      "win_rate_pct": 48.485,
+      "units": -1.098,
+      "settled_stake_units": 31,
+      "pending_stake_units": 0,
+      "roi_pct": -3.542,
+      "average_odd": 2.029
     }
   },
   "by_strategy": {
@@ -175,6 +212,36 @@
           "pending_stake_units": 1,
           "roi_pct": -0.981,
           "average_odd": 1.885
+        }
+      },
+      "by_house": {
+        "22Bet": {
+          "total_entries": 145,
+          "settled": 138,
+          "pending": 1,
+          "wins": 77,
+          "losses": 61,
+          "pushes": 6,
+          "win_rate_pct": 55.797,
+          "units": 8.685,
+          "settled_stake_units": 133.5,
+          "pending_stake_units": 1,
+          "roi_pct": 6.506,
+          "average_odd": 1.926
+        },
+        "Betfair": {
+          "total_entries": 31,
+          "settled": 30,
+          "pending": 0,
+          "wins": 15,
+          "losses": 15,
+          "pushes": 1,
+          "win_rate_pct": 50,
+          "units": 0.047,
+          "settled_stake_units": 28,
+          "pending_stake_units": 0,
+          "roi_pct": 0.168,
+          "average_odd": 2.048
         }
       },
       "by_stage": {
@@ -3648,6 +3715,7 @@
       "selected_candidates": 0,
       "by_market": {},
       "by_side": {},
+      "by_house": {},
       "linkage": {
         "LINKED_EX_ANTE": 0,
         "LINKED_RETROSPECTIVE_CANONICAL": 0,
@@ -3740,6 +3808,36 @@
           "pending_stake_units": 0,
           "roi_pct": 23.98,
           "average_odd": 2.31
+        }
+      },
+      "by_house": {
+        "22Bet": {
+          "total_entries": 6,
+          "settled": 6,
+          "pending": 0,
+          "wins": 3,
+          "losses": 3,
+          "pushes": 0,
+          "win_rate_pct": 50,
+          "units": -0.22,
+          "settled_stake_units": 3,
+          "pending_stake_units": 0,
+          "roi_pct": -7.333,
+          "average_odd": 1.922
+        },
+        "Betfair": {
+          "total_entries": 4,
+          "settled": 4,
+          "pending": 0,
+          "wins": 3,
+          "losses": 1,
+          "pushes": 0,
+          "win_rate_pct": 75,
+          "units": 1.091,
+          "settled_stake_units": 2,
+          "pending_stake_units": 0,
+          "roi_pct": 54.565,
+          "average_odd": 2.375
         }
       },
       "by_fenzobot_index_band": {
