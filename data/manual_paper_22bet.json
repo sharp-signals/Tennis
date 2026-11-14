@@ -9,7 +9,7 @@
       "Betfair"
     ],
     "betfair_commission_policy": "5_PERCENT_ON_NET_WINNINGS",
-    "synced_at_utc": "2026-11-14T14:17:42.015Z",
+    "synced_at_utc": "2026-11-14T15:07:17.340Z",
     "sync_contract_version": 7,
     "operational_columns": {
       "house": 10,
@@ -20,7 +20,17 @@
       "result": 14,
       "profit": 15
     },
-    "challenger_entry_sheet": "Challenger · Entradas",
+    "contextual_entry_sheet": "Nova fase · ATP-WTA",
+    "contextual_operational_columns": {
+      "house": 10,
+      "market": 6,
+      "side": 8,
+      "odd": 11,
+      "stake": 12,
+      "result": 14,
+      "profit": 15
+    },
+    "challenger_entry_sheet": "Nova fase · Challenger",
     "challenger_operational_columns": {
       "house": 10,
       "market": 6,
@@ -31,7 +41,7 @@
       "profit": 15
     }
   },
-  "data_fingerprint": "2aba80a167a930caa81960272223f7d0604f46585c5c736755df80cd614a0c24",
+  "data_fingerprint": "f1659f79e2d697dfddf3abab45370881a50c5f550dfd60abe32076a83f8b28cf",
   "summary": {
     "total_entries": 184,
     "settled": 175,
@@ -3735,223 +3745,35 @@
     },
     "CHALLENGER_125_EXPERIMENTAL_V1": {
       "summary": {
-        "total_entries": 10,
-        "settled": 10,
+        "total_entries": 0,
+        "settled": 0,
         "pending": 0,
-        "wins": 6,
-        "losses": 4,
+        "wins": 0,
+        "losses": 0,
         "pushes": 0,
-        "win_rate_pct": 60,
-        "units": 0.871,
-        "settled_stake_units": 5,
+        "win_rate_pct": null,
+        "units": 0,
+        "settled_stake_units": 0,
         "pending_stake_units": 0,
-        "roi_pct": 17.426,
-        "average_odd": 2.103
+        "roi_pct": null,
+        "average_odd": null
       },
-      "paper_entries": 10,
+      "paper_entries": 0,
       "fixed_stake_units": 0.5,
-      "by_market": {
-        "Moneyline": {
-          "total_entries": 7,
-          "settled": 7,
-          "pending": 0,
-          "wins": 4,
-          "losses": 3,
-          "pushes": 0,
-          "win_rate_pct": 57.143,
-          "units": 0.506,
-          "settled_stake_units": 3.5,
-          "pending_stake_units": 0,
-          "roi_pct": 14.466,
-          "average_odd": 2.176
-        },
-        "Handicap games": {
-          "total_entries": 3,
-          "settled": 3,
-          "pending": 0,
-          "wins": 2,
-          "losses": 1,
-          "pushes": 0,
-          "win_rate_pct": 66.667,
-          "units": 0.365,
-          "settled_stake_units": 1.5,
-          "pending_stake_units": 0,
-          "roi_pct": 24.333,
-          "average_odd": 1.933
-        }
-      },
-      "by_side": {
-        "Favorito": {
-          "total_entries": 5,
-          "settled": 5,
-          "pending": 0,
-          "wins": 3,
-          "losses": 2,
-          "pushes": 0,
-          "win_rate_pct": 60,
-          "units": 0.272,
-          "settled_stake_units": 2.5,
-          "pending_stake_units": 0,
-          "roi_pct": 10.872,
-          "average_odd": 1.896
-        },
-        "Underdog": {
-          "total_entries": 5,
-          "settled": 5,
-          "pending": 0,
-          "wins": 3,
-          "losses": 2,
-          "pushes": 0,
-          "win_rate_pct": 60,
-          "units": 0.599,
-          "settled_stake_units": 2.5,
-          "pending_stake_units": 0,
-          "roi_pct": 23.98,
-          "average_odd": 2.31
-        }
-      },
-      "by_house": {
-        "22Bet": {
-          "total_entries": 6,
-          "settled": 6,
-          "pending": 0,
-          "wins": 3,
-          "losses": 3,
-          "pushes": 0,
-          "win_rate_pct": 50,
-          "units": -0.22,
-          "settled_stake_units": 3,
-          "pending_stake_units": 0,
-          "roi_pct": -7.333,
-          "average_odd": 1.922
-        },
-        "Betfair": {
-          "total_entries": 4,
-          "settled": 4,
-          "pending": 0,
-          "wins": 3,
-          "losses": 1,
-          "pushes": 0,
-          "win_rate_pct": 75,
-          "units": 1.091,
-          "settled_stake_units": 2,
-          "pending_stake_units": 0,
-          "roi_pct": 54.565,
-          "average_odd": 2.375
-        }
-      },
-      "by_fenzobot_index_band": {
-        "80–89": {
-          "total_entries": 5,
-          "settled": 5,
-          "pending": 0,
-          "wins": 4,
-          "losses": 1,
-          "pushes": 0,
-          "win_rate_pct": 80,
-          "units": 1.434,
-          "settled_stake_units": 2.5,
-          "pending_stake_units": 0,
-          "roi_pct": 57.352,
-          "average_odd": 1.96
-        },
-        "70–79": {
-          "total_entries": 3,
-          "settled": 3,
-          "pending": 0,
-          "wins": 1,
-          "losses": 2,
-          "pushes": 0,
-          "win_rate_pct": 33.333,
-          "units": -0.478,
-          "settled_stake_units": 1.5,
-          "pending_stake_units": 0,
-          "roi_pct": -31.833,
-          "average_odd": 2.443
-        },
-        "90–100": {
-          "total_entries": 2,
-          "settled": 2,
-          "pending": 0,
-          "wins": 1,
-          "losses": 1,
-          "pushes": 0,
-          "win_rate_pct": 50,
-          "units": -0.085,
-          "settled_stake_units": 1,
-          "pending_stake_units": 0,
-          "roi_pct": -8.5,
-          "average_odd": 1.95
-        }
-      },
-      "by_coverage_band": {
-        "<50%": {
-          "total_entries": 10,
-          "settled": 10,
-          "pending": 0,
-          "wins": 6,
-          "losses": 4,
-          "pushes": 0,
-          "win_rate_pct": 60,
-          "units": 0.871,
-          "settled_stake_units": 5,
-          "pending_stake_units": 0,
-          "roi_pct": 17.426,
-          "average_odd": 2.103
-        }
-      },
-      "by_edge_band": {
-        "2–2,9%": {
-          "total_entries": 5,
-          "settled": 5,
-          "pending": 0,
-          "wins": 2,
-          "losses": 3,
-          "pushes": 0,
-          "win_rate_pct": 40,
-          "units": -0.643,
-          "settled_stake_units": 2.5,
-          "pending_stake_units": 0,
-          "roi_pct": -25.728,
-          "average_odd": 1.946
-        },
-        "3–3,9%": {
-          "total_entries": 1,
-          "settled": 1,
-          "pending": 0,
-          "wins": 1,
-          "losses": 0,
-          "pushes": 0,
-          "win_rate_pct": 100,
-          "units": 0.627,
-          "settled_stake_units": 0.5,
-          "pending_stake_units": 0,
-          "roi_pct": 125.4,
-          "average_odd": 2.32
-        },
-        "4–4,9%": {
-          "total_entries": 4,
-          "settled": 4,
-          "pending": 0,
-          "wins": 3,
-          "losses": 1,
-          "pushes": 0,
-          "win_rate_pct": 75,
-          "units": 0.888,
-          "settled_stake_units": 2,
-          "pending_stake_units": 0,
-          "roi_pct": 44.375,
-          "average_odd": 2.245
-        }
-      },
+      "by_market": {},
+      "by_side": {},
+      "by_house": {},
+      "by_fenzobot_index_band": {},
+      "by_coverage_band": {},
+      "by_edge_band": {},
       "validation": {
-        "MANUAL_CHALLENGER_RECORDED": 10,
+        "MANUAL_CHALLENGER_RECORDED": 0,
         "MISSING_SNAPSHOT_KEY": 0,
         "MISSING_SELECTION_TIMESTAMP": 0,
         "INVALID_CHALLENGER_STAKE": 0,
         "INVALID_CHALLENGER_EDGE": 0
       },
-      "status": "AVAILABLE"
+      "status": "UNAVAILABLE"
     }
   }
 }
