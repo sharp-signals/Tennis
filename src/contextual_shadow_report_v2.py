@@ -51,6 +51,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.10",
                 "fenzobot-contextual-2026-11-report.11",
                 "fenzobot-contextual-2026-11-report.12",
+                "fenzobot-contextual-2026-11-report.13",
             }
             and (
                 rules.get("latest_market_snapshot_must_be_used_for_display") is not True
@@ -63,6 +64,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
                         "fenzobot-contextual-2026-11-report.12",
+                        "fenzobot-contextual-2026-11-report.13",
                     }
                     and rules.get("four_handicap_reference_lines_must_be_highlighted") is not True
                 )
@@ -74,6 +76,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
                         "fenzobot-contextual-2026-11-report.12",
+                        "fenzobot-contextual-2026-11-report.13",
                     }
                     and rules.get("five_handicap_reference_lines_must_be_consecutive") is not True
                 )
@@ -88,6 +91,7 @@ def load_report_contract(
                 "fenzobot-contextual-2026-11-report.10",
                 "fenzobot-contextual-2026-11-report.11",
                 "fenzobot-contextual-2026-11-report.12",
+                "fenzobot-contextual-2026-11-report.13",
             }
             and (
                 rules.get("handicap_references_must_follow_model_side") is not True
@@ -100,6 +104,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
                         "fenzobot-contextual-2026-11-report.12",
+                        "fenzobot-contextual-2026-11-report.13",
                     }
                     and rules.get("family_detail_must_offer_xray_toggle") is not True
                 )
@@ -109,6 +114,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
                         "fenzobot-contextual-2026-11-report.12",
+                        "fenzobot-contextual-2026-11-report.13",
                     }
                     and rules.get("h2h_family_must_show_factual_match_history") is not True
                 )
@@ -117,6 +123,7 @@ def load_report_contract(
                         "fenzobot-contextual-2026-11-report.10",
                         "fenzobot-contextual-2026-11-report.11",
                         "fenzobot-contextual-2026-11-report.12",
+                        "fenzobot-contextual-2026-11-report.13",
                     }
                     and rules.get("h2h_facts_must_join_without_prediction_rewrite") is not True
                 )
@@ -124,6 +131,7 @@ def load_report_contract(
                     expected_contract_version in {
                         "fenzobot-contextual-2026-11-report.11",
                         "fenzobot-contextual-2026-11-report.12",
+                        "fenzobot-contextual-2026-11-report.13",
                     }
                     and (
                         rules.get("markets_require_conservative_positive_edge") is not True
@@ -131,9 +139,20 @@ def load_report_contract(
                     )
                 )
                 or (
-                    expected_contract_version == "fenzobot-contextual-2026-11-report.12"
+                    expected_contract_version in {
+                        "fenzobot-contextual-2026-11-report.12",
+                        "fenzobot-contextual-2026-11-report.13",
+                    }
                     and rules.get("family_detail_must_show_statistical_baseline")
                     is not True
+                )
+                or (
+                    expected_contract_version == "fenzobot-contextual-2026-11-report.13"
+                    and (
+                        rules.get("contrarian_header_must_not_claim_value") is not True
+                        or rules.get("complete_family_label_must_disclose_internal_gaps") is not True
+                        or rules.get("finals_group_stage_must_be_resolved") is not True
+                    )
                 )
             )
         )
@@ -276,7 +295,7 @@ def _impact_label(value: Any) -> str:
 
 def _quality_label(value: Any) -> str:
     return {
-        "PRIMARY_READY_COMPLETE": "Famílias principais completas",
+        "PRIMARY_READY_COMPLETE": "5/5 famílias calculadas · podem existir lacunas internas",
         "PRIMARY_READY_SECONDARY_GAPS": "Principais prontas · lacunas secundárias",
         "PRIMARY_DEGRADED": "Família principal em falta",
     }.get(str(value or ""), str(value or "Qualidade N/D"))
@@ -315,7 +334,7 @@ def _competition_round_label(competition: Mapping[str, Any]) -> str:
     except (TypeError, ValueError):
         round_id = None
     if round_id == 8 and (
-        tier == "championships" or "wta finals" in tournament
+        tier in {"championships", "finals"} or "finals" in tournament
     ):
         return "Fase de grupos · inferida pelo torneio"
     return stage
@@ -1640,9 +1659,23 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         conservative_ev = _number(
             (player.get("market") or {}).get("conservative_expected_value_pct")
         )
+        review = view.get("market_review") or {}
+        review_status = review.get("status")
+        review_side = str(review.get("candidate_side") or "")
         value_label = (
-            "VALOR CONSERVADOR"
-            if conservative_ev is not None and conservative_ev > 0
+            "VALOR CONSERVADOR CONFIRMADO"
+            if (
+                review_status == "CONSERVATIVE_POSITIVE"
+                and review_side == side
+                and conservative_ev is not None
+                and conservative_ev > 0
+            )
+            else "DIVERGÊNCIA CONTRARIAN · NÃO VALIDADA"
+            if (
+                review_status == "CONTRARIAN_PRICE_ONLY"
+                and str(review.get("contrarian_candidate_side") or review_side)
+                == side
+            )
             else "EDGE CENTRAL NÃO CONFIRMADO"
             if central_ev is not None and central_ev > 0
             else "SEM EDGE POSITIVO"

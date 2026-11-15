@@ -1,0 +1,418 @@
+{
+  "schema_version": 1,
+  "mode": "READ_ONLY_CHRONOLOGICAL_CALIBRATION_AUDIT",
+  "model_version": "FENZOBOT_CONTEXTUAL_2026_11",
+  "configuration_fingerprint": "aa06baadddb9acd3e818ebc75c5c9799fb277eb4c1793466b6f95a7d242d0752",
+  "market_used": false,
+  "model_refit": false,
+  "results": {
+    "atp": {
+      "holdout": {
+        "from": "2025-01-27",
+        "through": "2026-11-10",
+        "sample": 5269
+      },
+      "overall": {
+        "sample": 5269,
+        "predicted_pct": 64.77,
+        "observed_pct": 65.33,
+        "gap_pp": 0.56
+      },
+      "fair_odd_bands": {
+        "1.10-1.25": {
+          "sample": 542,
+          "predicted_pct": 85.58,
+          "observed_pct": 85.61,
+          "gap_pp": 0.03
+        },
+        "1.26-1.40": {
+          "sample": 841,
+          "predicted_pct": 75.28,
+          "observed_pct": 74.55,
+          "gap_pp": -0.73
+        },
+        "1.41-1.60": {
+          "sample": 1315,
+          "predicted_pct": 66.77,
+          "observed_pct": 68.82,
+          "gap_pp": 2.05
+        },
+        "1.61-1.80": {
+          "sample": 1321,
+          "predicted_pct": 58.95,
+          "observed_pct": 58.36,
+          "gap_pp": -0.58
+        },
+        ">1.80": {
+          "sample": 1250,
+          "predicted_pct": 52.71,
+          "observed_pct": 54.0,
+          "gap_pp": 1.29
+        }
+      },
+      "family_consensus": {
+        "0/0": {
+          "sample": 34,
+          "predicted_pct": 52.58,
+          "observed_pct": 64.71,
+          "gap_pp": 12.12
+        },
+        "0/1": {
+          "sample": 11,
+          "predicted_pct": 51.2,
+          "observed_pct": 54.55,
+          "gap_pp": 3.34
+        },
+        "0/2": {
+          "sample": 2,
+          "predicted_pct": 50.23,
+          "observed_pct": 100.0,
+          "gap_pp": 49.77
+        },
+        "0/3": {
+          "sample": 1,
+          "predicted_pct": 50.39,
+          "observed_pct": 100.0,
+          "gap_pp": 49.61
+        },
+        "0/4": {
+          "sample": 1,
+          "predicted_pct": 50.54,
+          "observed_pct": 0.0,
+          "gap_pp": -50.54
+        },
+        "1/1": {
+          "sample": 32,
+          "predicted_pct": 55.11,
+          "observed_pct": 46.88,
+          "gap_pp": -8.23
+        },
+        "1/2": {
+          "sample": 47,
+          "predicted_pct": 56.31,
+          "observed_pct": 59.57,
+          "gap_pp": 3.27
+        },
+        "1/3": {
+          "sample": 27,
+          "predicted_pct": 56.37,
+          "observed_pct": 62.96,
+          "gap_pp": 6.6
+        },
+        "1/4": {
+          "sample": 88,
+          "predicted_pct": 53.21,
+          "observed_pct": 45.45,
+          "gap_pp": -7.76
+        },
+        "1/5": {
+          "sample": 39,
+          "predicted_pct": 51.87,
+          "observed_pct": 51.28,
+          "gap_pp": -0.59
+        },
+        "2/2": {
+          "sample": 102,
+          "predicted_pct": 64.26,
+          "observed_pct": 77.45,
+          "gap_pp": 13.19
+        },
+        "2/3": {
+          "sample": 83,
+          "predicted_pct": 57.73,
+          "observed_pct": 66.27,
+          "gap_pp": 8.54
+        },
+        "2/4": {
+          "sample": 412,
+          "predicted_pct": 55.42,
+          "observed_pct": 52.91,
+          "gap_pp": -2.51
+        },
+        "2/5": {
+          "sample": 181,
+          "predicted_pct": 54.29,
+          "observed_pct": 56.91,
+          "gap_pp": 2.62
+        },
+        "3/3": {
+          "sample": 157,
+          "predicted_pct": 66.36,
+          "observed_pct": 72.61,
+          "gap_pp": 6.25
+        },
+        "3/4": {
+          "sample": 781,
+          "predicted_pct": 60.05,
+          "observed_pct": 58.77,
+          "gap_pp": -1.28
+        },
+        "3/5": {
+          "sample": 414,
+          "predicted_pct": 57.83,
+          "observed_pct": 55.56,
+          "gap_pp": -2.28
+        },
+        "4/4": {
+          "sample": 1175,
+          "predicted_pct": 70.49,
+          "observed_pct": 71.06,
+          "gap_pp": 0.57
+        },
+        "4/5": {
+          "sample": 733,
+          "predicted_pct": 64.35,
+          "observed_pct": 64.53,
+          "gap_pp": 0.18
+        },
+        "5/5": {
+          "sample": 949,
+          "predicted_pct": 74.62,
+          "observed_pct": 76.4,
+          "gap_pp": 1.78
+        }
+      },
+      "primary_alignment": {
+        "both_primary_aligned": {
+          "sample": 3709,
+          "predicted_pct": 68.42,
+          "observed_pct": 68.78,
+          "gap_pp": 0.36
+        },
+        "not_both_primary_aligned": {
+          "sample": 1560,
+          "predicted_pct": 56.08,
+          "observed_pct": 57.12,
+          "gap_pp": 1.03
+        }
+      },
+      "unanimous_5_of_5": {
+        "sample": 949,
+        "predicted_pct": 74.62,
+        "observed_pct": 76.4,
+        "gap_pp": 1.78
+      },
+      "unanimous_primary_intensity": {
+        "DECISIVE": {
+          "sample": 186,
+          "predicted_pct": 80.44,
+          "observed_pct": 80.65,
+          "gap_pp": 0.21
+        },
+        "MODERATE": {
+          "sample": 247,
+          "predicted_pct": 67.64,
+          "observed_pct": 71.66,
+          "gap_pp": 4.02
+        },
+        "SLIGHT": {
+          "sample": 45,
+          "predicted_pct": 60.04,
+          "observed_pct": 51.11,
+          "gap_pp": -8.93
+        },
+        "STRONG": {
+          "sample": 471,
+          "predicted_pct": 77.37,
+          "observed_pct": 79.62,
+          "gap_pp": 2.24
+        }
+      }
+    },
+    "wta": {
+      "holdout": {
+        "from": "2025-01-06",
+        "through": "2026-11-08",
+        "sample": 4896
+      },
+      "overall": {
+        "sample": 4896,
+        "predicted_pct": 64.9,
+        "observed_pct": 66.52,
+        "gap_pp": 1.63
+      },
+      "fair_odd_bands": {
+        "1.10-1.25": {
+          "sample": 509,
+          "predicted_pct": 85.08,
+          "observed_pct": 86.05,
+          "gap_pp": 0.98
+        },
+        "1.26-1.40": {
+          "sample": 740,
+          "predicted_pct": 75.34,
+          "observed_pct": 78.38,
+          "gap_pp": 3.04
+        },
+        "1.41-1.60": {
+          "sample": 1326,
+          "predicted_pct": 66.82,
+          "observed_pct": 67.12,
+          "gap_pp": 0.3
+        },
+        "1.61-1.80": {
+          "sample": 1254,
+          "predicted_pct": 58.9,
+          "observed_pct": 61.32,
+          "gap_pp": 2.42
+        },
+        ">1.80": {
+          "sample": 1067,
+          "predicted_pct": 52.68,
+          "observed_pct": 54.36,
+          "gap_pp": 1.68
+        }
+      },
+      "family_consensus": {
+        "0/1": {
+          "sample": 1,
+          "predicted_pct": 50.32,
+          "observed_pct": 0.0,
+          "gap_pp": -50.32
+        },
+        "0/2": {
+          "sample": 1,
+          "predicted_pct": 50.11,
+          "observed_pct": 100.0,
+          "gap_pp": 49.89
+        },
+        "1/1": {
+          "sample": 38,
+          "predicted_pct": 57.15,
+          "observed_pct": 55.26,
+          "gap_pp": -1.88
+        },
+        "1/2": {
+          "sample": 75,
+          "predicted_pct": 58.11,
+          "observed_pct": 62.67,
+          "gap_pp": 4.55
+        },
+        "1/3": {
+          "sample": 103,
+          "predicted_pct": 54.79,
+          "observed_pct": 58.25,
+          "gap_pp": 3.46
+        },
+        "1/4": {
+          "sample": 83,
+          "predicted_pct": 54.72,
+          "observed_pct": 55.42,
+          "gap_pp": 0.7
+        },
+        "1/5": {
+          "sample": 25,
+          "predicted_pct": 52.54,
+          "observed_pct": 60.0,
+          "gap_pp": 7.46
+        },
+        "2/2": {
+          "sample": 174,
+          "predicted_pct": 65.61,
+          "observed_pct": 69.54,
+          "gap_pp": 3.93
+        },
+        "2/3": {
+          "sample": 340,
+          "predicted_pct": 58.16,
+          "observed_pct": 58.82,
+          "gap_pp": 0.66
+        },
+        "2/4": {
+          "sample": 409,
+          "predicted_pct": 56.29,
+          "observed_pct": 59.66,
+          "gap_pp": 3.36
+        },
+        "2/5": {
+          "sample": 113,
+          "predicted_pct": 56.06,
+          "observed_pct": 53.1,
+          "gap_pp": -2.96
+        },
+        "3/3": {
+          "sample": 494,
+          "predicted_pct": 67.52,
+          "observed_pct": 71.46,
+          "gap_pp": 3.94
+        },
+        "3/4": {
+          "sample": 715,
+          "predicted_pct": 60.84,
+          "observed_pct": 61.54,
+          "gap_pp": 0.7
+        },
+        "3/5": {
+          "sample": 259,
+          "predicted_pct": 58.58,
+          "observed_pct": 59.07,
+          "gap_pp": 0.49
+        },
+        "4/4": {
+          "sample": 1076,
+          "predicted_pct": 71.42,
+          "observed_pct": 72.77,
+          "gap_pp": 1.35
+        },
+        "4/5": {
+          "sample": 414,
+          "predicted_pct": 65.16,
+          "observed_pct": 66.91,
+          "gap_pp": 1.74
+        },
+        "5/5": {
+          "sample": 576,
+          "predicted_pct": 75.0,
+          "observed_pct": 75.69,
+          "gap_pp": 0.7
+        }
+      },
+      "primary_alignment": {
+        "both_primary_aligned": {
+          "sample": 3384,
+          "predicted_pct": 68.53,
+          "observed_pct": 69.18,
+          "gap_pp": 0.65
+        },
+        "not_both_primary_aligned": {
+          "sample": 1512,
+          "predicted_pct": 56.77,
+          "observed_pct": 60.58,
+          "gap_pp": 3.81
+        }
+      },
+      "unanimous_5_of_5": {
+        "sample": 576,
+        "predicted_pct": 75.0,
+        "observed_pct": 75.69,
+        "gap_pp": 0.7
+      },
+      "unanimous_primary_intensity": {
+        "DECISIVE": {
+          "sample": 213,
+          "predicted_pct": 82.91,
+          "observed_pct": 81.22,
+          "gap_pp": -1.69
+        },
+        "MODERATE": {
+          "sample": 107,
+          "predicted_pct": 64.9,
+          "observed_pct": 61.68,
+          "gap_pp": -3.22
+        },
+        "SLIGHT": {
+          "sample": 25,
+          "predicted_pct": 59.88,
+          "observed_pct": 56.0,
+          "gap_pp": -3.88
+        },
+        "STRONG": {
+          "sample": 231,
+          "predicted_pct": 74.01,
+          "observed_pct": 79.22,
+          "gap_pp": 5.21
+        }
+      }
+    }
+  }
+}

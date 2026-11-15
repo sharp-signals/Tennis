@@ -103,7 +103,7 @@ def build_release_previews(
     contract = load_report_contract(
         REPORT_CONTRACT_PATH,
         expected_model_version=GLOBAL_RELEASE_ID,
-        expected_contract_version="fenzobot-contextual-2026-11-report.12",
+        expected_contract_version="fenzobot-contextual-2026-11-report.13",
     )
     observation_ids = None
     if SUMMARY_PATH.is_file():
