@@ -1,0 +1,50 @@
+import unittest
+
+from scripts.audit_contextual_consensus_calibration import (
+    _audit_records,
+    _fair_band,
+    _segment,
+)
+
+
+class ContextualConsensusCalibrationAuditTests(unittest.TestCase):
+    def test_fair_odd_bands_follow_requested_favorite_ranges(self):
+        self.assertEqual(_fair_band(1 / 1.20), "1.10-1.25")
+        self.assertEqual(_fair_band(1 / 1.35), "1.26-1.40")
+        self.assertEqual(_fair_band(1 / 1.50), "1.41-1.60")
+        self.assertEqual(_fair_band(1 / 1.70), "1.61-1.80")
+        self.assertEqual(_fair_band(0.52), ">1.80")
+
+    def test_consensus_is_measured_on_the_model_favorite_side(self):
+        row = {
+            "target_a_win": True,
+            "family_probabilities": {
+                "recent_form": 0.70,
+                "structural_strength": 0.65,
+                "surface_conditions": 0.55,
+                "matchup_h2h": 0.60,
+                "serve_return": 0.51,
+            },
+        }
+        records = _audit_records(
+            [row], [0.72],
+            coefficients={name: 0.2 for name in row["family_probabilities"]},
+            calibrator={"method": "IDENTITY", "intercept": 0.0, "slope": 1.0},
+        )
+        self.assertEqual(records[0]["consensus"], "5/5")
+        self.assertTrue(records[0]["primary_aligned"])
+        self.assertTrue(records[0]["favorite_won"])
+
+    def test_segment_reports_calibration_gap_without_refitting(self):
+        result = _segment([
+            {"favorite_probability": 0.70, "favorite_won": True},
+            {"favorite_probability": 0.80, "favorite_won": False},
+        ])
+        self.assertEqual(result["sample"], 2)
+        self.assertEqual(result["predicted_pct"], 75.0)
+        self.assertEqual(result["observed_pct"], 50.0)
+        self.assertEqual(result["gap_pp"], -25.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

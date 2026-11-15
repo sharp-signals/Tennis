@@ -294,8 +294,38 @@ class ContextualShadowReportTests(unittest.TestCase):
         html = report.render_report_html(view)
         self.assertIn("Preço contrarian não confirmado", html)
         self.assertIn("nenhuma família analisada favorece esse lado", html)
+        self.assertIn("DIVERGÊNCIA CONTRARIAN · NÃO VALIDADA", html)
+        self.assertNotIn("VALOR CONSERVADOR</em>", html)
         self.assertNotIn("HANDICAPS DE BETA PLAYER · POSITIVOS", html)
         self.assertNotIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
+
+    def test_complete_family_label_discloses_possible_internal_gaps(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"]["quality_group"] = "PRIMARY_READY_COMPLETE"
+        prediction["contextual_shadow"]["family_coverage"] = {
+            "solid": 5, "partial": 0, "observed_neutral": 0,
+            "unavailable": 0, "usable": 5, "total": 5, "pct": 100.0,
+        }
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market())
+        )
+        self.assertIn(
+            "5/5 famílias calculadas · podem existir lacunas internas", html
+        )
+        self.assertNotIn("Famílias principais completas", html)
+
+    def test_atp_finals_round_id_eight_is_group_stage(self):
+        prediction = copy.deepcopy(observation())
+        prediction["tier"] = "FINALS"
+        prediction["competition"].update({
+            "tournament_name": "Nitto ATP Finals - Turin",
+            "round_stage": "ROUND_UNRESOLVED",
+            "round_id": 8,
+        })
+        view = report.build_report_view_model(prediction, market())
+        self.assertEqual(
+            view["round_stage"], "Fase de grupos · inferida pelo torneio"
+        )
 
     def test_confirmed_opposite_with_family_support_keeps_candidate_markets(self):
         prediction = copy.deepcopy(observation())
