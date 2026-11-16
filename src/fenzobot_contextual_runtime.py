@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
-from .contextual_family_combination_v8 import predict_contextual_combination_v8
+from .contextual_family_combination_v9 import predict_contextual_combination_v9
 from .contextual_family_calibration import explain_family_equation
 from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
@@ -210,7 +210,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v8(
+    prediction = predict_contextual_combination_v9(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
@@ -246,9 +246,9 @@ def predict_fenzobot_contextual(
     contributions: dict[str, float] = {}
     for family in FAMILY_ORDER:
         family_probability = family_probabilities.get(family)
-        contribution = (
-            float(coefficients.get(family, 0.0)) * _logit(family_probability)
-            if family_probability is not None else 0.0
+        contribution = float(
+            (working.get("calibrated_realized_family_contributions") or {})
+            .get(family, 0.0)
         )
         contributions[family] = contribution
         model = runtime_models.get(family)
