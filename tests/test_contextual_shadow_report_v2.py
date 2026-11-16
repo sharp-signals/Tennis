@@ -8,6 +8,12 @@ from scripts import build_contextual_shadow_report_preview_v2 as runner
 from src import contextual_shadow_report_v2 as report
 
 
+def test_family_impact_labels_expose_the_new_low_intensity_grades():
+    assert report._impact_label("MINIMAL") == "residual"
+    assert report._impact_label("VERY_SLIGHT") == "muito ligeiro"
+    assert report._impact_label("SLIGHT") == "ligeiro"
+
+
 def observation():
     return {
         "schema_version": 2,

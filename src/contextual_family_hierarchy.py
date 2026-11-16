@@ -58,3 +58,79 @@ def govern_realized_family_contributions(
             largest_secondary_after
         ),
     }
+
+
+def govern_consensus_aware_family_contributions(
+    contributions: dict[str, float],
+) -> tuple[dict[str, float], dict[str, float | bool | str]]:
+    """Govern secondary evidence without crushing unanimous reinforcement.
+
+    Conflicting or one-sided primary evidence keeps the strict v9 block cap.
+    When both primary families are non-opposed and every active secondary
+    family reinforces the same side, no directional conflict exists: the
+    primary block authorises the side and the unanimous independent evidence
+    is preserved to refine magnitude.  This prevents a secondary family from
+    reversing the primary reading without crushing five-of-five consensus.
+    No fixed player, match or market adjustment is introduced.
+    """
+    governed = {
+        family: float(contributions.get(family, 0.0))
+        for family in (*PRIMARY_FAMILIES, *SECONDARY_FAMILIES)
+    }
+
+    def direction(value: float) -> int:
+        return 1 if value > 0.0 else -1 if value < 0.0 else 0
+
+    primary_values = [governed[family] for family in PRIMARY_FAMILIES]
+    secondary_values = [governed[family] for family in SECONDARY_FAMILIES]
+    primary_net = sum(primary_values)
+    primary_direction = direction(primary_net)
+    primary_non_opposed = bool(primary_direction) and all(
+        direction(value) in (0, primary_direction) for value in primary_values
+    )
+    secondary_reinforces = bool(primary_direction) and all(
+        direction(value) in (0, primary_direction) for value in secondary_values
+    )
+    consensus_reinforcement = primary_non_opposed and secondary_reinforces
+
+    primary_budget = sum(abs(value) for value in primary_values)
+    primary_average = primary_budget / len(PRIMARY_FAMILIES)
+    primary_strongest = max((abs(value) for value in primary_values), default=0.0)
+    secondary_budget_before = sum(abs(value) for value in secondary_values)
+    largest_secondary = max((abs(value) for value in secondary_values), default=0.0)
+    scale = 1.0
+
+    if secondary_budget_before > 0.0:
+        if primary_budget <= 0.0:
+            scale = 0.0
+        elif not consensus_reinforcement:
+            if largest_secondary > primary_average:
+                scale = min(scale, primary_average / largest_secondary)
+            if secondary_budget_before > primary_budget:
+                scale = min(scale, primary_budget / secondary_budget_before)
+
+    for family in SECONDARY_FAMILIES:
+        governed[family] *= scale
+    secondary_budget_after = sum(
+        abs(governed[family]) for family in SECONDARY_FAMILIES
+    )
+    largest_secondary_after = max(
+        (abs(governed[family]) for family in SECONDARY_FAMILIES), default=0.0
+    )
+    return governed, {
+        "applied": scale < 1.0 - 1e-12,
+        "policy": (
+            "UNANIMOUS_REINFORCEMENT_PRESERVED"
+            if consensus_reinforcement else "STRICT_CONFLICT_BLOCK_CAP"
+        ),
+        "consensus_reinforcement": consensus_reinforcement,
+        "secondary_scale": float(scale),
+        "primary_absolute_budget": float(primary_budget),
+        "primary_average_absolute_impact": float(primary_average),
+        "primary_strongest_absolute_impact": float(primary_strongest),
+        "secondary_absolute_budget_before": float(secondary_budget_before),
+        "secondary_absolute_budget_after": float(secondary_budget_after),
+        "largest_secondary_absolute_impact_after": float(
+            largest_secondary_after
+        ),
+    }

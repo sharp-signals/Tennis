@@ -288,6 +288,7 @@ def _coverage_grade_label(value: Any) -> str:
 
 def _impact_label(value: Any) -> str:
     return {
+        "MINIMAL": "residual", "VERY_SLIGHT": "muito ligeiro",
         "SLIGHT": "ligeiro", "MODERATE": "moderado",
         "STRONG": "forte", "DECISIVE": "muito forte",
     }.get(str(value or "").upper(), "neutro")
