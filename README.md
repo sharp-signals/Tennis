@@ -93,6 +93,12 @@ dos fatores, já reduzida pela qualidade da evidência, numa probabilidade próp
 
 `P_fenzobot = logistic(beta_circuito × força_assinada × qualidade)`
 
+Na release contextual, `Forma recente ajustada` e `Força estrutural` governam
+também o impacto realizado em cada encontro: nenhuma família secundária pode
+exceder a contribuição média das duas principais e o bloco secundário total não
+pode exceder o bloco principal. Os limites são derivados das contribuições do
+próprio jogo, sem percentagens manuais nem aproximação ao preço de mercado.
+
 A qualidade reduz a força em caso de poucos fatores, massa efetiva baixa,
 cobertura insuficiente, resolução de identidade incerta ou falha crítica de
 dados. O mercado não participa nesta probabilidade nem na fair odd: entra só
