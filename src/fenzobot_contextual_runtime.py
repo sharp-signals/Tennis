@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
-from .contextual_family_combination_v9 import predict_contextual_combination_v9
+from .contextual_family_combination_v10 import predict_contextual_combination_v10
 from .contextual_family_calibration import explain_family_equation
 from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
@@ -49,6 +49,10 @@ def _coverage_grade(data_state: str | None, probability: float | None) -> str:
 
 def _impact_intensity(delta_pp: float) -> str:
     value = abs(float(delta_pp))
+    if value < 0.5:
+        return "MINIMAL"
+    if value < 1.5:
+        return "VERY_SLIGHT"
     if value < 3.0:
         return "SLIGHT"
     if value < 7.0:
@@ -210,7 +214,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v9(
+    prediction = predict_contextual_combination_v10(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
