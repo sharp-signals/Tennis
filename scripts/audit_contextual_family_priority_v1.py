@@ -39,6 +39,7 @@ from src.contextual_family_combination_v2 import (
     _effective_profiles,
     _fit_family_bundle,
     _meta_matrix,
+    _select_l1,
     hierarchy_projector,
 )
 from src.contextual_family_combination_v10 import (
@@ -54,6 +55,8 @@ H2H_BASELINE = "h2h_global_shrunk_v1"
 H2H_CANDIDATE = "h2h_strong_context_v2"
 H2H_STRONG = "contextual_h2h_strong_five_v2"
 H2H_STRONG_SURFACE = "contextual_h2h_strong_same_surface_five_v2"
+H2H_RELIABILITY = "contextual_h2h_reliability_curve_v3"
+H2H_RELIABILITY_SURFACE = "contextual_h2h_same_surface_reliability_curve_v3"
 FAMILIES = (
     "recent_form", "structural_strength", "surface_conditions",
     "matchup_h2h", "serve_return",
@@ -82,6 +85,15 @@ def _augment_h2h_candidates(rows: list[dict]) -> None:
             float(surface_margin)
             if surface_count >= 5 and surface_margin is not None
             and abs(float(surface_margin)) >= 0.6 else 0.0
+        )
+        features[H2H_RELIABILITY] = (
+            float(margin) * count / (count + 2.0) * math.sqrt(count)
+            if count > 0 and margin is not None else None
+        )
+        features[H2H_RELIABILITY_SURFACE] = (
+            float(surface_margin) * surface_count / (surface_count + 2.0)
+            * math.sqrt(surface_count)
+            if surface_count > 0 and surface_margin is not None else None
         )
 
 
@@ -184,12 +196,26 @@ def _h2h_audit(split: dict[str, list[dict]]) -> dict:
             "contextual_h2h_global_shrunk_v1", H2H_STRONG, H2H_STRONG_SURFACE,
         ),
     }
+    CALIBRATION_FEATURE_PROFILES["h2h_reliability_curve_v3"] = {
+        "matchup_h2h": (H2H_RELIABILITY,),
+    }
+    CALIBRATION_FEATURE_PROFILES["h2h_reliability_context_v3"] = {
+        "matchup_h2h": (H2H_RELIABILITY, H2H_RELIABILITY_SURFACE),
+    }
     baseline_model = calibrate_family(
         split, family="matchup_h2h", feature_profile=H2H_BASELINE,
     )
     candidate_model = calibrate_family(
         split, family="matchup_h2h", feature_profile=H2H_CANDIDATE,
     )
+    reliability_models = {
+        profile: calibrate_family(
+            split, family="matchup_h2h", feature_profile=profile,
+        )
+        for profile in (
+            "h2h_reliability_curve_v3", "h2h_reliability_context_v3",
+        )
+    }
     holdout = split["holdout"]
     baseline = predict_family_equation(holdout, _runtime_model(baseline_model))
     candidate = predict_family_equation(holdout, _runtime_model(candidate_model))
@@ -211,6 +237,31 @@ def _h2h_audit(split: dict[str, list[dict]]) -> dict:
          == bool(row["target_a_win"]))
         for row in strong
     )
+    reliability = {}
+    for profile, model in reliability_models.items():
+        tested = predict_family_equation(holdout, _runtime_model(model))
+        paired = [
+            index for index in range(len(holdout))
+            if baseline[index] is not None and tested[index] is not None
+        ]
+        paired_targets = np.asarray([
+            float(holdout[index]["target_a_win"]) for index in paired
+        ])
+        baseline_paired = np.asarray([baseline[index] for index in paired])
+        candidate_paired = np.asarray([tested[index] for index in paired])
+        reliability[profile] = {
+            "paired_holdout_targets": len(paired),
+            "baseline": _metrics(
+                paired_targets, baseline_paired, total_targets=len(holdout),
+            ),
+            "candidate": _metrics(
+                paired_targets, candidate_paired, total_targets=len(holdout),
+            ),
+            "paired_gain": _paired_probability_gain(
+                paired_targets, baseline_paired, candidate_paired,
+            ),
+            "candidate_coefficients": model.get("coefficients"),
+        }
     return {
         "strong_rule": "at_least_5_and_direction_consistency_at_least_80pct",
         "strong_holdout_sample": len(strong),
@@ -224,6 +275,7 @@ def _h2h_audit(split: dict[str, list[dict]]) -> dict:
             targets, baseline_values, candidate_values,
         ),
         "candidate_coefficients": candidate_model.get("coefficients"),
+        "reliability_candidates": reliability,
     }
 
 
@@ -278,7 +330,6 @@ def _meta_scaler(x: np.ndarray, columns: list[str]) -> tuple[np.ndarray, np.ndar
     means = np.zeros(x.shape[1], dtype=float)
     scales = np.ones(x.shape[1], dtype=float)
     signal = np.asarray([name.endswith("__logit") for name in columns])
-    means[signal] = np.mean(x[:, signal], axis=0)
     standard = np.std(x[:, signal], axis=0)
     scales[signal] = np.where(standard > 1e-9, standard, 1.0)
     return means, scales
@@ -289,9 +340,15 @@ def _standardized_hierarchy_audit(
     release: dict, combination: dict,
 ) -> dict:
     profiles = _effective_profiles(universe, combination["family_profiles"])
+    if universe == "atp":
+        profiles["matchup_h2h"] = "h2h_reliability_curve_v3"
+    family_l1 = dict(combination["family_l1_selected_inside_train"])
+    family_l1["matchup_h2h"] = _select_l1(
+        split["train"], "matchup_h2h", profiles["matchup_h2h"],
+    )
     train_models = _fit_family_bundle(
         split["train"], universe=universe,
-        selected_l1=combination["family_l1_selected_inside_train"],
+        selected_l1=family_l1,
         profiles=profiles,
     )
     development = _attach_predictions(
@@ -323,7 +380,7 @@ def _standardized_hierarchy_audit(
             total_targets=len(meta_validation),
         )
         candidates.append({"l1": float(l1), "log_loss": metrics["log_loss"]})
-    selected_l1 = min(candidates, key=lambda item: item["log_loss"])["l1"]
+    selected_meta_l1 = min(candidates, key=lambda item: item["log_loss"])["l1"]
 
     x_development, y_development, columns, nonnegative = _meta_matrix(development)
     means, scales = _meta_scaler(x_development, columns)
@@ -331,12 +388,16 @@ def _standardized_hierarchy_audit(
         x_development, columns, means, scales,
     )
     intercept, weights, _ = _fit_logistic_elastic_net(
-        x_development, y_development, l1=selected_l1,
+        x_development, y_development, l1=selected_meta_l1,
         nonnegative_mask=nonnegative,
         weight_projector=hierarchy_projector(columns),
     )
+    final_models = _fit_family_bundle(
+        split["train"] + split["validation"], universe=universe,
+        selected_l1=family_l1, profiles=profiles,
+    )
     holdout = _attach_predictions(
-        split["holdout"], combination["runtime_family_models"],
+        split["holdout"], final_models,
         universe=universe,
     )
     x_holdout, targets, holdout_columns, _ = _meta_matrix(holdout)
@@ -357,8 +418,32 @@ def _standardized_hierarchy_audit(
         )["probabilities"],
         dtype=float,
     )
+    indexes = {
+        family: columns.index(f"{family}__logit") for family in FAMILIES
+    }
+    impacts = {
+        family: np.abs(x_holdout[:, index] * weights[index])
+        for family, index in indexes.items()
+    }
+    priority = {
+        "serve_above_surface_pct": round(float(np.mean(
+            impacts["serve_return"] > impacts["surface_conditions"]
+        ) * 100.0), 2),
+        "serve_above_recent_pct": round(float(np.mean(
+            impacts["serve_return"] > impacts["recent_form"]
+        ) * 100.0), 2),
+        "serve_above_structural_pct": round(float(np.mean(
+            impacts["serve_return"] > impacts["structural_strength"]
+        ) * 100.0), 2),
+        "serve_above_primary_block_pct": round(float(np.mean(
+            impacts["serve_return"] > (
+                impacts["recent_form"] + impacts["structural_strength"]
+            )
+        ) * 100.0), 2),
+    }
     return {
-        "selected_l1_on_inner_validation": selected_l1,
+        "family_profiles": profiles,
+        "selected_l1_on_inner_validation": selected_meta_l1,
         "validation_candidates": candidates,
         "signal_scales": {
             name.removesuffix("__logit"): round(float(scales[index]), 8)
@@ -368,6 +453,7 @@ def _standardized_hierarchy_audit(
             name.removesuffix("__logit"): round(float(weights[index]), 8)
             for index, name in enumerate(columns) if name.endswith("__logit")
         },
+        "realised_priority": priority,
         "baseline": _metrics(targets, baseline, total_targets=len(targets)),
         "candidate": _metrics(targets, candidate, total_targets=len(targets)),
         "paired_gain": _paired_probability_gain(targets, baseline, candidate),

@@ -1,6 +1,8 @@
 from scripts.audit_contextual_family_priority_v1 import (
     H2H_STRONG,
     H2H_STRONG_SURFACE,
+    H2H_RELIABILITY,
+    H2H_RELIABILITY_SURFACE,
     _augment_h2h_candidates,
 )
 
@@ -31,3 +33,5 @@ def test_strong_h2h_requires_five_matches_and_eighty_percent_dominance():
     assert rows[1]["features"][H2H_STRONG] == 0.0
     assert rows[2]["features"][H2H_STRONG] == 0.0
     assert rows[3]["features"][H2H_STRONG] == -0.6
+    assert rows[0]["features"][H2H_RELIABILITY] > rows[0]["features"][H2H_STRONG]
+    assert rows[0]["features"][H2H_RELIABILITY_SURFACE] > 0.6

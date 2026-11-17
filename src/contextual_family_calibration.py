@@ -76,6 +76,15 @@ CALIBRATION_FEATURE_PROFILES = {
     "h2h_global_shrunk_v1": {
         "matchup_h2h": ("contextual_h2h_global_shrunk_v1",),
     },
+    "h2h_reliability_curve_v3": {
+        "matchup_h2h": ("contextual_h2h_reliability_curve_v3",),
+    },
+    "h2h_reliability_context_v3": {
+        "matchup_h2h": (
+            "contextual_h2h_reliability_curve_v3",
+            "contextual_h2h_same_surface_reliability_curve_v3",
+        ),
+    },
     "h2h_same_context_modifier_v1": {
         "matchup_h2h": ("contextual_h2h_same_context_modifier_v1",),
     },
@@ -386,6 +395,8 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "surface_exact_tier_adjusted_v8",
         "h2h_global_shrunk_v1",
         "h2h_strong_context_v2",
+        "h2h_reliability_curve_v3",
+        "h2h_reliability_context_v3",
         "h2h_same_context_modifier_v1",
         "h2h_recent_context_modifier_v1",
         "serve_return_surface_points_raw_v0",
@@ -417,6 +428,8 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
             "contextual_h2h_global_shrunk_v1",
             "contextual_h2h_strong_five_v2",
             "contextual_h2h_strong_same_surface_five_v2",
+            "contextual_h2h_reliability_curve_v3",
+            "contextual_h2h_same_surface_reliability_curve_v3",
             "contextual_h2h_same_context_modifier_v1",
             "contextual_h2h_recent_context_modifier_v1",
             "service_points_won_surface_margin",
