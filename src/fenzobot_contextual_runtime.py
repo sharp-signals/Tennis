@@ -185,6 +185,7 @@ def _centred_empirical_intervals(
     probability: float, bin_item: Mapping[str, Any],
     global_bin: Mapping[str, Any], *, quality_group: str,
     sensitivity_probabilities: list[float],
+    degraded_min_width: float | None = None,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """Centre empirical uncertainty on the actual prediction.
 
@@ -198,6 +199,8 @@ def _centred_empirical_intervals(
         widths.append(
             float(global_bin["wilson_upper"]) - float(global_bin["wilson_lower"])
         )
+    if quality_group == "PRIMARY_DEGRADED" and degraded_min_width is not None:
+        widths.append(max(0.0, float(degraded_min_width)))
     half_width = max(widths) / 2.0
     calibrated_lower = max(1e-6, probability - half_width)
     calibrated_upper = min(1.0 - 1e-6, probability + half_width)
@@ -209,6 +212,29 @@ def _centred_empirical_intervals(
         (calibrated_lower, calibrated_upper),
         (max(1e-6, stress_lower), min(1.0 - 1e-6, stress_upper)),
     )
+
+
+def _minimum_degraded_interval_width(
+    calibration_model: Mapping[str, Any],
+) -> float:
+    """Prevent missing primary evidence from looking more precise than ready data."""
+    widths = []
+    groups = calibration_model.get("groups") or {}
+    for name in ("PRIMARY_READY_COMPLETE", "PRIMARY_READY_SECONDARY_GAPS"):
+        for item in (groups.get(name) or {}).get("bins") or []:
+            if item.get("wilson_lower") is None or item.get("wilson_upper") is None:
+                continue
+            widths.append(
+                float(item["wilson_upper"]) - float(item["wilson_lower"])
+            )
+    if not widths:
+        for item in (calibration_model.get("global") or {}).get("bins") or []:
+            if item.get("wilson_lower") is None or item.get("wilson_upper") is None:
+                continue
+            widths.append(
+                float(item["wilson_upper"]) - float(item["wilson_lower"])
+            )
+    return max(widths, default=0.0)
 
 
 def _fair_odd_b(lower_a: float, probability_a: float, upper_a: float) -> dict[str, float]:
@@ -382,6 +408,10 @@ def predict_fenzobot_contextual(
         probability, bin_item, global_bin,
         quality_group=quality_group,
         sensitivity_probabilities=sensitivity_probabilities,
+        degraded_min_width=(
+            _minimum_degraded_interval_width(calibration["calibration_model"])
+            if universe == "wta" else None
+        ),
     )
     grade_counts = {
         grade: sum(row["coverage_grade"] == grade for row in family_rows)

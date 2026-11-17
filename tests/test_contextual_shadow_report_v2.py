@@ -275,7 +275,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
         self.assertNotIn("ODD PARA CONSIDERAR", html)
         self.assertNotIn("Valor Moneyline: Beta Player", html)
-        self.assertIn("150 casos históricos", html)
+        self.assertIn("150 casos comparáveis", html)
 
     def test_confirmed_opposite_without_family_support_is_contrarian_only(self):
         prediction = copy.deepcopy(observation())
@@ -399,7 +399,8 @@ class ContextualShadowReportTests(unittest.TestCase):
         html = report.render_report_html(
             report.build_report_view_model(prediction, market())
         )
-        self.assertIn("Faixa estatística 90%", html)
+        self.assertIn("Faixa histórica de calibração (90%)", html)
+        self.assertIn("casos comparáveis", html)
         self.assertIn("Stress ao retirar uma família", html)
 
     def test_public_report_hides_internal_trace_and_uses_human_labels(self):
