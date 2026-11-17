@@ -1152,6 +1152,21 @@ def _service_view(
     return _aggregate(surface_rows), _aggregate(recent_surface or recent_rows)
 
 
+def _service_exact_context_view(
+    observations: list[dict[str, Any]], *, cutoff: date, context: str | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    if context not in {"hard_outdoor", "hard_indoor", "clay", "grass"}:
+        return None, None
+    context_rows = [
+        row for row in observations if row.get("surface_context") == context
+    ]
+    start = cutoff - timedelta(days=WINDOW_DAYS)
+    recent_context_rows = [
+        row for row in context_rows if start <= row["event_date"] < cutoff
+    ]
+    return _aggregate(context_rows), _aggregate(recent_context_rows)
+
+
 def _metric_margin(
     a: dict[str, Any] | None, b: dict[str, Any] | None, key: str,
 ) -> float | None:
@@ -1312,6 +1327,7 @@ def build_contextual_target_row(
             if service is not None and is_primary:
                 service_history[winner].append({
                     **service, "event_date": event_date, "surface": match_surface,
+                    "surface_context": match_surface_context,
                 })
         if loser in wanted:
             observation = {**_player_observation(
@@ -1330,6 +1346,7 @@ def build_contextual_target_row(
             if service is not None and is_primary:
                 service_history[loser].append({
                     **service, "event_date": event_date, "surface": match_surface,
+                    "surface_context": match_surface_context,
                 })
         if is_primary and {winner, loser} == wanted:
             pair_history.append({
@@ -1764,6 +1781,7 @@ def build_contextual_family_replay_rows(
                 if service is not None and is_primary:
                     service_history[player].append({
                         **service, "event_date": event_date, "surface": surface,
+                        "surface_context": surface_context,
                     })
             if is_primary:
                 pair = tuple(sorted((winner, loser)))
