@@ -131,27 +131,27 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
 
 def test_manifest_names_every_internal_component_without_global_version_ambiguity():
     manifest, runtime = build_release(
-        Path("data/models/contextual-family-combination-v12.json"),
-        Path("data/models/contextual-probability-uncertainty-v12.json"),
+        Path("data/models/contextual-family-combination-v13.json"),
+        Path("data/models/contextual-probability-uncertainty-v13.json"),
     )
     assert manifest["global_release_id"] == GLOBAL_RELEASE_ID
     assert manifest["components"] == {
         "ranking_model": "contextual-ranking-v7.1",
-        "family_combination": "contextual-family-combination-v12-missingness-no-vote",
-        "probability_calibration": "contextual-probability-uncertainty-v12",
-        "runtime_generation": 14,
+        "family_combination": "contextual-family-combination-v13-consensus-capped",
+        "probability_calibration": "contextual-probability-uncertainty-v13",
+        "runtime_generation": 15,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
 def test_runtime_contract_reproduces_export_and_is_market_free():
     manifest, built = build_release(
-        Path("data/models/contextual-family-combination-v12.json"),
-        Path("data/models/contextual-probability-uncertainty-v12.json"),
+        Path("data/models/contextual-family-combination-v13.json"),
+        Path("data/models/contextual-probability-uncertainty-v13.json"),
     )
     contract = load_contract(MODEL)
     assert built == contract
@@ -170,7 +170,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 14
+    assert result["runtime_generation"] == 15
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"
@@ -192,7 +192,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert "edge" not in result
 
 
-def test_runtime_preserves_consensus_aware_hierarchy_contract():
+def test_runtime_enforces_strict_realised_hierarchy_contract():
     result = predict_fenzobot_contextual(
         _row(), load_contract(MODEL), universe="atp",
     )
@@ -205,8 +205,10 @@ def test_runtime_preserves_consensus_aware_hierarchy_contract():
         "combination"
     ]["realized_hierarchy"]
     assert hierarchy["unanimous_reinforcement_preserved"] is True
+    assert hierarchy["conflict_secondary_total_not_above_primary_total"] is True
+    assert hierarchy["consensus_secondary_not_above_strongest_primary"] is True
     assert hierarchy[
-        "conflict_secondary_total_not_above_primary_total"
+        "conflict_single_secondary_not_above_primary_average"
     ] is True
 
 

@@ -134,3 +134,52 @@ def govern_consensus_aware_family_contributions(
             largest_secondary_after
         ),
     }
+
+
+def govern_consensus_with_individual_cap(
+    contributions: dict[str, float],
+) -> tuple[dict[str, float], dict[str, object]]:
+    """Preserve unanimous evidence without letting one modifier dominate.
+
+    Conflicting evidence uses the strict block cap.  When both primaries and
+    every active secondary agree, consensus remains informative, but each
+    secondary is capped at the strongest realised primary contribution.
+    """
+    governed = {
+        family: float(contributions.get(family, 0.0))
+        for family in (*PRIMARY_FAMILIES, *SECONDARY_FAMILIES)
+    }
+
+    def direction(value: float) -> int:
+        return 1 if value > 0.0 else -1 if value < 0.0 else 0
+
+    primary_values = [governed[family] for family in PRIMARY_FAMILIES]
+    secondary_values = [governed[family] for family in SECONDARY_FAMILIES]
+    primary_direction = direction(sum(primary_values))
+    consensus = bool(primary_direction) and all(
+        direction(value) in (0, primary_direction)
+        for value in (*primary_values, *secondary_values)
+    )
+    if not consensus:
+        governed, audit = govern_realized_family_contributions(governed)
+        return governed, {
+            **audit,
+            "policy": "STRICT_CONFLICT_BLOCK_CAP",
+            "consensus_reinforcement": False,
+        }
+
+    primary_strongest = max((abs(value) for value in primary_values), default=0.0)
+    capped_families = []
+    for family in SECONDARY_FAMILIES:
+        if abs(governed[family]) > primary_strongest:
+            governed[family] = (
+                primary_strongest if governed[family] > 0.0 else -primary_strongest
+            )
+            capped_families.append(family)
+    return governed, {
+        "applied": bool(capped_families),
+        "policy": "CONSENSUS_WITH_INDIVIDUAL_SECONDARY_CAP",
+        "consensus_reinforcement": True,
+        "primary_strongest_absolute_impact": primary_strongest,
+        "capped_families": capped_families,
+    }
