@@ -432,6 +432,23 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("contextual_recent_result_main_v7", html)
         self.assertNotIn("logit_contribution", html)
 
+    def test_optional_context_without_sample_is_explicitly_zero_impact(self):
+        prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"]["families"][0]["internal_trace"] = {
+            "intercept": 0.0,
+            "features": [{
+                "key": "contextual_recent_result_challenger_v5",
+                "logit_contribution": 0.0,
+                "missing_logit_contribution": 0.0,
+                "missing": True,
+            }],
+        }
+        html = report.render_report_html(
+            report.build_report_view_model(prediction, market())
+        )
+        self.assertIn("Não aplicável · sem amostra neste contexto", html)
+        self.assertIn("impacto zero", html)
+
     def test_h2h_family_lists_matches_with_surface_colours(self):
         prediction = copy.deepcopy(observation())
         h2h = prediction["contextual_shadow"]["families"][1]

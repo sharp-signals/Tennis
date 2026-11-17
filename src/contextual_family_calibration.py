@@ -485,6 +485,24 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
     ], dtype=bool)
 
 
+def _missingness_projector(
+    columns: list[str], *, allow_missingness_vote: bool,
+) -> Callable[[np.ndarray], np.ndarray] | None:
+    """Keep missingness observable without allowing it to vote for a side."""
+    if allow_missingness_vote:
+        return None
+    missing = np.asarray([
+        column.endswith("__missing") for column in columns
+    ], dtype=bool)
+
+    def project(weights: np.ndarray) -> np.ndarray:
+        result = np.asarray(weights, dtype=float).copy()
+        result[missing] = 0.0
+        return result
+
+    return project
+
+
 def _covered_rows(rows: Iterable[dict[str, Any]], features: tuple[str, ...]) -> list[dict[str, Any]]:
     return [
         row for row in rows
@@ -594,6 +612,7 @@ def _predict(x: np.ndarray, intercept: float, weights: np.ndarray) -> np.ndarray
 def fit_family_equation(
     rows: list[dict[str, Any]], *, family: str, l1: float,
     feature_profile: str = "legacy_v0",
+    allow_missingness_vote: bool = True,
 ) -> dict[str, Any]:
     """Fit one frozen family equation for later out-of-sample prediction."""
     features = _family_features(family, feature_profile)
@@ -608,6 +627,9 @@ def fit_family_equation(
     intercept, weights, iterations = _fit_logistic_elastic_net(
         x, y, l1=l1,
         nonnegative_mask=_directional_mask(columns, feature_profile),
+        weight_projector=_missingness_projector(
+            columns, allow_missingness_vote=allow_missingness_vote,
+        ),
     )
     return {
         "family": family,
@@ -622,6 +644,7 @@ def fit_family_equation(
         "l2": DEFAULT_L2,
         "iterations": iterations,
         "market_used": False,
+        "missingness_vote": bool(allow_missingness_vote),
     }
 
 
@@ -703,6 +726,7 @@ def calibrate_family(
     family: str,
     l1_grid: Iterable[float] = DEFAULT_L1_GRID,
     feature_profile: str = "legacy_v0",
+    allow_missingness_vote: bool = True,
 ) -> dict[str, Any]:
     features = _family_features(family, feature_profile)
     covered = {name: _covered_rows(rows, features) for name, rows in split.items()}
@@ -726,6 +750,9 @@ def calibrate_family(
         intercept, weights, iterations = _fit_logistic_elastic_net(
             x_train, y_train, l1=l1,
             nonnegative_mask=_directional_mask(column_names, feature_profile),
+            weight_projector=_missingness_projector(
+                column_names, allow_missingness_vote=allow_missingness_vote,
+            ),
         )
         validation_metrics = _metrics(
             y_validation, _predict(x_validation, intercept, weights),
@@ -758,6 +785,9 @@ def calibrate_family(
     intercept, weights, iterations = _fit_logistic_elastic_net(
         x_development, y_development, l1=selected["l1"],
         nonnegative_mask=_directional_mask(final_columns, feature_profile),
+        weight_projector=_missingness_projector(
+            final_columns, allow_missingness_vote=allow_missingness_vote,
+        ),
     )
     holdout_probability = _predict(x_holdout, intercept, weights)
     holdout_metrics = _metrics(
@@ -810,6 +840,7 @@ def calibrate_family(
             ),
         },
         "iterations_final": iterations,
+        "missingness_vote": bool(allow_missingness_vote),
         "market_used": False,
         "production_effect": False,
     }

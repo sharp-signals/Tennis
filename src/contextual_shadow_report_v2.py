@@ -813,6 +813,15 @@ _FEATURE_LABELS = {
     "return_points_won_recent_deviation_v1": "Resposta recente",
 }
 
+_OPTIONAL_CONTEXT_FEATURES = {
+    "contextual_recent_result_lower_main_v5",
+    "contextual_recent_competitiveness_lower_main_v5",
+    "contextual_recent_win_quality_lower_main_v5",
+    "contextual_recent_result_challenger_v5",
+    "contextual_recent_competitiveness_challenger_v5",
+    "contextual_recent_win_quality_challenger_v5",
+}
+
 
 def _feature_label(value: Any) -> str:
     key = str(value or "")
@@ -944,7 +953,9 @@ def _family_detail_html(
             '<small>ajuste histórico do modelo</small></div></div>'
         )
     for feature in features:
+        feature_key = str(feature.get("key") or "")
         missing = bool(feature.get("missing"))
+        not_applicable = missing and feature_key in _OPTIONAL_CONTEXT_FEATURES
         contribution = _number(feature.get("logit_contribution")) or 0.0
         missing_contribution = _number(
             feature.get("missing_logit_contribution")
@@ -953,8 +964,11 @@ def _family_detail_html(
         side = "A" if total > 1e-9 else "B" if total < -1e-9 else "—"
         direction = side.casefold() if side != "—" else "neutral"
         if missing:
-            result = "Sem dados · sem leitura factual"
-            strength = ""
+            result = (
+                "Não aplicável · sem amostra neste contexto"
+                if not_applicable else "Sem dados · sem leitura factual"
+            )
+            strength = "impacto zero"
             width = 0.0
             direction = "missing"
         elif side == "—":
@@ -976,6 +990,7 @@ def _family_detail_html(
         xray_side = direction if direction in {"a", "b"} else ""
         xray_player = (
             players[xray_side]["name"] if xray_side else
+            "Não aplicável" if not_applicable else
             "Sem dados" if missing else "Neutro"
         )
         xray_strength = strength or (
