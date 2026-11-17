@@ -1,7 +1,6 @@
 import json
+import math
 from pathlib import Path
-
-import pytest
 
 from src.contextual_family_combination_v14 import MODEL_VERSION
 from src.contextual_family_hierarchy import govern_consensus_with_individual_cap
@@ -29,8 +28,8 @@ def test_atp_consensus_allows_secondary_up_to_aligned_primary_total():
         "matchup_h2h": 0.3,
         "serve_return": 0.1,
     }, consensus_cap_basis="aligned_primary_total")
-    assert audit["consensus_cap_absolute_impact"] == pytest.approx(0.6)
-    assert governed["surface_conditions"] == pytest.approx(0.6)
+    assert math.isclose(audit["consensus_cap_absolute_impact"], 0.6)
+    assert math.isclose(governed["surface_conditions"], 0.6)
     assert governed["matchup_h2h"] == 0.3
 
 
