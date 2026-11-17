@@ -149,6 +149,8 @@ FEATURE_FAMILIES = {
     "h2h_win_share_margin": "matchup_h2h",
     "same_surface_h2h_win_share_margin": "matchup_h2h",
     "contextual_h2h_global_shrunk_v1": "matchup_h2h",
+    "contextual_h2h_reliability_curve_v3": "matchup_h2h",
+    "contextual_h2h_same_surface_reliability_curve_v3": "matchup_h2h",
     "service_points_won_surface_margin": "serve_return",
     "return_points_won_surface_margin": "serve_return",
     "hold_surface_margin": "serve_return",
@@ -1092,6 +1094,13 @@ def _h2h_feature(
     return global_margin, surface_margin, len(rows), len(same)
 
 
+def h2h_reliability_curve(margin: float | None, count: int) -> float | None:
+    """Continuous dominance × sample-confidence signal for H2H evidence."""
+    if margin is None or count <= 0:
+        return None
+    return float(margin) * count / (count + 2.0) * math.sqrt(count)
+
+
 def apply_h2h_override(
     row: dict[str, Any], override: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
@@ -1120,6 +1129,12 @@ def apply_h2h_override(
     features["same_surface_h2h_win_share_margin"] = surface_margin
     features["contextual_h2h_global_shrunk_v1"] = (
         global_margin * total / (total + 2.0)
+    )
+    features["contextual_h2h_reliability_curve_v3"] = h2h_reliability_curve(
+        global_margin, total,
+    )
+    features["contextual_h2h_same_surface_reliability_curve_v3"] = (
+        h2h_reliability_curve(surface_margin, surface_total)
     )
     row.setdefault("samples", {}).update({
         "h2h": total,
@@ -1150,6 +1165,21 @@ def _service_view(
         if surface is not None and row.get("surface") == surface
     ]
     return _aggregate(surface_rows), _aggregate(recent_surface or recent_rows)
+
+
+def _service_exact_context_view(
+    observations: list[dict[str, Any]], *, cutoff: date, context: str | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    if context not in {"hard_outdoor", "hard_indoor", "clay", "grass"}:
+        return None, None
+    context_rows = [
+        row for row in observations if row.get("surface_context") == context
+    ]
+    start = cutoff - timedelta(days=WINDOW_DAYS)
+    recent_context_rows = [
+        row for row in context_rows if start <= row["event_date"] < cutoff
+    ]
+    return _aggregate(context_rows), _aggregate(recent_context_rows)
 
 
 def _metric_margin(
@@ -1312,6 +1342,7 @@ def build_contextual_target_row(
             if service is not None and is_primary:
                 service_history[winner].append({
                     **service, "event_date": event_date, "surface": match_surface,
+                    "surface_context": match_surface_context,
                 })
         if loser in wanted:
             observation = {**_player_observation(
@@ -1330,6 +1361,7 @@ def build_contextual_target_row(
             if service is not None and is_primary:
                 service_history[loser].append({
                     **service, "event_date": event_date, "surface": match_surface,
+                    "surface_context": match_surface_context,
                 })
         if is_primary and {winner, loser} == wanted:
             pair_history.append({
@@ -1392,6 +1424,12 @@ def build_contextual_target_row(
         "contextual_h2h_global_shrunk_v1": (
             h2h_global * h2h_sample / (h2h_sample + 2.0)
             if h2h_global is not None and h2h_sample > 0 else None
+        ),
+        "contextual_h2h_reliability_curve_v3": h2h_reliability_curve(
+            h2h_global, h2h_sample,
+        ),
+        "contextual_h2h_same_surface_reliability_curve_v3": (
+            h2h_reliability_curve(h2h_surface, h2h_surface_sample)
         ),
         "service_points_won_surface_margin": _metric_margin(service_surface_a, service_surface_b, "service_points_won_pct"),
         "return_points_won_surface_margin": _metric_margin(service_surface_a, service_surface_b, "return_points_won_pct"),
@@ -1618,6 +1656,12 @@ def build_contextual_family_replay_rows(
                     h2h_global * h2h_sample / (h2h_sample + 2.0)
                     if h2h_global is not None and h2h_sample > 0 else None
                 ),
+                "contextual_h2h_reliability_curve_v3": h2h_reliability_curve(
+                    h2h_global, h2h_sample,
+                ),
+                "contextual_h2h_same_surface_reliability_curve_v3": (
+                    h2h_reliability_curve(h2h_surface, h2h_surface_sample)
+                ),
                 "service_points_won_surface_margin": _metric_margin(
                     service_surface_a, service_surface_b, "service_points_won_pct",
                 ),
@@ -1764,6 +1808,7 @@ def build_contextual_family_replay_rows(
                 if service is not None and is_primary:
                     service_history[player].append({
                         **service, "event_date": event_date, "surface": surface,
+                        "surface_context": surface_context,
                     })
             if is_primary:
                 pair = tuple(sorted((winner, loser)))

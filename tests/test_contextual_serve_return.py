@@ -9,6 +9,7 @@ from src.contextual_serve_return import (
 from src.contextual_family_replay import (
     _metric_margin_shrunk,
     _recent_metric_deviation,
+    _service_exact_context_view,
 )
 
 
@@ -38,6 +39,31 @@ def test_recent_form_is_a_deviation_from_surface_baseline():
         "return_points_won_pct", "return_points_sample", prior_sample=500.0,
     )
     assert value == 1.0
+
+
+def test_exact_service_context_separates_indoor_from_outdoor_hard():
+    cutoff = datetime(2026, 11, 2, tzinfo=timezone.utc).date()
+    base = {
+        "service_points_won": 60,
+        "service_points": 100,
+        "return_points_won": 40,
+        "return_points": 100,
+        "holds": 9,
+        "service_games": 10,
+        "breaks": 2,
+        "return_games": 10,
+    }
+    observations = [
+        {**base, "event_date": cutoff - timedelta(days=10),
+         "surface_context": "hard_indoor"},
+        {**base, "event_date": cutoff - timedelta(days=20),
+         "surface_context": "hard_outdoor"},
+    ]
+    career, recent = _service_exact_context_view(
+        observations, cutoff=cutoff, context="hard_indoor",
+    )
+    assert career["matches"] == 1
+    assert recent["matches"] == 1
 
 
 def _match(day, winner="A", loser="B", *, surface="Hard", score="6-4 6-4",
