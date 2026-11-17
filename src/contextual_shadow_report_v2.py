@@ -1122,7 +1122,7 @@ def _player_card(
         <div class="player-side">MODELO {side.upper()}</div>
         <h2>{_e(player['name'])}</h2>
         <div class="probability">{_pct(player['probability'])}</div>
-        <div class="interval">Faixa estatística 90% · {_pct(interval[0])}–{_pct(interval[1])} · {_e(calibration_sample)} casos históricos</div>
+        <div class="interval">Faixa histórica de calibração (90%) · {_pct(interval[0])}–{_pct(interval[1])} · {_e(calibration_sample)} casos comparáveis</div>
         {stress_copy}
         <div class="player-grid">
           <div><span>Fair odd</span><strong>{_odd(fair['central'])}</strong></div>

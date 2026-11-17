@@ -15,6 +15,7 @@ from src.fenzobot_contextual_runtime import (
     _family_lead_authority,
     _h2h_evidence_intensity,
     _impact_intensity,
+    _minimum_degraded_interval_width,
     load_contract,
     predict_fenzobot_contextual,
 )
@@ -56,6 +57,37 @@ def test_calibrated_interval_is_separate_from_family_removal_stress():
         for actual, expected in zip(calibrated, (0.57, 0.67), strict=True)
     )
     assert stress == (0.49, 0.72)
+
+
+def test_degraded_interval_cannot_be_narrower_than_ready_calibration_floor():
+    calibration_model = {
+        "groups": {
+            "PRIMARY_READY_COMPLETE": {"bins": [
+                {"wilson_lower": 0.54, "wilson_upper": 0.64},
+            ]},
+            "PRIMARY_READY_SECONDARY_GAPS": {"bins": [
+                {"wilson_lower": 0.52, "wilson_upper": 0.64},
+            ]},
+            "PRIMARY_DEGRADED": {"bins": [
+                {"wilson_lower": 0.30, "wilson_upper": 0.70},
+            ]},
+        },
+        "global": {"bins": []},
+    }
+    floor = _minimum_degraded_interval_width(calibration_model)
+    assert abs(floor - 0.12) < 1e-12
+    calibrated, _ = _centred_empirical_intervals(
+        0.60,
+        {"wilson_lower": 0.57, "wilson_upper": 0.63},
+        {"wilson_lower": 0.56, "wilson_upper": 0.64},
+        quality_group="PRIMARY_DEGRADED",
+        sensitivity_probabilities=[],
+        degraded_min_width=floor,
+    )
+    assert all(
+        abs(actual - expected) < 1e-12
+        for actual, expected in zip(calibrated, (0.54, 0.66), strict=True)
+    )
 
 
 def test_family_coverage_distinguishes_neutral_partial_and_unavailable():
@@ -151,12 +183,12 @@ def test_manifest_names_every_internal_component_without_global_version_ambiguit
         "ranking_model": "contextual-ranking-v7.1",
         "family_combination": "contextual-family-combination-v14-universe-consensus",
         "probability_calibration": "contextual-probability-uncertainty-v14",
-        "runtime_generation": 16,
+        "runtime_generation": 17,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
@@ -182,7 +214,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 16
+    assert result["runtime_generation"] == 17
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"
@@ -225,12 +257,21 @@ def test_runtime_enforces_strict_realised_hierarchy_contract():
 
 
 def test_missing_primary_family_fails_closed_for_operational_readiness():
+    contract = load_contract(MODEL)
     result = predict_fenzobot_contextual(
-        _row(primary_ready=False), load_contract(MODEL), universe="atp",
+        _row(primary_ready=False), contract, universe="atp",
     )
     assert result["quality_group"] == "PRIMARY_DEGRADED"
     assert result["status"] == "NOT_OPERATIONALLY_READY"
     assert "PRIMARY_FAMILY_UNAVAILABLE" in result["reason_codes"]
+    wta = predict_fenzobot_contextual(
+        _row(primary_ready=False), contract, universe="wta",
+    )
+    lower, upper = wta["probability_interval_90_model_a"]
+    expected_floor = _minimum_degraded_interval_width(
+        contract["universes"]["wta"]["calibration"]["calibration_model"],
+    )
+    assert upper - lower >= expected_floor - 2e-6
 
 
 def test_release_store_is_new_append_only_ledger():
