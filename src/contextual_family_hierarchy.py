@@ -138,6 +138,8 @@ def govern_consensus_aware_family_contributions(
 
 def govern_consensus_with_individual_cap(
     contributions: dict[str, float],
+    *,
+    consensus_cap_basis: str = "strongest_primary",
 ) -> tuple[dict[str, float], dict[str, object]]:
     """Preserve unanimous evidence without letting one modifier dominate.
 
@@ -169,11 +171,18 @@ def govern_consensus_with_individual_cap(
         }
 
     primary_strongest = max((abs(value) for value in primary_values), default=0.0)
+    primary_total = sum(abs(value) for value in primary_values)
+    if consensus_cap_basis == "strongest_primary":
+        consensus_cap = primary_strongest
+    elif consensus_cap_basis == "aligned_primary_total":
+        consensus_cap = primary_total
+    else:
+        raise ValueError(f"unsupported consensus cap basis: {consensus_cap_basis}")
     capped_families = []
     for family in SECONDARY_FAMILIES:
-        if abs(governed[family]) > primary_strongest:
+        if abs(governed[family]) > consensus_cap:
             governed[family] = (
-                primary_strongest if governed[family] > 0.0 else -primary_strongest
+                consensus_cap if governed[family] > 0.0 else -consensus_cap
             )
             capped_families.append(family)
     return governed, {
@@ -181,5 +190,8 @@ def govern_consensus_with_individual_cap(
         "policy": "CONSENSUS_WITH_INDIVIDUAL_SECONDARY_CAP",
         "consensus_reinforcement": True,
         "primary_strongest_absolute_impact": primary_strongest,
+        "primary_total_absolute_impact": primary_total,
+        "consensus_cap_basis": consensus_cap_basis,
+        "consensus_cap_absolute_impact": consensus_cap,
         "capped_families": capped_families,
     }

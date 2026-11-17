@@ -11,9 +11,9 @@ from typing import Any
 
 GLOBAL_RELEASE_ID = "FENZOBOT_CONTEXTUAL_2026_11"
 RELEASE_SLUG = "fenzobot-contextual-2026-11"
-RUNTIME_GENERATION = 15
-COMBINATION_VERSION = "contextual-family-combination-v13-consensus-capped"
-CALIBRATION_VERSION = "contextual-probability-uncertainty-v13"
+RUNTIME_GENERATION = 16
+COMBINATION_VERSION = "contextual-family-combination-v14-universe-consensus"
+CALIBRATION_VERSION = "contextual-probability-uncertainty-v14"
 ACCEPTED_HISTORICAL_RELEASES = [
     {
         "runtime_generation": 3,
@@ -85,6 +85,12 @@ ACCEPTED_HISTORICAL_RELEASES = [
         "runtime_generation": 14,
         "configuration_fingerprint": (
             "dff4b157051dc030be34e59f82f227f8ba7be06f36022f170ce2faa0782dbf65"
+        ),
+    },
+    {
+        "runtime_generation": 15,
+        "configuration_fingerprint": (
+            "838035b3b22efcd42c57d046301aa6c1e833c974e1cf88c077370eaa9869e7a3"
         ),
     },
 ]
@@ -174,11 +180,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--combination", type=Path,
-        default=Path("data/models/contextual-family-combination-v13.json"),
+        default=Path("data/models/contextual-family-combination-v14.json"),
     )
     parser.add_argument(
         "--calibration", type=Path,
-        default=Path("data/models/contextual-probability-uncertainty-v13.json"),
+        default=Path("data/models/contextual-probability-uncertainty-v14.json"),
     )
     parser.add_argument(
         "--manifest", type=Path,
