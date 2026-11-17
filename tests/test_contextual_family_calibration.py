@@ -2,6 +2,7 @@ import math
 
 from src.contextual_family_calibration import (
     _fit_logistic_elastic_net,
+    _missingness_projector,
     _directional_mask,
     _build_guarded_recent_split,
     _paired_segment_diagnostics,
@@ -112,6 +113,28 @@ def test_elastic_net_learns_positive_direction():
     y = np.array([0.0, 0.0, 1.0, 1.0] * 20)
     _, weights, _ = _fit_logistic_elastic_net(x, y, l1=0.001)
     assert weights[0] > 0
+
+
+def test_missingness_projector_keeps_columns_but_forces_their_vote_to_zero():
+    projector = _missingness_projector(
+        ["signal", "signal__missing", "other", "other__missing"],
+        allow_missingness_vote=False,
+    )
+    projected = projector(np.asarray([0.4, -0.3, 0.2, 0.1]))
+    np.testing.assert_allclose(projected, np.asarray([0.4, 0.0, 0.2, 0.0]))
+
+
+def test_family_calibration_can_reserve_missingness_for_uncertainty_only():
+    result = calibrate_family(
+        _split_rows(), family="structural_strength",
+        allow_missingness_vote=False,
+    )
+    assert result["missingness_vote"] is False
+    assert all(
+        abs(value) <= 1e-12
+        for name, value in result["coefficients"].items()
+        if name.endswith("__missing")
+    )
 
 
 def test_family_equation_is_selected_on_validation_and_supported_on_holdout():

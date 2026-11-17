@@ -79,9 +79,11 @@ def _surface_vote_enabled(universe: str, context: str | None) -> bool:
 
 def _select_l1(
     rows: list[dict[str, Any]], family: str, profile: str,
+    *, allow_missingness_vote: bool = True,
 ) -> float:
     result = calibrate_family(
         _split(rows), family=family, feature_profile=profile,
+        allow_missingness_vote=allow_missingness_vote,
     )
     return float(result.get("selected_l1_on_validation", 0.1))
 
@@ -92,6 +94,7 @@ def _fit_family_bundle(
     universe: str,
     selected_l1: dict[str, Any],
     profiles: dict[str, str],
+    allow_missingness_vote: bool = True,
 ) -> dict[str, Any]:
     models = {}
     for family in ("recent_form", "structural_strength", "matchup_h2h"):
@@ -100,12 +103,14 @@ def _fit_family_bundle(
             family=family,
             feature_profile=profiles[family],
             l1=float(selected_l1[family]),
+            allow_missingness_vote=allow_missingness_vote,
         )
     models["serve_return"] = fit_family_equation(
         rows,
         family="serve_return",
         feature_profile=profiles["serve_return"],
         l1=float(selected_l1["serve_return"]),
+        allow_missingness_vote=allow_missingness_vote,
     )
     models["surface_conditions"] = {
         context: fit_family_equation(
@@ -113,6 +118,7 @@ def _fit_family_bundle(
             family="surface_conditions",
             feature_profile=profiles["surface_conditions"],
             l1=float(selected_l1["surface_conditions"].get(context, 0.1)),
+            allow_missingness_vote=allow_missingness_vote,
         )
         for context in SURFACE_CONTEXTS
         if _surface_vote_enabled(universe, context)
@@ -122,19 +128,25 @@ def _fit_family_bundle(
 
 def _select_family_regularisation(
     rows: list[dict[str, Any]], *, universe: str, profiles: dict[str, str],
+    allow_missingness_vote: bool = True,
 ) -> dict[str, Any]:
     selected = {
-        family: _select_l1(rows, family, profiles[family])
+        family: _select_l1(
+            rows, family, profiles[family],
+            allow_missingness_vote=allow_missingness_vote,
+        )
         for family in ("recent_form", "structural_strength", "matchup_h2h")
     }
     selected["serve_return"] = _select_l1(
         rows, "serve_return", profiles["serve_return"],
+        allow_missingness_vote=allow_missingness_vote,
     )
     selected["surface_conditions"] = {
         context: _select_l1(
             [row for row in rows if _surface_context(row) == context],
             "surface_conditions",
             profiles["surface_conditions"],
+            allow_missingness_vote=allow_missingness_vote,
         )
         for context in SURFACE_CONTEXTS
         if _surface_vote_enabled(universe, context)
@@ -379,6 +391,7 @@ def combine_contextual_families_v2(
     include_diagnostics: bool = False,
     family_profile_overrides: dict[str, str] | None = None,
     model_version: str = "contextual-family-combination-v2-hierarchical",
+    allow_missingness_vote: bool = True,
 ) -> dict[str, Any]:
     universe = str(universe).casefold()
     split = _split(rows)
@@ -388,10 +401,12 @@ def combine_contextual_families_v2(
     profiles = _effective_profiles(universe, family_profile_overrides)
     family_l1 = _select_family_regularisation(
         split["train"], universe=universe, profiles=profiles,
+        allow_missingness_vote=allow_missingness_vote,
     )
     train_models = _fit_family_bundle(
         split["train"], universe=universe, selected_l1=family_l1,
         profiles=profiles,
+        allow_missingness_vote=allow_missingness_vote,
     )
     development_meta = _attach_predictions(
         split["validation"], train_models, universe=universe,
@@ -400,6 +415,7 @@ def combine_contextual_families_v2(
     final_models = _fit_family_bundle(
         development, universe=universe, selected_l1=family_l1,
         profiles=profiles,
+        allow_missingness_vote=allow_missingness_vote,
     )
     holdout = _attach_predictions(
         split["holdout"], final_models, universe=universe,
@@ -465,6 +481,10 @@ def combine_contextual_families_v2(
         ),
         "mode": "HIERARCHY_CONSTRAINED_OUT_OF_SAMPLE_STACK",
         "family_profiles": profiles,
+        "family_missingness_policy": (
+            "EXPLICIT_INDICATORS_MAY_VOTE"
+            if allow_missingness_vote else "ABSENCE_NEVER_VOTES"
+        ),
         "family_l1_selected_inside_train": family_l1,
         "meta_l1_selected_inside_validation": selected_l1,
         "meta_candidates": candidates,
