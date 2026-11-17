@@ -34,6 +34,16 @@ def test_h2h_candidate_signal_is_directionally_constrained():
     assert mask.tolist() == [True]
 
 
+def test_strong_h2h_candidate_signals_are_directionally_constrained():
+    columns = [
+        "contextual_h2h_global_shrunk_v1",
+        "contextual_h2h_strong_five_v2",
+        "contextual_h2h_strong_same_surface_five_v2",
+    ]
+    mask = _directional_mask(columns, "h2h_strong_context_v2")
+    assert mask.tolist() == [True, True, True]
+
+
 def test_serve_return_candidate_components_are_directionally_constrained():
     columns = [
         "service_points_won_surface_margin_shrunk_v1",
@@ -41,6 +51,17 @@ def test_serve_return_candidate_components_are_directionally_constrained():
     ]
     mask = _directional_mask(
         columns, "serve_return_points_recent_deviation_v1",
+    )
+    assert mask.tolist() == [True, True]
+
+
+def test_exact_context_serve_candidates_are_directionally_constrained():
+    columns = [
+        "service_points_won_exact_context_margin_shrunk_v2",
+        "return_points_won_exact_context_recent_deviation_v2",
+    ]
+    mask = _directional_mask(
+        columns, "serve_return_exact_context_recent_deviation_v2",
     )
     assert mask.tolist() == [True, True]
 
