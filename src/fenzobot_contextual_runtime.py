@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
-from .contextual_family_combination_v13 import predict_contextual_combination_v13
+from .contextual_family_combination_v14 import predict_contextual_combination_v14
 from .contextual_family_calibration import explain_family_equation
 from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
+from .contextual_family_replay import h2h_reliability_curve
 from .contextual_probability_uncertainty_v2 import (
     MIN_BIN_SAMPLE,
     _apply_calibrator,
@@ -58,6 +59,28 @@ def _impact_intensity(delta_pp: float) -> str:
     if value < 7.0:
         return "MODERATE"
     if value < 12.0:
+        return "STRONG"
+    return "DECISIVE"
+
+
+def _h2h_evidence_intensity(row: Mapping[str, Any]) -> str | None:
+    """Describe factual H2H strength separately from its calibrated price impact."""
+    samples = row.get("samples") or {}
+    features = row.get("features") or {}
+    count = int(samples.get("h2h") or 0)
+    margin = features.get("h2h_win_share_margin")
+    if count <= 0 or margin is None:
+        return None
+    reliability = abs(h2h_reliability_curve(float(margin), count))
+    if reliability < 0.15:
+        return "MINIMAL"
+    if reliability < 0.35:
+        return "VERY_SLIGHT"
+    if reliability < 0.60:
+        return "SLIGHT"
+    if reliability < 0.85:
+        return "MODERATE"
+    if reliability < 1.50:
         return "STRONG"
     return "DECISIVE"
 
@@ -214,7 +237,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v13(
+    prediction = predict_contextual_combination_v14(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
@@ -283,6 +306,10 @@ def predict_fenzobot_contextual(
                 else dict(equation_audit.get("matchup_h2h") or {})
                 if family == "matchup_h2h"
                 else {}
+            ),
+            "evidence_intensity": (
+                _h2h_evidence_intensity(row)
+                if family == "matchup_h2h" else None
             ),
         }
         family_rows.append(family_row)

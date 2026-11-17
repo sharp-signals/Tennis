@@ -13,6 +13,7 @@ from src.fenzobot_contextual_runtime import (
     _coverage_grade,
     _dependency_grade,
     _family_lead_authority,
+    _h2h_evidence_intensity,
     _impact_intensity,
     load_contract,
     predict_fenzobot_contextual,
@@ -29,6 +30,17 @@ def test_impact_intensity_distinguishes_residual_very_slight_and_slight():
     assert _impact_intensity(0.49) == "MINIMAL"
     assert _impact_intensity(0.97) == "VERY_SLIGHT"
     assert _impact_intensity(2.07) == "SLIGHT"
+
+
+def test_h2h_evidence_strength_is_separate_from_calibrated_price_impact():
+    assert _h2h_evidence_intensity({
+        "samples": {"h2h": 10},
+        "features": {"h2h_win_share_margin": 0.4},
+    }) == "STRONG"
+    assert _h2h_evidence_intensity({
+        "samples": {"h2h": 1},
+        "features": {"h2h_win_share_margin": 1.0},
+    }) == "VERY_SLIGHT"
 
 
 def test_calibrated_interval_is_separate_from_family_removal_stress():
@@ -131,27 +143,27 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
 
 def test_manifest_names_every_internal_component_without_global_version_ambiguity():
     manifest, runtime = build_release(
-        Path("data/models/contextual-family-combination-v13.json"),
-        Path("data/models/contextual-probability-uncertainty-v13.json"),
+        Path("data/models/contextual-family-combination-v14.json"),
+        Path("data/models/contextual-probability-uncertainty-v14.json"),
     )
     assert manifest["global_release_id"] == GLOBAL_RELEASE_ID
     assert manifest["components"] == {
         "ranking_model": "contextual-ranking-v7.1",
-        "family_combination": "contextual-family-combination-v13-consensus-capped",
-        "probability_calibration": "contextual-probability-uncertainty-v13",
-        "runtime_generation": 15,
+        "family_combination": "contextual-family-combination-v14-universe-consensus",
+        "probability_calibration": "contextual-probability-uncertainty-v14",
+        "runtime_generation": 16,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
 def test_runtime_contract_reproduces_export_and_is_market_free():
     manifest, built = build_release(
-        Path("data/models/contextual-family-combination-v13.json"),
-        Path("data/models/contextual-probability-uncertainty-v13.json"),
+        Path("data/models/contextual-family-combination-v14.json"),
+        Path("data/models/contextual-probability-uncertainty-v14.json"),
     )
     contract = load_contract(MODEL)
     assert built == contract
@@ -170,7 +182,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 15
+    assert result["runtime_generation"] == 16
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"
@@ -206,7 +218,7 @@ def test_runtime_enforces_strict_realised_hierarchy_contract():
     ]["realized_hierarchy"]
     assert hierarchy["unanimous_reinforcement_preserved"] is True
     assert hierarchy["conflict_secondary_total_not_above_primary_total"] is True
-    assert hierarchy["consensus_secondary_not_above_strongest_primary"] is True
+    assert hierarchy["consensus_cap_basis"] == "aligned_primary_total"
     assert hierarchy[
         "conflict_single_secondary_not_above_primary_average"
     ] is True

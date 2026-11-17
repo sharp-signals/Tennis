@@ -14,6 +14,20 @@ def test_family_impact_labels_expose_the_new_low_intensity_grades():
     assert report._impact_label("SLIGHT") == "ligeiro"
 
 
+def test_h2h_card_separates_factual_strength_from_price_impact():
+    prediction = observation()
+    h2h = prediction["contextual_shadow"]["families"][1]
+    h2h.update({
+        "probability_model_a": 0.69,
+        "impact_pp_model_a": 2.4,
+        "impact_intensity": "SLIGHT",
+        "evidence_intensity": "STRONG",
+        "data_state": "OBSERVED",
+    })
+    html = report.render_report_html(report.build_report_view_model(prediction))
+    assert "H2H factual forte · impacto no preço ligeiro" in html
+
+
 def observation():
     return {
         "schema_version": 2,

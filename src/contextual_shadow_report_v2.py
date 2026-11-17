@@ -497,6 +497,10 @@ def build_report_view_model(
             "impact_intensity_label": _impact_label(
                 family.get("impact_intensity")
             ),
+            "evidence_intensity": family.get("evidence_intensity"),
+            "evidence_intensity_label": _impact_label(
+                family.get("evidence_intensity")
+            ) if family.get("evidence_intensity") else None,
             "direction": direction,
             "direction_name": (
                 _display_name(player_a.get("name")) if direction == "a"
@@ -1434,6 +1438,18 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             str(family.get("impact_intensity_label") or "").casefold(),
             str(family.get("impact_intensity_label") or "N/D"),
         )
+        intensity_copy = f"vantagem {_e(intensity)}"
+        if (
+            family.get("key") == "matchup_h2h"
+            and family.get("evidence_intensity_label")
+        ):
+            price_impact = str(
+                family.get("impact_intensity_label") or "N/D"
+            ).casefold()
+            intensity_copy = (
+                f"H2H factual {_e(family['evidence_intensity_label'])} · "
+                f"impacto no preço {_e(price_impact)}"
+            )
         families.append(f"""
           <div class="family-row grade-{_e(family['coverage_grade']).lower()}">
             <div class="family-copy">
@@ -1446,7 +1462,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
             </div>
             <div class="family-result {direction}">
               {_e(advantage)}
-              <small>vantagem {_e(intensity)}</small>
+              <small>{intensity_copy}</small>
             </div>
           </div>
           <details class="family-detail"><summary>Ver o que entrou nesta família</summary>
