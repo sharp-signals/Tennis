@@ -2,6 +2,12 @@ name: Build contextual rating A/B
 
 on:
   workflow_dispatch: {}
+  push:
+    paths:
+      - ".github/workflows/contextual-rating-ab-build.yml"
+      - "scripts/build_contextual_rating_ab_v1.py"
+      - "src/contextual_chronological_rating.py"
+      - "src/contextual_rating_ab_v1.py"
 
 permissions:
   contents: read
