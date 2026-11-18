@@ -9842,6 +9842,39 @@ def _canonical_fixture_player_ids(match: dict) -> tuple[str, str] | None:
     return tuple(sorted((str(first), str(second))))
 
 
+def _eligible_upcoming_fixtures(
+    events: list[dict], tracked: dict[int, str],
+) -> list[dict]:
+    """Return factual upcoming rows safe to use as missing fixture records.
+
+    The tournament endpoint can lag behind ``all-upcoming`` (notably during
+    round-robin events).  We only admit rows from an already accepted
+    tournament when the event has a stable id, start time and both player ids.
+    """
+    fixtures = []
+    for event in events:
+        tournament = event.get("tournament") or {}
+        tournament_id = event.get("tournamentId") or tournament.get("id")
+        tour = str(event.get("_tour") or event.get("type") or "").casefold()
+        if (
+            event.get("id") in (None, "")
+            or tracked.get(tournament_id) != tour
+            or not _is_singles_fixture(event)
+            or _fixture_start_utc(event) is None
+            or _canonical_fixture_player_ids(event) is None
+        ):
+            continue
+        fixture = dict(event)
+        fixture["tournamentId"] = tournament_id
+        fixture["_tour"] = tour
+        if not fixture.get("date"):
+            fixture["date"] = (
+                fixture.get("startTime") or fixture.get("timeGame")
+            )
+        fixtures.append(fixture)
+    return _deduplicate_fixture_ids(fixtures)
+
+
 def _fixture_start_utc(match: dict) -> Optional[datetime]:
     value = match.get("date") or match.get("startTime") or match.get("timeGame")
     if not value:
@@ -9996,6 +10029,12 @@ def fetch_resilient_discovery_fixtures() -> list[dict]:
         for tournament_id, tour in tracked.items():
             all_matches.extend(fetch_tournament_fixtures(tournament_id, tour))
         all_matches = _deduplicate_fixture_ids(all_matches)
+        tournament_fixture_ids = {
+            str(match.get("id"))
+            for match in all_matches
+            if match.get("id") not in (None, "")
+        }
+        eligible_upcoming = _eligible_upcoming_fixtures(events, tracked)
         upcoming_by_id = {
             str(event.get("id")): event
             for event in events
@@ -10021,10 +10060,17 @@ def fetch_resilient_discovery_fixtures() -> list[dict]:
                     identity_conflicts += 1
                     continue
                 reconciled.append(match)
-            all_matches = reconciled
+            upcoming_only = [
+                match for match in eligible_upcoming
+                if str(match.get("id")) not in tournament_fixture_ids
+            ]
+            all_matches = _deduplicate_fixture_ids(reconciled + upcoming_only)
             _DISCOVERY_DIAGNOSTICS["upcoming_fixture_reconciliation"] = {
                 "status": "HEALTHY" if not identity_conflicts else "DEGRADED",
-                "accepted": len(reconciled),
+                "accepted": len(all_matches),
+                "tournament_fixtures": len(tournament_fixture_ids),
+                "eligible_upcoming_fixtures": len(eligible_upcoming),
+                "upcoming_only_added": len(upcoming_only),
                 "stale_fixture_ids_excluded": stale_fixture_ids,
                 "identity_conflicts_excluded": identity_conflicts,
             }

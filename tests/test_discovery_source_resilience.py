@@ -520,6 +520,32 @@ class DiscoverySourceResilienceTests(unittest.TestCase):
         self.assertEqual(reconciliation["identity_conflicts_excluded"], 1)
         self.assertEqual(reconciliation["status"], "DEGRADED")
 
+    def test_upcoming_only_fixture_is_recovered_when_tournament_feed_lags(self):
+        shared = self._fixture(77, 21364, "atp")
+        shared["player1"]["id"] = 10
+        shared["player2"]["id"] = 20
+        missing = self._fixture(88, 21364, "atp")
+        missing["player1"] = {"id": 30, "name": "Carlos Alcaraz"}
+        missing["player2"] = {"id": 40, "name": "Jannik Sinner"}
+
+        with patch.object(
+            fetch_data, "_fetch_extend_upcoming_events",
+            return_value=[shared, missing],
+        ), patch.object(
+            fetch_data, "get_tournament_info",
+            return_value={"tier": "Finals", "name": "Nitto ATP Finals"},
+        ), patch.object(
+            fetch_data, "fetch_tournament_fixtures", return_value=[shared],
+        ):
+            actual = fetch_data.fetch_resilient_discovery_fixtures()
+
+        self.assertEqual([row["id"] for row in actual], [77, 88])
+        reconciliation = fetch_data.get_discovery_diagnostics()[
+            "upcoming_fixture_reconciliation"
+        ]
+        self.assertEqual(reconciliation["upcoming_only_added"], 1)
+        self.assertEqual(reconciliation["accepted"], 2)
+
     def test_core_deduplicates_fixture_ids_and_never_fabricates_event_id(self):
         one = self._fixture(1, 10)
         duplicate = deepcopy(one)

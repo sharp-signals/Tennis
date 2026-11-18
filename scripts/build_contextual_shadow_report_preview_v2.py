@@ -173,6 +173,16 @@ def build_previews(
                 "model_side": (
                     view.get("market_review") or {}
                 ).get("model_side"),
+                "market": {
+                    "available": bool((view.get("market") or {}).get("available")),
+                    "bookmaker": (view.get("market") or {}).get("bookmaker"),
+                    "captured_at": (view.get("market") or {}).get("captured_at"),
+                    "odds": {
+                        side: ((view.get("players") or {}).get(side) or {})
+                        .get("market", {}).get("odd")
+                        for side in ("a", "b")
+                    },
+                },
             }
             for view in views
         ],

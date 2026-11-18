@@ -885,10 +885,13 @@ def _h2h_history_html(
     context: Mapping[str, Any], players: Mapping[str, Mapping[str, Any]],
 ) -> str:
     rows = []
+    wins = {"a": 0, "b": 0}
     for match in context.get("matches") or []:
         if not isinstance(match, Mapping):
             continue
         side = str(match.get("winner_side") or "").casefold()
+        if side in wins:
+            wins[side] += 1
         winner = players.get(side, {}).get("name") if side in {"a", "b"} else None
         surface_label, surface_class = _h2h_surface(match.get("surface"))
         tournament = str(match.get("tournament") or "Torneio não identificado")
@@ -904,9 +907,14 @@ def _h2h_history_html(
         )
     if not rows:
         return ""
+    score = (
+        f'{players["a"]["name"]} {wins["a"]}–{wins["b"]} '
+        f'{players["b"]["name"]}'
+    )
     return (
         '<div class="h2h-history"><div class="h2h-history-head">'
-        '<b>Confrontos anteriores</b><span>mais recente primeiro</span></div>'
+        f'<div><b>Confrontos anteriores</b><strong>{_e(score)}</strong></div>'
+        '<span>mais recente primeiro</span></div>'
         f'{"".join(rows)}</div>'
     )
 
@@ -1803,7 +1811,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .context-grid span,.context-grid b{{display:block;font-size:11px}}.context-grid span{{color:var(--muted)}}.family-detail-empty{{color:var(--muted)}}
     .h2h-history{{margin-top:10px;border:1px solid #213f58;border-radius:12px;overflow:hidden;background:#091927}}
     .h2h-history-head{{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border-bottom:1px solid #213f58}}
-    .h2h-history-head b{{font-size:12px}}.h2h-history-head span{{color:var(--muted);font-size:10px}}
+    .h2h-history-head div b,.h2h-history-head div strong{{display:block}}.h2h-history-head div b{{font-size:12px}}.h2h-history-head div strong{{margin-top:3px;color:#fff;font-size:16px}}.h2h-history-head span{{color:var(--muted);font-size:10px}}
     .h2h-match{{display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:12px;padding:10px 13px;border-bottom:1px solid #173048;border-left:4px solid var(--muted)}}
     .h2h-match:last-child{{border-bottom:0}}.h2h-match div b,.h2h-match div small{{display:block}}.h2h-match div b{{font-size:12px}}.h2h-match div small{{margin-top:2px;color:var(--muted);font-size:10px}}
     .h2h-match strong{{font-size:12px;text-align:right}}.h2h-surface{{padding:4px 7px;border-radius:999px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.04em}}

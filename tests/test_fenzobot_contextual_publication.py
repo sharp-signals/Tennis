@@ -49,6 +49,12 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
             "status": "COMPLETED", "reports_built": 1, "isolation": {},
             "notification_rows": [{
                 "observation_id": "future", "status": "NO_POSITIVE_EDGE",
+                "market": {
+                    "available": True,
+                    "bookmaker": "Test Book",
+                    "captured_at": "12/11/2026 · 11:55 UTC",
+                    "odds": {"a": 1.55, "b": 2.60},
+                },
             }],
         }
 
@@ -70,12 +76,15 @@ def test_publication_notifies_only_unsettled_future_reports(tmp_path, monkeypatc
     assert len(payload["reports"]) == 1
     assert payload["reports"][0]["url"].endswith("report-future.html")
     assert "Player A vs Player B" in payload["telegram_chunks"][0]
+    assert "Player A 1.55 · Player B 2.60" in payload["telegram_chunks"][0]
+    assert "Test Book · 12/11/2026 · 11:55 UTC" in payload["telegram_chunks"][0]
     assert "Stale A vs Stale B" not in payload["telegram_chunks"][0]
     assert "🔴 SEM EDGE POSITIVO" in payload["telegram_chunks"][0]
     assert payload["email"]["today"] == "2026-11-12"
     assert payload["email"]["groups"][0]["name"] == "🔴 SEM EDGE POSITIVO"
     assert payload["email"]["groups"][0]["reports"][0]["title"] == (
-        "Player A vs Player B"
+        "Player A vs Player B · Odds capturadas: Player A 1.55 · "
+        "Player B 2.60 · Test Book · 12/11/2026 · 11:55 UTC"
     )
     metric_rows = json.loads(metrics.read_text(encoding="utf-8"))
     assert metric_rows[-1]["github_run_id"] == "run-contextual-1"

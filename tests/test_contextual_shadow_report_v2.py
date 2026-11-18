@@ -499,6 +499,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("h2h-clay", html)
         self.assertIn("Alpha Player", html)
         self.assertIn("Beta Player", html)
+        self.assertIn("Alpha Player 1–1 Beta Player", html)
         self.assertIn("6-4 6-3", html)
 
     def test_external_h2h_evidence_enriches_frozen_prediction(self):
@@ -732,6 +733,9 @@ class ContextualShadowReportTests(unittest.TestCase):
             )
             self.assertEqual(summary["reports_built"], 1)
             self.assertEqual(summary["with_market"], 1)
+            notification_market = summary["notification_rows"][0]["market"]
+            self.assertEqual(notification_market["odds"], {"a": 1.85, "b": 2.05})
+            self.assertEqual(notification_market["bookmaker"], "Test Book")
             self.assertEqual(summary["with_handicap_evidence"], 1)
             self.assertEqual(summary["with_moneyline_evidence"], 0)
             self.assertEqual(summary["with_h2h_evidence"], 0)
