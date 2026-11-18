@@ -113,6 +113,22 @@ def _notification_group(status: object) -> tuple[int, str, str]:
     )
 
 
+def _market_notification_copy(notification: dict, player_a: str, player_b: str) -> str:
+    market = notification.get("market") or {}
+    odds = market.get("odds") or {}
+    try:
+        odd_a = f"{float(odds['a']):.2f}"
+        odd_b = f"{float(odds['b']):.2f}"
+    except (KeyError, TypeError, ValueError):
+        return "Odds capturadas: N/D nesta execução"
+    bookmaker = escape(str(market.get("bookmaker") or "casa N/D"))
+    captured_at = escape(str(market.get("captured_at") or "hora N/D"))
+    return (
+        f"Odds capturadas: {player_a} {odd_a} · {player_b} {odd_b} · "
+        f"{bookmaker} · {captured_at}"
+    )
+
+
 def build_publication(
     *, output_dir: Path, max_observations: int, now: datetime | None = None,
 ) -> dict:
@@ -171,20 +187,26 @@ def build_publication(
         raw_player_b = _name(row, "b")
         player_a = escape(raw_player_a)
         player_b = escape(raw_player_b)
-        status = (notification_rows.get(observation_id) or {}).get("status")
+        notification = notification_rows.get(observation_id) or {}
+        status = notification.get("status")
         order, heading, ball = _notification_group(status)
         group = grouped_lines.setdefault(
             order, {"heading": heading, "lines": []},
         )
         group["lines"].append(
             f"{ball} <b>{player_a} vs {player_b}</b> — "
+            f"{_market_notification_copy(notification, player_a, player_b)} — "
             f"<a href=\"{url}\">ABRIR RELATÓRIO</a>"
         )
         email_group = email_groups.setdefault(
             order, {"name": heading, "reports": []},
         )
+        market_copy = _market_notification_copy(
+            notification, raw_player_a, raw_player_b,
+        )
         email_group["reports"].append({
-            "title": f"{raw_player_a} vs {raw_player_b}", "url": url,
+            "title": f"{raw_player_a} vs {raw_player_b} · {market_copy}",
+            "url": url,
         })
 
     for order in sorted(grouped_lines):
