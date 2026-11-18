@@ -25,7 +25,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.lock
       - name: Instalar dependências
-        run: pip install -r requirements.lock -r requirements-dev.txt
+        run: pip install -r requirements.lock -r requirements-dev.txt pytest==8.3.5
       - name: Restaurar replay cronológico
         uses: actions/cache@v4
         with:
