@@ -209,6 +209,31 @@ class GeneratedOutputPersistenceTests(unittest.TestCase):
             self.assertEqual(stage(root=root, profile="bot"), ["data/run_metrics_log.json"])
             self.assertIn("data/run_metrics_log.json", git(root, "diff", "--cached", "--name-only"))
 
+    def test_bot_profile_stages_isolated_rating_ab_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_repo(root)
+            ledger = root / "data/contextual_rating_ab_observations-v1.jsonl"
+            ledger.write_text('{"observation_id":"ab-one"}\n', encoding="utf-8")
+            self.assertEqual(
+                stage(root=root, profile="bot"),
+                ["data/contextual_rating_ab_observations-v1.jsonl"],
+            )
+            self.assertIn(
+                "data/contextual_rating_ab_observations-v1.jsonl",
+                git(root, "diff", "--cached", "--name-only"),
+            )
+
+    def test_bot_profile_still_rejects_unrelated_generated_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_repo(root)
+            (root / "unexpected.txt").write_text("blocked\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                RuntimeError, "GENERATED_OUTPUT_OUTSIDE_ALLOWLIST:unexpected.txt",
+            ):
+                stage(root=root, profile="bot")
+
     def test_untracked_bytes_round_trip_without_duplication(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
