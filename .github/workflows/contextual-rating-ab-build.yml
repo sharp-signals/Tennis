@@ -66,6 +66,18 @@ jobs:
             tests/test_run_fenzobot_contextual_2026_11.py \
             tests/test_contextual_family_calibration.py \
             tests/test_contextual_family_combination_v14.py
+      - name: Checkpoint CI completo
+        env:
+          LLM_MODE: mock
+          LLM_POLICY: selective
+          ALLOW_PAID_LLM: "0"
+        run: |
+          ruff check src tests scripts
+          python scripts/check_secrets.py
+          node --test scripts/google_apps_script/*.test.js
+          coverage run -m unittest discover -s tests -v
+          coverage run --append tests/test_motor.py
+          coverage report
       - name: Guardar contrato congelado
         uses: actions/upload-artifact@v7
         with:
