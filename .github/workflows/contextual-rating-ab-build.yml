@@ -25,11 +25,18 @@ jobs:
           cache-dependency-path: requirements.lock
       - name: Instalar dependências
         run: pip install -r requirements.lock
+      - name: Restaurar replay cronológico
+        uses: actions/cache@v4
+        with:
+          path: .tmp/contextual-rating-replay
+          key: contextual-rating-replay-v9-${{ hashFiles('src/contextual_family_replay.py', 'src/contextual_family_methodology.py') }}
       - name: Construir replay histórico uma vez
         run: |
-          python -m scripts.compare_contextual_family_combinations_v5 \
-            --replay-cache-dir .tmp/contextual-rating-replay \
-            --output .tmp/replay-audit.json
+          if [ ! -f .tmp/contextual-rating-replay/atp.jsonl.gz ] || [ ! -f .tmp/contextual-rating-replay/wta.jsonl.gz ]; then
+            python -m scripts.compare_contextual_family_combinations_v5 \
+              --replay-cache-dir .tmp/contextual-rating-replay \
+              --output .tmp/replay-audit.json
+          fi
       - name: Congelar candidatos A/B
         run: |
           python -m scripts.build_contextual_rating_ab_v1 \
