@@ -59,12 +59,13 @@ jobs:
             scripts/run_fenzobot_contextual_2026_11.py \
             tests/test_contextual_chronological_rating.py \
             tests/test_contextual_rating_ab_v1.py
-          python -m unittest tests.test_contextual_chronological_rating \
-            tests.test_contextual_rating_ab_v1 \
-            tests.test_run_contextual_shadow_v2 \
-            tests.test_run_fenzobot_contextual_2026_11 \
-            tests.test_contextual_family_calibration \
-            tests.test_contextual_family_combination_v14
+          python -m pytest -q \
+            tests/test_contextual_chronological_rating.py \
+            tests/test_contextual_rating_ab_v1.py \
+            tests/test_run_contextual_shadow_v2.py \
+            tests/test_run_fenzobot_contextual_2026_11.py \
+            tests/test_contextual_family_calibration.py \
+            tests/test_contextual_family_combination_v14.py
       - name: Guardar contrato congelado
         uses: actions/upload-artifact@v7
         with:
