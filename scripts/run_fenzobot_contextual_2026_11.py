@@ -26,6 +26,15 @@ from src.fenzobot_contextual_store import (
     build_observation,
     existing_observation_ids,
 )
+from src.contextual_chronological_rating import build_rating_features
+from src.contextual_rating_ab_v1 import (
+    DEFAULT_LEDGER_PATH as RATING_AB_LEDGER_PATH,
+    DEFAULT_MODEL_PATH as RATING_AB_MODEL_PATH,
+    append_observations as append_rating_ab_observations,
+    build_observation as build_rating_ab_observation,
+    load_contract as load_rating_ab_contract,
+    predict_candidates as predict_rating_ab_candidates,
+)
 
 
 SUMMARY_PATH = Path(
@@ -63,6 +72,13 @@ def run_release_only(*, max_matches: int = 0, workers: int = 4) -> dict:
         moneyline_path=MONEYLINE_PATH,
         h2h_path=H2H_PATH,
         usage_status="fenzobot_contextual_2026_11_success",
+        comparison_model_path=RATING_AB_MODEL_PATH,
+        comparison_contract_loader=load_rating_ab_contract,
+        comparison_feature_builder=build_rating_features,
+        comparison_predictor=predict_rating_ab_candidates,
+        comparison_observation_builder=build_rating_ab_observation,
+        comparison_appender=append_rating_ab_observations,
+        comparison_ledger_path=RATING_AB_LEDGER_PATH,
     )
 
 

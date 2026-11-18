@@ -232,6 +232,10 @@ def build_match_observation(
     observation_builder=build_observation,
     payload_key: str = "contextual_shadow_v2",
     model_version: str = "contextual-family-shadow-v2",
+    comparison_contract: Mapping[str, Any] | None = None,
+    comparison_feature_builder=None,
+    comparison_predictor=None,
+    comparison_observation_builder=None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     tour = str(match.get("_tour") or "").strip().casefold()
     if tour not in {"atp", "wta"}:
@@ -379,6 +383,37 @@ def build_match_observation(
         captured_at_utc=analyzed_at_utc,
         model_version=model_version,
     )
+    comparison_observation = None
+    if all((
+        comparison_contract is not None,
+        callable(comparison_feature_builder),
+        callable(comparison_predictor),
+        callable(comparison_observation_builder),
+    )):
+        comparison_features = comparison_feature_builder(
+            context_history,
+            universe=tour,
+            cutoff=start.date(),
+            player_a=model_a,
+            player_b=model_b,
+            surface_context=(row.get("diagnostics") or {}).get(
+                "surface_context"
+            ),
+        )
+        comparison_row = dict(row)
+        comparison_row["features"] = {
+            **dict(row.get("features") or {}),
+            **comparison_features,
+        }
+        comparison = comparison_predictor(
+            comparison_row, comparison_contract, universe=tour,
+        )
+        comparison_observation = comparison_observation_builder(
+            baseline_observation=observation,
+            baseline_probability_a=float(shadow["probability_model_a"]),
+            comparison=comparison,
+            analyzed_at_utc=analyzed_at_utc,
+        )
     return observation, {
         "status": shadow["status"],
         "reason_code": ",".join(shadow["reason_codes"]) or "READY",
@@ -388,6 +423,7 @@ def build_match_observation(
         "_handicap_evidence": handicap_evidence,
         "_moneyline_evidence": moneyline_evidence,
         "_h2h_evidence": h2h_evidence,
+        "_comparison_observation": comparison_observation,
     }
 
 
@@ -410,6 +446,13 @@ def _run_shadow_only(
     moneyline_path: Path | None = None,
     h2h_path: Path | None = None,
     usage_status: str = "shadow_v2_success",
+    comparison_model_path: Path | None = None,
+    comparison_contract_loader=None,
+    comparison_feature_builder=None,
+    comparison_predictor=None,
+    comparison_observation_builder=None,
+    comparison_appender=None,
+    comparison_ledger_path: Path | None = None,
 ) -> dict[str, Any]:
     activation = activation_loader()
     if activation["active"] is not True:
@@ -438,6 +481,16 @@ def _run_shadow_only(
         tour: fetch_data.fetch_official_ranking(tour) for tour in ("atp", "wta")
     }
     contract = contract_loader(model_path)
+    comparison_contract = (
+        comparison_contract_loader(comparison_model_path)
+        if callable(comparison_contract_loader) and comparison_model_path
+        else None
+    )
+    if comparison_contract is not None and (
+        comparison_contract.get("baseline_configuration_fingerprint")
+        != contract.get("configuration_fingerprint")
+    ):
+        raise RuntimeError("RATING_AB_BASELINE_FINGERPRINT_MISMATCH")
     analyzed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def process(match):
@@ -451,6 +504,10 @@ def _run_shadow_only(
                 observation_builder=observation_builder,
                 payload_key=payload_key,
                 model_version=model_version,
+                comparison_contract=comparison_contract,
+                comparison_feature_builder=comparison_feature_builder,
+                comparison_predictor=comparison_predictor,
+                comparison_observation_builder=comparison_observation_builder,
             )
         except Exception as exc:
             return None, {
@@ -463,12 +520,14 @@ def _run_shadow_only(
     handicap_evidence = []
     moneyline_evidence = []
     h2h_evidence = []
+    comparison_observations = []
     diagnostics = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 8))) as executor:
         for observation, diagnostic in executor.map(process, eligible):
             evidence = diagnostic.pop("_handicap_evidence", None)
             moneyline = diagnostic.pop("_moneyline_evidence", None)
             h2h = diagnostic.pop("_h2h_evidence", None)
+            comparison = diagnostic.pop("_comparison_observation", None)
             diagnostics.append(diagnostic)
             if observation is not None:
                 observations.append(observation)
@@ -478,6 +537,8 @@ def _run_shadow_only(
                     moneyline_evidence.append(moneyline)
                 if h2h is not None:
                     h2h_evidence.append(h2h)
+                if comparison is not None:
+                    comparison_observations.append(comparison)
     existing_ids = observation_ids_loader(ledger_path)
     new_ids = {
         str(row.get("observation_id")) for row in observations
@@ -501,6 +562,14 @@ def _run_shadow_only(
     h2h_added = append_frozen_h2h_evidence(
         h2h_evidence,
         **({"path": h2h_path} if h2h_path is not None else {}),
+    )
+    comparison_added = (
+        comparison_appender(
+            comparison_observations,
+            comparison_ledger_path,
+        )
+        if callable(comparison_appender) and comparison_ledger_path is not None
+        else 0
     )
     audit = audit_ledger(ledger_path, model_path)
     reason_counts: dict[str, int] = {}
@@ -545,6 +614,14 @@ def _run_shadow_only(
         "handicap_evidence_added": handicap_added,
         "moneyline_evidence_added": moneyline_added,
         "h2h_evidence_added": h2h_added,
+        "rating_ab_observations_added": comparison_added,
+        "rating_ab_isolation": {
+            "market_used": False,
+            "production_effect": False,
+            "reports_published": False,
+            "paper_created": False,
+            "green_created": False,
+        },
         "status_counts": dict(sorted(status_counts.items())),
         "reason_counts": dict(sorted(reason_counts.items())),
         "rapidapi_calls": fetch_data.get_rapidapi_call_count(),
