@@ -486,6 +486,11 @@ def _run_shadow_only(
         if callable(comparison_contract_loader) and comparison_model_path
         else None
     )
+    if comparison_contract is not None and (
+        comparison_contract.get("baseline_configuration_fingerprint")
+        != contract.get("configuration_fingerprint")
+    ):
+        raise RuntimeError("RATING_AB_BASELINE_FINGERPRINT_MISMATCH")
     analyzed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def process(match):

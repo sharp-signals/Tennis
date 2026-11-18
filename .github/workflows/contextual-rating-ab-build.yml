@@ -8,6 +8,7 @@ on:
       - "scripts/build_contextual_rating_ab_v1.py"
       - "src/contextual_chronological_rating.py"
       - "src/contextual_rating_ab_v1.py"
+      - "data/models/contextual-rating-ab-v1.json"
 
 permissions:
   contents: read
@@ -24,7 +25,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.lock
       - name: Instalar dependências
-        run: pip install -r requirements.lock
+        run: pip install -r requirements.lock -r requirements-dev.txt
       - name: Restaurar replay cronológico
         uses: actions/cache@v4
         with:
@@ -45,8 +46,25 @@ jobs:
             --output data/models/contextual-rating-ab-v1.json
       - name: Testes específicos
         run: |
+          python scripts/plan_validation.py --level 3 \
+            --file src/contextual_chronological_rating.py \
+            --file src/contextual_rating_ab_v1.py \
+            --file scripts/build_contextual_rating_ab_v1.py \
+            --file scripts/run_contextual_shadow_v2.py \
+            --file scripts/run_fenzobot_contextual_2026_11.py
+          ruff check src/contextual_chronological_rating.py \
+            src/contextual_rating_ab_v1.py \
+            scripts/build_contextual_rating_ab_v1.py \
+            scripts/run_contextual_shadow_v2.py \
+            scripts/run_fenzobot_contextual_2026_11.py \
+            tests/test_contextual_chronological_rating.py \
+            tests/test_contextual_rating_ab_v1.py
           python -m unittest tests.test_contextual_chronological_rating \
-            tests.test_contextual_rating_ab_v1
+            tests.test_contextual_rating_ab_v1 \
+            tests.test_run_contextual_shadow_v2 \
+            tests.test_run_fenzobot_contextual_2026_11 \
+            tests.test_contextual_family_calibration \
+            tests.test_contextual_family_combination_v14
       - name: Guardar contrato congelado
         uses: actions/upload-artifact@v7
         with:

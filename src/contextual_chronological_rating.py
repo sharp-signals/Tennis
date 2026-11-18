@@ -31,6 +31,17 @@ def _expected(a: float, b: float) -> float:
     return 1.0 / (1.0 + 10.0 ** ((b - a) / 400.0))
 
 
+def _indoor_value(value: Any) -> bool | None:
+    if isinstance(value, bool) or type(value).__name__ == "bool_":
+        return bool(value)
+    text = str(value).strip().casefold()
+    if text in {"true", "1", "yes", "indoor"}:
+        return True
+    if text in {"false", "0", "no", "outdoor"}:
+        return False
+    return None
+
+
 def _snapshot(history: pd.DataFrame, *, cutoff: date, global_k: int) -> dict[str, Any]:
     key = (str(cutoff), str(global_k), len(history), id(history))
     with _LOCK:
@@ -63,7 +74,7 @@ def _snapshot(history: pd.DataFrame, *, cutoff: date, global_k: int) -> dict[str
             delta = global_k * (1.0 - _expected(winner_rating, loser_rating))
             global_updates.append((winner, loser, delta))
             context = exact_surface_context(
-                row.get("surface"), indoor=row.get("indoor"),
+                row.get("surface"), indoor=_indoor_value(row.get("indoor")),
             )
             if context:
                 winner_key, loser_key = (winner, context), (loser, context)

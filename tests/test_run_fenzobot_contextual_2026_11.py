@@ -59,6 +59,19 @@ def test_global_release_empty_run_remains_isolated():
             return_value=fake_contract,
         ),
         patch(
+            "scripts.run_fenzobot_contextual_2026_11.load_rating_ab_contract",
+            return_value={
+                "baseline_configuration_fingerprint": (
+                    "global-test-fingerprint"
+                ),
+            },
+        ),
+        patch(
+            "scripts.run_fenzobot_contextual_2026_11."
+            "append_rating_ab_observations",
+            return_value=0,
+        ),
+        patch(
             "scripts.run_fenzobot_contextual_2026_11.append_observations",
             return_value=0,
         ),
