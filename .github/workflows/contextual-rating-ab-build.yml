@@ -27,12 +27,12 @@ jobs:
         run: pip install -r requirements.lock
       - name: Construir replay histórico uma vez
         run: |
-          python scripts/compare_contextual_family_combinations_v5.py \
+          python -m scripts.compare_contextual_family_combinations_v5 \
             --replay-cache-dir .tmp/contextual-rating-replay \
             --output .tmp/replay-audit.json
       - name: Congelar candidatos A/B
         run: |
-          python scripts/build_contextual_rating_ab_v1.py \
+          python -m scripts.build_contextual_rating_ab_v1 \
             --replay-input-dir .tmp/contextual-rating-replay \
             --release-contract data/models/fenzobot-contextual-2026-11.json \
             --output data/models/contextual-rating-ab-v1.json
