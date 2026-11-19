@@ -27,7 +27,7 @@ jobs:
       - name: Instalar dependências
         run: pip install -r requirements.lock -r requirements-dev.txt pytest==8.3.5
       - name: Restaurar replay cronológico
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .tmp/contextual-rating-replay
           key: contextual-rating-replay-v9-${{ hashFiles('src/contextual_family_replay.py', 'src/contextual_family_methodology.py') }}
