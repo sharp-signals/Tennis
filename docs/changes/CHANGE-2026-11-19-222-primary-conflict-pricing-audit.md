@@ -42,8 +42,8 @@ separado. Um único jogo não autoriza promoção.
 
 - ATP: a política que preserva as três famílias secundárias quando estão todas
   disponíveis e concordam no conflito entre as duas principais foi escolhida
-  na validação cronológica. No holdout, passou de `0,619816` para `0,619745` em
-  log-loss e de `0,215805` para `0,215754` em Brier. No segmento específico,
+  na validação cronológica. No holdout, passou de `0,619677` para `0,619596` em
+  log-loss e de `0,215736` para `0,215679` em Brier. No segmento específico,
   a accuracy passou de `59,35%` para `60,57%`.
 - A melhoria global emparelhada é pequena e estatisticamente inconclusiva; por
   isso a mudança fica estritamente limitada ao padrão auditado, sem alterar as
