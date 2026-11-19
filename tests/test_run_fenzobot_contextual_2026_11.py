@@ -62,7 +62,7 @@ def test_global_release_empty_run_remains_isolated():
             "scripts.run_fenzobot_contextual_2026_11.load_rating_ab_contract",
             return_value={
                 "baseline_configuration_fingerprint": (
-                    "global-test-fingerprint"
+                    "previous-generation-fingerprint"
                 ),
             },
         ),
@@ -94,6 +94,13 @@ def test_global_release_empty_run_remains_isolated():
     assert summary["eligible_main_tour"] == 0
     assert summary["observations_added"] == 0
     assert summary["observation_ids_built"] == []
+    assert summary["rating_ab_observations_added"] == 0
+    assert summary["rating_ab_status"] == {
+        "status": "DISABLED_INCOMPATIBLE_BASELINE",
+        "reason_code": "RATING_AB_BASELINE_FINGERPRINT_MISMATCH",
+        "expected_baseline_fingerprint": "previous-generation-fingerprint",
+        "current_baseline_fingerprint": "global-test-fingerprint",
+    }
     assert summary["isolation"] == {
         "market_used": False,
         "reports_published": False,

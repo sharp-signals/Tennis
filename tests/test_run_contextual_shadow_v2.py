@@ -1,4 +1,5 @@
 from scripts.run_contextual_shadow_v2 import (
+    _gate_comparison_contract,
     _model_player_id,
     _player,
     _provider_h2h_override,
@@ -12,6 +13,29 @@ def test_player_reads_nested_fixture_identity():
     assert _player({"player1": {"id": 7, "name": "Alpha"}}, 1) == (
         "Alpha", 7,
     )
+
+
+def test_obsolete_rating_ab_contract_is_disabled_without_blocking_baseline():
+    comparison, status = _gate_comparison_contract(
+        {"baseline_configuration_fingerprint": "generation-17"},
+        {"configuration_fingerprint": "generation-18"},
+    )
+    assert comparison is None
+    assert status == {
+        "status": "DISABLED_INCOMPATIBLE_BASELINE",
+        "reason_code": "RATING_AB_BASELINE_FINGERPRINT_MISMATCH",
+        "expected_baseline_fingerprint": "generation-17",
+        "current_baseline_fingerprint": "generation-18",
+    }
+
+
+def test_matching_rating_ab_contract_remains_active():
+    contract = {"baseline_configuration_fingerprint": "generation-18"}
+    comparison, status = _gate_comparison_contract(
+        contract, {"configuration_fingerprint": "generation-18"},
+    )
+    assert comparison is contract
+    assert status["status"] == "ACTIVE"
 
 
 def test_model_player_id_preserves_alphabetical_orientation():
