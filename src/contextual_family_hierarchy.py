@@ -7,6 +7,68 @@ PRIMARY_FAMILIES = ("recent_form", "structural_strength")
 SECONDARY_FAMILIES = ("surface_conditions", "matchup_h2h", "serve_return")
 
 
+def govern_ordered_family_contributions(
+    contributions: dict[str, float],
+) -> tuple[dict[str, float], dict[str, object]]:
+    """Apply the declared hierarchy to the realised match contributions.
+
+    The limits are derived from the two realised primary contributions in the
+    same match.  They therefore adapt to evidence strength without introducing
+    a player, tournament or market adjustment.  H2H may approach one primary
+    family's average authority when the fitted signal is genuinely strong;
+    serve/return remains the least authoritative modifier.
+    """
+    governed = {
+        family: float(contributions.get(family, 0.0))
+        for family in (*PRIMARY_FAMILIES, *SECONDARY_FAMILIES)
+    }
+    primary_values = [governed[family] for family in PRIMARY_FAMILIES]
+    primary_budget = sum(abs(value) for value in primary_values)
+    primary_average = primary_budget / len(PRIMARY_FAMILIES)
+    secondary_before = {
+        family: governed[family] for family in SECONDARY_FAMILIES
+    }
+    caps = {
+        "surface_conditions": primary_average,
+        "matchup_h2h": primary_average,
+        "serve_return": primary_average / 2.0,
+    }
+    capped_families = []
+    for family, cap in caps.items():
+        value = governed[family]
+        if abs(value) > cap:
+            governed[family] = cap if value > 0.0 else -cap
+            capped_families.append(family)
+
+    secondary_budget = sum(
+        abs(governed[family]) for family in SECONDARY_FAMILIES
+    )
+    block_scale = 1.0
+    if secondary_budget > 0.0:
+        if primary_budget <= 0.0:
+            block_scale = 0.0
+        elif secondary_budget > primary_budget:
+            block_scale = primary_budget / secondary_budget
+    if block_scale < 1.0:
+        for family in SECONDARY_FAMILIES:
+            governed[family] *= block_scale
+
+    return governed, {
+        "applied": bool(capped_families) or block_scale < 1.0 - 1e-12,
+        "policy": "ORDERED_REALIZED_PRIMARY_AUTHORITY",
+        "primary_absolute_budget": primary_budget,
+        "primary_average_absolute_impact": primary_average,
+        "secondary_caps": caps,
+        "secondary_before": secondary_before,
+        "secondary_block_scale": block_scale,
+        "secondary_absolute_budget_after": sum(
+            abs(governed[family]) for family in SECONDARY_FAMILIES
+        ),
+        "capped_families": capped_families,
+        "absence_votes": False,
+    }
+
+
 def govern_realized_family_contributions(
     contributions: dict[str, float],
 ) -> tuple[dict[str, float], dict[str, float | bool]]:

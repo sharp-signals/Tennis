@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 import math
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -262,6 +262,9 @@ def calibrate_probability_uncertainty_v2(
     prediction_records: list[dict[str, Any]] | None = None,
     combination_summary: dict[str, Any] | None = None,
     model_version: str = "contextual-probability-uncertainty-v2",
+    calibrator_selector: Callable[[list[dict[str, Any]]], dict[str, Any]] = (
+        _select_calibrator
+    ),
 ) -> dict[str, Any]:
     if prediction_records is None:
         combination = combine_contextual_families_v2(
@@ -282,7 +285,7 @@ def calibrate_probability_uncertainty_v2(
             "production_effect": False,
         }
     calibration, test = _chronological_partition(records, 0.50)
-    calibrator = _select_calibrator(calibration)
+    calibrator = calibrator_selector(calibration)
     for record in calibration + test:
         record["probability"] = _apply_calibrator(
             record["raw_probability"], calibrator,

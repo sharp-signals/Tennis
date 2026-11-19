@@ -95,6 +95,9 @@ _NOTIFICATION_GROUPS = {
     "CONTRARIAN_PRICE_ONLY": (
         1, "🟡 SINAL CONTRARIAN NÃO CONFIRMADO", "🟡",
     ),
+    "PLAUSIBILITY_REVIEW": (
+        1, "🟡 DIVERGÊNCIA DE PLAUSIBILIDADE", "🟡",
+    ),
     "MARKET_UNAVAILABLE": (
         2, "🟡 MERCADO INDISPONÍVEL", "🟡",
     ),
