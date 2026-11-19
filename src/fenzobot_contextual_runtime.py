@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
-from .contextual_family_combination_v14 import predict_contextual_combination_v14
+from .contextual_family_combination_v15 import predict_contextual_combination_v15
 from .contextual_family_calibration import explain_family_equation
 from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
@@ -263,7 +263,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v14(
+    prediction = predict_contextual_combination_v15(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
