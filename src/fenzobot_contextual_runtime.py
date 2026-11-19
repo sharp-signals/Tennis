@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
-from .contextual_family_combination_v15 import predict_contextual_combination_v15
-from .contextual_family_calibration import explain_family_equation
+from .contextual_family_combination_v16 import (
+    explain_symmetric_family_equation,
+    predict_contextual_combination_v16,
+)
 from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
 from .contextual_family_replay import h2h_reliability_curve
@@ -263,7 +265,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v15(
+    prediction = predict_contextual_combination_v16(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
@@ -321,7 +323,7 @@ def predict_fenzobot_contextual(
             "data_state": data_state,
             "coverage_grade": _coverage_grade(data_state, family_probability),
             "internal_trace": (
-                explain_family_equation(dict(row), model)
+                explain_symmetric_family_equation(dict(row), model)
                 if isinstance(model, dict) else {"status": "UNAVAILABLE", "features": []}
             ),
             "context_audit": (

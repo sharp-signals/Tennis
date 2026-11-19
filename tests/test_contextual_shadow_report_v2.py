@@ -241,7 +241,11 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertNotIn("APOSTAR", html)
 
     def test_frozen_handicap_evidence_is_rendered_as_human_review_only(self):
-        quote = {**market(), "odds": {"a": 1.50, "b": 2.70}}
+        quote = {
+            **market(),
+            "odds": {"a": 1.50, "b": 2.70},
+            "market_probability_devig": {"a": 0.72, "b": 0.28},
+        }
         prediction = copy.deepcopy(observation())
         prediction["contextual_shadow"].update({
             "probability_model_a": 0.75,
@@ -270,7 +274,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIsNone(view["market_review"]["moneyline"])
         self.assertIsNone(view["market_review"]["handicap"])
         html = report.render_report_html(view)
-        self.assertIn("Sem mercado confirmado", html)
+        self.assertIn("Sem valor confirmado", html)
         self.assertIn("Edge central não confirmado", html)
         self.assertNotIn("HANDICAPS DE ALPHA PLAYER · NEGATIVOS", html)
         self.assertNotIn("ODD PARA CONSIDERAR", html)
@@ -287,7 +291,11 @@ class ContextualShadowReportTests(unittest.TestCase):
         prediction["contextual_shadow"]["families"][0][
             "impact_pp_model_a"
         ] = 5.4
-        quote = {**market(), "odds": {"a": 1.48, "b": 2.62}}
+        quote = {
+            **market(),
+            "odds": {"a": 1.48, "b": 2.62},
+            "market_probability_devig": {"a": 0.60, "b": 0.40},
+        }
         evidence = handicap_evidence()
         source_line = next(iter(
             evidence["handicap_evidence"]["players"]["a"]["lines"].values()
@@ -360,7 +368,11 @@ class ContextualShadowReportTests(unittest.TestCase):
         prediction["contextual_shadow"]["families"][1][
             "impact_pp_model_a"
         ] = -1.2
-        quote = {**market(), "odds": {"a": 1.48, "b": 2.62}}
+        quote = {
+            **market(),
+            "odds": {"a": 1.48, "b": 2.62},
+            "market_probability_devig": {"a": 0.60, "b": 0.40},
+        }
         evidence = handicap_evidence()
         source_line = next(iter(
             evidence["handicap_evidence"]["players"]["a"]["lines"].values()
@@ -382,6 +394,24 @@ class ContextualShadowReportTests(unittest.TestCase):
         html = report.render_report_html(view)
         self.assertIn("Valor de preço: Beta Player", html)
         self.assertIn("HANDICAPS DE BETA PLAYER · POSITIVOS", html)
+
+    def test_market_outside_model_interval_quarantines_green_signal(self):
+        prediction = copy.deepcopy(observation())
+        quote = {
+            **market(),
+            "odds": {"a": 2.20, "b": 1.70},
+            "market_probability_devig": {"a": 0.4359, "b": 0.5641},
+        }
+        view = report.build_report_view_model(
+            prediction, quote, None, handicap_evidence()
+        )
+
+        self.assertEqual(view["market_review"]["status"], "PLAUSIBILITY_REVIEW")
+        self.assertIsNone(view["market_review"]["moneyline"])
+        self.assertIsNone(view["market_review"]["handicap"])
+        html = report.render_report_html(view)
+        self.assertIn("Edge retido para revisão de plausibilidade", html)
+        self.assertIn("Sem valor confirmado", html)
 
     def test_calibrated_and_family_stress_ranges_are_visually_separate(self):
         prediction = copy.deepcopy(observation())
@@ -567,7 +597,11 @@ class ContextualShadowReportTests(unittest.TestCase):
             "probability_model_b": 0.25,
             "probability_interval_90_model_a": [0.70, 0.80],
         })
-        quote = {**market(), "odds": {"a": 1.45, "b": 2.90}}
+        quote = {
+            **market(),
+            "odds": {"a": 1.45, "b": 2.90},
+            "market_probability_devig": {"a": 0.72, "b": 0.28},
+        }
         html = report.render_report_html(
             report.build_report_view_model(prediction, quote, None, evidence)
         )
@@ -617,7 +651,11 @@ class ContextualShadowReportTests(unittest.TestCase):
             "probability_model_b": 0.25,
             "probability_interval_90_model_a": [0.70, 0.80],
         })
-        quote = {**market(), "odds": {"a": 1.45, "b": 2.90}}
+        quote = {
+            **market(),
+            "odds": {"a": 1.45, "b": 2.90},
+            "market_probability_devig": {"a": 0.72, "b": 0.28},
+        }
         html = report.render_report_html(
             report.build_report_view_model(prediction, quote, None, evidence)
         )

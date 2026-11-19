@@ -19,6 +19,7 @@ from src.fenzobot_contextual_runtime import (
     load_contract,
     predict_fenzobot_contextual,
 )
+from src.contextual_family_combination_v16 import mirror_contextual_row
 from src.fenzobot_contextual_store import append_observations, build_observation
 from scripts.generated_output_contract import is_allowed
 from scripts.audit_contextual_shadow_v2 import audit_ledger
@@ -175,27 +176,27 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
 
 def test_manifest_names_every_internal_component_without_global_version_ambiguity():
     manifest, runtime = build_release(
-        Path("data/models/contextual-family-combination-v15.json"),
-        Path("data/models/contextual-probability-uncertainty-v15.json"),
+        Path("data/models/contextual-family-combination-v16.json"),
+        Path("data/models/contextual-probability-uncertainty-v16.json"),
     )
     assert manifest["global_release_id"] == GLOBAL_RELEASE_ID
     assert manifest["components"] == {
         "ranking_model": "contextual-ranking-v7.1",
-        "family_combination": "contextual-family-combination-v15-primary-conflict",
-        "probability_calibration": "contextual-probability-uncertainty-v15",
-        "runtime_generation": 18,
+        "family_combination": "contextual-family-combination-v16-symmetric-hierarchy",
+        "probability_calibration": "contextual-probability-uncertainty-v16",
+        "runtime_generation": 19,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
 def test_runtime_contract_reproduces_export_and_is_market_free():
     manifest, built = build_release(
-        Path("data/models/contextual-family-combination-v15.json"),
-        Path("data/models/contextual-probability-uncertainty-v15.json"),
+        Path("data/models/contextual-family-combination-v16.json"),
+        Path("data/models/contextual-probability-uncertainty-v16.json"),
     )
     contract = load_contract(MODEL)
     assert built == contract
@@ -214,7 +215,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 18
+    assert result["runtime_generation"] == 19
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"
@@ -236,6 +237,20 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert "edge" not in result
 
 
+def test_final_runtime_probability_is_invariant_to_player_order():
+    contract = load_contract(MODEL)
+    for universe in ("atp", "wta"):
+        direct = predict_fenzobot_contextual(_row(), contract, universe=universe)
+        mirrored = predict_fenzobot_contextual(
+            mirror_contextual_row(_row()), contract, universe=universe,
+        )
+        assert math.isclose(
+            direct["probability_model_a"],
+            1.0 - mirrored["probability_model_a"],
+            abs_tol=2e-6,
+        )
+
+
 def test_runtime_enforces_strict_realised_hierarchy_contract():
     result = predict_fenzobot_contextual(
         _row(), load_contract(MODEL), universe="atp",
@@ -248,9 +263,11 @@ def test_runtime_enforces_strict_realised_hierarchy_contract():
     hierarchy = load_contract(MODEL)["universes"]["atp"][
         "combination"
     ]["realized_hierarchy"]
-    assert hierarchy["unanimous_reinforcement_preserved"] is True
-    assert hierarchy["conflict_three_secondary_consensus_preserved"] is True
-    assert hierarchy["other_conflicts_keep_v14_caps"] is True
+    assert hierarchy["orientation_policy"] == "PAIRED_DIRECTIONAL_ANTISYMMETRY"
+    assert hierarchy["secondary_total_not_above_primary_total"] is True
+    assert hierarchy["surface_not_above_primary_average"] is True
+    assert hierarchy["h2h_not_above_primary_average"] is True
+    assert hierarchy["serve_return_not_above_half_primary_average"] is True
 
 
 def test_missing_primary_family_fails_closed_for_operational_readiness():

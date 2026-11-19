@@ -94,13 +94,15 @@ dos fatores, já reduzida pela qualidade da evidência, numa probabilidade próp
 `P_fenzobot = logistic(beta_circuito × força_assinada × qualidade)`
 
 Na release contextual, `Forma recente ajustada` e `Força estrutural` governam
-também o impacto realizado em cada encontro. Quando há conflito entre famílias,
-nenhuma secundária pode exceder a contribuição média das duas principais e o
-bloco secundário total não pode exceder o principal. Quando as cinco famílias
-reforçam unanimemente o mesmo lado, a evidência é preservada para estimar a
-magnitude: as secundárias não escolhem nem invertem o favorito. Os limites são
-derivados das contribuições do próprio jogo, sem percentagens manuais nem
-aproximação ao preço de mercado.
+também o impacto realizado em cada encontro. A ordem A/B é neutralizada por uma
+avaliação emparelhada: trocar os jogadores produz a probabilidade complementar
+e evidência neutra vale exatamente 50/50. Nenhuma família secundária pode
+exceder a contribuição média das duas principais e o bloco secundário total
+não pode exceder o principal. Superfície pode amplificar a leitura; H2H robusto
+pode aproximar-se da autoridade média de uma família principal; serviço e
+resposta ficam limitados a metade dessa referência. Os limites são derivados
+das contribuições do próprio jogo e foram verificados em replay cronológico,
+sem aproximação ao preço de mercado.
 
 A qualidade reduz a força em caso de poucos fatores, massa efetiva baixa,
 cobertura insuficiente, resolução de identidade incerta ou falha crítica de

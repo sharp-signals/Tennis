@@ -642,6 +642,20 @@ def build_report_view_model(
             "handicap": None,
         })
 
+    if (
+        market_review.get("status") == "CONSERVATIVE_POSITIVE"
+        and plausibility.get("requires_manual_review")
+    ):
+        market_review.update({
+            "status": "PLAUSIBILITY_REVIEW",
+            "moneyline": None,
+            "handicap": None,
+            "plausibility_status": plausibility.get("status"),
+            "plausibility_interval_excess_pp": plausibility.get(
+                "interval_excess_pp"
+            ),
+        })
+
     # Só um edge que continua positivo no limite conservador pode originar
     # mercados a consultar. Os restantes relatórios preservam o pricing para
     # auditoria, mas não mostram sugestões de Moneyline nem de handicap.
@@ -1186,6 +1200,14 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             '50/50. O pricing fica visível, mas não são sugeridos Moneyline nem '
             'handicaps.</div>'
         )
+    elif status == "PLAUSIBILITY_REVIEW":
+        body = (
+            '<div class="review-empty"><b>Edge retido para revisão de '
+            'plausibilidade.</b> A cotação está fora do intervalo estatístico '
+            'de 90% do modelo. A fair odd não é alterada pelo mercado, mas o '
+            'sinal não fica verde e não são sugeridos Moneyline nem handicaps '
+            'até serem revistos identidade, cobertura e calibração.</div>'
+        )
     elif status == "NO_POSITIVE_EDGE":
         body = (
             '<div class="review-empty"><b>Sem edge central positivo.</b> '
@@ -1346,7 +1368,7 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
         body = f"""
           <div class="review-lead">{lead}</div>
           <div class="review-grid">{''.join(cards)}</div>"""
-    section_title = "Mercados a consultar" if confirmed else "Sem mercado confirmado"
+    section_title = "Mercados a consultar" if confirmed else "Sem valor confirmado"
     market_note = (
         "A Moneyline usa a fair odd independente. Cada handicap tem probabilidade própria calculada com a cobertura condicional congelada antes do jogo. A odd da linha deve ser confirmada na casa de apostas."
         if confirmed else
