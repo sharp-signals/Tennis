@@ -65,6 +65,32 @@ SUMMARY_PATH = Path("data/validation/contextual-shadow-v2-latest.json")
 MODEL_PATH = Path("data/models/contextual-family-shadow-v2.json")
 
 
+def _gate_comparison_contract(
+    comparison_contract: Mapping[str, Any] | None,
+    baseline_contract: Mapping[str, Any],
+) -> tuple[Mapping[str, Any] | None, dict[str, Any]]:
+    """Disable an obsolete A/B sidecar without blocking the primary release."""
+    if comparison_contract is None:
+        return None, {
+            "status": "DISABLED",
+            "reason_code": "RATING_AB_NOT_CONFIGURED",
+        }
+    expected = comparison_contract.get("baseline_configuration_fingerprint")
+    current = baseline_contract.get("configuration_fingerprint")
+    if not expected or expected != current:
+        return None, {
+            "status": "DISABLED_INCOMPATIBLE_BASELINE",
+            "reason_code": "RATING_AB_BASELINE_FINGERPRINT_MISMATCH",
+            "expected_baseline_fingerprint": expected,
+            "current_baseline_fingerprint": current,
+        }
+    return comparison_contract, {
+        "status": "ACTIVE",
+        "reason_code": "BASELINE_FINGERPRINT_MATCH",
+        "baseline_configuration_fingerprint": current,
+    }
+
+
 def _write_json_atomic(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
@@ -490,11 +516,9 @@ def _run_shadow_only(
         if callable(comparison_contract_loader) and comparison_model_path
         else None
     )
-    if comparison_contract is not None and (
-        comparison_contract.get("baseline_configuration_fingerprint")
-        != contract.get("configuration_fingerprint")
-    ):
-        raise RuntimeError("RATING_AB_BASELINE_FINGERPRINT_MISMATCH")
+    comparison_contract, comparison_status = _gate_comparison_contract(
+        comparison_contract, contract,
+    )
     analyzed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def process(match):
@@ -572,7 +596,11 @@ def _run_shadow_only(
             comparison_observations,
             comparison_ledger_path,
         )
-        if callable(comparison_appender) and comparison_ledger_path is not None
+        if (
+            comparison_contract is not None
+            and callable(comparison_appender)
+            and comparison_ledger_path is not None
+        )
         else 0
     )
     audit = audit_ledger(ledger_path, model_path)
@@ -619,6 +647,7 @@ def _run_shadow_only(
         "moneyline_evidence_added": moneyline_added,
         "h2h_evidence_added": h2h_added,
         "rating_ab_observations_added": comparison_added,
+        "rating_ab_status": comparison_status,
         "rating_ab_isolation": {
             "market_used": False,
             "production_effect": False,
