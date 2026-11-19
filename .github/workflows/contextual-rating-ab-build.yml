@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/contextual-rating-ab-build.yml"
       - "scripts/build_contextual_rating_ab_v1.py"
+      - "scripts/audit_contextual_primary_conflict_v15.py"
       - "src/contextual_chronological_rating.py"
       - "src/contextual_rating_ab_v1.py"
       - "data/models/contextual-rating-ab-v1.json"
@@ -44,6 +45,12 @@ jobs:
             --replay-input-dir .tmp/contextual-rating-replay \
             --release-contract data/models/fenzobot-contextual-2026-11.json \
             --output data/models/contextual-rating-ab-v1.json
+      - name: Auditar conflito entre famílias principais
+        run: |
+          python -m scripts.audit_contextual_primary_conflict_v15 \
+            --replay-input-dir .tmp/contextual-rating-replay \
+            --contract data/models/contextual-family-combination-v14.json \
+            --output .tmp/contextual-primary-conflict-v15.json
       - name: Testes específicos
         run: |
           python scripts/plan_validation.py --level 3 \
@@ -54,12 +61,14 @@ jobs:
             --file scripts/run_fenzobot_contextual_2026_11.py
           ruff check src/contextual_chronological_rating.py \
             src/contextual_rating_ab_v1.py \
+            scripts/audit_contextual_primary_conflict_v15.py \
             scripts/build_contextual_rating_ab_v1.py \
             scripts/run_contextual_shadow_v2.py \
             scripts/run_fenzobot_contextual_2026_11.py \
             tests/test_contextual_chronological_rating.py \
             tests/test_contextual_rating_ab_v1.py
           python -m pytest -q \
+            tests/test_audit_contextual_primary_conflict_v15.py \
             tests/test_contextual_chronological_rating.py \
             tests/test_contextual_rating_ab_v1.py \
             tests/test_run_contextual_shadow_v2.py \
@@ -83,4 +92,10 @@ jobs:
         with:
           name: contextual-rating-ab-v1
           path: data/models/contextual-rating-ab-v1.json
+          if-no-files-found: error
+      - name: Guardar auditoria do conflito primário
+        uses: actions/upload-artifact@v7
+        with:
+          name: contextual-primary-conflict-v15
+          path: .tmp/contextual-primary-conflict-v15.json
           if-no-files-found: error
