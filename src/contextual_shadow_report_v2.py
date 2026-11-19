@@ -1461,8 +1461,11 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         advantage = family.get("direction_name") or "Sem vantagem material"
         intensity = {
             "forte": "forte",
+            "muito forte": "muito forte",
             "moderado": "moderada",
             "ligeiro": "ligeira",
+            "muito ligeiro": "muito ligeira",
+            "residual": "residual",
             "neutro": "neutra",
         }.get(
             str(family.get("impact_intensity_label") or "").casefold(),

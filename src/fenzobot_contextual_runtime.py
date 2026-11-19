@@ -11,8 +11,8 @@ from typing import Any, Mapping
 from .contextual_family_combination_v2 import FAMILY_ORDER
 from .contextual_family_combination_v17 import (
     explain_symmetric_family_equation,
-    predict_contextual_combination_v17,
 )
+from .contextual_family_combination_v18 import predict_contextual_combination_v18
 from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
 from .contextual_family_replay import h2h_reliability_curve
@@ -265,7 +265,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v17(
+    prediction = predict_contextual_combination_v18(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
