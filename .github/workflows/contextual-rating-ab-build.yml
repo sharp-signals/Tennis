@@ -9,10 +9,14 @@ on:
       - "scripts/audit_contextual_primary_conflict_v15.py"
       - "scripts/build_contextual_family_combination_v16.py"
       - "scripts/calibrate_contextual_uncertainty_v16.py"
+      - "scripts/build_contextual_family_combination_v17.py"
+      - "scripts/calibrate_contextual_uncertainty_v17.py"
       - "scripts/run_contextual_shadow_v2.py"
       - "src/contextual_chronological_rating.py"
       - "src/contextual_family_combination_v16.py"
       - "src/contextual_probability_uncertainty_v16.py"
+      - "src/contextual_family_combination_v17.py"
+      - "src/contextual_probability_uncertainty_v17.py"
       - "src/contextual_family_hierarchy.py"
       - "src/contextual_family_replay.py"
       - "src/contextual_rating_ab_v1.py"
@@ -20,6 +24,8 @@ on:
       - "data/models/contextual-rating-ab-v1.json"
       - "data/models/contextual-family-combination-v16.json"
       - "data/models/contextual-probability-uncertainty-v16.json"
+      - "data/models/contextual-family-combination-v17.json"
+      - "data/models/contextual-probability-uncertainty-v17.json"
       - "data/models/fenzobot-contextual-2026-11.json"
       - "data/models/fenzobot-contextual-2026-11-manifest.json"
 
@@ -63,18 +69,18 @@ jobs:
             --replay-input-dir .tmp/contextual-rating-replay \
             --contract data/models/contextual-family-combination-v14.json \
             --output .tmp/contextual-primary-conflict-v15.json
-      - name: Construir combinação e incerteza v16
+      - name: Construir combinação e incerteza v17
         run: |
-          python -m scripts.build_contextual_family_combination_v16 \
+          python -m scripts.build_contextual_family_combination_v17 \
             --replay-input-dir .tmp/contextual-rating-replay \
-            --baseline-contract data/models/contextual-family-combination-v15.json \
-            --output .tmp/v16/contextual-family-combination-v16.json
-          python -m scripts.calibrate_contextual_uncertainty_v16 \
+            --baseline-contract data/models/contextual-family-combination-v16.json \
+            --output .tmp/v17/contextual-family-combination-v17.json
+          python -m scripts.calibrate_contextual_uncertainty_v17 \
             --replay-input-dir .tmp/contextual-rating-replay \
-            --combination-contract .tmp/v16/contextual-family-combination-v16.json \
-            --output .tmp/v16/contextual-probability-uncertainty-v16.json
-          cp .tmp/v16/contextual-family-combination-v16.json data/models/
-          cp .tmp/v16/contextual-probability-uncertainty-v16.json data/models/
+            --combination-contract .tmp/v17/contextual-family-combination-v17.json \
+            --output .tmp/v17/contextual-probability-uncertainty-v17.json
+          cp .tmp/v17/contextual-family-combination-v17.json data/models/
+          cp .tmp/v17/contextual-probability-uncertainty-v17.json data/models/
           python -m scripts.export_fenzobot_contextual_release
       - name: Testes específicos
         run: |
@@ -88,9 +94,13 @@ jobs:
             src/contextual_rating_ab_v1.py \
             src/contextual_family_combination_v16.py \
             src/contextual_probability_uncertainty_v16.py \
+            src/contextual_family_combination_v17.py \
+            src/contextual_probability_uncertainty_v17.py \
             scripts/audit_contextual_primary_conflict_v15.py \
             scripts/build_contextual_family_combination_v16.py \
             scripts/calibrate_contextual_uncertainty_v16.py \
+            scripts/build_contextual_family_combination_v17.py \
+            scripts/calibrate_contextual_uncertainty_v17.py \
             scripts/build_contextual_rating_ab_v1.py \
             scripts/run_contextual_shadow_v2.py \
             scripts/run_fenzobot_contextual_2026_11.py \
@@ -99,6 +109,7 @@ jobs:
           python -m pytest -q \
             tests/test_audit_contextual_primary_conflict_v15.py \
             tests/test_contextual_family_combination_v16.py \
+            tests/test_contextual_family_combination_v17.py \
             tests/test_contextual_chronological_rating.py \
             tests/test_contextual_rating_ab_v1.py \
             tests/test_run_contextual_shadow_v2.py \
@@ -129,9 +140,9 @@ jobs:
           name: contextual-primary-conflict-v15
           path: .tmp/contextual-primary-conflict-v15.json
           if-no-files-found: error
-      - name: Guardar contratos v16
+      - name: Guardar contratos v17
         uses: actions/upload-artifact@v7
         with:
-          name: contextual-symmetric-hierarchy-v16-contracts
-          path: .tmp/v16/*.json
+          name: contextual-recent-form-governance-v17-contracts
+          path: .tmp/v17/*.json
           if-no-files-found: error

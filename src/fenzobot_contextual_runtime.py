@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
-from .contextual_family_combination_v16 import (
+from .contextual_family_combination_v17 import (
     explain_symmetric_family_equation,
-    predict_contextual_combination_v16,
+    predict_contextual_combination_v17,
 )
 from .contextual_family_methodology import family_methodology
 from .contextual_factor_orchestrator import FAMILY_DEFINITIONS
@@ -265,7 +265,7 @@ def predict_fenzobot_contextual(
         "promotion_authorized": False,
         "universes": {universe: universe_contract["combination"]},
     }
-    prediction = predict_contextual_combination_v16(
+    prediction = predict_contextual_combination_v17(
         [dict(row)], universe=universe, contract=combination_contract,
     )
     working = prediction["rows"][0]
@@ -329,7 +329,14 @@ def predict_fenzobot_contextual(
             "context_audit": (
                 dict(equation_audit.get("structural_strength_v7") or {})
                 if family == "structural_strength"
-                else dict(equation_audit.get("recent_form_v1") or {})
+                else {
+                    **dict(equation_audit.get("recent_form_v1") or {}),
+                    "pricing_governance": dict(
+                        (
+                            working.get("realized_hierarchy_audit") or {}
+                        ).get("recent_form_governance") or {}
+                    ),
+                }
                 if family == "recent_form"
                 else dict(equation_audit.get("matchup_h2h") or {})
                 if family == "matchup_h2h"
