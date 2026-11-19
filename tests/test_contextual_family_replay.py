@@ -12,8 +12,14 @@ from src.contextual_family_replay import (
     evaluate_contextual_family_replay,
     replay_contextual_families,
 )
+from src.contextual_surface_ledger import exact_surface_context
 
 import pandas as pd
+
+
+def test_explicit_hard_venue_in_surface_name_is_exact():
+    assert exact_surface_context("Hard outdoor") == "hard_outdoor"
+    assert exact_surface_context("I.hard") == "hard_indoor"
 
 
 def test_provider_h2h_override_reconciles_model_and_keeps_exhibition_auditable():
@@ -210,6 +216,22 @@ def test_prior_h2h_is_context_not_a_prefitted_weight():
         "score": "6-4 6-4",
         "round": "QF",
     }]
+
+
+def test_h2h_same_surface_requires_exact_indoor_outdoor_context():
+    outdoor = _match("20260101", "Alpha", "Beta")
+    outdoor["surface_context"] = "hard_outdoor"
+    target = build_contextual_target_row(
+        pd.DataFrame([outdoor]), universe="atp",
+        player_a="Beta", player_b="Alpha",
+        cutoff=pd.Timestamp("2026-01-05").date(), surface="I.hard",
+        rank_a=40, rank_b=20,
+    )
+    assert target["samples"]["h2h"] == 1
+    assert target["samples"]["same_surface_h2h"] == 0
+    assert target["features"]["same_surface_h2h_win_share_margin"] is None
+    audit = target["candidate_equation_audit"]["matchup_h2h"]
+    assert audit["eligible_surface_matches"] == 0
 
 
 def test_service_family_degrades_without_point_aggregates():

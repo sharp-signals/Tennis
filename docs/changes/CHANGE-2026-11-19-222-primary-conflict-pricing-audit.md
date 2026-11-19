@@ -38,3 +38,25 @@ separado. Um único jogo não autoriza promoção.
 - Equações internas das cinco famílias não são alteradas nesta auditoria.
 - Fair odd independente do mercado.
 
+## Resultado da auditoria
+
+- ATP: a política que preserva as três famílias secundárias quando estão todas
+  disponíveis e concordam no conflito entre as duas principais foi escolhida
+  na validação cronológica. No holdout, passou de `0,619816` para `0,619745` em
+  log-loss e de `0,215805` para `0,215754` em Brier. No segmento específico,
+  a accuracy passou de `59,35%` para `60,57%`.
+- A melhoria global emparelhada é pequena e estatisticamente inconclusiva; por
+  isso a mudança fica estritamente limitada ao padrão auditado, sem alterar as
+  equações internas das famílias.
+- WTA: o baseline v14 continuou a ser escolhido na validação. A política WTA
+  fica, portanto, inalterada.
+- Medvedev–Tiafoe, usando apenas as cinco probabilidades familiares já
+  congeladas, passa de `50,55%` / fair odd `1,98` para `59,75%` / fair odd
+  `1,67`. O mercado não participa neste cálculo.
+
+## Correção factual associada
+
+O H2H no piso atual passa a exigir o contexto exato. Um H2H em hard outdoor
+continua a contar no H2H global, mas deixa de ser contado e apresentado como
+H2H no piso atual quando o encontro é hard indoor (e vice-versa).
+

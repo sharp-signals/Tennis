@@ -1079,13 +1079,18 @@ def _candidate_equation_features(
 
 
 def _h2h_feature(
-    rows: list[dict[str, Any]], *, player_a: str, surface: str | None,
+    rows: list[dict[str, Any]], *, player_a: str,
+    surface_context: str | None,
 ) -> tuple[float | None, float | None, int, int]:
     if not rows:
         return None, None, 0, 0
     a_wins = sum(row["winner"] == player_a for row in rows)
     global_margin = 2.0 * a_wins / len(rows) - 1.0
-    same = [row for row in rows if surface is not None and row["surface"] == surface]
+    same = [
+        row for row in rows
+        if surface_context is not None
+        and row.get("surface_context") == surface_context
+    ]
     if same:
         same_a_wins = sum(row["winner"] == player_a for row in same)
         surface_margin = 2.0 * same_a_wins / len(same) - 1.0
@@ -1383,7 +1388,8 @@ def build_contextual_target_row(
     surface_rate_a, surface_sample_a = _surface_record(primary_match_history[model_a], target_surface)
     surface_rate_b, surface_sample_b = _surface_record(primary_match_history[model_b], target_surface)
     h2h_global, h2h_surface, h2h_sample, h2h_surface_sample = _h2h_feature(
-        pair_history, player_a=model_a, surface=target_surface,
+        pair_history, player_a=model_a,
+        surface_context=target_surface_context,
     )
     service_surface_a, service_recent_a = _service_view(
         service_history[model_a], cutoff=cutoff, surface=target_surface,
@@ -1513,8 +1519,8 @@ def build_contextual_target_row(
                 "eligible_surface_a_wins": sum(
                     row["winner"] == model_a
                     for row in pair_history
-                    if target_surface is not None
-                    and row.get("surface") == target_surface
+                    if target_surface_context is not None
+                    and row.get("surface_context") == target_surface_context
                 ),
                 "excluded_non_competitive": 0,
                 "matches": [
@@ -1601,7 +1607,8 @@ def build_contextual_family_replay_rows(
                 primary_match_history[player_b], surface,
             )
             h2h_global, h2h_surface, h2h_sample, h2h_surface_sample = _h2h_feature(
-                pair_history[(player_a, player_b)], player_a=player_a, surface=surface,
+                pair_history[(player_a, player_b)], player_a=player_a,
+                surface_context=surface_context,
             )
             service_surface_a, service_recent_a = _service_view(
                 service_history[player_a], cutoff=event_date, surface=surface,
@@ -1814,6 +1821,7 @@ def build_contextual_family_replay_rows(
                 pair = tuple(sorted((winner, loser)))
                 pair_history[pair].append({
                     "event_date": event_date, "surface": surface, "winner": winner,
+                    "surface_context": surface_context,
                 })
     return replay
 
