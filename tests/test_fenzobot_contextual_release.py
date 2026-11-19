@@ -175,27 +175,27 @@ def _row(primary_ready=True, *, context="hard_outdoor"):
 
 def test_manifest_names_every_internal_component_without_global_version_ambiguity():
     manifest, runtime = build_release(
-        Path("data/models/contextual-family-combination-v14.json"),
-        Path("data/models/contextual-probability-uncertainty-v14.json"),
+        Path("data/models/contextual-family-combination-v15.json"),
+        Path("data/models/contextual-probability-uncertainty-v15.json"),
     )
     assert manifest["global_release_id"] == GLOBAL_RELEASE_ID
     assert manifest["components"] == {
         "ranking_model": "contextual-ranking-v7.1",
-        "family_combination": "contextual-family-combination-v14-universe-consensus",
-        "probability_calibration": "contextual-probability-uncertainty-v14",
-        "runtime_generation": 17,
+        "family_combination": "contextual-family-combination-v15-primary-conflict",
+        "probability_calibration": "contextual-probability-uncertainty-v15",
+        "runtime_generation": 18,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
 def test_runtime_contract_reproduces_export_and_is_market_free():
     manifest, built = build_release(
-        Path("data/models/contextual-family-combination-v14.json"),
-        Path("data/models/contextual-probability-uncertainty-v14.json"),
+        Path("data/models/contextual-family-combination-v15.json"),
+        Path("data/models/contextual-probability-uncertainty-v15.json"),
     )
     contract = load_contract(MODEL)
     assert built == contract
@@ -214,7 +214,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 17
+    assert result["runtime_generation"] == 18
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"
@@ -249,11 +249,8 @@ def test_runtime_enforces_strict_realised_hierarchy_contract():
         "combination"
     ]["realized_hierarchy"]
     assert hierarchy["unanimous_reinforcement_preserved"] is True
-    assert hierarchy["conflict_secondary_total_not_above_primary_total"] is True
-    assert hierarchy["consensus_cap_basis"] == "aligned_primary_total"
-    assert hierarchy[
-        "conflict_single_secondary_not_above_primary_average"
-    ] is True
+    assert hierarchy["conflict_three_secondary_consensus_preserved"] is True
+    assert hierarchy["other_conflicts_keep_v14_caps"] is True
 
 
 def test_missing_primary_family_fails_closed_for_operational_readiness():

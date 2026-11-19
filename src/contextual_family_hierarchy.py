@@ -195,3 +195,45 @@ def govern_consensus_with_individual_cap(
         "consensus_cap_absolute_impact": consensus_cap,
         "capped_families": capped_families,
     }
+
+
+def govern_atp_primary_conflict_consensus(
+    contributions: dict[str, float],
+) -> tuple[dict[str, float], dict[str, object]]:
+    """Preserve three-family ATP consensus when the primaries disagree.
+
+    The exception is deliberately narrow: both primary families must be
+    active and opposed, and all three active secondary families must agree.
+    Other conflicts and all unanimous-primary cases keep the v14 policy.
+    """
+    governed = {
+        family: float(contributions.get(family, 0.0))
+        for family in (*PRIMARY_FAMILIES, *SECONDARY_FAMILIES)
+    }
+
+    def direction(value: float) -> int:
+        return 1 if value > 0.0 else -1 if value < 0.0 else 0
+
+    primary_directions = [
+        direction(governed[family]) for family in PRIMARY_FAMILIES
+    ]
+    secondary_directions = [
+        direction(governed[family]) for family in SECONDARY_FAMILIES
+    ]
+    secondary_consensus = (
+        primary_directions[0] * primary_directions[1] < 0
+        and all(secondary_directions)
+        and len(set(secondary_directions)) == 1
+    )
+    if not secondary_consensus:
+        return govern_consensus_with_individual_cap(
+            governed, consensus_cap_basis="aligned_primary_total",
+        )
+    return governed, {
+        "applied": False,
+        "policy": "ATP_THREE_SECONDARY_CONSENSUS_ARBITRATES_PRIMARY_CONFLICT",
+        "consensus_reinforcement": False,
+        "primary_conflict": True,
+        "three_secondary_consensus": True,
+        "capped_families": [],
+    }

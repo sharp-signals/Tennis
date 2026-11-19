@@ -58,6 +58,7 @@ from src.main import (  # noqa: E402
     _parse_utc,
 )
 from src.round_stage import classify_round_stage  # noqa: E402
+from src.contextual_surface_ledger import exact_surface_context  # noqa: E402
 
 
 SUMMARY_PATH = Path("data/validation/contextual-shadow-v2-latest.json")
@@ -136,7 +137,7 @@ def _provider_h2h_override(
     )
     if not matches:
         return None
-    current_family = fetch_data._normalize_surface_family(current_surface)
+    current_context = exact_surface_context(current_surface)
     eligible = []
     excluded = []
     surface_rows = []
@@ -185,7 +186,10 @@ def _provider_h2h_override(
             "a" if str(winner) == str(player_a_id) else "b"
         )
         eligible.append(row)
-        if current_family and fetch_data._normalize_surface_family(surface) == current_family:
+        if (
+            current_context is not None
+            and exact_surface_context(surface) == current_context
+        ):
             surface_rows.append(row)
     if not eligible:
         return None

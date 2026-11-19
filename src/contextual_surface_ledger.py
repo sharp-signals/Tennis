@@ -57,6 +57,8 @@ def exact_surface_context(
         return None
     if any(token in surface_text for token in ("indoor", "interior", "i hard")):
         return "hard_indoor"
+    if any(token in surface_text for token in ("outdoor", "exterior", "outside")):
+        return "hard_outdoor"
     if explicit_indoor is True or venue_text in {"indoor", "interior", "inside"}:
         return "hard_indoor"
     if explicit_indoor is False or venue_text in {"outdoor", "exterior", "outside"}:
