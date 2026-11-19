@@ -11,12 +11,16 @@ on:
       - "scripts/calibrate_contextual_uncertainty_v16.py"
       - "scripts/build_contextual_family_combination_v17.py"
       - "scripts/calibrate_contextual_uncertainty_v17.py"
+      - "scripts/build_contextual_family_combination_v18.py"
+      - "scripts/calibrate_contextual_uncertainty_v18.py"
       - "scripts/run_contextual_shadow_v2.py"
       - "src/contextual_chronological_rating.py"
       - "src/contextual_family_combination_v16.py"
       - "src/contextual_probability_uncertainty_v16.py"
       - "src/contextual_family_combination_v17.py"
       - "src/contextual_probability_uncertainty_v17.py"
+      - "src/contextual_family_combination_v18.py"
+      - "src/contextual_probability_uncertainty_v18.py"
       - "src/contextual_family_hierarchy.py"
       - "src/contextual_family_replay.py"
       - "src/contextual_rating_ab_v1.py"
@@ -26,6 +30,8 @@ on:
       - "data/models/contextual-probability-uncertainty-v16.json"
       - "data/models/contextual-family-combination-v17.json"
       - "data/models/contextual-probability-uncertainty-v17.json"
+      - "data/models/contextual-family-combination-v18.json"
+      - "data/models/contextual-probability-uncertainty-v18.json"
       - "data/models/fenzobot-contextual-2026-11.json"
       - "data/models/fenzobot-contextual-2026-11-manifest.json"
 
@@ -57,31 +63,31 @@ jobs:
               --replay-cache-dir .tmp/contextual-rating-replay \
               --output .tmp/replay-audit.json
           fi
-      - name: Congelar candidatos A/B
-        run: |
-          python -m scripts.build_contextual_rating_ab_v1 \
-            --replay-input-dir .tmp/contextual-rating-replay \
-            --release-contract data/models/fenzobot-contextual-2026-11.json \
-            --output data/models/contextual-rating-ab-v1.json
       - name: Auditar conflito entre famílias principais
         run: |
           python -m scripts.audit_contextual_primary_conflict_v15 \
             --replay-input-dir .tmp/contextual-rating-replay \
             --contract data/models/contextual-family-combination-v14.json \
             --output .tmp/contextual-primary-conflict-v15.json
-      - name: Construir combinação e incerteza v17
+      - name: Construir combinação e incerteza v18
         run: |
-          python -m scripts.build_contextual_family_combination_v17 \
+          python -m scripts.build_contextual_family_combination_v18 \
             --replay-input-dir .tmp/contextual-rating-replay \
-            --baseline-contract data/models/contextual-family-combination-v16.json \
-            --output .tmp/v17/contextual-family-combination-v17.json
-          python -m scripts.calibrate_contextual_uncertainty_v17 \
+            --baseline-contract data/models/contextual-family-combination-v17.json \
+            --output .tmp/v18/contextual-family-combination-v18.json
+          python -m scripts.calibrate_contextual_uncertainty_v18 \
             --replay-input-dir .tmp/contextual-rating-replay \
-            --combination-contract .tmp/v17/contextual-family-combination-v17.json \
-            --output .tmp/v17/contextual-probability-uncertainty-v17.json
-          cp .tmp/v17/contextual-family-combination-v17.json data/models/
-          cp .tmp/v17/contextual-probability-uncertainty-v17.json data/models/
+            --combination-contract .tmp/v18/contextual-family-combination-v18.json \
+            --output .tmp/v18/contextual-probability-uncertainty-v18.json
+          cp .tmp/v18/contextual-family-combination-v18.json data/models/
+          cp .tmp/v18/contextual-probability-uncertainty-v18.json data/models/
           python -m scripts.export_fenzobot_contextual_release
+      - name: Congelar candidatos A/B sobre o release exportado
+        run: |
+          python -m scripts.build_contextual_rating_ab_v1 \
+            --replay-input-dir .tmp/contextual-rating-replay \
+            --release-contract data/models/fenzobot-contextual-2026-11.json \
+            --output data/models/contextual-rating-ab-v1.json
       - name: Testes específicos
         run: |
           python scripts/plan_validation.py --level 3 \
@@ -96,11 +102,15 @@ jobs:
             src/contextual_probability_uncertainty_v16.py \
             src/contextual_family_combination_v17.py \
             src/contextual_probability_uncertainty_v17.py \
+            src/contextual_family_combination_v18.py \
+            src/contextual_probability_uncertainty_v18.py \
             scripts/audit_contextual_primary_conflict_v15.py \
             scripts/build_contextual_family_combination_v16.py \
             scripts/calibrate_contextual_uncertainty_v16.py \
             scripts/build_contextual_family_combination_v17.py \
             scripts/calibrate_contextual_uncertainty_v17.py \
+            scripts/build_contextual_family_combination_v18.py \
+            scripts/calibrate_contextual_uncertainty_v18.py \
             scripts/build_contextual_rating_ab_v1.py \
             scripts/run_contextual_shadow_v2.py \
             scripts/run_fenzobot_contextual_2026_11.py \
@@ -110,6 +120,7 @@ jobs:
             tests/test_audit_contextual_primary_conflict_v15.py \
             tests/test_contextual_family_combination_v16.py \
             tests/test_contextual_family_combination_v17.py \
+            tests/test_contextual_family_combination_v18.py \
             tests/test_contextual_chronological_rating.py \
             tests/test_contextual_rating_ab_v1.py \
             tests/test_run_contextual_shadow_v2.py \
@@ -140,9 +151,9 @@ jobs:
           name: contextual-primary-conflict-v15
           path: .tmp/contextual-primary-conflict-v15.json
           if-no-files-found: error
-      - name: Guardar contratos v17
+      - name: Guardar contratos v18
         uses: actions/upload-artifact@v7
         with:
-          name: contextual-recent-form-governance-v17-contracts
-          path: .tmp/v17/*.json
+          name: contextual-unanimous-consensus-v18-contracts
+          path: .tmp/v18/*.json
           if-no-files-found: error
