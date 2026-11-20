@@ -84,7 +84,7 @@ def test_tier_win_credit_audit_lists_every_match_and_exact_win_contribution():
         {
             **_observation("2026-11-10", won=True, level="Masters 1000"),
             "tournament": "Paris Masters", "round": "QF",
-            "opponent": "Player B",
+            "opponent": "Player B", "opponent_rank": 8,
         },
         {
             **_observation("2026-11-18", won=False, level="ATP Finals"),
@@ -104,6 +104,7 @@ def test_tier_win_credit_audit_lists_every_match_and_exact_win_contribution():
     assert win["tournament"] == "Paris Masters"
     assert win["round"] == "QF"
     assert win["opponent"] == "Player B"
+    assert win["opponent_rank"] == 8
     assert win["category_points"] == 1000
     assert win["weighted_credit"] > 0.0
     assert ledger[0]["weighted_credit"] == 0.0

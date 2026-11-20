@@ -466,6 +466,7 @@ def _tier_win_credit_summary(
             "tournament": row.get("tournament"),
             "round": row.get("round"),
             "opponent": row.get("opponent"),
+            "opponent_rank": row.get("opponent_rank"),
             "won": bool(row.get("won")),
             "competition_level": row.get("competition_level"),
             "category_points": int(points),
