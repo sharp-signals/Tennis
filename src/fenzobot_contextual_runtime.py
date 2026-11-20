@@ -10,6 +10,8 @@ from typing import Any, Mapping
 
 from .contextual_family_combination_v2 import FAMILY_ORDER
 from .contextual_family_combination_v17 import (
+    RECENT_MODIFIER_KEYS,
+    RECENT_RESULT_KEY,
     explain_symmetric_family_equation,
 )
 from .contextual_family_combination_v18 import predict_contextual_combination_v18
@@ -34,6 +36,36 @@ DEPENDENCE_MATERIAL_FAVORITE = 0.55
 DEPENDENCE_CRITICAL_FAVORITE = 0.60
 DEPENDENCE_MATERIAL_DELTA_PP = 10.0
 DEPENDENCE_CRITICAL_DELTA_PP = 15.0
+
+
+def _effective_recent_form_trace(
+    trace: Mapping[str, Any], governance: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Expose the effective pricing trace without hiding fitted coefficients."""
+    if str(governance.get("status") or "").upper() != "READY":
+        return dict(trace)
+    result = {
+        **dict(trace),
+        "features": [dict(item) for item in trace.get("features") or []],
+    }
+    before = float(governance.get("modifier_logit_before_governance") or 0.0)
+    after = float(governance.get("modifier_logit_after_governance") or 0.0)
+    modifier_ratio = after / before if abs(before) > 1e-12 else 1.0
+    effective_result = float(governance.get("result_logit_after_floor") or 0.0)
+    for item in result["features"]:
+        key = str(item.get("key") or "")
+        fitted = float(item.get("logit_contribution") or 0.0) + float(
+            item.get("missing_logit_contribution") or 0.0
+        )
+        item["fitted_logit_contribution"] = fitted
+        if key == RECENT_RESULT_KEY:
+            item["effective_logit_contribution"] = effective_result
+        elif key in RECENT_MODIFIER_KEYS:
+            item["effective_logit_contribution"] = fitted * modifier_ratio
+        else:
+            item["effective_logit_contribution"] = fitted
+    result["pricing_governance"] = dict(governance)
+    return result
 
 
 def _coverage_grade(data_state: str | None, probability: float | None) -> str:
@@ -312,6 +344,17 @@ def predict_fenzobot_contextual(
         data_state = (
             (row.get("family_states") or {}).get(family) or {}
         ).get("data_state")
+        internal_trace = (
+            explain_symmetric_family_equation(dict(row), model)
+            if isinstance(model, dict) else {"status": "UNAVAILABLE", "features": []}
+        )
+        if family == "recent_form":
+            internal_trace = _effective_recent_form_trace(
+                internal_trace,
+                (
+                    working.get("realized_hierarchy_audit") or {}
+                ).get("recent_form_governance") or {},
+            )
         family_row = {
             "key": family,
             "label": labels[family],
@@ -322,10 +365,7 @@ def predict_fenzobot_contextual(
             "logit_contribution": round(contribution, 8),
             "data_state": data_state,
             "coverage_grade": _coverage_grade(data_state, family_probability),
-            "internal_trace": (
-                explain_symmetric_family_equation(dict(row), model)
-                if isinstance(model, dict) else {"status": "UNAVAILABLE", "features": []}
-            ),
+            "internal_trace": internal_trace,
             "context_audit": (
                 dict(equation_audit.get("structural_strength_v7") or {})
                 if family == "structural_strength"

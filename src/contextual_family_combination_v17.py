@@ -119,6 +119,8 @@ def govern_recent_form_signal(
     base = 0.0
     modifiers = 0.0
     result_floor_applied = False
+    fitted_result_contribution = 0.0
+    effective_result_contribution = 0.0
     for item in explanation["features"]:
         key = str(item["key"])
         contribution = (
@@ -126,6 +128,7 @@ def govern_recent_form_signal(
             + float(item["missing_logit_contribution"])
         )
         if key == RECENT_RESULT_KEY:
+            fitted_result_contribution = contribution
             fitted_weight = float(item.get("coefficient", 0.0))
             if fitted_weight < result_weight_floor:
                 contribution = (
@@ -133,6 +136,7 @@ def govern_recent_form_signal(
                     * float(item["standardized_value"])
                 )
                 result_floor_applied = True
+            effective_result_contribution = contribution
         if key in RECENT_MODIFIER_KEYS:
             modifiers += contribution
         else:
@@ -151,6 +155,8 @@ def govern_recent_form_signal(
         "modifier_logit_after_governance": governed_modifiers,
         "result_weight_floor": result_weight_floor,
         "result_floor_applied": result_floor_applied,
+        "result_logit_before_floor": fitted_result_contribution,
+        "result_logit_after_floor": effective_result_contribution,
         "opposing_modifier_cap": opposing_modifier_cap,
         "direction_reversed_by_modifiers": (
             base != 0.0 and signal != 0.0 and base * signal < 0.0

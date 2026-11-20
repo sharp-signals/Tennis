@@ -904,19 +904,25 @@ def _h2h_history_html(
         if not isinstance(match, Mapping):
             continue
         side = str(match.get("winner_side") or "").casefold()
-        if side in wins:
+        eligible_for_pricing = match.get("eligible_for_pricing") is not False
+        if side in wins and eligible_for_pricing:
             wins[side] += 1
         winner = players.get(side, {}).get("name") if side in {"a", "b"} else None
         surface_label, surface_class = _h2h_surface(match.get("surface"))
         tournament = str(match.get("tournament") or "Torneio não identificado")
         score = str(match.get("score") or "Resultado N/D")
         round_name = str(match.get("round") or "").strip()
+        excluded_note = (
+            " · não entra no cálculo" if not eligible_for_pricing else ""
+        )
         rows.append(
-            f'<div class="h2h-match h2h-{_e(surface_class)}">'
+            f'<div class="h2h-match h2h-{_e(surface_class)}'
+            f'{" h2h-excluded" if not eligible_for_pricing else ""}">'
             f'<span class="h2h-surface">{_e(surface_label)}</span>'
             f'<div><b>{_e(winner or "Vencedor N/D")}</b>'
             f'<small>{_e(_h2h_date(match.get("event_date")))} · {_e(tournament)}'
-            f'{" · " + _e(round_name) if round_name else ""}</small></div>'
+            f'{" · " + _e(round_name) if round_name else ""}'
+            f'{_e(excluded_note)}</small></div>'
             f'<strong>{_e(score)}</strong></div>'
         )
     if not rows:
@@ -927,7 +933,7 @@ def _h2h_history_html(
     )
     return (
         '<div class="h2h-history"><div class="h2h-history-head">'
-        f'<div><b>Confrontos anteriores</b><strong>{_e(score)}</strong></div>'
+        f'<div><b>H2H competitivo usado no preço</b><strong>{_e(score)}</strong></div>'
         '<span>mais recente primeiro</span></div>'
         f'{"".join(rows)}</div>'
     )
@@ -1013,7 +1019,9 @@ def _family_detail_html(
     for feature in features:
         if feature.get("missing"):
             continue
+        effective = _number(feature.get("effective_logit_contribution"))
         total = (
+            effective if effective is not None else
             (_number(feature.get("logit_contribution")) or 0.0)
             + (_number(feature.get("missing_logit_contribution")) or 0.0)
         )
@@ -1052,7 +1060,11 @@ def _family_detail_html(
         missing_contribution = _number(
             feature.get("missing_logit_contribution")
         ) or 0.0
-        total = contribution + missing_contribution
+        effective = _number(feature.get("effective_logit_contribution"))
+        total = (
+            effective if effective is not None
+            else contribution + missing_contribution
+        )
         side = "A" if total > 1e-9 else "B" if total < -1e-9 else "—"
         direction = side.casefold() if side != "—" else "neutral"
         if missing:
@@ -1916,6 +1928,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .h2h-match{{display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:12px;padding:10px 13px;border-bottom:1px solid #173048;border-left:4px solid var(--muted)}}
     .h2h-match:last-child{{border-bottom:0}}.h2h-match div b,.h2h-match div small{{display:block}}.h2h-match div b{{font-size:12px}}.h2h-match div small{{margin-top:2px;color:var(--muted);font-size:10px}}
     .h2h-match strong{{font-size:12px;text-align:right}}.h2h-surface{{padding:4px 7px;border-radius:999px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.04em}}
+    .h2h-match.h2h-excluded{{opacity:.58;border-left-style:dashed}}
     .h2h-hard-outdoor{{border-left-color:#3f9cff}}.h2h-hard-outdoor .h2h-surface{{color:#b9ddff;background:#174c75}}
     .h2h-hard-indoor{{border-left-color:#9b7cff}}.h2h-hard-indoor .h2h-surface{{color:#ded2ff;background:#463679}}
     .h2h-clay{{border-left-color:#e88248}}.h2h-clay .h2h-surface{{color:#ffd5bd;background:#713a20}}
