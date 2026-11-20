@@ -1130,6 +1130,20 @@ def h2h_reliability_curve(margin: float | None, count: int) -> float | None:
     return float(margin) * count / (count + 2.0) * math.sqrt(count)
 
 
+NON_COMPETITIVE_H2H_MARKERS = (
+    "exhibition",
+    "world tennis league",
+    "laver cup",
+    "ultimate tennis showdown",
+)
+
+
+def is_non_competitive_h2h_tournament(value: Any) -> bool:
+    """Return whether a factual meeting must have zero H2H pricing impact."""
+    normalized = str(value or "").strip().casefold()
+    return any(marker in normalized for marker in NON_COMPETITIVE_H2H_MARKERS)
+
+
 def apply_h2h_override(
     row: dict[str, Any], override: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
@@ -1333,6 +1347,7 @@ def build_contextual_target_row(
     rank_history: dict[str, list[tuple[date, float]]] = defaultdict(list)
     service_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
     pair_history: list[dict[str, Any]] = []
+    pair_history_factual: list[dict[str, Any]] = []
     wanted = {model_a, model_b}
     material = material[
         material["_winner_key"].isin(wanted)
@@ -1399,13 +1414,19 @@ def build_contextual_target_row(
                     "surface_context": match_surface_context,
                 })
         if is_primary and {winner, loser} == wanted:
-            pair_history.append({
+            pair_row = {
                 "event_date": event_date, "surface": match_surface, "winner": winner,
                 "surface_context": match_surface_context,
                 "tournament": _optional_text(match["_tournament"]),
                 "score": _optional_text(match["_score"]),
                 "round": _optional_text(match["_round"]),
-            })
+            }
+            pair_row["eligible_for_pricing"] = not (
+                is_non_competitive_h2h_tournament(pair_row["tournament"])
+            )
+            pair_history_factual.append(pair_row)
+            if pair_row["eligible_for_pricing"]:
+                pair_history.append(pair_row)
 
     recent_a = _summarize_player_history(
         match_history[model_a], cutoff=cutoff, target_surface=target_surface,
@@ -1540,7 +1561,7 @@ def build_contextual_target_row(
             **equation_audit,
             "matchup_h2h": {
                 "source": "chronological_history",
-                "raw_matches": h2h_sample,
+                "raw_matches": len(pair_history_factual),
                 "eligible_matches": h2h_sample,
                 "eligible_a_wins": sum(
                     row["winner"] == model_a for row in pair_history
@@ -1552,7 +1573,9 @@ def build_contextual_target_row(
                     if target_surface_context is not None
                     and row.get("surface_context") == target_surface_context
                 ),
-                "excluded_non_competitive": 0,
+                "excluded_non_competitive": (
+                    len(pair_history_factual) - h2h_sample
+                ),
                 "matches": [
                     {
                         "event_date": row["event_date"].isoformat(),
@@ -1563,9 +1586,16 @@ def build_contextual_target_row(
                         ),
                         "score": row.get("score"),
                         "round": row.get("round"),
+                        "eligible_for_pricing": bool(
+                            row.get("eligible_for_pricing")
+                        ),
+                        "exclusion_reason": (
+                            None if row.get("eligible_for_pricing")
+                            else "NON_COMPETITIVE_H2H"
+                        ),
                     }
                     for row in sorted(
-                        pair_history,
+                        pair_history_factual,
                         key=lambda item: item["event_date"],
                         reverse=True,
                     )
@@ -1853,7 +1883,9 @@ def build_contextual_family_replay_rows(
                         **service, "event_date": event_date, "surface": surface,
                         "surface_context": surface_context,
                     })
-            if is_primary:
+            if is_primary and not is_non_competitive_h2h_tournament(
+                match["_tournament"]
+            ):
                 pair = tuple(sorted((winner, loser)))
                 pair_history[pair].append({
                     "event_date": event_date, "surface": surface, "winner": winner,

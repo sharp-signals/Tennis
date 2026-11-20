@@ -855,6 +855,42 @@ class ContextualShadowReportTests(unittest.TestCase):
             self.assertIn("Alpha Player", index)
             self.assertNotIn("obs-historical", index)
 
+    def test_builder_never_calls_different_bookmakers_market_movement(self):
+        with TemporaryDirectory(dir=Path.cwd()) as directory:
+            root = Path(directory)
+            observations = root / "observations.jsonl"
+            markets = root / "markets.jsonl"
+            outcomes = root / "outcomes.jsonl"
+            output = root / "preview"
+            observations.write_text(
+                json.dumps(observation(), ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            first_quote = market()
+            latest_quote = {
+                **market(),
+                "captured_at_utc": "2026-11-04T12:00:00+00:00",
+                "bookmaker": "Different Book",
+                "odds": {"a": 1.85, "b": 2.05},
+            }
+            markets.write_text(
+                json.dumps(first_quote, ensure_ascii=False) + "\n"
+                + json.dumps(latest_quote, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            outcomes.write_text("", encoding="utf-8")
+
+            runner.build_previews(
+                output_dir=output,
+                observations_path=observations,
+                market_path=markets,
+                outcomes_path=outcomes,
+            )
+
+            html = (output / "report-obs-1.html").read_text(encoding="utf-8")
+            self.assertNotIn("Movimento desde a leitura anterior", html)
+            self.assertNotIn("1.90 → 1.85", html)
+
     def test_workflow_builds_and_uploads_preview_without_publishing_it(self):
         workflow = Path(".github/workflows/contextual-shadow-v2.yml").read_text(
             encoding="utf-8"

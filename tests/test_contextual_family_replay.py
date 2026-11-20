@@ -248,7 +248,48 @@ def test_prior_h2h_is_context_not_a_prefitted_weight():
         "winner_side": "a",
         "score": "6-4 6-4",
         "round": "QF",
+        "eligible_for_pricing": True,
+        "exclusion_reason": None,
     }]
+
+
+def test_laver_cup_is_factual_but_has_zero_h2h_pricing_impact():
+    competitive = _match("20260101", "Alpha", "Beta")
+    competitive["tourney_name"] = "History Open"
+    laver = _match("20260102", "Beta", "Alpha")
+    laver["tourney_name"] = "Laver Cup"
+    target = build_contextual_target_row(
+        pd.DataFrame([competitive, laver]), universe="atp",
+        player_a="Beta", player_b="Alpha",
+        cutoff=pd.Timestamp("2026-01-05").date(), surface="Hard",
+        rank_a=40, rank_b=20,
+    )
+
+    assert target["samples"]["h2h"] == 1
+    assert target["features"]["h2h_win_share_margin"] == 1.0
+    audit = target["candidate_equation_audit"]["matchup_h2h"]
+    assert audit["raw_matches"] == 2
+    assert audit["eligible_matches"] == 1
+    assert audit["excluded_non_competitive"] == 1
+    excluded = next(
+        row for row in audit["matches"]
+        if row["tournament"] == "Laver Cup"
+    )
+    assert excluded["eligible_for_pricing"] is False
+    assert excluded["exclusion_reason"] == "NON_COMPETITIVE_H2H"
+
+
+def test_chronological_replay_excludes_laver_cup_from_future_h2h():
+    laver = _match("20260101", "Alpha", "Beta")
+    laver["tourney_name"] = "Laver Cup"
+    target = _match("20260102", "Alpha", "Beta")
+
+    rows = build_contextual_family_replay_rows(
+        pd.DataFrame([laver, target]), universe="atp",
+    )
+
+    assert rows[-1]["samples"]["h2h"] == 0
+    assert rows[-1]["features"]["h2h_win_share_margin"] is None
 
 
 def test_h2h_same_surface_requires_exact_indoor_outdoor_context():

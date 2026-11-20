@@ -79,12 +79,23 @@ def build_previews(
     for key, rows in market_history.items():
         rows.sort(key=lambda row: str(row.get("captured_at_utc") or ""))
         latest = dict(rows[-1])
-        if len(rows) > 1:
+        comparable = [
+            row for row in rows[:-1]
+            if str(row.get("bookmaker") or "").strip().casefold()
+            == str(latest.get("bookmaker") or "").strip().casefold()
+            and str(row.get("source") or "").strip().casefold()
+            == str(latest.get("source") or "").strip().casefold()
+        ]
+        if comparable:
+            previous = comparable[-1]
             latest["previous_quote"] = {
-                "captured_at_utc": rows[-2].get("captured_at_utc"),
-                "odds": dict(rows[-2].get("odds") or {}),
+                "captured_at_utc": previous.get("captured_at_utc"),
+                "bookmaker": previous.get("bookmaker"),
+                "source": previous.get("source"),
+                "odds": dict(previous.get("odds") or {}),
             }
         latest["quote_snapshots"] = len(rows)
+        latest["comparable_quote_snapshots"] = len(comparable) + 1
         markets[key] = latest
     outcomes = {
         str(row.get("observation_id")): row for row in read_jsonl(outcomes_path)

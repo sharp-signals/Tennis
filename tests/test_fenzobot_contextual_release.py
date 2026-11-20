@@ -12,6 +12,7 @@ from src.fenzobot_contextual_runtime import (
     _centred_empirical_intervals,
     _coverage_grade,
     _dependency_grade,
+    _effective_recent_form_trace,
     _family_lead_authority,
     _h2h_evidence_intensity,
     _impact_intensity,
@@ -32,6 +33,49 @@ def test_impact_intensity_distinguishes_residual_very_slight_and_slight():
     assert _impact_intensity(0.49) == "MINIMAL"
     assert _impact_intensity(0.97) == "VERY_SLIGHT"
     assert _impact_intensity(2.07) == "SLIGHT"
+
+
+def test_recent_form_trace_exposes_effective_floor_and_modifier_cap():
+    trace = {
+        "status": "READY",
+        "features": [
+            {
+                "key": "contextual_recent_result_main_v7",
+                "logit_contribution": 0.0,
+                "missing_logit_contribution": 0.0,
+            },
+            {
+                "key": "contextual_recent_tier_win_credit_v7",
+                "logit_contribution": -0.4,
+                "missing_logit_contribution": 0.0,
+            },
+            {
+                "key": "contextual_recent_competitiveness_main_v7",
+                "logit_contribution": 0.2,
+                "missing_logit_contribution": 0.0,
+            },
+        ],
+    }
+    effective = _effective_recent_form_trace(trace, {
+        "status": "READY",
+        "result_logit_after_floor": 0.1,
+        "modifier_logit_before_governance": -0.4,
+        "modifier_logit_after_governance": -0.15,
+    })
+    by_key = {row["key"]: row for row in effective["features"]}
+
+    assert by_key["contextual_recent_result_main_v7"][
+        "effective_logit_contribution"
+    ] == 0.1
+    assert by_key["contextual_recent_tier_win_credit_v7"][
+        "effective_logit_contribution"
+    ] == -0.15
+    assert by_key["contextual_recent_competitiveness_main_v7"][
+        "effective_logit_contribution"
+    ] == 0.2
+    assert by_key["contextual_recent_result_main_v7"][
+        "fitted_logit_contribution"
+    ] == 0.0
 
 
 def test_h2h_evidence_strength_is_separate_from_calibrated_price_impact():

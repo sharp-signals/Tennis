@@ -25,6 +25,7 @@ from src import fetch_data, match_identity_v2  # noqa: E402
 from src.contextual_family_replay import (  # noqa: E402
     apply_h2h_override,
     build_contextual_target_row,
+    is_non_competitive_h2h_tournament,
 )
 from src.contextual_shadow_activation_v2 import activation_state  # noqa: E402
 from src.contextual_shadow_handicap_v2 import (  # noqa: E402
@@ -141,12 +142,6 @@ def _model_player_id(
     return None
 
 
-_NON_COMPETITIVE_H2H_MARKERS = (
-    "exhibition", "world tennis league", "laver cup",
-    "ultimate tennis showdown",
-)
-
-
 def _provider_h2h_override(
     *, tour: str, player_a_id: Any, player_b_id: Any,
     current_surface: Any, cutoff: datetime,
@@ -198,8 +193,7 @@ def _provider_h2h_override(
                 info = {}
             tournament_name = tournament_name or str(info.get("name") or "")
             surface = surface or info.get("surface")
-        normalized_name = tournament_name.casefold()
-        if any(marker.casefold() in normalized_name for marker in _NON_COMPETITIVE_H2H_MARKERS):
+        if is_non_competitive_h2h_tournament(tournament_name):
             excluded.append({"tournament": tournament_name, "reason": "NON_COMPETITIVE"})
             continue
         winner = row.get("match_winner") or row.get("winnerId") or row.get("winner")
