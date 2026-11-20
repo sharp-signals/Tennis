@@ -331,6 +331,12 @@ def predict_fenzobot_contextual(
                 if family == "structural_strength"
                 else {
                     **dict(equation_audit.get("recent_form_v1") or {}),
+                    "tier_win_credit": dict(
+                        (
+                            equation_audit.get("recent_form_tier_reliable_v5")
+                            or {}
+                        ).get("tier_win_credit") or {}
+                    ),
                     "pricing_governance": dict(
                         (
                             working.get("realized_hierarchy_audit") or {}

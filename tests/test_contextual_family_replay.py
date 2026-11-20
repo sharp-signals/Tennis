@@ -5,6 +5,7 @@ from src.contextual_family_replay import (
     _exact_surface_features,
     _recent_circuit_downshift,
     _surface,
+    _tier_win_credit_summary,
     adjust_recent_result_for_loss_context,
     apply_h2h_override,
     build_contextual_target_row,
@@ -75,6 +76,37 @@ def test_recent_circuit_downshift_penalizes_demotion_but_not_upgrade():
     assert penalty is not None and penalty > 0
     assert audit["status"] == "READY"
     assert upgrade_penalty == 0.0
+
+
+def test_tier_win_credit_audit_lists_every_match_and_exact_win_contribution():
+    cutoff = pd.Timestamp("2026-11-20").date()
+    observations = [
+        {
+            **_observation("2026-11-10", won=True, level="Masters 1000"),
+            "tournament": "Paris Masters", "round": "QF",
+            "opponent": "Player B",
+        },
+        {
+            **_observation("2026-11-18", won=False, level="ATP Finals"),
+            "tournament": "ATP Finals", "round": "RR",
+            "opponent": "Player C",
+        },
+    ]
+    credit, sample, ledger = _tier_win_credit_summary(
+        observations, cutoff=cutoff,
+    )
+    assert sample == 2
+    assert credit is not None and 0.0 < credit < 0.5
+    assert [row["event_date"] for row in ledger] == [
+        "2026-11-18", "2026-11-10",
+    ]
+    win = ledger[1]
+    assert win["tournament"] == "Paris Masters"
+    assert win["round"] == "QF"
+    assert win["opponent"] == "Player B"
+    assert win["category_points"] == 1000
+    assert win["weighted_credit"] > 0.0
+    assert ledger[0]["weighted_credit"] == 0.0
 
 
 def test_exact_surface_tier_credit_distinguishes_equal_win_rates_by_level():
