@@ -807,7 +807,7 @@ _FEATURE_LABELS = {
     "contextual_recent_result_main_v7": "Resultados recentes · circuito principal",
     "contextual_recent_competitiveness_main_v7": "Competitividade · circuito principal",
     "contextual_recent_win_quality_main_v7": "Vitórias de qualidade · circuito principal",
-    "contextual_recent_tier_win_credit_v7": "Qualidade das vitórias ajustada ao nível",
+    "contextual_recent_tier_win_credit_v7": "Crédito das vitórias pela categoria",
     "contextual_recent_circuit_downshift_v8": "Mudança recente de nível competitivo",
     "contextual_structural_material_rank_core_v6": "Distância material de ranking",
     "contextual_structural_representative_rank_core_v6": "Ranking representativo",
@@ -930,6 +930,72 @@ def _h2h_history_html(
         f'<div><b>Confrontos anteriores</b><strong>{_e(score)}</strong></div>'
         '<span>mais recente primeiro</span></div>'
         f'{"".join(rows)}</div>'
+    )
+
+
+def _tier_category_label(points: Any) -> str:
+    value = int(_number(points) or 0)
+    return {
+        2000: "Grand Slam / Finals",
+        1000: "Masters 1000",
+        500: "ATP/WTA 500",
+        250: "ATP/WTA 250",
+        100: "Challenger",
+    }.get(value, "Categoria não identificada")
+
+
+def _tier_win_credit_html(
+    context: Mapping[str, Any], players: Mapping[str, Mapping[str, Any]],
+) -> str:
+    audit = context.get("tier_win_credit") or {}
+    if not isinstance(audit, Mapping) or not audit:
+        return ""
+    columns = []
+    for side in ("a", "b"):
+        ledger = audit.get(f"{side}_ledger") or []
+        wins = [
+            row for row in ledger
+            if isinstance(row, Mapping) and bool(row.get("won"))
+        ]
+        rows = []
+        for row in wins:
+            points = int(_number(row.get("category_points")) or 0)
+            base_credit = points / 2000.0 if points else 0.0
+            recency = 100.0 * (_number(row.get("recency_weight")) or 0.0)
+            contribution = _number(row.get("weighted_credit")) or 0.0
+            tournament = str(row.get("tournament") or "Torneio não identificado")
+            opponent = str(row.get("opponent") or "Adversário N/D")
+            round_name = str(row.get("round") or "").strip()
+            rows.append(
+                '<div class="tier-credit-match">'
+                f'<div><b>{_e(tournament)}</b><small>'
+                f'{_e(_h2h_date(row.get("event_date")))}'
+                f'{" · " + _e(round_name) if round_name else ""}'
+                f' · vs {_e(opponent)}</small></div>'
+                f'<span>{_e(_tier_category_label(points))}<small>'
+                f'base {base_credit:.3f} · atualidade {recency:.0f}% · '
+                f'crédito {contribution:.3f}</small></span></div>'
+            )
+        sample = int(_number(audit.get(f"{side}_sample")) or len(ledger))
+        credit = 100.0 * (_number(audit.get(f"{side}_credit")) or 0.0)
+        columns.append(
+            '<div class="tier-credit-player">'
+            f'<div class="tier-credit-player-head"><b>{_e(players[side]["name"])}</b>'
+            f'<strong>{credit:.1f}/100</strong><small>'
+            f'{len(wins)} vitórias · {sample} jogos no denominador</small></div>'
+            f'{"".join(rows) if rows else "<p>Sem vitórias com crédito nesta janela.</p>"}'
+            '</div>'
+        )
+    return (
+        '<div class="tier-credit-history"><div class="h2h-history-head">'
+        '<div><b>Como foi calculado o crédito pela categoria</b>'
+        '<strong>Vitórias dos últimos 90 dias</strong></div>'
+        '<span>mais recente primeiro</span></div>'
+        '<p class="tier-credit-note">Cada vitória recebe a categoria do torneio '
+        'e perde peso com o tempo. As derrotas valem zero, mas continuam no '
+        'denominador. A ronda e o adversário são mostrados para auditoria; não '
+        'alteram este subpeso.</p>'
+        f'<div class="tier-credit-grid">{"".join(columns)}</div></div>'
     )
 
 
@@ -1070,6 +1136,8 @@ def _family_detail_html(
             for label, value in h2h_items if value is not None
         ) + '</div>'
         structural += _h2h_history_html(context, players)
+    if family.get("key") == "recent_form" and context:
+        structural += _tier_win_credit_html(context, players)
     return (
         '<div class="family-view-head"><span>Como quer ver os fatores?</span>'
         '<div class="family-view-toggle"><span>Leitura simples</span>'
@@ -1837,6 +1905,14 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     .h2h-history{{margin-top:10px;border:1px solid #213f58;border-radius:12px;overflow:hidden;background:#091927}}
     .h2h-history-head{{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border-bottom:1px solid #213f58}}
     .h2h-history-head div b,.h2h-history-head div strong{{display:block}}.h2h-history-head div b{{font-size:12px}}.h2h-history-head div strong{{margin-top:3px;color:#fff;font-size:16px}}.h2h-history-head span{{color:var(--muted);font-size:10px}}
+    .tier-credit-history{{margin-top:10px;border:1px solid #213f58;border-radius:12px;overflow:hidden;background:#091927}}
+    .tier-credit-note{{margin:0;padding:10px 13px;color:var(--muted);font-size:11px;border-bottom:1px solid #19354d}}
+    .tier-credit-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:#19354d}}
+    .tier-credit-player{{padding:12px;background:#091927}}.tier-credit-player-head{{display:grid;grid-template-columns:1fr auto;gap:2px 10px;margin-bottom:9px}}
+    .tier-credit-player-head b{{font-size:14px}}.tier-credit-player-head strong{{color:var(--cyan);font-size:16px}}.tier-credit-player-head small{{grid-column:1/-1;color:var(--muted)}}
+    .tier-credit-match{{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #173249}}
+    .tier-credit-match b,.tier-credit-match small{{display:block}}.tier-credit-match b{{font-size:11px}}.tier-credit-match small{{margin-top:2px;color:var(--muted);font-size:9px}}
+    .tier-credit-match>span{{text-align:right;color:#fff;font-size:10px}}.tier-credit-match>span small{{white-space:nowrap}}
     .h2h-match{{display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:12px;padding:10px 13px;border-bottom:1px solid #173048;border-left:4px solid var(--muted)}}
     .h2h-match:last-child{{border-bottom:0}}.h2h-match div b,.h2h-match div small{{display:block}}.h2h-match div b{{font-size:12px}}.h2h-match div small{{margin-top:2px;color:var(--muted);font-size:10px}}
     .h2h-match strong{{font-size:12px;text-align:right}}.h2h-surface{{padding:4px 7px;border-radius:999px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.04em}}
@@ -1870,7 +1946,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     @media(max-width:760px){{.pricing-grid{{grid-template-columns:1fr}}.quality{{grid-template-columns:1fr}}.ring{{margin:auto}}
       .family-row{{grid-template-columns:1fr}}.family-result{{text-align:left}}.versus{{grid-template-columns:1fr;text-align:center}}
       .versus .right{{text-align:center}}.hero-player,.hero-player.side-b{{flex-direction:column;text-align:center}}.vs{{display:none}}.summary{{display:block}}.player-grid{{grid-template-columns:1fr}}
-      .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row{{grid-template-columns:1fr}}.family-view-head{{align-items:flex-start;flex-direction:column}}.family-view-toggle{{align-self:flex-end}}.h2h-match{{grid-template-columns:1fr}}.h2h-match strong{{text-align:left}}}}
+      .consensus,.decision-strip,.review-lead,.review-grid,.line-grid,.ml-history,.context-grid,.factor-row,.tier-credit-grid{{grid-template-columns:1fr}}.family-view-head{{align-items:flex-start;flex-direction:column}}.family-view-toggle{{align-self:flex-end}}.h2h-match,.tier-credit-match{{grid-template-columns:1fr}}.h2h-match strong,.tier-credit-match>span{{text-align:left}}}}
   </style>
 </head>
 <body><main class="shell">

@@ -432,7 +432,7 @@ def _tier_recent_summary(
 
 def _tier_win_credit_summary(
     observations: list[dict[str, Any]], *, cutoff: date,
-) -> tuple[float | None, int]:
+) -> tuple[float | None, int, list[dict[str, Any]]]:
     """Recent wins weighted by the objective hierarchy of the competition.
 
     The scale mirrors the maximum ranking points of the category.  A win in a
@@ -445,20 +445,38 @@ def _tier_win_credit_summary(
         row for row in observations if start <= row["event_date"] < cutoff
     ]
     if not eligible:
-        return None, 0
+        return None, 0, []
     weighted_credit = 0.0
     total_weight = 0.0
+    ledger: list[dict[str, Any]] = []
     for row in eligible:
         weight = 0.5 ** (
             max(0, (cutoff - row["event_date"]).days) / 60.0
         )
         total_weight += weight
-        if not row.get("won"):
-            continue
         strength = _competition_strength(row.get("competition_level"))
         points = _COMPETITION_CHAMPION_POINTS.get(strength or 0, 100.0)
-        weighted_credit += weight * points / _MAX_TOURNAMENT_POINTS
-    return weighted_credit / total_weight if total_weight else None, len(eligible)
+        contribution = (
+            weight * points / _MAX_TOURNAMENT_POINTS
+            if row.get("won") else 0.0
+        )
+        weighted_credit += contribution
+        ledger.append({
+            "event_date": row["event_date"].isoformat(),
+            "tournament": row.get("tournament"),
+            "round": row.get("round"),
+            "opponent": row.get("opponent"),
+            "won": bool(row.get("won")),
+            "competition_level": row.get("competition_level"),
+            "category_points": int(points),
+            "recency_weight": round(weight, 6),
+            "weighted_credit": round(contribution, 6),
+        })
+    return (
+        weighted_credit / total_weight if total_weight else None,
+        len(eligible),
+        sorted(ledger, key=lambda item: item["event_date"], reverse=True),
+    )
 
 
 def _competition_level_average(
@@ -613,10 +631,10 @@ def _tier_reliable_recent_features(
                 "b_shrunk": round(value_b, 6),
             }
         audit["buckets"][bucket] = bucket_audit
-    tier_credit_a, tier_credit_sample_a = _tier_win_credit_summary(
+    tier_credit_a, tier_credit_sample_a, tier_credit_ledger_a = _tier_win_credit_summary(
         recent_a, cutoff=cutoff,
     )
-    tier_credit_b, tier_credit_sample_b = _tier_win_credit_summary(
+    tier_credit_b, tier_credit_sample_b, tier_credit_ledger_b = _tier_win_credit_summary(
         recent_b, cutoff=cutoff,
     )
     reliability = max(
@@ -635,6 +653,11 @@ def _tier_reliable_recent_features(
         "b_credit": round(float(tier_credit_b or 0.0), 6),
         "category_scale": "champion_points_over_2000",
         "challenger_default_points": 100,
+        "window_days": WINDOW_DAYS,
+        "recency_half_life_days": 60,
+        "losses_contribute_zero_but_remain_in_denominator": True,
+        "a_ledger": tier_credit_ledger_a,
+        "b_ledger": tier_credit_ledger_b,
     }
     downshift_a, downshift_audit_a = _recent_circuit_downshift(
         observations_a, cutoff=cutoff,
@@ -1337,7 +1360,10 @@ def build_contextual_target_row(
                 competition_scope=competition_scope,
                 competition_level=competition_level,
             ), "venue": match_venue, "pace_bucket": match_pace,
-                "surface_context": match_surface_context}
+                "surface_context": match_surface_context,
+                "tournament": _optional_text(match["_tournament"]),
+                "round": _optional_text(match["_round"]),
+                "opponent": _optional_text(match["_loser"])}
             match_history[winner].append(observation)
             if is_primary:
                 primary_match_history[winner].append(observation)
@@ -1356,7 +1382,10 @@ def build_contextual_target_row(
                 competition_scope=competition_scope,
                 competition_level=competition_level,
             ), "venue": match_venue, "pace_bucket": match_pace,
-                "surface_context": match_surface_context}
+                "surface_context": match_surface_context,
+                "tournament": _optional_text(match["_tournament"]),
+                "round": _optional_text(match["_round"]),
+                "opponent": _optional_text(match["_winner"])}
             match_history[loser].append(observation)
             if is_primary:
                 primary_match_history[loser].append(observation)
@@ -1793,14 +1822,20 @@ def build_contextual_family_replay_rows(
                 competition_scope=competition_scope,
                 competition_level=competition_level,
             ), "venue": venue, "pace_bucket": pace,
-                "surface_context": surface_context}
+                "surface_context": surface_context,
+                "tournament": _optional_text(match["_tournament"]),
+                "round": _optional_text(match["_round"]),
+                "opponent": _optional_text(match["_loser"])}
             loser_observation = {**_player_observation(
                 event_date=event_date, surface=surface, won=False,
                 player_rank=rank_l, opponent_rank=rank_w, game_margin=loser_margin,
                 competition_scope=competition_scope,
                 competition_level=competition_level,
             ), "venue": venue, "pace_bucket": pace,
-                "surface_context": surface_context}
+                "surface_context": surface_context,
+                "tournament": _optional_text(match["_tournament"]),
+                "round": _optional_text(match["_round"]),
+                "opponent": _optional_text(match["_winner"])}
             match_history[winner].append(winner_observation)
             match_history[loser].append(loser_observation)
             if is_primary:

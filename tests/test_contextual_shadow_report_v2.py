@@ -28,6 +28,44 @@ def test_h2h_card_separates_factual_strength_from_price_impact():
     assert "H2H factual forte · impacto no preço ligeiro" in html
 
 
+def test_recent_tier_credit_is_named_plainly_and_lists_contributing_wins():
+    prediction = observation()
+    recent = prediction["contextual_shadow"]["families"][0]
+    recent["internal_trace"] = {
+        "intercept": 0.0,
+        "features": [{
+            "key": "contextual_recent_tier_win_credit_v7",
+            "logit_contribution": -0.25,
+            "missing_logit_contribution": 0.0,
+            "missing": False,
+        }],
+    }
+    recent["context_audit"] = {"tier_win_credit": {
+        "a_sample": 2, "b_sample": 3,
+        "a_credit": 0.25, "b_credit": 0.40,
+        "a_ledger": [{
+            "event_date": "2026-11-10", "tournament": "Paris Masters",
+            "round": "QF", "opponent": "Player B", "won": True,
+            "competition_level": "M", "category_points": 1000,
+            "recency_weight": 0.8, "weighted_credit": 0.4,
+        }],
+        "b_ledger": [{
+            "event_date": "2026-11-18", "tournament": "ATP Finals",
+            "round": "RR", "opponent": "Player A", "won": True,
+            "competition_level": "F", "category_points": 2000,
+            "recency_weight": 0.95, "weighted_credit": 0.95,
+        }],
+    }}
+    html = report.render_report_html(report.build_report_view_model(prediction))
+    assert "Crédito das vitórias pela categoria" in html
+    assert "Qualidade das vitórias ajustada ao nível" not in html
+    assert "Paris Masters" in html
+    assert "ATP Finals" in html
+    assert "vs Player B" in html
+    assert "derrotas valem zero" in html
+    assert "2 jogos no denominador" in html
+
+
 def observation():
     return {
         "schema_version": 2,

@@ -237,6 +237,35 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert "edge" not in result
 
 
+def test_runtime_carries_recent_tier_credit_ledger_into_family_audit():
+    row = _row()
+    row["candidate_equation_audit"] = {
+        "recent_form_tier_reliable_v5": {"tier_win_credit": {
+            "a_sample": 1,
+            "b_sample": 1,
+            "a_credit": 0.5,
+            "b_credit": 0.0,
+            "a_ledger": [{
+                "event_date": "2026-11-01", "tournament": "Test Masters",
+                "round": "QF", "opponent": "beta", "won": True,
+                "competition_level": "M", "category_points": 1000,
+                "recency_weight": 1.0, "weighted_credit": 0.5,
+            }],
+            "b_ledger": [],
+        }},
+    }
+    result = predict_fenzobot_contextual(
+        row, load_contract(MODEL), universe="atp",
+    )
+    recent = next(
+        family for family in result["families"]
+        if family["key"] == "recent_form"
+    )
+    audit = recent["context_audit"]["tier_win_credit"]
+    assert audit["a_credit"] == 0.5
+    assert audit["a_ledger"][0]["tournament"] == "Test Masters"
+
+
 def test_final_runtime_probability_is_invariant_to_player_order():
     contract = load_contract(MODEL)
     for universe in ("atp", "wta"):
