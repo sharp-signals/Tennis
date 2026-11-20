@@ -560,7 +560,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         html = report.render_report_html(
             report.build_report_view_model(prediction, market())
         )
-        self.assertIn("Confrontos anteriores", html)
+        self.assertIn("H2H competitivo usado no preço", html)
         self.assertIn("Rápido indoor", html)
         self.assertIn("Terra batida", html)
         self.assertIn("h2h-hard-indoor", html)
@@ -603,7 +603,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertEqual(view["players"]["a"]["probability"], 0.62)
         self.assertTrue(view["h2h_evidence_available"])
         html = report.render_report_html(view)
-        self.assertIn("Confrontos anteriores", html)
+        self.assertIn("H2H competitivo usado no preço", html)
         self.assertIn("Indoor Open", html)
         self.assertIn("6-4 6-3", html)
 
