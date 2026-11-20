@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "change_id": "CHANGE-2026-11-20-228",
+  "mode": "READ_ONLY_CHRONOLOGICAL_TIER_ROUND_OPPONENT_AUDIT",
+  "round_scale": {
+    "r128": 0.142857,
+    "r64": 0.285714,
+    "r32": 0.428571,
+    "r16": 0.571429,
+    "qf": 0.714286,
+    "sf": 0.857143,
+    "f": 1.0,
+    "rr": 0.333333
+  },
+  "opponent_quality": "1 / (1 + ln(opponent_rank))",
+  "double_counting_guard": "joint candidate replaces standalone opponent quality and category-only credit",
+  "results": {
+    "atp": {
+      "rows": 26703,
+      "chronology": {
+        "train": 16093,
+        "validation": 5319,
+        "holdout": 5291
+      },
+      "coverage": {
+        "rows": 26703,
+        "round_available": 26150,
+        "joint_available": 26147,
+        "round_omitted_wins": 33,
+        "joint_omitted_wins": 1022
+      },
+      "baseline_profile": "recent_tier_context_v8",
+      "candidates": {
+        "recent_tier_round_audit_v1": {
+          "family_holdout": {
+            "paired_targets": 5226,
+            "baseline": {
+              "covered": 5226,
+              "coverage_pct": 98.77,
+              "log_loss": 0.643455,
+              "brier": 0.226385,
+              "accuracy_pct": 62.0,
+              "ece_10": 0.011611,
+              "predicted_mean": 0.51726,
+              "observed_rate": 0.521814
+            },
+            "candidate": {
+              "covered": 5226,
+              "coverage_pct": 98.77,
+              "log_loss": 0.639105,
+              "brier": 0.224426,
+              "accuracy_pct": 62.5,
+              "ece_10": 0.019038,
+              "predicted_mean": 0.519735,
+              "observed_rate": 0.521814
+            },
+            "paired_gain": {
+              "log_loss_gain": 0.004351,
+              "gain_95pct_ci": [
+                0.001991,
+                0.00671
+              ],
+              "status": "SUPPORTED"
+            }
+          },
+          "integrated_holdout_frozen_hierarchy": {
+            "paired_targets": 5291,
+            "baseline": {
+              "covered": 5291,
+              "coverage_pct": 100.0,
+              "log_loss": 0.618381,
+              "brier": 0.215119,
+              "accuracy_pct": 65.56,
+              "ece_10": 0.015374,
+              "predicted_mean": 0.522495,
+              "observed_rate": 0.519562
+            },
+            "candidate": {
+              "covered": 5291,
+              "coverage_pct": 100.0,
+              "log_loss": 0.619541,
+              "brier": 0.215525,
+              "accuracy_pct": 65.21,
+              "ece_10": 0.011833,
+              "predicted_mean": 0.524106,
+              "observed_rate": 0.519562
+            },
+            "paired_gain": {
+              "log_loss_gain": -0.00116,
+              "gain_95pct_ci": [
+                -0.00298,
+                0.00066
+              ],
+              "status": "INCONCLUSIVE"
+            }
+          },
+          "decision": "INCONCLUSIVE",
+          "active_coefficients": [
+            "contextual_recent_competitiveness_main_v7",
+            "contextual_recent_win_quality_v1",
+            "contextual_recent_competitiveness_lower_main_v5",
+            "contextual_recent_result_challenger_v5",
+            "contextual_recent_competitiveness_challenger_v5",
+            "contextual_recent_tier_round_credit_audit_v1"
+          ]
+        },
+        "recent_tier_round_opponent_joint_audit_v1": {
+          "family_holdout": {
+            "paired_targets": 5226,
+            "baseline": {
+              "covered": 5226,
+              "coverage_pct": 98.77,
+              "log_loss": 0.643455,
+              "brier": 0.226385,
+              "accuracy_pct": 62.0,
+              "ece_10": 0.011611,
+              "predicted_mean": 0.51726,
+              "observed_rate": 0.521814
+            },
+            "candidate": {
+              "covered": 5226,
+              "coverage_pct": 98.77,
+              "log_loss": 0.644104,
+              "brier": 0.226754,
+              "accuracy_pct": 62.38,
+              "ece_10": 0.022656,
+              "predicted_mean": 0.51832,
+              "observed_rate": 0.521814
+            },
+            "paired_gain": {
+              "log_loss_gain": -0.000648,
+              "gain_95pct_ci": [
+                -0.00426,
+                0.002963
+              ],
+              "status": "INCONCLUSIVE"
+            }
+          },
+          "integrated_holdout_frozen_hierarchy": {
+            "paired_targets": 5291,
+            "baseline": {
+              "covered": 5291,
+              "coverage_pct": 100.0,
+              "log_loss": 0.618381,
+              "brier": 0.215119,
+              "accuracy_pct": 65.56,
+              "ece_10": 0.015374,
+              "predicted_mean": 0.522495,
+              "observed_rate": 0.519562
+            },
+            "candidate": {
+              "covered": 5291,
+              "coverage_pct": 100.0,
+              "log_loss": 0.620312,
+              "brier": 0.215837,
+              "accuracy_pct": 65.22,
+              "ece_10": 0.014532,
+              "predicted_mean": 0.52322,
+              "observed_rate": 0.519562
+            },
+            "paired_gain": {
+              "log_loss_gain": -0.00193,
+              "gain_95pct_ci": [
+                -0.003895,
+                3.4e-05
+              ],
+              "status": "INCONCLUSIVE"
+            }
+          },
+          "decision": "INCONCLUSIVE",
+          "active_coefficients": [
+            "contextual_recent_competitiveness_main_v7",
+            "contextual_recent_competitiveness_lower_main_v5",
+            "contextual_recent_competitiveness_challenger_v5",
+            "contextual_recent_tier_round_opponent_credit_audit_v1"
+          ]
+        }
+      }
+    },
+    "wta": {
+      "rows": 24502,
+      "chronology": {
+        "train": 14746,
+        "validation": 4906,
+        "holdout": 4850
+      },
+      "coverage": {
+        "rows": 24502,
+        "round_available": 23701,
+        "joint_available": 23635,
+        "round_omitted_wins": 27,
+        "joint_omitted_wins": 1172
+      },
+      "baseline_profile": "recent_tier_context_v8",
+      "candidates": {
+        "recent_tier_round_audit_v1": {
+          "family_holdout": {
+            "paired_targets": 4761,
+            "baseline": {
+              "covered": 4761,
+              "coverage_pct": 98.16,
+              "log_loss": 0.642091,
+              "brier": 0.225743,
+              "accuracy_pct": 62.49,
+              "ece_10": 0.013967,
+              "predicted_mean": 0.525707,
+              "observed_rate": 0.52846
+            },
+            "candidate": {
+              "covered": 4761,
+              "coverage_pct": 98.16,
+              "log_loss": 0.639607,
+              "brier": 0.224665,
+              "accuracy_pct": 62.38,
+              "ece_10": 0.016386,
+              "predicted_mean": 0.526723,
+              "observed_rate": 0.52846
+            },
+            "paired_gain": {
+              "log_loss_gain": 0.002484,
+              "gain_95pct_ci": [
+                0.000395,
+                0.004573
+              ],
+              "status": "SUPPORTED"
+            }
+          },
+          "integrated_holdout_frozen_hierarchy": {
+            "paired_targets": 4850,
+            "baseline": {
+              "covered": 4850,
+              "coverage_pct": 100.0,
+              "log_loss": 0.612211,
+              "brier": 0.212347,
+              "accuracy_pct": 66.0,
+              "ece_10": 0.014634,
+              "predicted_mean": 0.5231,
+              "observed_rate": 0.527216
+            },
+            "candidate": {
+              "covered": 4850,
+              "coverage_pct": 100.0,
+              "log_loss": 0.612949,
+              "brier": 0.212576,
+              "accuracy_pct": 66.0,
+              "ece_10": 0.012758,
+              "predicted_mean": 0.523426,
+              "observed_rate": 0.527216
+            },
+            "paired_gain": {
+              "log_loss_gain": -0.000738,
+              "gain_95pct_ci": [
+                -0.001923,
+                0.000448
+              ],
+              "status": "INCONCLUSIVE"
+            }
+          },
+          "decision": "INCONCLUSIVE",
+          "active_coefficients": [
+            "contextual_recent_competitiveness_main_v7",
+            "contextual_recent_win_quality_v1",
+            "contextual_recent_competitiveness_lower_main_v5",
+            "contextual_recent_tier_round_credit_audit_v1"
+          ]
+        },
+        "recent_tier_round_opponent_joint_audit_v1": {
+          "family_holdout": {
+            "paired_targets": 4761,
+            "baseline": {
+              "covered": 4761,
+              "coverage_pct": 98.16,
+              "log_loss": 0.642091,
+              "brier": 0.225743,
+              "accuracy_pct": 62.49,
+              "ece_10": 0.013967,
+              "predicted_mean": 0.525707,
+              "observed_rate": 0.52846
+            },
+            "candidate": {
+              "covered": 4761,
+              "coverage_pct": 98.16,
+              "log_loss": 0.642941,
+              "brier": 0.226214,
+              "accuracy_pct": 61.92,
+              "ece_10": 0.00806,
+              "predicted_mean": 0.526367,
+              "observed_rate": 0.52846
+            },
+            "paired_gain": {
+              "log_loss_gain": -0.000849,
+              "gain_95pct_ci": [
+                -0.003901,
+                0.002202
+              ],
+              "status": "INCONCLUSIVE"
+            }
+          },
+          "integrated_holdout_frozen_hierarchy": {
+            "paired_targets": 4850,
+            "baseline": {
+              "covered": 4850,
+              "coverage_pct": 100.0,
+              "log_loss": 0.612211,
+              "brier": 0.212347,
+              "accuracy_pct": 66.0,
+              "ece_10": 0.014634,
+              "predicted_mean": 0.5231,
+              "observed_rate": 0.527216
+            },
+            "candidate": {
+              "covered": 4850,
+              "coverage_pct": 100.0,
+              "log_loss": 0.613463,
+              "brier": 0.212825,
+              "accuracy_pct": 66.04,
+              "ece_10": 0.013304,
+              "predicted_mean": 0.523208,
+              "observed_rate": 0.527216
+            },
+            "paired_gain": {
+              "log_loss_gain": -0.001252,
+              "gain_95pct_ci": [
+                -0.002684,
+                0.00018
+              ],
+              "status": "INCONCLUSIVE"
+            }
+          },
+          "decision": "INCONCLUSIVE",
+          "active_coefficients": [
+            "contextual_recent_competitiveness_main_v7",
+            "contextual_recent_competitiveness_lower_main_v5",
+            "contextual_recent_tier_round_opponent_credit_audit_v1"
+          ]
+        }
+      }
+    }
+  },
+  "market_used": false,
+  "production_effect": false,
+  "promotion_authorized": false
+}
